@@ -9,7 +9,6 @@
 """Unit tests for integration module."""
 
 import os
-import socket
 import sys
 from unittest.mock import patch
 
@@ -48,17 +47,17 @@ def test_get_subscriber():
 
 
 @patch('integration.socket.socket')
-def test_send_msg_ok(mock_socket):
+def test_send_message_ok(mock_socket):
     """Test if messages are sent to Wazuh queue socket."""
     client = get_wazuhgcloud_subscriber()
-    client.send_msg(test_message)
+    client.send_message(test_message)
 
 
-def test_send_msg_ko():
-    """Test send_msg method when a socket exception happens."""
-    with pytest.raises(FileNotFoundError):
+def test_send_message_ko():
+    """Test send_message method when a socket exception happens."""
+    with pytest.raises(OSError):
         client = get_wazuhgcloud_subscriber()
-        client.send_msg(test_message)
+        client.send_message(test_message)
 
 
 def test_format_msg():

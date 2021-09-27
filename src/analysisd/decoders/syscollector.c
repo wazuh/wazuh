@@ -196,6 +196,7 @@ static const char* OS_FIELDS[] = {
     "release",
     "version",
     "os_release",
+    "os_display_version",
     "checksum",
     NULL
 };
@@ -872,6 +873,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
         cJSON * os_release = cJSON_GetObjectItem(inventory, "os_release");
         cJSON * os_patch = cJSON_GetObjectItem(inventory, "os_patch");
+        cJSON * os_display_version = cJSON_GetObjectItem(inventory, "os_display_version");
 
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
@@ -985,6 +987,13 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (os_patch) {
             wm_strcat(&msg, os_patch->valuestring, '|');
             fillData(lf,"os.patch",os_patch->valuestring);
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (os_display_version) {
+            wm_strcat(&msg, os_display_version->valuestring, '|');
+            fillData(lf,"os.display_version",os_display_version->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }

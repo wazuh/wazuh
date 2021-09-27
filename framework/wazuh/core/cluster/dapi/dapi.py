@@ -237,6 +237,9 @@ class DistributedAPI:
             return data
 
         try:
+            if self.f_kwargs.get('agent_list') == '*':
+                del self.f_kwargs['agent_list']
+
             before = time.time()
             self.check_wazuh_status()
 
@@ -406,7 +409,7 @@ class DistributedAPI:
             if node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
-                if agent_list:
+                if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
                     self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
                 result = await self.distribute_function()
             else:
@@ -415,7 +418,7 @@ class DistributedAPI:
                 client = self.get_client()
                 try:
                     kcopy = deepcopy(self.to_dict())
-                    if agent_list:
+                    if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
                         kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
                     result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,

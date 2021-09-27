@@ -145,7 +145,7 @@ int local_start()
     }
     /* Read keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
+    OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
     /* If there is no file to monitor, create a clean entry
      * for the mark messages.
@@ -363,17 +363,8 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 
 char *get_agent_ip()
 {
-    static char agent_ip[IPSIZE + 1] = { '\0' };
-    static time_t last_update = 0;
-    time_t now = time(NULL);
+    char agent_ip[IPSIZE + 1] = { '\0' };
     cJSON *object;
-
-    if ((now - last_update) < agt->main_ip_update_interval) {
-        return strdup(agent_ip);
-    }
-
-    last_update = now;
-    agent_ip[0] = '\0';
 
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
         const int error_code = sysinfo_network_ptr(&object);
@@ -406,7 +397,7 @@ char *get_agent_ip()
                                     break;
                                 }
                             }
-                            if (agent_ip) {
+                            if (*agent_ip != '\0') {
                                 break;
                             }
                         }
@@ -418,10 +409,6 @@ char *get_agent_ip()
         else {
             merror("Unable to get system network information. Error code: %d.", error_code);
         }
-    }
-
-    if (agent_ip[0] == '\0') {
-        last_update = 0;
     }
 
     return strdup(agent_ip);

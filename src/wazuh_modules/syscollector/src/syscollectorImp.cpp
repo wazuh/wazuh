@@ -52,6 +52,7 @@ constexpr auto OS_SQL_STATEMENT
     release TEXT,
     version TEXT,
     os_release TEXT,
+    os_display_version TEXT,
     checksum TEXT,
     PRIMARY KEY (os_name)) WITHOUT ROWID;)"
 };
@@ -930,7 +931,7 @@ static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std
 }
 
 void Syscollector::updateAndNotifyChanges(const std::string& table,
-                                          const nlohmann::json& values)
+                                          const nlohmann::json& input)
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
     {
@@ -994,10 +995,6 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
         queueSize,
         callback
     };
-    nlohmann::json jsResult;
-    nlohmann::json input;
-    input["table"] = table;
-    input["data"] = values;
     txn.syncTxnRow(input);
     txn.getDeletedRows(callback);
 }
@@ -1020,44 +1017,15 @@ Syscollector::Syscollector()
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
-
-    if (m_os)
-    {
-        ret += OS_SQL_STATEMENT;
-    }
-
-    if (m_hardware)
-    {
-        ret += HW_SQL_STATEMENT;
-    }
-
-    if (m_packages)
-    {
-        ret += PACKAGES_SQL_STATEMENT;
-
-        if (m_hotfixes)
-        {
-            ret += HOTFIXES_SQL_STATEMENT;
-        }
-    }
-
-    if (m_processes)
-    {
-        ret += PROCESSES_SQL_STATEMENT;
-    }
-
-    if (m_ports)
-    {
-        ret += PORTS_SQL_STATEMENT;
-    }
-
-    if (m_network)
-    {
-        ret += NETIFACE_SQL_STATEMENT;
-        ret += NETPROTO_SQL_STATEMENT;
-        ret += NETADDR_SQL_STATEMENT;
-    }
-
+    ret += OS_SQL_STATEMENT;
+    ret += HW_SQL_STATEMENT;
+    ret += PACKAGES_SQL_STATEMENT;
+    ret += HOTFIXES_SQL_STATEMENT;
+    ret += PROCESSES_SQL_STATEMENT;
+    ret += PORTS_SQL_STATEMENT;
+    ret += NETIFACE_SQL_STATEMENT;
+    ret += NETPROTO_SQL_STATEMENT;
+    ret += NETADDR_SQL_STATEMENT;
     return ret;
 }
 
@@ -1233,18 +1201,17 @@ void Syscollector::scanHardware()
     if (m_hardware)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting hardware scan");
-        const auto& hwData{getHardwareData()};
-        updateAndNotifyChanges(HW_TABLE, hwData);
+        nlohmann::json input;
+        input["table"] = HW_TABLE;
+        input["data"] = getHardwareData();
+        updateAndNotifyChanges(HW_TABLE, input);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending hardware scan");
     }
 }
 
 void Syscollector::syncHardware()
 {
-    if (m_hardware)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getOSData()
@@ -1260,18 +1227,17 @@ void Syscollector::scanOs()
     if (m_os)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting os scan");
-        const auto& osData{getOSData()};
-        updateAndNotifyChanges(OS_TABLE, osData);
+        nlohmann::json input;
+        input["table"] = OS_TABLE;
+        input["data"] = getOSData();
+        updateAndNotifyChanges(OS_TABLE, input);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending os scan");
     }
 }
 
 void Syscollector::syncOs()
 {
-    if (m_os)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getNetworkData()
@@ -1309,7 +1275,7 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                 ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
                 ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
-                ifaceTableDataList.push_back(ifaceTableData);
+                ifaceTableDataList.push_back(std::move(ifaceTableData));
 
                 // "dbsync_network_protocol" table data to update and notify
                 nlohmann::json protoTableData {};
@@ -1329,7 +1295,7 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = 0;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                        addressTableDataList.push_back(addressTableData);
+                        addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
 
@@ -1345,18 +1311,18 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = 1;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                        addressTableDataList.push_back(addressTableData);
+                        addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
 
                 protoTableData["checksum"]  = getItemChecksum(protoTableData);
                 protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
-                protoTableDataList.push_back(protoTableData);
+                protoTableDataList.push_back(std::move(protoTableData));
             }
 
-            ret[NET_IFACE_TABLE] = ifaceTableDataList;
-            ret[NET_PROTOCOL_TABLE] = protoTableDataList;
-            ret[NET_ADDRESS_TABLE] = addressTableDataList;
+            ret[NET_IFACE_TABLE] = std::move(ifaceTableDataList);
+            ret[NET_PROTOCOL_TABLE] = std::move(protoTableDataList);
+            ret[NET_ADDRESS_TABLE] = std::move(addressTableDataList);
         }
     }
 
@@ -1368,29 +1334,38 @@ void Syscollector::scanNetwork()
     if (m_network)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting network scan");
-        const auto& networkData{getNetworkData()};
+        auto networkData(getNetworkData());
 
         if (!networkData.is_null())
         {
-            const auto itIface { networkData.find(NET_IFACE_TABLE) };
+            auto itIface { networkData.find(NET_IFACE_TABLE) };
 
             if (itIface != networkData.end())
             {
-                updateAndNotifyChanges(NET_IFACE_TABLE, itIface.value());
+                nlohmann::json input;
+                input["table"] = NET_IFACE_TABLE;
+                input["data"] = std::move(*itIface);
+                updateAndNotifyChanges(NET_IFACE_TABLE, input);
             }
 
-            const auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
+            auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
 
             if (itProtocol != networkData.end())
             {
-                updateAndNotifyChanges(NET_PROTOCOL_TABLE, itProtocol.value());
+                nlohmann::json input;
+                input["table"] = NET_PROTOCOL_TABLE;
+                input["data"] = std::move(*itProtocol);
+                updateAndNotifyChanges(NET_PROTOCOL_TABLE, input);
             }
 
-            const auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
+            auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
 
             if (itAddress != networkData.end())
             {
-                updateAndNotifyChanges(NET_ADDRESS_TABLE, itAddress.value());
+                nlohmann::json input;
+                input["table"] = NET_ADDRESS_TABLE;
+                input["data"] = std::move(*itAddress);
+                updateAndNotifyChanges(NET_ADDRESS_TABLE, input);
             }
         }
 
@@ -1400,12 +1375,9 @@ void Syscollector::scanNetwork()
 
 void Syscollector::syncNetwork()
 {
-    if (m_network)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getPackagesData()
@@ -1413,22 +1385,20 @@ nlohmann::json Syscollector::getPackagesData()
     nlohmann::json ret;
     nlohmann::json packagesList;
     nlohmann::json hotfixesList;
-    const auto& packagesData { m_spInfo->packages() };
+    auto packagesData (m_spInfo->packages());
 
     if (!packagesData.is_null())
     {
-        const auto& normalizedPackagesData
-        {
-            m_spNormalizer->normalize("packages", m_spNormalizer->removeExcluded("packages", packagesData))
-        };
+        m_spNormalizer->removeExcluded("packages", packagesData);
+        m_spNormalizer->normalize("packages", packagesData);
 
-        for (auto item : normalizedPackagesData)
+        for (auto& item : packagesData)
         {
             item["checksum"] = getItemChecksum(item);
 
             if (item.find("hotfix") != item.end())
             {
-                hotfixesList.push_back(item);
+                hotfixesList.push_back(std::move(item));
             }
             else
             {
@@ -1444,13 +1414,13 @@ nlohmann::json Syscollector::getPackagesData()
                 if (packagesList.end() == it)
                 {
                     item["item_id"] = itemId;
-                    packagesList.push_back(item);
+                    packagesList.push_back(std::move(item));
                 }
             }
         }
 
-        ret[HOTFIXES_TABLE] = hotfixesList;
-        ret[PACKAGES_TABLE] = packagesList;
+        ret[HOTFIXES_TABLE] = std::move(hotfixesList);
+        ret[PACKAGES_TABLE] = std::move(packagesList);
     }
 
     return ret;
@@ -1461,24 +1431,30 @@ void Syscollector::scanPackages()
     if (m_packages)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting packages scan");
-        const auto& packagesData { getPackagesData() };
+        auto packagesData (getPackagesData());
 
         if (!packagesData.is_null())
         {
-            const auto itPackages { packagesData.find(PACKAGES_TABLE) };
+            auto itPackages { packagesData.find(PACKAGES_TABLE) };
 
             if (itPackages != packagesData.end())
             {
-                updateAndNotifyChanges(PACKAGES_TABLE, itPackages.value());
+                nlohmann::json input;
+                input["table"] = PACKAGES_TABLE;
+                input["data"] = std::move(*itPackages);
+                updateAndNotifyChanges(PACKAGES_TABLE, input);
             }
 
             if (m_hotfixes)
             {
-                const auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
+                auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
 
                 if (itHotFixes != packagesData.end())
                 {
-                    updateAndNotifyChanges(HOTFIXES_TABLE, itHotFixes.value());
+                    nlohmann::json input;
+                    input["table"] = HOTFIXES_TABLE;
+                    input["data"] = std::move(*itHotFixes);
+                    updateAndNotifyChanges(HOTFIXES_TABLE, input);
                 }
             }
         }
@@ -1489,15 +1465,8 @@ void Syscollector::scanPackages()
 
 void Syscollector::syncPackages()
 {
-    if (m_packages)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-
-        if (m_hotfixes)
-        {
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        }
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getPortsData()
@@ -1573,31 +1542,30 @@ void Syscollector::scanPorts()
     if (m_ports)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting ports scan");
-        const auto& portsData { getPortsData() };
-        updateAndNotifyChanges(PORTS_TABLE, portsData);
+        nlohmann::json input;
+        input["table"] = PORTS_TABLE;
+        input["data"] = getPortsData();
+        updateAndNotifyChanges(PORTS_TABLE, input);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending ports scan");
     }
 }
 
 void Syscollector::syncPorts()
 {
-    if (m_ports)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getProcessesData()
 {
     nlohmann::json ret;
-    const auto& processes{m_spInfo->processes()};
+    auto processes(m_spInfo->processes());
 
     if (!processes.is_null())
     {
-        for (auto item : processes)
+        for (auto& item : processes)
         {
             item["checksum"] = getItemChecksum(item);
-            ret.push_back(item);
+            ret.push_back(std::move(item));
         }
     }
 
@@ -1609,18 +1577,17 @@ void Syscollector::scanProcesses()
     if (m_processes)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting processes scan");
-        const auto& processesData{getProcessesData()};
-        updateAndNotifyChanges(PROCESSES_TABLE, processesData);
+        nlohmann::json input;
+        input["table"] = PROCESSES_TABLE;
+        input["data"] = getProcessesData();
+        updateAndNotifyChanges(PROCESSES_TABLE, input);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
 }
 
 void Syscollector::syncProcesses()
 {
-    if (m_processes)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 void Syscollector::scan()

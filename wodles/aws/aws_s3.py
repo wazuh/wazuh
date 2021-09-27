@@ -48,7 +48,9 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from time import mktime
-from wazuh.core import common
+
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+import utils
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
@@ -77,11 +79,12 @@ class WazuhIntegration:
     :param service name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
     :param bucket: Bucket name to extract logs from
+    :param iam_role_duration: The desired duration of the session that is going to be assumed.
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None):
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -141,8 +144,8 @@ class WazuhIntegration:
                             DROP TABLE {table};
                             """
 
-        self.wazuh_path = common.find_wazuh_path()
-        self.wazuh_version = common.get_wazuh_version()
+        self.wazuh_path = utils.find_wazuh_path()
+        self.wazuh_version = utils.get_wazuh_version()
         self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
@@ -156,7 +159,8 @@ class WazuhIntegration:
                                       bucket=bucket,
                                       region=region,
                                       sts_endpoint=sts_endpoint,
-                                      service_endpoint=service_endpoint
+                                      service_endpoint=service_endpoint,
+                                      iam_role_duration=iam_role_duration
                                       )
 
         # db_name is an instance variable of subclass
@@ -220,7 +224,7 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None,
-                   sts_endpoint=None, service_endpoint=None):
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
@@ -244,9 +248,14 @@ class WazuhIntegration:
         try:
             if iam_role_arn:
                 sts_client = boto_session.client('sts', endpoint_url=sts_endpoint)
-                sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                             RoleSessionName='WazuhLogParsing'
-                                                             )
+                assume_role_kwargs = {'RoleArn': iam_role_arn,
+                                      'RoleSessionName': 'WazuhLogParsing'
+                                      }
+                if iam_role_duration is not None:
+                    assume_role_kwargs['DurationSeconds'] = iam_role_duration
+
+                sts_role_assumption = sts_client.assume_role(**assume_role_kwargs)
+
                 sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
                                             aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
@@ -349,7 +358,7 @@ class AWSBucket(WazuhIntegration):
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  prefix, suffix, delete_file, aws_organization_id, region,
-                 discard_field, discard_regex, sts_endpoint, service_endpoint):
+                 discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         """
         AWS Bucket constructor.
 
@@ -475,7 +484,8 @@ class AWSBucket(WazuhIntegration):
                                   discard_field=discard_field,
                                   discard_regex=discard_regex,
                                   sts_endpoint=sts_endpoint,
-                                  service_endpoint=service_endpoint
+                                  service_endpoint=service_endpoint,
+                                  iam_role_duration=iam_role_duration
                                   )
         self.retain_db_records = 500
         self.reparse = reparse
@@ -2078,16 +2088,23 @@ class AWSWAFBucket(AWSCustomBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a WAF log file."""
+        def json_event_generator(data):
+            while data:
+                json_data, json_index = decoder.raw_decode(data)
+                data = data[json_index:]
+                yield json_data
+
         content = []
+        decoder = json.JSONDecoder()
         with self.decompress_file(log_key=log_key) as f:
             for line in f.readlines():
                 try:
-                    event = json.loads(line.rstrip())
+                    for event in json_event_generator(line.rstrip()):
+                        event['source'] = 'waf'
+                        content.append(event)
                 except json.JSONDecodeError:
                     print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
                     sys.exit(9)
-                event['source'] = 'waf'
-                content.append(event)
 
         return json.loads(json.dumps(content))
 
@@ -2331,7 +2348,8 @@ class AWSService(WazuhIntegration):
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None,
-                 discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None):
+                 discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
+                 iam_role_duration=None):
         # DB name
         self.db_name = 'aws_services'
         # table name
@@ -2340,7 +2358,8 @@ class AWSService(WazuhIntegration):
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                   service_name=service_name, region=region, discard_field=discard_field,
-                                  discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
+                                  discard_regex=discard_regex, sts_endpoint=sts_endpoint,
+                                  service_endpoint=service_endpoint, iam_role_duration=iam_role_duration)
 
         # get sts client (necessary for getting account ID)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
@@ -2437,7 +2456,7 @@ class AWSInspector(AWSService):
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups=None,
                  remove_log_streams=None, discard_field=None, discard_regex=None,
-                 sts_endpoint=None, service_endpoint=None):
+                 sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
 
         self.service_name = 'inspector'
         self.inspector_region = region
@@ -2446,7 +2465,8 @@ class AWSInspector(AWSService):
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
                             remove_log_streams=remove_log_streams, discard_field=discard_field,
-                            discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
+                            discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
+                            iam_role_duration=iam_role_duration)
 
         # max DB records for region
         self.retain_db_records = 5
@@ -2558,7 +2578,8 @@ class AWSCloudWatchLogs(AWSService):
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups,
-                 remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None):
+                 remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
+                 iam_role_duration=None):
 
         self.sql_cloudwatch_create_table = """
                                 CREATE TABLE
@@ -2631,7 +2652,9 @@ class AWSCloudWatchLogs(AWSService):
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             region=region, aws_log_groups=aws_log_groups, remove_log_streams=remove_log_streams,
-                            service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex)
+                            service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex,
+                            iam_role_duration=iam_role_duration, sts_endpoint=sts_endpoint,
+                            service_endpoint=service_endpoint)
 
         self.region = region
         self.db_table_name = 'cloudwatch_logs'
@@ -2922,9 +2945,15 @@ class AWSCloudWatchLogs(AWSService):
         result_list = list()
         try:
             debug('Getting log streams for "{}" log group'.format(log_group), 1)
-            response = self.client.describe_log_streams(logGroupName=log_group)
 
-            for log_stream in response['logStreams']:
+            # Get all log streams using the token of the previous call to describe_log_streams
+            response = self.client.describe_log_streams(logGroupName=log_group)
+            log_streams = response['logStreams']
+            while token := response.get('nextToken'):
+                response = self.client.describe_log_streams(logGroupName=log_group, nextToken=token)
+                log_streams.extend(response['logStreams'])
+
+            for log_stream in log_streams:
                 debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
                 result_list.append(log_stream['logStreamName'])
 
@@ -2933,7 +2962,8 @@ class AWSCloudWatchLogs(AWSService):
         except botocore.exceptions.EndpointConnectionError as e:
             print(f'ERROR: {str(e)}')
         except Exception:
-            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(log_group), 0)
+            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
+                log_group), 0)
 
         return result_list
 
@@ -3028,6 +3058,31 @@ def arg_valid_regions(arg_string):
     return final_regions
 
 
+def arg_valid_iam_role_duration(arg_string):
+    """Checks if the role session duration specified is a valid parameter.
+
+    Parameters
+    ----------
+    arg_string: str or None
+        The desired session duration in seconds.
+
+    Returns
+    -------
+    num_seconds: None or int
+        The returned value will be None if no duration was specified or if it was an invalid value; elsewhere,
+        it will return the number of seconds that the session will last.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the number provided is not in the expected range.
+    """
+    # Session duration must be between 15m and 12h
+    if not (arg_string is None or (900 <= int(arg_string) <= 3600)):
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
+    return int(arg_string)
+
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3085,8 +3140,15 @@ def get_script_arguments():
                         help='URL for the VPC endpoint to use to obtain the STS token.')
     parser.add_argument('-se', '--service_endpoint', type=str, dest='service_endpoint', default=None,
                         help='URL for the VPC endpoint to use to obtain the logs.')
+    parser.add_argument('-rd', '--iam_role_duration', type=arg_valid_iam_role_duration, dest='iam_role_duration', default=None,
+                        help='The duration, in seconds, of the role session. Value can range from 900s to the max'
+                        ' session duration set for the role.')
+    parsed_args = parser.parse_args()
 
-    return parser.parse_args()
+    if parsed_args.iam_role_duration is not None and parsed_args.iam_role_arn is None:
+        raise argparse.ArgumentTypeError('Used --iam_role_duration argument but no --iam_role_arn provided.')
+
+    return parsed_args
 
 
 # Main
@@ -3144,7 +3206,8 @@ def main(argv):
                                  discard_field=options.discard_field,
                                  discard_regex=options.discard_regex,
                                  sts_endpoint=options.sts_endpoint,
-                                 service_endpoint=options.service_endpoint
+                                 service_endpoint=options.service_endpoint,
+                                 iam_role_duration=options.iam_role_duration
                                  )
             # check if bucket is empty or credentials are wrong
             bucket.check_bucket()
@@ -3177,7 +3240,8 @@ def main(argv):
                                        discard_field=options.discard_field,
                                        discard_regex=options.discard_regex,
                                        sts_endpoint=options.sts_endpoint,
-                                       service_endpoint=options.service_endpoint
+                                       service_endpoint=options.service_endpoint,
+                                       iam_role_duration=options.iam_role_duration
                                        )
                 service.get_alerts()
 
