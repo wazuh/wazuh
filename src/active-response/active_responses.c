@@ -246,15 +246,14 @@ const char* get_srcip_from_json(const cJSON *input) {
         return NULL;
     }
 
-    // Detect srcip
-#ifdef WIN32
+    // Detect srcip from WWn eventdata
     srcip_json = get_srcip_from_win_eventdata(data_json);
-    if (srcip_json && (srcip_json->type == cJSON_String)) {
+    if (cJSON_IsString(srcip_json)) {
         return srcip_json->valuestring;
     }
-#endif
+    // Detect srcip from data
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
-    if (srcip_json && (srcip_json->type == cJSON_String)) {
+    if (cJSON_IsString(srcip_json)) {
         return srcip_json->valuestring;
     }
 
@@ -341,7 +340,7 @@ char* get_extra_args_from_json(const cJSON *input) {
     memset(args, '\0', COMMANDSIZE_4096);
     for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
         cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
-        if (subitem && (subitem->type == cJSON_String)) {
+        if (cJSON_IsString(subitem)) {
             if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096) {
                 break;
             }
@@ -380,7 +379,7 @@ char* get_keys_from_json(const cJSON *input) {
     memset(args, '\0', COMMANDSIZE_4096);
     for (int i = 0; i < cJSON_GetArraySize(keys_json); i++) {
         cJSON *subitem = cJSON_GetArrayItem(keys_json, i);
-        if (subitem && (subitem->type == cJSON_String)) {
+        if (cJSON_IsString(subitem)) {
             if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096) {
                 break;
             }
