@@ -242,6 +242,10 @@ def test_response_is_different(response, response_value, unexpected_value):
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
 
 
+def test_save_token_raw_format(response):
+    return Box({'login_token': response.text})
+
+
 def test_save_response_data(response):
     return Box({'response_data': response.json()['data']})
 

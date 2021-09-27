@@ -1,7 +1,7 @@
 # Excluded endpoints (no permissions required):
 # - GET /
 # - DELETE /security/user/authenticate
-# - GET /security/user/authenticate
+# - POST /security/user/authenticate
 # - GET /security/users/me
 # - POST /security/user/authenticate/run_as
 # - GET /security/users/me/policies

@@ -47,8 +47,8 @@ def get_response(url, headers):
     import urllib3
     # Disable insecure https warnings (for self-signed SSL certificates)
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    from requests import get
-    request_result = get(url, headers=headers, verify=False)
+    from requests import post
+    request_result = post(url, headers=headers, verify=False)
 
     if request_result.status_code == 200:
         return json.loads(request_result.content.decode())
