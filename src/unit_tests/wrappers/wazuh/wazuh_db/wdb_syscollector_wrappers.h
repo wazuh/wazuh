@@ -30,6 +30,7 @@ int __wrap_wdb_osinfo_save(wdb_t * wdb,
                            const char * release,
                            const char * version,
                            const char * os_release,
+                           const char * os_display_version,
                            const char * checksum,
                            const bool replace);
 
