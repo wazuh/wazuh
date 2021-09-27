@@ -29,7 +29,7 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
     memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_in));
 
-    buffer->buffers[sock].bqueue = bqueue_init(send_buffer_size, BQUEUE_NOFLAG);
+    buffer->buffers[sock].bqueue = bqueue_init(send_buffer_size, BQUEUE_SHRINK);
 
     w_mutex_unlock(&mutex);
 }
@@ -144,15 +144,16 @@ int nb_send(netbuffer_t * buffer, int socket) {
     w_mutex_lock(&mutex);
 
     char data[send_chunk];
+    memset(data, 0, send_chunk);
 
-    if ((get_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG)) > 0) {
+    if ((get_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_SHRINK)) > 0) {
         // Asynchronous sending
         sent_bytes = send(socket, (const void *)data, get_bytes, MSG_DONTWAIT);
     }
 
     if (sent_bytes > 0) {
 
-        ssize_t popped_bytes = bqueue_pop(buffer->buffers[socket].bqueue, data, sent_bytes, BQUEUE_NOFLAG);
+        ssize_t popped_bytes = bqueue_pop(buffer->buffers[socket].bqueue, data, sent_bytes, BQUEUE_SHRINK);
         if (popped_bytes != sent_bytes) {
             merror("bqueue error: sent bytes %lu, different than popped bytes %lu", sent_bytes, popped_bytes);
         }
@@ -165,15 +166,13 @@ int nb_send(netbuffer_t * buffer, int socket) {
 #endif
             break;
         default:
-            // clean bqueue buffer
-            //mdebug1("clean bqueue buffer");
             if (!bqueue_drop(buffer->buffers[socket].bqueue, send_buffer_size)) {
                 merror("clean bqueue buffer fail");
             }
         }
     }
 
-    if (bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG) <= 0) {
+    if (bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_SHRINK) == 0) {
         wnotify_modify(notify, socket, WO_READ);
     }
 
@@ -196,7 +195,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
         // Add header at begining, first 4 bytes, it is message msg_size.
         *(uint32_t *)(data) = wnet_order(msg_size);
 
-        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
+        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_SHRINK)) {
 
             wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
 

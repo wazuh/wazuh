@@ -15,7 +15,6 @@
 #include <shared.h>
 
 typedef enum {
-    BQUEUE_NOFLAG = 0,
     BQUEUE_WAIT  = 1,
     BQUEUE_SHRINK = 2
 } bqflag_t;
