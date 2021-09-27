@@ -246,7 +246,7 @@ const char* get_srcip_from_json(const cJSON *input) {
         return NULL;
     }
 
-    // Detect srcip from WWn eventdata
+    // Detect srcip from win.eventdata
     srcip_json = get_srcip_from_win_eventdata(data_json);
     if (cJSON_IsString(srcip_json)) {
         return srcip_json->valuestring;
