@@ -12,6 +12,7 @@
 #ifndef _DBITEM_HPP
 #define _DBITEM_HPP
 #include "shared.h"
+#include "syscheck.h"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -28,9 +29,20 @@
 
 class EXPORTED DBItem {
 public:
-    DBItem();
+    DBItem(const std::string &identifier,
+           const unsigned int &scanned,
+           const time_t &lastEvent,
+           const std::string &checksum,
+           const fim_event_mode &mode)
+           : m_identifier( identifier )
+           , m_scanned( scanned )
+           , m_lastEvent( lastEvent )
+           , m_checksum( checksum )
+           , m_mode( mode )
+           {
+           }
     virtual ~DBItem();
-    virtual fim_entry* toFimEntry() = 0;
+    virtual fim_entry* fimEntry() = 0;
     virtual nlohmann::json* toJSON() = 0;
     bool getState() { return m_scanned; };
 
@@ -39,6 +51,6 @@ protected:
     unsigned int            m_scanned;
     time_t                  m_lastEvent;
     std::string             m_checksum;
-    int                     m_mode;
+    fim_event_mode          m_mode;
 };
 #endif //_DBITEM_HPP
