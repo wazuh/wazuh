@@ -814,7 +814,7 @@ checks:
       - 'f:/etc/chrony.conf -> r:^server\.+$|^pool\.+$'
       - 'f:/etc/sysconfig/chronyd -> r:^OPTIONS\s*=\s* && r:-u chrony'
 
-# 2.2.2 Remove X Windows (Scored)
+# 2.1.2 Remove X Windows (Scored)
   - id: 20546
     title: " Ensure X Window System is not installed"
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
