@@ -161,25 +161,29 @@ cJSON* get_json_from_input(const char *input) {
     }
 
     // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_Number)) {
+    version_json = cJSON_GetObjectItem(input_json, "version");
+    if (!cJSON_IsNumber(version_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect origin
-    if (origin_json = cJSON_GetObjectItem(input_json, "origin"), !origin_json || (origin_json->type != cJSON_Object)) {
+    origin_json = cJSON_GetObjectItem(input_json, "origin");
+    if (!cJSON_IsObject(origin_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect command
-    if (command_json = cJSON_GetObjectItem(input_json, "command"), !command_json || (command_json->type != cJSON_String)) {
+    command_json = cJSON_GetObjectItem(input_json, "command");
+    if (!cJSON_IsString(command_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input_json, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input_json, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -192,7 +196,7 @@ const char* get_command_from_json(const cJSON *input) {
 
     // Detect command
     command_json = cJSON_GetObjectItem(input, "command");
-    if (command_json && (command_json->type == cJSON_String)) {
+    if (cJSON_IsString(command_json)) {
         return command_json->valuestring;
     }
 
@@ -204,12 +208,14 @@ const cJSON* get_alert_from_json(const cJSON *input) {
     cJSON *alert_json = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
@@ -223,17 +229,20 @@ const char* get_srcip_from_json(const cJSON *input) {
     cJSON *srcip_json = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
     // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
+    data_json = cJSON_GetObjectItem(alert_json, "data");
+    if (!cJSON_IsObject(data_json)) {
         return NULL;
     }
 
@@ -258,17 +267,20 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
     cJSON *ipAddress_json = NULL;
 
     // Detect win
-    if (win_json = cJSON_GetObjectItem(data, "win"), !win_json || (win_json->type != cJSON_Object)) {
+    win_json = cJSON_GetObjectItem(data, "win");
+    if (!cJSON_IsObject(win_json)) {
         return NULL;
     }
 
     // Detect eventdata
-    if (eventdata_json = cJSON_GetObjectItem(win_json, "eventdata"), !eventdata_json || (eventdata_json->type != cJSON_Object)) {
+    eventdata_json = cJSON_GetObjectItem(win_json, "eventdata");
+    if (!cJSON_IsObject(eventdata_json)) {
         return NULL;
     }
 
     // Detect ipAddress
-    if (ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress"), !ipAddress_json || (ipAddress_json->type != cJSON_String)) {
+    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress");
+    if (!cJSON_IsString(ipAddress_json)) {
         return NULL;
     }
 
@@ -282,23 +294,26 @@ const char* get_username_from_json(const cJSON *input) {
     cJSON *username_json = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
     // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
+    data_json = cJSON_GetObjectItem(alert_json, "data");
+    if (!cJSON_IsObject(data_json)) {
         return NULL;
     }
 
     // Detect username
     username_json = cJSON_GetObjectItem(data_json, "dstuser");
-    if (username_json && (username_json->type == cJSON_String)) {
+    if (cJSON_IsString(username_json)) {
         return username_json->valuestring;
     }
 
@@ -312,12 +327,14 @@ char* get_extra_args_from_json(const cJSON *input) {
     char *extra_args = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect extra_args
-    if (extra_args_json = cJSON_GetObjectItem(parameters_json, "extra_args"), !extra_args_json || (extra_args_json->type != cJSON_Array)) {
+    extra_args_json = cJSON_GetObjectItem(parameters_json, "extra_args");
+    if (!cJSON_IsArray(extra_args_json)) {
         return NULL;
     }
 
@@ -349,12 +366,14 @@ char* get_keys_from_json(const cJSON *input) {
     char *keys = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect keys
-    if (keys_json = cJSON_GetObjectItem(parameters_json, "keys"), !keys_json || (keys_json->type != cJSON_Array)) {
+    keys_json = cJSON_GetObjectItem(parameters_json, "keys");
+    if (!cJSON_IsArray(keys_json)) {
         return NULL;
     }
 
