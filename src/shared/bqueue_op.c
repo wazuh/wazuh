@@ -152,7 +152,7 @@ int bqueue_drop(bqueue_t * queue, size_t length) {
 
         if (_bqueue_empty(queue)) {
             _bqueue_trim(queue);
-        } else if (queue->flags & BQUEUE_SHRINK && _bqueue_used(queue) < queue->length / 2) {
+        } else if ((queue->flags & BQUEUE_SHRINK) && (_bqueue_used(queue) < queue->length / 2)) {
             _bqueue_shrink(queue, queue->length / 2);
         }
 
@@ -164,6 +164,10 @@ int bqueue_drop(bqueue_t * queue, size_t length) {
 
     pthread_mutex_unlock(&queue->mutex);
     return retval;
+}
+
+size_t bqueue_used(bqueue_t * queue) {
+    return _bqueue_used(queue);
 }
 
 size_t _bqueue_used(bqueue_t * queue) {
@@ -261,10 +265,11 @@ void _bqueue_insert(bqueue_t * queue, const void * data, size_t data_len) {
 
 size_t _bqueue_extract(bqueue_t * queue, void * buffer, size_t buffer_len) {
     void * head;
+    size_t head_len = 0;
 
     if (queue->head > queue->tail) {
         // Data is splitted
-        size_t head_len = queue->length - (queue->head - queue->memory);
+        head_len = queue->length - (queue->head - queue->memory);
 
         if (buffer_len < head_len) {
             memcpy(buffer, queue->head, buffer_len);
@@ -285,6 +290,7 @@ size_t _bqueue_extract(bqueue_t * queue, void * buffer, size_t buffer_len) {
 
     memcpy(buffer, queue->head, chunk_len);
     head += chunk_len;
+    chunk_len += head_len;
     return chunk_len;
 }
 
