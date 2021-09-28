@@ -383,6 +383,17 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         int sock;
         if (sock = auth_connect(), sock < 0) {
             mwarn("Could not connect to authd socket. Is authd running?");
+        } else if(w_is_worker()) {
+            char response[2048];
+            response[2047] = '\0';
+            char *new_id = NULL;
+            char *new_key = NULL;
+            if (0 == w_request_agent_add_clustered(response, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, &new_id, &new_key, data->force_insert, agent_id->valuestring)) {
+                mdebug1("Key poll request sent to master for agent %s", agent_id->valuestring);
+            }
+            os_free(new_id);
+            os_free(new_key);
+            close(sock);
         } else {
             w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
             close(sock);
