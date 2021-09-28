@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     version TEXT,
     os_release TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    os_display_version TEXT,
     triaged INTEGER(1) DEFAULT 0,
     reference TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (scan_id, os_name)

@@ -38,9 +38,9 @@ int teardown_wdb_agents_helpers(void **state) {
     return 0;
 }
 
-/* Tests wdb_agents_sys_osinfo_get */
+/* Tests wdb_get_agent_sys_osinfo */
 
-void test_wdb_agents_sys_osinfo_get_error_sql_execution(void ** state)
+void test_wdb_get_sys_osinfo_error_sql_execution(void ** state)
 {
     cJSON *ret = NULL;
     int id = 1;
@@ -55,12 +55,12 @@ void test_wdb_agents_sys_osinfo_get_error_sql_execution(void ** state)
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_sys_osinfo_get(id, NULL);
+    ret = wdb_get_agent_sys_osinfo(id, NULL);
 
     assert_null(ret);
 }
 
-void test_wdb_agents_sys_osinfo_get_success(void ** state)
+void test_wdb_get_sys_osinfo_success(void ** state)
 {
     cJSON *ret = NULL;
     int id = 1;
@@ -73,7 +73,7 @@ void test_wdb_agents_sys_osinfo_get_success(void ** state)
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
-    ret = wdb_agents_sys_osinfo_get(id, NULL);
+    ret = wdb_get_agent_sys_osinfo(id, NULL);
 
     assert_ptr_equal(root, ret);
 

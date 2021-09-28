@@ -21,8 +21,8 @@ static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
 };
 
-cJSON* wdb_agents_sys_osinfo_get(int id,
-                                 int *sock) {
+cJSON* wdb_get_agent_sys_osinfo(int id,
+                          int *sock) {
     char *wdbquery = NULL;
     char *wdboutput = NULL;
     int aux_sock = -1;
@@ -36,6 +36,7 @@ cJSON* wdb_agents_sys_osinfo_get(int id,
     if (!result || !result->child) {
         merror("Agents DB (%d) Error querying Wazuh DB to get OS information", id);
         cJSON_Delete(result);
+        result = NULL;
     }
 
     os_free(wdbquery);
@@ -48,8 +49,8 @@ cJSON* wdb_agents_sys_osinfo_get(int id,
     return result;
 }
 
-int wdb_agents_sys_osinfo_set_triaged(int id,
-                                      int *sock) {
+int wdb_set_agent_sys_osinfo_triaged(int id,
+                               int *sock) {
     int result = 0;
     char *wdbquery = NULL;
     char *wdboutput = NULL;
