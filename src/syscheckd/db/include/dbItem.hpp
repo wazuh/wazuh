@@ -14,20 +14,7 @@
 #include "shared.h"
 #include "syscheck.h"
 
-// Define EXPORTED for any platform
-#ifdef _WIN32
-#ifdef WIN_EXPORT
-#define EXPORTED __declspec(dllexport)
-#else
-#define EXPORTED __declspec(dllimport)
-#endif
-#elif __GNUC__ >= 4
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
-#endif
-
-class EXPORTED DBItem {
+class DBItem {
 public:
     DBItem(const std::string &identifier,
            const unsigned int &scanned,
