@@ -14,7 +14,7 @@
         "etc/shared/": {
             "permissions": "0o660",
             "source": "master",
-            "files": ["merged.mg"],
+            "files": ["all"],
             "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": true,

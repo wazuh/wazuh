@@ -37,4 +37,6 @@ DROP TABLE IF EXISTS sys_programs;
 ALTER TABLE _sys_programs RENAME TO sys_programs;
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
+ALTER TABLE sys_osinfo ADD COLUMN os_display_version TEXT DEFAULT NULL;
+
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 8);

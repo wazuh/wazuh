@@ -26,6 +26,8 @@ int wm_sync_message(const char *data);
 pthread_cond_t sys_stop_condition;
 pthread_mutex_t sys_stop_mutex;
 bool need_shutdown_wait = false;
+pthread_mutex_t sys_reconnect_mutex;
+bool shutdown_process_started = false;
 
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
@@ -44,6 +46,11 @@ syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 long syscollector_sync_max_eps = 10;    // Database syncrhonization number of events per seconds (default value)
 int queue_fd = 0;                       // Output queue file descriptor
 
+static bool is_shutdown_process_started() {
+    bool ret_val = shutdown_process_started;
+    return ret_val;
+}
+
 static void wm_sys_send_diff_message(const void* data) {
     if(!os_iswait()) {
         const int eps = 1000000/syscollector_sync_max_eps;
@@ -52,7 +59,7 @@ static void wm_sys_send_diff_message(const void* data) {
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
-    if(!os_iswait()) {
+    if(!os_iswait() && !is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_sync_max_eps;
         if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
 #ifdef CLIENT
@@ -60,14 +67,18 @@ static void wm_sys_send_dbsync_message(const void* data) {
 #else
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
-            if ((queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-                mterror(WM_SYS_LOGTAG, "Unable to connect to '%s'", DEFAULTQUEUE);
-            } else {
-                mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
-                if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
-                    mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+            // Since this method is beign called by multiple threads it's necessary this particular portion of code
+            // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.
+            w_mutex_lock(&sys_reconnect_mutex);
+            if (!is_shutdown_process_started() && wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+                if (queue_fd = MQReconnectPredicated(DEFAULTQUEUE, &is_shutdown_process_started), 0 <= queue_fd) {
+                    mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
+                    if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+                        mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+                    }
                 }
             }
+            w_mutex_unlock(&sys_reconnect_mutex);
         }
     }
 }
@@ -107,6 +118,8 @@ static void wm_sys_log_config(wm_sys_t *sys)
 void* wm_sys_main(wm_sys_t *sys) {
     w_cond_init(&sys_stop_condition, NULL);
     w_mutex_init(&sys_stop_mutex, NULL);
+    w_mutex_init(&sys_reconnect_mutex, NULL);
+
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
@@ -140,7 +153,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         w_mutex_lock(&sys_stop_mutex);
         need_shutdown_wait = true;
         w_mutex_unlock(&sys_stop_mutex);
-
         const long max_eps = sys->sync.sync_max_eps;
         if (0 != max_eps) {
             syscollector_sync_max_eps = max_eps;
@@ -192,6 +204,7 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
+        shutdown_process_started = true;
         syscollector_stop_ptr();
     }
     w_mutex_lock(&sys_stop_mutex);
@@ -202,6 +215,7 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
 
     w_cond_destroy(&sys_stop_condition);
     w_mutex_destroy(&sys_stop_mutex);
+    w_mutex_destroy(&sys_reconnect_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {

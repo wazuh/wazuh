@@ -2589,6 +2589,9 @@ cJSON* getunameJSON()
         if (read_info->os_release){
             cJSON_AddStringToObject(root, "os_release", read_info->os_release);
         }
+        if (read_info->os_display_version){
+            cJSON_AddStringToObject(root, "os_display_version", read_info->os_display_version);
+        }
 
         free_osinfo(read_info);
         return root;
