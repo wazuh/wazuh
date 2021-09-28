@@ -284,9 +284,7 @@ w_err_t w_auth_validate_data(char *response,
 
     /* Validate the group(s) name(s) */
     if (groups) {
-        if (OS_SUCCESS != w_auth_validate_groups(groups, response)) {
-            result = OS_INVALID;
-        }
+        result = w_auth_validate_groups(groups, response);
     }
 
     /* Check for duplicate IP */
