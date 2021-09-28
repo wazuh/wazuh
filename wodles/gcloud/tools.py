@@ -12,8 +12,9 @@ import argparse
 import logging
 import sys
 from logging.handlers import TimedRotatingFileHandler
+from os.path import abspath, dirname
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
 import utils
 
 logger_name = 'gcloud_wodle'

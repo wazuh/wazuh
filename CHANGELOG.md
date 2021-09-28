@@ -153,7 +153,9 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in Wazuh DB that held wrong agent timestamp data. ([#9705](https://github.com/wazuh/wazuh/pull/9705))
 - Fixed a bug in Remoted that kept deleted shared files in the multi-groups' merged.mg file. ([#9942](https://github.com/wazuh/wazuh/pull/9942))
 - Fixed a bug in Analysisd that overwrote its queue socket when launched in test mode. ([#9987](https://github.com/wazuh/wazuh/pull/9987))
-- Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
+- Fixed a condition in the Windows Vulnerability Detector to prevent false positives when evaluating DU patches. ([#10016](https://github.com/wazuh/wazuh/pull/10016))
+- Fixed a memory leak when generating the Windows report in Vulnerability Detector. ([#10214](https://github.com/wazuh/wazuh/pull/10214))
+- Fixed a file descriptor leak in Analysisd when delivering an AR request to an agent. ([#10194](https://github.com/wazuh/wazuh/pull/10194))
 
 ### Agent
 
@@ -163,6 +165,7 @@ All notable changes to this project will be documented in this file.
 - Reworked the Google Cloud Pub/Sub integration module to increase the number of processed events per second allowing multithreading. Added new `num_threads` option to module configuration. ([#9927](https://github.com/wazuh/wazuh/pull/9927))
 - Upgraded google-cloud-pubsub dependency to the latest stable version (2.7.1). ([#9964](https://github.com/wazuh/wazuh/pull/9964))
 - Reimplemented the WPK installer rollback on Linux. ([#9443](https://github.com/wazuh/wazuh/pull/9443))
+- Updated AWS WAF implementation to change `httpRequest.headers` field format. ([#10217](https://github.com/wazuh/wazuh/pull/10217))
 
 #### Fixed
 
@@ -171,12 +174,21 @@ All notable changes to this project will be documented in this file.
 - Fixed a memory leak in the agent when enrolling for the first time if it had no previous key. ([#9967](https://github.com/wazuh/wazuh/pull/9967))
 - Removed CloudWatchLogs log stream limit when there are more than 50 log streams. ([#9934](https://github.com/wazuh/wazuh/pull/9934))
 - Fixed a problem in the Windows installer that causes the agent to be unable to get uninstalled or upgraded. ([#9897](https://github.com/wazuh/wazuh/pull/9897))
+- Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
+- Fixed a bug in AWS CloudWatch Logs module that caused already processed logs to be collected and reprocessed. ([#10024](https://github.com/wazuh/wazuh/pull/10024))
+- Avoid duplicate alerts from case-insensitive 32-bit registry values in FIM configuration for Windows agents. ([#8256](https://github.com/wazuh/wazuh/pull/8256))
+- Fixed error with Wazuh path in Azure module. ([#10250](https://github.com/wazuh/wazuh/pull/10250))
+- Fixed a bug in the sources and WPK installer that made upgrade unable to detect the previous installation on CentOS 7. ([#10210](https://github.com/wazuh/wazuh/pull/10210))
 
 ### RESTful API
 
+#### Changed
+
+- Made SSL ciphers configurable and renamed SSL protocol option. ([#10219](https://github.com/wazuh/wazuh/pull/10219))
+
 #### Fixed
 
-  - Fixed a bug with distributed API calls when the cluster is disabled. ([#9984](https://github.com/wazuh/wazuh/pull/9984))
+- Fixed a bug with distributed API calls when the cluster is disabled. ([#9984](https://github.com/wazuh/wazuh/pull/9984))
 
 
 ## [v4.2.1] - 2021-09-03
@@ -215,7 +227,21 @@ All notable changes to this project will be documented in this file.
   - Added the capability to disable the max_request_per_minute API configuration option using 0 as value. ([#8115](https://github.com/wazuh/wazuh/pull/8115))
 
 - **Ruleset:**
-  - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
+  - Decoders
+    - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
+    - Added Sophos firewall Decoders ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added Wazuh API Decoders ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added F5 BigIP Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Rules
+    - Added Sophos firewall Rules ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added Wazuh API Rules ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added Firewall Rules
+    - Added F5 BigIp Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - SCA
+    - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
+    - Added Apple MacOS 10.14 SCA ([#7035](https://github.com/wazuh/wazuh/pull/7035))
+    - Added Apple MacOS 10.15 SCA ([#7036](https://github.com/wazuh/wazuh/pull/7036))
+    - Added Apple MacOS 11.11 SCA ([#7037](https://github.com/wazuh/wazuh/pull/7037))
 
 ### Changed
 
@@ -263,7 +289,24 @@ All notable changes to this project will be documented in this file.
 
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
-  - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
+  - Rules
+    - Changed Ossec Rules. ([#7260](https://github.com/wazuh/wazuh/pull/7260))
+    - Changed Cisco IOS Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed ID from 51000 to 51003 in Dropbear Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed 6 new rules for Sophos Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Decoders
+    - Changed Active Response Decoders. ([#7317](https://github.com/wazuh/wazuh/pull/7317))
+    - Changed Auditd Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Checkpoint Smart1 Decoders. ([#8676](https://github.com/wazuh/wazuh/pull/8676))
+    - Changed Cisco ASA Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Cisco IOS Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Kernel Decoders. ([#7837](https://github.com/wazuh/wazuh/pull/7837))
+    - Changed OpenLDAP Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Ossec Decoders. ([#7260](https://github.com/wazuh/wazuh/pull/7260))
+    - Changed Sophos Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed PFsense Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Panda PAPS Decoders. ([#8676](https://github.com/wazuh/wazuh/pull/8676))
+
 
 - **External dependencies:**
   - Upgrade boto3, botocore, requests, s3transfer and urllib3 Python dependencies to latest stable versions. ([#8886](https://github.com/wazuh/wazuh/pull/8886))
@@ -336,6 +379,19 @@ All notable changes to this project will be documented in this file.
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
   - Fixed SCA checks for RHEL7 and CentOS 7. Thanks to J. Daniel Medeiros (@jdmedeiros). ([#7645](https://github.com/wazuh/wazuh/pull/7645))
   - Fixed the match criteria of the AWS WAF rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
+  - Fixed sample log in sudo decoders. 
+  - Fixed Pix Decoders match regex. ([#7485](https://github.com/wazuh/wazuh/pull/7495))
+  - Fixed regex in Syslog Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed category in PIX Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed authentication tag in group for MSauth Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed match on Nginx Rules. ([#7122](https://github.com/wazuh/wazuh/pull/7122))
+  - Fixed sample log on Netscaler Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
+  - Fixed match field for rules 80441 and 80442 in Amazon Rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
+  - Fixed sample logs in Owncloud Rules. ([#7122](https://github.com/wazuh/wazuh/pull/7122))
+  - Fixed authentication tag in group for Win Security Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed sample log in Win Security Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
+  - Fixed sample log in Win Application Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
+  - Fixed mitre block in Paloalto Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
 
 - **Modules:**
   - Fixed an error when trying to use a non-default aws profile with CloudWatchLogs ([#9331](https://github.com/wazuh/wazuh/pull/9331))
@@ -353,6 +409,9 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
+- **Ruleset**
+  - Removed rule 51004 from Dropbear Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Remuved rules 23508, 23509 and 23510 from Vulnerability Detector Rules.
 
 ## [v4.1.5] - 2021-04-22
 
