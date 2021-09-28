@@ -195,13 +195,13 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
 {
     const auto size { getRangeCount(spDBSyncWrapper, jsonSyncConfiguration, syncData) };
 
-    if (1 == size)
+    if (1 == size && syncData.begin.compare(syncData.end) == 0)
     {
         const auto& rowData{ getRowData(spDBSyncWrapper, jsonSyncConfiguration, syncData.begin) };
 
         FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData);
     }
-    else if (1 < size)
+    else if (1 <= size)
     {
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 

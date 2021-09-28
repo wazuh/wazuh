@@ -14,22 +14,22 @@
 #include "berkeleyRpmDbHelper.h"
 
 
-void getRpmInfo(nlohmann::json& packages)
+void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 {
     BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
 
     for (std::string row{db.getNext()}; !row.empty() ; row = db.getNext())
     {
-        const auto& package{ PackageLinuxHelper::parseRpm(row) };
+        auto package = PackageLinuxHelper::parseRpm(row);
 
         if (!package.empty())
         {
-            packages.push_back(package);
+            callback(package);
         }
     }
 }
 
-void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
+void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&)> callback)
 {
     std::fstream file{fileName, std::ios_base::in};
 
@@ -55,11 +55,11 @@ void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
             }
             while (!line.empty()); //end of package item info
 
-            const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
+            auto packageInfo = PackageLinuxHelper::parseDpkg(data);
 
             if (!packageInfo.empty())
             {
-                packages.push_back(packageInfo);
+                callback(packageInfo);
             }
         }
     }
