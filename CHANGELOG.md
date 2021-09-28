@@ -80,6 +80,9 @@ All notable changes to this project will be documented in this file.
   - Made SCA API integration tests dynamic to validate responses coming from any agent version. ([#9228](https://github.com/wazuh/wazuh/pull/9228))
   - Refactored and standardized all the date fields in the API responses to use ISO8601. ([#9227](https://github.com/wazuh/wazuh/pull/9227))
 
+- **Ruleset**
+  - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
+
 ### Fixed
 
 - **Core:**
