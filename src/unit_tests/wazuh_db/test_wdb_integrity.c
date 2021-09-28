@@ -482,6 +482,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    const char *component = "fim";
     os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -502,13 +503,14 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
+    wdbi_update_attempt(data, WDB_FIM, 0, FALSE, checksum);
 }
 
 static void test_wdbi_update_attempt_success(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    const char *component = "fim";
     os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -526,7 +528,7 @@ static void test_wdbi_update_attempt_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
+    wdbi_update_attempt(data, WDB_FIM, 0, FALSE, checksum);
 }
 
 // Test wdbi_update_completion
@@ -1029,8 +1031,9 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     assert_int_equal(ret, 1);
 }
 
-//Test wdbi_sha_calculate
-void test_wdbi_sha_calculate_array_success(void **state)
+// Test wdbi_array_hash
+
+void test_wdbi_array_hash_success(void **state)
 {
     const char** test_words = NULL;
     int ret_val = -1;
@@ -1048,7 +1051,7 @@ void test_wdbi_sha_calculate_array_success(void **state)
     // Using real EVP_DigestUpdate
     test_mode = 0;
 
-    ret_val = wdbi_sha_calculation(test_words, hexdigest, 0);
+    ret_val = wdbi_array_hash(test_words, hexdigest);
 
     assert_int_equal (ret_val, 0);
     assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
@@ -1056,7 +1059,7 @@ void test_wdbi_sha_calculate_array_success(void **state)
     os_free(test_words);
 }
 
-void test_wdbi_sha_calculate_parameters_success(void **state)
+void test_wdbi_array_hash_null(void **state)
 {
     int ret_val = -1;
     os_sha1 hexdigest;
@@ -1064,10 +1067,287 @@ void test_wdbi_sha_calculate_parameters_success(void **state)
     // Using real EVP_DigestUpdate
     test_mode = 0;
 
-    ret_val = wdbi_sha_calculation(NULL, hexdigest, 5, "FirstWord", "SecondWord", "Word number 3", "", " ");
+    ret_val = wdbi_array_hash(NULL, hexdigest);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+}
+
+// Test wdbi_strings_hash
+
+void test_wdbi_strings_hash_success(void **state)
+{
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_strings_hash(hexdigest, "FirstWord", "SecondWord", "Word number 3", "", " ", NULL);
 
     assert_int_equal (ret_val, 0);
     assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
+}
+
+void test_wdbi_strings_hash_null(void **state)
+{
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_strings_hash(hexdigest, NULL);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+}
+
+// Test wdbi_check_sync_status
+
+void test_wdbi_check_sync_status_cache_failed(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_check_sync_status_exec_failed(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    const char *component = "syscollector-packages";
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR_MESSAGE");
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_check_sync_status_data_failed(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    const char *component = "syscollector-packages";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to get agent's sync status data");
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_check_sync_status_data_synced(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    const char *component = "syscollector-packages";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 123456);
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 1);
+}
+
+void test_wdbi_check_sync_status_data_never_synced_without_checksum(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    const char *component = "syscollector-packages";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 0);
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 0);
+}
+
+void test_wdbi_check_sync_status_data_not_synced_error_checksum(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    const char *component = "syscollector-packages";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 123455);
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    // Error calling to calculate checksum
+    will_return(__wrap_wdb_stmt_cache, -1);
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, -1);
+}
+
+void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state)
+{
+    int ret_val = -1;
+    wdb_t * data = *state;
+    data->id = strdup("000");
+    const char *component = "syscollector-packages";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 123455);
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    // Calling to calculate checksum
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 0);
+}
+
+void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
+{
+    int ret_val = -1;
+    wdb_t * data = *state;
+    data->id = strdup("000");
+    const char *component = "syscollector-packages";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+    unsigned int timestamp = 10000;
+
+    // Using real EVP
+    test_mode = 0;
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 123455);
+    // sha-1 of "string_to_hash"
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da99eb557da5259fee02be6d0c30e9b121eca384");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, component);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    // Calling to calculate checksum
+    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 0);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "string_to_hash");
+
+    will_return(__wrap_time, timestamp);
+
+    // wdbi_set_last_completion
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, timestamp);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "syscollector-packages");
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 1);
+}
+
+// Test wdbi_last_completion
+
+void test_wdbi_last_completion_step_fail(void **state)
+{
+    wdb_t * data = *state;
+    data->id = strdup("000");
+    unsigned int timestamp = 10000;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, timestamp);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "syscollector-packages");
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): ERROR_MESSAGE");
+
+    wdbi_set_last_completion(data, WDB_SYSCOLLECTOR_PACKAGES, timestamp);
+
 }
 
 int main(void) {
@@ -1136,9 +1416,26 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_no_tail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_ok, setup_wdb_t, teardown_wdb_t),
 
-        //Test wdbi_sha_calculate
-        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_array_success, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_parameters_success, setup_wdb_t, teardown_wdb_t),
+        //Test wdbi_array_hash
+        cmocka_unit_test_setup_teardown(test_wdbi_array_hash_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_array_hash_null, setup_wdb_t, teardown_wdb_t),
+
+        //Test wdbi_strings_hash
+        cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_null, setup_wdb_t, teardown_wdb_t),
+
+        // Test wdbi_check_sync_status
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_cache_failed, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_exec_failed, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_failed, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_synced, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_never_synced_without_checksum, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced_error_checksum, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced_checksum_no_data, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced_checksum_valid, setup_wdb_t, teardown_wdb_t),
+
+        // Test wdbi_last_completion
+        cmocka_unit_test_setup_teardown(test_wdbi_last_completion_step_fail, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

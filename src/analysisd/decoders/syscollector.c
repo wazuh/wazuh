@@ -1347,10 +1347,6 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
                 error_package = 0;
             }
         }
-        // The reference for packages is calculated with the name, version and architecture
-        os_sha1 hexdigest;
-        char** fields_to_hash = NULL;
-        os_calloc(4, sizeof(char*), fields_to_hash);
 
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * format = cJSON_GetObjectItem(package, "format");
@@ -1472,9 +1468,14 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        //Calculating hash of the NULL terminated array
-        fields_to_hash[3] = NULL;
-        wdbi_sha_calculation((const char **)fields_to_hash, hexdigest, 0);
+        // The reference for packages is calculated with the name, version and architecture
+        os_sha1 hexdigest;
+        wdbi_strings_hash(hexdigest,
+                          name && name->valuestring ? name->valuestring : "",
+                          version && version->valuestring ? version->valuestring : "",
+                          architecture && architecture->valuestring ? architecture->valuestring : "",
+                          NULL);
+
         wm_strcat(&msg, hexdigest, '|');
 
         char *message;

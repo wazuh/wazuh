@@ -682,7 +682,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged);
 
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace);
@@ -907,7 +907,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  * @brief Function to parse get operation over the sys_osinfo database table.
  *
  * @param wdb The Global struct database.
- * @param output buffer output, on success responses are:
+ * @param output Buffer output, on success responses are:
  *        "ok <data>" -> If sql statement was processed.
  *        "err <error_message>" -> If sql statement wasn't processed.
  * @return -1 on error, and 0 on success.
@@ -919,8 +919,8 @@ int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output);
  * @brief Function to parse set operation over the sys_osinfo database table.
  *
  * @param wdb The Global struct database.
- * @param input buffer input
- * @param output buffer output, on success responses are:
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
  *        "ok" -> If sql statement was processed.
  *        "err <error_message>" -> If sql statement wasn't processed.
  * @return -1 on error, and 0 on success.
@@ -1258,6 +1258,8 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum);
 
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 checksum);
+
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
@@ -1364,7 +1366,15 @@ int wdb_journal_wal(sqlite3 *db);
 * @param [in] strings_to_hash NULL Terminated array with strings to hash
 * @param [out] hexdigest Result
 */
- int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...);
+ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
+*  @brief Calculates SHA1 hash from a NULL terminated set of strings.
+*
+* @param [in] ... NULL Terminated list of strings
+* @param [out] hexdigest Result
+*/
+ int wdbi_strings_hash(os_sha1 hexdigest, ...);
 
 /**
  * @brief Function to get a MITRE technique's name.

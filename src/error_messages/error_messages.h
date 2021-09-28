@@ -325,7 +325,7 @@
 #define VU_CHECK_DB_ERROR           "(5504): Database check failed."
 #define VU_OS_VERSION_ERROR         "(5505): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5506): Could not refresh the '%s' DB."
-#define VU_GET_SOFTWARE_ERROR       "(5507): The software of the agent '%.3d' could not be obtained after five attempts. Skipping agent until the next scan."
+#define VU_GET_SOFTWARE_ERROR       "(5507): The software of the agent '%.3d' could not be obtained after %d attempts. Skipping agent until the next scan."
 #define VU_AG_CHECK_ERR             "(5508): Agent vulnerabilities could not be checked."
 #define VU_DB_TIMESTAMP_FEED_ERROR  "(5509): Stored timestamp could not be compared. The '%s' feed will continue updating."
 #define VU_SSL_LIBRARY_ERROR        "(5510): Could not initialize the OpenSSL library."
