@@ -411,7 +411,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *ne
             }
             if (nodes_count >= syscheck.file_limit) {
                 fim_sql->full = true;
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                mdebug2("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
                         file_path);
                 return FIMDB_FULL;
             }

@@ -204,11 +204,14 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
         for mitigation in self._data:
             mitigation_ids.add(mitigation['id'])
 
-        techniques = WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
-                                                 dict_key='source_id', limit=None).run()
+        with WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
+                                         dict_key='source_id', limit=None) as mitre_relational_query:
+            techniques = mitre_relational_query.run()
 
-        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'mitigation'},
-                                                 select=SELECT_FIELDS_REFERENCES).run()
+        with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'mitigation'},
+                                         select=SELECT_FIELDS_REFERENCES) as mitre_references_query:
+            references = mitre_references_query.run()
+
         references_no_id = copy.deepcopy(references)
         for row in references_no_id['items']:
             row.pop('id')
@@ -290,11 +293,14 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
         for tactic in self._data:
             tactic_ids.add(tactic['id'])
 
-        techniques = WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
-                                                 dict_key='tactic_id', limit=None).run()
+        with WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
+                                         dict_key='tactic_id', limit=None) as mitre_relational_query:
+            techniques = mitre_relational_query.run()
 
-        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'tactic'},
-                                                 select=SELECT_FIELDS_REFERENCES).run()
+        with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'tactic'},
+                                         select=SELECT_FIELDS_REFERENCES) as mitre_references_query:
+            references = mitre_references_query.run()
+
         references_no_id = copy.deepcopy(references)
         for row in references_no_id['items']:
             row.pop('id')
@@ -352,23 +358,32 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
         for technique in self._data:
             technique_ids.add(technique['id'])
 
-        tactics = WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
-                                              dict_key='tech_id', limit=None).run()
-        mitigations = WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
-                                                  dict_key='target_id', limit=None).run()
-        software = WazuhDBQueryMitreRelational(table='use',
-                                               filters={'target_id': list(technique_ids),
-                                                        'target_type': 'technique', 'source_type': 'software'},
-                                               dict_key='target_id',
-                                               limit=None).run()
-        groups = WazuhDBQueryMitreRelational(table='use',
-                                             filters={'target_id': list(technique_ids),
-                                                      'target_type': 'technique', 'source_type': 'group'},
-                                             dict_key='target_id',
-                                             limit=None).run()
+        with WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
+                                         dict_key='tech_id', limit=None) as mitre_relational_query:
+            tactics = mitre_relational_query.run()
 
-        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
-                                                 select=SELECT_FIELDS_REFERENCES).run()
+        with WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
+                                         dict_key='target_id', limit=None) as mitre_relational_query:
+            mitigations = mitre_relational_query.run()
+
+        with WazuhDBQueryMitreRelational(table='use',
+                                         filters={'target_id': list(technique_ids),
+                                                  'target_type': 'technique', 'source_type': 'software'},
+                                         dict_key='target_id',
+                                         limit=None) as mitre_relational_query:
+            software = mitre_relational_query.run()
+
+        with WazuhDBQueryMitreRelational(table='use',
+                                         filters={'target_id': list(technique_ids),
+                                                  'target_type': 'technique', 'source_type': 'group'},
+                                         dict_key='target_id',
+                                         limit=None) as mitre_relational_query:
+            groups = mitre_relational_query.run()
+
+        with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
+                                         select=SELECT_FIELDS_REFERENCES) as mitre_references_query:
+            references = mitre_references_query.run()
+
         references_no_id = copy.deepcopy(references)
         for row in references_no_id['items']:
             row.pop('id')
@@ -425,19 +440,24 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
         for group in self._data:
             group_ids.add(group['id'])
 
-        software = WazuhDBQueryMitreRelational(table='use',
-                                               filters={'source_id': list(group_ids),
-                                                        'target_type': 'software', 'source_type': 'group'},
-                                               dict_key='source_id',
-                                               limit=None).run()
-        techniques = WazuhDBQueryMitreRelational(table='use',
-                                                 filters={'source_id': list(group_ids),
-                                                          'target_type': 'technique', 'source_type': 'group'},
-                                                 dict_key='source_id',
-                                                 limit=None).run()
+        with WazuhDBQueryMitreRelational(table='use',
+                                         filters={'source_id': list(group_ids),
+                                                  'target_type': 'software', 'source_type': 'group'},
+                                         dict_key='source_id',
+                                         limit=None) as mitre_relational_query:
+            software = mitre_relational_query.run()
 
-        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
-                                                 select=SELECT_FIELDS_REFERENCES).run()
+        with WazuhDBQueryMitreRelational(table='use',
+                                         filters={'source_id': list(group_ids),
+                                                  'target_type': 'technique', 'source_type': 'group'},
+                                         dict_key='source_id',
+                                         limit=None) as mitre_relational_query:
+            techniques = mitre_relational_query.run()
+
+        with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
+                                         select=SELECT_FIELDS_REFERENCES) as mitre_references_query:
+            references = mitre_references_query.run()
+
         references_no_id = copy.deepcopy(references)
         for row in references_no_id['items']:
             row.pop('id')
@@ -492,21 +512,26 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
         for group in self._data:
             software_ids.add(group['id'])
 
-        groups = WazuhDBQueryMitreRelational(table='use',
-                                             filters={'target_id': list(software_ids),
-                                                      'target_type': 'software',
-                                                      'source_type': 'group'},
-                                             dict_key='target_id',
-                                             limit=None).run()
-        techniques = WazuhDBQueryMitreRelational(table='use',
-                                                 filters={'source_id': list(software_ids),
-                                                          'target_type': 'technique',
-                                                          'source_type': 'software'},
-                                                 dict_key='source_id',
-                                                 limit=None).run()
+        with WazuhDBQueryMitreRelational(table='use',
+                                         filters={'target_id': list(software_ids),
+                                                  'target_type': 'software',
+                                                  'source_type': 'group'},
+                                         dict_key='target_id',
+                                         limit=None) as mitre_relational_query:
+            groups = mitre_relational_query.run()
 
-        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'},
-                                                 select=SELECT_FIELDS_REFERENCES).run()
+        with WazuhDBQueryMitreRelational(table='use',
+                                         filters={'source_id': list(software_ids),
+                                                  'target_type': 'technique',
+                                                  'source_type': 'software'},
+                                         dict_key='source_id',
+                                         limit=None) as mitre_relational_query:
+            techniques = mitre_relational_query.run()
+
+        with WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'},
+                                         select=SELECT_FIELDS_REFERENCES) as mitre_references_query:
+            references = mitre_references_query.run()
+
         references_no_id = copy.deepcopy(references)
         for row in references_no_id['items']:
             row.pop('id')

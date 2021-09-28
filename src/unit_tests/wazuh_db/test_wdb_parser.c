@@ -1170,7 +1170,7 @@ void test_osinfo_set_error_saving(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|release|NULL|NULL|NULL", query);
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|release|NULL|NULL|NULL|NULL", query);
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap_wdb_osinfo_save, scan_id, "scan_id");
@@ -1204,7 +1204,7 @@ void test_osinfo_set_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|release|version|os_release|os_patch", query);
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|release|version|os_release|os_patch|os_display_version", query);
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap_wdb_osinfo_save, scan_id, "scan_id");
@@ -1223,6 +1223,7 @@ void test_osinfo_set_success(void **state) {
     expect_string(__wrap_wdb_osinfo_save, release, "release");
     expect_string(__wrap_wdb_osinfo_save, version, "version");
     expect_string(__wrap_wdb_osinfo_save, os_release, "os_release");
+    expect_string(__wrap_wdb_osinfo_save, os_display_version, "os_display_version");
     expect_string(__wrap_wdb_osinfo_save, checksum, "legacy");
     expect_value(__wrap_wdb_osinfo_save, replace, FALSE);
     will_return(__wrap_wdb_osinfo_save, OS_SUCCESS);

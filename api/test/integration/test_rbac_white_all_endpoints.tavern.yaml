@@ -2559,9 +2559,6 @@ stages:
 ---
 test_name: DELETE /security/users/{user_id}/roles
 
-marks:
-  - xfail # Fails due to https://github.com/wazuh/wazuh/issues/7473
-
 stages:
   - name: Try to remove roles from user (generic)
     request:
@@ -2573,7 +2570,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
   - name: Try to remove role from user (specific)
     request:
@@ -2622,9 +2619,6 @@ stages:
 ---
 test_name: DELETE /security/roles/{role_id}/policies
 
-marks:
-  - xfail # Fails due to https://github.com/wazuh/wazuh/issues/7473
-
 stages:
   - name: Try to remove policies from role (generic)
     request:
@@ -2636,7 +2630,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *empty_response
+      <<: *permission_denied
 
   - name: Try to remove policy from role (specific)
     request:
@@ -2652,9 +2646,6 @@ stages:
 
 ---
 test_name: DELETE /security/roles/{role_id}/rules
-
-marks:
-  - xfail # Fails due to https://github.com/wazuh/wazuh/issues/7473
 
 stages:
   - name: Try to remove rules from role (generic)

@@ -46,11 +46,11 @@ def get_ciscat_results(agent_list=None, offset=0, limit=common.database_limit, s
         try:
             if agent not in system_agents:
                 raise WazuhResourceNotFound(1701)
-            db_query = WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
-                                                search=search,
-                                                sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                                array=array, nested=nested, query=q)
-            data = db_query.run()
+            with WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
+                                          search=search,
+                                          sort=sort, filters=filters, fields=valid_select_fields, table=table,
+                                          array=array, nested=nested, query=q) as db_query:
+                data = db_query.run()
 
             if len(data['items']) > 0:
                 for item in data['items']:

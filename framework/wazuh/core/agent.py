@@ -400,13 +400,13 @@ class Agent:
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
         """
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
-                                      query="id={}".format(self.id), count=False, get_data=True,
-                                      remove_extra_fields=False)
-        try:
-            data = db_query.run()['items'][0]
-        except IndexError:
-            raise WazuhResourceNotFound(1701)
+        with WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
+                                query="id={}".format(self.id), count=False, get_data=True,
+                                remove_extra_fields=False) as db_query:
+            try:
+                data = db_query.run()['items'][0]
+            except IndexError:
+                raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 

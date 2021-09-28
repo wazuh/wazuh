@@ -1110,6 +1110,9 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     def connect_to_db(self):
         return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
 
+    def close_connection(self):
+        self.conn.close()
+
     def _substitute_params(self, query, request):
         """
         Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
@@ -1226,6 +1229,12 @@ class WazuhDBQuery(object):
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
         self.rbac_negate = rbac_negate
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        isinstance(self.backend, WazuhDBBackend) and self.backend.close_connection()
 
     def _clean_filter(self, query_filter):
         # Replace special characters with wildcards

@@ -122,6 +122,9 @@ void * restartAgent();
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
+// Clear merged.mg hash cache value.
+void clear_merged_hash_cache();
+
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);

@@ -135,6 +135,7 @@
 #define INVALID_HOSTNAME        "(1275): Invalid hostname in syslog message: '%s'."
 #define INVALID_GEOIP_DB        "(1276): Cannot open GeoIP database: '%s'."
 #define FIM_INVALID_MESSAGE     "(1277): Invalid syscheck message received."
+#define UNABLE_TO_RECONNECT     "(1278): Unable to reconnect to '%s': %s (%d)."
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."

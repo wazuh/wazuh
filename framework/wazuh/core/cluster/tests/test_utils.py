@@ -126,7 +126,7 @@ def test_get_cluster_items():
     assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
                                          'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
                                          'extra_valid': False, 'description': 'client keys file database'},
-                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
+                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
                                                 'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
                                                 'extra_valid': False, 'description': 'shared configuration files'},
                                'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],

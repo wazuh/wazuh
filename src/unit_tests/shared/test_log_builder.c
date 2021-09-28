@@ -27,6 +27,8 @@ void test_log_builder(void **state)
     const char * LOCATION = "test";
     const char * EXPECTED_OUTPUT = "location: test, log: Hello \"World\", escaped: Hello \\\"World\\\"";
 
+    will_return(__wrap_getDefine_Int, 60);
+
     int retval = 1;
     log_builder_t * builder = log_builder_init(false);
 

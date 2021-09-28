@@ -39,4 +39,13 @@ int __wrap_wdb_update_vuln_cves_status(int id,
                                        const char *new_status,
                                        __attribute__((unused)) int *sock);
 
+cJSON* __wrap_wdb_remove_vuln_cves_by_status(int id,
+                                             const char *status,
+                                             __attribute__((unused)) int *sock);
+
+int __wrap_wdb_update_vuln_cves_status(int id,
+                                              const char *old_status,
+                                              const char *new_status,
+                                              __attribute__((unused)) int *sock);
+
 #endif
