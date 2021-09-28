@@ -15,7 +15,7 @@
 #include "wdb.h"
 
 /**
- * @brief Function to clear whole data from agent vuln_cves table.
+ * @brief Function to get all the OS information from the sys_osinfo table.
  *
  * @param [in] wdb The 'agents' struct database.
  * @return Returns cJSON object with the sys_osinfo database table information.
@@ -70,7 +70,6 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  *         The cJSON object must be freed by the caller.
  */
 cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
-<<<<<<< HEAD
                                    const char* name,
                                    const char* version,
                                    const char* architecture,
