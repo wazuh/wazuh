@@ -14,10 +14,30 @@
 #include "json.hpp"
 #include "dbItem.hpp"
 
-
 class FileItem final : public DBItem {
 public:
-    FileItem(const fim_entry&);
+    FileItem(const fim_entry &file_entry) : DBItem(std::string(file_entry.file_entry.path),
+                                                               file_entry.file_entry.data->scanned,
+                                                               file_entry.file_entry.data->last_event,
+                                                               file_entry.file_entry.data->checksum,
+                                                               file_entry.file_entry.data->mode)
+                                                               {
+                                                                    m_options = file_entry.file_entry.data->options;
+                                                                    m_time = file_entry.file_entry.data->mtime;
+                                                                    m_size = file_entry.file_entry.data->size;
+                                                                    m_dev = file_entry.file_entry.data->dev;
+                                                                    m_inode = file_entry.file_entry.data->inode;
+                                                                    m_attributes = std::string(file_entry.file_entry.data->attributes);
+                                                                    m_gid = atoi(file_entry.file_entry.data->gid);
+                                                                    m_groupname = std::string(file_entry.file_entry.data->group_name);
+                                                                    m_md5 = std::string(file_entry.file_entry.data->hash_md5);
+                                                                    m_perm = std::string(file_entry.file_entry.data->perm);
+                                                                    m_sha1 = std::string(file_entry.file_entry.data->hash_sha1);
+                                                                    m_sha256 = std::string(file_entry.file_entry.data->hash_sha256);
+                                                                    m_uid = atoi(file_entry.file_entry.data->uid);
+                                                                    m_username = std::string(file_entry.file_entry.data->user_name);
+                                                                    m_fimEntry = std::make_unique<fim_entry>(file_entry);
+                                                               }
     FileItem(const std::string &path,
              const std::string &checksum,
              const time_t &lastEvent,
