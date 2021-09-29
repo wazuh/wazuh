@@ -15,20 +15,7 @@
 #include "dbItem.hpp"
 #include "dbRegistryValue.hpp"
 
-// Define EXPORTED for any platform
-#ifdef _WIN32
-#ifdef WIN_EXPORT
-#define EXPORTED __declspec(dllexport)
-#else
-#define EXPORTED __declspec(dllimport)
-#endif
-#elif __GNUC__ >= 4
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
-#endif
-
-class EXPORTED RegistryValue : public DBItem {
+class RegistryValue final : public DBItem {
 public:
     RegistryValue();
     ~RegistryValue();
