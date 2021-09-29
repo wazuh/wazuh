@@ -108,7 +108,7 @@ stages:
       json:
         error: 0
         data:
-          affected_items: []
+          affected_items: []  # Some agents are allowed but they raise error 1706, which is excluded as the agents newer than 3.12 are not affected.
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
