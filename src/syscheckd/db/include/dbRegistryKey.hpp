@@ -14,20 +14,7 @@
 #include "shared.h"
 #include "dbItem.hpp"
 
-// Define EXPORTED for any platform
-#ifdef _WIN32
-#ifdef WIN_EXPORT
-#define EXPORTED __declspec(dllexport)
-#else
-#define EXPORTED __declspec(dllimport)
-#endif
-#elif __GNUC__ >= 4
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
-#endif
-
-class EXPORTED RegistryKey : public DBItem {
+class RegistryKey final : public DBItem {
 public:
     RegistryKey();
     ~RegistryKey();
@@ -35,12 +22,13 @@ public:
     nlohmann::json* toJSON();
 
 private:
-    int             m_uid;
+    int             m_arch;
     int             m_gid;
-    int             m_time;
-    std::string     m_perms;
-    std::string     m_username;
+    int             m_uid;
     std::string     m_groupname;
-    std::string     m_arch;
+    std::string     m_path;
+    std::string     m_perm;
+    std::string     m_username;
+    time_t          m_time;
 };
 #endif //_REGISTRYKEY_HPP

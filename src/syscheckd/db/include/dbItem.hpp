@@ -28,8 +28,8 @@ public:
            , m_mode( mode )
            {
            }
-    virtual ~DBItem();
-    virtual fim_entry* fimEntry() = 0;
+    virtual ~DBItem() = default;
+    virtual fim_entry* toFimEntry() = 0;
     virtual nlohmann::json* toJSON() = 0;
     bool getState() { return m_scanned; };
 
