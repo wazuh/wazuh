@@ -80,6 +80,8 @@ All notable changes to this project will be documented in this file.
   - Made SCA API integration tests dynamic to validate responses coming from any agent version. ([#9228](https://github.com/wazuh/wazuh/pull/9228))
   - Refactored and standardized all the date fields in the API responses to use ISO8601. ([#9227](https://github.com/wazuh/wazuh/pull/9227))
 
+- **Ruleset**
+  - Updated RHEL8 SCA up to CIS version v1.0.1([#10340](https://github.com/wazuh/wazuh/pull/10340))
 ### Fixed
 
 - **Core:**
