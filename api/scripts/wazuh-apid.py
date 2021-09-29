@@ -57,7 +57,7 @@ def start(foreground, root, config_file):
             )
             api_logger.setup_logger()
 
-    if config_file:
+    if config_file is not None:
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
@@ -237,8 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
-    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default='')
+    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file')
     parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
                         dest='debug_level')
     args = parser.parse_args()
