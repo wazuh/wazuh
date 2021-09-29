@@ -1694,8 +1694,6 @@ components:
                           format: int32
                 sync_agentinfo_free:
                   type: boolean
-                sync_extravalid_free:
-                  type: boolean
                 sync_integrity_free:
                   type: boolean
 
@@ -7830,7 +7828,6 @@ paths:
                         n_active_agents: 3
                       status:
                         sync_integrity_free: true
-                        sync_extravalid_free: true
                         last_check_integrity:
                           date_start_master: 2021-05-27T10:50:51.325656Z
                           date_end_master: 2021-05-27T10:50:51.342140Z
@@ -7857,7 +7854,6 @@ paths:
                         n_active_agents: 1
                       status:
                         sync_integrity_free: true
-                        sync_extravalid_free: true
                         last_check_integrity:
                           date_start_master: 2021-05-27T10:50:51.939323Z
                           date_end_master: 2021-05-27T10:50:51.955007Z

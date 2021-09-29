@@ -23,7 +23,7 @@ struct AlmpDeleter final
     }
 };
 
-void getPacmanInfo(const std::string& libPath, nlohmann::json& packages)
+void getPacmanInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback)
 {
     constexpr auto ROOT_PATH {"/"};
     alpm_errno_t err {ALPM_ERR_OK};
@@ -50,11 +50,11 @@ void getPacmanInfo(const std::string& libPath, nlohmann::json& packages)
 
     for (auto pArchItem{alpm_db_get_pkgcache(pDbLocal)}; pArchItem; pArchItem = alpm_list_next(pArchItem))
     {
-        const auto& packageInfo{ PackageLinuxHelper::parsePacman(pArchItem) };
+        auto packageInfo = PackageLinuxHelper::parsePacman(pArchItem);
 
         if (!packageInfo.empty())
         {
-            packages.push_back(packageInfo);
+            callback(packageInfo);
         }
     }
 }
