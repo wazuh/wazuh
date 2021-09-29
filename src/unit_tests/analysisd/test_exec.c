@@ -109,6 +109,7 @@ void test_server_success_json(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     data->ar->location = AS_ONLY;
 
@@ -131,7 +132,7 @@ void test_server_success_json(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_all_agents_success_json_string(void **state)
@@ -140,6 +141,7 @@ void test_all_agents_success_json_string(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version_1 = "Wazuh v4.2.0";
     char *version_2 = "Wazuh v4.0.0";
@@ -209,7 +211,7 @@ void test_all_agents_success_json_string(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_all_agents_success_json_string_wdb(void **state)
@@ -218,6 +220,7 @@ void test_all_agents_success_json_string_wdb(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version_1 = "Wazuh v4.2.0";
     char *version_2 = "Wazuh v4.0.0";
@@ -297,7 +300,7 @@ void test_all_agents_success_json_string_wdb(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_all_agents_success_fail_agt_info1(void **state)
@@ -306,6 +309,7 @@ void test_all_agents_success_fail_agt_info1(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     data->ar->location = ALL_AGENTS;
 
@@ -352,7 +356,7 @@ void test_all_agents_success_fail_agt_info1(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Failed to get agent '5' information from Wazuh DB.");
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_specific_agent_success_json(void **state)
@@ -361,6 +365,7 @@ void test_specific_agent_success_json(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.2.0";
     data->ar->location = SPECIFIC_AGENT;
@@ -396,7 +401,7 @@ void test_specific_agent_success_json(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_specific_agent_success_json_wdb(void **state)
@@ -405,6 +410,7 @@ void test_specific_agent_success_json_wdb(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.2.0";
     data->ar->location = SPECIFIC_AGENT;
@@ -445,7 +451,7 @@ void test_specific_agent_success_json_wdb(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_specific_agent_success_string(void **state)
@@ -454,6 +460,7 @@ void test_specific_agent_success_string(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.0.0";
     data->ar->location = SPECIFIC_AGENT;
@@ -480,7 +487,7 @@ void test_specific_agent_success_string(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_specific_agent_success_string_wdb(void **state)
@@ -489,6 +496,7 @@ void test_specific_agent_success_string_wdb(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.0.0";
     data->ar->location = SPECIFIC_AGENT;
@@ -520,7 +528,7 @@ void test_specific_agent_success_string_wdb(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_specific_agent_success_fail_agt_info1(void **state)
@@ -529,6 +537,7 @@ void test_specific_agent_success_fail_agt_info1(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     data->ar->location = SPECIFIC_AGENT;
 
@@ -548,7 +557,7 @@ void test_specific_agent_success_fail_agt_info1(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Failed to get agent '2' information from Wazuh DB.");
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_remote_agent_success_json(void **state)
@@ -557,6 +566,7 @@ void test_remote_agent_success_json(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.2.0";
     data->ar->location = REMOTE_AGENT;
@@ -592,7 +602,7 @@ void test_remote_agent_success_json(void **state)
 
     will_return(__wrap_OS_GetOneContentforElement, node);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_remote_agent_success_json_wdb(void **state)
@@ -601,6 +611,7 @@ void test_remote_agent_success_json_wdb(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.2.0";
     data->ar->location = REMOTE_AGENT;
@@ -641,7 +652,7 @@ void test_remote_agent_success_json_wdb(void **state)
 
     will_return(__wrap_OS_GetOneContentforElement, node);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_remote_agent_success_string(void **state)
@@ -650,6 +661,7 @@ void test_remote_agent_success_string(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.0.0";
     data->ar->location = REMOTE_AGENT;
@@ -676,7 +688,7 @@ void test_remote_agent_success_string(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_remote_agent_success_string_wdb(void **state)
@@ -685,6 +697,7 @@ void test_remote_agent_success_string_wdb(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     char *version = "Wazuh v4.0.0";
     data->ar->location = REMOTE_AGENT;
@@ -716,7 +729,7 @@ void test_remote_agent_success_string_wdb(void **state)
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_remote_agent_success_fail_agt_info1(void **state)
@@ -725,6 +738,7 @@ void test_remote_agent_success_fail_agt_info1(void **state)
 
     int execq = 10;
     int arq = 11;
+    int sock = -1;
 
     data->ar->location = REMOTE_AGENT;
 
@@ -744,7 +758,7 @@ void test_remote_agent_success_fail_agt_info1(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Failed to get agent '1' information from Wazuh DB.");
 
-    OS_Exec(&execq, &arq, data->lf, data->ar);
+    OS_Exec(&execq, &arq, &sock, data->lf, data->ar);
 }
 
 void test_getActiveResponseInJSON_extra_args(void **state){

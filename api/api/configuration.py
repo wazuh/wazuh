@@ -240,7 +240,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
     if default_conf is None:
         default_conf = default_api_configuration
 
-    if os.path.exists(config_file):
+    if config_file and os.path.exists(config_file):
         try:
             with open(config_file) as f:
                 configuration = yaml.safe_load(f)
@@ -274,5 +274,5 @@ except ValidationError as e:
     raise APIError(2000, details=e.message)
 
 # Configuration - global object
-api_conf = dict()
+api_conf = read_yaml_config()
 security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
