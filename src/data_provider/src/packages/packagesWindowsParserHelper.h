@@ -200,6 +200,7 @@ namespace PackageWindowsHelper
                                 {
                                     [&key, &subKey, &packageKey, &package, &hotfixes](const std::string & packagePatch)
                                     {
+
                                         Utils::Registry packageReg{key, subKey + "\\" + packageKey + "\\" + package + "\\" + packagePatch, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
                                         std::string value;
                                         if (packageReg.string("DisplayName", value))
@@ -215,6 +216,7 @@ namespace PackageWindowsHelper
                                 };
                                 Utils::Registry rootPatch{key, subKey + "\\" + packageKey + "\\" + package, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
                                 rootPatch.enumerate(callbackPatch);
+                                
                             }
                         }
                     };
