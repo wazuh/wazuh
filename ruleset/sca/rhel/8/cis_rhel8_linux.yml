@@ -381,7 +381,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/dev/shm\s && !r:noexec'
 
-        # 1.1.22 Disable Automounting
+# 1.1.22 Disable Automounting
   - id: 5020
     title: "Disable Automounting"
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
@@ -395,7 +395,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled autofs -> enabled'
+      - 'c:systemctl is-enabled autofs -> r:^disabled'
 
       # 1.1.23 Disable USB Storage (Scored)
   - id: 5021
@@ -1037,7 +1037,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled rsyncd -> enabled'
+      - 'c:systemctl is-enabled rsyncd -> r:^disabled'
 
 # 2.2.4 Disable Avahi Server (Scored)
   - id: 5056
@@ -1053,7 +1053,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled avahi-daemon -> enabled'
+      - 'c:systemctl is-enabled avahi-daemon -> r:^disabled'
 
 # 2.2.5 Remove SNMP Server (Scored)
   - id: 5057
@@ -1069,7 +1069,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled snmpd -> enabled'
+      - 'c:systemctl is-enabled snmpd -> r:^disabled'
 
 # 2.2.6 Remove HTTP Proxy Server (Scored)
   - id: 5058
@@ -1085,7 +1085,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled squid -> enabled'
+      - 'c:systemctl is-enabled squid -> r:^disabled'
 
 # 2.2.7 Remove Samba (Scored)
   - id: 5059
@@ -1101,7 +1101,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled smb -> enabled'
+      - 'c:systemctl is-enabled smb -> r:^disabled'
 
 # 2.2.8 Remove Dovecot (IMAP and POP3 services) (Scored)
   - id: 5060
@@ -1117,7 +1117,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled dovecot -> enabled'
+      - 'c:systemctl is-enabled dovecot -> r:^disabled'
 
 # 2.2.9 Remove HTTP Server (Scored)
   - id: 5061
@@ -1133,7 +1133,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled httpd -> enabled'
+      - 'c:systemctl is-enabled httpd -> r:^disabled'
 
 # 2.2.10 Remove FTP Server (Scored)
   - id: 5062
@@ -1149,7 +1149,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled vsftpd -> enabled'
+      - 'c:systemctl is-enabled vsftpd -> r:^disabled'
 
 # 2.2.11 Ensure DNS Server is not enabled (Scored)
   - id: 5063
@@ -1165,7 +1165,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled named -> enabled'
+      - 'c:systemctl is-enabled named -> r:^disabled'
 
 
 # 2.2.12 Ensure NFS is not enabled (Scored)
@@ -1182,7 +1182,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled nfs -> enabled'
+      - 'c:systemctl is-enabled nfs -> r:^disabled'
 
 # 2.2.13 Ensure RPC is not enabled (Scored)
   - id: 5065
@@ -1198,7 +1198,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled rpcbind -> enabled'
+      - 'c:systemctl is-enabled rpcbind -> r:^disabled'
 
 # 2.2.14 Remove LDAP Server (Scored)
   - id: 5066
@@ -1216,7 +1216,7 @@ checks:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
     condition: none
     rules:
-      - 'c:systemctl is-enabled slapd -> enabled'
+      - 'c:systemctl is-enabled slapd -> r:^disabled'
 
 # 2.2.15 Remove DHCP Server (Scored)
   - id: 5067
@@ -1234,7 +1234,7 @@ checks:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
     condition: none
     rules:
-      - 'c:systemctl is-enabled dhcpd -> enabled'
+      - 'c:systemctl is-enabled dhcpd -> r:^disabled'
 
 # 2.2.16 Ensure CUPS is not enabled (Scored)
   - id: 5068
@@ -1252,7 +1252,7 @@ checks:
       - 'More detailed documentation on CUPS is available at the project homepage at http://www.cups.org.'
     condition: none
     rules:
-      - 'c:systemctl is-enabled cups -> enabled'
+      - 'c:systemctl is-enabled cups -> r:^disabled'
 
 
 # 2.2.17 Remove NIS Server (Scored)
@@ -1272,7 +1272,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled ypserv -> enabled'
+      - 'c:systemctl is-enabled ypserv -> r:^disabled'
 
 # 2.2.18 Ensure mail transfer agent is configured for local-only mode (Scored)
   - id: 5070
@@ -1706,7 +1706,7 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled firewalld -> enabled'
+      - 'c:systemctl is-enabled firewalld -> r:enabled'
       - 'c:firewall-cmd --state -> r:running'
 
 # 3.4.2.2 Ensure iptables is not enabled (Scored)
@@ -1984,7 +1984,7 @@ checks:
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled auditd -> enabled'
+      - 'c:systemctl is-enabled auditd -> r:enabled'
 
 
 # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled (Scored)
@@ -2405,7 +2405,7 @@ checks:
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled rsyslog -> enabled'
+      - 'c:systemctl is-enabled rsyslog -> r:enabled'
 
 # 4.2.1.3 Ensure rsyslog default file permissions configured (Scored)
   - id: 5127
@@ -2531,7 +2531,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled crond -> enabled'
+      - 'c:systemctl is-enabled crond -> r:enabled'
 
 # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
   - id: 5134
