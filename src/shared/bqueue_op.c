@@ -285,13 +285,11 @@ size_t _bqueue_extract(bqueue_t * queue, void * buffer, size_t buffer_len) {
     }
 
     // Data is contiguous
-    size_t used = queue->tail - queue->head;
+    size_t used = queue->tail - head;
     size_t chunk_len = buffer_len < used ? buffer_len : used;
 
-    memcpy(buffer, queue->head, chunk_len);
-    head += chunk_len;
-    chunk_len += head_len;
-    return chunk_len;
+    memcpy(buffer, head, chunk_len);
+    return chunk_len + head_len;
 }
 
 void _bqueue_trim(bqueue_t * queue) {
