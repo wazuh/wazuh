@@ -152,16 +152,9 @@ int nb_send(netbuffer_t * buffer, int socket) {
     }
 
     if (sent_bytes > 0) {
-
-        ssize_t popped_bytes = 0;
-
-        popped_bytes = bqueue_pop(buffer->buffers[socket].bqueue, data, sent_bytes, BQUEUE_WAIT);
-
-        mdebug1("After Popped [buf length=%lu, used=%lu, sent=%lu, popped=%lu]",
-            buffer->buffers[socket].bqueue->length, bqueue_used(buffer->buffers[socket].bqueue), sent_bytes, popped_bytes);
-
-        if (popped_bytes != sent_bytes) {
-            merror("bqueue error: peek bytes %lu, sent bytes %lu, popped bytes %lu", peeked_bytes, sent_bytes, popped_bytes);
+        if( bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes) < 0) {
+            merror("socket: %d, bqueue drop fail, could not drop %lu bytes", socket, sent_bytes);
+            bqueue_clear(buffer->buffers[socket].bqueue);
         }
     } else if (sent_bytes < 0) {
         switch (errno) {
@@ -172,9 +165,8 @@ int nb_send(netbuffer_t * buffer, int socket) {
             break;
         default:
             peeked_bytes = 0;
-            if( bqueue_drop(buffer->buffers[socket].bqueue, bqueue_used(buffer->buffers[socket].bqueue)) < 0) {
-                merror("socket:%d, bqueue drop fail", socket);
-            }
+            bqueue_clear(buffer->buffers[socket].bqueue);
+            mwarn("socket: %d, bqueue clear bqueue", socket);
         }
     }
 
@@ -200,15 +192,10 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
         memcpy((data + header_size), crypt_msg, msg_size);
         // Add header at begining, first 4 bytes, it is message msg_size.
         *(uint32_t *)(data) = wnet_order(msg_size);
-        //mdebug1("Data size %02X %02X %02X %02X, msg_size %lu ", data[0],data[1],data[2],data[3], msg_size);
 
         if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
-            mdebug1("Pushed [buff length=%lu, used=%lu, msg_size=%lu]",
-                buffer->buffers[socket].bqueue->length, bqueue_used(buffer->buffers[socket].bqueue), msg_size + header_size);
-
             wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
-
             w_mutex_unlock(&mutex);
 
             retval = 0;
@@ -218,7 +205,6 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
                 buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
 
             w_mutex_unlock(&mutex);
-
             sleep(send_timeout_to_retry);
         }
     }

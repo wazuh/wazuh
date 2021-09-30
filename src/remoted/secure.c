@@ -308,20 +308,20 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client, struct sockaddr_
 
     switch (sent_b) {
     case -1:
+        mdebug1("TCP peer [%d] at %s: %s (%d)", sock_client,
+                inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
+
         switch (errno) {
-        case EPIPE:
-        case EBADF:
-        case ECONNRESET:
         case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
         case EWOULDBLOCK:
 #endif
-            mdebug1("TCP peer [%d] at %s: %s (%d)", sock_client,
-                    inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
             break;
+        case EPIPE:
+        case EBADF:
+        case ECONNRESET:
         default:
-            merror("TCP peer [%d] at %s: %s (%d)", sock_client,
-                    inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
+            _close_sock(&keys, sock_client);
         }
         return;
 

@@ -170,6 +170,12 @@ size_t bqueue_used(bqueue_t * queue) {
     return _bqueue_used(queue);
 }
 
+void bqueue_clear(bqueue_t * queue) {
+    pthread_mutex_lock(&queue->mutex);
+    _bqueue_trim(queue);
+    pthread_mutex_unlock(&queue->mutex);
+}
+
 size_t _bqueue_used(bqueue_t * queue) {
     return queue->length > 0 ? (queue->tail + queue->length - queue->head) % queue->length : 0;
 }

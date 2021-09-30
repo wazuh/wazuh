@@ -39,5 +39,6 @@ size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags
 size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flags);
 int bqueue_drop(bqueue_t * queue, size_t length);
 size_t bqueue_used(bqueue_t * queue);
+void bqueue_clear(bqueue_t * queue);
 
 #endif
