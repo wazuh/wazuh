@@ -1,9 +1,13 @@
-/*
- * Binary queue type
- * Copyright (C) 2015-2021, Wazuh Inc.
- * September 20, 2021
+/**
+ * @file bqueue_op.c
+ * @brief Binary queue type definition
+ * @date 2020-09-20
  *
- * This program is free software; you can redistribute it
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ */
+
+/*
+ * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -11,13 +15,93 @@
 
 #include <shared.h>
 
+/**
+ * @brief Get the current queue size
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @pre The lock must be acquired before calling this function.
+ * @return Number of bytes stored in the queue.
+ */
 size_t _bqueue_used(bqueue_t * queue);
+
+/**
+ * @brief Test whether the queue is empty
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @pre The lock must be acquired before calling this function.
+ * @retval true The queue is empty.
+ * @retval false The queue contains any data.
+ */
 bool _bqueue_empty(bqueue_t * queue);
+
+/**
+ * @brief Extend the current queue capacity
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @param new_length New internal buffer length.
+ * @pre The lock must be acquired before calling this function.
+ * @pre new_length is assumed to be lower or equal to max_length.
+ * @pre new_length is asummed to be greater or equal to the current length.
+ */
 void _bqueue_expand(bqueue_t * queue, size_t new_length);
+
+/**
+ * @brief Reduce the queue capacity
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @param new_length New internal buffer length.
+ * @pre The lock must be acquired before calling this function.
+ * @pre new_length is assumed to be lower or equal to max_length.
+ * @pre new_length is asummed to be lower or equal to the current length.
+ * @pre new_length is asummed to be greater than the number of bytes used.
+ */
 void _bqueue_shrink(bqueue_t * queue, size_t new_length);
+
+/**
+ * @brief Insert data into the queue
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @param data Pointer to the source data.
+ * @param data_len Number of bytes to insert.
+ * @pre The lock must be acquired before calling this function.
+ * @pre data_len is assumed to be lower than the current length.
+ */
 void _bqueue_insert(bqueue_t * queue, const void * data, size_t data_len);
+
+/**
+ * @brief Read data from the queue
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @param buffer Pointer to the destination buffer.
+ * @param buffer_len Maximum number of bytes that should be read.
+ * @pre The lock must be acquired before calling this function.
+ * @return Number of bytes read from the queue
+ */
 size_t _bqueue_extract(bqueue_t * queue, void * buffer, size_t buffer_len);
+
+/**
+ * @brief Trim the queue memory and reset its state
+ *
+ * This is a private function.
+ *
+ * @param queue Pointer to a queue.
+ * @pre The lock must be acquired before calling this function.
+ */
 void _bqueue_trim(bqueue_t * queue);
+
+// Allocate and inititialize a new queue
 
 bqueue_t * bqueue_init(size_t max_length, unsigned flags) {
     if (max_length <= 1) {
@@ -37,6 +121,8 @@ bqueue_t * bqueue_init(size_t max_length, unsigned flags) {
     return queue;
 }
 
+// Free a queue
+
 void bqueue_destroy(bqueue_t * queue) {
     if (queue == NULL) {
         return;
@@ -50,6 +136,8 @@ void bqueue_destroy(bqueue_t * queue) {
 
     free(queue);
 }
+
+// Push data into the queue
 
 int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned flags) {
     pthread_mutex_lock(&queue->mutex);
@@ -89,6 +177,8 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
     return 0;
 }
 
+// Get and remove data from the queue
+
 size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags) {
     pthread_mutex_lock(&queue->mutex);
 
@@ -120,6 +210,8 @@ size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags
     return write_len;
 }
 
+// Get data from the queue
+
 size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flags) {
     pthread_mutex_lock(&queue->mutex);
 
@@ -141,6 +233,8 @@ size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flag
 
     return write_len;
 }
+
+// Drop data from the queue
 
 int bqueue_drop(bqueue_t * queue, size_t length) {
     int retval;
@@ -166,6 +260,8 @@ int bqueue_drop(bqueue_t * queue, size_t length) {
     return retval;
 }
 
+// Get the current queue size
+
 size_t bqueue_used(bqueue_t * queue) {
     pthread_mutex_lock(&queue->mutex);
     size_t used = _bqueue_used(queue);
@@ -174,19 +270,27 @@ size_t bqueue_used(bqueue_t * queue) {
     return used;
 }
 
+// Clear the queue
+
 void bqueue_clear(bqueue_t * queue) {
     pthread_mutex_lock(&queue->mutex);
     _bqueue_trim(queue);
     pthread_mutex_unlock(&queue->mutex);
 }
 
+// Get the current queue size
+
 size_t _bqueue_used(bqueue_t * queue) {
     return queue->length > 0 ? (queue->tail + queue->length - queue->head) % queue->length : 0;
 }
 
+// Test whether the queue is empty
+
 bool _bqueue_empty(bqueue_t * queue) {
     return queue->head == queue->tail;
 }
+
+// Extend the current queue capacity
 
 void _bqueue_expand(bqueue_t * queue, size_t new_length) {
     void * new_memory;
@@ -212,6 +316,8 @@ void _bqueue_expand(bqueue_t * queue, size_t new_length) {
 
     queue->length = new_length;
 }
+
+// Reduce the queue capacity
 
 void _bqueue_shrink(bqueue_t * queue, size_t new_length) {
     if (_bqueue_empty(queue)) {
@@ -259,6 +365,8 @@ void _bqueue_shrink(bqueue_t * queue, size_t new_length) {
     queue->length = new_length;
 }
 
+// Insert data into the queue
+
 void _bqueue_insert(bqueue_t * queue, const void * data, size_t data_len) {
     size_t tail_len = queue->tail - queue->memory;
 
@@ -272,6 +380,8 @@ void _bqueue_insert(bqueue_t * queue, const void * data, size_t data_len) {
 
     queue->tail = queue->memory + (tail_len + data_len) % queue->length;
 }
+
+// Read data from the queue
 
 size_t _bqueue_extract(bqueue_t * queue, void * buffer, size_t buffer_len) {
     void * head;
@@ -301,6 +411,8 @@ size_t _bqueue_extract(bqueue_t * queue, void * buffer, size_t buffer_len) {
     memcpy(buffer, head, chunk_len);
     return chunk_len + head_len;
 }
+
+// Trim the queue memory and reset its state
 
 void _bqueue_trim(bqueue_t * queue) {
     free(queue->memory);
