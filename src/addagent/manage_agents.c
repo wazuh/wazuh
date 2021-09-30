@@ -242,7 +242,7 @@ int add_agent(int json_output)
             char error_message[OS_SIZE_128];
             cJSON *j_agent_info = NULL;
             cJSON *j_connection_status = NULL;
-            cJSON *j_disconnected_time = NULL;
+            cJSON *j_disconnection_time = NULL;
             cJSON *j_date_add = NULL;
 
             snprintf(error_message, OS_SIZE_128, "Agent '%s' won't be removed because the force option is disabled.", id_exist);
@@ -250,11 +250,11 @@ int add_agent(int json_output)
             j_agent_info = wdb_get_agent_info(atoi(id_exist), NULL);
             if(j_agent_info){
                 j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
-                j_disconnected_time = cJSON_GetObjectItem(j_agent_info->child, "disconnected_time");
+                j_disconnection_time = cJSON_GetObjectItem(j_agent_info->child, "disconnection_time");
                 j_date_add = cJSON_GetObjectItem(j_agent_info->child, "date_add");
             }
 
-            if (!j_agent_info || !j_connection_status || !j_disconnected_time || !j_date_add){
+            if (!j_agent_info || !j_connection_status || !j_disconnection_time || !j_date_add){
                 cJSON_Delete(j_agent_info);
                 merror_exit("Failed to get agent-info for agent '%s'", id_exist);
             }
@@ -268,7 +268,7 @@ int add_agent(int json_output)
                     char *status = j_connection_status->valuestring;
 
                     if(!strcmp(status, AGENT_CS_DISCONNECTED)) {
-                        agent_time_since_desconnection = difftime(time(NULL), j_disconnected_time->valueint);
+                        agent_time_since_desconnection = difftime(time(NULL), j_disconnection_time->valueint);
                         if(agent_time_since_desconnection <= authd_force_options.disconnected_time){
                             replace_agent = false;
                             snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", id_exist);
