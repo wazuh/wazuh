@@ -144,7 +144,7 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
 
     // Check if data would fit
 
-    if (length >= queue->max_length - 1) {
+    if (length >= queue->max_length) {
         pthread_mutex_unlock(&queue->mutex);
         return -1;
     }
@@ -152,12 +152,12 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
     size_t used = _bqueue_used(queue);
 
     if (flags & BQUEUE_WAIT) {
-        while (length + used >= queue->max_length - 1) {
+        while (length + used >= queue->max_length) {
             pthread_cond_wait(&queue->cond_popped, &queue->mutex);
             used = _bqueue_used(queue);
         }
     } else {
-        if (length + used >= queue->max_length - 1) {
+        if (length + used >= queue->max_length) {
             pthread_mutex_unlock(&queue->mutex);
             return -1;
         }
