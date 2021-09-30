@@ -15,7 +15,6 @@
 #include "fimDB.hpp"
 #include "dbItem.hpp"
 #include "rsync.hpp"
-#include "shared.h"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32

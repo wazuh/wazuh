@@ -1,0 +1,30 @@
+@startuml db_class
+package "testtool" <<Folder>> #DDDDDD{
+    package "action" <<Folder>> {
+        abstract TestAction {
+            -nlohman::json m_actionData
+            + void execute()
+        }
+        class InsertAction {
+            + void execute()
+        }
+        class UpdateAction {
+            - nlohman::json m_precondData
+            + void execute()
+        }
+        class RemoveAction {
+            - nlohman::json m_preconData
+            + void execute()
+        }
+    }
+    interface "Main"  <<(F,#FF7700)>> {
+        + main()
+
+    }
+}
+
+TestAction <|-- InsertAction
+TestAction <|-- UpdateAction
+TestAction <|-- RemoveAction
+Main -- TestAction
+@enduml

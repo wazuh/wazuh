@@ -1,0 +1,5 @@
+{
+    "dp_path": "temp.db",
+    "file_limit": 10000,
+    "registry_limit": 10000
+}

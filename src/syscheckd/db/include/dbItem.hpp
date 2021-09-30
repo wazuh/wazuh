@@ -11,7 +11,7 @@
 
 #ifndef _DBITEM_HPP
 #define _DBITEM_HPP
-#include "shared.h"
+#include "syscheck-config.h"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
