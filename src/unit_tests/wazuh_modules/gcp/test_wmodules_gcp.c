@@ -179,7 +179,7 @@ static int setup_test_no_credentials_file(void **state) {
 
 static int teardown_test(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp = data->module->data;
+    wm_gcp_pubsub *gcp = data->module->data;
 
     free(data->module->tag);
 
@@ -198,10 +198,10 @@ static int teardown_test(void **state) {
 }
 
 /* tests */
-/* wm_gcp_read */
-static void test_wm_gcp_read_full_configuration(void **state) {
+/* wm_gcp_pubsub_read */
+static void test_wm_gcp_pubsub_read_full_configuration(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     expect_string(__wrap_realpath, path, "credentials.json");
@@ -211,10 +211,10 @@ static void test_wm_gcp_read_full_configuration(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -229,11 +229,11 @@ static void test_wm_gcp_read_full_configuration(void **state) {
     assert_int_equal(gcp->logging, 0);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_enabled_tag_invalid(void **state) {
+static void test_wm_gcp_pubsub_read_enabled_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -242,12 +242,12 @@ static void test_wm_gcp_read_enabled_tag_invalid(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'enabled'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_project_id_tag_invalid(void **state) {
+static void test_wm_gcp_pubsub_read_project_id_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -256,12 +256,12 @@ static void test_wm_gcp_read_project_id_tag_invalid(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'project_id' at module 'gcp-pubsub'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_no_project_id_tag(void **state) {
+static void test_wm_gcp_pubsub_read_no_project_id_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -272,17 +272,17 @@ static void test_wm_gcp_read_no_project_id_tag(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
     expect_string(__wrap__merror, formatted_msg, "No value defined for tag 'project_id' in module 'gcp-pubsub'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_subscription_name_tag_invalid(void **state) {
+static void test_wm_gcp_pubsub_read_subscription_name_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -291,12 +291,12 @@ static void test_wm_gcp_read_subscription_name_tag_invalid(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'subscription_name' at module 'gcp-pubsub'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_no_subscription_name_tag(void **state) {
+static void test_wm_gcp_pubsub_read_no_subscription_name_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -307,19 +307,19 @@ static void test_wm_gcp_read_no_subscription_name_tag(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
     expect_string(__wrap__merror, formatted_msg, "No value defined for tag 'subscription_name' in module 'gcp-pubsub'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_credentials_file_full_path(void **state) {
+static void test_wm_gcp_pubsub_read_credentials_file_full_path(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     if(replace_configuration_value(data->nodes, XML_CREDENTIALS_FILE, "/some/path/credentials.json") != 0)
@@ -329,10 +329,10 @@ static void test_wm_gcp_read_credentials_file_full_path(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -347,11 +347,11 @@ static void test_wm_gcp_read_credentials_file_full_path(void **state) {
     assert_int_equal(gcp->logging, 0);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_credentials_file_tag_empty(void **state) {
+static void test_wm_gcp_pubsub_read_credentials_file_tag_empty(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -360,12 +360,12 @@ static void test_wm_gcp_read_credentials_file_tag_empty(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'credentials_file' at module 'gcp-pubsub'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_credentials_file_tag_too_long(void **state) {
+static void test_wm_gcp_pubsub_read_credentials_file_tag_too_long(void **state) {
     group_data_t *data = *state;
     char buffer[OS_MAXSTR];
     int ret;
@@ -379,12 +379,12 @@ static void test_wm_gcp_read_credentials_file_tag_too_long(void **state) {
     snprintf(buffer, OS_MAXSTR, "File path is too long. Max path length is %d.", PATH_MAX);
     expect_string(__wrap__merror, formatted_msg, buffer);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_credentials_file_tag_realpath_error(void **state) {
+static void test_wm_gcp_pubsub_read_credentials_file_tag_realpath_error(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -394,12 +394,12 @@ static void test_wm_gcp_read_credentials_file_tag_realpath_error(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "File '' from tag 'credentials_file' not found.");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_credentials_file_tag_file_not_found(void **state) {
+static void test_wm_gcp_pubsub_read_credentials_file_tag_file_not_found(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -411,27 +411,27 @@ static void test_wm_gcp_read_credentials_file_tag_file_not_found(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "File 'credentials.json' not found. Check your configuration.");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_no_credentials_file_tag(void **state) {
+static void test_wm_gcp_pubsub_read_no_credentials_file_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
     expect_string(__wrap__merror, formatted_msg, "No value defined for tag 'credentials_file' in module 'gcp-pubsub'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_max_messages_tag_empty(void **state) {
+static void test_wm_gcp_pubsub_read_max_messages_tag_empty(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -446,12 +446,12 @@ static void test_wm_gcp_read_max_messages_tag_empty(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'max_messages'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_max_messages_tag_not_digit(void **state) {
+static void test_wm_gcp_pubsub_read_max_messages_tag_not_digit(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -466,12 +466,12 @@ static void test_wm_gcp_read_max_messages_tag_not_digit(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Tag 'max_messages' from the 'gcp-pubsub' module should not have an alphabetic character.");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_pull_on_start_tag_invalid(void **state) {
+static void test_wm_gcp_pubsub_read_pull_on_start_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -480,14 +480,14 @@ static void test_wm_gcp_read_pull_on_start_tag_invalid(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'pull_on_start'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_logging_tag_debug(void **state) {
+static void test_wm_gcp_pubsub_read_logging_tag_debug(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "debug") != 0)
@@ -500,10 +500,10 @@ static void test_wm_gcp_read_logging_tag_debug(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -518,13 +518,13 @@ static void test_wm_gcp_read_logging_tag_debug(void **state) {
     assert_int_equal(gcp->logging, 1);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_logging_tag_info(void **state) {
+static void test_wm_gcp_pubsub_read_logging_tag_info(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "info") != 0)
@@ -537,10 +537,10 @@ static void test_wm_gcp_read_logging_tag_info(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -555,13 +555,13 @@ static void test_wm_gcp_read_logging_tag_info(void **state) {
     assert_int_equal(gcp->logging, 2);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_logging_tag_warning(void **state) {
+static void test_wm_gcp_pubsub_read_logging_tag_warning(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "warning") != 0)
@@ -574,10 +574,10 @@ static void test_wm_gcp_read_logging_tag_warning(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -592,13 +592,13 @@ static void test_wm_gcp_read_logging_tag_warning(void **state) {
     assert_int_equal(gcp->logging, 3);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_logging_tag_error(void **state) {
+static void test_wm_gcp_pubsub_read_logging_tag_error(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "error") != 0)
@@ -611,10 +611,10 @@ static void test_wm_gcp_read_logging_tag_error(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -629,13 +629,13 @@ static void test_wm_gcp_read_logging_tag_error(void **state) {
     assert_int_equal(gcp->logging, 4);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_logging_tag_critical(void **state) {
+static void test_wm_gcp_pubsub_read_logging_tag_critical(void **state) {
     group_data_t *data = *state;
-    wm_gcp *gcp;
+    wm_gcp_pubsub *gcp;
     int ret;
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "critical") != 0)
@@ -648,10 +648,10 @@ static void test_wm_gcp_read_logging_tag_critical(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
-    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_WM_NAME);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, 0);
 
@@ -666,11 +666,11 @@ static void test_wm_gcp_read_logging_tag_critical(void **state) {
     assert_int_equal(gcp->logging, 5);
     assert_int_equal(gcp->max_messages, 100);
 
-    assert_ptr_equal(data->module->context, &WM_GCP_CONTEXT);
-    assert_string_equal(data->module->tag, GCP_WM_NAME);
+    assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
+    assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
 }
 
-static void test_wm_gcp_read_logging_tag_invalid(void **state) {
+static void test_wm_gcp_pubsub_read_logging_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -685,12 +685,12 @@ static void test_wm_gcp_read_logging_tag_invalid(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'logging'");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wm_gcp_read_invalid_tag(void **state) {
+static void test_wm_gcp_pubsub_read_invalid_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -702,12 +702,12 @@ static void test_wm_gcp_read_invalid_tag(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "No such tag 'invalid' at module 'gcp-pubsub'.");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, -1);
 }
 
-static void test_wm_gcp_read_invalid_element(void **state) {
+static void test_wm_gcp_pubsub_read_invalid_element(void **state) {
     group_data_t *data = *state;
     int ret;
 
@@ -717,7 +717,7 @@ static void test_wm_gcp_read_invalid_element(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1231): Invalid NULL element in the configuration.");
 
-    ret = wm_gcp_read(data->nodes, data->module);
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
     assert_int_equal(ret, -1);
 }
@@ -726,29 +726,29 @@ static void test_wm_gcp_read_invalid_element(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_full_configuration, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_enabled_tag_invalid, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_project_id_tag_invalid, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_no_project_id_tag, setup_test_no_project_id, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_subscription_name_tag_invalid, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_no_subscription_name_tag, setup_test_no_subscription_name, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_credentials_file_full_path, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_credentials_file_tag_empty, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_credentials_file_tag_too_long, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_credentials_file_tag_realpath_error, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_credentials_file_tag_file_not_found, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_no_credentials_file_tag, setup_test_no_credentials_file, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_max_messages_tag_empty, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_max_messages_tag_not_digit, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_pull_on_start_tag_invalid, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_logging_tag_debug, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_logging_tag_info, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_logging_tag_warning, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_logging_tag_error, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_logging_tag_critical, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_logging_tag_invalid, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_invalid_tag, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_wm_gcp_read_invalid_element, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_full_configuration, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_enabled_tag_invalid, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_project_id_tag_invalid, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_no_project_id_tag, setup_test_no_project_id, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_subscription_name_tag_invalid, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_no_subscription_name_tag, setup_test_no_subscription_name, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_credentials_file_full_path, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_credentials_file_tag_empty, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_credentials_file_tag_too_long, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_credentials_file_tag_realpath_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_credentials_file_tag_file_not_found, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_no_credentials_file_tag, setup_test_no_credentials_file, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_max_messages_tag_empty, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_max_messages_tag_not_digit, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_pull_on_start_tag_invalid, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_debug, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_info, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_warning, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_critical, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_invalid, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_invalid_tag, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_invalid_element, setup_test, teardown_test),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
