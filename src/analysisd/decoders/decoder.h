@@ -98,9 +98,6 @@ typedef struct dbsync_context_t {
 struct deltas_fields_match {
     char key[OS_SIZE_32];
     char value[OS_SIZE_32];
-    bool is_composed_value;
-    char true_case[OS_SIZE_16];
-    char false_case[OS_SIZE_16];
 };
 
 /**
