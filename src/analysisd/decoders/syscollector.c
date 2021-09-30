@@ -16,7 +16,6 @@
 #include "decoder.h"
 #include "external/cJSON/cJSON.h"
 #include "plugin_decoders.h"
-#include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 #include "string_op.h"
 #include "buffer_op.h"
@@ -37,168 +36,166 @@ static int decode_package( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_port( Eventinfo *lf, cJSON * logJSON, int *socket);
 static int decode_process( Eventinfo *lf, cJSON * logJSON, int *socket);
-static int decode_dbsync( char const *agent_id, char *msg_type, cJSON * logJSON, int *socket);
+static int decode_dbsync( Eventinfo *lf, char *msg_type, cJSON * logJSON, int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
 
-static const char* HOTFIXES_FIELDS[] = {
-    "scan_time",
-    "hotfix",
-    "checksum",
-    NULL
+
+//
+// The following deltas_fields_match_list structs (key-value) represent a 1:1 matching between upcoming agent syscollector
+// data fields and their corresponding table.
+// This will be use to generate the needed events once the EventInfo struct is filled.
+// Note: the fields which have "" in the value mean that no event will be generated for that specific field.
+//
+
+static struct deltas_fields_match_list const HOTFIXES_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &HOTFIXES_FIELDS[1]},
+    { .current = { "hotfix", "hotfix", false, "", "" }, .next = &HOTFIXES_FIELDS[2]},
+    { .current = { "checksum", "", false, "", "" }, .next = NULL},
 };
 
-static const char* PACKAGES_FIELDS[] = {
-    "scan_time",
-    "format",
-    "name",
-    "priority",
-    "groups",
-    "size",
-    "vendor",
-    "install_time",
-    "version",
-    "architecture",
-    "multiarch",
-    "source",
-    "description",
-    "location",
-    "triaged",
-    "cpe",
-    "msu_name",
-    "checksum",
-    "item_id",
-    NULL
+static struct deltas_fields_match_list const PACKAGES_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &PACKAGES_FIELDS[1]},
+    { .current = { "format", "program.format", false, "", "" }, .next = &PACKAGES_FIELDS[2]},
+    { .current = { "name", "program.name", false, "", "" }, .next = &PACKAGES_FIELDS[3]},
+    { .current = { "priority", "program.priority", false, "", "" }, .next = &PACKAGES_FIELDS[4]},
+    { .current = { "groups", "", false, "", "" }, .next = &PACKAGES_FIELDS[5]},
+    { .current = { "size", "program.size", false, "", "" }, .next = &PACKAGES_FIELDS[6]},
+    { .current = { "vendor", "program.vendor", false, "", "" }, .next = &PACKAGES_FIELDS[7]},
+    { .current = { "install_time", "program.install_time", false, "", "" }, .next = &PACKAGES_FIELDS[8]},
+    { .current = { "version", "program.version", false, "", "" }, .next = &PACKAGES_FIELDS[9]},
+    { .current = { "architecture", "program.architecture", false, "", "" }, .next = &PACKAGES_FIELDS[10]},
+    { .current = { "multiarch", "program.multiarch", false, "", "" }, .next = &PACKAGES_FIELDS[11]},
+    { .current = { "source", "program.source", false, "", "" }, .next = &PACKAGES_FIELDS[12]},
+    { .current = { "description", "program.description", false, "", "" }, .next = &PACKAGES_FIELDS[13]},
+    { .current = { "location", "program.location", false, "", "" }, .next = &PACKAGES_FIELDS[14]},
+    { .current = { "triaged", "", false, "", "" }, .next = &PACKAGES_FIELDS[15]},
+    { .current = { "cpe", "", false, "", "" }, .next = &PACKAGES_FIELDS[16]},
+    { .current = { "msu_name", "", false, "", "" }, .next = &PACKAGES_FIELDS[17]},
+    { .current = { "checksum", "", false, "", "" }, .next = &PACKAGES_FIELDS[18]},
+    { .current = { "item_id", "", false, "", "" }, .next = NULL},
 };
 
-
-static const char* PROCESSES_FIELDS[] = {
-    "scan_time",
-    "pid",
-    "name",
-    "state",
-    "ppid",
-    "utime",
-    "stime",
-    "cmd",
-    "argvs",
-    "euser",
-    "ruser",
-    "suser",
-    "egroup",
-    "rgroup",
-    "sgroup",
-    "fgroup",
-    "priority",
-    "nice",
-    "size",
-    "vm_size",
-    "resident",
-    "share",
-    "start_time",
-    "pgrp",
-    "session",
-    "nlwp",
-    "tgid",
-    "tty",
-    "processor",
-    "checksum",
-    NULL
+static struct deltas_fields_match_list const PROCESSES_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &PROCESSES_FIELDS[1]},
+    { .current = { "pid", "process.pid", false, "", "" }, .next = &PROCESSES_FIELDS[2]},
+    { .current = { "name", "process.name", false, "", "" }, .next = &PROCESSES_FIELDS[3]},
+    { .current = { "state", "process.state", false, "", "" }, .next = &PROCESSES_FIELDS[4]},
+    { .current = { "ppid", "process.ppid", false, "", "" }, .next = &PROCESSES_FIELDS[5]},
+    { .current = { "utime", "process.utime", false, "", "" }, .next = &PROCESSES_FIELDS[6]},
+    { .current = { "stime", "process.stime", false, "", "" }, .next = &PROCESSES_FIELDS[7]},
+    { .current = { "cmd", "process.cmd", false, "", "" }, .next = &PROCESSES_FIELDS[8]},
+    { .current = { "argvs", "process.args", false, "", "" }, .next = &PROCESSES_FIELDS[9]},
+    { .current = { "euser", "process.euser", false, "", "" }, .next = &PROCESSES_FIELDS[10]},
+    { .current = { "ruser", "process.ruser", false, "", "" }, .next = &PROCESSES_FIELDS[11]},
+    { .current = { "suser", "process.suser", false, "", "" }, .next = &PROCESSES_FIELDS[12]},
+    { .current = { "egroup", "process.egroup", false, "", "" }, .next = &PROCESSES_FIELDS[13]},
+    { .current = { "rgroup", "process.rgroup", false, "", "" }, .next = &PROCESSES_FIELDS[14]},
+    { .current = { "sgroup", "process.sgroup", false, "", "" }, .next = &PROCESSES_FIELDS[15]},
+    { .current = { "fgroup", "process.fgroup", false, "", "" }, .next = &PROCESSES_FIELDS[16]},
+    { .current = { "priority", "process.priority", false, "", "" }, .next = &PROCESSES_FIELDS[17]},
+    { .current = { "nice", "process.nice", false, "", "" }, .next = &PROCESSES_FIELDS[18]},
+    { .current = { "size", "process.size", false, "", "" }, .next = &PROCESSES_FIELDS[19]},
+    { .current = { "vm_size", "process.vm_size", false, "", "" }, .next = &PROCESSES_FIELDS[20]},
+    { .current = { "resident", "process.resident", false, "", "" }, .next = &PROCESSES_FIELDS[21]},
+    { .current = { "share", "process.share", false, "", "" }, .next = &PROCESSES_FIELDS[22]},
+    { .current = { "start_time", "process.start_time", false, "", "" }, .next = &PROCESSES_FIELDS[23]},
+    { .current = { "pgrp", "process.pgrp", false, "", "" }, .next = &PROCESSES_FIELDS[24]},
+    { .current = { "session", "process.session", false, "", "" }, .next = &PROCESSES_FIELDS[25]},
+    { .current = { "nlwp", "process.nlwp", false, "", "" }, .next = &PROCESSES_FIELDS[26]},
+    { .current = { "tgid", "process.tgid", false, "", "" }, .next = &PROCESSES_FIELDS[27]},
+    { .current = { "tty", "process.tty", false, "", "" }, .next = &PROCESSES_FIELDS[28]},
+    { .current = { "processor", "process.processor", false, "", "" }, .next = &PROCESSES_FIELDS[29]},
+    { .current = { "checksum", "", false, "", "" }, .next = NULL},
 };
 
-static const char* PORTS_FIELDS[] = {
-    "scan_time",
-    "protocol",
-    "local_ip",
-    "local_port",
-    "remote_ip",
-    "remote_port",
-    "tx_queue",
-    "rx_queue",
-    "inode",
-    "state",
-    "pid",
-    "process",
-    "checksum",
-    "item_id",
-    NULL
+static struct deltas_fields_match_list const PORTS_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &PORTS_FIELDS[1]},
+    { .current = { "protocol", "port.protocol", false, "", "" }, .next = &PORTS_FIELDS[2]},
+    { .current = { "local_ip", "port.local_ip", false, "", "" }, .next = &PORTS_FIELDS[3]},
+    { .current = { "local_port", "port.local_port", false, "", "" }, .next = &PORTS_FIELDS[4]},
+    { .current = { "remote_ip", "port.remote_ip", false, "", "" }, .next = &PORTS_FIELDS[5]},
+    { .current = { "remote_port", "port.remote_port", false, "", "" }, .next = &PORTS_FIELDS[6]},
+    { .current = { "tx_queue", "port.tx_queue", false, "", "" }, .next = &PORTS_FIELDS[7]},
+    { .current = { "rx_queue", "port.rx_queue", false, "", "" }, .next = &PORTS_FIELDS[8]},
+    { .current = { "inode", "port.inode", false, "", "" }, .next = &PORTS_FIELDS[9]},
+    { .current = { "state", "port.state", false, "", "" }, .next = &PORTS_FIELDS[10]},
+    { .current = { "pid", "port.pid", false, "", "" }, .next = &PORTS_FIELDS[11]},
+    { .current = { "process", "port.process", false, "", "" }, .next = &PORTS_FIELDS[12]},
+    { .current = { "checksum", "", false, "", "" }, .next = &PORTS_FIELDS[13]},
+    { .current = { "item_id", "", false, "", "" }, .next = NULL},
 };
 
-static const char* NETWORK_IFACE_FIELDS[] = {
-    "scan_time",
-    "name",
-    "adapter",
-    "type",
-    "state",
-    "mtu",
-    "mac",
-    "tx_packets",
-    "rx_packets",
-    "tx_bytes",
-    "rx_bytes",
-    "tx_errors",
-    "rx_errors",
-    "tx_dropped",
-    "rx_dropped",
-    "checksum",
-    "item_id",
-    NULL
+static struct deltas_fields_match_list const NETWORK_IFACE_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[1]},
+    { .current = { "name", "netinfo.iface.name", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[2]},
+    { .current = { "adapter", "netinfo.iface.adapter", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[3]},
+    { .current = { "type", "netinfo.iface.type", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[4]},
+    { .current = { "state", "netinfo.iface.state", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[5]},
+    { .current = { "mtu", "netinfo.iface.mtu", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[6]},
+    { .current = { "mac", "netinfo.iface.mac", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[7]},
+    { .current = { "tx_packets", "netinfo.iface.tx_packets", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[8]},
+    { .current = { "rx_packets", "netinfo.iface.rx_packets", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[9]},
+    { .current = { "tx_bytes", "netinfo.iface.tx_bytes", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[10]},
+    { .current = { "rx_bytes", "netinfo.iface.rx_bytes", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[11]},
+    { .current = { "tx_errors", "netinfo.iface.tx_errors", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[12]},
+    { .current = { "rx_errors", "netinfo.iface.rx_errors", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[13]},
+    { .current = { "tx_dropped", "netinfo.iface.tx_dropped", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[14]},
+    { .current = { "rx_dropped", "netinfo.iface.rx_dropped", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[15]},
+    { .current = { "checksum", "", false, "", "" }, .next = &NETWORK_IFACE_FIELDS[16]},
+    { .current = { "item_id", "", false, "", "" }, .next = NULL},
 };
 
-static const char* NETWORK_PROTOCOL_FIELDS[] = {
-    "iface",
-    "type",
-    "gateway",
-    "dhcp",
-    "metric",
-    "checksum",
-    "item_id",
-    NULL
+static struct deltas_fields_match_list const NETWORK_PROTOCOL_FIELDS[] = {
+    { .current = { "iface", "netinfo.proto.iface", false, "", "" }, .next = &NETWORK_PROTOCOL_FIELDS[1]},
+    { .current = { "type", "netinfo.proto.type", true, "ipv6", "ipv4" }, .next = &NETWORK_PROTOCOL_FIELDS[2]},
+    { .current = { "gateway", "netinfo.proto.gateway", false, "", "" }, .next = &NETWORK_PROTOCOL_FIELDS[3]},
+    { .current = { "dhcp", "netinfo.proto.dhcp", false, "", "" }, .next = &NETWORK_PROTOCOL_FIELDS[4]},
+    { .current = { "metric", "netinfo.proto.metric", false, "", "" }, .next = &NETWORK_PROTOCOL_FIELDS[5]},
+    { .current = { "checksum", "", false, "", "" }, .next = &NETWORK_PROTOCOL_FIELDS[6]},
+    { .current = { "item_id", "", false, "", "" }, .next = NULL},
 };
 
-static const char* NETWORK_ADDRESS_FIELDS[] = {
-    "iface",
-    "proto",
-    "address",
-    "netmask",
-    "broadcast",
-    "checksum",
-    "item_id",
-    NULL
+static struct deltas_fields_match_list const NETWORK_ADDRESS_FIELDS[] = {
+    { .current = { "iface", "netinfo.addr.iface", false, "", "" }, .next = &NETWORK_ADDRESS_FIELDS[1]},
+    { .current = { "proto", "netinfo.addr.proto", true, "ipv6", "ipv4" }, .next = &NETWORK_ADDRESS_FIELDS[2]},
+    { .current = { "address", "netinfo.addr.address", false, "", "" }, .next = &NETWORK_ADDRESS_FIELDS[3]},
+    { .current = { "netmask", "netinfo.addr.netmask", false, "", "" }, .next = &NETWORK_ADDRESS_FIELDS[4]},
+    { .current = { "broadcast", "netinfo.addr.broadcast", false, "", "" }, .next = &NETWORK_ADDRESS_FIELDS[5]},
+    { .current = { "checksum", "", false, "", "" }, .next = &NETWORK_ADDRESS_FIELDS[6]},
+    { .current = { "item_id", "", false, "", "" }, .next = NULL},
 };
 
-static const char* HARDWARE_FIELDS[] = {
-    "scan_time",
-    "board_serial",
-    "cpu_name",
-    "cpu_cores",
-    "cpu_mhz",
-    "ram_total",
-    "ram_free",
-    "ram_usage",
-    "checksum",
-    NULL
+static struct deltas_fields_match_list const HARDWARE_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &HARDWARE_FIELDS[1]},
+    { .current = { "board_serial", "hardware.serial", false, "", "" }, .next = &HARDWARE_FIELDS[2]},
+    { .current = { "cpu_name", "hardware.cpu_name", false, "", "" }, .next = &HARDWARE_FIELDS[3]},
+    { .current = { "cpu_cores", "hardware.cpu_cores", false, "", "" }, .next = &HARDWARE_FIELDS[4]},
+    { .current = { "cpu_mhz", "hardware.cpu_mhz", false, "", "" }, .next = &HARDWARE_FIELDS[5]},
+    { .current = { "ram_total", "hardware.ram_total", false, "", "" }, .next = &HARDWARE_FIELDS[6]},
+    { .current = { "ram_free", "hardware.ram_free", false, "", "" }, .next = &HARDWARE_FIELDS[7]},
+    { .current = { "ram_usage", "hardware.ram_usage", false, "", "" }, .next = &HARDWARE_FIELDS[8]},
+    { .current = { "checksum", "", false, "", "" }, .next = NULL},
 };
 
-static const char* OS_FIELDS[] = {
-    "scan_time",
-    "hostname",
-    "architecture",
-    "os_name",
-    "os_version",
-    "os_codename",
-    "os_major",
-    "os_minor",
-    "os_patch",
-    "os_build",
-    "os_platform",
-    "sysname",
-    "release",
-    "version",
-    "os_release",
-    "os_display_version",
-    "checksum",
-    NULL
+static struct deltas_fields_match_list const OS_FIELDS[] = {
+    { .current = { "scan_time", "", false, "", "" }, .next = &OS_FIELDS[1]},
+    { .current = { "hostname", "os.hostname", false, "", "" }, .next = &OS_FIELDS[2]},
+    { .current = { "architecture", "os.architecture", false, "", "" }, .next = &OS_FIELDS[3]},
+    { .current = { "os_name", "os.name", false, "", "" }, .next = &OS_FIELDS[4]},
+    { .current = { "os_version", "os.version", false, "", "" }, .next = &OS_FIELDS[5]},
+    { .current = { "os_codename", "os.codename", false, "", "" }, .next = &OS_FIELDS[6]},
+    { .current = { "os_major", "os.major", false, "", "" }, .next = &OS_FIELDS[7]},
+    { .current = { "os_minor", "os.minor", false, "", "" }, .next = &OS_FIELDS[8]},
+    { .current = { "os_patch", "os.patch", false, "", "" }, .next = &OS_FIELDS[9]},
+    { .current = { "os_build", "os.build", false, "", "" }, .next = &OS_FIELDS[10]},
+    { .current = { "os_platform", "os.platform", false, "", "" }, .next = &OS_FIELDS[11]},
+    { .current = { "sysname", "os.sysname", false, "", "" }, .next = &OS_FIELDS[12]},
+    { .current = { "release", "os.release", false, "", "" }, .next = &OS_FIELDS[13]},
+    { .current = { "version", "os.version", false, "", "" }, .next = &OS_FIELDS[14]},
+    { .current = { "os_release", "os.os_release", false, "", "" }, .next = &OS_FIELDS[15]},
+    { .current = { "os_display_version", "os.display_version", false, "", "" }, .next = &OS_FIELDS[16]},
+    { .current = { "checksum", "", false, "", "" }, .next = NULL},
 };
 
 void SyscollectorInit(){
@@ -307,7 +304,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         }
     }
     else if (strncmp(msg_type, "dbsync_", 7) == 0) {
-        if (decode_dbsync(lf->agent_id, msg_type, logJSON, socket) < 0) {
+        if (decode_dbsync(lf, msg_type, logJSON, socket) < 0) {
             mdebug1("Unable to send %s information to Wazuh DB.", msg_type);
             cJSON_Delete (logJSON);
             return (0);
@@ -1934,42 +1931,40 @@ end:
     return retval;
 }
 
-const char** get_field_list(const char *type) {
-    char const **ret_val = NULL;
-    if (NULL != type) {
-        if (strcmp(type, "hotfixes") == 0) {
-            ret_val = HOTFIXES_FIELDS;
-        } else if(strcmp(type, "packages") == 0) {
-            ret_val = PACKAGES_FIELDS;
-        } else if(strcmp(type, "processes") == 0) {
-            ret_val = PROCESSES_FIELDS;
-        } else if(strcmp(type, "ports") == 0) {
-            ret_val = PORTS_FIELDS;
-        } else if(strcmp(type, "network_iface") == 0) {
-            ret_val = NETWORK_IFACE_FIELDS;
-        } else if(strcmp(type, "network_protocol") == 0) {
-            ret_val = NETWORK_PROTOCOL_FIELDS;
-        } else if(strcmp(type, "network_address") == 0) {
-            ret_val = NETWORK_ADDRESS_FIELDS;
-        } else if(strcmp(type, "hwinfo") == 0) {
-            ret_val = HARDWARE_FIELDS;
-        } else if(strcmp(type, "osinfo") == 0) {
-            ret_val = OS_FIELDS;
-        } else {
-            merror("Incorrect/unknown type value %s.", type);
-        }
+const struct deltas_fields_match_list * get_field_list(const char *type) {
+    const struct deltas_fields_match_list * ret_val = NULL;
+    // 'type' will not be NULL because this function is being called after checking the type value
+    if (strcmp(type, "hotfixes") == 0) {
+        ret_val = HOTFIXES_FIELDS;
+    } else if(strcmp(type, "packages") == 0) {
+        ret_val = PACKAGES_FIELDS;
+    } else if(strcmp(type, "processes") == 0) {
+        ret_val = PROCESSES_FIELDS;
+    } else if(strcmp(type, "ports") == 0) {
+        ret_val = PORTS_FIELDS;
+    } else if(strcmp(type, "network_iface") == 0) {
+        ret_val = NETWORK_IFACE_FIELDS;
+    } else if(strcmp(type, "network_protocol") == 0) {
+        ret_val = NETWORK_PROTOCOL_FIELDS;
+    } else if(strcmp(type, "network_address") == 0) {
+        ret_val = NETWORK_ADDRESS_FIELDS;
+    } else if(strcmp(type, "hwinfo") == 0) {
+        ret_val = HARDWARE_FIELDS;
+    } else if(strcmp(type, "osinfo") == 0) {
+        ret_val = OS_FIELDS;
     } else {
-        merror("null type value.");
+        merror("Incorrect/unknown type value %s.", type);
     }
     return ret_val;
 }
 
-bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const msg) {
+bool fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field_list, buffer_t * const msg) {
     bool ret_val = false;
     static const int NULL_TEXT_LENGTH = 4;
     static const int SEPARATOR_LENGTH = 1;
-    while (NULL != *field_list) {
-        const cJSON *key = cJSON_GetObjectItem(data, *field_list);
+    struct deltas_fields_match_list const * head = field_list;
+    while (NULL != head) {
+        const cJSON *key = cJSON_GetObjectItem(data, head->current.key);
         if (NULL != key) {
             if (cJSON_IsNumber(key)) {
                 char value[OS_SIZE_128] = { 0 };
@@ -1997,15 +1992,15 @@ bool fill_data_dbsync(cJSON *data, const char *field_list[], buffer_t * const ms
         // this must maintain order and must always be completed, and the values that
         // do not correspond will not be proccessed in wazuh-db
         buffer_push(msg, FIELD_SEPARATOR_DBSYNC, SEPARATOR_LENGTH);
-        ++field_list;
+        head = head->next;
         ret_val = true;
     }
     return ret_val;
 }
 
-int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *socket) {
+int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) {
     int ret_val = -1;
-    if (NULL != msg_type && NULL != agent_id && NULL != logJSON) {
+    if (NULL != msg_type && NULL != lf && NULL != lf->agent_id && NULL != logJSON) {
         char *type = NULL;
         if (strtok(msg_type, "_")) {
             type = strtok(NULL, "\0");
@@ -2014,13 +2009,13 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
             cJSON * operation_object = cJSON_GetObjectItem(logJSON, "operation");
             cJSON * data = cJSON_GetObjectItem(logJSON, "data");
             if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
-                const char **field_list = get_field_list(type);
+                const struct deltas_fields_match_list * field_list = get_field_list(type);
 
                 if (NULL != field_list) {
                     char *response = NULL;
                     char header[OS_SIZE_256] = { 0 };
                     os_calloc(OS_SIZE_128, sizeof(char), response);
-                    int header_size = snprintf(header, OS_SIZE_256 - 1, "agent %s dbsync %s %s ", agent_id, type, cJSON_GetStringValue(operation_object));
+                    int header_size = snprintf(header, OS_SIZE_256 - 1, "agent %s dbsync %s %s ", lf->agent_id, type, cJSON_GetStringValue(operation_object));
 
                     buffer_t *msg = buffer_initialize(OS_SIZE_6144);
                     buffer_push(msg, header, header_size);
