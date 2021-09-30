@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include "auth.h"
 #include "os_err.h"
+#include <config/authd-config.h>
 
 typedef enum auth_local_err {
     EINTERNAL = 0,
@@ -255,11 +256,17 @@ char* local_dispatch(const char *input) {
                         force_options.disconnected_time_enabled = (bool)item->valueint;
                     }
                     if (item = cJSON_GetObjectItem(disconnected_time, "value"), item) {
-                        force_options.disconnected_time = (long)item->valueint;
+                        if(get_time_interval(item->valuestring, &force_options.disconnected_time)){
+                            ierror = EJSON;
+                            goto fail;
+                        }
                     }
                 }
                 if (item = cJSON_GetObjectItem(force, "after_registration_time"), item) {
-                    force_options.after_registration_time = (long)item->valueint;
+                    if(get_time_interval(item->valuestring, &force_options.after_registration_time)){
+                        ierror = EJSON;
+                        goto fail;
+                    }
                 }
             }
 
