@@ -12,8 +12,6 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 file(GLOB FIMDB_HELLO_WORLD_UNIT_TEST_SRC
     "*.cpp")
 
-## Collects .cpp files with fimdb implementation
-
 file(GLOB RSYNC_IMP_SRC
      "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
 
@@ -23,9 +21,12 @@ file(GLOB DBSYNC_IMP_SRC
 
 add_definitions(-DWAZUH_UNIT_TESTING)
 
+## add every references needed within your test
+
 add_executable(hello_world_fimdb_test
     ${FIMDB_HELLO_WORLD_UNIT_TEST_SRC}
 )
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(hello_world_fimdb_test
         debug gtestd
