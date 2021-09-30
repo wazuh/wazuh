@@ -167,7 +167,11 @@ int bqueue_drop(bqueue_t * queue, size_t length) {
 }
 
 size_t bqueue_used(bqueue_t * queue) {
-    return _bqueue_used(queue);
+    pthread_mutex_lock(&queue->mutex);
+    size_t used = _bqueue_used(queue);
+    pthread_mutex_unlock(&queue->mutex);
+
+    return used;
 }
 
 void bqueue_clear(bqueue_t * queue) {
