@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Red Hat Enterprise Linux 8 Benchmark v1.0 - 09-30-2019
+# Center for Internet Security Red Hat Enterprise Linux 8 Benchmark v1.0.1 - 05-19-2021
 
 policy:
   id: "cis_rhel8_linux"
@@ -381,7 +381,7 @@ checks:
     rules:
       - 'c:mount -> r:\s/dev/shm\s && !r:noexec'
 
-        # 1.1.22 Disable Automounting
+# 1.1.22 Disable Automounting
   - id: 5020
     title: "Disable Automounting"
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
@@ -395,7 +395,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled autofs -> enabled'
+      - 'p:autofs'
 
       # 1.1.23 Disable USB Storage (Scored)
   - id: 5021
@@ -431,7 +431,7 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled rhnsd -> r:^disabled'
+      - 'p:rhnsd'
 
 # 1.2.4 Activate gpgcheck
   - id: 5023
@@ -619,9 +619,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
+      - 'c:grep -E "^\s*\*\s+hard\s+core" /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
       - 'c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable\s*=\s*0\s*$'
-      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+      - 'c:grep "fs\.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
 
 # 1.6.2 Ensure address space layout randomization (ASLR) is enabled (Scored)
   - id: 5033
@@ -1037,7 +1037,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled rsyncd -> enabled'
+      - 'p:rsyncd'
 
 # 2.2.4 Disable Avahi Server (Scored)
   - id: 5056
@@ -1053,7 +1053,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled avahi-daemon -> enabled'
+      - 'p:avahi-daemon'
 
 # 2.2.5 Remove SNMP Server (Scored)
   - id: 5057
@@ -1069,7 +1069,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled snmpd -> enabled'
+      - 'p:snmpd'
 
 # 2.2.6 Remove HTTP Proxy Server (Scored)
   - id: 5058
@@ -1085,7 +1085,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled squid -> enabled'
+      - 'p:squid'
 
 # 2.2.7 Remove Samba (Scored)
   - id: 5059
@@ -1101,7 +1101,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled smb -> enabled'
+      - 'p:smb'
 
 # 2.2.8 Remove Dovecot (IMAP and POP3 services) (Scored)
   - id: 5060
@@ -1117,7 +1117,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled dovecot -> enabled'
+      - 'p:dovecot'
 
 # 2.2.9 Remove HTTP Server (Scored)
   - id: 5061
@@ -1133,7 +1133,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled httpd -> enabled'
+      - 'p:httpd'
 
 # 2.2.10 Remove FTP Server (Scored)
   - id: 5062
@@ -1149,7 +1149,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled vsftpd -> enabled'
+      - 'p:vsftpd'
 
 # 2.2.11 Ensure DNS Server is not enabled (Scored)
   - id: 5063
@@ -1165,7 +1165,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled named -> enabled'
+      - 'p:named'
 
 
 # 2.2.12 Ensure NFS is not enabled (Scored)
@@ -1182,7 +1182,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled nfs -> enabled'
+      - 'p:nfs'
 
 # 2.2.13 Ensure RPC is not enabled (Scored)
   - id: 5065
@@ -1198,7 +1198,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled rpcbind -> enabled'
+      - 'p:rpcbind'
 
 # 2.2.14 Remove LDAP Server (Scored)
   - id: 5066
@@ -1216,7 +1216,7 @@ checks:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
     condition: none
     rules:
-      - 'c:systemctl is-enabled slapd -> enabled'
+      - 'p:slapd'
 
 # 2.2.15 Remove DHCP Server (Scored)
   - id: 5067
@@ -1234,7 +1234,7 @@ checks:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
     condition: none
     rules:
-      - 'c:systemctl is-enabled dhcpd -> enabled'
+      - 'p:dhcpd'
 
 # 2.2.16 Ensure CUPS is not enabled (Scored)
   - id: 5068
@@ -1252,7 +1252,7 @@ checks:
       - 'More detailed documentation on CUPS is available at the project homepage at http://www.cups.org.'
     condition: none
     rules:
-      - 'c:systemctl is-enabled cups -> enabled'
+      - 'p:cups'
 
 
 # 2.2.17 Remove NIS Server (Scored)
@@ -1272,7 +1272,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled ypserv -> enabled'
+      - 'p:ypserv'
 
 # 2.2.18 Ensure mail transfer agent is configured for local-only mode (Scored)
   - id: 5070
@@ -1706,7 +1706,7 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled firewalld -> enabled'
+      - 'p:firewalld'
       - 'c:firewall-cmd --state -> r:running'
 
 # 3.4.2.2 Ensure iptables is not enabled (Scored)
@@ -1724,7 +1724,7 @@ checks:
     rules:
       - 'c:systemctl status iptables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
       - 'c:systemctl status iptables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
-      - 'c:systemctl is-enabled iptables -> !r:enabled'
+      - 'not p:iptables'
 
 # 3.4.2.3 Ensure nftables is not enabled (Scored)
   - id: 5092
@@ -1741,7 +1741,7 @@ checks:
     rules:
       - 'c:systemctl status nftables -> r:Loaded:\s*disabled|Loaded:\s*masked|could not be found'
       - 'c:systemctl status nftables -> r:Active:\s*inactive\s*\(dead\)|could not be found'
-      - 'c:systemctl is-enabled nftables -> !r:^enabled'
+      - 'not p:nftables'
 
 ###############################################
 # 3.4.3 Configure nftables
@@ -1826,7 +1826,7 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled nftables -> r:^enabled'
+      - 'p:nftables'
 
 ###############################################
 # 3.4.4 Configure iptables
@@ -1836,7 +1836,7 @@ checks:
 ###############################################
 # 3.4.4.1.1 Ensure default deny firewall policy (Scored)
   - id: 5098
-    title: "Configure IPv4 iptables"
+    title: "Ensure iptables default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP; # iptables -P OUTPUT DROP; # iptables -P FORWARD DROP"
@@ -1944,24 +1944,6 @@ checks:
     rules:
       - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
 
-      # 4.2.1.1 Ensure rsyslog or syslog-ng is installed (Scored)
-  - id: 5104
-    title: "Ensure rsyslog is installed"
-    description: "The rsyslog software is a recommended replacement to the original syslogd daemon which provide improvements over syslogd , such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
-    rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
-    remediation: "Run the following command to install rsyslog:   # dnf install rsyslog"
-    compliance:
-      - cis: ["4.2.1.1"]
-      - cis_csc: ["6.2","6.3"]
-      - pci_dss: ["10.1"]
-      - nist_800_53: ["CM.1"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
-    condition: all
-    rules:
-      - 'c:rpm -q rsyslog -> r:^rsyslog-'
-
-
 
 ###############################################
 # 4 Logging and Auditing
@@ -2002,7 +1984,7 @@ checks:
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled auditd -> enabled'
+      - 'p:auditd'
 
 
 # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled (Scored)
@@ -2040,6 +2022,10 @@ checks:
     condition: all
     rules:
       - 'f:/boot/grub2/grubenv -> r:kernelopts= && n:audit_backlog_limit=(\d+) compare >= 8192'
+
+###############################################
+# 4.1.2 Configure Data Retention
+###############################################
 
 # 4.1.2.1 Ensure audit log storage size is configured (Not Scored)
   - id: 5109
@@ -2381,6 +2367,28 @@ checks:
     rules:
       - 'c:tail -1 /etc/audit/rules.d/99-finalize.rules -> -e 2'
 
+###############################################
+# 4.2 Configure Logging
+###############################################
+# 4.2.1 Configure rsyslog
+###############################################
+
+# 4.2.1.1 Ensure rsyslog or syslog-ng is installed (Scored)
+  - id: 5104
+    title: "Ensure rsyslog is installed"
+    description: "The rsyslog software is a recommended replacement to the original syslogd daemon which provide improvements over syslogd , such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
+    rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
+    remediation: "Run the following command to install rsyslog:   # dnf install rsyslog"
+    compliance:
+      - cis: ["4.2.1.1"]
+      - cis_csc: ["6.2","6.3"]
+      - pci_dss: ["10.1"]
+      - nist_800_53: ["CM.1"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
+    condition: all
+    rules:
+      - 'c:rpm -q rsyslog -> r:^rsyslog-'
 
 # 4.2.1.2 Ensure rsyslog Service is enabled (Scored)
   - id: 5126
@@ -2397,7 +2405,7 @@ checks:
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled rsyslog -> enabled'
+      - 'p:rsyslog'
 
 # 4.2.1.3 Ensure rsyslog default file permissions configured (Scored)
   - id: 5127
@@ -2431,6 +2439,10 @@ checks:
     condition: all
     rules:
       - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:*.* @@\.+'
+
+###############################################
+# 4.2.2 Configure journald
+###############################################
 
 # 4.2.2.1 Ensure journald is configured to send logs to rsyslog (Scored)
   - id: 5129
@@ -2519,7 +2531,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled crond -> enabled'
+      - 'p:crond'
 
 # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
   - id: 5134
@@ -2754,8 +2766,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*X11Forwarding\s*\t*no'
 
-
-      # 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less (Scored)
+# 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less (Scored)
   - id: 5147
     title: "Ensure SSH MaxAuthTries is set to 4 or less"
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
@@ -2868,7 +2879,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 300'
+      - 'c:sshd -T -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
       - 'c:sshd -T -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare <= 3'
 
 # 5.2.14 Ensure SSH LoginGraceTime is set to one minute or less (Scored)
@@ -2937,8 +2948,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
 
-
-      # 5.2.19 Ensure SSH MaxSessions is set to 4 or less (Scored)
+# 5.2.19 Ensure SSH MaxSessions is set to 4 or less (Scored)
   - id: 5158
     title: "Ensure SSH MaxSessions is set to 4 or less"
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
@@ -3231,28 +3241,12 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.3 Configure /etc/shadow permissions (Scored)
+# 6.1.4 Configure /etc/shadow permissions (Scored)
   - id: 5175
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
     remediation: "Run the following command to set permissions on /etc/ shadow: # chown root:root /etc/shadow  # chown root:shadow /etc/shadow    # chmod o-rwx,g-wx /etc/shadow"
-    compliance:
-      - cis: ["6.1.3"]
-      - cis_csc: ["16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
-
-# 6.1.4 Configure /etc/group permissions (Scored)
-  - id: 5176
-    title: "Ensure permissions on /etc/group are configured"
-    description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
-    rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
-    remediation: "Run the following command to set permissions on /etc/group: # chown root:root /etc/group # chmod 644 /etc/group"
     compliance:
       - cis: ["6.1.4"]
       - cis_csc: ["16.4"]
@@ -3261,62 +3255,14 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
 
-# 6.1.5 Configure /etc/gshadow permissions (Scored)
-  - id: 5177
-    title: "Ensure permissions on /etc/gshadow are configured"
-    description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
-    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
-    remediation: "Run the following command to set permissions on /etc/gshadow: # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow  # chmod o-rwx,g-rw /etc/gshadow"
-    compliance:
-      - cis: ["6.1.5"]
-      - cis_csc: ["16.14"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
-
-# 6.1.6 Configure /etc/passwd- permissions (Scored)
-  - id: 5178
-    title: "Ensure permissions on /etc/passwd- are configured"
-    description: "The /etc/passwd- file contains backup user account information."
-    rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following command to set permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod 600 /etc/passwd-"
-    compliance:
-      - cis: ["6.1.6"]
-      - cis_csc: ["16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
-# 6.1.7 Configure /etc/shadow- permissions (Scored)
-  - id: 5179
-    title: "Ensure permissions on /etc/shadow- are configured"
-    description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
-    rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following command to set permissions on /etc/shadow-: # chown root:shadow /etc/shadow-  # chmod u-x,go-rwx /etc/shadow-"
-    compliance:
-      - cis: ["6.1.7"]
-      - cis_csc: ["16.4"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
-
-# 6.1.8 Configure /etc/group- permissions (Scored)
-  - id: 5180
-    title: "Ensure permissions on /etc/group- are configured"
-    description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
-    rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following command to set permissions on /etc/group-: # chown root:root /etc/group- # chmod 644 /etc/group-"
+# 6.1.8 Configure /etc/group permissions (Scored)
+  - id: 5176
+    title: "Ensure permissions on /etc/group are configured"
+    description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
+    rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
+    remediation: "Run the following command to set permissions on /etc/group: # chown root:root /etc/group # chmod 644 /etc/group"
     compliance:
       - cis: ["6.1.8"]
       - cis_csc: ["16.4"]
@@ -3325,16 +3271,80 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
+      - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+# 6.1.6 Configure /etc/gshadow permissions (Scored)
+  - id: 5177
+    title: "Ensure permissions on /etc/gshadow are configured"
+    description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
+    remediation: "Run the following command to set permissions on /etc/gshadow: # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow  # chmod o-rwx,g-rw /etc/gshadow"
+    compliance:
+      - cis: ["6.1.6"]
+      - cis_csc: ["16.14"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
+
+# 6.1.3 Configure /etc/passwd- permissions (Scored)
+  - id: 5178
+    title: "Ensure permissions on /etc/passwd- are configured"
+    description: "The /etc/passwd- file contains backup user account information."
+    rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod 600 /etc/passwd-"
+    compliance:
+      - cis: ["6.1.3"]
+      - cis_csc: ["16.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+# 6.1.5 Configure /etc/shadow- permissions (Scored)
+  - id: 5179
+    title: "Ensure permissions on /etc/shadow- are configured"
+    description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+    rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set permissions on /etc/shadow-: # chown root:shadow /etc/shadow-  # chmod u-x,go-rwx /etc/shadow-"
+    compliance:
+      - cis: ["6.1.5"]
+      - cis_csc: ["16.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\w*/\s*\t*shadow\)'
+
+# 6.1.9 Configure /etc/group- permissions (Scored)
+  - id: 5180
+    title: "Ensure permissions on /etc/group- are configured"
+    description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
+    rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following command to set permissions on /etc/group-: # chown root:root /etc/group- # chmod 644 /etc/group-"
+    compliance:
+      - cis: ["6.1.9"]
+      - cis_csc: ["16.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
       - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.9 Configure /etc/gshadow- permissions (Scored)
+# 6.1.7 Configure /etc/gshadow- permissions (Scored)
   - id: 5181
     title: "Ensure permissions on /etc/gshadow- are configured"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow- : # chown root:root /etc/gshadow-  # chown root:shadow /etc/gshadow-  # chmod o-rwx,g-rw /etc/gshadow-"
     compliance:
-      - cis: ["6.1.9"]
+      - cis: ["6.1.7"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]

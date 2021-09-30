@@ -82,6 +82,7 @@ All notable changes to this project will be documented in this file.
 
 - **Ruleset**
   - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
+  - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1 ([#10354](https://github.com/wazuh/wazuh/pull/10354))
 
 ### Fixed
 
@@ -124,6 +125,9 @@ All notable changes to this project will be documented in this file.
   - Allow cluster to send and receive messages with size higher than request_chunk. ([#8732](https://github.com/wazuh/wazuh/pull/8732))
   - Fixed a bug that caused `wazuh-clusterd` process to not delete its pidfile when running in foreground mode and it is stopped. ([#9077](https://github.com/wazuh/wazuh/pull/9077))
 
+- **Ruleset**
+  - Fixed enabled-like checks for Amazon Linux 2 SCA ([#10315](https://github.com/wazuh/wazuh/pull/10315))
+  - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA ([#10354](https://github.com/wazuh/wazuh/pull/10354))
 ### Removed
 
 - **Core:**
@@ -382,7 +386,7 @@ All notable changes to this project will be documented in this file.
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
   - Fixed SCA checks for RHEL7 and CentOS 7. Thanks to J. Daniel Medeiros (@jdmedeiros). ([#7645](https://github.com/wazuh/wazuh/pull/7645))
   - Fixed the match criteria of the AWS WAF rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
-  - Fixed sample log in sudo decoders. 
+  - Fixed sample log in sudo decoders.
   - Fixed Pix Decoders match regex. ([#7485](https://github.com/wazuh/wazuh/pull/7495))
   - Fixed regex in Syslog Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
   - Fixed category in PIX Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
