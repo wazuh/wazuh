@@ -11,33 +11,32 @@
 #include "dbFileItem.hpp"
 #include "syscheck.h"
 
-fim_entry FileItem::createFimEntry() {
+void FileItem::createFimEntry() {
     fim_type type = FIM_TYPE_FILE;
     fim_entry fim = {};
     fim.type = type;
     fim.file_entry.path = const_cast<char*>(m_identifier.c_str());
-    fim_file_data data;
-    data.size = m_size;
-    data.perm = const_cast<char*>(m_perm.c_str());
-    data.attributes = const_cast<char*>(m_attributes.c_str());
-    data.uid = const_cast<char*>(std::to_string(m_uid).c_str());
-    data.gid = const_cast<char*>(std::to_string(m_gid).c_str());
-    data.user_name = const_cast<char*>(m_username.c_str());
-    data.group_name = const_cast<char*>(m_groupname.c_str());
-    data.mtime = m_time;
-    data.inode = m_inode;
-    strncpy(data.hash_md5, m_md5.c_str(), sizeof(data.hash_md5));
-    strncpy(data.hash_sha1, m_sha1.c_str(), sizeof(data.hash_sha1));
-    strncpy(data.hash_sha256, m_sha256.c_str(), sizeof(data.hash_sha256));
-    data.mode = m_mode;
-    data.last_event = m_lastEvent;
-    data.dev = m_dev;
-    data.scanned = m_scanned;
-    data.options = m_options;
-    strncpy(data.checksum, m_checksum.c_str(), sizeof(data.checksum));
-    fim.file_entry.data = &data;
-
-    return fim;
+    fim_file_data *data = reinterpret_cast<fim_file_data*>(calloc(1, sizeof(fim_file_data)));
+    data->size = m_size;
+    data->perm = const_cast<char*>(m_perm.c_str());
+    data->attributes = const_cast<char*>(m_attributes.c_str());
+    data->uid = const_cast<char*>(std::to_string(m_uid).c_str());
+    data->gid = const_cast<char*>(std::to_string(m_gid).c_str());
+    data->user_name = const_cast<char*>(m_username.c_str());
+    data->group_name = const_cast<char*>(m_groupname.c_str());
+    data->mtime = m_time;
+    data->inode = m_inode;
+    strncpy(data->hash_md5, m_md5.c_str(), sizeof(data->hash_md5));
+    strncpy(data->hash_sha1, m_sha1.c_str(), sizeof(data->hash_sha1));
+    strncpy(data->hash_sha256, m_sha256.c_str(), sizeof(data->hash_sha256));
+    data->mode = m_mode;
+    data->last_event = m_lastEvent;
+    data->dev = m_dev;
+    data->scanned = m_scanned;
+    data->options = m_options;
+    strncpy(data->checksum, m_checksum.c_str(), sizeof(data->checksum));
+    fim.file_entry.data = data;
+    m_fimEntry = std::make_unique<fim_entry>(fim);
 }
 
 void FileItem::createJSON() {
