@@ -431,7 +431,7 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled rhnsd -> r:^disabled'
+      - 'p:rhnsd'
 
 # 1.2.4 Activate gpgcheck
   - id: 5023
