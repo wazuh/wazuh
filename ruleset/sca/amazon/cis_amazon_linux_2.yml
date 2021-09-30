@@ -133,7 +133,7 @@ checks:
     condition: any
     rules:
       - 'c:mount -> r:\s/tmp\s'
-      - 'p:tmp.mount'
+      - 'c:systemctl is-enabled tmp.mount -> r:enabled'
 
 # 1.1.3 /tmp: nodev
   - id: 20506
@@ -397,7 +397,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:autofs'
+      - 'c:systemctl is-enabled autofs -> r:enabled'
 
 ###############################################
 # 1.2 Configure Software Updates
@@ -458,9 +458,9 @@ checks:
     rules:
       - 'c:crontab -u root -l -> r:aide'
       - 'c:grep -r aide /etc/cron.* /etc/crontab -> r:aide'
-      - 'p:aidecheck.service'
-      - 'p:aidecheck.timer'
-      - 'p:aidecheck.timer'
+      - 'c:systemctl is-enabled aidecheck.service -> r:enabled'
+      - 'c:systemctl is-enabled aidecheck.timer -> r:enabled'
+      - 'c:systemctl status aidecheck.timer -> r:enabled'
 
 ###############################################
 # 1.4 Secure Boot Settings
@@ -875,7 +875,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:avahi-daemon'
+      - 'c:systemctl is-enabled avahi-daemon -> r:enabled'
 
 # 2.1.4 Ensure CUPS is not enabled (Automated)
   - id: 20548
@@ -891,7 +891,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:cups'
+      - 'c:systemctl is-enabled cups ->  r:enabled'
 
 # 2.1.5 Ensure DHCP Server is not enabled (Automated)
   - id: 20549
@@ -909,7 +909,7 @@ checks:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
     condition: none
     rules:
-      - 'p:dhcp'
+      - 'c:systemctl is-enabled dhcp ->  r:enabled'
 
 
 # 2.1.6  Ensure LDAP server is not enabled (Automated)
@@ -928,7 +928,7 @@ checks:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
     condition: none
     rules:
-      - 'p:slapd'
+      - 'c:systemctl is-enabled slapd ->  r:enabled'
 
 
 
@@ -946,9 +946,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:nfs'
-      - 'p:nfs-server'
-      - 'p:rpcbind'
+      - 'c:ystemctl is-enabled nfs ->  r:enabled'
+      - 'c:ystemctl is-enabled nfs-server ->  r:enabled'
+      - 'c:ystemctl is-enabled rpcbind ->  r:enabled'
 
 # 2.1.8 Ensure DNS Server is not enabled (Automate)
   - id: 20552
@@ -964,7 +964,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:named'
+      - 'c:systemctl is-enabled named -> r:enabled'
 
 # 2.1.9 Ensure FTP Server is not enabled (Automated)
   - id: 20553
@@ -980,7 +980,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:vsftdp'
+      - 'c:systemctl is-enabled vsftdp -> r:enabled'
 
 # 2.1.10 Ensure HTTP server is not enabled (Automated)
   - id: 20554
@@ -996,7 +996,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:httpd'
+      - 'c:systemctl is-enabled httpd -> r:enabled'
 
 # 2.1.11 Ensure IMAP and POP3 server is not enabled (Automated)
   - id: 20555
@@ -1012,7 +1012,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:dovecat'
+      - 'c:systemctl is-enabled dovecat -> r:enabled'
 
 # 2.1.12 Ensure Samba is not enabled (Automated)
   - id: 20556
@@ -1028,7 +1028,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:dovecat'
+      - 'c:systemctl Samba dovecat -> r:enabled'
 
 # 2.1.13 Ensure HTTP Proxy Server is not enabled (Automated)
   - id: 20557
@@ -1044,7 +1044,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:squid'
+      - 'c:systemctl is-enabled squid -> r:enabled'
 
 # 2.1.14 Ensure net-snmp is not enabled (Automated)
   - id: 20558
@@ -1060,7 +1060,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:snmpd'
+      - 'c:systemctl is-enabled snmpd -> r:enabled'
 
 # 2.1.15 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 20559
@@ -1095,7 +1095,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:ypserv'
+      - 'c:systemctl is-enabled ypserv -> r:enabled'
 
   # 2.1.17 Ensure rsh server is not enabled (Automated)
   - id: 20561
@@ -1114,9 +1114,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:rsh.socket'
-      - 'p:rlogin.socket'
-      - 'p:rexec.socket'
+      - 'c:systemctl is-enabled rsh.socket -> r:enabled'
+      - 'c:systemctl is-enabled rlogin.socket -> r:enabled'
+      - 'c:systemctl is-enabled rexec.socket -> r:enabled'
 
 
 # 2.1.18 Ensure telnet-server is not enabled (Automated)
@@ -1135,7 +1135,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - 'p:telnet.socket'
+      - 'c:systemctl is-enabled telnet.socket -> r:enabled'
 
 # 2.1.19 Ensure tftp server is not enabled (Automated)
   - id: 20563
@@ -1153,7 +1153,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - 'p:tftp.socket'
+      - 'c:systemctl is-enabled tftp.socket -> r:enabled'
 
 # 2.1.20 Ensure rsync is not enabled (Automated)
   - id: 20564
@@ -1169,7 +1169,7 @@ checks:
       - tsc: ["CC5.2","CC6.4","CC6.6","CC6.7"]
     condition: none
     rules:
-      - 'p:rsyncd'
+      - 'c:systemctl is-enabled rsyncd ->  r:enabled'
 
 
 ###############################################
