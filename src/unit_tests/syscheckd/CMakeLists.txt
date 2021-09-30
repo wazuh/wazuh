@@ -95,7 +95,7 @@ if(${TARGET} STREQUAL "winagent")
   add_subdirectory(registry)
 endif()
 
-add_subdirectory(db)
+#add_subdirectory(db)
 add_subdirectory(whodata)
 
 # Generate Syscheckd tests

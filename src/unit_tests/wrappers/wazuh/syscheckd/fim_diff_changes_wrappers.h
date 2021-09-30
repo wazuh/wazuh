@@ -37,7 +37,7 @@ char *__wrap_fim_registry_value_diff(const char *key_name,
                                      const char *value_name,
                                      const char *value_data,
                                      DWORD data_type,
-                                     const registry *configuration);
+                                     const registry_t *configuration);
 
 /**
  * @brief This function loads the expect and will return of the function fim_registry_value_diff
