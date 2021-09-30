@@ -173,6 +173,9 @@ class DistributedAPI:
         except json.decoder.JSONDecodeError:
             e = exception.WazuhInternalError(3036)
             e.dapi_errors = self.get_error_info(e)
+            if self.debug:
+                raise
+            self.logger.error(f"{e.message}")
             return e
         except exception.WazuhError as e:
             e.dapi_errors = self.get_error_info(e)
