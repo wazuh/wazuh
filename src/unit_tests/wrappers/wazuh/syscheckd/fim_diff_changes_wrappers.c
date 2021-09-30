@@ -40,7 +40,7 @@ char *__wrap_fim_registry_value_diff(const char *key_name,
                                      const char *value_name,
                                      const char *value_data,
                                      DWORD data_type,
-                                     __attribute__((unused)) const registry *configuration) {
+                                     __attribute__((unused)) const registry_t *configuration) {
     check_expected(key_name);
     check_expected(value_name);
     check_expected(value_data);
