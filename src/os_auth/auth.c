@@ -197,7 +197,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
 
     cJSON *j_agent_info = NULL;
     cJSON *j_date_add = NULL;
-    cJSON *j_disconnected_time = NULL;
+    cJSON *j_disconnection_time = NULL;
     cJSON *j_connection_status = NULL;
     bool replace_agent = true;
     char message[OS_SIZE_128] = {0};
@@ -212,11 +212,11 @@ w_err_t w_auth_replace_agent(keyentry *key,
     j_agent_info = wdb_get_agent_info(atoi(key->id), NULL);
     if (j_agent_info) {
         j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
-        j_disconnected_time = cJSON_GetObjectItem(j_agent_info->child, "disconnected_time");
+        j_disconnection_time = cJSON_GetObjectItem(j_agent_info->child, "disconnection_time");
         j_date_add = cJSON_GetObjectItem(j_agent_info->child, "date_add");
     }
 
-    if (!j_agent_info || !j_connection_status || !j_disconnected_time || !j_date_add) {
+    if (!j_agent_info || !j_connection_status || !j_disconnection_time || !j_date_add) {
         cJSON_Delete(j_agent_info);
         snprintf(message, OS_SIZE_128, "Failed to get agent-info for agent '%s'", key->id);
         os_strdup(message, *str_result);
@@ -226,12 +226,12 @@ w_err_t w_auth_replace_agent(keyentry *key,
     /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
     if (force_options->disconnected_time_enabled) {
         if (strcmp(j_connection_status->valuestring, AGENT_CS_NEVER_CONNECTED)) {
-            time_t time_since_disconnected = difftime(time(NULL), j_disconnected_time->valueint);
-            if (!strcmp(j_connection_status->valuestring, AGENT_CS_DISCONNECTED) && j_disconnected_time->valueint > 0 && time_since_disconnected < force_options->disconnected_time) {
+            time_t time_since_disconnected = difftime(time(NULL), j_disconnection_time->valueint);
+            if (!strcmp(j_connection_status->valuestring, AGENT_CS_DISCONNECTED) && j_disconnection_time->valueint > 0 && time_since_disconnected < force_options->disconnected_time) {
                 snprintf(message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", key->id);
                 os_strdup(message, *str_result);
                 replace_agent = false;
-            } else if (j_disconnected_time->valueint == 0) {
+            } else if (j_disconnection_time->valueint == 0) {
                 snprintf(message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", key->id);
                 os_strdup(message, *str_result);
                 replace_agent = false;
