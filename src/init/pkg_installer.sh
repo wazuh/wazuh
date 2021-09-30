@@ -2,42 +2,101 @@
 
 # Copyright (C) 2015-2021, Wazuh Inc.
 
-SERVICE=wazuh-agent
 
-# Generating Backup
-CURRENT_DIR=`pwd`
+SERVICE=wazuh-agent
+OSSEC_INIT_FILE=/etc/ossec-init.conf
+WAZUH_HOME=$(pwd)
 TMP_DIR_BACKUP=./tmp_bkp
+
+
+# Clean before backup
+WAZUH_REVISION=0
+OSSEC_LIST_FILES=""
+RESTORE_OSSEC_OWN=0
+SYSTEMD_SERVICE_UNIT_PATH=""
+INIT_PATH=""
+CHK_CONFIG=0
 rm -rf ./tmp_bkp/
 
+
+create_ossec_ug() {
+
+    exists_group=$(getent group ossec)  2>/dev/null; [ -z "${exists_group}" ] && exists_group=$(id -g ossec 2>/dev/null);
+
+    # Create the ossec group if it doesn't exists
+    if [ -z "${exists_group}" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring ossec group." >> ./logs/upgrade.log
+            if command -v groupadd > /dev/null 2>&1; then
+                groupadd -r ossec >> ./logs/upgrade.log 2>&1
+            elif
+                addgroup --system ossec >> ./logs/upgrade.log 2>&1
+            fi
+    fi
+
+   exists_user=$(getent group ossec)  2>/dev/null; [ -z "${exists_user}" ] && exists_user=$(id -g ossec 2>/dev/null);
+    # Create the ossec group if it doesn't exists
+    if [ -z "${exists_user}" ]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring ossec user." >> ./logs/upgrade.log
+
+            NO_SHELL=/sbin/nologin
+            if [ ! -f ${NO_SHELL} ]; then
+                if [ -f "/bin/false" ]; then
+                    NO_SHELL="/bin/false"
+                fi
+            fi
+
+            if command -v useradd > /dev/null 2>&1; then
+               useradd -g ossec -G ossec -d "${WAZUH_HOME}" -r -s ${NO_SHELL} ossec >> ./logs/upgrade.log 2>&1
+            elif
+               adduser --system --home "${WAZUH_HOME}" --shell ${NO_SHELL} --ingroup ${GROUP} ${USER} >> ./logs/upgrade.log 2>&1
+            fi
+    fi
+
+}
+
+# Search Agent version
+
+# Agent >= 4.2
+eval $(./bin/wazuh-control info 2>/dev/null)
+if [ -z "${WAZUH_REVISION}" ] ; then
+    # Agent < 4.2
+    REVISION=""
+    source $OSSEC_INIT_FILE
+    if [ -n "${REVISION}" ] ; then
+        WAZUH_REVISION="${REVISION}"
+    fi
+fi
+
+
+# Generating Backup
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 declare -a FOLDERS_TO_BACKUP
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 
 # Generate wazuh home directory tree to backup
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/active-response)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/bin)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/etc)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/lib)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/queue)
-[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/ruleset)
-[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/wodles)
-[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/agentless)
-[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/logs/ossec)
-[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/var/selinux)
+[ -d "./active-response" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/active-response)
+[ -d "./bin" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/bin)
+[ -d "./etc" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/etc)
+[ -d "./lib" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/lib)
+[ -d "./queue" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/queue)
+[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/ruleset)
+[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/wodles)
+[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/agentless)
+[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/logs/ossec)
+[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/var/selinux)
 
 for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     mkdir -p "${TMP_DIR_BACKUP}${dir}"
     cp -a ${dir}/* "${TMP_DIR_BACKUP}${dir}"
 done
 
-if [ -f /etc/ossec-init.conf ]; then
+if [ -f $OSSEC_INIT_FILE ]; then
     mkdir -p ./tmp_bkp/etc
-    cp -p /etc/ossec-init.conf ./tmp_bkp/etc
+    cp -p $OSSEC_INIT_FILE ./tmp_bkp/etc
 fi
 
 # Check if systemd is used
-SYSTEMD_SERVICE_UNIT_PATH=""
 # RHEL 8 >= services must must be installed in /usr/lib/systemd/system/
 if [ -f /usr/lib/systemd/system/${SERVICE}.service ] && [ ! -h /usr/lib/systemd/system ]; then
     SYSTEMD_SERVICE_UNIT_PATH=/usr/lib/systemd/system/${SERVICE}.service
@@ -52,9 +111,6 @@ if [ -f /etc/systemd/system/${SERVICE}.service ] && [ ! -h /etc/systemd/system ]
 fi
 
 # Init backup
-INIT_PATH=""
-CHK_CONFIG=0
-
 # REHL <= 6 / Amazon linux
 if [ -f "/etc/rc.d/init.d/${SERVICE}" ] && [ ! -h /etc/rc.d/init.d ]; then
     CHK_CONFIG=1
@@ -75,14 +131,22 @@ BACKUP_LIST_FILES=$(find "${TMP_DIR_BACKUP}/" -type d)
 
 while read -r line; do
     org=$(echo "${line}" | awk "sub(\"${TMP_DIR_BACKUP}\",\"\")")
-    chown --reference=$org $line
-    chmod --reference=$org $line
+    chown --reference=$org $line >> ./logs/upgrade.log 2>&1
+    chmod --reference=$org $line >> ./logs/upgrade.log 2>&1
 done <<< "$BACKUP_LIST_FILES"
+
 
 # Generate Backup
 mkdir -p ./backup
 tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
 rm -rf ./tmp_bkp/
+
+# If necessary, save the list of files with the ossec ownership (Agent < 4.3)
+if [ "${WAZUH_REVISION}" -lt "40300" ]; then
+    RESTORE_OSSEC_OWN=1
+    OSSEC_LIST_FILES=$(find ./  | xargs -I % ls -ld '%' | grep " ossec" | awk '{out=""; for(i=9;i<=NF;i++){out=out $i}; print $3":"$4 " " out}')
+fi
+
 
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
@@ -90,7 +154,8 @@ chmod +x ./var/upgrade/install.sh
 ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
 
 # Check installation result
-RESULT=$?
+# RESULT=$?
+RESULT=1
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/upgrade.log
 
@@ -136,9 +201,28 @@ else
         rm -f /usr/lib/systemd/system/${SERVICE}.service
     fi
 
+    # Create ossec:ossec if is necessary
+    if [ $RESTORE_OSSEC_OWN -eq 1 ]; then
+        create_ossec_ug()
+    fi
+
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
     tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
+
+    # Assign the new ownership if is necesary
+    if [ $RESTORE_OSSEC_OWN -eq 1 ]; then
+
+        while read -r line; do
+            TFILE_OWN=$(echo $line | cut -d " " -f -1)
+            TFILE_PATH=$(echo $line | cut -d " " -f 2-)
+            chown $TFILE_OWN "${TFILE_PATH}" >> ./logs/upgrade.log 2>&1
+        done <<< "$OSSEC_LIST_FILES"
+
+        # If there are files with the group or user wazuh, we change them to ossec.
+        find ./ -group wazuh -exec chgrp ossec {} \;
+        find ./ -user wazuh -exec chown ossec {} \;
+    fi
 
     # Restore SELinuxPolicy
     if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
