@@ -170,6 +170,10 @@ class DistributedAPI:
             return response if isinstance(response, (wresults.AbstractWazuhResult, exception.WazuhException)) \
                 else wresults.WazuhResult(response)
 
+        except json.decoder.JSONDecodeError:
+            e = exception.WazuhInternalError(3036)
+            e.dapi_errors = self.get_error_info(e)
+            return e
         except exception.WazuhError as e:
             e.dapi_errors = self.get_error_info(e)
             return e
@@ -177,8 +181,7 @@ class DistributedAPI:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
-            # Avoid exception info if it is a JSONDecodeError
-            self.logger.error(f'{e.message}', exc_info=True if e.code != 3036 else False)
+            self.logger.error(f'{e.message}', exc_info=True)
             return e
         except Exception as e:
             if self.debug:
@@ -276,7 +279,7 @@ class DistributedAPI:
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
             # Avoid exception info if it is an asyncio timeout or JSONDecodeError
-            self.logger.error(f"{e.message}", exc_info=True if e.code not in [3021, 3036] else False)
+            self.logger.error(f'{e.message}', exc_info=e.code not in {3021, 3036})
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -382,13 +385,8 @@ class DistributedAPI:
                                              data=json.dumps(self.to_dict(),
                                                              cls=c_common.WazuhJSONEncoder).encode(),
                                              wait_for_complete=self.wait_for_complete)
-        try:
-            response = json.loads(node_response,
-                                  object_hook=c_common.as_wazuh_object)
-        except json.decoder.JSONDecodeError:
-            raise exception.WazuhInternalError(3036)
-
-        return response
+        return json.loads(node_response,
+                          object_hook=c_common.as_wazuh_object)
 
     async def forward_request(self) -> [wresults.AbstractWazuhResult, exception.WazuhException]:
         """Forward a request to the node who has all available information to answer it.
@@ -435,8 +433,6 @@ class DistributedAPI:
                                                                             ).encode(),
                                                              self.wait_for_complete),
                                         object_hook=c_common.as_wazuh_object)
-                except json.decoder.JSONDecodeError:
-                    raise exception.WazuhInternalError(3036)
                 except WazuhClusterError as e:
                     if e.code == 3022:
                         result = e
