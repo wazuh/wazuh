@@ -207,7 +207,7 @@ static void test_w_auth_validate_data_replace_agent(void **state) {
     w_err_t err;
     char *connection_status = "active";
     time_t date_add = 1632255744;
-    time_t disconnected_time = 0;
+    time_t disconnection_time = 0;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
@@ -215,7 +215,7 @@ static void test_w_auth_validate_data_replace_agent(void **state) {
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 
@@ -233,7 +233,7 @@ static void test_w_auth_validate_data_replace_agent(void **state) {
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 
@@ -333,14 +333,14 @@ static void test_w_auth_replace_agent_not_disconnected(void **state) {
     char *connection_status = "active";
     char* str_result = NULL;
     time_t date_add = 1632255744;
-    time_t disconnected_time = 0;
+    time_t disconnection_time = 0;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 
@@ -368,14 +368,14 @@ static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state)
     char *connection_status = "disconnected";
     char* str_result = NULL;
     time_t date_add = 1632255744;
-    time_t disconnected_time = 1632258049;
+    time_t disconnection_time = 1632258049;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 
@@ -406,14 +406,14 @@ static void test_w_auth_replace_agent_not_old_enough(void **state) {
     char *connection_status = "active";
     char* str_result = NULL;
     time_t date_add = 1632255744;
-    time_t disconnected_time = 0;
+    time_t disconnection_time = 0;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 
@@ -446,14 +446,14 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     char *connection_status = "never_connected";
     char* str_result = NULL;
     time_t date_add = 1632255744;
-    time_t disconnected_time = 0;
+    time_t disconnection_time = 0;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 
@@ -481,14 +481,14 @@ static void test_w_auth_replace_agent_success(void **state) {
     char *connection_status = "disconnected";
     char* str_result = NULL;
     time_t date_add = 1632255744;
-    time_t disconnected_time = 1632258049;
+    time_t disconnection_time = 1632258049;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
     j_agent_info_array = cJSON_CreateArray();
     j_agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
     cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
     cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
 

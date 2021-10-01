@@ -32,7 +32,7 @@ static const char *global_db_agent_fields[] = {
     ":version",
     ":last_keepalive",
     ":connection_status",
-    ":disconnected_time",
+    ":disconnection_time",
     ":id",
     NULL
 };
@@ -389,10 +389,10 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
 
 int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *connection_status, const char *sync_status) {
     sqlite3_stmt *stmt = NULL;
-    time_t disconnected_time = 0;
+    time_t disconnection_time = 0;
 
     if (!strcmp(connection_status, AGENT_CS_DISCONNECTED)) {
-        disconnected_time = time(NULL);
+        disconnection_time = time(NULL);
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -415,7 +415,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 3, disconnected_time) != SQLITE_OK) {
+    if (sqlite3_bind_int(stmt, 3, disconnection_time) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
