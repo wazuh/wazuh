@@ -583,15 +583,15 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
     Parameters
     ----------
     source : str
-        Full path to source file
+        Full path to source file.
     target : str
-        Full path to target file
+        Full path to target file.
     ownership : tuple
-        Tuple in the form (user, group) to be set up after the file is moved
+        Tuple in the form (user, group) to be set up after the file is moved.
     time : tuple
-        Tuple in the form (addition_timestamp, modified_timestamp)
+        Tuple in the form (addition_timestamp, modified_timestamp).
     permissions : str
-        String mask in octal notation. I.e.: '0o640'
+        String mask in octal notation. I.e.: '0o640'.
     """
     # Create temp file. Move between
     tmp_path, tmp_filename = path.split(target)
