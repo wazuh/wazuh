@@ -12,11 +12,11 @@
 #include "syscheck.h"
 
 void FileItem::createFimEntry() {
-    fim_type type = FIM_TYPE_FILE;
-    fim_entry fim = {};
-    fim.type = type;
-    fim.file_entry.path = const_cast<char*>(m_identifier.c_str());
+    fim_entry *fim = nullptr;
     fim_file_data *data = reinterpret_cast<fim_file_data*>(calloc(1, sizeof(fim_file_data)));
+
+    fim->type = FIM_TYPE_FILE;
+    fim->file_entry.path = const_cast<char*>(m_identifier.c_str());
     data->size = m_size;
     data->perm = const_cast<char*>(m_perm.c_str());
     data->attributes = const_cast<char*>(m_attributes.c_str());
@@ -35,8 +35,8 @@ void FileItem::createFimEntry() {
     data->scanned = m_scanned;
     data->options = m_options;
     strncpy(data->checksum, m_checksum.c_str(), sizeof(data->checksum));
-    fim.file_entry.data = data;
-    m_fimEntry = std::make_unique<fim_entry>(fim);
+    fim->file_entry.data = data;
+    m_fimEntry = std::unique_ptr<fim_entry, FimFileDataDeleter>(fim);
 }
 
 void FileItem::createJSON() {

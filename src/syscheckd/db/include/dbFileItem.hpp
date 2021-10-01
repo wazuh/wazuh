@@ -14,6 +14,13 @@
 #include "json.hpp"
 #include "dbItem.hpp"
 
+struct FimFileDataDeleter {
+    void operator()(fim_entry* address) {
+        if (address) {
+            free(address);
+        }
+    }
+};
 class FileItem final : public DBItem {
 public:
     FileItem(fim_entry * const file_entry)
@@ -76,27 +83,27 @@ public:
              {
                 createFimEntry();
              }
-    ~FileItem() {};
+    ~FileItem() = default;
     fim_entry* toFimEntry() { return m_fimEntry.get(); };
     nlohmann::json* toJSON();
 
 private:
-    int                                 m_options;
-    int                                 m_gid;
-    int                                 m_uid;
-    unsigned int                        m_size;
-    unsigned long int                   m_dev;
-    unsigned long int                   m_inode;
-    time_t                              m_time;
-    std::string                         m_attributes;
-    std::string                         m_groupname;
-    std::string                         m_md5;
-    std::string                         m_perm;
-    std::string                         m_sha1;
-    std::string                         m_sha256;
-    std::string                         m_username;
-    std::unique_ptr<fim_entry>          m_fimEntry;
-    std::unique_ptr<nlohmann::json>     m_statementConf;
+    int                                             m_options;
+    int                                             m_gid;
+    int                                             m_uid;
+    unsigned int                                    m_size;
+    unsigned long int                               m_dev;
+    unsigned long int                               m_inode;
+    time_t                                          m_time;
+    std::string                                     m_attributes;
+    std::string                                     m_groupname;
+    std::string                                     m_md5;
+    std::string                                     m_perm;
+    std::string                                     m_sha1;
+    std::string                                     m_sha256;
+    std::string                                     m_username;
+    std::unique_ptr<fim_entry, FimFileDataDeleter>  m_fimEntry;
+    std::unique_ptr<nlohmann::json>                 m_statementConf;
     
     void createFimEntry();
     void createJSON();
