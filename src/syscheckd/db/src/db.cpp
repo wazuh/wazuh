@@ -23,14 +23,15 @@ extern "C" {
 
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
-                        const char * const file, const int line);
+                        const char* const file, const int line);
 
 #undef assert
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
-const char *SQL_STMT[] = {
+const char* SQL_STMT[] =
+{
     // Files
     [FIMDB_STMT_REPLACE_ENTRY] = "INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [FIMDB_STMT_GET_PATH] = "SELECT path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry WHERE path = ?;",
@@ -88,7 +89,7 @@ const char *SQL_STMT[] = {
  * @param input string with the path of the synchronization message.
  * @return char* Pointer to the separator. If the separator wasn't found, returns NULL.
  */
-static char *find_key_value_limiter(char *input);
+static char* find_key_value_limiter(char* input);
 
 #endif
 
@@ -103,46 +104,53 @@ std::string CreateStatement()
     return ret;
 }
 
-fdb_t *fim_db_init(int storage) {
-    fdb_t *fim;
+fdb_t* fim_db_init(int storage)
+{
+    fdb_t* fim;
 
     std::unique_ptr<DBSync> handler_DBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, CreateStatement());
 
-    const char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+    const char* path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
     fim->transaction.interval = COMMIT_INTERVAL;
 
     w_mutex_init(&fim->mutex, NULL);
 
-    if (storage == FIM_DB_DISK) {
+    if (storage == FIM_DB_DISK)
+    {
         fim_db_clean();
     }
 
-    if (fim_db_create_file(path, schema_fim_sql, storage, &fim->db) < 0) {
+    if (fim_db_create_file(path, schema_fim_sql, storage, &fim->db) < 0)
+    {
         goto free_fim;
     }
 
     if (!storage &&
-        sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL)) {
+            sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL))
+    {
         goto free_fim;
     }
 
-    if (fim_db_cache(fim)) {
+    if (fim_db_cache(fim))
+    {
         goto free_fim;
     }
 
-    char *error;
+    char* error;
     sqlite3_exec(fim->db, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;", NULL, NULL, &error);
 
-    if (error) {
+    if (error)
+    {
         merror("SQL error setting synchronous and journal mode: %s (%d)", error, sqlite3_extended_errcode(fim->db));
         fim_db_finalize_stmt(fim);
         sqlite3_free(error);
         goto free_fim;
     }
 
-    if (fim_db_exec_simple_wquery(fim, "BEGIN;") == FIMDB_ERR) {
+    if (fim_db_exec_simple_wquery(fim, "BEGIN;") == FIMDB_ERR)
+    {
         fim_db_finalize_stmt(fim);
         goto free_fim;
     }
@@ -150,27 +158,35 @@ fdb_t *fim_db_init(int storage) {
     return fim;
 
 free_fim:
-    if (fim->db){
+
+    if (fim->db)
+    {
         sqlite3_close_v2(fim->db);
     }
+
     os_free(fim);
     return NULL;
 }
 
-void fim_db_close(fdb_t *fim_sql) {
+void fim_db_close(fdb_t* fim_sql)
+{
     fim_db_force_commit(fim_sql);
     fim_db_finalize_stmt(fim_sql);
     sqlite3_close_v2(fim_sql->db);
 }
 
 
-void fim_db_clean(void) {
+void fim_db_clean(void)
+{
 
-    if (w_is_file(FIM_DB_DISK_PATH)) {
+    if (w_is_file(FIM_DB_DISK_PATH))
+    {
         // If the file is being used by other processes, wait until
         // it's unlocked in order to remove it. Wait at most 5 seconds.
         int i, rm;
-        for (i = 1; i <= FIMDB_RM_MAX_LOOP && (rm = remove(FIM_DB_DISK_PATH)); i++) {
+
+        for (i = 1; i <= FIMDB_RM_MAX_LOOP && (rm = remove(FIM_DB_DISK_PATH)); i++)
+        {
             mdebug2(FIM_DELETE_DB_TRY, FIM_DB_DISK_PATH, i);
 #ifdef WIN32
             Sleep(FIMDB_RM_DEFAULT_TIME * i); //milliseconds
@@ -180,8 +196,10 @@ void fim_db_clean(void) {
         }
 
         //Loop endlessly until the file can be removed. (60s)
-        if (rm == FIMDB_ERR) {
-            while (remove(FIM_DB_DISK_PATH)) {
+        if (rm == FIMDB_ERR)
+        {
+            while (remove(FIM_DB_DISK_PATH))
+            {
                 // LCOV_EXCL_START
                 mdebug2(FIM_DELETE_DB, FIM_DB_DISK_PATH);
 #ifdef WIN32
@@ -196,13 +214,16 @@ void fim_db_clean(void) {
 
 }
 
-int fim_db_cache(fdb_t *fim_sql) {
+int fim_db_cache(fdb_t* fim_sql)
+{
     int index;
     int retval = FIMDB_ERR;
 
-    for (index = 0; index < FIMDB_STMT_SIZE; index++) {
+    for (index = 0; index < FIMDB_STMT_SIZE; index++)
+    {
         if (sqlite3_prepare_v2(fim_sql->db, SQL_STMT[index], -1,
-            &fim_sql->stmt[index], NULL) != SQLITE_OK) {
+                               &fim_sql->stmt[index], NULL) != SQLITE_OK)
+        {
             merror("Error preparing statement '%s': %s (%d)", SQL_STMT[index], sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             goto end;
         }
@@ -213,22 +234,26 @@ end:
     return retval;
 }
 
-int fim_db_create_file(const char *path, const char *source, const int storage, sqlite3 **fim_db) {
-    const char *sql;
-    const char *tail;
+int fim_db_create_file(const char* path, const char* source, const int storage, sqlite3** fim_db)
+{
+    const char* sql;
+    const char* tail;
 
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
+    sqlite3* db;
+    sqlite3_stmt* stmt;
     int result;
 
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL))
+    {
         merror("Couldn't create SQLite database '%s': %s (%d)", path, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
         sqlite3_close_v2(db);
         return -1;
     }
 
-    for (sql = source; sql && *sql; sql = tail) {
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
+    for (sql = source; sql && *sql; sql = tail)
+    {
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK)
+        {
             merror("Error preparing statement '%s': %s (%d)", sql, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
             sqlite3_close_v2(db);
             return -1;
@@ -236,29 +261,33 @@ int fim_db_create_file(const char *path, const char *source, const int storage, 
 
         result = sqlite3_step(stmt);
 
-        switch (result) {
-        case SQLITE_MISUSE:
-        case SQLITE_ROW:
-        case SQLITE_DONE:
-            break;
-        default:
-            merror("Error stepping statement '%s': %s (%d)", sql, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
-            sqlite3_finalize(stmt);
-            sqlite3_close_v2(db);
-            return -1;
+        switch (result)
+        {
+            case SQLITE_MISUSE:
+            case SQLITE_ROW:
+            case SQLITE_DONE:
+                break;
+
+            default:
+                merror("Error stepping statement '%s': %s (%d)", sql, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
+                sqlite3_finalize(stmt);
+                sqlite3_close_v2(db);
+                return -1;
         }
 
         sqlite3_finalize(stmt);
     }
 
-    if (storage == FIM_DB_MEMORY) {
+    if (storage == FIM_DB_MEMORY)
+    {
         *fim_db = db;
         return 0;
     }
 
     sqlite3_close_v2(db);
 
-    if (chmod(path, 0660) < 0) {
+    if (chmod(path, 0660) < 0)
+    {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
         return -1;
     }
@@ -266,20 +295,24 @@ int fim_db_create_file(const char *path, const char *source, const int storage, 
     return 0;
 }
 
-fim_tmp_file *fim_db_create_temp_file(int storage) {
-    fim_tmp_file *file;
+fim_tmp_file* fim_db_create_temp_file(int storage)
+{
+    fim_tmp_file* file;
     os_calloc(1, sizeof(fim_tmp_file), file);
 
-    if (storage == FIM_DB_DISK) {
+    if (storage == FIM_DB_DISK)
+    {
         os_calloc(PATH_MAX, sizeof(char), file->path);
         //Create random name unique to this thread
         sprintf(file->path, "%stmp_%lu%d%u", FIM_DB_TMPDIR,
-                    (unsigned long)time(NULL),
-                    getpid(),
-                    os_random());
+                (unsigned long)time(NULL),
+                getpid(),
+                os_random());
 
         file->fd = wfopen(file->path, "w+");
-        if (file->fd == NULL) {
+
+        if (file->fd == NULL)
+        {
             merror("Failed to create temporal storage '%s': %s (%d)", file->path, strerror(errno), errno);
             os_free(file->path);
             os_free(file);
@@ -287,24 +320,31 @@ fim_tmp_file *fim_db_create_temp_file(int storage) {
         }
 
         // Have the file removed on close.
-        if (remove(file->path) < 0) {
+        if (remove(file->path) < 0)
+        {
             merror("Failed to remove '%s': %s (%d)", file->path, strerror(errno), errno);
             os_free(file->path);
             os_free(file);
             return NULL;
         }
-    } else {
+    }
+    else
+    {
         file->list = W_Vector_init(100);
     }
 
     return file;
 }
 
-void fim_db_clean_file(fim_tmp_file **file, int storage) {
-    if (storage == FIM_DB_DISK) {
+void fim_db_clean_file(fim_tmp_file** file, int storage)
+{
+    if (storage == FIM_DB_DISK)
+    {
         fclose((*file)->fd);
         os_free((*file)->path);
-    } else {
+    }
+    else
+    {
         W_Vector_free((*file)->list);
     }
 
@@ -313,37 +353,45 @@ void fim_db_clean_file(fim_tmp_file **file, int storage) {
 
 #ifndef WIN32
 // LCOV_EXCL_START
-fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
+fim_entry* fim_db_get_entry_from_sync_msg(fdb_t* fim_sql,
                                           __attribute__((unused)) fim_type type,
-                                          const char *path) {
+                                          const char* path)
+{
     return fim_db_get_path(fim_sql, path);
 }
 // LCOV_EXCL_STOP
 #else
 
-static char *find_key_value_limiter(char *input){
+static char* find_key_value_limiter(char* input)
+{
     size_t limiter_pos = 0;
-    if (input == NULL || *input == '\0') {
+
+    if (input == NULL || *input == '\0')
+    {
         return NULL;
     }
 
     size_t input_len = strlen(input);
     size_t increment = 0;
 
-    while (limiter_pos = strcspn(input, "\\:"), input[limiter_pos] != '\0') {
-        switch (input[limiter_pos]) {
-        case ':':
-            return input + limiter_pos;
+    while (limiter_pos = strcspn(input, "\\:"), input[limiter_pos] != '\0')
+    {
+        switch (input[limiter_pos])
+        {
+            case ':':
+                return input + limiter_pos;
 
-        default: // '\':
-            // Check that the string won't be exceeded.
-            increment += limiter_pos + 2;
-            if (input_len <= increment) {
-                return NULL;
-            }
+            default: // '\':
+                // Check that the string won't be exceeded.
+                increment += limiter_pos + 2;
 
-            input += limiter_pos + 2;
-            break;
+                if (input_len <= increment)
+                {
+                    return NULL;
+                }
+
+                input += limiter_pos + 2;
+                break;
         }
     }
 
@@ -351,15 +399,17 @@ static char *find_key_value_limiter(char *input){
 }
 
 
-fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
-    char *full_path = NULL;
-    char *key_path = NULL;
-    char *value_name = NULL;
-    char *finder = NULL;
+fim_entry* fim_db_get_entry_from_sync_msg(fdb_t* fim_sql, fim_type type, const char* path)
+{
+    char* full_path = NULL;
+    char* key_path = NULL;
+    char* value_name = NULL;
+    char* finder = NULL;
     int arch;
-    fim_entry *entry = NULL;
+    fim_entry* entry = NULL;
 
-    if (type == FIM_TYPE_FILE) {
+    if (type == FIM_TYPE_FILE)
+    {
         return fim_db_get_path(fim_sql, path);
     }
 
@@ -370,9 +420,12 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     finder = find_key_value_limiter(value_name);
 
-    if (finder == NULL) {
+    if (finder == NULL)
+    {
         value_name = NULL;
-    } else {
+    }
+    else
+    {
         *finder = '\0';
         value_name = filter_special_chars(finder + 1);
     }
@@ -385,7 +438,8 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     entry->type = FIM_TYPE_REGISTRY;
     entry->registry_entry.key = _fim_db_get_registry_key(fim_sql, key_path, arch);
 
-    if (entry->registry_entry.key == NULL) {
+    if (entry->registry_entry.key == NULL)
+    {
         w_mutex_unlock(&fim_sql->mutex);
         free(key_path);
         free(full_path);
@@ -394,7 +448,8 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
         return NULL;
     }
 
-    if (value_name == NULL) {
+    if (value_name == NULL)
+    {
         w_mutex_unlock(&fim_sql->mutex);
         free(key_path);
         free(full_path);
@@ -408,23 +463,29 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     free(value_name);
 
-    if (entry->registry_entry.value == NULL) {
+    if (entry->registry_entry.value == NULL)
+    {
         w_mutex_unlock(&fim_sql->mutex);
         fim_registry_free_entry(entry);
         return NULL;
     }
+
     w_mutex_unlock(&fim_sql->mutex);
     return entry;
 }
 #endif
 
-int fim_db_finalize_stmt(fdb_t *fim_sql) {
+int fim_db_finalize_stmt(fdb_t* fim_sql)
+{
     int index;
     int retval = FIMDB_ERR;
 
-    for (index = 0; index < FIMDB_STMT_SIZE; index++) {
+    for (index = 0; index < FIMDB_STMT_SIZE; index++)
+    {
         fim_db_clean_stmt(fim_sql, index);
-        if (sqlite3_finalize(fim_sql->stmt[index]) != SQLITE_OK) {
+
+        if (sqlite3_finalize(fim_sql->stmt[index]) != SQLITE_OK)
+        {
             merror("Error finalizing statement '%s': %s (%d)", SQL_STMT[index], sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             goto end;
         }
@@ -435,21 +496,26 @@ end:
     return retval;
 }
 
-void fim_db_check_transaction(fdb_t *fim_sql) {
+void fim_db_check_transaction(fdb_t* fim_sql)
+{
     time_t now = time(NULL);
 
     w_mutex_lock(&fim_sql->mutex);
 
-    if (fim_sql->transaction.last_commit + fim_sql->transaction.interval <= now) {
-        if (!fim_sql->transaction.last_commit) {
+    if (fim_sql->transaction.last_commit + fim_sql->transaction.interval <= now)
+    {
+        if (!fim_sql->transaction.last_commit)
+        {
             fim_sql->transaction.last_commit = now;
             w_mutex_unlock(&fim_sql->mutex);
             return;
         }
 
-        if (!sqlite3_get_autocommit(fim_sql->db)) {
+        if (!sqlite3_get_autocommit(fim_sql->db))
+        {
             // A transaction has been initiated by a BEGIN command and it's in progress
-            if (fim_db_exec_simple_wquery(fim_sql, "END;") == FIMDB_ERR) {
+            if (fim_db_exec_simple_wquery(fim_sql, "END;") == FIMDB_ERR)
+            {
                 w_mutex_unlock(&fim_sql->mutex);
                 return;
             }
@@ -467,16 +533,20 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
     w_mutex_unlock(&fim_sql->mutex);
 }
 
-void fim_db_force_commit(fdb_t *fim_sql) {
+void fim_db_force_commit(fdb_t* fim_sql)
+{
     fim_sql->transaction.last_commit = 1;
     fim_db_check_transaction(fim_sql);
 }
 
-int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
-    if (sqlite3_reset(fim_sql->stmt[index]) != SQLITE_OK || sqlite3_clear_bindings(fim_sql->stmt[index]) != SQLITE_OK) {
+int fim_db_clean_stmt(fdb_t* fim_sql, int index)
+{
+    if (sqlite3_reset(fim_sql->stmt[index]) != SQLITE_OK || sqlite3_clear_bindings(fim_sql->stmt[index]) != SQLITE_OK)
+    {
         sqlite3_finalize(fim_sql->stmt[index]);
 
-        if (sqlite3_prepare_v2(fim_sql->db, SQL_STMT[index], -1, &fim_sql->stmt[index], NULL) != SQLITE_OK) {
+        if (sqlite3_prepare_v2(fim_sql->db, SQL_STMT[index], -1, &fim_sql->stmt[index], NULL) != SQLITE_OK)
+        {
             merror("Error preparing statement '%s': %s (%d)", SQL_STMT[index], sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             return FIMDB_ERR;
         }
@@ -487,23 +557,25 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
 
 //wrappers
 
-int fim_db_process_get_query(fdb_t *fim_sql,
+int fim_db_process_get_query(fdb_t* fim_sql,
                              __attribute__((unused)) int type,
                              int index,
-                             void (*callback)(fdb_t *, fim_entry *, int, void *),
+                             void (*callback)(fdb_t*, fim_entry*, int, void*),
                              int storage,
-                             void *arg) {
+                             void* arg)
+{
     int result;
     int i;
 
     w_mutex_lock(&fim_sql->mutex);
 
-    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
+    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++)
+    {
 #ifndef WIN32
-        fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
+        fim_entry* entry = fim_db_decode_full_row(fim_sql->stmt[index]);
 #else
-        fim_entry *entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_registry(index, fim_sql->stmt[index])
-                                                     : fim_db_decode_full_row(fim_sql->stmt[index]);
+        fim_entry* entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_registry(index, fim_sql->stmt[index])
+                           : fim_db_decode_full_row(fim_sql->stmt[index]);
 #endif
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
@@ -514,19 +586,23 @@ int fim_db_process_get_query(fdb_t *fim_sql,
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
 }
 
-int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3_stmt *), void (*free_row)(void *),
-                              void (*callback)(fdb_t *, void *, int, void *), int storage, void *arg) {
+int fim_db_multiple_row_query(fdb_t* fim_sql, int index, void* (*decode)(sqlite3_stmt*), void (*free_row)(void*),
+                              void (*callback)(fdb_t*, void*, int, void*), int storage, void* arg)
+{
     int result;
     int i;
 
-    if (decode == NULL || callback == NULL || free_row == NULL) {
+    if (decode == NULL || callback == NULL || free_row == NULL)
+    {
         return FIMDB_ERR;
     }
 
-    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
-        void *decoded_row = decode(fim_sql->stmt[index]);
+    for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++)
+    {
+        void* decoded_row = decode(fim_sql->stmt[index]);
 
-        if (decoded_row != NULL) {
+        if (decoded_row != NULL)
+        {
             callback(fim_sql, decoded_row, storage, arg);
             free_row(decoded_row);
         }
@@ -535,12 +611,14 @@ int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
 }
 
-int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
-    char *error = NULL;
+int fim_db_exec_simple_wquery(fdb_t* fim_sql, const char* query)
+{
+    char* error = NULL;
 
     sqlite3_exec(fim_sql->db, query, NULL, NULL, &error);
 
-    if (error) {
+    if (error)
+    {
         merror("Error executing simple query '%s': %s", query, error);
         sqlite3_free(error);
         return FIMDB_ERR;
@@ -549,83 +627,102 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query) {
     return FIMDB_OK;
 }
 
-void fim_db_callback_save_string(__attribute__((unused))fdb_t * fim_sql, const char *str, int storage, void *arg) {
-    char *base;
+void fim_db_callback_save_string(__attribute__((unused))fdb_t* fim_sql, const char* str, int storage, void* arg)
+{
+    char* base;
 
-    if (str == NULL) {
+    if (str == NULL)
+    {
         return;
     }
 
     base = wstr_escape_json(str);
-    if (base == NULL) {
+
+    if (base == NULL)
+    {
         merror("Error escaping '%s'", str);
         return;
     }
 
-    if (storage == FIM_DB_DISK) { // disk storage enabled
-        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long) strlen(base) + 1, base) < 0) {
+    if (storage == FIM_DB_DISK)   // disk storage enabled
+    {
+        if (fprintf(((fim_tmp_file*) arg)->fd, "%032ld%s\n", (unsigned long) strlen(base) + 1, base) < 0)
+        {
             merror("Can't save entry: %s %s", str, strerror(errno));
             free(base);
             return;
         }
 
-        fflush(((fim_tmp_file *) arg)->fd);
+        fflush(((fim_tmp_file*) arg)->fd);
 
-    } else {
-        W_Vector_insert(((fim_tmp_file *) arg)->list, base);
+    }
+    else
+    {
+        W_Vector_insert(((fim_tmp_file*) arg)->list, base);
     }
 
-    ((fim_tmp_file *) arg)->elements++;
+    ((fim_tmp_file*) arg)->elements++;
     free(base);
 }
 
-void fim_db_callback_save_path(__attribute__((unused))fdb_t * fim_sql, fim_entry *entry, int storage, void *arg) {
-    char *path = entry->type == FIM_TYPE_FILE ? entry->file_entry.path : entry->registry_entry.key->path;
-    char *base = NULL;
-    char *write_buffer;
+void fim_db_callback_save_path(__attribute__((unused))fdb_t* fim_sql, fim_entry* entry, int storage, void* arg)
+{
+    char* path = entry->type == FIM_TYPE_FILE ? entry->file_entry.path : entry->registry_entry.key->path;
+    char* base = NULL;
+    char* write_buffer;
     size_t line_length;
 
 
-    if(base = wstr_escape_json(path), base == NULL) {
+    if (base = wstr_escape_json(path), base == NULL)
+    {
         merror("Error escaping '%s'", path);
         return;
     }
 
-    if (entry->type == FIM_TYPE_FILE) {
+    if (entry->type == FIM_TYPE_FILE)
+    {
         os_strdup(base, write_buffer);
         line_length = strlen(write_buffer);
-    } else {
+    }
+    else
+    {
         line_length = snprintf(NULL, 0, "%d %s", entry->registry_entry.key->arch, base);
         os_calloc(line_length + 1, sizeof(char), write_buffer);
         snprintf(write_buffer, line_length + 1, "%d %s", entry->registry_entry.key->arch, base);
     }
 
-    if (storage == FIM_DB_DISK) { // disk storage enabled
-        if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long)(line_length + 1), write_buffer) < 0) {
+    if (storage == FIM_DB_DISK)   // disk storage enabled
+    {
+        if (fprintf(((fim_tmp_file*) arg)->fd, "%032ld%s\n", (unsigned long)(line_length + 1), write_buffer) < 0)
+        {
             merror("Can't save entry: %s %s", path, strerror(errno));
             goto end;
         }
 
-        fflush(((fim_tmp_file *) arg)->fd);
+        fflush(((fim_tmp_file*) arg)->fd);
 
-    } else {
-        W_Vector_insert(((fim_tmp_file *) arg)->list, write_buffer);
+    }
+    else
+    {
+        W_Vector_insert(((fim_tmp_file*) arg)->list, write_buffer);
     }
 
-    ((fim_tmp_file *) arg)->elements++;
+    ((fim_tmp_file*) arg)->elements++;
 
 end:
     os_free(write_buffer);
     os_free(base);
 }
 
-void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, char *checksum,
-    __attribute__((unused))int storage, void *arg) {
+void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t* fim_sql, char* checksum,
+                                        __attribute__((unused))int storage, void* arg)
+{
 
-    EVP_DigestUpdate((EVP_MD_CTX *)arg, checksum, strlen(checksum));
+    EVP_DigestUpdate((EVP_MD_CTX*)arg, checksum, strlen(checksum));
 }
 
-int _fim_db_get_count(fdb_t *fim_sql, int index) {
+int _fim_db_get_count(fdb_t* fim_sql, int index)
+{
     int retval = FIMDB_ERR;
 #ifndef WIN32
     assert(index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_INODE ||
@@ -638,14 +735,16 @@ int _fim_db_get_count(fdb_t *fim_sql, int index) {
 
     fim_db_clean_stmt(fim_sql, index);
 
-    if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW) {
+    if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW)
+    {
         retval = sqlite3_column_int(fim_sql->stmt[index], 0);
     }
 
     return retval;
 }
 
-int fim_db_get_count(fdb_t *fim_sql, int index) {
+int fim_db_get_count(fdb_t* fim_sql, int index)
+{
     int retval = FIMDB_ERR;
 
     w_mutex_lock(&fim_sql->mutex);
@@ -655,52 +754,67 @@ int fim_db_get_count(fdb_t *fim_sql, int index) {
     return retval;
 }
 
-int fim_db_process_read_file(fdb_t *fim_sql,
-                             fim_tmp_file *file,
+int fim_db_process_read_file(fdb_t* fim_sql,
+                             fim_tmp_file* file,
                              __attribute__((unused)) int type,
-                             pthread_mutex_t *mutex,
-                             void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
+                             pthread_mutex_t* mutex,
+                             void (*callback)(fdb_t*, fim_entry*, pthread_mutex_t*, void*, void*, void*),
                              int storage,
-                             void *alert,
-                             void *mode,
-                             void *w_evt) {
-    char *read_line = NULL;
+                             void* alert,
+                             void* mode,
+                             void* w_evt)
+{
+    char* read_line = NULL;
 #ifdef WIN32
-    char *split = NULL;
+    char* split = NULL;
 #endif
     int i = 0;
 
-    do {
-        if (fim_db_read_line_from_file(file, storage, i, &read_line) == -1) {
+    do
+    {
+        if (fim_db_read_line_from_file(file, storage, i, &read_line) == -1)
+        {
             fim_db_clean_file(&file, storage);
             return FIMDB_ERR;
         }
 
-        fim_entry *entry = NULL;
+        fim_entry* entry = NULL;
 
 #ifndef WIN32
         entry = fim_db_get_path(fim_sql, read_line);
 #else
-        if (type == FIM_TYPE_FILE) {
+
+        if (type == FIM_TYPE_FILE)
+        {
             entry = fim_db_get_path(fim_sql, read_line);
-        } else {
+        }
+        else
+        {
             unsigned int arch =  strtoul(read_line, &split, 10);
-            if (split == NULL || *split != ' ') {
+
+            if (split == NULL || *split != ' ')
+            {
                 merror("Temporary path file '%s' is corrupt: Wrong format", file->path);
-            } else {
+            }
+            else
+            {
                 os_calloc(1, sizeof(fim_entry), entry);
                 entry->type = FIM_TYPE_REGISTRY;
 
                 entry->registry_entry.key = fim_db_get_registry_key(fim_sql, (split + 1), arch);
-                if (entry->registry_entry.key == NULL) {
+
+                if (entry->registry_entry.key == NULL)
+                {
                     free_entry(entry);
                     entry = NULL;
                 }
             }
         }
+
 #endif
 
-        if (entry != NULL) {
+        if (entry != NULL)
+        {
             callback(fim_sql, entry, mutex, alert, mode, w_evt);
             free_entry(entry);
         }
@@ -708,7 +822,8 @@ int fim_db_process_read_file(fdb_t *fim_sql,
         os_free(read_line);
 
         i++;
-    } while (i < file->elements);
+    }
+    while (i < file->elements);
 
     fim_db_clean_file(&file, storage);
 
@@ -717,7 +832,8 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 
 // General use functions
 
-void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
+void fim_db_bind_range(fdb_t* fim_sql, int index, const char* start, const char* top)
+{
     assert(index == FIMDB_STMT_GET_PATH_RANGE || index == FIMDB_STMT_GET_REG_PATH_RANGE ||
            index == FIMDB_STMT_GET_COUNT_RANGE || index == FIMDB_STMT_GET_REG_COUNT_RANGE);
 
@@ -725,49 +841,58 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
     sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
 }
 
-char *fim_db_decode_string(sqlite3_stmt *stmt) {
-    char *retval = NULL;
-    char *text = (char *)sqlite3_column_text(stmt, 0);
+char* fim_db_decode_string(sqlite3_stmt* stmt)
+{
+    char* retval = NULL;
+    char* text = (char*)sqlite3_column_text(stmt, 0);
 
     sqlite_strdup(text, retval);
 
     return retval;
 }
 
-char **fim_db_decode_string_array(sqlite3_stmt *stmt) {
+char** fim_db_decode_string_array(sqlite3_stmt* stmt)
+{
     int column_count, i;
-    char **retval;
+    char** retval;
 
     column_count = sqlite3_column_count(stmt);
-    if (column_count <= 0) {
+
+    if (column_count <= 0)
+    {
         return NULL;
     }
 
-    os_calloc(column_count + 1, sizeof(char *), retval);
+    os_calloc(column_count + 1, sizeof(char*), retval);
 
-    for (i = 0; i < column_count; i++) {
-        char *text = (char *)sqlite3_column_text(stmt, i);
+    for (i = 0; i < column_count; i++)
+    {
+        char* text = (char*)sqlite3_column_text(stmt, i);
         sqlite_strdup(text, retval[i]);
     }
+
     retval[column_count] = NULL;
 
     return retval;
 }
 
-int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
+int fim_db_get_string(fdb_t* fim_sql, int index, char** str)
+{
     int result;
 
     w_mutex_lock(&fim_sql->mutex);
     fim_db_clean_stmt(fim_sql, index);
 
-    if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
+    if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE)
+    {
         merror("Step error getting row string: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
 
-    if (result == SQLITE_ROW) {
-        char *text = (char *)sqlite3_column_text(fim_sql->stmt[index], 0);
+    if (result == SQLITE_ROW)
+    {
+        char* text = (char*)sqlite3_column_text(fim_sql->stmt[index], 0);
         sqlite_strdup(text, *str);
     }
 
@@ -776,8 +901,10 @@ int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
     return FIMDB_OK;
 }
 
-int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
-    static const int LAST_PATH_QUERY[] = {
+int fim_db_get_last_path(fdb_t* fim_sql, int type, char** path)
+{
+    static const int LAST_PATH_QUERY[] =
+    {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_LAST_PATH,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_LAST_PATH,
     };
@@ -786,8 +913,10 @@ int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
 }
 
 // LCOV_EXCL_START
-int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
-    static const int FIRST_PATH_QUERY[] = {
+int fim_db_get_first_path(fdb_t* fim_sql, int type, char** path)
+{
+    static const int FIRST_PATH_QUERY[] =
+    {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_FIRST_PATH,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_FIRST_PATH,
     };
@@ -796,8 +925,10 @@ int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
 }
 // LCOV_EXCL_STOP
 
-int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
-    static const int CHECKSUM_QUERY[] = {
+int fim_db_get_data_checksum(fdb_t* fim_sql, fim_type type, void* arg)
+{
+    static const int CHECKSUM_QUERY[] =
+    {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_ALL_CHECKSUMS,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_ALL_CHECKSUMS,
     };
@@ -807,7 +938,7 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
 
     fim_db_clean_stmt(fim_sql, CHECKSUM_QUERY[type]);
     retval = fim_db_multiple_row_query(fim_sql, CHECKSUM_QUERY[type], FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
-                                     FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
+                                       FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
 
     w_mutex_unlock(&fim_sql->mutex);
 
@@ -816,8 +947,10 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
     return retval;
 }
 
-int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, int *count) {
-    static const int RANGE_QUERY[] = {
+int fim_db_get_count_range(fdb_t* fim_sql, fim_type type, const char* start, const char* top, int* count)
+{
+    static const int RANGE_QUERY[] =
+    {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_COUNT_RANGE,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_COUNT_RANGE,
     };
@@ -828,7 +961,8 @@ int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, con
     fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
     fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
-    if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
+    if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW)
+    {
         merror("Step error getting count range 'start %s' 'top %s': %s (%d)", start, top, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
@@ -841,24 +975,27 @@ int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, con
     return FIMDB_OK;
 }
 
-int fim_db_get_checksum_range(fdb_t *fim_sql,
+int fim_db_get_checksum_range(fdb_t* fim_sql,
                               fim_type type,
-                              const char *start,
-                              const char *top,
+                              const char* start,
+                              const char* top,
                               int n,
-                              EVP_MD_CTX *ctx_left,
-                              EVP_MD_CTX *ctx_right,
-                              char **str_pathlh,
-                              char **str_pathuh) {
-    static const int RANGE_QUERY[] = {
+                              EVP_MD_CTX* ctx_left,
+                              EVP_MD_CTX* ctx_right,
+                              char** str_pathlh,
+                              char** str_pathuh)
+{
+    static const int RANGE_QUERY[] =
+    {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_PATH_RANGE,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_PATH_RANGE,
     };
-    char **decoded_row = NULL;
+    char** decoded_row = NULL;
     int m = n / 2;
     int i;
 
-    if (str_pathlh == NULL || str_pathuh == NULL || ctx_left == NULL || ctx_right == NULL) {
+    if (str_pathlh == NULL || str_pathuh == NULL || ctx_left == NULL || ctx_right == NULL)
+    {
         return FIMDB_ERR;
     }
 
@@ -869,10 +1006,12 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
     // Calculate checksum of the first half
-    for (i = 0; i < m; i++) {
-        char *path, *checksum;
+    for (i = 0; i < m; i++)
+    {
+        char* path, *checksum;
 
-        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]])) {
+        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]))
+        {
             case SQLITE_ROW:
                 break;
 
@@ -894,7 +1033,9 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         }
 
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
-        if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
+
+        if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL)
+        {
             free_strarray(decoded_row);
             merror("Failed to decode checksum range query");
             w_mutex_unlock(&fim_sql->mutex);
@@ -904,7 +1045,8 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         path = decoded_row[0];
         checksum = decoded_row[1];
 
-        if (i == (m - 1) && path) {
+        if (i == (m - 1) && path)
+        {
             os_strdup(path, *str_pathlh);
         }
 
@@ -913,10 +1055,12 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     }
 
     //Calculate checksum of the second half
-    for (i = m; i < n; i++) {
-        char *path, *checksum;
+    for (i = m; i < n; i++)
+    {
+        char* path, *checksum;
 
-        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]])) {
+        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]))
+        {
             case SQLITE_ROW:
                 break;
 
@@ -938,7 +1082,9 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         }
 
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
-        if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
+
+        if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL)
+        {
             free_strarray(decoded_row);
             os_free(*str_pathlh);
             os_free(*str_pathuh);
@@ -950,7 +1096,8 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         path = decoded_row[0];
         checksum = decoded_row[1];
 
-        if (i == m && path) {
+        if (i == m && path)
+        {
             os_free(*str_pathuh);
             os_strdup(path, *str_pathuh);
         }
@@ -959,29 +1106,35 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         free_strarray(decoded_row);
     }
 
-    if (*str_pathlh == NULL || *str_pathuh == NULL) {
+    if (*str_pathlh == NULL || *str_pathuh == NULL)
+    {
         merror("Failed to obtain required paths in order to form message");
         os_free(*str_pathlh);
         os_free(*str_pathuh);
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
+
     w_mutex_unlock(&fim_sql->mutex);
 
     return FIMDB_OK;
 }
 
-int fim_db_get_path_range(fdb_t *fim_sql,
+int fim_db_get_path_range(fdb_t* fim_sql,
                           fim_type type,
-                          const char *start,
-                          const char *top,
-                          fim_tmp_file **file,
-                          int storage) {
-    static const int RANGE_QUERY[] = {
+                          const char* start,
+                          const char* top,
+                          fim_tmp_file** file,
+                          int storage)
+{
+    static const int RANGE_QUERY[] =
+    {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_PATH_RANGE,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_PATH_RANGE,
     };
-    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+
+    if ((*file = fim_db_create_temp_file(storage)) == NULL)
+    {
         return FIMDB_ERR;
     }
 
@@ -992,35 +1145,41 @@ int fim_db_get_path_range(fdb_t *fim_sql,
 
     int ret = fim_db_multiple_row_query(fim_sql, RANGE_QUERY[type], FIM_DB_DECODE_TYPE(fim_db_decode_string),
                                         free, FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage,
-                                        (void *)*file);
+                                        (void*)*file);
 
     w_mutex_unlock(&fim_sql->mutex);
 
     fim_db_check_transaction(fim_sql);
 
-    if (*file && (*file)->elements == 0) {
+    if (*file && (*file)->elements == 0)
+    {
         fim_db_clean_file(file, storage);
     }
 
     return ret;
 }
 
-int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
-    if (it == file->elements) {
+int fim_db_read_line_from_file(fim_tmp_file* file, int storage, int it, char** buffer)
+{
+    if (it == file->elements)
+    {
         return 1;
     }
 
-    if (storage == FIM_DB_DISK) {
-        char *line;
+    if (storage == FIM_DB_DISK)
+    {
+        char* line;
         char path_length[OS_SIZE_32 + 1];
 
-        if (it == 0 && fseek(file->fd, 0, SEEK_SET) != 0) {
+        if (it == 0 && fseek(file->fd, 0, SEEK_SET) != 0)
+        {
             mwarn(FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
             return -1;
         }
 
         /* First 32 bytes hold the path length including the line break */
-        if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL) {
+        if (fgets(path_length, OS_SIZE_32 + 1, file->fd) == NULL)
+        {
             mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
             return -1;
         }
@@ -1030,16 +1189,19 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
 
         // fgets() adds \n(newline) to the end of the string,
         // So it must be removed.
-        if (fgets(line, len + 1, file->fd) == NULL) {
+        if (fgets(line, len + 1, file->fd) == NULL)
+        {
             mdebug1(FIM_UNABLE_TO_READ_TEMP_FILE);
             os_free(line);
             return -1;
         }
 
-        if (len > 2 && line[len - 1] == '\n') {
+        if (len > 2 && line[len - 1] == '\n')
+        {
             line[len - 1] = '\0';
         }
-        else {
+        else
+        {
             merror("Temporary path file '%s' is corrupt: missing line end.", file->path);
             os_free(line);
             return -1;
@@ -1047,34 +1209,44 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
 
         *buffer = wstr_unescape_json(line);
         os_free(line);
-    } else {
-        if (it > file->list->size) {
+    }
+    else
+    {
+        if (it > file->list->size)
+        {
             merror("Attempted to retrieve an out of bounds line.");
             return 1;
         }
-        *buffer = wstr_unescape_json((char *) W_Vector_get(file->list, it));
+
+        *buffer = wstr_unescape_json((char*) W_Vector_get(file->list, it));
     }
+
     return 0;
 }
 
 #ifndef WIN32
 // LCOV_EXCL_START
-int fim_db_get_count_entries(fdb_t *fim_sql) {
+int fim_db_get_count_entries(fdb_t* fim_sql)
+{
     return fim_db_get_count_file_entry(fim_sql);
 }
 // LCOV_EXCL_STOP
 #else
-int fim_db_get_count_entries(fdb_t *fim_sql) {
+int fim_db_get_count_entries(fdb_t* fim_sql)
+{
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);
 
-    if(res == FIMDB_ERR) {
+    if (res == FIMDB_ERR)
+    {
         merror("Step error getting count entry path: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
     }
+
     return res;
 }
 #endif
 
-int fim_db_is_full(fdb_t *fim_sql) {
+int fim_db_is_full(fdb_t* fim_sql)
+{
     int retval;
 
     w_mutex_lock(&fim_sql->mutex);
