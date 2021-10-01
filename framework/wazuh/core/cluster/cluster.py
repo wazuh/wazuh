@@ -275,11 +275,10 @@ def update_cluster_control_with_failed(failed_files, ko_files):
         KO files dict with 'missing', 'shared' and 'extra' keys.
     """
     for f in failed_files:
-        if 'missing' in ko_files.keys() and f in ko_files['missing'].keys():
+        if 'missing' in ko_files.keys():
             ko_files['missing'].pop(f, None)
-        elif 'shared' in ko_files.keys() and 'extra' in ko_files.keys() and f in ko_files['shared'].keys():
-            ko_files['extra'][f] = ko_files['shared'][f]
-            ko_files['shared'].pop(f, None)
+        elif 'shared' in ko_files.keys() and 'extra' in ko_files.keys():
+            ko_files['extra'][f] = ko_files['shared'].pop(f, None)
 
 
 def compress_files(name, list_path, cluster_control_json=None):

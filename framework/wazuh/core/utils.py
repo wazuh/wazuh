@@ -580,16 +580,30 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
     This function is useful to move files even when target directory is in a different filesystem from the source.
     Write permissions are required on target directory.
 
-    :param source: full path to source file
-    :param target: full path to target file
-    :param ownership: tuple in the form (user, group) to be set up after the file is moved
-    :param time: tuple in the form (addition_timestamp, modified_timestamp)
-    :param permissions: string mask in octal notation. I.e.: '0o640'
+    Parameters
+    ----------
+    source : str
+        Full path to source file
+    target : str
+        Full path to target file
+    ownership : tuple
+        Tuple in the form (user, group) to be set up after the file is moved
+    time : tuple
+        Tuple in the form (addition_timestamp, modified_timestamp)
+    permissions : str
+        String mask in octal notation. I.e.: '0o640'
     """
     # Create temp file. Move between
     tmp_path, tmp_filename = path.split(target)
     tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
     move(source, tmp_target, copy_function=copyfile)
+
+    # Set up metadata
+    chown(tmp_target, *ownership)
+    if permissions is not None:
+        chmod(tmp_target, permissions)
+    if time is not None:
+        utime(tmp_target, time)
 
     try:
         # Overwrite the file atomically.
@@ -600,13 +614,6 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
         # However, this is not an atomic operation and could lead to race conditions
         # if the file is read/written simultaneously with other processes
         move(tmp_target, target, copy_function=copyfile)
-
-    # Set up metadata
-    chown(target, *ownership)
-    if permissions is not None:
-        chmod(target, permissions)
-    if time is not None:
-        utime(target, time)
 
 
 def mkdir_with_mode(name, mode=0o770):
