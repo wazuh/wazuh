@@ -42,7 +42,6 @@ ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
 ALTER TABLE sync_info ADD COLUMN last_agent_checksum TEXT NOT NULL DEFAULT '';
 
-
 DROP TABLE IF EXISTS vuln_cves;
 
 CREATE TABLE IF NOT EXISTS vuln_cves (
@@ -50,6 +49,10 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     version TEXT,
     architecture TEXT,
     cve TEXT,
+    detection_time TEXT DEFAULT '',
+    severity TEXT DEFAULT '-' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', '-')),
+    cvss2_score REAL DEFAULT 0,
+    cvss3_score REAL DEFAULT 0,
     reference TEXT DEFAULT '' NOT NULL,
     type TEXT DEFAULT '' NOT NULL CHECK (type IN ('OS', 'PACKAGE')),
     status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),

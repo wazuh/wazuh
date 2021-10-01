@@ -1336,7 +1336,9 @@ void test_vuln_cves_insert_command_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", query);
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\","
+              "\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\","
+              "\"check_pkg_existence\":true,\"severity\":null,\"cvss2_score\":0,\"cvss3_score\":0}", query);
 
     // wdb_parse_agents_insert_vuln_cves
     expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
@@ -1347,6 +1349,10 @@ void test_vuln_cves_insert_command_error(void **state) {
     expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
     expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existence, true);
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, severity, NULL);
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss2_score, 0);
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss3_score, 0);
+
     will_return(__wrap_wdb_agents_insert_vuln_cves, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error inserting vulnerability in vuln_cves.");
@@ -1363,9 +1369,11 @@ void test_vuln_cves_insert_command_success(void **state) {
     int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", query);
     char *result = NULL;
     os_strdup("[{\"test\":\"TEST\"}]", result);
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\","
+              "\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\","
+              "\"check_pkg_existence\":true,\"severity\":\"MEDIUM\",\"cvss2_score\":5.2,\"cvss3_score\":6}", query);
 
     cJSON *test =  cJSON_CreateObject();
 
@@ -1378,6 +1386,9 @@ void test_vuln_cves_insert_command_success(void **state) {
     expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
     expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existence, true);
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, severity, "MEDIUM");
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss2_score, 5.2);
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss3_score, 6);
     will_return(__wrap_wdb_agents_insert_vuln_cves, test);
     will_return(__wrap_cJSON_PrintUnformatted, result);
 
@@ -1828,6 +1839,46 @@ void test_packages_save_success_null_items(void **state) {
     expect_value (__wrap_wdb_package_save, location, NULL);
     expect_string(__wrap_wdb_package_save, checksum, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE);
     expect_value(__wrap_wdb_package_save, item_id, NULL);
+    expect_value(__wrap_wdb_package_save, replace, FALSE);
+    will_return(__wrap_wdb_package_save, OS_SUCCESS);
+
+    will_return(__wrap_time, 0);
+    expect_value(__wrap_wdbi_update_attempt, component, WDB_SYSCOLLECTOR_PACKAGES);
+    expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
+    expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
+    expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+
+    ret = wdb_parse_packages(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_packages_save_success_empty_items(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char* query = NULL;
+    os_strdup("save |1|2|3||5|6|7||9|10|11||13|14|", query);
+
+    expect_string(__wrap_wdb_package_save, scan_id, "");
+    expect_string(__wrap_wdb_package_save, scan_time, "1");
+    expect_string(__wrap_wdb_package_save, format, "2");
+    expect_string(__wrap_wdb_package_save, name, "3");
+    expect_string(__wrap_wdb_package_save, priority, "");
+    expect_string(__wrap_wdb_package_save, section, "5");
+    expect_value(__wrap_wdb_package_save, size, 6);
+    expect_string(__wrap_wdb_package_save, vendor, "7");
+    expect_string(__wrap_wdb_package_save, install_time, "");
+    expect_string(__wrap_wdb_package_save, version, "9");
+    expect_string(__wrap_wdb_package_save, architecture, "10");
+    expect_string(__wrap_wdb_package_save, multiarch, "11");
+    expect_string(__wrap_wdb_package_save, source, "");
+    expect_string(__wrap_wdb_package_save, description, "13");
+    expect_string(__wrap_wdb_package_save, location, "14");
+    expect_string(__wrap_wdb_package_save, checksum, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE);
+    expect_string(__wrap_wdb_package_save, item_id, "");
     expect_value(__wrap_wdb_package_save, replace, FALSE);
     will_return(__wrap_wdb_package_save, OS_SUCCESS);
 
@@ -2431,6 +2482,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_packages_get_sock_err_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_success_null_items, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_packages_save_success_empty_items, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_missing_items, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_del_success, test_setup, test_teardown),

@@ -3623,19 +3623,23 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location|item_id*/
         #define SAVE_PACKAGE_FIELDS_AMOUNT 16
         char* fields[SAVE_PACKAGE_FIELDS_AMOUNT] = {NULL};
-        char* last = tail;
+        char* last = NULL;
 
         for (int i = 0; i < SAVE_PACKAGE_FIELDS_AMOUNT; i++) {
-            if (!(next = strtok_r(NULL, "|", &tail))) {
-                mdebug1("Invalid package info query syntax.");
-                mdebug2("Package info query: %s", last);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
-                return result;
+            last = tail;
+            if (i < SAVE_PACKAGE_FIELDS_AMOUNT-1) {
+                if (next = strchr(tail, '|'), !next) {
+                    mdebug1("Invalid package info query syntax.");
+                    mdebug2("Package info query: %s", last);
+                    snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
+                    return result;
+                }
+                *next++ = '\0';
+                tail = next;
             }
-            last = next;
-            if (strcmp(next, "NULL"))
+            if (strcmp(last, "NULL"))
             {
-                fields[i] = next;
+                fields[i] = last;
             }
         }
 
@@ -5924,6 +5928,9 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
         cJSON* j_type = cJSON_GetObjectItem(data, "type");
         cJSON* j_status = cJSON_GetObjectItem(data, "status");
         cJSON* j_check_pkg_existence = cJSON_GetObjectItem(data, "check_pkg_existence");
+        cJSON* j_severity = cJSON_GetObjectItem(data, "severity");
+        cJSON* j_cvss2_score = cJSON_GetObjectItem(data, "cvss2_score");
+        cJSON* j_cvss3_score = cJSON_GetObjectItem(data, "cvss3_score");
         // Required fields
         if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) ||
             !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsBool(j_check_pkg_existence)) {
@@ -5931,8 +5938,10 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
         else {
-            cJSON* result = wdb_agents_insert_vuln_cves(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring,
-                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, (bool)j_check_pkg_existence->valueint);
+            cJSON* result = wdb_agents_insert_vuln_cves(wdb, cJSON_GetStringValue(j_name), cJSON_GetStringValue(j_version), cJSON_GetStringValue(j_architecture), cJSON_GetStringValue(j_cve),
+                                                        cJSON_GetStringValue(j_reference), cJSON_GetStringValue(j_type), cJSON_GetStringValue(j_status), (bool)j_check_pkg_existence->valueint,
+                                                        cJSON_GetStringValue(j_severity), cJSON_IsNumber(j_cvss2_score) ? j_cvss2_score->valuedouble : 0,
+                                                        cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0);
 
             if (result) {
                 char *out = cJSON_PrintUnformatted(result);

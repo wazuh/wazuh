@@ -62,6 +62,9 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  * @param [in] type The package type.
  * @param [in] status The vulnerability status.
  * @param [in] check_pkg_existence If TRUE, it enables a package existence verification in sys_programs table.
+ * @param [in] severity A string representing the severity of the vulnerability.
+ * @param [in] cvss2_score The vulnerability score according to CVSS v2.
+ * @param [in] cvss3_score The vulnerability score according to CVSS v3.
  * @return Returns cJSON object with 'action': 'INSERT' | 'UPDATE'.
  *                               and 'status': 'SUCCESS' | 'ERROR' | 'PKG_NOT_FOUND'
  *         The cJSON object must be freed by the caller.
@@ -74,7 +77,10 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    const char* reference,
                                    const char* type,
                                    const char* status,
-                                   bool check_pkg_existence);
+                                   bool check_pkg_existence,
+                                   const char* severity,
+                                   double cvss2_score,
+                                   double cvss3_score);
 
 /**
  * @brief Function to update the status field in agent database vuln_cves table.
