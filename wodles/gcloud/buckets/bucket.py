@@ -217,14 +217,13 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                     if (current_creation_time > last_creation_time) or \
                             (current_creation_time == last_creation_time and blob.name not in previous_processed_files):
                         self.logger.info(f'Processing {blob.name}')
-                        self.process_blob(blob)
+                        processed_messages += self.process_blob(blob)
 
                         if current_creation_time > new_creation_time:
                             processed_files.clear()
                             new_creation_time = current_creation_time
 
                         processed_files.append(blob.name)
-                        processed_messages += 1
                     else:
                         self.logger.info(f'Skipping previously processed file: {blob.name}')
                 else:
@@ -248,12 +247,19 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         Parameters
         ----------
         blob : google.cloud.storage.blob.Blob
-            A blob object obtained from the bucket
+            A blob object obtained from the bucket.
+        Returns
+        -------
+        Number of events processed.
         """
+        events = 0
         try:
             for event in self.load_information_from_file(blob.download_as_text()):
                 self.send_msg(self.format_msg(json.dumps(event)))
+                events += 1
             if self.delete_file:
                 self.bucket.delete_blob(blob.name)
         except google_exceptions.NotFound:
             self.logger.warning(f'Unable to find "{blob.name}" in {self.bucket_name}')
+
+        return events
