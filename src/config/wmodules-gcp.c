@@ -148,7 +148,7 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
             unsigned int j;
             for(j=0; j < strlen(nodes[i]->content); j++) {
                 if (!isdigit(nodes[i]->content[j])) {
-                    merror("Tag '%s' from the '%s' module should not have an alphabetic character.", XML_NUM_THREADS, WM_GCP_CONTEXT.name);
+                    merror("Tag '%s' from the '%s' module should not have an alphabetic character.", XML_NUM_THREADS, WM_GCP_PUBSUB_CONTEXT.name);
                     return OS_INVALID;
                 }
             }
