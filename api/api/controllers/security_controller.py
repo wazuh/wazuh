@@ -6,19 +6,21 @@ import logging
 import re
 
 from aiohttp import web
-
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
-from api.models.security_model import CreateUserModel, UpdateUserModel, RoleModel, PolicyModel, RuleModel
+from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
+                                       RuleModel, UpdateUserModel)
 from api.models.security_token_response_model import TokenResponseModel
-from api.util import remove_nones_to_dict, raise_if_exc, parse_api_param
+from api.util import (generate_deprecation_headers, parse_api_param,
+                      raise_if_exc, remove_nones_to_dict)
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhPermissionError, WazuhException
+from wazuh.core.common import WAZUH_VERSION
+from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
@@ -27,12 +29,13 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(user: str, raw: bool = False) -> web.Response:
+async def login_user(request, user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
     Parameters
     ----------
+    request : connexion.request
     user : str
         Name of the user who wants to be authenticated.
     raw : bool, optional
@@ -59,8 +62,17 @@ async def login_user(user: str, raw: bool = False) -> web.Response:
     except WazuhException as e:
         raise_if_exc(e)
 
-    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+    response = web.Response(text=token, content_type='text/plain', status=200) if raw \
         else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+
+    if request.method == 'GET':
+        response.headers.update(generate_deprecation_headers('https://documentation.wazuh.com/'
+                                                             f'{WAZUH_VERSION}/user-manual/api/reference.html#'
+                                                             'operation/api.controllers.security_controller.login_user'
+                                                             )
+                                )
+
+    return response
 
 
 async def run_as_login(request, user: str, raw: bool = False) -> web.Response:

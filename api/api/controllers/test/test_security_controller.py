@@ -36,21 +36,30 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+@pytest.mark.parametrize('mock_request_type', ['GET', 'POST'])
+async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request_type,
+                          mock_request=AsyncMock()):
     """Verify 'login_user' endpoint is working as expected."""
-    result = await login_user(user='001',
-                              raw=mock_bool)
-    f_kwargs = {'user_id': '001'
-                }
-    mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      logger=ANY
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, web_response.Response)
+    with patch('api.controllers.security_controller.generate_deprecation_headers',
+               return_value={'h1': 'v1'}) as mock_gen_deprecation_headers:
+        mock_request.method = mock_request_type
+        result = await login_user(request=mock_request,
+                                  user='001',
+                                  raw=mock_bool)
+        f_kwargs = {'user_id': '001'
+                    }
+        mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
+                                          f_kwargs=mock_remove.return_value,
+                                          request_type='local_master',
+                                          is_async=False,
+                                          logger=ANY
+                                          )
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        mock_remove.assert_called_once_with(f_kwargs)
+        if mock_request_type == 'GET':
+            mock_gen_deprecation_headers.assert_called_once()
+            assert result.headers['h1'] == mock_gen_deprecation_headers.return_value['h1']
+        assert isinstance(result, web_response.Response)
 
 
 @pytest.mark.asyncio
@@ -60,24 +69,33 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+@pytest.mark.parametrize('mock_request_type', ['GET', 'POST'])
+async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request_type,
+                             mock_request=AsyncMock()):
     """Verify 'login_user' endpoint is handling WazuhException as expected."""
-    mock_token.side_effect = WazuhException(999)
-    result = await login_user(user='001',
-                              raw=mock_bool)
-    f_kwargs = {'user_id': '001'
-                }
-    mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      logger=ANY
-                                      )
-    mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                              call(mock_token.side_effect)])
-    assert mock_exc.call_count == 2
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, web_response.Response)
+    with patch('api.controllers.security_controller.generate_deprecation_headers',
+               return_value={'h1': 'v1'}) as mock_gen_deprecation_headers:
+        mock_request.method = mock_request_type
+        mock_token.side_effect = WazuhException(999)
+        result = await login_user(request=mock_request,
+                                  user='001',
+                                  raw=mock_bool)
+        f_kwargs = {'user_id': '001'
+                    }
+        mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
+                                          f_kwargs=mock_remove.return_value,
+                                          request_type='local_master',
+                                          is_async=False,
+                                          logger=ANY
+                                          )
+        mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                                   call(mock_token.side_effect)])
+        assert mock_exc.call_count == 2
+        mock_remove.assert_called_once_with(f_kwargs)
+        if mock_request_type == 'GET':
+            mock_gen_deprecation_headers.assert_called_once()
+            assert result.headers['h1'] == mock_gen_deprecation_headers.return_value['h1']
+        assert isinstance(result, web_response.Response)
 
 
 @pytest.mark.asyncio
