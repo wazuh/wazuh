@@ -20,8 +20,6 @@
 #include "netbuffer_wrappers.h"
 
 
-int __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
+void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
     check_expected(sock);
-
-    return mock();
 }

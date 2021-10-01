@@ -397,7 +397,7 @@ void test_HandleSecureMessage_unvalid_message(void **state)
 
     // nb_close
     expect_value(__wrap_nb_close, sock, sock_client);
-    will_return(__wrap_nb_close, 1);
+    expect_value(__wrap_nb_close, sock, sock_client);
 
     // rem_setCounter
     expect_value(__wrap_rem_setCounter, fd, 1);
