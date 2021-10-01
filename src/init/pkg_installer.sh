@@ -1,13 +1,10 @@
 #!/bin/bash
-
 # Copyright (C) 2015-2021, Wazuh Inc.
-
 
 SERVICE=wazuh-agent
 OSSEC_INIT_FILE=/etc/ossec-init.conf
 WAZUH_HOME=$(pwd)
 TMP_DIR_BACKUP=./tmp_bkp
-
 
 # Clean before backup
 WAZUH_REVISION=0
@@ -18,17 +15,16 @@ INIT_PATH=""
 CHK_CONFIG=0
 rm -rf ./tmp_bkp/
 
-
-create_ossec_ug() {
+# Create the ossec user/group if it doesn't exists
+function create_ossec_ug {
 
     exists_group=$(getent group ossec)  2>/dev/null; [ -z "${exists_group}" ] && exists_group=$(id -g ossec 2>/dev/null);
-
     # Create the ossec group if it doesn't exists
     if [ -z "${exists_group}" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring ossec group." >> ./logs/upgrade.log
             if command -v groupadd > /dev/null 2>&1; then
                 groupadd -r ossec >> ./logs/upgrade.log 2>&1
-            elif
+            else
                 addgroup --system ossec >> ./logs/upgrade.log 2>&1
             fi
     fi
@@ -47,11 +43,44 @@ create_ossec_ug() {
 
             if command -v useradd > /dev/null 2>&1; then
                useradd -g ossec -G ossec -d "${WAZUH_HOME}" -r -s ${NO_SHELL} ossec >> ./logs/upgrade.log 2>&1
-            elif
-               adduser --system --home "${WAZUH_HOME}" --shell ${NO_SHELL} --ingroup ${GROUP} ${USER} >> ./logs/upgrade.log 2>&1
+            else
+               adduser --system --home "${WAZUH_HOME}" --shell ${NO_SHELL} --ingroup ossec ossec >> ./logs/upgrade.log 2>&1
             fi
     fi
 
+}
+
+
+function restore_ossec_ownership {
+        while read -r line; do
+            TFILE_OWN=$(echo $line | cut -d " " -f -1)
+            TFILE_PATH=$(echo $line | cut -d " " -f 2-)
+            chown $TFILE_OWN "${TFILE_PATH}" >> ./logs/upgrade.log 2>&1
+        done <<< "$OSSEC_LIST_FILES"
+
+        # Prevents a change of permissions in case of failure to get version 4.3 >=
+        if [ -n "${OSSEC_LIST_FILES}" ]; then
+            # If there are files with the group or user wazuh, we change them to ossec.
+            find ./ -group wazuh -exec chgrp ossec {} \;
+            find ./ -user wazuh -exec chown ossec {} \;
+        fi
+}
+
+function restore_selinux_policy {
+    # Restore SELinuxPolicy
+    if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
+        if [ $(getenforce) != "Disabled" ]; then
+            if [ -f ./var/selinux/wazuh.pp ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring SELinux policy ...." >> ./logs/upgrade.log
+                semodule -i ./var/selinux/wazuh.pp >> ./logs/upgrade.log 2>&1
+                semodule -e wazuh >> ./logs/upgrade.log 2>&1
+            else
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - ERROR: Wazuh SELinux module not found." >> ./logs/upgrade.log
+            fi
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh SELinux module installation is skipped (SELinux is disabled)." >> ./logs/upgrade.log
+        fi
+    fi
 }
 
 # Search Agent version
@@ -139,12 +168,12 @@ done <<< "$BACKUP_LIST_FILES"
 # Generate Backup
 mkdir -p ./backup
 tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
-rm -rf ./tmp_bkp/
+# rm -rf ./tmp_bkp/
 
 # If necessary, save the list of files with the ossec ownership (Agent < 4.3)
 if [ "${WAZUH_REVISION}" -lt "40300" ]; then
     RESTORE_OSSEC_OWN=1
-    OSSEC_LIST_FILES=$(find ./  | xargs -I % ls -ld '%' | grep " ossec" | awk '{out=""; for(i=9;i<=NF;i++){out=out $i}; print $3":"$4 " " out}')
+    OSSEC_LIST_FILES=$(find ./ -printf '%u:%g %P\n' | grep ':ossec\|^ossec')
 fi
 
 
@@ -186,7 +215,7 @@ else
     $CONTROL stop >> ./logs/upgrade.log 2>&1
 
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >> ./logs/upgrade.log
-    for dir in ${FOLDERS_TO_BACKUP[@]}; do
+    for dir in "${FOLDERS_TO_BACKUP[@]}"; do
         rm -rf ${dir} >> ./logs/upgrade.log 2>&1
     done
 
@@ -203,7 +232,7 @@ else
 
     # Create ossec:ossec if is necessary
     if [ $RESTORE_OSSEC_OWN -eq 1 ]; then
-        create_ossec_ug()
+        create_ossec_ug
     fi
 
     # Restore backup
@@ -212,32 +241,11 @@ else
 
     # Assign the new ownership if is necesary
     if [ $RESTORE_OSSEC_OWN -eq 1 ]; then
-
-        while read -r line; do
-            TFILE_OWN=$(echo $line | cut -d " " -f -1)
-            TFILE_PATH=$(echo $line | cut -d " " -f 2-)
-            chown $TFILE_OWN "${TFILE_PATH}" >> ./logs/upgrade.log 2>&1
-        done <<< "$OSSEC_LIST_FILES"
-
-        # If there are files with the group or user wazuh, we change them to ossec.
-        find ./ -group wazuh -exec chgrp ossec {} \;
-        find ./ -user wazuh -exec chown ossec {} \;
+        restore_ossec_ownership
     fi
 
     # Restore SELinuxPolicy
-    if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
-        if [ $(getenforce) != "Disabled" ]; then
-            if [ -f ./var/selinux/wazuh.pp ]; then
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring SELinux policy ...." >> ./logs/upgrade.log
-                semodule -i ./var/selinux/wazuh.pp >> ./logs/upgrade.log 2>&1
-                semodule -e wazuh >> ./logs/upgrade.log 2>&1
-            else
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - ERROR: Wazuh SELinux module not found." >> ./logs/upgrade.log
-            fi
-        else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh SELinux module installation is skipped (SELinux is disabled)." >> ./logs/upgrade.log
-        fi
-    fi
+    restore_selinux_policy
 
     echo -ne "2" > ./var/upgrade/upgrade_result
 
