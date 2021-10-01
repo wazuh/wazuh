@@ -15,6 +15,8 @@
 #define AD_CONF_UNPARSED 3
 #define AD_CONF_UNDEFINED 2
 
+#include <time.h>
+
 /**
  * @brief Structure that defines the force options for agent replacement.
  **/
@@ -49,5 +51,7 @@ typedef struct authd_config_t {
     long timeout_usec;
     bool worker_node;
 } authd_config_t;
+
+int get_time_interval(char *source, time_t *interval);
 
 #endif

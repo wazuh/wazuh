@@ -20,7 +20,6 @@
 
 static short eval_bool(const char *str);
 int w_read_force_config(XML_NODE node, authd_config_t *config);
-int get_time_interval(char *source, time_t *interval);
 
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */

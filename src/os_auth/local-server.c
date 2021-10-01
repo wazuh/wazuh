@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include "auth.h"
 #include "os_err.h"
+#include <config/authd-config.h>
 
 typedef enum auth_local_err {
     EINTERNAL = 0,
@@ -244,22 +245,39 @@ char* local_dispatch(const char *input) {
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
 
             if (force = cJSON_GetObjectItem(arguments, "force"), force) {
-                if (item = cJSON_GetObjectItem(force, "enabled"), item) {
-                    force_options.enabled = (bool)item->valueint;
+                if (item = cJSON_GetObjectItem(force, "enabled"), !item) {
+                    ierror = EJSON;
+                    goto fail;
                 }
-                if (item = cJSON_GetObjectItem(force, "key_mismatch"), item) {
-                    force_options.key_mismatch = (bool)item->valueint;
+                force_options.enabled = (bool)item->valueint;
+
+                if (item = cJSON_GetObjectItem(force, "key_mismatch"), !item) {
+                    ierror = EJSON;
+                    goto fail;
                 }
-                if (disconnected_time = cJSON_GetObjectItem(force, "disconnected_time"), disconnected_time) {
-                    if (item = cJSON_GetObjectItem(disconnected_time, "enabled"), item) {
-                        force_options.disconnected_time_enabled = (bool)item->valueint;
-                    }
-                    if (item = cJSON_GetObjectItem(disconnected_time, "value"), item) {
-                        force_options.disconnected_time = (long)item->valueint;
-                    }
+                force_options.key_mismatch = (bool)item->valueint;
+
+                if (disconnected_time = cJSON_GetObjectItem(force, "disconnected_time"), !disconnected_time) {
+                    ierror = EJSON;
+                    goto fail;
                 }
-                if (item = cJSON_GetObjectItem(force, "after_registration_time"), item) {
-                    force_options.after_registration_time = (long)item->valueint;
+
+                if (item = cJSON_GetObjectItem(disconnected_time, "enabled"), !item) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+                force_options.disconnected_time_enabled = (bool)item->valueint;
+
+                item = cJSON_GetObjectItem(disconnected_time, "value");
+                if (!item || get_time_interval(item->valuestring, &force_options.disconnected_time)) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+
+                item = cJSON_GetObjectItem(force, "after_registration_time");
+                if (!item || get_time_interval(item->valuestring, &force_options.after_registration_time)) {
+                    ierror = EJSON;
+                    goto fail;
                 }
             }
 
