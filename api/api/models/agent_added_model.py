@@ -9,7 +9,7 @@ from api.models.base_model_ import Body, Model
 
 
 class DisconnectedTime(Model):
-    def __init__(self, enabled=None, value=None):
+    def __init__(self, enabled=True, value="1h"):
         self.swagger_types = {
             'enabled': bool,
             'value': str
@@ -41,7 +41,7 @@ class DisconnectedTime(Model):
 
 
 class AgentForce(Model):
-    def __init__(self, enabled=None, disconnected_time=None, after_registration_time=None):
+    def __init__(self, enabled=True, disconnected_time=None, after_registration_time="1h"):
         self.swagger_types = {
             'enabled': bool,
             'disconnected_time': DisconnectedTime,
@@ -55,7 +55,7 @@ class AgentForce(Model):
         }
 
         self._enabled = enabled
-        self._disconnected_time = disconnected_time
+        self._disconnected_time = DisconnectedTime(**disconnected_time or {}).to_dict()
         self._after_registration_time = after_registration_time
 
     @property
@@ -86,27 +86,21 @@ class AgentForce(Model):
 class AgentAddedModel(Body):
 
     def __init__(self, name: str = None, ip: str = None):
-        """AgentAddedModel body model
-        :param name: Agent name.
-        :type name: str
-        :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must
-        set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
-        :type ip: str
-        :param force: Remove the old agent if conditions are met.
-        :type force: AgentForce
-        """
         self.swagger_types = {
             'name': str,
-            'ip': str
+            'ip': str,
+            'force': AgentForce
         }
 
         self.attribute_map = {
             'name': 'name',
-            'ip': 'ip'
+            'ip': 'ip',
+            'force': 'force'
         }
 
         self._name = name
         self._ip = ip
+        self._force = AgentForce(enabled=False)
 
     @property
     def name(self) -> str:
@@ -137,3 +131,11 @@ class AgentAddedModel(Body):
         :param ip: Agent IP.
         """
         self._ip = ip
+
+    @property
+    def force(self):
+        return self._force
+
+    @force.setter
+    def force(self, force):
+        self._force = force

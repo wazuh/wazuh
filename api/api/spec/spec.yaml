@@ -1556,6 +1556,32 @@ components:
           type: object
           description: "Group configuration. The fields on this object depend on the actual group configuration"
 
+    AgentInsertForce:
+      type: object
+      description: "Remove the old agent with the same name, ID or IP if the configuration is matched"
+      properties:
+        enabled:
+          type: boolean
+          default: True
+          description: "Enable force option"
+        disconnected_time:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: True
+              description: "Enable force disconnected_time option"
+            value:
+              type: string
+              default: "1h"
+              description: "Time the agent must has been disconnected to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
+              format: timeframe
+        after_registration_time:
+          type: string
+          default: "1h"
+          description: "Time the agent must has been registered to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
+          format: timeframe
+
     ## CisCat models
     CiscatResults:
       type: object
@@ -7081,10 +7107,8 @@ paths:
                     IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force: # TODO
-                    description: "Remove the old agent with the same name, ID or IP if disconnected for <force_time>
-                    seconds"
-                    type: object
+                  force:
+                    $ref: '#/components/schemas/AgentInsertForce'
                 required:
                   - name
               example:
@@ -7092,6 +7116,13 @@ paths:
                 ip: 10.0.10.11
                 id: "123"
                 key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+                force:
+                  enabled: True
+                  disconnected_time:
+                    enabled: True
+                    value: "30m"
+                  after_registration_time: "2h"
+
       responses:
         '200':
           description: "Insert new agent"

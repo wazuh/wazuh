@@ -10,7 +10,6 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
-from copy import deepcopy
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps, loads
@@ -652,8 +651,8 @@ class Agent:
             ID of the new agent.
         key : str
             Key of the new agent.
-        force : int
-            Remove old agents with same IP if disconnected since <force> seconds.
+        force : dict
+            Remove old agents with same name or IP if conditions are met.
         use_only_authd : bool
             Force the use of authd when adding and removing agents.
 
@@ -716,7 +715,7 @@ class Agent:
         key : str
             Key of the new agent.
         force : dict
-            Remove old agents with same IP if disconnected since <force> seconds.
+            Remove old agents with same name or IP if conditions are met.
 
         Raises
         ------
@@ -867,7 +866,6 @@ class Agent:
 
                                 # If force is non-negative then we check to remove the agent using value of force as
                                 # the max age in seconds
-                                # TODO refactor this with the new force
                                 if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
                                     self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
                                     # We add a void entry

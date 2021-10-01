@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+from typing import Dict
+
 from api.models.agent_added_model import AgentForce
 from api.models.base_model_ import Body
 
@@ -21,7 +23,7 @@ class AgentInsertedModel(Body):
         :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
         :type key: str
         :param force: Remove the old agent with the same IP if disconnected since <force_time> seconds.
-        :type force: AgentForce
+        :type force: dict
         """
         self.swagger_types = {
             'id': str,
@@ -46,7 +48,7 @@ class AgentInsertedModel(Body):
         self._ip = ip
         self._agent_id = agent_id
         self._key = key
-        self._force = force
+        self._force = AgentForce(**force or {}).to_dict()
 
     @property
     def id(self) -> str:
@@ -124,10 +126,10 @@ class AgentInsertedModel(Body):
         self._key = key
 
     @property
-    def force(self) -> AgentForce:
+    def force(self) -> Dict:
         """
         :return: Limit time to disconnect an agent with the same IP.
-        :rtype: AgentForce
+        :rtype: dict
         """
         return self._force
 
