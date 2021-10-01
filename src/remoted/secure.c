@@ -291,9 +291,9 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client, struct sockadd
             merror("TCP peer [%d] at %s: %s (%d)", sock_client,
                     inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
         }
-        fallthrough;
-
+        break;
     case 0:
+        mdebug1("close socket %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
         _close_sock(&keys, sock_client);
         return;
 
@@ -321,6 +321,7 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client, struct sockaddr_
         case EBADF:
         case ECONNRESET:
         default:
+            mwarn("handle outgoing close socket %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
             _close_sock(&keys, sock_client);
         }
         return;
@@ -544,6 +545,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         if (sock_client >= 0)
+            mwarn("Decrypt the message fail, socket %d", sock_client);
             _close_sock(&keys, sock_client);
 
         return;

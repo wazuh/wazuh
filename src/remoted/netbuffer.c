@@ -38,7 +38,9 @@ void nb_close(netbuffer_t * buffer, int sock) {
 
     w_mutex_lock(&mutex);
 
-    bqueue_destroy(buffer->buffers[sock].bqueue);
+    if (buffer->buffers[sock].bqueue) {
+        bqueue_destroy(buffer->buffers[sock].bqueue);
+    }
 
     free(buffer->buffers[sock].data);
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
@@ -155,6 +157,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
         if( bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes) < 0) {
             merror("socket: %d, bqueue drop fail, could not drop %lu bytes", socket, sent_bytes);
             bqueue_clear(buffer->buffers[socket].bqueue);
+            peeked_bytes = 0;
         }
     } else if (sent_bytes < 0) {
         switch (errno) {
@@ -166,7 +169,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
         default:
             peeked_bytes = 0;
             bqueue_clear(buffer->buffers[socket].bqueue);
-            mwarn("socket: %d, bqueue clear bqueue", socket);
+            mwarn("socket: %d, bqueue clear queue", socket);
         }
     }
 
@@ -182,31 +185,35 @@ int nb_send(netbuffer_t * buffer, int socket) {
 int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
     int retval = -1;
 
-    for (unsigned int retries = 0; retries < 2; retries++) {
+    if (buffer->buffers[socket].bqueue) {
+        for (unsigned int retries = 0; retries < 2; retries++) {
 
-        w_mutex_lock(&mutex);
+            w_mutex_lock(&mutex);
 
-        retval = -1;
-        int header_size = sizeof(uint32_t);
-        char data[msg_size + header_size];
-        memcpy((data + header_size), crypt_msg, msg_size);
-        // Add header at begining, first 4 bytes, it is message msg_size.
-        *(uint32_t *)(data) = wnet_order(msg_size);
+            retval = -1;
+            int header_size = sizeof(uint32_t);
+            char data[msg_size + header_size];
+            memcpy((data + header_size), crypt_msg, msg_size);
+            // Add header at begining, first 4 bytes, it is message msg_size.
+            *(uint32_t *)(data) = wnet_order(msg_size);
 
-        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
+            if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
-            wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
-            w_mutex_unlock(&mutex);
+                wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+                w_mutex_unlock(&mutex);
 
-            retval = 0;
-            break;
-        } else {
-            mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
-                buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
+                retval = 0;
+                break;
+            } else {
+                mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
+                    buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
 
-            w_mutex_unlock(&mutex);
-            sleep(send_timeout_to_retry);
+                w_mutex_unlock(&mutex);
+                sleep(send_timeout_to_retry);
+            }
         }
+    } else {
+        mdebug1("Package dropped. bqueue is null.");
     }
 
     if (retval < 0) {
