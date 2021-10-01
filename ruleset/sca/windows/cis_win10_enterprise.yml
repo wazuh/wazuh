@@ -1587,7 +1587,7 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvce -> Start -> 4'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvc -> Start -> 4'
 
 # 9 Windows Firewall with Advanced Security
   - id: 15598
