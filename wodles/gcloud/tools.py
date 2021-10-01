@@ -41,7 +41,7 @@ def get_script_arguments():
                                      description="Wazuh wodle for monitoring Google Cloud",
                                      formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('-t', '--integration_type', dest='integration_type',
+    parser.add_argument('-T', '--integration_type', dest='integration_type',
                         help='Supported integration types: pubsub, access_logs', required=True)
 
     parser.add_argument('-p', '--project', dest='project',
@@ -141,7 +141,7 @@ def get_wazuh_queue() -> str:
     return join(utils.find_wazuh_path(), 'queue', 'sockets', 'queue')
 
 
-def arg_valid_date(arg_string : str):
+def arg_valid_date(arg_string: str):
     """Validation function for only_logs_after dates.
 
     Parameters
