@@ -101,6 +101,21 @@ int test_setup_valid_msg_invalid_field_list(void **state)
     return 0;
 }
 
+int test_setup_valid_msg_with_no_type(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("{\"type\":\"dbsync_\", \"operation\":\"invalid\", \"data\":{}}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_hotfixes_valid_msg_with_separator_character(void **state)
 {
     Eventinfo *lf;
@@ -397,6 +412,42 @@ int test_setup_os_valid_msg(void **state)
     return 0;
 }
 
+int test_setup_os_valid_msg_with_number_pk(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    // architecture will be a number PK
+    if (lf->log = strdup("{ \
+        \"type\":\"dbsync_osinfo\",\
+        \"operation\":\"MODIFIED\",\
+        \"data\":{\
+            \"hostname\" : \"93\",\
+            \"architecture\" : 94,\
+            \"os_name\" : \"95\",\
+            \"os_version\" : \"96\",\
+            \"os_codename\" : \"97\",\
+            \"os_major\" : \"98\",\
+            \"os_minor\" : \"99\",\
+            \"os_patch\" : \"100\",\
+            \"os_build\" : \"101\",\
+            \"os_platform\" : \"102\",\
+            \"sysname\" : \"103\",\
+            \"release\" : \"104\",\
+            \"version\" : \"105\",\
+            \"os_release\" : \"106\",\
+            \"os_display_version\" : \"107\",\
+            \"checksum\" : \"108\"\
+    }}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_valid_msg_query_error(void **state)
 {
     Eventinfo *lf;
@@ -649,6 +700,34 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
     assert_int_not_equal(ret, 0);
 }
 
+void test_syscollector_dbsync_os_valid_msg_with_number_pk(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *result = "ok";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_with_no_type(void **state)
+{
+    Eventinfo *lf = *state;
+    int sock = 1;
+    expect_string(__wrap__merror, formatted_msg, "Incorrect prefix message, message type: dbsync.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to send dbsync information to Wazuh DB.");
+    int ret = DecodeSyscollector(lf, &sock);
+    assert_int_equal(ret, 0);
+}
 
 void test_syscollector_dbsync_valid_msg_query_error(void **state)
 {
@@ -691,6 +770,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_network_address_valid_msg, test_setup_network_address_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg, test_setup_hardware_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg, test_setup_os_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_with_number_pk, test_setup_os_valid_msg_with_number_pk, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_with_no_type, test_setup_valid_msg_with_no_type, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }
