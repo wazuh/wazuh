@@ -60,7 +60,7 @@ extern "C" {
 #define FIM_DB_FREE_TYPE(_func) (void (*)(void *))(_func)
 #define FIM_DB_CALLBACK_TYPE(_func) (void (*)(fdb_t *, void *, int,  void *))(_func)
 
-extern const char *schema_fim_sql;
+extern const char* schema_fim_sql;
 
 /**
  * @brief Executes a simple query in a given database.
@@ -70,7 +70,7 @@ extern const char *schema_fim_sql;
  *
  * @return int 0 on success, -1 on error.
  */
-int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
+int fim_db_exec_simple_wquery(fdb_t* fim_sql, const char* query);
 
 
 /**
@@ -86,8 +86,8 @@ int fim_db_exec_simple_wquery(fdb_t *fim_sql, const char *query);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_get_query(fdb_t *fim_sql, int type, int index, void (*callback)(fdb_t *, fim_entry *, int, void *),
-                             int storage, void * arg);
+int fim_db_process_get_query(fdb_t* fim_sql, int type, int index, void (*callback)(fdb_t*, fim_entry*, int, void*),
+                             int storage, void* arg);
 
 /**
  * @brief
@@ -102,8 +102,8 @@ int fim_db_process_get_query(fdb_t *fim_sql, int type, int index, void (*callbac
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3_stmt *), void (*free_row)(void *),
-                              void (*callback)(fdb_t *, void *, int, void *), int storage, void *arg);
+int fim_db_multiple_row_query(fdb_t* fim_sql, int index, void* (*decode)(sqlite3_stmt*), void (*free_row)(void*),
+                              void (*callback)(fdb_t*, void*, int, void*), int storage, void* arg);
 
 /**
  * @brief Create a new database.
@@ -115,7 +115,7 @@ int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3
  *
  * @return 0 on success, -1 otherwise
  */
-int fim_db_create_file(const char *path, const char *source, int storage, sqlite3 **fim_db);
+int fim_db_create_file(const char* path, const char* source, int storage, sqlite3** fim_db);
 
 /**
  * @brief Create a new temporal storage to save all the files' paths.
@@ -124,7 +124,7 @@ int fim_db_create_file(const char *path, const char *source, int storage, sqlite
  *
  * @return New file structure.
  */
-fim_tmp_file *fim_db_create_temp_file(int storage);
+fim_tmp_file* fim_db_create_temp_file(int storage);
 
 
 /**
@@ -133,7 +133,7 @@ fim_tmp_file *fim_db_create_temp_file(int storage);
  * @param file Storage structure.
  * @param storage Type of storage (memory or disk).
  */
-void fim_db_clean_file(fim_tmp_file **file, int storage);
+void fim_db_clean_file(fim_tmp_file** file, int storage);
 
 /**
  * @brief Get a fim entry from a path received in a failed synchronization.
@@ -145,7 +145,7 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
  *
  * @return FIM entry struct on success, NULL on error.
  */
-fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
+fim_entry* fim_db_get_entry_from_sync_msg(fdb_t* fim_sql, fim_type type, const char* path);
 
 /**
  * @brief Read paths and registry paths which are stored in a temporal storage.
@@ -160,9 +160,9 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
- int fim_db_process_read_file(fdb_t *fim_sql, fim_tmp_file *file, int type, pthread_mutex_t *mutex,
-                              void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                              int storage, void * alert, void * mode, void * w_evt);
+int fim_db_process_read_file(fdb_t* fim_sql, fim_tmp_file* file, int type, pthread_mutex_t* mutex,
+                             void (*callback)(fdb_t*, fim_entry*, pthread_mutex_t*, void*, void*, void*),
+                             int storage, void* alert, void* mode, void* w_evt);
 
 /**
  * @brief Calculate checksum of data entries between @start and @top.
@@ -182,15 +182,15 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_checksum_range(fdb_t *fim_sql,
+int fim_db_get_checksum_range(fdb_t* fim_sql,
                               fim_type type,
-                              const char *start,
-                              const char *top,
+                              const char* start,
+                              const char* top,
                               int n,
-                              EVP_MD_CTX *ctx_left,
-                              EVP_MD_CTX *ctx_right,
-                              char **str_pathlh,
-                              char **str_pathuh);
+                              EVP_MD_CTX* ctx_left,
+                              EVP_MD_CTX* ctx_right,
+                              char** str_pathlh,
+                              char** str_pathuh);
 
 /**
  * @brief Get path list between @start and @top. (stored in @file).
@@ -204,7 +204,7 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_path_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, fim_tmp_file **file, int storage);
+int fim_db_get_path_range(fdb_t* fim_sql, fim_type type, const char* start, const char* top, fim_tmp_file** file, int storage);
 
 /**
  * @brief Initialize FIM databases.
@@ -216,7 +216,7 @@ int fim_db_get_path_range(fdb_t *fim_sql, fim_type type, const char *start, cons
  *
  * @return FIM database struct.
  */
-fdb_t *fim_db_init(int storage);
+fdb_t* fim_db_init(int storage);
 
 /**
  * @brief Finalize stmt and close DB.
@@ -225,7 +225,7 @@ fdb_t *fim_db_init(int storage);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_close(fdb_t *fim_sql);
+void fim_db_close(fdb_t* fim_sql);
 
 /**
  * @brief Clean the FIM databases.
@@ -240,7 +240,7 @@ void fim_db_clean(void);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_cache(fdb_t *fim_sql);
+int fim_db_cache(fdb_t* fim_sql);
 
 /**
  * @brief Finalize all statements.
@@ -249,21 +249,21 @@ int fim_db_cache(fdb_t *fim_sql);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_finalize_stmt(fdb_t *fim_sql);
+int fim_db_finalize_stmt(fdb_t* fim_sql);
 
 /**
  * @brief End transaction and commit.
  *
  * @param fim_sql FIM database struct.
  */
-void fim_db_check_transaction(fdb_t *fim_sql);
+void fim_db_check_transaction(fdb_t* fim_sql);
 
 /**
  * @brief Force the commit in the database.
  *
  * @param fim_sql FIM database struct.
  */
-void fim_db_force_commit(fdb_t *fim_sql);
+void fim_db_force_commit(fdb_t* fim_sql);
 
 /**
  * @brief Reset statement and clean bindings parameters.
@@ -273,7 +273,7 @@ void fim_db_force_commit(fdb_t *fim_sql);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_clean_stmt(fdb_t *fim_sql, int index);
+int fim_db_clean_stmt(fdb_t* fim_sql, int index);
 
 /**
  * @brief Get count of all entries in the database. This function must not be called from outside fim_db,
@@ -286,7 +286,7 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index);
  *
  * @return Number of entries in selected database.
 */
-int _fim_db_get_count(fdb_t *fim_sql, int index);
+int _fim_db_get_count(fdb_t* fim_sql, int index);
 
 /**
  * @brief Get count of all entries in the database.
@@ -298,7 +298,7 @@ int _fim_db_get_count(fdb_t *fim_sql, int index);
  *
  * @return Number of entries in selected database.
 */
-int fim_db_get_count(fdb_t *fim_sql, int index);
+int fim_db_get_count(fdb_t* fim_sql, int index);
 
 /**
  * @brief Count the number of entries between range @start and @top.
@@ -311,7 +311,7 @@ int fim_db_get_count(fdb_t *fim_sql, int index);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, int *counter);
+int fim_db_get_count_range(fdb_t* fim_sql, fim_type type, const char* start, const char* top, int* counter);
 
 
 // Callbacks
@@ -326,7 +326,7 @@ int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, con
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg);
+void fim_db_callback_save_path(fdb_t* fim_sql, fim_entry* entry, int storage, void* arg);
 
 /**
  * @brief Write a string into the storage pointed by @arg.
@@ -338,7 +338,7 @@ void fim_db_callback_save_path(fdb_t *fim_sql, fim_entry *entry, int storage, vo
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_string(fdb_t * fim_sql, const char *str, int storage, void *arg);
+void fim_db_callback_save_string(fdb_t* fim_sql, const char* str, int storage, void* arg);
 
 /**
  * @brief Callback function: Entry checksum calculation.
@@ -348,7 +348,7 @@ void fim_db_callback_save_string(fdb_t * fim_sql, const char *str, int storage, 
  * @param storage 1 Store database in memory, disk otherwise.
  * @param arg
  */
-void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int storage, void *arg);
+void fim_db_callback_calculate_checksum(fdb_t* fim_sql, char* checksum, int storage, void* arg);
 
 /**
  * @brief Binds data into a range data statement.
@@ -358,7 +358,7 @@ void fim_db_callback_calculate_checksum(fdb_t *fim_sql, char *checksum, int stor
  * @param start First entry of the range.
  * @param top Last entry of the range.
  */
-void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top);
+void fim_db_bind_range(fdb_t* fim_sql, int index, const char* start, const char* top);
 
 /**
  * @brief Decode a single string from the executed sqlite3 statement.
@@ -366,7 +366,7 @@ void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char 
  * @param stmt A sqlite3_stmt that has just been stepped.
  * @return A string with the query result, the caller is responsible of deallocating it using free. NULL on error.
  */
-char *fim_db_decode_string(sqlite3_stmt *stmt);
+char* fim_db_decode_string(sqlite3_stmt* stmt);
 
 /**
  * @brief Get the last/first row from file_entry.
@@ -377,7 +377,7 @@ char *fim_db_decode_string(sqlite3_stmt *stmt);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path);
+int fim_db_get_last_path(fdb_t* fim_sql, int type, char** path);
 
 /**
  * @brief Get the last/first row from file_entry.
@@ -388,7 +388,7 @@ int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path);
+int fim_db_get_first_path(fdb_t* fim_sql, int type, char** path);
 
 /**
  * @brief Get checksum of all file_entry.
@@ -399,7 +399,7 @@ int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg);
+int fim_db_get_data_checksum(fdb_t* fim_sql, fim_type type, void* arg);
 
 /**
  * @brief Read a single line from a fim_tmp_file.
@@ -416,7 +416,7 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg);
  * @retval -1
  * Fail at fseek
  */
-int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
+int fim_db_read_line_from_file(fim_tmp_file* file, int storage, int it, char** buffer);
 
 /**
  * @brief Get count of all entries in the FIM DB.
@@ -425,7 +425,7 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
  *
  * @return Number of entries in the FIM DB.
  */
-int fim_db_get_count_entries(fdb_t * fim_sql);
+int fim_db_get_count_entries(fdb_t* fim_sql);
 
 /**
  * @brief Check if the FIM DB is full.
@@ -434,14 +434,14 @@ int fim_db_get_count_entries(fdb_t * fim_sql);
  * @retval 0 if the DB is not full.
  * @retval 1 if the DB is full.
  */
-int fim_db_is_full(fdb_t *fim_sql);
+int fim_db_is_full(fdb_t* fim_sql);
 
 /**
  * @brief Check if database if full
  *
  * @param fim_sql FIM database structure.
  */
-int fim_db_check_limit(fdb_t *fim_sql);
+int fim_db_check_limit(fdb_t* fim_sql);
 
 
 /**
@@ -453,7 +453,7 @@ int fim_db_check_limit(fdb_t *fim_sql);
  *
  * @return FIM entry struct on success, NULL on error.
  */
-int fim_db_get_multiple_path(fdb_t *fim_sql, int index, FILE *fd);
+int fim_db_get_multiple_path(fdb_t* fim_sql, int index, FILE* fd);
 
 /**
  * @brief Get entry data using path.
@@ -463,7 +463,7 @@ int fim_db_get_multiple_path(fdb_t *fim_sql, int index, FILE *fd);
  *
  * @return FIM entry struct on success, NULL on error.
  */
-fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
+fim_entry* fim_db_get_path(fdb_t* fim_sql, const char* file_path);
 
 /**
  * @brief Get all the paths asociated to an inode
@@ -474,7 +474,7 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
  *
  * @return char** An array of the paths asociated to the inode.
  */
-char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
+char** fim_db_get_paths_from_inode(fdb_t* fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
  * @brief Delete entry from the DB using file path.
@@ -484,7 +484,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_remove_path(fdb_t *fim_sql, const char *path);
+int fim_db_remove_path(fdb_t* fim_sql, const char* path);
 
 /**
  * @brief Set all entries from database to unscanned.
@@ -493,7 +493,7 @@ int fim_db_remove_path(fdb_t *fim_sql, const char *path);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_all_unscanned(fdb_t *fim_sql);
+int fim_db_set_all_unscanned(fdb_t* fim_sql);
 
 /**
  * @brief Get all the unscanned files by saving them in a temporal storage.
@@ -504,7 +504,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
+int fim_db_get_not_scanned(fdb_t* fim_sql, fim_tmp_file** file, int storage);
 
 /**
  * @brief Delete not scanned entries from database.
@@ -516,7 +516,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
+int fim_db_delete_not_scanned(fdb_t* fim_sql, fim_tmp_file* file, pthread_mutex_t* mutex, int storage);
 
 /**
  * @brief Removes a range of paths from the database.
@@ -533,12 +533,12 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_range(fdb_t *fim_sql,
-                        fim_tmp_file *file,
-                        pthread_mutex_t *mutex,
+int fim_db_delete_range(fdb_t* fim_sql,
+                        fim_tmp_file* file,
+                        pthread_mutex_t* mutex,
                         int storage,
-                        event_data_t *evt_data,
-                        directory_t *configuration);
+                        event_data_t* evt_data,
+                        directory_t* configuration);
 
 /**
  * @brief Remove a range of paths from database if they have a specific monitoring mode.
@@ -551,11 +551,11 @@ int fim_db_delete_range(fdb_t *fim_sql,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_missing_entry(fdb_t *fim_sql,
-                                 fim_tmp_file *file,
-                                 pthread_mutex_t *mutex,
+int fim_db_process_missing_entry(fdb_t* fim_sql,
+                                 fim_tmp_file* file,
+                                 pthread_mutex_t* mutex,
                                  int storage,
-                                 event_data_t *evt_data);
+                                 event_data_t* evt_data);
 
 /**
  * @brief Remove a wildcard directory that were not expanded from the configuration
@@ -569,12 +569,12 @@ int fim_db_process_missing_entry(fdb_t *fim_sql,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
-                                 fim_tmp_file *file,
-                                 pthread_mutex_t *mutex,
+int fim_db_remove_wildcard_entry(fdb_t* fim_sql,
+                                 fim_tmp_file* file,
+                                 pthread_mutex_t* mutex,
                                  int storage,
-                                 event_data_t *evt_data,
-                                 directory_t *configuration);
+                                 event_data_t* evt_data,
+                                 directory_t* configuration);
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.
@@ -583,7 +583,7 @@ int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
  *
  * @return fim_entry* The filled structure.
  */
-fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
+fim_entry* fim_db_decode_full_row(sqlite3_stmt* stmt);
 
 /**
  * @brief Get count of all inodes in file_entry table.
@@ -592,7 +592,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
  *
  * @return Number of inodes in file_entry table.
  */
-int fim_db_get_count_file_inode(fdb_t * fim_sql);
+int fim_db_get_count_file_inode(fdb_t* fim_sql);
 
 /**
  * @brief Get count of all entries in file_entry table.
@@ -601,7 +601,7 @@ int fim_db_get_count_file_inode(fdb_t * fim_sql);
  *
  * @return Number of entries in file_entry table.
  */
-int fim_db_get_count_file_entry(fdb_t * fim_sql);
+int fim_db_get_count_file_entry(fdb_t* fim_sql);
 
 /**
  * @brief Get path list using the sqlite LIKE operator using @pattern. (stored in @file).
@@ -611,7 +611,7 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql);
  * @param storage 1 Store database in memory, disk otherwise.
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage);
+int fim_db_get_path_from_pattern(fdb_t* fim_sql, const char* pattern, fim_tmp_file** file, int storage);
 
 /**
  * @brief Makes any necessary queries to get the entry updated in the DB.
@@ -623,7 +623,7 @@ int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_fi
  * @return The result of the update operation.
  * @retval Returns any of the values returned by fim_db_set_scanned and fim_db_insert_entry.
  */
-int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *data, fim_entry **saved);
+int fim_db_file_update(fdb_t* fim_sql, const char* path, const fim_file_data* data, fim_entry** saved);
 
 #ifdef WIN32
 
@@ -640,9 +640,9 @@ int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *da
  * @param w_evt Whodata information for callback function.
  *
  */
-int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex,
-                                           void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                           int storage, void * alert, void * mode, void * w_evt);
+int fim_db_process_read_registry_data_file(fdb_t* fim_sql, fim_tmp_file* file, pthread_mutex_t* mutex,
+                                           void (*callback)(fdb_t*, fim_entry*, pthread_mutex_t*, void*, void*, void*),
+                                           int storage, void* alert, void* mode, void* w_evt);
 
 // Registry callbacks
 
@@ -656,7 +656,7 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_callback_save_reg_data_name(fdb_t *fim_sql, fim_entry *entry, int storage, void *arg);
+void fim_db_callback_save_reg_data_name(fdb_t* fim_sql, fim_entry* entry, int storage, void* arg);
 
 // Registry functions.
 
@@ -668,7 +668,7 @@ void fim_db_callback_save_reg_data_name(fdb_t *fim_sql, fim_entry *entry, int st
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_key_checksum(fdb_t *fim_sql, void * arg);
+int fim_db_get_registry_key_checksum(fdb_t* fim_sql, void* arg);
 
 /**
  * @brief Get checksum of all registry data.
@@ -678,7 +678,7 @@ int fim_db_get_registry_key_checksum(fdb_t *fim_sql, void * arg);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
+int fim_db_get_registry_data_checksum(fdb_t* fim_sql, void* arg);
 
 /**
  * @brief Get the rowid of a key path.
@@ -688,7 +688,7 @@ int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
  * @param arch Architecture of the registry
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int arch, unsigned int *rowid);
+int fim_db_get_registry_key_rowid(fdb_t* fim_sql, const char* path, unsigned int arch, unsigned int* rowid);
 
 /**
  * @brief Get registry data using its key_id and name. This function must not be called from outside fim_db,
@@ -700,7 +700,7 @@ int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int
  *
  * @return FIM registry data struct on success, NULL on error.
  */
-fim_registry_value_data *_fim_db_get_registry_data(fdb_t *fim_sql, unsigned int key_id, const char *name);
+fim_registry_value_data* _fim_db_get_registry_data(fdb_t* fim_sql, unsigned int key_id, const char* name);
 
 /**
  * @brief Get registry data using its key_id and name.
@@ -711,7 +711,7 @@ fim_registry_value_data *_fim_db_get_registry_data(fdb_t *fim_sql, unsigned int 
  *
  * @return FIM registry data struct on success, NULL on error.
  */
-fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, unsigned int key_id, const char *name);
+fim_registry_value_data* fim_db_get_registry_data(fdb_t* fim_sql, unsigned int key_id, const char* name);
 
 /**
  * @brief Get a registry key using its path. This function must not be called from outside fim_db,
@@ -724,7 +724,7 @@ fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, unsigned int k
  *
  * @return FIM registry key struct on success, NULL on error.
 */
-fim_registry_key *_fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsigned int arch);
+fim_registry_key* _fim_db_get_registry_key(fdb_t* fim_sql, const char* path, unsigned int arch);
 
 /**
  * @brief Get a registry key using its path.
@@ -736,7 +736,7 @@ fim_registry_key *_fim_db_get_registry_key(fdb_t *fim_sql, const char *path, uns
  *
  * @return FIM registry key struct on success, NULL on error.
 */
-fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsigned int arch);
+fim_registry_key* fim_db_get_registry_key(fdb_t* fim_sql, const char* path, unsigned int arch);
 
 
 /**
@@ -747,7 +747,7 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsi
  *
  * @return char** An array of the paths asociated to the key_id.
  */
-char **fim_db_get_all_registry_key(fdb_t *fim_sql, unsigned long int key_id);
+char** fim_db_get_all_registry_key(fdb_t* fim_sql, unsigned long int key_id);
 
 /**
  * @brief Insert or update registry data.
@@ -759,8 +759,8 @@ char **fim_db_get_all_registry_key(fdb_t *fim_sql, unsigned long int key_id);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_data(fdb_t *fim_sql,
-                                fim_registry_value_data *data,
+int fim_db_insert_registry_data(fdb_t* fim_sql,
+                                fim_registry_value_data* data,
                                 unsigned int key_id,
                                 unsigned int replace_entry);
 
@@ -773,7 +773,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned int rowid);
+int fim_db_insert_registry_key(fdb_t* fim_sql, fim_registry_key* entry, unsigned int rowid);
 
 /**
  * @brief Calculate checksum of registry keys between @start and @top.
@@ -790,8 +790,8 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_registry_key_checksum_range(fdb_t *fim_sql, const char *start, const char *top,
-                                       long id, int n, pthread_mutex_t *mutex);
+int fim_db_registry_key_checksum_range(fdb_t* fim_sql, const char* start, const char* top,
+                                       long id, int n, pthread_mutex_t* mutex);
 
 /**
  * @brief Count the number of entries between range @start and @top.
@@ -803,7 +803,7 @@ int fim_db_registry_key_checksum_range(fdb_t *fim_sql, const char *start, const 
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_key_count_range(fdb_t *fim_sql, char *start, char *top, int *counter);
+int fim_db_get_registry_key_count_range(fdb_t* fim_sql, char* start, char* top, int* counter);
 
 /**
  * @brief Count the number of registry data entries between range @start and @top.
@@ -816,7 +816,7 @@ int fim_db_get_registry_key_count_range(fdb_t *fim_sql, char *start, char *top, 
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 
-int fim_db_get_registry_data_count_range(fdb_t *fim_sql, const char *start, const char *top, int *counter);
+int fim_db_get_registry_data_count_range(fdb_t* fim_sql, const char* start, const char* top, int* counter);
 
 /**
  * @brief Get the last/first row from registry_key table.
@@ -827,7 +827,7 @@ int fim_db_get_registry_data_count_range(fdb_t *fim_sql, const char *start, cons
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_row_registry_key(fdb_t *fim_sql, int mode, char **path);
+int fim_db_get_row_registry_key(fdb_t* fim_sql, int mode, char** path);
 
 /**
  * @brief Get the last/first row from registry_data table.
@@ -838,7 +838,7 @@ int fim_db_get_row_registry_key(fdb_t *fim_sql, int mode, char **path);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_row_registry_data(fdb_t *fim_sql, int mode, char **path);
+int fim_db_get_row_registry_data(fdb_t* fim_sql, int mode, char** path);
 
 /**
  * @brief Set all entries from registry_key table to unscanned.
@@ -847,7 +847,7 @@ int fim_db_get_row_registry_data(fdb_t *fim_sql, int mode, char **path);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql);
+int fim_db_set_all_registry_key_unscanned(fdb_t* fim_sql);
 
 /**
  * @brief Set all entries from registry_data table to unscanned.
@@ -856,7 +856,7 @@ int fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
+int fim_db_set_all_registry_data_unscanned(fdb_t* fim_sql);
 
 /**
  * @brief Set a registry key as scanned.
@@ -866,7 +866,7 @@ int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
  * @param arch Architecture of the registry
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path, unsigned int arch);
+int fim_db_set_registry_key_scanned(fdb_t* fim_sql, const char* path, unsigned int arch);
 
 /**
  * @brief Set a registry data as scanned.
@@ -878,7 +878,7 @@ int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path, unsigned i
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned int key_id);
+int fim_db_set_registry_data_scanned(fdb_t* fim_sql, const char* name, unsigned int key_id);
 
 /**
  * @brief Get all the unscanned registries keys by saving them in a temporal storage.
@@ -889,7 +889,7 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned 
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
+int fim_db_get_registry_keys_not_scanned(fdb_t* fim_sql, fim_tmp_file** file, int storage);
 
 /**
  * @brief Get all the unscanned registries values by saving them in a temporal storage.
@@ -900,7 +900,7 @@ int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
+int fim_db_get_registry_data_not_scanned(fdb_t* fim_sql, fim_tmp_file** file, int storage);
 
 /**
  * @brief Get count of all entries in registry data table.
@@ -909,7 +909,7 @@ int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
  *
  * @return Number of entries in registry data table.
  */
-int fim_db_get_count_registry_data(fdb_t *fim_sql);
+int fim_db_get_count_registry_data(fdb_t* fim_sql);
 
 /**
  * @brief Get count of all entries in registry key table.
@@ -918,7 +918,7 @@ int fim_db_get_count_registry_data(fdb_t *fim_sql);
  *
  * @return Number of entries in registry data table.
  */
-int fim_db_get_count_registry_key(fdb_t *fim_sql);
+int fim_db_get_count_registry_key(fdb_t* fim_sql);
 
 /**
  * @brief Get registry keys between @start and @top. (stored in @file).
@@ -932,7 +932,7 @@ int fim_db_get_count_registry_key(fdb_t *fim_sql);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  *
  */
-int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const char *top, fim_tmp_file **file,
+int fim_db_get_registry_value_range(fdb_t* fim_sql, const char* start, const char* top, fim_tmp_file** file,
                                     int storage);
 
 /**
@@ -947,7 +947,7 @@ int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const cha
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_registry_key_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
+int fim_db_delete_registry_key_range(fdb_t* fim_sql, fim_tmp_file* file, pthread_mutex_t* mutex, int storage);
 
 /**
  * @brief Removes a range of registry data from the database.
@@ -961,7 +961,7 @@ int fim_db_delete_registry_key_range(fdb_t * fim_sql, fim_tmp_file *file, pthrea
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_registry_value_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
+int fim_db_delete_registry_value_range(fdb_t* fim_sql, fim_tmp_file* file, pthread_mutex_t* mutex, int storage);
 /**
  * @brief Remove a range of registry keys from database if they have a
  * specific monitoring mode.
@@ -975,8 +975,8 @@ int fim_db_delete_registry_value_range(fdb_t * fim_sql, fim_tmp_file *file, pthr
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_missing_registry_key_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                              fim_event_mode mode, whodata_evt * w_evt);
+int fim_db_process_missing_registry_key_entry(fdb_t* fim_sql, fim_tmp_file* file, pthread_mutex_t* mutex, int storage,
+                                              fim_event_mode mode, whodata_evt* w_evt);
 
 /**
  * @brief Remove a range of registry data from database if they have a
@@ -991,8 +991,8 @@ int fim_db_process_missing_registry_key_entry(fdb_t *fim_sql, fim_tmp_file *file
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_missing_registry_data_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                               fim_event_mode mode, whodata_evt * w_evt);
+int fim_db_process_missing_registry_data_entry(fdb_t* fim_sql, fim_tmp_file* file, pthread_mutex_t* mutex, int storage,
+                                               fim_event_mode mode, whodata_evt* w_evt);
 
 
 /**
@@ -1002,7 +1002,7 @@ int fim_db_process_missing_registry_data_entry(fdb_t *fim_sql, fim_tmp_file *fil
  *
  * @return Number of entries in registry key table.
  */
-int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
+int fim_db_get_count_registry_key_data(fdb_t* fim_sql);
 
 /**
  * @brief Delete registry using registry entry.
@@ -1010,7 +1010,7 @@ int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
  * @param fim_sql FIM database struct.
  * @param entry Registry entry.
  */
-int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry);
+int fim_db_remove_registry_key(fdb_t* fim_sql, fim_entry* entry);
 
 /**
  * @brief Delete registry data using fim_registry_value_data entry.
@@ -1020,7 +1020,7 @@ int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *entry);
+int fim_db_remove_registry_value_data(fdb_t* fim_sql, fim_registry_value_data* entry);
 
 /**
  * @brief Get a registry using it's id.
@@ -1030,7 +1030,7 @@ int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *e
  *
  * @return fim_registry_key structure.
  */
-fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int id);
+fim_registry_key* fim_db_get_registry_key_using_id(fdb_t* fim_sql, unsigned int id);
 
 /**
  * @brief Get all registry values from given id.
@@ -1044,7 +1044,7 @@ fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int 
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_get_values_from_registry_key(fdb_t * fim_sql, fim_tmp_file **file, int storage, unsigned long int key_id);
+int fim_db_get_values_from_registry_key(fdb_t* fim_sql, fim_tmp_file** file, int storage, unsigned long int key_id);
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_registry_key structure.
@@ -1053,7 +1053,7 @@ int fim_db_get_values_from_registry_key(fdb_t * fim_sql, fim_tmp_file **file, in
  *
  * @return fim_registry_key* The filled structure.
  */
-fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt);
+fim_registry_key* fim_db_decode_registry_key(sqlite3_stmt* stmt);
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_registry_value_data structure.
@@ -1062,7 +1062,7 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt);
  *
  * @return fim_registry_value_data* The filled structure.
  */
-fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt);
+fim_registry_value_data* fim_db_decode_registry_value(sqlite3_stmt* stmt);
 
 /**
  * @brief Decodes a row from the registry database to be saved in a registry key structure.
@@ -1072,7 +1072,7 @@ fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt);
  *
  * @return fim_entry* The filled structure.
  */
-fim_entry *fim_db_decode_registry(int index, sqlite3_stmt *stmt);
+fim_entry* fim_db_decode_registry(int index, sqlite3_stmt* stmt);
 
 #endif /* WIN32 */
 #ifdef __cplusplus
