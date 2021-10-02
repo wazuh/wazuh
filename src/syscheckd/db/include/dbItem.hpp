@@ -11,7 +11,6 @@
 
 #ifndef _DBITEM_HPP
 #define _DBITEM_HPP
-#include "shared.h"
 #include "syscheck.h"
 
 class DBItem {

@@ -11,7 +11,6 @@
 
 #ifndef _REGISTRYKEY_HPP
 #define _REGISTRYKEY_HPP
-#include "shared.h"
 #include "dbItem.hpp"
 
 class RegistryKey final : public DBItem {
