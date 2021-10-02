@@ -12,8 +12,8 @@
 #include "syscheck.h"
 
 void FileItem::createFimEntry() {
-    fim_entry *fim = nullptr;
-    fim_file_data *data = reinterpret_cast<fim_file_data*>(calloc(1, sizeof(fim_file_data)));
+    fim_entry *fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
+    fim_file_data *data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
 
     fim->type = FIM_TYPE_FILE;
     fim->file_entry.path = const_cast<char*>(m_identifier.c_str());
@@ -26,15 +26,15 @@ void FileItem::createFimEntry() {
     data->group_name = const_cast<char*>(m_groupname.c_str());
     data->mtime = m_time;
     data->inode = m_inode;
-    strncpy(data->hash_md5, m_md5.c_str(), sizeof(data->hash_md5));
-    strncpy(data->hash_sha1, m_sha1.c_str(), sizeof(data->hash_sha1));
-    strncpy(data->hash_sha256, m_sha256.c_str(), sizeof(data->hash_sha256));
+    std::strncpy(data->hash_md5, m_md5.c_str(), sizeof(data->hash_md5));
+    std::strncpy(data->hash_sha1, m_sha1.c_str(), sizeof(data->hash_sha1));
+    std::strncpy(data->hash_sha256, m_sha256.c_str(), sizeof(data->hash_sha256));
     data->mode = m_mode;
     data->last_event = m_lastEvent;
     data->dev = m_dev;
     data->scanned = m_scanned;
     data->options = m_options;
-    strncpy(data->checksum, m_checksum.c_str(), sizeof(data->checksum));
+    std::strncpy(data->checksum, m_checksum.c_str(), sizeof(data->checksum));
     fim->file_entry.data = data;
     m_fimEntry = std::unique_ptr<fim_entry, FimFileDataDeleter>(fim);
 }
