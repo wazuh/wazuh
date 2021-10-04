@@ -93,5 +93,6 @@ except Exception as e:
     sys.exit(1)
 
 else:
-    logger.info(f'Received and acknowledged {num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
+    logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'
+                f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
     sys.exit(0)
