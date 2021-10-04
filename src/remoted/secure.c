@@ -293,7 +293,7 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client, struct sockadd
         }
         fallthrough;
     case 0:
-        mdebug1("close socket %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
+        mdebug1("handle incoming close socket %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
         _close_sock(&keys, sock_client);
         return;
 
@@ -321,7 +321,7 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client, struct sockaddr_
         case EBADF:
         case ECONNRESET:
         default:
-            mwarn("handle outgoing close socket %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
+            mdebug1("handle outgoing close socket %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
             _close_sock(&keys, sock_client);
         }
         return;

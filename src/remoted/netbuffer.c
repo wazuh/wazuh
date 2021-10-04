@@ -148,34 +148,35 @@ int nb_send(netbuffer_t * buffer, int socket) {
 
     w_mutex_lock(&mutex);
 
-    ssize_t peeked_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG);
-    if (peeked_bytes > 0) {
-        // Asynchronous sending
-        sent_bytes = send(socket, (const void *)data, peeked_bytes, MSG_DONTWAIT);
-    }
+    if (buffer->buffers[socket].bqueue) {
 
-    if (sent_bytes > 0) {
-        if( bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes) < 0) {
-            merror("socket: %d, bqueue drop fail, could not drop %lu bytes", socket, sent_bytes);
-            bqueue_clear(buffer->buffers[socket].bqueue);
-            peeked_bytes = 0;
+        ssize_t peeked_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG);
+        if (peeked_bytes > 0) {
+            // Asynchronous sending
+            sent_bytes = send(socket, (const void *)data, peeked_bytes, MSG_DONTWAIT);
         }
-    } else if (sent_bytes < 0) {
-        switch (errno) {
-        case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-        case EWOULDBLOCK:
-#endif
-            break;
-        default:
-            peeked_bytes = 0;
-            bqueue_clear(buffer->buffers[socket].bqueue);
-            mwarn("socket: %d, bqueue clear queue", socket);
-        }
-    }
 
-    if (peeked_bytes == 0) {
-        wnotify_modify(notify, socket, WO_READ);
+        if (sent_bytes > 0) {
+            if (bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes) < 0) {
+                merror("socket: %d, bqueue clear queue, could not drop %lu bytes", socket, sent_bytes);
+                bqueue_clear(buffer->buffers[socket].bqueue);
+            }
+        } else if (sent_bytes < 0) {
+            switch (errno) {
+            case EAGAIN:
+    #if EAGAIN != EWOULDBLOCK
+            case EWOULDBLOCK:
+    #endif
+                break;
+            default:
+                merror("socket: %d, bqueue clear queue, send fail", socket);
+                bqueue_clear(buffer->buffers[socket].bqueue);
+            }
+        }
+
+        if (bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG) == 0) {
+            wnotify_modify(notify, socket, WO_READ);
+        }
     }
 
     w_mutex_unlock(&mutex);
@@ -215,7 +216,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
             }
         } else {
             w_mutex_unlock(&mutex);
-            mdebug1("Package dropped. bqueue is null.");
+            break;
         }
     }
 
