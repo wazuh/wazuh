@@ -744,6 +744,8 @@ class Agent:
             msg = {"function": "add", "arguments": {"name": name, "ip": ip}}
 
             if force is not None:
+                # This force field must always be present
+                force.update({"key_mismatch": True})
                 msg["arguments"]["force"] = force
 
             if id and key:
