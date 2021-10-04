@@ -29,7 +29,7 @@ function create_ossec_ug {
             fi
     fi
 
-   exists_user=$(getent group ossec)  2>/dev/null; [ -z "${exists_user}" ] && exists_user=$(id -g ossec 2>/dev/null);
+   exists_user=$(getent passwd ossec)  2>/dev/null; [ -z "${exists_user}" ] && exists_user=$(id -u ossec 2>/dev/null);
     # Create the ossec group if it doesn't exists
     if [ -z "${exists_user}" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring ossec user." >> ./logs/upgrade.log
