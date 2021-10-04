@@ -11,7 +11,7 @@ import socket
 from os.path import abspath, dirname
 import google.api_core.exceptions
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 import utils
 
 
@@ -27,7 +27,7 @@ class WazuhGCloudSubscriber:
     header = '1:Wazuh-GCloud:'
     key_name = 'gcp'
 
-    def __init__(self, credentials_file: str, project: str, logger, subscription_id: str, max_messages: int = 100):
+    def __init__(self, credentials_file: str, project: str, logger, subscription_id: str):
         """Instantiate a WazuhGCloudSubscriber object.
 
         Parameters
@@ -38,8 +38,6 @@ class WazuhGCloudSubscriber:
             Project name
         subscription_id : str
             Subscription ID
-        max_messages : int
-            Maximum number of messages to retrieve
         """
         self.logger = logger
 

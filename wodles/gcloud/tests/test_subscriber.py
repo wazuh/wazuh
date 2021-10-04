@@ -18,8 +18,7 @@ import pytest
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                              'data')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 credentials_file = 'credentials.json'
 logger = None
@@ -37,7 +36,7 @@ def get_wazuhgcloud_subscriber(mock_client):
 
 def test_get_subscriber():
     """Check if an instance of WazuhGCloudSubscriber is created properly."""
-    expected_attributes = ['wazuh_queue', 'logger', 'subscriber', 'subscription_path', 'max_messages']
+    expected_attributes = ['wazuh_queue', 'logger', 'subscriber', 'subscription_path']
 
     client = get_wazuhgcloud_subscriber()
 
