@@ -221,7 +221,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     }
                 }
             }
-         } else {
+        } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);
             os_free(data->message);

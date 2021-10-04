@@ -56,14 +56,15 @@ void nb_close(netbuffer_t * buffer, int sock) {
  * Returns the number of bytes received on success.
 */
 int nb_recv(netbuffer_t * buffer, int sock) {
-    sockbuffer_t * sockbuf = &buffer->buffers[sock];
-    unsigned long data_ext = sockbuf->data_len + receive_chunk;
     long recv_len;
     unsigned long i;
     unsigned long cur_offset;
     uint32_t cur_len;
 
     w_mutex_lock(&mutex);
+
+    sockbuffer_t * sockbuf = &buffer->buffers[sock];
+    unsigned long data_ext = sockbuf->data_len + receive_chunk;
 
     // Extend data buffer
 
@@ -142,10 +143,10 @@ end:
 int nb_send(netbuffer_t * buffer, int socket) {
     ssize_t sent_bytes = 0;
 
-    w_mutex_lock(&mutex);
-
     char data[send_chunk];
     memset(data, 0, send_chunk);
+
+    w_mutex_lock(&mutex);
 
     ssize_t peeked_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG);
     if (peeked_bytes > 0) {
@@ -185,17 +186,18 @@ int nb_send(netbuffer_t * buffer, int socket) {
 int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
     int retval = -1;
 
-    if (buffer->buffers[socket].bqueue) {
-        for (unsigned int retries = 0; retries < 2; retries++) {
+    for (unsigned int retries = 0; retries < 2; retries++) {
 
-            w_mutex_lock(&mutex);
+        retval = -1;
+        int header_size = sizeof(uint32_t);
+        char data[msg_size + header_size];
+        memcpy((data + header_size), crypt_msg, msg_size);
+        // Add header at begining, first 4 bytes, it is message msg_size.
+        *(uint32_t *)(data) = wnet_order(msg_size);
 
-            retval = -1;
-            int header_size = sizeof(uint32_t);
-            char data[msg_size + header_size];
-            memcpy((data + header_size), crypt_msg, msg_size);
-            // Add header at begining, first 4 bytes, it is message msg_size.
-            *(uint32_t *)(data) = wnet_order(msg_size);
+        w_mutex_lock(&mutex);
+
+        if (buffer->buffers[socket].bqueue) {
 
             if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
@@ -211,9 +213,10 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
                 w_mutex_unlock(&mutex);
                 sleep(send_timeout_to_retry);
             }
+        } else {
+            w_mutex_unlock(&mutex);
+            mdebug1("Package dropped. bqueue is null.");
         }
-    } else {
-        mdebug1("Package dropped. bqueue is null.");
     }
 
     if (retval < 0) {
