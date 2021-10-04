@@ -24,6 +24,7 @@ from google.api_core import exceptions as google_exceptions
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from integration import WazuhGCloudIntegration
+import utils
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
@@ -57,7 +58,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.delete_file = delete_file
         self.only_logs_after = only_logs_after
 
-        self.db_path = "gcloud.db"
+        self.db_path = os.path.join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
 
