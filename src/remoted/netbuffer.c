@@ -174,7 +174,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
             }
         }
 
-        if (bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG) == 0) {
+        if (!peeked_bytes || bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG) == 0) {
             wnotify_modify(notify, socket, WO_READ);
         }
     }
@@ -186,25 +186,22 @@ int nb_send(netbuffer_t * buffer, int socket) {
 
 int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
     int retval = -1;
+    int header_size = sizeof(uint32_t);
+    char data[msg_size + header_size];
+
+    memcpy((data + header_size), crypt_msg, msg_size);
+    // Add header at begining, first 4 bytes, it is message msg_size
+    *(uint32_t *)(data) = wnet_order(msg_size);
+
+    w_mutex_lock(&mutex);
 
     for (unsigned int retries = 0; retries < 2; retries++) {
-
-        retval = -1;
-        int header_size = sizeof(uint32_t);
-        char data[msg_size + header_size];
-        memcpy((data + header_size), crypt_msg, msg_size);
-        // Add header at begining, first 4 bytes, it is message msg_size.
-        *(uint32_t *)(data) = wnet_order(msg_size);
-
-        w_mutex_lock(&mutex);
 
         if (buffer->buffers[socket].bqueue) {
 
             if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
                 wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
-                w_mutex_unlock(&mutex);
-
                 retval = 0;
                 break;
             } else {
@@ -213,16 +210,22 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
                 w_mutex_unlock(&mutex);
                 sleep(send_timeout_to_retry);
+                w_mutex_lock(&mutex);
             }
         } else {
-            w_mutex_unlock(&mutex);
             break;
         }
     }
 
     if (retval < 0) {
         merror("Package dropped. Could not append data into buffer.");
+        if (buffer->buffers[socket].bqueue) {
+            bqueue_clear(buffer->buffers[socket].bqueue);
+        }
+        wnotify_modify(notify, socket, WO_READ);
     }
+
+    w_mutex_unlock(&mutex);
 
     return retval;
 }
