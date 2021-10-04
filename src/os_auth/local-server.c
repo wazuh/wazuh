@@ -184,6 +184,7 @@ char* local_dispatch(const char *input) {
     cJSON *response = NULL;
     char *output = NULL;
     int ierror;
+    char *groups = NULL;
 
     if (input[0] == '{') {
         if (config.worker_node) {
@@ -209,7 +210,6 @@ char* local_dispatch(const char *input) {
             char *id = NULL;
             char *name = NULL;
             char *ip = NULL;
-            char *groups = NULL;
             char *key_hash = NULL;
             char *key = NULL;
             authd_force_options_t force_options = {0};
@@ -342,6 +342,7 @@ fail:
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
     cJSON_Delete(request);
+    os_free(groups);
     return output;
 }
 
