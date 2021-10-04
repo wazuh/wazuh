@@ -215,3 +215,34 @@ def test_raise_if_exc(mock_create_problem, obj, code):
         mock_create_problem.assert_called_once_with(obj, code)
     else:
         assert result == obj
+
+
+@pytest.mark.parametrize("dikt, f_kwargs, invalid_keys", [
+    ({"key1": 0, "key2": 0}, {"key1": 0}, {"key2"}),
+    ({
+         "key1": 0,
+         "key2": {
+             "key21": 0,
+             "key22": {
+                 "key221": 0,
+                 "key222": {
+                     "key2221": 0
+                 }
+             }
+         }
+     },
+     {
+         "key2": {
+             "key22": {
+                 "key221": 0
+             }
+         }
+     },
+     {"key1", "key21", "key222"}),
+    ({"key1": 0}, {"key1": 0, "key2": 0}, set())
+])
+def test_get_invalid_keys(dikt, f_kwargs, invalid_keys):
+    """Check that `get_invalid_keys` return the correct invalid keys when comparing two dictionaries with more
+    than one nesting level."""
+    invalid = util.get_invalid_keys(dikt, f_kwargs)
+    assert invalid == invalid_keys

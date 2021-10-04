@@ -757,13 +757,14 @@ def test_agent_add_ko(mock_maganer_status):
         agent._add('test_name', '192.168.0.0', use_only_authd=True)
 
 
-@pytest.mark.parametrize("name, ip, id, key", [
-    ('test_agent', '172.19.0.100', None, None),
+@pytest.mark.parametrize("name, ip, id, key, force", [
+    ('test_agent', '172.19.0.100', None, None, None),
     ('test_agent', '172.19.0.100', '002', 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2O'
-                                          'TE5MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz')
+                                          'TE5MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz',
+     {"enabled": True, "disconnected_time": {"enabled": True, "value": "1h"}})
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')
-def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key):
+def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
     """Tests if method _add_authd() works as expected
 
     Parameters
@@ -776,18 +777,21 @@ def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key):
         ID of the new agent.
     key : str
          Key of the new agent.
+    force : dict
+        Force parameters.
     """
     agent = Agent(id)
-    agent._add_authd(name, ip, id, key)
+    agent._add_authd(name, ip, id, key, force)
 
     mock_wazuh_socket.return_value.receive.assert_called_once()
     mock_wazuh_socket.return_value.close.assert_called_once()
+    socket_msg = {"function": "add", "arguments": {"name": name, "ip": ip}}
     if id and key:
-        mock_wazuh_socket.return_value.send.assert_called_once_with(
-            {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": -1}})
-    else:
-        mock_wazuh_socket.return_value.send.assert_called_once_with(
-            {"function": "add", "arguments": {"name": name, "ip": ip, "force": -1}})
+        socket_msg["arguments"].update({"id": id, "key": key})
+    if force:
+        socket_msg["arguments"].update({"force": {"key_mismatch": True, **force}})
+
+    mock_wazuh_socket.return_value.send.assert_called_once_with(socket_msg)
 
 
 @pytest.mark.parametrize("mocked_exception, expected_exception", [
