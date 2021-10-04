@@ -1302,7 +1302,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         if (data = OSHash_Get(pending_data, agent_id), data) {
             os_strdup(data->message, msg);
-            os_strdup(data->group, group);
+            w_strdup(data->group, group);
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", agent_id);
             os_free(agent_id);
