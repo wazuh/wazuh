@@ -26,7 +26,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.cluster as cluster
         import wazuh.core.cluster.utils as utils
         from wazuh import WazuhException
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.exception import WazuhError, WazuhInternalError
 
 # Valid configurations
 default_cluster_configuration = {
@@ -70,42 +70,6 @@ def test_get_localhost_ips():
     Test to check the correct output from the get_localhost_ips function
     """
     assert type(cluster.get_localhost_ips()) is set
-
-
-def test_read_empty_configuration():
-    """
-    Test reading an empty cluster configuration
-    """
-    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
-        wazuh.core.cluster.utils.read_config.cache_clear()
-        m.side_effect = WazuhException(1106)
-        configuration = wazuh.core.cluster.utils.read_config()
-        configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
-        assert configuration == default_cluster_configuration['cluster']
-
-
-@pytest.mark.parametrize('read_config', [
-    default_cluster_configuration,
-    custom_cluster_configuration,
-    custom_incomplete_configuration
-])
-def test_read_configuration(read_config):
-    """
-    Tests reading the cluster configuration from ossec.conf
-    """
-    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
-        m.return_value = read_config.copy()
-        configuration = wazuh.core.cluster.utils.read_config()
-        configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
-        wazuh.core.cluster.utils.read_config.cache_clear()
-        for k in read_config['cluster'].keys():
-            assert configuration[k] == read_config['cluster'][k]
-
-        # values not present in the read user configuration will be filled with default values
-        if 'disabled' not in read_config and read_config != {}:
-            default_cluster_configuration['disabled'] = 'no'
-        for k in default_cluster_configuration.keys() - read_config.keys():
-            assert configuration[k] == default_cluster_configuration[k]
 
 
 @pytest.mark.parametrize('read_config', [
@@ -180,6 +144,37 @@ def test_check_cluster_status():
     assert isinstance(cluster.check_cluster_status(), bool)
 
 
+@patch('wazuh.core.common.cluster_integrity_mtime')
+def test_walk_files(mock_cluster_integrity_mtime):
+    """
+    Test to check the different outputs of the walk_files function
+    """
+    
+    with patch('os.path.join', return_value = '/some/path/'):
+        with patch('wazuh.core.cluster.cluster.walk') as w:
+            w.return_value = [('/foo/', ('bar',), ('baz',)),
+                                ('/foo/bar', (), ('spam', 'eggs', '.merged')),]
+            cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            with patch('os.path.getmtime', return_value = 45):
+                mock_cluster_integrity_mtime.return_value = {"/some/path/": {"mod_time": 45}}
+                cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+
+            # with pytest.raises(KeyError):
+            #     mock_cluster_integrity_mtime.return_value = 5
+            #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+                
+            with patch('os.path.getmtime', return_value = mock_cluster_integrity_mtime.get()["/some/path"]['mod_time']):
+                cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+
+            with patch('os.path.getmtime', side_effect = PermissionError):
+                cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+
+        with patch('wazuh.core.cluster.cluster.walk', side_effect = OSError):
+            with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
+                cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+
+
+
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
     "files": {
         "etc/": {
@@ -217,71 +212,27 @@ def test_get_files_status(mock_get_cluster_items):
         assert isinstance(cluster.get_files_status(), dict)
         assert cluster.get_files_status()["path"] == test_dict["path"]
 
-    # with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception('test_error')):
-    #     with patch('wazuh.core.cluster.cluster.logging.getLogger') as logger_mock:
-    #         cluster.get_files_status()
-    #         print(logger_mock)
-    #         # import pydevd_pycharm
-    #         # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-    #         logger_mock.warning.assert_called_once_with("Error getting file status: test_error.")
-    #     # mock_walk_dir.side_effect = Exception
-    #     # with pytest.raises(Exception):
-    #     #     cluster.get_files_status()
+    with patch('wazuh.core.cluster.cluster.walk_dir', side_effect = Exception):
+        cluster.get_files_status()
 
 
-# @patch('files', return_value=["all"])
-# def test_walk_dir(mock_files, value):
-#     """
-#     Test to check if the expected exceptions are raised
-#     """
-#     with patch('previous_status', return_value={}):
-#         with pytest.raises(KeyError):
-#             pass
-
-
-@patch('wazuh.core.common.cluster_integrity_mtime')
-def test_walk_files(mock_cluster_integrity_mtime):
+def test_update_cluster_control_with_failed():
     """
-    Test to check the different outputs of the walk_files function
+    Check if cluster_control json is updated as expected
     """
-    
-    with patch('os.path.join', return_value = '/some/path/'):
-        with patch('wazuh.core.cluster.cluster.walk') as w:
-            w.return_value = [('/foo/', ('bar',), ('baz',)),
-                                ('/foo/bar', (), ('spam', 'eggs', '.merged')),]
-            cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-            with patch('os.path.getmtime', return_value = 45):
-                mock_cluster_integrity_mtime.return_value = {"/some/path/": {"mod_time": 45}}
-                cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-                
-                # with pytest.raises(KeyError):
-                #     mock_cluster_integrity_mtime.return_value = {"/some/path/": 45}
-                #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+    ko_files = {
+        'missing': {'/test_file0': 'test',
+                    '/test_file3': 'ok'},
+        'shared': {'/test_file1': 'test'},
+        'extra': {'/test_file2': 'test'}
+    }
+    cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'],
+                                               ko_files)
 
-@patch('wazuh.core.cluster.cluster.get_cluster_items')
-def test_compare_files(mock_get_cluster_items):
-    """
-    Test to check the different outputs of the compare_files function
-    """
-    mock_get_cluster_items.return_value = {'files': {"some": "field"}}
-    #cluster.compare_files( {"some/path/": "files2"},{"some/path/": "files", "some/path2/": {"cluster_item_key": "key"}}, "worker1")
-
-
-    #with patch('wazuh.core.common.wazuh_path', return_value = "/var/ossec/"):
-#     assert cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True) == {}
-#     print("\n2 assert")
-#     assert cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "etc/shared/", True) == {}
-    
-
-# def test_remove_directory_contents():
-#     """
-#     Test to check the correct performance of the remove_directory_function
-#     """
-
-#     logger = logging.getLogger('wazuh.core.cluster.cluster.')
-
-#     with patch('rm_path', return_value = "/silly/path"):
-#         assert cluster.clean_up()
+    assert ko_files == {'missing': {'/test_file3': 'ok'},
+                        'shared': {},
+                        'extra': {'/test_file2': 'test', '/test_file1': 'test'}
+                        }
 
 
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
@@ -298,13 +249,67 @@ def test_compress_files(mock_path_dirname,mock_mkdir_with_mode):
             with pytest.raises(WazuhError, match=r'.* 3001 .*'):
                 cluster.compress_files("some_name", ["some/path", "another/path"])
 
+        with patch('zipfile.ZipFile.writestr', side_effect = zipfile.LargeZipFile):
+            with pytest.raises(WazuhError, match=r'.* 3001 .*'):
+                cluster.compress_files("some_name", ["some/path", "another/path"])
 
-# @pytest.mark.asyncio
-# async def test_decompress_files():
-#     cluster.decompress_files("/some/path")
+
+def test_decompress_files():
+    """
+    Test to check if the decompressing function is working properly
+    """
 
 
-agent_groups = b"default,windows-servers"
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
+def test_compare_files(mock_get_cluster_items):
+    """
+    Test to check the different outputs of the compare_files function
+    """
+    mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
+
+    with patch('wazuh.core.cluster.cluster.merge_info', return_values = [1, "random/path/"]):
+        cluster.compare_files({'some/path3/': {'cluster_item_key': 'key', 'md5': 'md5 value'}, 
+                               'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}, 
+                              {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
+                               'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'}}, 'worker1')
+                    
+    cluster.compare_files({'some/path3/': {'cluster_item_key': 'key', 'md5': 'md5 value'}, 
+                           'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}, 
+                          {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 value'},
+                           'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'}}, 'worker1')
+
+
+    #with patch('wazuh.core.common.wazuh_path', return_value = "/var/ossec/"):
+#     assert cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True) == {}
+#     print("\n2 assert")
+#     assert cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "etc/shared/", True) == {}
+
+
+def test_clean_up():
+    """
+    Test to check if the cleaning function is working properly
+    """
+
+    with patch('os.path.join') as path_join_mock:
+        path_join_mock.return_value = Exception
+        cluster.clean_up("worker1")
+
+        path_join_mock.return_value = "some/path/"
+        with patch('os.path.exists') as path_exists_mock:
+            path_exists_mock.return_value = False
+            cluster.clean_up("worker1")
+
+        with patch('os.path.exists') as path_exists_mock:
+            path_exists_mock.return_value = True
+            with patch('wazuh.core.cluster.cluster.listdir') as listdir_mock:
+                listdir_mock.return_value = ["c-internal.sock","other_file.txt"]
+                cluster.clean_up("worker1")
+
+                with patch('os.path.isdir', return_value = True):
+                    cluster.clean_up("worker1")
+
+                with patch('wazuh.core.cluster.cluster.rmtree', side_effect = Exception):
+                    cluster.clean_up("worker1")
 
 
 @patch('wazuh.core.cluster.cluster.listdir', return_value=['005', '006'])
@@ -327,12 +332,16 @@ def test_merge_info(stat_mock, listdir_mock):
         handle.write.assert_any_call(expected)
 
 
+agent_groups = b"default,windows-servers"
 @pytest.mark.parametrize('agent_info, exception', [
     (f"23 005 2019-03-29 14:57:29.610934\n{agent_groups}".encode(), None),
     (f"2i58 006 2019-03-29 14:57:29.610934\n{agent_groups}".encode(), ValueError)
 ])
 @patch('wazuh.core.cluster.cluster.stat')
 def test_unmerge_info(stat_mock, agent_info, exception):
+    """
+    Tests unmerge agent info function
+    """
     stat_mock.return_value.st_size = len(agent_info)
     with patch('builtins.open', mock_open(read_data=agent_info)):
         agent_groups = list(
@@ -340,18 +349,99 @@ def test_unmerge_info(stat_mock, agent_info, exception):
         assert len(agent_groups) == (1 if exception is None else 0)
 
 
-def test_update_cluster_control_with_failed():
-    """Check if cluster_control json is updated as expected"""
-    ko_files = {
-        'missing': {'/test_file0': 'test',
-                    '/test_file3': 'ok'},
-        'shared': {'/test_file1': 'test'},
-        'extra': {'/test_file2': 'test'}
-    }
-    cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'],
-                                               ko_files)
 
-    assert ko_files == {'missing': {'/test_file3': 'ok'},
-                        'shared': {},
-                        'extra': {'/test_file2': 'test', '/test_file1': 'test'}
-                        }
+
+
+
+
+
+
+
+
+
+
+def test_read_empty_configuration():
+    """
+    Test reading an empty cluster configuration
+    """
+    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+        wazuh.core.cluster.utils.read_config.cache_clear()
+        m.side_effect = WazuhException(1106)
+        configuration = wazuh.core.cluster.utils.read_config()
+        configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
+        assert configuration == default_cluster_configuration['cluster']
+
+
+@pytest.mark.parametrize('read_config', [
+    default_cluster_configuration,
+    custom_cluster_configuration,
+    custom_incomplete_configuration
+])
+def test_read_configuration(read_config):
+    """
+    Tests reading the cluster configuration from ossec.conf
+    """
+    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+        m.return_value = read_config.copy()
+        configuration = wazuh.core.cluster.utils.read_config()
+        configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
+        wazuh.core.cluster.utils.read_config.cache_clear()
+        for k in read_config['cluster'].keys():
+            assert configuration[k] == read_config['cluster'][k]
+
+        # values not present in the read user configuration will be filled with default values
+        if 'disabled' not in read_config and read_config != {}:
+            default_cluster_configuration['disabled'] = 'no'
+        for k in default_cluster_configuration.keys() - read_config.keys():
+            assert configuration[k] == default_cluster_configuration[k]
+
+
+
+    # with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception('test_error')):
+    #     with patch('wazuh.core.cluster.cluster.logging.getLogger') as logger_mock:
+    #         cluster.get_files_status()
+    #         print(logger_mock)
+    #         # import pydevd_pycharm
+    #         # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    #         logger_mock.warning.assert_called_once_with("Error getting file status: test_error.")
+    #     # mock_walk_dir.side_effect = Exception
+    #     # with pytest.raises(Exception):
+    #     #     cluster.get_files_status()
+
+
+# @patch('files', return_value=["all"])
+# def test_walk_dir(mock_files, value):
+#     """
+#     Test to check if the expected exceptions are raised
+#     """
+#     with patch('previous_status', return_value={}):
+#         with pytest.raises(KeyError):
+#             pass
+
+
+
+
+
+# def test_remove_directory_contents():
+#     """
+#     Test to check the correct performance of the remove_directory_function
+#     """
+
+#     logger = logging.getLogger('wazuh.core.cluster.cluster.')
+
+#     with patch('rm_path', return_value = "/silly/path"):
+#         assert cluster.clean_up()
+
+
+
+# @pytest.mark.asyncio
+# async def test_decompress_files():
+#     cluster.decompress_files("/some/path")
+
+
+
+
+
+
+
+

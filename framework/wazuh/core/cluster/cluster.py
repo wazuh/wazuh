@@ -206,6 +206,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             try:
                                 if file_mod_time == previous_status[relative_file_path]['mod_time']:
                                     # The current file has not changed its mtime since the last integrity process.
+                                    print(walk_files, relative_file_path)
+                                    print(previous_status, relative_file_path)
                                     walk_files[relative_file_path] = previous_status[relative_file_path]
                                     continue
                             except KeyError:
@@ -259,7 +261,6 @@ def get_files_status(get_md5=True):
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                          cluster_items['files']['excluded_extensions'], file_path, get_md5))
         except Exception as e:
-            print("TESTING: ",e)
             logger.warning(f"Error getting file status: {e}.")
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
@@ -319,7 +320,6 @@ def compress_files(name, list_path, cluster_control_json=None):
         if list_path:
             for f in list_path:
                 try:
-                    print("1")
                     zf.write(filename=path.join(common.wazuh_path, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
@@ -415,7 +415,10 @@ def compare_files(good_files, check_files, node_name):
         generator
             Items that do not meet the condition.
         """
+        print("-----------------\n",seq, condition,"-----------------\n")
+        
         l1, l2 = itertools.tee((condition(item), item) for item in seq)
+        print("La cosa rara: ",(i for p, i in l1 if p), (i for p, i in l2 if not p))
         return (i for p, i in l1 if p), (i for p, i in l2 if not p)
 
     # Get 'files' dictionary inside cluster.json to read options for each file depending on their
@@ -424,9 +427,6 @@ def compare_files(good_files, check_files, node_name):
 
     # Missing files will be the ones that are present in good files (master) but not in the check files (worker).
     missing_files = {key: good_files[key] for key in good_files.keys() - check_files.keys()}
-    print(cluster_items)
-
-    print("1: ", check_files.keys() - good_files.keys())
 
     # Extra files are the ones present in check files (worker) but not in good files (master) and aren't extra valid.
     extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),
@@ -440,9 +440,11 @@ def compare_files(good_files, check_files, node_name):
     # 'shared_e_v' are files present in both nodes but need to be merged before sending them to the worker. Only
     # 'agent-groups' files fit into this category.
     # 'shared' files can be sent as is, without merging.
+    print("All shared: ",all_shared)
     shared_e_v, shared = split_on_condition(all_shared,
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     shared_e_v = list(shared_e_v)
+    print("Shared e v: ",shared_e_v)
     if shared_e_v:
         # Merge all shared extra valid files into a single one. Create a tuple (merged_filepath, {metadata_dict}).
         shared_merged = [(merge_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
@@ -483,7 +485,6 @@ def clean_up(node_name=""):
         if not path.exists(local_rm_path):
             logger.debug(f"Nothing to remove in '{local_rm_path}'.")
             return
-
         for f in listdir(local_rm_path):
             if f == "c-internal.sock":
                 continue
