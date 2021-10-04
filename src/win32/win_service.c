@@ -257,7 +257,7 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 #ifdef OSSECHIDS
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Set pending exit signal.");
+                minfo("Exiting...");
 
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
@@ -265,7 +265,7 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 #endif
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Exiting...");
+                minfo("Exiting completed successfully.");
                 break;
         }
     }
