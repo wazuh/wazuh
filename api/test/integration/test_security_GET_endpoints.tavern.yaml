@@ -990,7 +990,7 @@ stages:
       save:
         $ext:
           function: tavern_utils:test_save_token_raw_format
-    
+
   - name: Test generated token
     request:
       verify: False
