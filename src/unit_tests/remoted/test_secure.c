@@ -391,7 +391,7 @@ void test_HandleSecureMessage_unvalid_message(void **state)
 
     // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
-    will_return(__wrap_OS_DeleteSocket, 1);
+    will_return(__wrap_OS_DeleteSocket, 0);
 
     expect_function_call(__wrap_key_unlock);
 
