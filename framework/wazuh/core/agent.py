@@ -1317,10 +1317,15 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     # Send upgrading command
     s = WazuhSocket(common.UPGRADE_SOCKET)
     s.send(dumps(msg).encode())
+
+    # Receive upgrade information from socket
     data = loads(s.receive().decode())
     s.close()
-    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
-                       for k, v in agent_info.items() if k in {'create_time', 'update_time'})
-     for agent_info in data['data']]
+
+    # Update agent information when getting upgrade results
+    # When a task has status "In Queue", update_time has value "0" as the task has not been updated yet
+    [agent_info.update(
+        (k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format)) for k, v in agent_info.items() if
+        k in {"create_time", "update_time"} and v != "0") for agent_info in data["data"]]
 
     return data

@@ -3986,16 +3986,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
-    agents_list_upgrade:
-      in: query
-      name: agents_list
-      description: "List of agent IDs (separated by comma), select a list of agents with size less or equal than 100"
-      required: true
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/AgentID'
-        maxItems: 100
     agents_list_all:
       in: query
       name: agents_list
@@ -6181,7 +6171,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_upgrade'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
@@ -6228,7 +6218,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_upgrade'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
       responses:
