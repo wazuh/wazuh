@@ -8,29 +8,27 @@
 
 """Unit tests for integration module."""
 
-import os
+from os.path import join, dirname, realpath
 import sys
 from unittest.mock import patch
-
 import pytest
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
+sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                              'data')
+from logging import getLogger
+test_data_path = join(dirname(realpath(__file__)), 'data')
 
 credentials_file = 'credentials.json'
 project = 'wazuh-dev'
 subscription_id = 'testing'
-test_message = 'test-message'.encode()
-logger = None
+test_message = 'test-message'
+logger = getLogger('test_logger')
 
 
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
 def get_wazuhgcloud_subscriber(mock_client):
     """Return a WazuhGCloudSubscriber client."""
-    client = WazuhGCloudSubscriber(credentials_file, logger, project, subscription_id)
+    client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
     return client
 
 
@@ -38,14 +36,16 @@ def get_wazuhgcloud_subscriber(mock_client):
 def test_send_message_ok(mock_socket):
     """Test if messages are sent to Wazuh queue socket."""
     client = get_wazuhgcloud_subscriber()
-    client.send_message(test_message)
+    with client.initialize_socket():
+        client.send_msg(test_message)
+    mock_socket.return_value.send.assert_called()
 
 
 def test_send_message_ko():
-    """Test send_message method when a socket exception happens."""
-    with pytest.raises(OSError):
+    """Test send_message method when the socket hasn't been initialized."""
+    with pytest.raises(AttributeError):
         client = get_wazuhgcloud_subscriber()
-        client.send_message(test_message)
+        client.send_msg(test_message)
 
 
 def test_format_msg():
