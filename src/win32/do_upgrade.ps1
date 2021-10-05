@@ -199,6 +199,7 @@ function restore
             $counter--
             Start-Sleep 2
         }
+        Remove-Item $Env:WAZUH_BACKUP_DIR\$msi_filename -ErrorAction SilentlyContinue
     }
 
     # Restore old files
@@ -270,9 +271,6 @@ while($status -eq $null -And $counter -gt 0)
     $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
 }
 write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
-
-# Forces fail
-$status = $null
 
 If ($status -eq $null)
 {
