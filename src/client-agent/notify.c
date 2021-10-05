@@ -90,6 +90,7 @@ void run_notify()
     time_t curr_time;
     static char agent_ip[IPSIZE] = { '\0' };
     static time_t last_update = 0;
+    static const char no_hash_value[] = "x merged.mg\n";
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
     curr_time = time(0);
@@ -182,20 +183,20 @@ void run_notify()
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n",
-                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x", label_ip);
+                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
         } else {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n",
-                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x", label_ip);
+                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
         }
     }
     else {
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n",
-                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x");
+                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
         } else {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n",
-                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x");
+                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
         }
     }
 
