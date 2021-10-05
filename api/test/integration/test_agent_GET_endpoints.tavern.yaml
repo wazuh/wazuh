@@ -1067,6 +1067,22 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  # GET /agents - disconnection time
+  - name: Assert active and never_connected agents do not have disconnection_time
+    request:
+      verify: False
+      <<: *get_agent
+      params:
+        select: "disconnection_time"
+        status: "active,never_connected"
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_validate_key_not_in_response
+        extra_kwargs:
+          key: 'disconnection_time'
+      status_code: 200
+
   # GET /agents?agents_list=000&select=param_test
   - name: Try show agents with not allowed selector
     request:
