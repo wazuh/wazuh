@@ -10,7 +10,7 @@
 
 import logging
 import socket
-import tools
+from tools import get_wazuh_queue
 
 
 class WazuhGCloudIntegration:
@@ -20,8 +20,9 @@ class WazuhGCloudIntegration:
     key_name = 'gcp'
 
     def __init__(self, logger: logging.Logger):
-        self.wazuh_queue = tools.get_wazuh_queue()
+        self.wazuh_queue = get_wazuh_queue()
         self.logger = logger
+        self.socket = None
 
     def check_permissions(self):
         raise NotImplementedError
@@ -41,6 +42,31 @@ class WazuhGCloudIntegration:
         # Insert msg as value of self.key_name key.
         return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
 
+    def initialize_socket(self):
+        """Initialize a socket and connect it to an address.
+
+        Returns
+        -------
+        socket
+            The initialized socket to be able to use it as a context manager.
+
+        Raises
+        ------
+        OSError
+            If the socket is unable to establish a connection or send a message to analysisd.
+        """
+        try:
+            self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            self.socket.connect(self.wazuh_queue)
+            return self.socket
+        except OSError as e:
+            if e.errno == 111:
+                self.logger.critical('Wazuh must be running')
+                raise e
+            else:
+                self.logger.critical('Error sending event to Wazuh')
+                raise e
+
     def process_data(self):
         raise NotImplementedError
 
@@ -51,18 +77,16 @@ class WazuhGCloudIntegration:
         ----------
         msg : str
             Event to be sent
+
+        Raises
+        ------
+        OSError
+            If the socket is unable to send the message to analysisd.
         """
         event_json = f'{self.header}{msg}'.encode(errors='replace')  # noqa: E501
+        self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
         try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
-            s.send(event_json)
-            s.close()
-        except socket.error as e:
-            if e.errno == 111:
-                self.logger.critical('Wazuh must be running')
-                raise e
-            else:
-                self.logger.critical('Error sending event to Wazuh')
-                raise e
+            self.socket.send(event_json)
+        except OSError as e:
+            self.logger.critical('Error sending event to Wazuh')
+            raise e

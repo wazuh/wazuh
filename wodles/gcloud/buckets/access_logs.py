@@ -8,10 +8,10 @@
 
 import csv
 import logging
-import os
-import sys
+from os.path import dirname, realpath
+from sys import path
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))  # noqa: E501
+path.append(dirname(realpath(__file__)))  # noqa: E501
 from bucket import WazuhGCloudBucket
 
 

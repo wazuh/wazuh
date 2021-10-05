@@ -10,15 +10,14 @@
 
 import argparse
 import logging
-import sys
+from sys import path, stdout
 from datetime import datetime
-from functools import lru_cache
 from logging.handlers import TimedRotatingFileHandler
 from os.path import abspath, dirname, join
+from pytz import UTC
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+path.insert(0, dirname(dirname(abspath(__file__))))
 import utils
-import pytz
 
 
 logger_name = 'gcloud_wodle'
@@ -95,7 +94,7 @@ def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
     # set log level
     logger.setLevel(log_levels.get(level, logging.WARNING))
     # set handler for stdout
-    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler = logging.StreamHandler(stdout)
     stdout_handler.setFormatter(logging_format)
     logger_stdout.addHandler(stdout_handler)
 
@@ -154,6 +153,6 @@ def arg_valid_date(arg_string: str):
     The formatted date
     """
     try:
-        return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=pytz.UTC)
+        return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=UTC)
     except ValueError:
-        raise argparse.ArgumentTypeError("Argument not a valid date in format YYYY-MMM-DD: '{0}'.".format(arg_string))
+        raise argparse.ArgumentTypeError(f"Argument not a valid date in format YYYY-MMM-DD: '{arg_string}'.")

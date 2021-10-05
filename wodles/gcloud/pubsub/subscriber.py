@@ -6,13 +6,13 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import sys
+from sys import path
 import socket
 from os.path import abspath, dirname
 import google.api_core.exceptions
 
-sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
-import utils
+path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+from integration import WazuhGCloudIntegration
 
 
 try:
@@ -21,11 +21,8 @@ except ImportError:
     raise Exception('ERROR: google-cloud-storage module is required.')
 
 
-class WazuhGCloudSubscriber:
+class WazuhGCloudSubscriber(WazuhGCloudIntegration):
     """Class for sending events from Google Cloud to Wazuh."""
-
-    header = '1:Wazuh-GCloud:'
-    key_name = 'gcp'
 
     def __init__(self, credentials_file: str, project: str, logger, subscription_id: str):
         """Instantiate a WazuhGCloudSubscriber object.
@@ -39,16 +36,11 @@ class WazuhGCloudSubscriber:
         subscription_id : str
             Subscription ID
         """
-        self.logger = logger
+        super().__init__(logger)
 
-        # get Wazuh paths
-        self.wazuh_path = utils.find_wazuh_path()
-        self.wazuh_version = utils.get_wazuh_version()
         # get subscriber
         self.subscriber = self.get_subscriber_client(credentials_file)
         self.subscription_path = self.get_subscription_path(project, subscription_id)
-        # Analysisd queue
-        self.wazuh_queue = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
     @staticmethod
     def get_subscriber_client(credentials_file: str) -> pubsub.subscriber.Client:
@@ -90,19 +82,6 @@ class WazuhGCloudSubscriber:
             error_message = 'ERROR: No permissions for executing the wodle from this subscription'
             raise Exception(error_message)
 
-    def format_msg(self, msg: bytes) -> str:
-        """Format a message.
-        :param msg: Message to be formatted
-        """
-        # Insert msg as value of self.key_name key.
-        return f'{{"integration": "gcp", "{self.key_name}": {msg.decode(errors="replace")}}}'
-
-    def send_message(self, message):
-        """Send a message with a header to the analysisd queue.
-        :param message: Message to send to the analysisd queue
-        """
-        self.wazuh_queue.send(f'{self.header}{message}'.encode(errors='replace'))
-
     def pull_request(self, max_messages) -> int:
         """Make request for pulling messages from the subscription and acknowledge them.
         :param max_messages: Maximum number of messages to retrieve
@@ -123,7 +102,7 @@ class WazuhGCloudSubscriber:
             formatted_message = self.format_msg(received_message.message.data)
             self.logger.debug(f'Processing event: {formatted_message}')
             ack_ids.append(received_message.ack_id)
-            self.send_message(formatted_message)
+            self.send_msg(formatted_message)
 
         ack_ids and self.subscriber.acknowledge(
             request={'subscription': self.subscription_path, 'ack_ids': ack_ids}
@@ -137,8 +116,7 @@ class WazuhGCloudSubscriber:
         :return: Number of processed messages
         """
         try:
-            self.wazuh_queue.connect(utils.ANALYSISD)
-            with self.subscriber:
+            with self.subscriber, self.initialize_socket():
                 processed_messages = 0
                 pulled_messages = self.pull_request(max_messages)
                 while pulled_messages > 0 and processed_messages < max_messages:
@@ -146,7 +124,7 @@ class WazuhGCloudSubscriber:
                     # get more messages
                     if processed_messages < max_messages:
                         pulled_messages = self.pull_request(max_messages - processed_messages)
-                return processed_messages
+            return processed_messages
         except socket.error as e:
             if e.errno == 111:
                 self.logger.critical('Wazuh must be running')
@@ -154,5 +132,3 @@ class WazuhGCloudSubscriber:
             else:
                 self.logger.critical('Error sending event to Wazuh')
                 raise e
-        finally:
-            self.wazuh_queue.close()

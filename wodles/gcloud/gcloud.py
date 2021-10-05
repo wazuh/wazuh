@@ -8,26 +8,25 @@
 
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
-import sys
-import os
+from sys import exit
+from os import cpu_count
 from buckets.access_logs import GCSAccessLogs
 from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
 import tools
 
 try:
-    max_threads = os.cpu_count() * 5
+    max_threads = cpu_count() * 5
 except TypeError:
     max_threads = 5
 
 try:
     # get script arguments
     arguments = tools.get_script_arguments()
+    logger = tools.get_stdout_logger(tools.logger_name, arguments.log_level)
     credentials_file = arguments.credentials_file
     max_messages = arguments.max_messages
     log_level = arguments.log_level
-
-    logger = tools.get_stdout_logger(tools.logger_name, arguments.log_level)
     num_processed_messages = 0
 
     if arguments.integration_type == "pubsub":
@@ -46,10 +45,10 @@ try:
             logger.warning(f'Reached maximum number of threads. Truncating to {max_threads}.')
         if n_threads < tools.min_num_threads:
             logger.error(f'The minimum number of threads is {tools.min_num_threads}. Please check your configuration.')
-            sys.exit(1)
+            exit(1)
         if max_messages < tools.min_num_messages:
             logger.error(f'The minimum number of messages is {tools.min_num_messages}. Please check your configuration.')
-            sys.exit(1)
+            exit(1)
 
         logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
                      f" message{'s' if max_messages > 1 else ''} in total")
@@ -73,6 +72,9 @@ try:
         num_processed_messages = sum([future.result() for future in futures])
 
     elif arguments.integration_type == "access_logs":
+        if arguments.n_threads != tools.min_num_threads:
+            logger.error(f'The parameter -t/--num_threads only works with the Pub/Sub module.')
+            exit(1)
         if arguments.bucket_name is None:
             raise Exception(f'The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.')
 
@@ -90,9 +92,9 @@ try:
 
 except Exception as e:
     logger.critical(f'An exception happened while running the wodle: {e}')
-    sys.exit(1)
+    exit(1)
 
 else:
     logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'
                 f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
-    sys.exit(0)
+    exit(0)

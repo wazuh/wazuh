@@ -6,23 +6,23 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import json
 import logging
-import os
+from os.path import join, dirname, realpath
 import sqlite3
-import sys
+from sys import exit, path
 from datetime import datetime
+from json import dumps
 import pytz
 
 try:
     from google.cloud import storage
 except ImportError:
     print('ERROR: google-cloud-storage module is required.')
-    sys.exit(1)
+    exit(1)
 from google.api_core import exceptions as google_exceptions
 
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
+path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 from integration import WazuhGCloudIntegration
 import utils
 
@@ -58,7 +58,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.delete_file = delete_file
         self.only_logs_after = only_logs_after
 
-        self.db_path = os.path.join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
+        self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
 
@@ -253,14 +253,17 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         -------
         Number of events processed.
         """
-        events = 0
+        num_events = 0
         try:
-            for event in self.load_information_from_file(blob.download_as_text()):
-                self.send_msg(self.format_msg(json.dumps(event)))
-                events += 1
+            events = self.load_information_from_file(blob.download_as_text())
+            if len(events) > 0:
+                with self.initialize_socket():
+                    for event in events:
+                        self.send_msg(self.format_msg(dumps(event)))
+                        num_events += 1
             if self.delete_file:
                 self.bucket.delete_blob(blob.name)
         except google_exceptions.NotFound:
             self.logger.warning(f'Unable to find "{blob.name}" in {self.bucket_name}')
 
-        return events
+        return num_events
