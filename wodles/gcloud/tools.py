@@ -13,11 +13,7 @@ import logging
 from sys import path, stdout
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
-from os.path import abspath, dirname, join
 from pytz import UTC
-
-path.insert(0, dirname(dirname(abspath(__file__))))
-import utils
 
 
 logger_name = 'gcloud_wodle'
@@ -129,15 +125,6 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     logger_file.addHandler(log_rotation_handler)
 
     return logger_file
-
-
-def get_wazuh_queue() -> str:
-    """Get Wazuh queue
-
-    Returns
-    -------
-    A str containing the path to Wazuh queue"""
-    return join(utils.find_wazuh_path(), 'queue', 'sockets', 'queue')
 
 
 def arg_valid_date(arg_string: str):

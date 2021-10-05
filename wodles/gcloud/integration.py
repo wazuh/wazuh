@@ -10,7 +10,10 @@
 
 import logging
 import socket
-from tools import get_wazuh_queue
+from sys import path
+from os.path import dirname, abspath
+path.insert(0, dirname(dirname(abspath(__file__))))
+from utils import ANALYSISD
 
 
 class WazuhGCloudIntegration:
@@ -20,7 +23,7 @@ class WazuhGCloudIntegration:
     key_name = 'gcp'
 
     def __init__(self, logger: logging.Logger):
-        self.wazuh_queue = get_wazuh_queue()
+        self.wazuh_queue = ANALYSISD
         self.logger = logger
         self.socket = None
 
