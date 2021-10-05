@@ -63,22 +63,23 @@ def check_cluster_config(config):
     """
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
-    
+
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
 
-    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
+    elif not iv.check_name(config['key']) or not iv.check_length(config['key'],
+                                                                 32, eq):
         raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
-    
+
     elif not isinstance(config['port'], int):
         raise WazuhError(3004, "Port has to be an integer.")
 
     elif not 1024 < config['port'] < 65535:
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
-    
+
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
@@ -206,8 +207,6 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             try:
                                 if file_mod_time == previous_status[relative_file_path]['mod_time']:
                                     # The current file has not changed its mtime since the last integrity process.
-                                    print(walk_files, relative_file_path)
-                                    print(previous_status, relative_file_path)
                                     walk_files[relative_file_path] = previous_status[relative_file_path]
                                     continue
                             except KeyError:
@@ -311,7 +310,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     """
     failed_files = list()
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
-    
+
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
 
@@ -360,7 +359,6 @@ async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
         mkdir_with_mode(zip_dir)
         with zipfile.ZipFile(zip_path) as zipf:
             zipf.extractall(path=zip_dir)
-
         if path.exists(path.join(zip_dir, ko_files_name)):
             with open(path.join(zip_dir, ko_files_name)) as ko:
                 ko_files = json.loads(ko.read())
@@ -415,10 +413,8 @@ def compare_files(good_files, check_files, node_name):
         generator
             Items that do not meet the condition.
         """
-        print("-----------------\n",seq, condition,"-----------------\n")
-        
+
         l1, l2 = itertools.tee((condition(item), item) for item in seq)
-        print("La cosa rara: ",(i for p, i in l1 if p), (i for p, i in l2 if not p))
         return (i for p, i in l1 if p), (i for p, i in l2 if not p)
 
     # Get 'files' dictionary inside cluster.json to read options for each file depending on their
@@ -440,11 +436,9 @@ def compare_files(good_files, check_files, node_name):
     # 'shared_e_v' are files present in both nodes but need to be merged before sending them to the worker. Only
     # 'agent-groups' files fit into this category.
     # 'shared' files can be sent as is, without merging.
-    print("All shared: ",all_shared)
     shared_e_v, shared = split_on_condition(all_shared,
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     shared_e_v = list(shared_e_v)
-    print("Shared e v: ",shared_e_v)
     if shared_e_v:
         # Merge all shared extra valid files into a single one. Create a tuple (merged_filepath, {metadata_dict}).
         shared_merged = [(merge_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
