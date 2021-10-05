@@ -63,6 +63,18 @@ function restore_ossec_ownership {
             # If there are files with the group or user wazuh, then they are changed to ossec.
             find ./ -group wazuh -exec chgrp ossec {} \;
             find ./ -user wazuh -exec chown ossec {} \;
+            # Delete user and group
+            if command -v deluser > /dev/null 2>&1; then
+               deluser wazuh > /dev/null 2>&1
+            else
+               userdel wazuh > /dev/null 2>&1
+            fi
+            # Delete user and group
+            if command -v wazuh > /dev/null 2>&1; then
+               delgroup wazuh > /dev/null 2>&1
+            else
+               groupdel wazuh >/dev/null 2>&1
+            fi
         fi
 }
 
