@@ -72,6 +72,10 @@ void __wrap_key_lock_read(){
     function_called();
 }
 
+int __wrap_close(int __fd) {
+    return mock();
+}
+
 /* Tests close_fp_main*/
 
 void test_close_fp_main_queue_empty(void **state)
@@ -395,15 +399,53 @@ void test_HandleSecureMessage_unvalid_message(void **state)
 
     expect_function_call(__wrap_key_unlock);
 
+    will_return(__wrap_close, 0);
+
     // nb_close
     expect_value(__wrap_nb_close, sock, sock_client);
     expect_value(__wrap_nb_close, sock, sock_client);
+    expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    HandleSecureMessage(buffer, recv_b, &peer_info, sock_client, &wdb_sock);
+}
+
+void test_HandleSecureMessage_unvalid_message_socket_closed(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "!1234!";
+    int recv_b = 4;
+    struct sockaddr_in peer_info;
+    int sock_client = 1;
+    int wdb_sock;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "1234");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 1234);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
+    will_return(__wrap_OS_DeleteSocket, -1);
+
+    expect_function_call(__wrap_key_unlock);
 
     HandleSecureMessage(buffer, recv_b, &peer_info, sock_client, &wdb_sock);
 
@@ -420,7 +462,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2_close_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
         // Tests HandleSecureMessage
-        cmocka_unit_test(test_HandleSecureMessage_unvalid_message),
+        cmocka_unit_test(test_HandleSecureMessage_unvalid_message_socket_closed),
+        cmocka_unit_test(test_HandleSecureMessage_unvalid_message)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

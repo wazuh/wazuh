@@ -29,7 +29,7 @@ list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -
                             -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap=key_lock_write -Wl,--wrap=key_unlock -Wl,--wrap=time \
                             -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=OS_IsAllowedDynamicID -Wl,--wrap=_mwarn \
                             -Wl,--wrap=OS_DeleteSocket -Wl,--wrap=nb_close -Wl,--wrap=rem_setCounter -Wl,--wrap=key_lock_read \
-                            -Wl,--wrap=_mdebug1")
+                            -Wl,--wrap=_mdebug1 -Wl,--wrap=rem_inc_tcp -Wl,--wrap=rem_dec_tcp -Wl,--wrap=close")
 
 list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "-Wl,--wrap,_mwarn")
