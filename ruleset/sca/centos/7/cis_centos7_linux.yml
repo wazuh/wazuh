@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for CentOS 7
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -2545,7 +2545,7 @@ checks:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
 
-4.1.11 Ensure use of privileged commands is collected (Automated)
+# 4.1.11 Ensure use of privileged commands is collected (Automated)
 
 # 4.1.12 Ensure successful file system mounts are collected (Scored)
   - id: 6128
