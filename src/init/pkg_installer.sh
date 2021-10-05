@@ -2,30 +2,29 @@
 
 # Copyright (C) 2015-2021, Wazuh Inc.
 
-WAZUH_HOME=${1}
-WAZUH_VERSION=${2}
-
 SERVICE=wazuh-agent
+
 # Generating Backup
-TMP_DIR_BACKUP=${WAZUH_HOME}/tmp_bkp
-rm -rf ${WAZUH_HOME}/tmp_bkp/
+CURRENT_DIR=`pwd`
+TMP_DIR_BACKUP=./tmp_bkp
+rm -rf ./tmp_bkp/
 
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 declare -a FOLDERS_TO_BACKUP
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >"${WAZUH_HOME}/logs/upgrade.log"
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 
 # Generate wazuh home directory tree to backup
-FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/active-response)
-FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/bin)
-FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/etc)
-FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/lib)
-FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/queue)
-[ -d "${WAZUH_HOME}/ruleset" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/ruleset)
-[ -d "${WAZUH_HOME}/wodles" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/wodles)
-[ -d "${WAZUH_HOME}/agentless" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/agentless)
-[ -d "${WAZUH_HOME}/logs/ossec" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/logs/ossec)
-[ -d "${WAZUH_HOME}/var/selinux" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/var/selinux)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/active-response)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/bin)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/etc)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/lib)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/queue)
+[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/ruleset)
+[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/wodles)
+[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/agentless)
+[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/logs/ossec)
+[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/var/selinux)
 
 for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     mkdir -p "${TMP_DIR_BACKUP}${dir}"
@@ -33,8 +32,8 @@ for dir in "${FOLDERS_TO_BACKUP[@]}"; do
 done
 
 if [ -f /etc/ossec-init.conf ]; then
-    mkdir -p "${WAZUH_HOME}/tmp_bkp/etc"
-    cp -p /etc/ossec-init.conf "${WAZUH_HOME}/tmp_bkp/etc"
+    mkdir -p ./tmp_bkp/etc
+    cp -p /etc/ossec-init.conf ./tmp_bkp/etc
 fi
 
 # Check if systemd is used
@@ -78,55 +77,56 @@ while read -r line; do
     org=$(echo "${line}" | awk "sub(\"${TMP_DIR_BACKUP}\",\"\")")
     chown --reference=$org $line
     chmod --reference=$org $line
-done <<<"$BACKUP_LIST_FILES"
+done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
-tar czf "${WAZUH_HOME}/backup/backup_${WAZUH_VERSION}_[${BDATE}].tar.gz" -C "${WAZUH_HOME}/tmp_bkp" . >>"${WAZUH_HOME}/logs/upgrade.log" 2>&1
-rm -rf ${WAZUH_HOME}/tmp_bkp/
+mkdir -p ./backup
+tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
+rm -rf ./tmp_bkp/
 
 # Installing upgrade
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >>${WAZUH_HOME}/logs/upgrade.log
-chmod +x ${WAZUH_HOME}/var/upgrade/install.sh
-${WAZUH_HOME}/var/upgrade/install.sh >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
+chmod +x ./var/upgrade/install.sh
+./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
 
 # Check installation result
 RESULT=$?
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >>${WAZUH_HOME}/logs/upgrade.log
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/upgrade.log
 
 # Wait connection
 status="pending"
 COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
-    . ${WAZUH_HOME}/var/run/wazuh-agentd.state >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+    . ./var/run/wazuh-agentd.state >> ./logs/upgrade.log 2>&1
     sleep 1
     COUNTER=$[COUNTER - 1]
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >>${WAZUH_HOME}/logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >> ./logs/upgrade.log
 done
 
 # Check connection
 if [ "$status" = "connected" -a $RESULT -eq 0 ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Connected to manager." >>${WAZUH_HOME}/logs/upgrade.log
-    echo -ne "0" >${WAZUH_HOME}/var/upgrade/upgrade_result
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade finished successfully." >>${WAZUH_HOME}/logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Connected to manager." >> ./logs/upgrade.log
+    echo -ne "0" > ./var/upgrade/upgrade_result
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade finished successfully." >> ./logs/upgrade.log
 else
     # Restore backup
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >>${WAZUH_HOME}/logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >> ./logs/upgrade.log
 
     # Cleanup before restore
-    CONTROL="$WAZUH_HOME/bin/wazuh-control"
+    CONTROL="./bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
-        CONTROL="$WAZUH_HOME/bin/ossec-control"
+        CONTROL="./bin/ossec-control"
     fi
-    $CONTROL stop >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+    $CONTROL stop >> ./logs/upgrade.log 2>&1
 
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >>${WAZUH_HOME}/logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >> ./logs/upgrade.log
     for dir in ${FOLDERS_TO_BACKUP[@]}; do
-        rm -rf ${dir} >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+        rm -rf ${dir} >> ./logs/upgrade.log 2>&1
     done
 
     # Cleaning for old versions
-    [ -d "${WAZUH_HOME}/ruleset" ] && rm -rf ${WAZUH_HOME}/ruleset
+    [ -d "./ruleset" ] && rm -rf ./ruleset
 
     # Clean systemd unit service
     if [ -f /etc/systemd/system/${SERVICE}.service ]; then
@@ -137,41 +137,41 @@ else
     fi
 
     # Restore backup
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...."
-    tar xzf ${WAZUH_HOME}/backup/backup_${WAZUH_VERSION}_[${BDATE}].tar.gz -C / >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
+    tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
 
     # Restore SELinuxPolicy
-    if command -v semodule >/dev/null && command -v getenforce >/dev/null; then
+    if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
         if [ $(getenforce) != "Disabled" ]; then
-            if [ -f ${WAZUH_HOME}/var/selinux/wazuh.pp ]; then
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring SELinux policy ...." >>${WAZUH_HOME}/logs/upgrade.log
-                semodule -i ${WAZUH_HOME}/var/selinux/wazuh.pp >>${WAZUH_HOME}/logs/upgrade.log 2>&1
-                semodule -e wazuh >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+            if [ -f ./var/selinux/wazuh.pp ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring SELinux policy ...." >> ./logs/upgrade.log
+                semodule -i ./var/selinux/wazuh.pp >> ./logs/upgrade.log 2>&1
+                semodule -e wazuh >> ./logs/upgrade.log 2>&1
             else
-                echo "$(date +"%Y/%m/%d %H:%M:%S") - ERROR: Wazuh SELinux module not found." >>${WAZUH_HOME}/logs/upgrade.log
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - ERROR: Wazuh SELinux module not found." >> ./logs/upgrade.log
             fi
         else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh SELinux module installation is skipped (SELinux is disabled)." >>${WAZUH_HOME}/logs/upgrade.log
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh SELinux module installation is skipped (SELinux is disabled)." >> ./logs/upgrade.log
         fi
     fi
 
-    echo -ne "2" >${WAZUH_HOME}/var/upgrade/upgrade_result
+    echo -ne "2" > ./var/upgrade/upgrade_result
 
     # Restore service
     if [ -n "${INIT_PATH}" ]; then
         if [ $CHK_CONFIG -eq 1 ]; then
-            /sbin/chkconfig --add ${SERVICE} >>"${WAZUH_HOME}/logs/upgrade.log" 2>&1
+            /sbin/chkconfig --add ${SERVICE} >> ./logs/upgrade.log 2>&1
         fi
     fi
 
     if [ -n "${SYSTEMD_SERVICE_UNIT_PATH}" ]; then
-        systemctl daemon-reload >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+        systemctl daemon-reload >> ./logs/upgrade.log 2>&1
     fi
 
-    CONTROL="$WAZUH_HOME/bin/wazuh-control"
+    CONTROL="./bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
-        CONTROL="$WAZUH_HOME/bin/ossec-control"
+        CONTROL="./bin/ossec-control"
     fi
 
-    $CONTROL start >>${WAZUH_HOME}/logs/upgrade.log 2>&1
+    $CONTROL start >> ./logs/upgrade.log 2>&1
 fi

@@ -17,6 +17,13 @@
  */
 static char* build_json_keys_message(const char *ar_name, char **keys);
 
+/**
+ * Get srcip from win eventdata
+ * @param data Input
+ * @return cJSON * with the ipAddress or NULL on fail
+ * */
+static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
+
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -154,25 +161,29 @@ cJSON* get_json_from_input(const char *input) {
     }
 
     // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_Number)) {
+    version_json = cJSON_GetObjectItem(input_json, "version");
+    if (!cJSON_IsNumber(version_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect origin
-    if (origin_json = cJSON_GetObjectItem(input_json, "origin"), !origin_json || (origin_json->type != cJSON_Object)) {
+    origin_json = cJSON_GetObjectItem(input_json, "origin");
+    if (!cJSON_IsObject(origin_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect command
-    if (command_json = cJSON_GetObjectItem(input_json, "command"), !command_json || (command_json->type != cJSON_String)) {
+    command_json = cJSON_GetObjectItem(input_json, "command");
+    if (!cJSON_IsString(command_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input_json, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input_json, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -185,7 +196,7 @@ const char* get_command_from_json(const cJSON *input) {
 
     // Detect command
     command_json = cJSON_GetObjectItem(input, "command");
-    if (command_json && (command_json->type == cJSON_String)) {
+    if (cJSON_IsString(command_json)) {
         return command_json->valuestring;
     }
 
@@ -197,12 +208,14 @@ const cJSON* get_alert_from_json(const cJSON *input) {
     cJSON *alert_json = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
@@ -216,27 +229,61 @@ const char* get_srcip_from_json(const cJSON *input) {
     cJSON *srcip_json = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
     // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
+    data_json = cJSON_GetObjectItem(alert_json, "data");
+    if (!cJSON_IsObject(data_json)) {
         return NULL;
     }
 
-    // Detect srcip
+    // Detect srcip from win.eventdata
+    srcip_json = get_srcip_from_win_eventdata(data_json);
+    if (cJSON_IsString(srcip_json)) {
+        return srcip_json->valuestring;
+    }
+    // Detect srcip from data
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
-    if (srcip_json && (srcip_json->type == cJSON_String)) {
+    if (cJSON_IsString(srcip_json)) {
         return srcip_json->valuestring;
     }
 
     return NULL;
+}
+
+static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
+    cJSON *win_json = NULL;
+    cJSON *eventdata_json = NULL;
+    cJSON *ipAddress_json = NULL;
+
+    // Detect win
+    win_json = cJSON_GetObjectItem(data, "win");
+    if (!cJSON_IsObject(win_json)) {
+        return NULL;
+    }
+
+    // Detect eventdata
+    eventdata_json = cJSON_GetObjectItem(win_json, "eventdata");
+    if (!cJSON_IsObject(eventdata_json)) {
+        return NULL;
+    }
+
+    // Detect ipAddress
+    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress");
+    if (!cJSON_IsString(ipAddress_json)) {
+        return NULL;
+    }
+
+    return ipAddress_json;
 }
 
 const char* get_username_from_json(const cJSON *input) {
@@ -246,23 +293,26 @@ const char* get_username_from_json(const cJSON *input) {
     cJSON *username_json = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+    alert_json = cJSON_GetObjectItem(parameters_json, "alert");
+    if (!cJSON_IsObject(alert_json)) {
         return NULL;
     }
 
     // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
+    data_json = cJSON_GetObjectItem(alert_json, "data");
+    if (!cJSON_IsObject(data_json)) {
         return NULL;
     }
 
     // Detect username
     username_json = cJSON_GetObjectItem(data_json, "dstuser");
-    if (username_json && (username_json->type == cJSON_String)) {
+    if (cJSON_IsString(username_json)) {
         return username_json->valuestring;
     }
 
@@ -276,19 +326,21 @@ char* get_extra_args_from_json(const cJSON *input) {
     char *extra_args = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect extra_args
-    if (extra_args_json = cJSON_GetObjectItem(parameters_json, "extra_args"), !extra_args_json || (extra_args_json->type != cJSON_Array)) {
+    extra_args_json = cJSON_GetObjectItem(parameters_json, "extra_args");
+    if (!cJSON_IsArray(extra_args_json)) {
         return NULL;
     }
 
     memset(args, '\0', COMMANDSIZE_4096);
     for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
         cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
-        if (subitem && (subitem->type == cJSON_String)) {
+        if (cJSON_IsString(subitem)) {
             if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096) {
                 break;
             }
@@ -313,19 +365,21 @@ char* get_keys_from_json(const cJSON *input) {
     char *keys = NULL;
 
     // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+    parameters_json = cJSON_GetObjectItem(input, "parameters");
+    if (!cJSON_IsObject(parameters_json)) {
         return NULL;
     }
 
     // Detect keys
-    if (keys_json = cJSON_GetObjectItem(parameters_json, "keys"), !keys_json || (keys_json->type != cJSON_Array)) {
+    keys_json = cJSON_GetObjectItem(parameters_json, "keys");
+    if (!cJSON_IsArray(keys_json)) {
         return NULL;
     }
 
     memset(args, '\0', COMMANDSIZE_4096);
     for (int i = 0; i < cJSON_GetArraySize(keys_json); i++) {
         cJSON *subitem = cJSON_GetArrayItem(keys_json, i);
-        if (subitem && (subitem->type == cJSON_String)) {
+        if (cJSON_IsString(subitem)) {
             if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE_4096) {
                 break;
             }

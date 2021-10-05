@@ -42,7 +42,7 @@ try:
         os._exit(1)
 
     logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
-                 f" message{'s' if max_messages > 1 else ''} each")
+                 f" message{'s' if max_messages > 1 else ''} in total")
 
     # process messages
     with ThreadPoolExecutor() as executor:

@@ -33,6 +33,7 @@ typedef struct os_info {
     char *version;      ///< Operating system version (UNIX).
     char *machine;      ///< Hardware identifier (UNIX).
     char *os_release;   ///< OS release.
+    char *os_display_version;   ///< OS display version (Windows).
 } os_info;
 
 

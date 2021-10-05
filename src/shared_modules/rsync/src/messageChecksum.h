@@ -60,7 +60,11 @@ namespace RSync
                     }
 
                     outputMessage["data"] = outputData;
-                    callback(outputMessage.dump());
+
+                    if (!data.checksum.empty())
+                    {
+                        callback(outputMessage.dump());
+                    }
                 }
                 // LCOV_EXCL_START
                 else

@@ -25,4 +25,7 @@ int __wrap_fim_add_inotify_watch(const char *dir,
                                  const directory_t *configuration);
 
 void __wrap_realtime_process();
+
+void __wrap_realtime_sanitize_watch_map();
+
 #endif

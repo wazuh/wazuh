@@ -157,7 +157,8 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 14, false, false, "release" }, .next = &TABLE_OS[14] },
     { .value = { FIELD_TEXT, 15, false, false, "version" }, .next = &TABLE_OS[15] },
     { .value = { FIELD_TEXT, 16, false, false, "os_release" }, .next = &TABLE_OS[16] },
-    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = NULL }
+    { .value = { FIELD_TEXT, 17, false, false, "os_display_version" }, .next = &TABLE_OS[17] },
+    { .value = { FIELD_TEXT, 18, false, false, "checksum" }, .next = NULL }
 };
 
 static struct column_list const TABLE_HARDWARE[] = {
@@ -2935,6 +2936,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
     char * version;
     char * os_release;
     char * os_patch;
+    char * os_display_version;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -3155,16 +3157,30 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
 
         os_release = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(os_release, "NULL"))
             os_release = NULL;
 
-        if (!strcmp(next, "NULL"))
-            os_patch = NULL;
-        else
-            os_patch = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid OS info query syntax.");
+            mdebug2("OS info query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+            return -1;
+        }
 
-        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
+        os_patch = curr;
+        *next++ = '\0';
+
+        if (!strcmp(os_patch, "NULL"))
+            os_patch = NULL;
+
+        if (!strcmp(next, "NULL"))
+            os_display_version = NULL;
+        else
+            os_display_version = next;
+
+        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
