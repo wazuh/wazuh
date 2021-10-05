@@ -212,7 +212,7 @@ def _read_option(section_name, opt):
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
-        if opt.attrib:
+        if opt.attrib or list(opt):
             opt_value = {}
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]

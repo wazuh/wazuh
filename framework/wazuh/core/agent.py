@@ -10,7 +10,6 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
-from copy import deepcopy
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps, loads
@@ -326,7 +325,7 @@ class Agent:
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip'}
 
-    def __init__(self, id=None, name=None, ip=None, key=None, force=-1, use_only_authd=False):
+    def __init__(self, id=None, name=None, ip=None, key=None, force=None, use_only_authd=False):
         """Initialize an agent.
 
         :param: id: When the agent exists
@@ -636,7 +635,7 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1748, extra_message=str(e))
 
-    def _add(self, name, ip, id=None, key=None, force=-1, use_only_authd=False):
+    def _add(self, name, ip, id=None, key=None, force=None, use_only_authd=False):
         """Add an agent to Wazuh.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -652,8 +651,8 @@ class Agent:
             ID of the new agent.
         key : str
             Key of the new agent.
-        force : int
-            Remove old agents with same IP if disconnected since <force> seconds.
+        force : dict
+            Remove old agents with same name or IP if conditions are met.
         use_only_authd : bool
             Force the use of authd when adding and removing agents.
 
@@ -699,7 +698,7 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1725, extra_message=str(e))
 
-    def _add_authd(self, name, ip, id=None, key=None, force=-1):
+    def _add_authd(self, name, ip, id=None, key=None, force=None):
         """Add an agent to Wazuh using authd.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -715,8 +714,8 @@ class Agent:
             ID of the new agent.
         key : str
             Key of the new agent.
-        force : int
-            Remove old agents with same IP if disconnected since <force> seconds.
+        force : dict
+            Remove old agents with same name or IP if conditions are met.
 
         Raises
         ------
@@ -740,14 +739,17 @@ class Agent:
         if key and len(key) < 64:
             raise WazuhError(1709)
 
-        force = force if type(force) == int else int(force)
-
         msg = ""
         if name and ip:
+            msg = {"function": "add", "arguments": {"name": name, "ip": ip}}
+
+            if force is not None:
+                # This force field must always be present
+                force.update({"key_mismatch": True})
+                msg["arguments"]["force"] = force
+
             if id and key:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": force}}
-            else:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
+                msg["arguments"].update({"id": id, "key": key})
 
         try:
             authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)

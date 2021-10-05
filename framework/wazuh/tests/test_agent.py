@@ -411,9 +411,9 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
         assert next(iter(result.failed_items)).code == error_code
 
 
-@pytest.mark.parametrize('name, agent_id, key', [
-    ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
-    ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
+@pytest.mark.parametrize('name, agent_id, key, force', [
+    ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', None),
+    ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d', {'enabled': True})
 ])
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
@@ -428,7 +428,7 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, common_gid_mock, common_uid_mock,
-                         chmod_mock, chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
+                         chmod_mock, chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key, force):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -439,6 +439,8 @@ def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, 
         ID of the agent whose name is the specified one.
     key : str
         The agent key.
+    force : dict
+        Force parameters.
     """
     def mock_open(*args):
         """Mock open only if .write() is used"""
@@ -449,7 +451,7 @@ def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, 
 
     with patch('wazuh.core.agent.open', new=mock_open):
         try:
-            add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
+            add_result = add_agent(name=name, agent_id=agent_id, key=key, force=force, use_only_authd=False)
             assert add_result.dikt['data']['id'] == agent_id
             assert add_result.dikt['data']['key']
         except WazuhError as e:

@@ -11,7 +11,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.agent_controller import (
-            add_agent, delete_agents, delete_groups,
+            use_only_auth, add_agent, delete_agents, delete_groups,
             delete_multiple_agent_single_group,
             delete_single_agent_multiple_groups,
             delete_single_agent_single_group, get_agent_config,
@@ -33,13 +33,12 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
-async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_alist,
+async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_alist,
                              mock_request=MagicMock()):
     """Verify 'delete_agents' endpoint is working as expected."""
     result = await delete_agents(request=mock_request,
@@ -48,7 +47,7 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
         mock_alist = None
     f_kwargs = {'agent_list': mock_alist,
                 'purge': False,
-                'use_only_authd': mock_exp['use_only_authd'],
+                'use_only_authd': use_only_auth,
                 'filters': {
                     'status': None,
                     'older_than': None,
@@ -519,18 +518,28 @@ async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 
 
 @pytest.mark.asyncio
-@patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_post_new_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+async def test_post_new_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'post_new_agent' endpoint is working as expected."""
     result = await post_new_agent(request=mock_request,
                                   agent_name='agent_name_value')
-    f_kwargs = {'name': 'agent_name_value',
-                'use_only_authd': mock_exp['use_only_authd']
-                }
+    # `ip` and `force` come from the API model
+    f_kwargs = {
+        'name': 'agent_name_value',
+        'ip': None,
+        'use_only_authd': use_only_auth,
+        'force': {
+            'enabled': False,
+            'disconnected_time': {
+                'enabled': True,
+                'value': '1h'
+            },
+            'after_registration_time': '1h'
+        }
+    }
     mock_dapi.assert_called_once_with(f=agent.add_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -927,7 +936,7 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_insert_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+async def test_insert_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'insert_agent' endpoint is working as expected."""
     with patch('api.controllers.agent_controller.Body.validate_content_type'):
         with patch('api.controllers.agent_controller.AgentInsertedModel.get_kwargs',

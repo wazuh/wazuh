@@ -19,10 +19,10 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
-from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
+use_only_auth = configuration.api_conf['use_only_authd']
 
 
 async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status=None,
@@ -68,7 +68,7 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, agents_l
         agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'purge': purge,
-                'use_only_authd': configuration.api_conf['use_only_authd'],
+                'use_only_authd': use_only_auth,
                 'filters': {
                     'status': status,
                     'older_than': older_than,
@@ -166,16 +166,21 @@ async def get_agents(request, pretty=False, wait_for_complete=False, agents_list
 
 async def add_agent(request, pretty=False, wait_for_complete=False):
     """Add a new Wazuh agent.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: AgentIdKey
+    Returns
+    -------
+    Response
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await AgentAddedModel.get_kwargs(request)
-
-    f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
+    f_kwargs = await AgentAddedModel.get_kwargs(request, additional_kwargs={"use_only_authd": use_only_auth})
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -621,15 +626,22 @@ async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_co
 
 async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=False):
     """Add agent (quick method)
+    
+    Parameters
+    ----------
+    agent_name : str
+        Name used to register the agent.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_name: Agent name used when the agent was registered.
-    :return: AgentIdKeyData
+    Returns
+    -------
+    Response
     """
-    f_kwargs = {'name': agent_name, 'use_only_authd': configuration.api_conf['use_only_authd']}
+    f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name},
+                                                additional_kwargs={'use_only_authd': use_only_auth})
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1035,17 +1047,23 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
 
 
 async def insert_agent(request, pretty=False, wait_for_complete=False):
-    """Insert a new agent
+    """Insert a new agent.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: AgentIdKey
+    Returns
+    -------
+    Response
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await AgentInsertedModel.get_kwargs(request)
-
-    f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
+    f_kwargs = await AgentInsertedModel.get_kwargs(request,
+                                                   additional_kwargs={"use_only_authd": use_only_auth})
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

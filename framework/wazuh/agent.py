@@ -428,7 +428,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=Fal
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_only_authd=False):
+def add_agent(name=None, agent_id=None, key=None, ip='any', force=None, use_only_authd=False):
     """Adds a new Wazuh agent.
 
     :param name: name of the new agent.
@@ -443,7 +443,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_o
     if len(name) > 128:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time, use_only_authd=use_only_authd)
+    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force, use_only_authd=use_only_authd)
 
     return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 

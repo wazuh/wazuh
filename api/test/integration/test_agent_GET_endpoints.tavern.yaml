@@ -1305,8 +1305,7 @@ stages:
           auth:
             ciphers: !anystr
             disabled: !anystr
-            force_insert: !anystr
-            force_time: !anystr
+            force: !anything
             port: !anyint
             purge: !anystr
             ssl_auto_negotiate: !anystr
