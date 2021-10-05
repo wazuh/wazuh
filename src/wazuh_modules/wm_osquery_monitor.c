@@ -261,8 +261,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     // Windows agent needs the complete path to osqueryd
 #ifndef WIN32
     if (!(osquery->bin_path && *osquery->bin_path)) {
-        /* The Osquery installation path changed from /usr/local to /opt/osquery in Osquery v5.0.1,
-        * so we check both paths to support older and newer versions */
+        /* Osquery installation path was moved from /usr/local to /opt/osquery in Osquery v5.0.1,
+        so we check both paths by default to support older and newer versions */
         if (w_is_file("/opt/osquery/bin/" OSQUERYD_BIN)) {
             snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/" OSQUERYD_BIN, "/opt/osquery/bin");
         } else {
