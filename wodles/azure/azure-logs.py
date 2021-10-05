@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
- ###
- # Integration of Wazuh agent with Microsoft Azure
- # Copyright (C) 2015-2021, Wazuh Inc.
- #
- # This program is free software; you can redistribute it and/or modify
- # it under the terms of the GNU General Public License as published by
- # the Free Software Foundation; either version 2 of the License, or
- # (at your option) any later version.
- #
- ###
+###
+# Integration of Wazuh agent with Microsoft Azure
+# Copyright (C) 2015-2021, Wazuh Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+###
 
 ################################################################################################
 # pip install azure
@@ -18,175 +18,232 @@
 ################################################################################################
 
 import logging
-import time
-import sys
-import json
-import os
-import datetime
-import argparse
-import hashlib
+from argparse import ArgumentParser
+from azure.storage.blob import BlockBlobService
+from datetime import datetime, timedelta
+from dateutil.parser import parse
+from hashlib import md5
+from json import dump, dumps, load, JSONDecodeError
+from os import linesep
+from os.path import abspath, dirname, exists, join
+from pytz import UTC
+from requests import get, post
+from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
+from sys import exit, path
+from typing import Union
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+path.insert(0, dirname(dirname(abspath(__file__))))
 import utils
 
-try:
-	import requests
-except Exception as e:
-	print("Pytz is missing: '{}', try 'pip install requests'.".format(e))
-	sys.exit(1)
-try:
-	import pytz
-except Exception as e:
-	print("Pytz is missing: '{}', try 'pip install pytz'.".format(e))
-	sys.exit(1)
-from os.path import dirname, abspath
-from socket import socket, AF_UNIX, SOCK_DGRAM, SO_SNDBUF, SOL_SOCKET
-
-try:
-	from azure.storage.blob import BlockBlobService
-except Exception as e:
-	print("Azure Storage SDK for Python is missing: '{}', try 'pip install azure-storage-blob'.".format(e))
-	sys.exit(1)
-
-ADDR = '{}/queue/sockets/queue'.format(utils.find_wazuh_path())
-BLEN = 212992
-
-utc = pytz.UTC
+date_file = "last_dates.json"
+last_dates_file = join(dirname(abspath(__file__)), date_file)
+url_log_analytics = 'https://api.loganalytics.io/v1'
+graph_base_url = 'https://graph.microsoft.com'
+loggin_url = 'https://login.microsoftonline.com'
+socket_header = '1:Azure:'
 
 ################################################################################################
 # Read and parser arguments.
 ################################################################################################
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", "--verbose", action ='store_true', required = False, help ="Debug mode.")
+parser = ArgumentParser()
+parser.add_argument("-v", "--verbose", action='store_true', required=False, help="Debug mode.")
 
-### Log Analytics arguments ###
-parser.add_argument("--log_analytics", action = 'store_true', required = False, help = "Activates Log Analytics API call.")
-parser.add_argument("--la_id", metavar = 'ID', type = str, required = False, help = "Application ID for Log Analytics authentication.")
-parser.add_argument("--la_key", metavar = "KEY", type = str, required = False, help = "Application Key for Log Analytics authentication.")
-parser.add_argument("--la_auth_path", metavar = "filepath", type = str, required = False, help = "Path of the file containing the credentials for authentication.")
-parser.add_argument("--la_tenant_domain", metavar = "domain", type = str, required = False, help = "Tenant domain for Log Analytics.")
-parser.add_argument("--la_query", metavar = "query", type = str, required = False, help = "Query for Log Analytics.")
-parser.add_argument("--workspace", metavar = "workspace", type = str, required = False, help = "Workspace for Log Analytics.")
-parser.add_argument("--la_tag", metavar = "tag", type = str, required = False, help = "Tag that is added to the query result.")
-parser.add_argument("--la_time_offset", metavar = "time", type = str, required = False, help = "Time range for the first request.")
+# Log Analytics arguments #
+parser.add_argument("--log_analytics", action='store_true', required=False,
+                    help="Activates Log Analytics API call.")
+parser.add_argument("--la_id", metavar='ID', type=str, required=False,
+                    help="Application ID for Log Analytics authentication.")
+parser.add_argument("--la_key", metavar="KEY", type=str, required=False,
+                    help="Application Key for Log Analytics authentication.")
+parser.add_argument("--la_auth_path", metavar="filepath", type=str, required=False,
+                    help="Path of the file containing the credentials for authentication.")
+parser.add_argument("--la_tenant_domain", metavar="domain", type=str, required=False,
+                    help="Tenant domain for Log Analytics.")
+parser.add_argument("--la_query", metavar="query", type=str, required=False,
+                    help="Query for Log Analytics.")
+parser.add_argument("--workspace", metavar="workspace", type=str, required=False,
+                    help="Workspace for Log Analytics.")
+parser.add_argument("--la_tag", metavar="tag", type=str, required=False,
+                    help="Tag that is added to the query result.")
+parser.add_argument("--la_time_offset", metavar="time", type=str, required=False,
+                    help="Time range for the request.")
 
-### Graph arguments ###
-parser.add_argument("--graph", action = 'store_true', required = False, help = "Activates Graph API call.")
-parser.add_argument("--graph_id", metavar = 'ID', type = str, required = False, help = "Application ID for Graph authentication.")
-parser.add_argument("--graph_key", metavar = "KEY", type = str, required = False, help = "Application KEY for Graph authentication.")
-parser.add_argument("--graph_auth_path", metavar = "filepath", type = str, required = False, help = "Path of the file containing the credentials authentication.")
-parser.add_argument("--graph_tenant_domain", metavar = "domain", type = str, required = False, help = "Tenant domain for Graph.")
-parser.add_argument("--graph_query", metavar = "query", type = str, required = False, help = "Query for Graph.")
-parser.add_argument("--graph_tag", metavar = "tag", type = str, required = False, help = "Tag that is added to the query result.")
-parser.add_argument("--graph_time_offset", metavar = "time", type = str, required = False, help = "Time range for the first request.")
+# Graph arguments #
+parser.add_argument("--graph", action='store_true', required=False,
+                    help="Activates Graph API call.")
+parser.add_argument("--graph_id", metavar='ID', type=str, required=False,
+                    help="Application ID for Graph authentication.")
+parser.add_argument("--graph_key", metavar="KEY", type=str, required=False,
+                    help="Application KEY for Graph authentication.")
+parser.add_argument("--graph_auth_path", metavar="filepath", type=str, required=False,
+                    help="Path of the file containing the credentials authentication.")
+parser.add_argument("--graph_tenant_domain", metavar="domain", type=str, required=False,
+                    help="Tenant domain for Graph.")
+parser.add_argument("--graph_query", metavar="query", type=str, required=False,
+                    help="Query for Graph.")
+parser.add_argument("--graph_tag", metavar="tag", type=str, required=False,
+                    help="Tag that is added to the query result.")
+parser.add_argument("--graph_time_offset", metavar="time", type=str, required=False,
+                    help="Time range for the request.")
 
-### Storage arguments ###
-parser.add_argument("--storage", action = "store_true", required = False, help = "Activates Storage API call.")
-parser.add_argument("--account_name", metavar = 'account', type = str, required = False, help = "Storage account name for authenticacion.")
-parser.add_argument("--account_key", metavar = 'KEY', type = str, required = False, help = "Storage account key for authentication.")
-parser.add_argument("--storage_auth_path", metavar = "filepath", type = str, required = False, help = "Path of the file containing the credentials authentication." )
-parser.add_argument("--container", metavar = "container", type = str, required = False, help = "Name of the container where searchs the blobs.")
-parser.add_argument("--blobs", metavar = "blobs", type = str, required = False, help = "Extension of blobs. For example: '*.log'")
-parser.add_argument("--storage_tag", metavar = "tag", type = str, required = False, help = "Tag that is added to each blob request.")
-parser.add_argument("--json_file", action = "store_true", required = False, help = "Specifies that the blob is only composed of events in json file format. By default, the content of the blob is considered to be plain text.")
-parser.add_argument("--json_inline", action = "store_true", required = False, help = "Specifies that the blob is only composed of events in json inline format. By default, the content of the blob is considered to be plain text.")
-parser.add_argument("--storage_time_offset", metavar = "time", type = str, required = False, help = "Time range for the first request.")
+# Storage arguments #
+parser.add_argument("--storage", action="store_true", required=False,
+                    help="Activates Storage API call.")
+parser.add_argument("--account_name", metavar='account', type=str, required=False,
+                    help="Storage account name for authenticacion.")
+parser.add_argument("--account_key", metavar='KEY', type=str, required=False,
+                    help="Storage account key for authentication.")
+parser.add_argument("--storage_auth_path", metavar="filepath", type=str, required=False,
+                    help="Path of the file containing the credentials authentication.")
+parser.add_argument("--container", metavar="container", type=str, required=False,
+                    help="Name of the container where searchs the blobs.")
+parser.add_argument("--blobs", metavar="blobs", type=str, required=False,
+                    help="Extension of blobs. For example: '*.log'")
+parser.add_argument("--storage_tag", metavar="tag", type=str, required=False,
+                    help="Tag that is added to each blob request.")
+parser.add_argument("--json_file", action="store_true", required=False,
+                    help="Specifies that the blob is only composed of events in json file format. "
+                         "By default, the content of the blob is considered to be plain text.")
+parser.add_argument("--json_inline", action="store_true", required=False,
+                    help="Specifies that the blob is only composed of events in json inline format. "
+                         "By default, the content of the blob is considered to be plain text.")
+parser.add_argument("--storage_time_offset", metavar="time", type=str, required=False,
+                    help="Time range for the request.")
 
 args = parser.parse_args()
 
 if args.la_query:
-	la_format_query = args.la_query.replace('"','')
+    la_format_query = args.la_query.replace('"', '')
 if args.graph_query:
-	graph_format_query = args.graph_query.replace("'","")
+    graph_formatted_query = args.graph_query.replace("'", "")
 if args.container:
-	container_format = args.container.replace('"','')
+    container_format = args.container.replace('"', '')
 if args.blobs:
-	blobs_format = args.blobs.replace('"','')
+    blobs_format = args.blobs.replace('"', '')
 
-################################################################################################
-# Configure the log settings.
-################################################################################################
 
 def set_logger():
+    """Set the logger configuration."""
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    else:
+        log_path = "{}/logs/azure_logs.log".format(utils.find_wazuh_path())
+        logging.basicConfig(filename=log_path, level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
-	if args.verbose:
-		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
-	else:
-		log_path = "{}/logs/azure_logs.log".format(utils.find_wazuh_path())
-		logging.basicConfig(filename=log_path, level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
+
+def read_auth_file(path: str):
+    """Read the authentication file. Its contents must be in 'field = value' format.
+
+    Parameters
+    ----------
+    path : str
+        Path to the authentication file
+
+    Returns
+    -------
+    A dict with the processed "application_id" and "application_key" values for authentication.
+    """
+    try:
+        credentials = {}
+        with open(path, 'r') as auth_file:
+            for line in auth_file:
+                key, value = line.replace(" ", "").split("=")
+                if not value:
+                    continue
+                credentials[key] = value.replace("\n", "")
+        if "application_id" not in credentials or "application_key" not in credentials:
+            logging.error("Error: The authentication file does not contains the expected 'application_id' "
+                          "and 'application_key' fields.")
+            exit(1)
+        return credentials
+    except OSError as e:
+        logging.error("Error: The authentication file could not be opened: '{}'".format(e))
+        exit(1)
 
 
-################################################################################################
-# Checks if is the first time the script has been run.
-################################################################################################
+def build_query(service_name: str, offset: str, md5_hash: str, dates_json: dict):
+    """Build a query to use with the specified service filtering its results by the desired_datetime.
 
-def check_first_run():
+    Parameters
+    ----------
+    service_name : str
+        Name of the service to fetch the data from the "last_dates_file"
+    offset : str
+        The filtering condition for the query
+    md5_hash : str
+        md5 value used to search the query in the file containing the dates
+    dates_json : dict
+        The contents of the "last_dates_file"
 
-	current_path = dirname(abspath(__file__))
-	date_file = "/last_dates.json"
-	path=current_path + date_file
+    Returns
+    -------
+    The required URL for the requested query in str format
+    """
+    desired_datetime = offset_to_datetime(offset) if offset else None
+    service_name_lower = service_name.lower()
+    if dates_json.get(service_name_lower) and md5_hash in dates_json[service_name_lower]:
+        # This adds compatibility with "last_dates_files" from previous releases
+        if isinstance(dates_json[service_name_lower][md5_hash], dict):
+            min_datetime = parse(dates_json[service_name_lower][md5_hash].get('min'), fuzzy=True)
+            max_datetime = parse(dates_json[service_name_lower][md5_hash].get('max'), fuzzy=True)
+        else:
+            min_datetime = parse(dates_json[service_name_lower][md5_hash], fuzzy=True)
+            max_datetime = parse(dates_json[service_name_lower][md5_hash], fuzzy=True)
+    else:
+        logging.info(f"{md5_hash} was not found in {last_dates_file} for {service_name_lower}. Updating the file")
+        min_datetime = desired_datetime
+        max_datetime = desired_datetime
+        dates_json[service_name_lower][md5_hash] = {'min': f"{min_datetime}", 'max': f"{max_datetime}"}
 
-	if os.path.exists(current_path + date_file):
-		return False
-	else:
-		# If the file does not exist, it will be created
-		all_dates_content = {u'log_analytics':{}, u'graph':{}, u'storage':{}}
-		try:
-			with open(os.path.join(path), 'w') as file:
-				json.dump(all_dates_content, file)
-		except Exception as e:
-			logging.error("Error: The file of the last dates could not be created. '{}'.".format(e))
-		return True
+    filtering_condition = "createdDateTime" if "signinEventsV2" in graph_formatted_query else "activityDateTime"
 
-################################################################################################
-#Reads the arguments to check that at least one API is called.
-################################################################################################
+    if desired_datetime < min_datetime:
+        filter_value = f"({filtering_condition}+lt+{min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')}" \
+                       f"+and+{filtering_condition}+ge+{desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')})" \
+                       f"+or+({filtering_condition}+gt+{max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')})"
+    elif desired_datetime > max_datetime:
+        filter_value = f"{filtering_condition}+ge+{desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')}"
+    else:
+        filter_value = f"{filtering_condition}+gt+{max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')}"
 
-def read_arguments():
+    logging.info(f"Graph: The search starts for query: '{graph_formatted_query}' using {filter_value}")
 
-	check_arguments = False
-	first_run = check_first_run()
+    return f"{graph_base_url}/v1.0/{graph_formatted_query}?$filter={filter_value}"
 
-	if args.log_analytics:
-		start_log_analytics(first_run)
-		check_arguments = True
-	if args.graph:
-		start_graph()
-		check_arguments = True
-	if args.storage:
-		start_storage(first_run)
-		check_arguments = True
 
-	if check_arguments == False:
-		logging.error("No API to connect to has been specified. Exit")
-		sys.exit(1)
+def load_dates():
+    """Read the "last_dates_file" containing the different processed dates. It will be created with empty values in
+    case it does not exist.
 
-################################################################################################
-# Read the authentication if it is given by file.
-################################################################################################
+    Returns
+    -------
+    A dict with the contents of the "last_dates_file"
+    """
+    logging.info(f"Getting the data from {last_dates_file}.")
+    try:
+        if exists(last_dates_file):
+            contents = load(open(last_dates_file))
+        else:
+            contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
+            with open(join(last_dates_file), 'w') as file:
+                dump(contents, file)
+        return contents
+    except (JSONDecodeError, OSError) as e:
+        logging.error("Error: The file of the last dates could not be read: '{}.".format(e))
+        exit(1)
 
-def read_auth_path(auth_path):
 
-	try:
-		auth_file = open(auth_path, 'r')
-		field_iterator = 0
-		field_auth = {}
-
-		for line in auth_file:
-			fields = line.split(" ")
-			if field_iterator == 0:
-				lenght_field = len(fields)-1
-				field_auth['id'] = fields[lenght_field].replace("\n","")
-			if field_iterator == 1:
-				lenght_field = len(fields)-1
-				field_auth['key'] = fields[lenght_field].replace("\n","")
-			field_iterator += 1
-
-		return field_auth
-
-	except Exception as e:
-		logging.error("Error: The configuration file could not be opened: '{}'".format(e))
+def save_dates(json_obj):
+    """Save the json object containing the different processed dates in the "date_file" file."""
+    logging.info(f"Updating {last_dates_file} file.")
+    try:
+        with open(join(last_dates_file), 'w') as jsonFile:
+            dump(json_obj, jsonFile)
+    except (TypeError, ValueError, OSError) as e:
+        logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
 
 
 ################################################################################################
@@ -194,106 +251,112 @@ def read_auth_path(auth_path):
 # https://dev.loganalytics.io/documentation/1-Tutorials/Direct-API
 ################################################################################################
 
-def start_log_analytics(first_run):
+def start_log_analytics():
+    logging.info("Azure Log Analytics starting.")
 
-	logging.info("Azure Log Analytics starting.")
-	url_log_analytics = 'https://api.loganalytics.io/v1'
-	current_path = dirname(abspath(__file__))
-	path = "{}/last_dates.json".format(current_path)
+    try:
+        # Getting authentication token
+        logging.info("Log Analytics: Getting authentication token.")
+        logging.info(args.la_auth_path)
+        if args.la_auth_path and args.la_tenant_domain:
+            auth = read_auth_file(path=args.la_auth_path)
+            logging.error(auth)
+            client_id = auth['application_id']
+            secret = auth['application_key']
+        elif args.graph_id and args.graph_key and args.graph_tenant_domain:
+            client_id = args.graph_id
+            secret = args.graph_key
+        else:
+            logging.error("Log Analytics: No parameters have been provided for authentication.")
+            exit(1)
 
-	try:
-		# Getting authentication token
-		logging.info("Log Analytics: Getting authentication token.")
-		if args.la_auth_path and args.la_tenant_domain:
-			auth_fields = read_auth_path(args.la_auth_path)
-			log_analytics_token = get_token(auth_fields['id'], auth_fields['key'], 'https://api.loganalytics.io', args.la_tenant_domain)
-		elif args.la_id and args.la_key and args.la_tenant_domain:
-			log_analytics_token = get_token(args.la_id, args.la_key, 'https://api.loganalytics.io', args.la_tenant_domain)
-		else:
-			logging.error("Log Analytics: No parameters have been provided for authentication.")
+        # log_analytics_token = get_token(client_id, secret, 'https://api.loganalytics.io', args.la_tenant_domain)
+        log_analytics_token = get_token(client_id=client_id, secret=secret, domain=args.la_tenant_domain)
 
-		log_analytics_headers = {
-			'Content-Type': 'application/json',
-			'Authorization': 'Bearer ' + log_analytics_token
-		}
+        log_analytics_headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + log_analytics_token
+        }
+        first_run = False
+        if not first_run:
+            first_time = "0"
+        else:
+            first_time = offset_to_datetime(args.la_time_offset)
 
-		if first_run == False:
-			first_time = "0"
-		else:
-			first_time = format_date(args.la_time_offset)
+        try:
+            dates_json = load(open(last_dates_file))
+            get_analytic(first_time, dates_json, url_log_analytics, log_analytics_headers)
+            with open(join(last_dates_file), 'w') as jsonFile:
+                dump(dates_json, jsonFile)
+        except Exception as e:
+            logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
 
-		try:
-			all_dates = json.load(open(path))
-			get_analytic(first_time, all_dates, url_log_analytics, log_analytics_headers)
-			with open(os.path.join(path), 'w') as jsonFile:
-				json.dump(all_dates, jsonFile)
-		except Exception as e:
-			logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
+    except Exception as e:
+        logging.error("Log Analytics: Couldn't get the token for authentication: '{}'.".format(e))
 
-	except Exception as e:
-		logging.error("Log Analytics: Couldn't get the token for authentication: '{}'.".format(e))
+    logging.info("Azure Log Analytics ending.")
 
-	logging.info("Azure Log Analytics ending.")
 
 ################################################################################################
 # Prepares and makes the request, building the query based on the time of event generation.
 ################################################################################################
 
 def get_analytic(date, last_time_list, url, log_headers):
+    analytics_url = "{}/workspaces/{}/query".format(url, args.workspace)
+    logging.info("Log Analytics: Sending a request to the Log Analytics API.")
 
-	analytics_url = "{}/workspaces/{}/query".format(url, args.workspace)
-	logging.info("Log Analytics: Sending a request to the Log Analytics API.")
+    try:
+        md5_hash = md5(la_format_query.encode()).hexdigest()
+        # Differentiates the first execution of the script from the rest of the executions.
+        if date != "0":
+            date_search = date
+        else:
+            if md5_hash not in last_time_list["log_analytics"]:
+                date_search = date
+            else:
+                date_search = last_time_list["log_analytics"][md5_hash]
 
-	try:
-		query_md5 = hashlib.md5(la_format_query.encode()).hexdigest()
-		# Differentiates the first execution of the script from the rest of the executions.
-		if date != "0":
-			date_search = date
-		else:
-			if query_md5 not in last_time_list["log_analytics"]:
-				date_search = date
-			else:
-				date_search = last_time_list["log_analytics"][query_md5]
-
-		logging.info("Log Analytics: The search starts from the date: {} for query: '{}' ".format(date_search, la_format_query))
-		query = " {} | order by TimeGenerated asc | where TimeGenerated > datetime({}) ".format(la_format_query, date_search)
-		body = {'query': query}
-		analytics_request = requests.get(analytics_url, params = body, headers = log_headers)
-		get_time_list(analytics_request, last_time_list, date_search, query_md5)
-	except Exception as e:
-		logging.error("Error: The query requested to the API Log Analytcics has failed. '{}'.".format(e))
+        logging.info(
+            "Log Analytics: The search starts from the date: {} for query: '{}' ".format(date_search, la_format_query))
+        query = "{} | order by TimeGenerated asc | where TimeGenerated > datetime({}) ".format(la_format_query,
+                                                                                               date_search)
+        body = {'query': query}
+        analytics_request = get(analytics_url, params=body, headers=log_headers)
+        get_time_list(analytics_request, last_time_list, date_search, md5_hash)
+    except Exception as e:
+        logging.error("Error: The query requested to the API Log Analytics has failed. '{}'.".format(e))
 
 
 ################################################################################################
 # Obtains the list with the last time generated of each query.
 ################################################################################################
 
-def get_time_list(request_received, last_timegen, no_results, md5):
-
-	try:
-		if request_received.status_code == 200:
-			columns = request_received.json()['tables'][0]['columns']
-			rows = request_received.json()['tables'][0]['rows']
-			time_position = get_TimeGenerated_position(columns)
-			# Searches for the position of the TimeGenerated field
-			if time_position == -1:
-				logging.error("Error: Couldn't get TimeGenerated position")
-			else:
-				last_row = len(request_received.json()['tables'][0]['rows']) - 1
-				# Checks for new results
-				if last_row < 0:
-					logging.info("Log Analytics: There are no new results")
-					last_timegen['log_analytics'][md5] = str(no_results)
-				else:
-					last_timegen['log_analytics'][md5] = request_received.json()['tables'][0]['rows'][last_row][time_position]
-					file_json = request_received.json()
-					get_log_analytics_event(columns, rows)
-		else:
-			if args.verbose == True:
-				logging.info("Log Analytics request: {}".format(request_received.status_code))
-			request_received.raise_for_status()
-	except Exception as e:
-		logging.error("Error: It was not possible to obtain the latest event: '{}'.".format(e))
+def get_time_list(request_received, last_timegen, no_results, md5_hash):
+    try:
+        if request_received.status_code == 200:
+            columns = request_received.json()['tables'][0]['columns']
+            rows = request_received.json()['tables'][0]['rows']
+            time_position = get_TimeGenerated_position(columns)
+            # Searches for the position of the TimeGenerated field
+            if time_position == -1:
+                logging.error("Error: Couldn't get TimeGenerated position")
+            else:
+                last_row = len(request_received.json()['tables'][0]['rows']) - 1
+                # Checks for new results
+                if last_row < 0:
+                    logging.info("Log Analytics: There are no new results")
+                    last_timegen['log_analytics'][md5_hash] = str(no_results)
+                else:
+                    last_timegen['log_analytics'][md5_hash] = request_received.json()['tables'][0]['rows'][last_row][
+                        time_position]
+                    file_json = request_received.json()
+                    get_log_analytics_event(columns, rows)
+        else:
+            if args.verbose:
+                logging.info("Log Analytics request: {}".format(request_received.status_code))
+            request_received.raise_for_status()
+    except Exception as e:
+        logging.error("Error: It was not possible to obtain the latest event: '{}'.".format(e))
 
 
 ################################################################################################
@@ -301,160 +364,134 @@ def get_time_list(request_received, last_timegen, no_results, md5):
 ################################################################################################
 
 def get_TimeGenerated_position(columns):
+    position = 0
+    found = "false"
+    for column in columns:
+        if column['name'] == 'TimeGenerated':
+            found = "true"
+            break
+        position += 1
+    if found == "false":
+        return -1
+    else:
+        return position
 
-	position=0
-	found = "false"
-	for column in columns:
-		if column['name'] == 'TimeGenerated':
-			found = "true"
-			break
-		position += 1
-	if found == "false":
-		return -1
-	else:
-		return position
 
 ################################################################################################
 # Adds the field name to each row of the result and converts it to json. Writes or sends events
 ################################################################################################
 
 def get_log_analytics_event(columns, rows):
+    columns.append({u'type': u'string', u'name': u'azure_tag'})
+    if args.la_tag:
+        columns.append({u'type': u'string', u'name': u'log_analytics_tag'})
 
-	columns.append({u'type': u'string', u'name': u'azure_tag'})
-	if args.la_tag:
-		columns.append({u'type': u'string', u'name': u'log_analytics_tag'})
+    for row in rows:
+        row.append("azure-log-analytics")
+        if args.la_tag:
+            row.append(args.la_tag)
 
-	for row in rows:
-		row.append("azure-log-analytics")
-		if args.la_tag:
-			row.append(args.la_tag)
+    columns_len = len(columns)
+    rows_len = len(rows)
+    row_iterator = 0
 
-	columns_len = len(columns)
-	rows_len = len(rows)
-	row_iterator = 0
-	send_counter = 0
+    while row_iterator < rows_len:
+        la_result = {}
+        column_iterator = 0
+        while column_iterator < columns_len:
+            la_result[columns[column_iterator]['name']] = rows[row_iterator][column_iterator]
+            column_iterator += 1
+        row_iterator += 1
+        json_result = dumps(la_result)
+        logging.info("Log Analytics: Sending event by socket.")
+        send_message(json_result)
 
-	while row_iterator < rows_len:
-		la_result = {}
-		column_iterator = 0
-		while column_iterator < columns_len:
-			la_result[columns[column_iterator]['name']] = rows[row_iterator][column_iterator]
-			column_iterator += 1
-		row_iterator += 1
-		json_result = json.dumps(la_result)
-		if send_counter == 15:
-			send_counter = 0
-			time.sleep(2)
-		logging.info("Log Analytics: Sending event by socket.")
-		send_socket(json_result)
-		send_counter += 1
-
-################################################################################################
-# The client or application must have permission to access Microsoft Graph.
-# https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-graph-api
-################################################################################################
 
 def start_graph():
+    """Run the Microsoft Graph integration processing the logs available for the given query and offset values in
+    the configuration. The client or application must have permission to access Microsoft Graph."""
+    logging.info("Azure Graph starting.")
 
-	logging.info("Azure Graph starting.")
-	current_path = dirname(abspath(__file__))
-	path = "{}/last_dates.json".format(current_path)
-	graph_url_base = 'https://graph.microsoft.com'
+    if args.graph_auth_path and args.graph_tenant_domain:
+        auth = read_auth_file(args.graph_auth_path)
+        client_id = auth['application_id']
+        secret = auth['application_key']
+    elif args.graph_id and args.graph_key and args.graph_tenant_domain:
+        client_id = args.graph_id
+        secret = args.graph_key
+    else:
+        logging.error("Graph: No parameters have been provided for authentication.")
+        exit(1)
 
-	try:
-		# Getting authentication token
-		logging.info("Graph: Getting authentication token.")
-		if args.graph_auth_path and args.graph_tenant_domain:
-			auth_fields = read_auth_path(args.graph_auth_path)
-			graph_token = get_token(auth_fields['id'], auth_fields['key'], "", args.graph_tenant_domain)
-		elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-			graph_token = get_token(args.graph_id, args.graph_key, "", args.graph_tenant_domain)
-		else:
-			logging.error("Graph: No parameters have been provided for authentication.")
+    logging.info("Graph: Getting authentication token.")
+    graph_token = get_token(client_id=client_id, secret=secret, domain=args.graph_tenant_domain)
+    headers = {'Authorization': 'Bearer ' + graph_token}
+    md5_hash = md5(graph_formatted_query.encode()).hexdigest()
+    dates_json = load_dates()
+    logging.info(f"Graph: Building url for {offset_to_datetime(args.graph_time_offset)}.")
+    url = build_query(service_name="Graph", offset=args.graph_time_offset, md5_hash=md5_hash, dates_json=dates_json)
+    logging.info(f"Graph: The URL is '{url}'")
+    logging.info("Graph: Pagination starts")
+    graph_pagination(url=url, headers=headers, md5_hash=md5_hash, dates_json=dates_json)
+    logging.info("Graph: End")
 
-		graph_headers = {
-			'Authorization': 'Bearer ' + graph_token
-		}
-		logging.info("Graph: Getting data.")
 
-		try:
-			all_dates = json.load(open(path))
-		except Exception as e:
-			logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
+def graph_pagination(url: str, headers: dict, md5_hash: str, dates_json: dict):
+    """Request the data using the specified url and process the values in the response.
 
-		try:
-			graph_md5 = hashlib.md5(graph_format_query.encode()).hexdigest()
-			# first time for this query
-			if graph_md5 not in all_dates['graph']:
-				range_time = format_date(args.graph_time_offset)
-				date_time = range_time.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
-			else:
-				date_time = all_dates["graph"][graph_md5]
+    Parameters
+    ----------
+    url : str
+        The url for the required query
+    headers : dict
+        The header for the request, containing the authentication token
+    md5_hash : str
+        md5 value used to search the query in the file containing the dates
+    dates_json
+    Returns
+    -------
+    The nextLink url value contained in the response or None.
+    """
+    try:
+        response = get(url=url, headers=headers)
+        logging.info("Graph: Request status: {}".format(response.status_code))
+    except Exception as e:
+        logging.error(f"Error: The request for the query could not be made: '{e}'")
+        return
 
-			logging.info("Graph: The search starts from the date: {} for query: '{}' ".format(date_time, graph_format_query))
-			if 'signinEventsV2' in graph_format_query:
-				graph_url = "{}/v1.0/{}?&$filter=createdDateTime+ge+{}".format(graph_url_base, graph_format_query, date_time)
-			else:
-				graph_url = "{}/v1.0/{}?&$filter=activityDateTime+ge+{}".format(graph_url_base, graph_format_query, date_time)
-			graph_pagination(graph_url, "Graph", graph_headers, graph_md5, all_dates, True)
-		except Exception as e:
-			logging.error("Error: The request for the query could not be made: '{}'.".format(e))
-	except Exception as e:
-		logging.error("Error: Couldn't get the token for authentication: '{}'.".format(e))
+    if response.status_code == 200:
+        response_json = response.json()
+        values_json = response_json.get('value')
+        for value in values_json:
+            logging.info(value["activityDateTime"])
+            activityDateTime = parse(value["activityDateTime"], fuzzy=True)
+            if activityDateTime > parse(dates_json['graph'][md5_hash]['max'], fuzzy=True):
+                logging.info(f"Graph: The current item's activityDateTime is greater that the MAX value stored. "
+                             f"Updating the MAX value to {value['activityDateTime']}")
+                dates_json['graph'][md5_hash]['max'] = value["activityDateTime"]
+            if activityDateTime < parse(dates_json['graph'][md5_hash]['min'], fuzzy=True):
+                logging.info(f"Graph: The current item's activityDateTime is lower that the MIN value stored. "
+                             f"Updating the MIN value to {value['activityDateTime']}")
+                dates_json['graph'][md5_hash]['min'] = value["activityDateTime"]
+            value["azure_tag"] = "azure-ad-graph"
+            if args.graph_tag:
+                value['azure_aad_tag'] = args.graph_tag
+            json_result = dumps(value)
+            logging.info("Graph: Sending event by socket.")
+            send_message(json_result)
+        save_dates(dates_json)
 
-	logging.info("Graph: End")
+        if len(values_json) == 0:
+            logging.info("Graph: There are no new results")
 
-################################################################################################
-# Pagination of Graph results. TO TEST
-################################################################################################
+        if nex_url := response_json.get('@odata.nextLink'):
+            graph_pagination(url=next_url, headers=headers, md5_hash=md5_hash, dates_json=dates_json)
+    elif response.status_code == 400:
+        logging.error(f"Bad Request for url: {response.url}")
+        logging.error(f"Ensure the URL is valid and there is data available for the specified datetime.")
+    else:
+        response.raise_for_status()
 
-def graph_pagination(url, api, graph_headers, md5, all_dates, first_date):
-
-	pag_request = requests.get(url, headers = graph_headers)
-	current_path = dirname(abspath(__file__))
-	path = "{}/last_dates.json".format(current_path)
-
-	if pag_request.status_code == 200:
-		logging.info("Graph: Request status: {}".format(pag_request.status_code))
-		pag_json = pag_request.json()
-		pag_json["azure_tag"] = ("azure-ad-graph")
-		values_json = pag_json['value']
-		send_counter = 0
-
-		if len(values_json) > 0:
-			for value in values_json:
-
-				if first_date == True:
-					first_date = False
-					try:
-						all_dates['graph'][md5] = value["activityDateTime"]
-						with open(os.path.join(path), 'w') as jsonFile:
-							json.dump(all_dates, jsonFile)
-					except Exception as e:
-						logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
-
-				value["azure_tag"] = "azure-ad-graph"
-				if args.graph_tag:
-					value['azure_aad_tag'] = args.graph_tag
-				json_result = json.dumps(value)
-				if send_counter == 15:
-					send_counter = 0
-					logging.info("Graph: 15 events sent by socket, time.sleep(2).")
-					time.sleep(2)
-				logging.info("Graph: Sending event by socket.")
-				send_socket(json_result)
-				send_counter += 1
-
-		else:
-			logging.info("Graph: There are no new results")
-		try:
-			next_url = pag_json['@odata.nextLink']
-			graph_pagination(next_url, api, graph_headers, md5, all_dates, False)
-		except Exception as e:
-			logging.info("Graph: No @odata.nextLink field: '{}'.".format(e))
-	else:
-		logging.info("Graph: Request status: {}".format(pag_request.status_code))
-		pag_request.raise_for_status()
 
 ################################################################################################
 # Get access and content of the storage accounts
@@ -462,271 +499,273 @@ def graph_pagination(url, api, graph_headers, md5, all_dates, first_date):
 ################################################################################################
 
 def start_storage(first_run):
+    logging.info("Azure Storage starting.")
 
-	logging.info("Azure Storage starting.")
+    storage_time = offset_to_datetime(args.storage_time_offset)
+    time_format = str(storage_time)
+    length_time_format = len(time_format) - 7
+    time_format = time_format[:length_time_format]
+    time_format_storage = datetime.strptime(time_format, '%Y-%m-%d %H:%M:%S')
 
-	current_path = dirname(abspath(__file__))
-	path = "{}/last_dates.json".format(current_path)
+    try:
+        dates_json = load(open(last_dates_file))
+    except Exception as e:
+        logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
 
-	storage_time = format_date(args.storage_time_offset)
-	time_format = str(storage_time)
-	length_time_format = len(time_format)-7
-	time_format = time_format[:length_time_format]
-	time_format_storage = datetime.datetime.strptime(time_format, '%Y-%m-%d %H:%M:%S')
+    try:
+        # Authentication
+        logging.info("Storage: Authenticating.")
+        if args.storage_auth_path:
+            auth_fields = read_auth_file(args.storage_auth_path)
+            block_blob_service = BlockBlobService(account_name=auth_fields['id'], account_key=auth_fields['key'])
+            logging.info("Storage: Authenticated.")
+        elif args.account_name and args.account_key:
+            block_blob_service = BlockBlobService(account_name=args.account_name, account_key=args.account_key)
+            logging.info("Storage: Authenticated.")
+        else:
+            logging.error("Storage: No parameters have been provided for authentication.")
 
-	try:
-		all_dates = json.load(open(path))
-	except Exception as e:
-		logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
+        logging.info("Storage: Getting containers.")
+        # Getting containers from the storage account
+        if container_format == '*':
+            try:
+                containers = block_blob_service.list_containers()
+            except Exception as e:
+                logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
 
-	try:
-		# Authentication
-		logging.info("Storage: Authenticating.")
-		if args.storage_auth_path:
-			auth_fields = read_auth_path(args.storage_auth_path)
-			block_blob_service = BlockBlobService(account_name = auth_fields['id'], account_key = auth_fields['key'])
-			logging.info("Storage: Authenticated.")
-		elif args.account_name and args.account_key:
-			block_blob_service = BlockBlobService(account_name = args.account_name, account_key = args.account_key)
-			logging.info("Storage: Authenticated.")
-		else:
-			logging.error("Storage: No parameters have been provided for authentication.")
+        # Getting containers from the configuration file
+        else:
+            try:
+                containers = [container_format]
+            except Exception as e:
+                logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
 
-		logging.info("Storage: Getting containers.")
-		# Getting containers from the storage account
-		if container_format == '*':
-			try:
-				containers = block_blob_service.list_containers()
-			except Exception as e:
-				logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
+        # Getting blobs
+        get_blobs(containers, block_blob_service, time_format_storage, first_run, dates_json, last_dates_file)
 
-		# Getting containers from the configuration file
-		else:
-			try:
-				containers = [container_format]
-			except Exception as e:
-				logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
+    except Exception as e:
+        logging.error(" Storage account: '{}'.".format(e))
 
-		# Getting blobs
-		get_blobs(containers, block_blob_service, time_format_storage, first_run, all_dates, path)
+    logging.info("Storage: End")
 
-	except Exception as e:
-		logging.error(" Storage account: '{}'.".format(e))
-
-	logging.info("Storage: End")
 
 ################################################################################################
 # Get the blobs from a container and sends or writes their content
 ################################################################################################
+def get_blobs(containers, block_blob_service, time_format_storage, first_run, dates_json, path):
+    for container in containers:
 
-def get_blobs(containers, block_blob_service, time_format_storage, first_run, all_dates, path):
+        # Differentiates possible cases of access to containers
+        if container_format == '*':
+            name = container.name
+        else:
+            name = container_format
 
-	for container in containers:
+        container_md5 = md5(name.encode()).hexdigest()
+        next_marker = None
 
-		# Differentiates possible cases of access to containers
-		if container_format == '*':
-			name = container.name
-		else:
-			name = container_format
+        while True:
+            try:
+                # Extraction of blobs from containers
+                logging.info("Storage: Getting blobs.")
+                blobs = block_blob_service.list_blobs(name, marker=next_marker)
+            except Exception as e:
+                logging.error("Error getting blobs: '{}'.".format(e))
 
-		container_md5 = hashlib.md5(name.encode()).hexdigest()
-		next_marker = None
+            if blobs_format == '*':
+                search = "."
+            else:
+                search = blobs_format
+                search = search.replace('*', '')
 
-		while True:
-			try:
-				# Extraction of blobs from containers
-				logging.info("Storage: Getting blobs.")
-				blobs = block_blob_service.list_blobs(name, marker = next_marker)
-			except Exception as e:
-				logging.error("Error getting blobs: '{}'.".format(e))
+            max_blob = UTC.localize(time_format_storage)
 
-			if blobs_format == '*':
-				search = "."
-			else:
-				search = blobs_format
-				search = search.replace('*','')
+            for blob in blobs:
+                try:
+                    # Access to the desired blobs
+                    if search in blob.name:
+                        data = block_blob_service.get_blob_to_text(name, blob.name)
+                        last_modified = blob.properties.last_modified
 
-			max_blob = utc.localize(time_format_storage)
+                        if first_run == False:
+                            if container_md5 not in dates_json["storage"]:
+                                last_blob = time_format_storage
+                            else:
+                                blob_date_format = dates_json["storage"][container_md5]
+                                blob_date_length = len(blob_date_format) - 6
+                                blob_date_format = blob_date_format[:blob_date_length]
+                                last_blob = datetime.strptime(blob_date_format, '%Y-%m-%d %H:%M:%S')
+                        else:
+                            last_blob = time_format_storage
 
-			for blob in blobs:
-				try:
-					# Access to the desired blobs
-					if search in blob.name:
-						data = block_blob_service.get_blob_to_text(name, blob.name)
-						last_modified = blob.properties.last_modified
+                        last_blob = UTC.localize(last_blob)
+                        logging.info(
+                            "Storage: The search starts from the date: {} for blobs in container: '{}' ".format(
+                                last_blob, name))
 
-						if first_run == False:
-							if container_md5 not in all_dates["storage"]:
-								last_blob = time_format_storage
-							else:
-								blob_date_format = all_dates["storage"][container_md5]
-								blob_date_length = len(blob_date_format) - 6
-								blob_date_format = blob_date_format[:blob_date_length]
-								last_blob = datetime.datetime.strptime(blob_date_format, '%Y-%m-%d %H:%M:%S')
-						else:
-							last_blob = time_format_storage
+                        if last_modified > last_blob:
+                            if last_modified > max_blob:
+                                max_blob = last_modified
+                            socket_data = str(data.content)
+                            socket_data = linesep.join([s for s in socket_data.splitlines() if s])
+                            split_data = socket_data.splitlines()
+                            storage_counter = 0
 
-						last_blob = utc.localize(last_blob)
-						logging.info("Storage: The search starts from the date: {} for blobs in container: '{}' ".format(last_blob, name))
+                            if args.json_file:
+                                content_list = loads(data.content)
+                                content_records = content_list["records"]
+                                for log_record in content_records:
+                                    log_record['azure_tag'] = ('azure-storage')
+                                    if args.storage_tag:
+                                        log_record['azure_storage_tag'] = (args.storage_tag)
+                                    logging.info("Storage: Sending event by socket.")
+                                    log_json = dumps(log_record)
+                                    send_message(log_json)
+                                    storage_counter += 1
+                            else:
+                                for line in split_data:
+                                    if args.json_inline:
+                                        size = len(line)
+                                        sub_data = line[1:size]
+                                        if args.storage_tag:
+                                            send_data = '{"azure_tag": "azure-storage",' + '"azure_storage_tag": "' + args.storage_tag + '", ' + sub_data
+                                        else:
+                                            send_data = '{"azure_tag": "azure-storage",' + sub_data
+                                    else:
+                                        if args.storage_tag:
+                                            send_data = "azure_tag: azure-storage. azure_storage_tag: {}. {}".format(
+                                                args.storage_tag, line)
+                                        else:
+                                            send_data = "azure_tag: azure-storage. {}".format(line)
 
-						if last_modified > last_blob:
-							if last_modified > max_blob:
-								max_blob = last_modified
-							socket_data = str(data.content)
-							socket_data = os.linesep.join([s for s in socket_data.splitlines() if s])
-							split_data = socket_data.splitlines()
-							storage_counter = 0
+                                    if send_data != "":
+                                        logging.info("Storage: Sending event by socket.")
+                                        send_message(send_data)
+                                        storage_counter += 1
+                except Exception as e:
+                    logging.error("Storage: sending blob: '{}'.".format(e))
 
-							if args.json_file:
-								content_list = json.loads(data.content)
-								content_records = content_list["records"]
-								for log_record in content_records:
-									log_record['azure_tag'] = ('azure-storage')
-									if args.storage_tag:
-										log_record['azure_storage_tag'] = (args.storage_tag)
-									if storage_counter == 15:
-										storage_counter = 0
-										logging.info("Storage: 15 events sent by socket, time.sleep(2).")
-										time.sleep(2)
-									logging.info("Storage: Sending event by socket.")
-									log_json = json.dumps(log_record)
-									send_socket(log_json)
-									storage_counter += 1
-							else:
-								for line in split_data:
-									if args.json_inline:
-										size = len(line)
-										sub_data = line[1:size]
-										if args.storage_tag:
-											send_data = '{"azure_tag": "azure-storage",' + '"azure_storage_tag": "' + args.storage_tag + '", ' + sub_data
-										else:
-											send_data = '{"azure_tag": "azure-storage",' + sub_data
-									else:
-										if args.storage_tag:
-											send_data = "azure_tag: azure-storage. azure_storage_tag: {}. {}".format(args.storage_tag, line)
-										else:
-											send_data = "azure_tag: azure-storage. {}".format(line)
+            next_marker = blobs.next_marker
+            if not next_marker:
+                break
 
-									if send_data != "":
-										if storage_counter == 30:
-											storage_counter = 0
-											logging.info("Storage: 15 events sent by socket, time.sleep(2).")
-											time.sleep(2)
-										logging.info("Storage: Sending event by socket.")
-										send_socket(send_data)
-										storage_counter += 1
-				except Exception as e:
-					logging.error("Storage: sending blob: '{}'.".format(e))
+        try:
+            if first_run == True:
+                write_time = max_blob
+            else:
+                if container_md5 in dates_json["storage"]:
+                    previous_time = dates_json["storage"][container_md5]
+                    previous_time_length = len(previous_time) - 6
+                    previous_time_format = previous_time[:previous_time_length]
+                    previous_date = datetime.strptime(previous_time_format, '%Y-%m-%d %H:%M:%S')
+                    previous_date = UTC.localize(previous_date)
+                    if previous_date > max_blob:
+                        write_time = previous_date
+                    else:
+                        write_time = max_blob
+                else:
+                    write_time = max_blob
 
-			next_marker = blobs.next_marker
-			if not next_marker:
-				break
-
-		try:
-			if first_run == True:
-				write_time = max_blob
-			else:
-				if container_md5 in all_dates["storage"]:
-					previous_time = all_dates["storage"][container_md5]
-					previous_time_length = len(previous_time) - 6
-					previous_time_format = previous_time[:previous_time_length]
-					previous_date = datetime.datetime.strptime(previous_time_format, '%Y-%m-%d %H:%M:%S')
-					previous_date = utc.localize(previous_date)
-					if previous_date > max_blob:
-						write_time = previous_date
-					else:
-						write_time = max_blob
-				else:
-					write_time = max_blob
-
-			all_dates['storage'][container_md5] = str(write_time)
-			with open(os.path.join(path), 'w') as jsonFile:
-				json.dump(all_dates, jsonFile)
-		except Exception as e:
-			logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
-
-################################################################################################
-# Get the authentication token for calls to both APIs
-################################################################################################
-
-def get_token(ID, KEY, resource, domain):
-	loggin_url = 'https://login.microsoftonline.com'
-	if resource !="":
-		body = {
-			'client_id': ID,
-			'client_secret': KEY,
-			'scope': resource + "/.default",
-			'grant_type': 'client_credentials'
-		}
-	else:
-		body = {
-			'client_id': ID,
-			'client_secret': KEY,
-			'scope': "https://graph.microsoft.com/.default",
-			'grant_type': 'client_credentials'
-		}
-	auth_url = '{}/{}/oauth2/v2.0/token'.format(loggin_url, domain)
-	token_response = requests.post(auth_url, data=body)
-	access_token = token_response.json().get('access_token')
-
-	if access_token is None:
-		logging.error("Error: Couldn't get access token.")
-	else:
-		return access_token
-
-################################################################################################
-# Sends results by socket
-################################################################################################
-
-def send_socket(log):
-
-	send_id = 1
-	send_location = "Azure"
-
-	sock = socket(AF_UNIX, SOCK_DGRAM)
-	sock.connect(ADDR)
-	oldbuf = sock.getsockopt(SOL_SOCKET, SO_SNDBUF)
-
-	if oldbuf < BLEN:
-		sock.setsockopt(SOL_SOCKET, SO_SNDBUF, BLEN)
-		newbuf = sock.getsockopt(SOL_SOCKET, SO_SNDBUF)
-
-	string = "{}:{}:{}".format(send_id, send_location, log)
-	string_size = len(string)
-	if string_size > 6144:
-		logging.info("SOCKET WARNING: The size limit is exceeded, possibly the event will be truncated")
-
-	sock.send(string.encode())
+            dates_json['storage'][container_md5] = str(write_time)
+            with open(join(path), 'w') as jsonFile:
+                dump(dates_json, jsonFile)
+        except Exception as e:
+            logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
 
 
-################################################################################################
-# Date management.
-################################################################################################
+def get_token(client_id: str, secret: str, domain: str, resource: str = None):
+    """Get the authentication token for accessing a given resource in the specified domain.
 
-def format_date(conf_date):
+    Parameters
+    ----------
+    client_id : str
+        The client ID
+    secret : str
+        The client secret
+    domain : str
+        The tenant domain
+    resource : str
+        The resource for which access is requested
 
-	conf_date = conf_date.replace(" ","")
-	date_length = len(conf_date)-1
-	time_range = int(conf_date[:date_length])
-	param_date = conf_date[date_length:]
+    Returns
+    -------
+    A valid token in str format
+    """
+    body = {
+        'client_id': client_id,
+        'client_secret': secret,
+        'scope': f'{resource if resource else graph_base_url}/.default',
+        'grant_type': 'client_credentials'
+    }
+    auth_url = f'{loggin_url}/{domain}/oauth2/v2.0/token'
+    try:
+        token_response = post(auth_url, data=body)
+        logging.info(f"RESPONSE: {token_response}")
+        return token_response.json()['access_token']
+    except Exception as e:
+        logging.error("Error: Couldn't get the token for authentication: '{}'.".format(e))
+        exit(1)
 
-	if param_date == 'h':
-		final_date = datetime.datetime.utcnow() - datetime.timedelta(hours = time_range)
-	if param_date == 'm':
-		final_date = datetime.datetime.utcnow() - datetime.timedelta(minutes = time_range)
-	if param_date == 'd':
-		final_date = datetime.datetime.utcnow() - datetime.timedelta(days = time_range)
 
-	return final_date
+def send_message(message):
+    """Send a message with a header to the analysisd queue.
 
-################################################################################################
-# Main function.
-################################################################################################
+    Parameters
+    ----------
+    message : str
+        The message body to send to analysisd
+    """
+    s = socket(AF_UNIX, SOCK_DGRAM)
+    try:
+        s.connect(utils.ANALYSISD)
+        s.send(f'{socket_header}{message}'.encode(errors='replace'))
+    except socket_error as e:
+        if e.errno == 111:
+            logging.error("ERROR: Wazuh must be running.")
+            exit(1)
+        elif e.errno == 90:
+            logging.error("ERROR: Message too long to send to Wazuh.  Skipping message...")
+        else:
+            logging.error("ERROR: Error sending message to wazuh: {}".format(e))
+            exit(1)
+    finally:
+        s.close()
 
-def main():
 
-	set_logger()
-	read_arguments()
+def offset_to_datetime(date):
+    """Transform an offset value to a datetime object.
+
+    Parameters
+    ----------
+    date : str
+        A positive number containing a suffix character that indicates it's time unit,
+        such as, s (seconds), m (minutes), h (hours), d (days), w (weeks), M (months)
+
+    Returns
+    -------
+    A datetime object resulting from subtracting the offset value from the current datetime.
+    """
+    date = date.replace(" ", "")
+    value = int(date[:len(date) - 1])
+    unit = date[len(date) - 1:]
+
+    if unit == 'h':
+        return datetime.utcnow().replace(tzinfo=UTC) - timedelta(hours=value)
+    if unit == 'm':
+        return datetime.utcnow().replace(tzinfo=UTC) - timedelta(minutes=value)
+    if unit == 'd':
+        return datetime.utcnow().replace(tzinfo=UTC) - timedelta(days=value)
+
 
 if __name__ == "__main__":
-    main()
+    set_logger()
+
+    if args.log_analytics:
+        start_log_analytics()
+    elif args.graph:
+        start_graph()
+    elif args.storage:
+        start_storage()
+    else:
+        logging.error("No valid API was specified. Please use 'graph', 'log_analytics' or 'storage'.")
+        exit(1)
