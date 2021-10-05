@@ -1,0 +1,52 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml syscollector-manager-side
+group Analysisd
+
+== Initialization ==
+analysisd -> syscollector_decoder : start
+analysisd -> dbsync_decoder : start
+analysisd -> wdb : start_dispatcher
+
+== Decoding ==
+
+group old syscollector model
+syscollector_decoder -> syscollector_decoder : decode_networks
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+
+syscollector_decoder -> syscollector_decoder : decode_osinfo
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+
+syscollector_decoder -> syscollector_decoder : decode_ports
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+
+syscollector_decoder -> syscollector_decoder : decode_hardware
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+
+syscollector_decoder -> syscollector_decoder : decode_processes
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+
+syscollector_decoder -> syscollector_decoder : decode_packages
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+end
+
+group new syscollector model
+syscollector_decoder -> syscollector_decoder : decode_dbsync
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+end
+
+/ note over json_plugin_decoder: Used for alerts generation
+
+
+end
+== DB Synchronization ==
+
+dbsync_decoder --> analysisd : dispatch message
+analysisd -> wdb
+database DB
+wdb -> wdb : parse_data
+wdb -> DB : save info
+
+@enduml
