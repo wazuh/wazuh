@@ -2,10 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of GPLv2
-from contextvars import ContextVar
+import io
 import pytest
 import sys
 import zipfile
+from contextvars import ContextVar
 from datetime import datetime
 from time import time
 from unittest.mock import MagicMock, mock_open, patch
@@ -249,25 +250,23 @@ def test_update_cluster_control_with_failed():
 
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
-def test_compress_files(mock_path_dirname, mock_mkdir_with_mode):
+@patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x'))
+@patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
+def test_compress_files(mock_path_exists, mock_zipfile, mock_path_dirname, mock_mkdir_with_mode):
     """
     Test to check if the compressing function is working properly
     """
-    with patch('wazuh.core.cluster.cluster.path.exists', return_value=False):
-        cluster.compress_files("some_name", ["some/path", "another/path"],
-                               {"ko_file": "file"})
-        mock_mkdir_with_mode.assert_called_once_with('/some/path')
+    cluster.compress_files("some_name", ["some/path", "another/path"], {"ko_file": "file"})
+    mock_mkdir_with_mode.assert_called_once_with('/some/path')
 
-        with patch('zipfile.ZipFile.write', side_effect=zipfile.LargeZipFile):
-            with pytest.raises(WazuhError, match=r'.* 3001 .*'):
-                cluster.compress_files("some_name", ["some/path",
-                                                     "another/path"])
+    with patch('zipfile.ZipFile.write', side_effect=zipfile.LargeZipFile):
+        with pytest.raises(WazuhError, match=r'.* 3001 .*'):
+            cluster.compress_files("some_name", ["some/path", "another/path"])
 
-        with patch('zipfile.ZipFile.writestr',
-                   side_effect=zipfile.LargeZipFile):
-            with pytest.raises(WazuhError, match=r'.* 3001 .*'):
-                cluster.compress_files("some_name", ["some/path",
-                                                     "another/path"])
+    with patch('zipfile.ZipFile.writestr',
+               side_effect=zipfile.LargeZipFile):
+        with pytest.raises(WazuhError, match=r'.* 3001 .*'):
+            cluster.compress_files("some_name", ["some/path", "another/path"])
 
 
 async def test_decompress_files():
