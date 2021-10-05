@@ -1,8 +1,12 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import importlib.util
+import inspect
 import sys
 from json import JSONDecodeError
+from os import listdir
+from os.path import abspath, dirname, join
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -17,49 +21,49 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         del sys.modules['api.authentication']
 
+models_path = dirname(dirname(abspath(__file__)))
+
 
 class TestModel(bm.Body):
     """Test class for custom Model. Body inherits from Model and has all the attributes required for testing."""
 
-    def __init__(self, arg_1: str = None, arg_2: int = None):
-        self.swagger_types = {
-            'arg_1': str,
-            'arg_2': int
-        }
+    def __init__(self, *args):
 
-        self.attribute_map = {
-            'arg_1': 'arg_1',
-            'arg_2': 'arg_2'
-        }
+        self.swagger_types = {f"arg_{i + 1}": type(arg) for i, arg in enumerate(args)}
 
-        self._arg_1 = arg_1
-        self._arg_2 = arg_2
+        if not self.swagger_types:
+            self.swagger_types = {'arg_1': str}
+            args = ('value1',)
 
-    @property
-    def arg_1(self):
-        return self._arg_1
+        self.attribute_map = {arg: arg for arg in self.swagger_types}
 
-    @arg_1.setter
-    def arg_1(self, arg_1):
-        self._arg_1 = arg_1
-
-    @property
-    def arg_2(self):
-        return self._arg_2
-
-    @arg_2.setter
-    def arg_2(self, arg_2):
-        self._arg_2 = arg_2
+        for arg, value in zip(self.swagger_types.keys(), args):
+            setattr(self, arg, value)
 
 
 class RequestMock:
     """Class Request mock."""
+
     def __init__(self, content_type):
         self._content_type = content_type
 
     @property
     def content_type(self):
         return self._content_type
+
+
+class ToDictObject:
+    def __init__(self, value):
+        self.value = value
+
+    def to_dict(self):
+        return {'value': self.value}
+
+    def __repr__(self):
+        return self.to_dict()
+
+    def __eq__(self, other):
+        return other == self.to_dict()
 
 
 def test_model_from_dict():
@@ -74,10 +78,11 @@ def test_model_from_dict():
 
 def test_model_to_dict():
     """Test class Model `to_dict` method."""
-    test_model = TestModel('value1', 2)
+    model_params = ('value1', 2, [3, {'key3': 'value3'}], {'key1': 'value_dict_1'}, ToDictObject(999))
+    test_model = TestModel(*model_params)
     dikt = test_model.to_dict()
     assert isinstance(dikt, dict)
-    assert dikt == {'arg_1': 'value1', 'arg_2': 2}
+    assert dikt == {f"arg_{i + 1}": value for i, value in enumerate(model_params)}
 
 
 def test_model_to_str():
@@ -99,7 +104,7 @@ def test_model_operator_overloading():
     print(test_model)
 
     equal_model = TestModel(*list(original_dict.values()))
-    not_equal_model = TestModel()
+    not_equal_model = TestModel('test')
 
     # Operator == (__eq__)
     assert test_model == equal_model
@@ -112,24 +117,77 @@ def test_model_operator_overloading():
         assert test_model != equal_model
 
 
-def test_model_properties():
-    """Test setters and getters (properties) from class Model."""
-    test_model = TestModel()
-    value = 'test'
+def test_allof():
+    model1 = TestModel('a', 1)
+    model2 = TestModel('a', 2)
 
-    assert test_model.arg_1 is None
-    test_model.arg_1 = value
-    assert test_model.arg_1 == value
+    allof = bm.AllOf(model1, model2)
+    assert allof.models == (model1, model2)
+
+
+def test_allof_to_dict():
+    """Test class AllOf class `to_dict` method."""
+    args1 = ('one', 1)
+    args2 = ('two', 2)
+
+    allof = bm.AllOf(TestModel(*args1), TestModel(*args2))
+    # Same model means that the second model values will overwrite the first
+    assert tuple(allof.to_dict().values()) == args2
+
+    allof = bm.AllOf(TestModel(*args2), TestModel(*args1))
+    assert tuple(allof.to_dict().values()) == args1
+
+
+def test_data():
+    """Test class Data."""
+    model = TestModel('one', 1)
+    data_model = bm.Data(model)
+
+    assert data_model.swagger_types == {'data': bm.Model}
+    assert data_model.attribute_map == {'data': 'data'}
+    assert data_model._data == model
+
+    # Test class properties
+    new_data = {'new': 'data'}
+    data_model.data = new_data
+    assert data_model.data == new_data
+
+
+def test_data_from_dict():
+    """Test class Data `from_dict` class method."""
+    test_dict = {'test_key': 'test_value'}
+    assert bm.Data.from_dict(test_dict) == deserialize_model(test_dict, bm.Data)
+
+
+def test_items():
+    """Test class Items."""
+    l = [TestModel('one', 2)]
+    items_model = bm.Items(l)
+
+    assert items_model.swagger_types == {'items': bm.List[bm.Model]}
+    assert items_model.attribute_map == {'items': 'items'}
+    assert items_model._items == l
+
+    # Test class properties
+    new_items = [TestModel('new', 9)]
+    items_model.items = new_items
+    assert items_model.items == new_items
+
+
+def test_items_from_dict():
+    """Test class Items `from_dict` class method."""
+    test_dict_list = [{'test_key': 'test_value'}, {'test_key2': 'test_value2'}]
+    assert bm.Items.from_dict(test_dict_list) == deserialize_model(test_dict_list, bm.Items)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('additional_kwargs', [
     {},
-    {'additional': 'test'}
+    {'arg_2': 'test'}
 ])
 async def test_body_get_kwargs(additional_kwargs):
     """Test class Body `get_kwargs` class method."""
-    request = {'arg_1': 'value1'}  # Missing arg_2
+    request = {'arg_1': 'value1'}
     test_model = TestModel(*list(request.values()))
 
     kwargs = await TestModel.get_kwargs(request, additional_kwargs=additional_kwargs)
@@ -156,6 +214,12 @@ async def test_body_get_kwargs_ko():
 
     # Custom exception. Very specific detail
     assert 'Invalid field found' in exc.value.detail
+
+
+def test_body_from_dict():
+    """Test class Body `from_dict` method."""
+    test_dict = {'test_key1': 'test_value1', 'test_key2': [{'test_key21': 'test_value21'}]}
+    assert bm.Body.from_dict(test_dict) == deserialize_model(test_dict, bm.Body)
 
 
 def test_body_decode_body():
@@ -195,3 +259,28 @@ def test_body_validate_content_type_ko():
         TestModel.validate_content_type(request, 'application/xml')
 
     assert exc.value.ext['code'] == 6002
+
+
+@pytest.mark.parametrize('module_name', [module for module in listdir(models_path) if module.endswith('model.py')])
+@patch('api.util.deserialize_model')
+def test_all_models(deserialize_mock, module_name):
+    """Test that all API models classes are correctly defined."""
+    # Load API model
+    spec = importlib.util.spec_from_file_location('test_module', join(models_path, module_name))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # Get all defined classes
+    for module_classes in inspect.getmembers(module, inspect.isclass):
+        for module_class in module_classes[1:]:
+            if module_class.__module__ == 'test_module':
+                # Check if they can be defined
+                instance = module_class()
+                for p in [p for p in module_class.__dict__ if not p.startswith('__')]:
+                    # Assert that all its attributes have defined properties (getter and setter)
+                    setattr(instance, p, 'test')
+                    assert getattr(instance, p) == 'test'
+
+                # Test the only possible overwritten method: `from_dict`
+                getattr(module_class, 'from_dict')('test')
+                deserialize_mock.assert_called_with('test', module_class)

@@ -94,6 +94,7 @@
 #define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
 #define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
 #define VU_DISCARD_CVE_ENTRY  "(5488): Package '%s' not affected by '%s' with misleading condition (%s '%s')."
+#define VU_DISCARD_DU         "(5489): '%s' vulnerability information discarded for agent '%.3d' ('KB%s'): Dynamic Updates (DU) are only available when upgrading to new Windows 10 versions."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -262,6 +263,7 @@
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
+
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

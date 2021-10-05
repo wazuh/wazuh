@@ -28,6 +28,7 @@
 
 typedef struct pending_data_t {
     char *message;
+    char *group;
     int changed;
 } pending_data_t;
 

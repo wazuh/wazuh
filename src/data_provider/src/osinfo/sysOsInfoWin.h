@@ -25,6 +25,7 @@ class SysOsInfoProviderWindows final : public ISysOsInfoProvider
         std::string minorVersion() const override;
         std::string build() const override;
         std::string release() const override;
+        std::string displayVersion() const override;
         std::string machine() const override;
         std::string nodeName() const override;
     private:
@@ -33,6 +34,7 @@ class SysOsInfoProviderWindows final : public ISysOsInfoProvider
         const std::string m_build;
         const std::string m_version;
         const std::string m_release;
+        const std::string m_displayVersion;
         const std::string m_name;
         const std::string m_machine;
         const std::string m_nodeName;

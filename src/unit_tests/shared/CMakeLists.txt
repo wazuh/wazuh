@@ -79,7 +79,7 @@ list(APPEND shared_tests_names "test_utf8_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_log_builder")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int")
 
 list(APPEND shared_tests_names "test_custom_output_search_replace")
 list(APPEND shared_tests_flags " ")
@@ -154,9 +154,6 @@ list(APPEND shared_tests_names "test_bqueue")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
 
 endif()
-
-list(APPEND shared_tests_names "test_keys")
-list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 
 list(APPEND shared_tests_names "test_atomic")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")

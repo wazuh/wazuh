@@ -64,6 +64,12 @@ int __wrap_OS_ConnectUnixDomain(const char * path, int type, int max_msg_size){
     return (int) mock();
 }
 
+bool ptr_function_value = false;
+
+bool ptr_function() {
+    ptr_function_value = !ptr_function_value;
+    return ptr_function_value;
+}
 /* Tests */
 
 void test_start_mq_read_success(void ** state){
@@ -243,6 +249,69 @@ void test_start_mq_write_inf_fail(void ** state){
     ret = StartMQ(path, type, n_attempts);
 }
 
+void test_reconnect_mq_simple_success(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    char * path = "/test";
+
+    int ret = 0;
+    char messages[2][OS_SIZE_64];
+
+    will_return(__wrap_OS_ConnectUnixDomain, 0);
+
+    snprintf(messages[0], OS_SIZE_64, SUCCESSFULLY_RECONNECTED_SOCKET, path);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
+
+    snprintf(messages[1], OS_SIZE_64, MSG_SOCKET_SIZE, SOCKET_SIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
+
+    ret = MQReconnectPredicated(path, &ptr_function);
+    assert_false(ret);
+}
+
+void test_reconnect_mq_simple_fail(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    char * path = "/test";
+
+    int ret = 0;
+
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    ret = MQReconnectPredicated(path, &ptr_function);
+    assert_int_equal(ret, -1);
+}
+
+void test_reconnect_mq_complex_true(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    char * path = "/test";
+    char * error_message = "Socket operation on non-socket";
+    int error_message_id = 88;
+
+    int ret = 0;
+    char expected_str[OS_SIZE_64];
+    char messages[2][OS_SIZE_64];
+
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+    will_return(__wrap_OS_ConnectUnixDomain, 0);
+
+    snprintf(expected_str, OS_SIZE_64, UNABLE_TO_RECONNECT, path, error_message, error_message_id);
+    expect_string(__wrap__merror, formatted_msg, expected_str);
+
+    snprintf(messages[0], OS_SIZE_64, SUCCESSFULLY_RECONNECTED_SOCKET, path);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
+
+    snprintf(messages[1], OS_SIZE_64, MSG_SOCKET_SIZE, SOCKET_SIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
+
+    ret = MQReconnectPredicated(path, &ptr_function);
+    assert_int_equal(ret, 0);
+}
+
 // Main test function
 
 int main(void){
@@ -254,7 +323,10 @@ int main(void){
        cmocka_unit_test(test_start_mq_write_multiple_success),
        cmocka_unit_test(test_start_mq_write_multiple_fail),
        cmocka_unit_test(test_start_mq_write_inf_success),
-       cmocka_unit_test(test_start_mq_write_inf_fail)
+       cmocka_unit_test(test_start_mq_write_inf_fail),
+       cmocka_unit_test(test_reconnect_mq_simple_fail),
+       cmocka_unit_test(test_reconnect_mq_complex_true),
+       cmocka_unit_test(test_reconnect_mq_simple_success)
        };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

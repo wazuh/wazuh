@@ -31,14 +31,29 @@ static struct {
 static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 
 //Parse an agent removal response
-static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
+static int w_parse_agent_remove_response(const char* buffer,
+                                         char *err_response,
+                                         const int json_format,
+                                         const int exit_on_error);
 #endif
 
 //Parse an agent addition response
-static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
+static int w_parse_agent_add_response(const char* buffer,
+                                      char *err_response,
+                                      char* id,
+                                      char* key,
+                                      const int json_format,
+                                      const int exit_on_error);
 
 //Alloc and create an agent addition command payload
-static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
+static cJSON* w_create_agent_add_payload(const char *name,
+                                         const char *ip,
+                                         const char *groups,
+                                         const char *key_hash,
+                                         const char *key,
+                                         const char *id,
+                                         const int force);
+
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -316,11 +331,11 @@ int set_agent_group(const char * id, const char * group) {
     return 0;
 }
 
-int set_agent_multigroup(char * group){
+int set_agent_multigroup(char * group) {
     int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
 
-    if(!multigroup){
+    if (!multigroup) {
         return 0;
     }
 
@@ -344,7 +359,7 @@ int set_agent_multigroup(char * group){
     DIR *dp;
     dp = opendir(multigroup_path);
 
-    if(!dp){
+    if (!dp) {
         if (errno == ENOENT) {
             oldmask = umask(0002);
             int retval = mkdir(multigroup_path, 0770);
@@ -357,7 +372,7 @@ int set_agent_multigroup(char * group){
         } else {
             mwarn("Could not create directory '%s': %s (%d)", multigroup_path, strerror(errno), errno);
         }
-    }else{
+    } else {
         closedir(dp);
     }
 
@@ -370,7 +385,7 @@ int create_multigroup_dir(const char * multigroup) {
     DIR *dp;
     char *has_multigroup =  strchr(multigroup,MULTIGROUP_SEPARATOR);
 
-    if(!has_multigroup){
+    if (!has_multigroup) {
         return 0;
     }
     mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
@@ -383,13 +398,13 @@ int create_multigroup_dir(const char * multigroup) {
     dp = opendir(path);
 
     /* Multigroup doesnt exists, create the directory */
-    if(!dp){
+    if (!dp) {
        if (mkdir(path, 0770) == -1) {
             merror("At create_multigroup_dir(): couldn't create directory '%s'", path);
             return -1;
         }
 
-        if(chmod(path,0770) < 0){
+        if (chmod(path,0770) < 0) {
             merror("At create_multigroup_dir(): Error in chmod setting permissions for path: %s",path);
         }
 
@@ -401,8 +416,7 @@ int create_multigroup_dir(const char * multigroup) {
             return -1;
         }
         mdebug1("Multigroup dir created: '%s'",multigroup);
-    }
-    else{
+    } else {
         closedir(dp);
     }
 
@@ -423,27 +437,27 @@ int w_validate_group_name(const char *group, char *response) {
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
 
-    if(strlen(group) == 0) {
+    if (strlen(group) == 0) {
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is 0");
-        if(response) {
+        if (response) {
             snprintf(response, 2048, "ERROR: Invalid group name: Empty Group");
         }
         return -8;
     }
 
-    if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
+    if (!multigroup && (strlen(group) > MAX_GROUP_NAME)) {
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
-        if(response) {
+        if (response) {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", group);
         }
         return -2;
     }
-    else if(multigroup && strlen(group) > OS_SIZE_65536 -1 ){
+    else if (multigroup && strlen(group) > OS_SIZE_65536 -1 ) {
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
-        if(response) {
+        if (response) {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large", group);
         }
         return -3;
@@ -451,19 +465,19 @@ int w_validate_group_name(const char *group, char *response) {
 
     /* Check if the group is only composed by ',' */
     unsigned int comas = 0;
-    for(i = 0; i < strlen(group); i++){
-        if(group[i] == MULTIGROUP_SEPARATOR){
+    for (i = 0; i < strlen(group); i++) {
+        if (group[i] == MULTIGROUP_SEPARATOR) {
             comas++;
         }
     }
 
-    if(!multigroup){
+    if (!multigroup) {
         offset = 1;
         valid_chars[valid_chars_length - offset] = '\0';
     }
 
     /* Check if the multigroups are empty or have consecutive ',' */
-    if(multigroup){
+    if (multigroup) {
 
         const char delim[2] = ",";
         char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
@@ -471,10 +485,9 @@ int w_validate_group_name(const char *group, char *response) {
         while( individual_group != NULL ) {
 
             /* Spaces are not allowed */
-            if(strchr(individual_group,' '))
-            {
+            if (strchr(individual_group,' ')) {
                 free(multi_group_cpy);
-                if(response) {
+                if (response) {
                     snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed", group);
                 }
                 return -4;
@@ -483,7 +496,7 @@ int w_validate_group_name(const char *group, char *response) {
             /* Validate the individual group length */
             if (strlen(individual_group) > MAX_GROUP_NAME) {
                 free(multi_group_cpy);
-                if (response){
+                if (response) {
                     snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group);
                 }
                 return -7;
@@ -493,9 +506,9 @@ int w_validate_group_name(const char *group, char *response) {
         }
 
         /* Look for consecutive ',' */
-        if(strstr(group,",,")){
+        if (strstr(group,",,")) {
             free(multi_group_cpy);
-            if(response) {
+            if (response) {
                 snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed", group);
             }
             return -5;
@@ -503,26 +516,26 @@ int w_validate_group_name(const char *group, char *response) {
     }
 
     /* Check if the group is only composed by ',' */
-    if(comas == strlen(group)){
+    if (comas == strlen(group)) {
         free(multi_group_cpy);
-        if(response) {
+        if (response) {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
         }
         return -1;
     }
 
     /* Check if the group starts or ends with ',' */
-    if(group[0] == ',' || group[strlen(group) - 1] == ',' ){
+    if (group[0] == ',' || group[strlen(group) - 1] == ',' ) {
         free(multi_group_cpy);
-        if(response) {
+        if (response) {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','", group);
         }
         return -6;
     }
 
-    if(strspn(group,valid_chars) != strlen(group)){
+    if (strspn(group,valid_chars) != strlen(group)) {
         free(multi_group_cpy);
-        if(response) {
+        if (response) {
             snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited", group);
         }
         return -1;
@@ -533,14 +546,14 @@ int w_validate_group_name(const char *group, char *response) {
 }
 
 #ifndef CLIENT
-void w_remove_multigroup(const char *group){
+void w_remove_multigroup(const char *group) {
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
 
-    if(multigroup){
+    if (multigroup) {
         sprintf(path, "%s", GROUPS_DIR);
 
-        if(wstr_find_in_folder(path,group,1) < 0){
+        if (wstr_find_in_folder(path,group,1) < 0) {
             /* Remove the DIR */
             os_sha256 multi_group_hash;
             OS_SHA256_String(group,multi_group_hash);
@@ -575,7 +588,13 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id) {
+static cJSON* w_create_agent_add_payload(const char *name,
+                                         const char *ip,
+                                         const char *groups,
+                                         const char *key_hash,
+                                         const char *key,
+                                         const char *id,
+                                         const int force) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -584,15 +603,19 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
     cJSON_AddStringToObject(arguments, "name", name);
     cJSON_AddStringToObject(arguments, "ip", ip);
 
-    if(groups) {
+    if (groups) {
         cJSON_AddStringToObject(arguments, "groups", groups);
     }
 
-    if(key) {
+    if (key_hash) {
+        cJSON_AddStringToObject(arguments, "key_hash", key_hash);
+    }
+
+    if (key) {
         cJSON_AddStringToObject(arguments, "key", key);
     }
 
-    if(id) {
+    if (id) {
         cJSON_AddStringToObject(arguments, "id", id);
     }
 
@@ -615,15 +638,14 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
     // Parse response
     const char *jsonErrPtr;
     if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
-        if(exit_on_error){
+        if (exit_on_error) {
             merror_exit("Parsing JSON response.");
         }
         result = -2;
-    }
-    else {
+    } else {
         // Get error field
         if (error = cJSON_GetObjectItem(response, "error"), !error) {
-            if(exit_on_error){
+            if (exit_on_error) {
                 merror_exit("No such status from response.");
             }
             result = -2;
@@ -644,7 +666,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
             else {
                 // Get data field
                 if (data = cJSON_GetObjectItem(response, "data"), !data) {
-                    if(exit_on_error){
+                    if (exit_on_error) {
                         merror_exit("No data received.");
                     }
                     result = -2;
@@ -653,7 +675,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                     // Get data information if required
                     if (id) {
                         if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
-                            if(exit_on_error){
+                            if (exit_on_error) {
                                 merror_exit("No id received.");
                             }
                             result = -2;
@@ -665,7 +687,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                     }
                     if (key && result == 0) {
                         if (data_key = cJSON_GetObjectItem(data, "key"), !data_key) {
-                            if(exit_on_error){
+                            if (exit_on_error) {
                                 merror_exit("No key received.");
                             }
                             result = -2;
@@ -681,8 +703,8 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
     }
 
     // Create an error response if needed
-    if(err_response) {
-        if(result == -1) {
+    if (err_response) {
+        if (result == -1) {
             snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
         }
         else if (result == -2) {
@@ -728,7 +750,7 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
     // Parse response
     const char *jsonErrPtr;
     if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
-        if(exit_on_error){
+        if (exit_on_error) {
             merror_exit("Parsing JSON response.");
         }
         result = -2;
@@ -737,7 +759,7 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
 
     // Detect error field
     if (error = cJSON_GetObjectItem(response, "error"), !error) {
-        if(exit_on_error){
+        if (exit_on_error) {
             merror_exit("No such status from response.");
         }
         result = -2;
@@ -754,8 +776,8 @@ static int w_parse_agent_remove_response(const char* buffer, char *err_response,
     }
 
     // Create an error response if needed
-    if(err_response) {
-        if(result == -1) {
+    if (err_response) {
+        if (result == -1) {
             snprintf(err_response, 2048, "ERROR: %s", message ? message->valuestring : "(undefined)");
         }
         else if (result == -2) {
@@ -778,7 +800,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
 
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
         if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
-            if(response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
+            if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                 switch (response_length) {
                 case -2:
                     merror("Cluster error detected");
@@ -814,26 +836,41 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
 }
 
 //Send a clustered agent add request.
-int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id) {
+int w_request_agent_add_clustered(char *err_response,
+                                  const char *name,
+                                  const char *ip,
+                                  const char *groups,
+                                  const char *key_hash,
+                                  char **id,
+                                  char **key,
+                                  const int force,
+                                  const char *agent_id) {
     int result;
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };
+    cJSON* message;
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, *key, force, agent_id);
+    if (agent_id){
+        // Create key polling request
+        message = w_create_agent_add_payload(name, ip, groups, NULL, key_hash, agent_id, force);
+    } else {
+        // Create dispatching request
+        message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force);
+    }
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
-    if(result = w_send_clustered_message("sendsync", output, response), result == 0) {
+    if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
         result = w_parse_agent_add_response(response, err_response, new_id, new_key, FALSE, FALSE);
     }
-    else if(err_response) {
+    else if (err_response) {
         snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
     }
 
     free(output);
-    if(0 == result) {
+    if (0 == result) {
         os_strdup(new_id, *id);
         os_strdup(new_key, *key);
     }
@@ -843,7 +880,7 @@ int w_request_agent_add_clustered(char *err_response, const char *name, const ch
 }
 
 //Send a clustered agent remove request.
-int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge){
+int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge) {
     int result;
     char response[OS_MAXSTR + 1];
 
@@ -852,10 +889,10 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
-    if(result = w_send_clustered_message("sendsync", output, response), result == 0) {
+    if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
         result = w_parse_agent_remove_response(response, err_response, FALSE, FALSE);
     }
-    else if(err_response) {
+    else if (err_response) {
         snprintf(err_response, 2048, "ERROR: Cannot comunicate with master");
     }
 
@@ -866,15 +903,15 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 #endif //!WIN32
 
 //Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error){
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 
     if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
-        if(exit_on_error){
+        if (exit_on_error) {
             merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
         }
         free(output);
@@ -886,13 +923,13 @@ int w_request_agent_add_local(int sock, char *id, const char *name, const char *
     char response[OS_MAXSTR + 1];
     ssize_t length;
     if (length = OS_RecvSecureTCP(sock, response, OS_MAXSTR), length < 0) {
-        if(exit_on_error){
+        if (exit_on_error) {
             merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
         }
         result = -1;
         return result;
     } else if (length == 0) {
-        if(exit_on_error){
+        if (exit_on_error) {
             merror_exit("Empty message from local server.");
         }
         result = -1;
@@ -919,7 +956,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     fp = fopen(path, "r");
 
-    if(!fp) {
+    if (!fp) {
         mdebug1("Couldnt open file '%s'", KEYS_FILE);
         os_free(path);
         os_free(buffer);
@@ -934,7 +971,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
         parts = OS_StrBreak(' ',buffer,4);
 
-        if(!parts) {
+        if (!parts) {
             continue;
         }
 
@@ -945,7 +982,7 @@ char * get_agent_id_from_name(const char *agent_name) {
             count++;
         }
 
-        if(count < 3) {
+        if (count < 3) {
             free_strarray(parts);
             os_free(buffer);
             fclose(fp);
@@ -953,7 +990,7 @@ char * get_agent_id_from_name(const char *agent_name) {
         }
 
         // If the agent name is the same, return its ID
-        if(strcmp(parts[1],agent_name) == 0){
+        if (strcmp(parts[1],agent_name) == 0) {
             char *id = strdup(parts[0]);
             fclose(fp);
             free_strarray(parts);
