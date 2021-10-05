@@ -18,7 +18,8 @@ set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2
                        -Wl,--wrap=fprintf,--wrap=fgets,--wrap=stat,--wrap=wstr_split,--wrap=os_random \
                        -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=sqlite3_column_count,--wrap=getDefine_Int,--wrap=wfopen \
                        -Wl,--wrap=fgetpos,--wrap=fgetc,--wrap=pthread_rwlock_rdlock,--wrap=pthread_rwlock_unlock \
-                       -Wl,--wrap=pthread_rwlock_wrlock,--wrap=sqlite3_extended_errcode,--wrap=sqlite3_get_autocommit")
+                       -Wl,--wrap=pthread_rwlock_wrlock,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock \
+                       -Wl,--wrap=sqlite3_extended_errcode,--wrap=sqlite3_get_autocommit")
 
 target_link_libraries(test_fim_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
@@ -41,7 +42,7 @@ set(FIM_DB_FILES_LINUX_FLAGS "-Wl,--wrap=usleep,--wrap=time,--wrap=sqlite3_bind_
                               -Wl,--wrap=readdir,--wrap=closedir")
 
 set(FIM_DB_FILES_WINDOWS_FLAG "-Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,,--wrap=rmdir_ex,--wrap=opendir \
-                               -Wl,--wrap=readdir,--wrap=closedir")
+                               -Wl,--wrap=readdir,--wrap=closedir,--wrap=sqlite3_bind_null")
 
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_fim_db_files ${FIM_DB_BASE_FLAGS} ${FIM_DB_FILES_WINDOWS_FLAG})

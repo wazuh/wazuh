@@ -52,13 +52,6 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
-typedef enum {
-    FIM_FILE_UPDATED,
-    FIM_FILE_DELETED,
-    FIM_FILE_ADDED_PATHS,
-    FIM_FILE_ERROR
-} fim_sanitize_state_t;
-
 typedef enum fim_state_db {
     FIM_STATE_DB_EMPTY,
     FIM_STATE_DB_NORMAL,

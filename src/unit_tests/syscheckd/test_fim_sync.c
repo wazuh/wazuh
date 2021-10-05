@@ -294,8 +294,6 @@ static void expect_fim_db_get_data_checksum_error(const fdb_t *db) {
 }
 
 static void expect_fim_db_get_count_range_n(char *start, char *stop, int n) {
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_count_range, type, FIM_TYPE_FILE);
     expect_string(__wrap_fim_db_get_count_range, start, start);
@@ -303,8 +301,6 @@ static void expect_fim_db_get_count_range_n(char *start, char *stop, int n) {
 
     will_return(__wrap_fim_db_get_count_range, n);
     will_return(__wrap_fim_db_get_count_range, FIMDB_OK);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char **first, char **last) {
@@ -321,16 +317,12 @@ static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char **firs
 }
 
 static void expect_fim_db_get_entry_from_sync_msg(char *path, int type, fim_entry *mock_entry) {
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_value(__wrap_fim_db_get_entry_from_sync_msg, fim_sql, syscheck.database);
 #ifdef TEST_WINAGENT
     expect_value(__wrap_fim_db_get_entry_from_sync_msg, type, type);
 #endif
     expect_value(__wrap_fim_db_get_entry_from_sync_msg, path, path);
     will_return(__wrap_fim_db_get_entry_from_sync_msg, mock_entry);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 static void expect_fim_db_get_path_range(fdb_t *db,
@@ -340,9 +332,6 @@ static void expect_fim_db_get_path_range(fdb_t *db,
                                         int storage,
                                         fim_tmp_file *file,
                                         int ret) {
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
     expect_value(__wrap_fim_db_get_path_range, type, type);
     expect_string(__wrap_fim_db_get_path_range, start, start);
@@ -350,8 +339,6 @@ static void expect_fim_db_get_path_range(fdb_t *db,
     expect_value(__wrap_fim_db_get_path_range, storage, storage);
     will_return(__wrap_fim_db_get_path_range, file);
     will_return(__wrap_fim_db_get_path_range, ret);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 static void expect_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char *buffer, int ret) {
@@ -477,14 +464,12 @@ static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
     char buffer[256];
 
     snprintf(buffer, 256, FIM_DB_ERROR_COUNT_RANGE, first, last);
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_fim_db_get_count_range, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_count_range, type, FIM_TYPE_FILE);
     expect_string(__wrap_fim_db_get_count_range, start, first);
     expect_string(__wrap_fim_db_get_count_range, top, last);
     will_return(__wrap_fim_db_get_count_range, 0);
     will_return(__wrap_fim_db_get_count_range, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__merror, formatted_msg, buffer);
 
@@ -533,8 +518,6 @@ static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **stat
 static void test_fim_sync_checksum_split_range_size_default(void **state) {
     expect_fim_db_get_count_range_n("start", "top", 2);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_value(__wrap_fim_db_get_checksum_range, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_checksum_range, start, "start");
     expect_string(__wrap_fim_db_get_checksum_range, top, "top");
@@ -544,7 +527,6 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
     will_return(__wrap_fim_db_get_checksum_range, strdup("path2"));
     will_return(__wrap_fim_db_get_checksum_range, FIMDB_OK);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_dbsync_check_msg_call("fim_file", INTEGRITY_CHECK_LEFT, 1234, "start", "path1", "path2",
                                  strdup("plain_text"));
 
