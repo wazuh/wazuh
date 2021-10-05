@@ -155,16 +155,14 @@ def test_walk_dir():
     """
     Test to check the different outputs of the walk_files function
     """
-    
+
     with patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
                ContextVar('cluster_integrity_mtime',
                           default={"/some/path/": {"mod_time": 45}})) as mock_cluster_integrity_mtime:
         with patch('os.path.join', return_value='/some/path/'):
             with patch('wazuh.core.cluster.cluster.walk') as w:
-                w.return_value = [('/foo/', ('bar',), ('baz',)),
-                                ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
-                cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"],
-                                ["ar.conf"], [".xml", ".txt"], "", True)
+                w.return_value = [('/foo/', ('bar',), ('baz',)), ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
+                cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
                 with patch('os.path.getmtime', return_value=45):
                     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
 
@@ -184,42 +182,8 @@ def test_walk_dir():
         with patch('os.path.join', return_value='/some/path/'):
             with patch('wazuh.core.cluster.cluster.walk') as w:
                 with patch('os.path.getmtime', return_value=45):
-                    w.return_value = [('/foo/', ('bar',), ('baz',)),
-                                ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
+                    w.return_value = [('/foo/', ('bar',), ('baz',)), ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
                     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-                
-
-# def test_walk_dir():
-#     """
-#     Test to check the different outputs of the walk_files function
-#     """
-
-#     with patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
-#                ContextVar('cluster_integrity_mtime',
-#                           default={"/some/path/": {"mod_time": 45}})) as mock_cluster_integrity_mtime:
-#         with patch('os.path.join', return_value='/some/path/'):
-#             with patch('wazuh.core.cluster.cluster.walk') as w:
-#                 w.return_value = [('/foo/', ('bar',), ('baz',)),
-#                                 ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
-#                 cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"],
-#                                 ["ar.conf"], [".xml", ".txt"], "", True)
-#                 # with patch('os.path.getmtime', return_value=45):
-#                 #     mock_cluster_integrity_mtime.return_value = {"/some/path/":
-#                 #                                                 {"mod_time": 45}}
-#                 #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-
-#                 # with patch('os.path.getmtime', return_value=mock_cluster_integrity_mtime.get()["/some/path"]['mod_time']):
-#                 #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-
-#                 # with patch('os.path.getmtime', return_value=mock_cluster_integrity_mtime["something wrong"]['wrong']):
-#                 #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-
-#                 # with patch('os.path.getmtime', side_effect=PermissionError):
-#                 #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-
-#             with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
-#                 with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
-#                     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
