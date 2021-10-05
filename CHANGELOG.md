@@ -140,7 +140,16 @@ All notable changes to this project will be documented in this file.
   - Removed old framework functions used to calculate agent status. ([#8846](https://github.com/wazuh/wazuh/pull/8846))
 
 
-## [v4.2.2]
+## [v4.2.3]
+
+### Manager
+
+#### Fixed
+
+- Fixed a bug in Remoted that might lead it to crash when retrieving an agent's group. ([#10388](https://github.com/wazuh/wazuh/pull/10388))
+
+
+## [v4.2.2] - 2021-09-28
 
 ### Manager
 
