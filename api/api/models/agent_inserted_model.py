@@ -22,7 +22,7 @@ class AgentInsertedModel(Body):
         :type agent_id: str
         :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
         :type key: str
-        :param force: Remove the old agent with the same IP if disconnected since <force_time> seconds.
+        :param force: Remove the old agent with the same name or IP if conditions are met.
         :type force: dict
         """
         self.swagger_types = {
@@ -136,6 +136,6 @@ class AgentInsertedModel(Body):
     @force.setter
     def force(self, force):
         """Limit time to disconnect an agent with the same IP.
-        :param force: Agents limit disconnection time.
+        :param force: Remove the old agent with the same name or IP if conditions are met.
         """
         self._force = force
