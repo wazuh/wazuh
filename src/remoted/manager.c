@@ -1047,11 +1047,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     char *message;
     char *fmsg;
 
-    if (!groups) {
-        mdebug2("Nothing to share with agent");
-        return OS_INVALID;
-    }
-
     // Get agent group
     if (agt_group = w_parser_get_agent(agent_id), agt_group) {
         strncpy(group, agt_group->group, OS_SIZE_65536);
@@ -1067,9 +1062,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         return OS_SUCCESS;
     }
 
-    /* Lock mutex */
-    w_mutex_lock(&files_mutex);
-
     // make a copy to keep original msg for read_controlmsg
     os_strdup(msg, message);
     fmsg = message;
@@ -1077,7 +1069,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     // Skip agent-info and label data
     if (message = strchr(message, '\n'), !message) {
         merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-        w_mutex_unlock(&files_mutex);
         os_free(fmsg);
         return OS_INVALID;
     }
@@ -1117,12 +1108,20 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
 
         // If group was not got, guess it by matching sum
         mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
-        if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
+
+        /* Lock mutex */
+        w_mutex_lock(&files_mutex);
+
+        if (!guess_agent_group || groups == NULL || (f_sum = find_group(file, md5, group), !f_sum)) {
             // If the group could not be guessed, set to "default"
             // or if the user requested not to guess the group, through the internal
             // option 'guess_agent_group', set to "default"
             strncpy(group, "default", OS_SIZE_65536);
         }
+
+        /* Unlock mutex */
+        w_mutex_unlock(&files_mutex);
+
         set_agent_group(agent_id, group);
         os_strdup(group, *r_group);
         ret = OS_SUCCESS;
@@ -1130,8 +1129,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         break;
     }
 
-    /* Unlock mutex */
-    w_mutex_unlock(&files_mutex);
     os_free(fmsg);
     return ret;
 }
@@ -1302,7 +1299,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         if (data = OSHash_Get(pending_data, agent_id), data) {
             os_strdup(data->message, msg);
-            os_strdup(data->group, group);
+            w_strdup(data->group, group);
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", agent_id);
             os_free(agent_id);
