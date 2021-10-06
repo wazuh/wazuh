@@ -85,6 +85,7 @@ class InitAgent:
         self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
         self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
+        self.disconnected_fields = self.active_fields | {"disconnection_time"}
         self.manager_fields -= {'registerIP'}
 
 
@@ -114,8 +115,10 @@ def check_agent(test_data, agent):
     assert 'id' in agent
     if agent['id'] == '000':
         assert agent.keys() == test_data.manager_fields
-    elif agent['status'] == 'active' or agent['status'] == 'disconnected':
+    elif agent['status'] == 'active':
         assert agent.keys() == test_data.active_fields
+    elif agent['status'] == 'disconnected':
+        assert agent.keys() == test_data.disconnected_fields
     elif agent['status'] == 'pending':
         assert agent.keys() == test_data.pending_fields
     elif agent['status'] == 'never_connected':
