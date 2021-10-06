@@ -150,7 +150,11 @@ void HandleSecure()
 
     /* Read authentication keys */
     minfo(ENC_READ);
+
+    key_lock_write();
     OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
+    key_unlock();
+
     OS_StartCounter(&keys);
 
     // Key reloader thread

@@ -85,8 +85,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    w_mutex_lock(&keys.keyentries[key_id]->mutex);
+
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
@@ -95,6 +98,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
     if (msg_size <= 0) {
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         merror(SEC_ERROR);
         return (-1);
@@ -112,9 +116,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         if (retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size), !retval) {
             rem_inc_msg_queued();
         }
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         return retval;
     } else {
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
         return -1;
@@ -144,6 +150,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         rem_add_send(retval);
     }
 
+    w_mutex_unlock(&keys.keyentries[key_id]->mutex);
     key_unlock();
     return retval;
 }

@@ -7,6 +7,8 @@
  * Foundation
  */
 
+#ifndef WIN32
+
 #include "notify_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -19,3 +21,5 @@ int __wrap_wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
     check_expected(op);
     return mock();
 }
+
+#endif

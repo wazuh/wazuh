@@ -253,7 +253,7 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;
 
-                minfo("Received exit signal.");
+                minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
@@ -265,7 +265,7 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 #endif
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Exiting...");
+                minfo("Exit completed successfully.");
                 break;
         }
     }
