@@ -12,6 +12,7 @@
 #include "wdb_agents.h"
 #include "cJSON.h"
 #include "os_err.h"
+#include "wazuh_db/wdb.h"
 
 cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb){
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_OSINFO_GET);
@@ -92,6 +93,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    const char* severity,
                                    double cvss2_score,
                                    double cvss3_score) {
+    char* status_to_insert = NULL;
 
     cJSON* result = cJSON_CreateObject();
     if (!result) {
@@ -106,37 +108,39 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
     }
 
     if (check_pkg_existence && !wdb_agents_find_package(wdb, reference)) {
-        cJSON_AddStringToObject(result, "status", "PKG_NOT_FOUND");
+        os_strdup(VULN_CVES_STATUS_OBSOLETE, status_to_insert);
+    } else {
+        os_strdup(status, status_to_insert);
     }
-    else {
-        // The package is inserted even on an UPDATE, to replace the status with VALID
-        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
-        if (stmt) {
-            sqlite3_bind_text(stmt, 1, name, -1, NULL);
-            sqlite3_bind_text(stmt, 2, version, -1, NULL);
-            sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
-            sqlite3_bind_text(stmt, 4, cve, -1, NULL);
-            sqlite3_bind_text(stmt, 5, reference, -1, NULL);
-            sqlite3_bind_text(stmt, 6, type, -1, NULL);
-            sqlite3_bind_text(stmt, 7, status, -1, NULL);
-            sqlite3_bind_text(stmt, 8, severity, -1, NULL);
-            sqlite3_bind_double(stmt, 9, cvss2_score);
-            sqlite3_bind_double(stmt, 10, cvss3_score);
+    // The package is inserted even on an UPDATE, to replace the status with VALID
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
-            if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
-                cJSON_AddStringToObject(result, "status", "SUCCESS");
-            }
-            else {
-                mdebug1("Exec statement error %s", sqlite3_errmsg(wdb->db));
-                cJSON_AddStringToObject(result, "status", "ERROR");
-            }
+    if (stmt) {
+        sqlite3_bind_text(stmt, 1, name, -1, NULL);
+        sqlite3_bind_text(stmt, 2, version, -1, NULL);
+        sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
+        sqlite3_bind_text(stmt, 4, cve, -1, NULL);
+        sqlite3_bind_text(stmt, 5, reference, -1, NULL);
+        sqlite3_bind_text(stmt, 6, type, -1, NULL);
+        sqlite3_bind_text(stmt, 7, status_to_insert, -1, NULL);
+        sqlite3_bind_text(stmt, 8, severity, -1, NULL);
+        sqlite3_bind_double(stmt, 9, cvss2_score);
+        sqlite3_bind_double(stmt, 10, cvss3_score);
+
+        if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
+            cJSON_AddStringToObject(result, "status", "SUCCESS");
         }
         else {
+            mdebug1("Exec statement error %s", sqlite3_errmsg(wdb->db));
             cJSON_AddStringToObject(result, "status", "ERROR");
         }
     }
+    else {
+        cJSON_AddStringToObject(result, "status", "ERROR");
+    }
 
+    os_free(status_to_insert);
     return result;
 }
 
