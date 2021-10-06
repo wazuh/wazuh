@@ -5,11 +5,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
-
-from sys import path
-import socket
-from os.path import abspath, dirname
+import logging
 import google.api_core.exceptions
+from os.path import abspath, dirname
+from sys import path
 
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 from integration import WazuhGCloudIntegration
@@ -24,17 +23,19 @@ except ImportError:
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
     """Class for sending events from Google Cloud to Wazuh."""
 
-    def __init__(self, credentials_file: str, project: str, logger, subscription_id: str):
+    def __init__(self, credentials_file: str, project: str, logger: logging.Logger, subscription_id: str):
         """Instantiate a WazuhGCloudSubscriber object.
 
         Parameters
         ----------
         credentials_file : str
-            Path to credentials file
+            Path to credentials file.
         project : str
-            Project name
+            Project name.
         subscription_id : str
-            Subscription ID
+            Subscription ID.
+        logger: logging.Logger
+            The logger that will be used to send messages to stdout.
         """
         super().__init__(logger)
 
@@ -49,11 +50,12 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         Parameters
         ----------
         credentials_file : str
-            Path to credentials file
+            Path to credentials file.
 
         Returns
         -------
-        Instance of subscriber client object created with the provided key
+        pubsub.subscriber.Client
+            Instance of subscriber client object created with the provided key.
         """
         return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
 
@@ -63,13 +65,14 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         Parameters
         ----------
         project : str
-            Project name
+            Project name.
         subscription_id : str
-            Subscription ID
+            Subscription ID.
 
         Returns
         -------
-        String with the subscription path
+        str
+            String with the subscription path.
         """
         return self.subscriber.subscription_path(project, subscription_id)
 
@@ -82,10 +85,18 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             error_message = 'ERROR: No permissions for executing the wodle from this subscription'
             raise Exception(error_message)
 
-    def pull_request(self, max_messages) -> int:
+    def pull_request(self, max_messages: int) -> int:
         """Make request for pulling messages from the subscription and acknowledge them.
-        :param max_messages: Maximum number of messages to retrieve
-        :return: Number of processed messages
+
+        Parameters
+        ----------
+        max_messages: int
+            Maximum number of messages to retrieve.
+
+        Returns
+        -------
+        int
+            Number of messages received and acknowledged.
         """
         try:
             response = self.subscriber.pull(
@@ -112,23 +123,23 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
     def process_messages(self, max_messages: int = 100) -> int:
         """Process the available messages in the subscription.
-        :param max_messages: Maximum number of messages to retrieve
-        :return: Number of processed messages
+
+        Parameters
+        ----------
+        max_messages: int
+            Maximum number of messages to retrieve.
+
+        Returns
+        -------
+        int
+            Number of messages processed.
         """
-        try:
-            with self.subscriber, self.initialize_socket():
-                processed_messages = 0
-                pulled_messages = self.pull_request(max_messages)
-                while pulled_messages > 0 and processed_messages < max_messages:
-                    processed_messages += pulled_messages
-                    # get more messages
-                    if processed_messages < max_messages:
-                        pulled_messages = self.pull_request(max_messages - processed_messages)
-            return processed_messages
-        except socket.error as e:
-            if e.errno == 111:
-                self.logger.critical('Wazuh must be running')
-                raise e
-            else:
-                self.logger.critical('Error sending event to Wazuh')
-                raise e
+        with self.subscriber, self.initialize_socket():
+            processed_messages = 0
+            pulled_messages = self.pull_request(max_messages)
+            while pulled_messages > 0 and processed_messages < max_messages:
+                processed_messages += pulled_messages
+                # get more messages
+                if processed_messages < max_messages:
+                    pulled_messages = self.pull_request(max_messages - processed_messages)
+        return processed_messages

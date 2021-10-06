@@ -9,11 +9,8 @@
 """Unit tests for subscriber module."""
 
 import os
-import socket
 import sys
 from unittest.mock import patch
-
-import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber
@@ -36,7 +33,7 @@ def get_wazuhgcloud_subscriber(mock_client):
 
 def test_get_subscriber():
     """Check if an instance of WazuhGCloudSubscriber is created properly."""
-    expected_attributes = ['wazuh_queue', 'logger', 'subscriber', 'subscription_path']
+    expected_attributes = ['logger', 'subscriber', 'subscription_path']
 
     client = get_wazuhgcloud_subscriber()
 

@@ -8,10 +8,10 @@
 
 """Unit tests for integration module."""
 
-from os.path import join, dirname, realpath
+import pytest
 import sys
 from unittest.mock import patch
-import pytest
+from os.path import join, dirname, realpath
 
 sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber

@@ -23,11 +23,11 @@ class GCSAccessLogs(WazuhGCloudBucket):
         Parameters
         ----------
         credentials_file : str
-            Path to credentials file
+            Path to credentials file.
         logger : logging.Logger
-            Logger to use
+            Logger to use.
         kwargs : any
-            Additional named arguments for WazuhGCloudBucket
+            Additional named arguments for WazuhGCloudBucket.
         """
         self.db_table_name = "access_logs"
         super().__init__(credentials_file, logger, **kwargs)
@@ -41,11 +41,12 @@ class GCSAccessLogs(WazuhGCloudBucket):
         Parameters
         ----------
         msg : str
-            A string with the contents of the blob file
+            A string with the contents of the blob file.
 
         Returns
         -------
-        A list of JSON formatted events
+        list
+            A list of JSON formatted events.
         """
         # Clean and split each line in the file
         lines = msg.replace('"', '').split("\n")

@@ -31,7 +31,13 @@ min_num_messages = 1
 
 
 def get_script_arguments():
-    """Get script arguments."""
+    """Get script arguments.
+
+    Returns
+    -------
+    Namespace
+        Namespace with the arguments passed to the script.
+    """
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring Google Cloud",
                                      formatter_class=argparse.RawTextHelpFormatter)
@@ -78,13 +84,14 @@ def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
     Parameters
     ----------
     name : str
-        Logger name
+        Logger name.
     level : int
-        Log level to be set
+        Log level to be set.
 
     Returns
     -------
-    Logger configured with input parameters. Returns the messages by stdout
+    logging.Logger
+        Logger configured with input parameters. Returns the messages by stdout.
     """
     logger_stdout = logging.getLogger(name)
     # set log level
@@ -103,13 +110,14 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     Parameters
     ----------
     output_file : str
-        Path to the output file
+        Path to the output file.
     level : int
-        Logging level
+        Logging level.
 
     Returns
     -------
-    Logger configured with input parameters. Writes the messages in an output file.
+    logging.Logger
+        Logger configured with input parameters. Writes the messages in an output file.
     """
     logger_file = logging.getLogger(f'{logger_name}_debug')
     # set log level
@@ -127,7 +135,7 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     return logger_file
 
 
-def arg_valid_date(arg_string: str):
+def arg_valid_date(arg_string: str) -> datetime:
     """Validation function for only_logs_after dates.
 
     Parameters
@@ -137,7 +145,13 @@ def arg_valid_date(arg_string: str):
 
     Returns
     -------
-    The formatted date
+    datetime
+        The date corresponding to the string passed.
+
+    Raises
+    ------
+    ValueError
+        If the parameter passed is not in the expected format.
     """
     try:
         return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=UTC)

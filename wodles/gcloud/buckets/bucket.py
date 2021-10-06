@@ -7,12 +7,12 @@
 # it and/or modify it under the terms of GPLv2
 
 import logging
-from os.path import join, dirname, realpath
+import pytz
 import sqlite3
 from sys import exit, path
 from datetime import datetime
 from json import dumps
-import pytz
+from os.path import join, dirname, realpath
 
 try:
     from google.cloud import storage
@@ -21,10 +21,9 @@ except ImportError:
     exit(1)
 from google.api_core import exceptions as google_exceptions
 
-
 path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
-from integration import WazuhGCloudIntegration
 import utils
+from integration import WazuhGCloudIntegration
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
@@ -37,17 +36,17 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         Parameters
         ----------
         credentials_file : str
-            Path to credentials file
+            Path to credentials file.
         logger : logging.Logger
-            Logger to use
+            Logger to use.
         bucket_name : str
-            Name of the bucket to read the logs from
+            Name of the bucket to read the logs from.
         prefix : prefix
-            Expected prefix for the logs. It can be used to specify the relative path where the logs are stored
+            Expected prefix for the logs. It can be used to specify the relative path where the logs are stored.
         delete_file : bool
-            Indicate whether blobs should be deleted after being processed
+            Indicate whether blobs should be deleted after being processed.
         only_logs_after : str
-            Date after which obtain logs
+            Date after which obtain logs.
         """
         super().__init__(logger)
         self.bucket_name = bucket_name
@@ -146,7 +145,8 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
         Returns
         -------
-        The number of processed blobs
+        int
+            Number of blobs processed.
         """
         def get_last_creation_time():
             """Get the latest creation time value stored in the database for the given project, bucket_name and
@@ -251,7 +251,8 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             A blob object obtained from the bucket.
         Returns
         -------
-        Number of events processed.
+        int
+            Number of events processed.
         """
         num_events = 0
         try:

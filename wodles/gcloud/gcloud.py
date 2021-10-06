@@ -8,12 +8,12 @@
 
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
+import tools
 from sys import exit
 from os import cpu_count
 from buckets.access_logs import GCSAccessLogs
 from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
-import tools
 
 try:
     max_threads = cpu_count() * 5

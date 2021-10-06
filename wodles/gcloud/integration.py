@@ -23,7 +23,13 @@ class WazuhGCloudIntegration:
     key_name = 'gcp'
 
     def __init__(self, logger: logging.Logger):
-        self.wazuh_queue = ANALYSISD
+        """Instantiate a WazuhGCloudIntegration object.
+
+        Parameters
+        ----------
+        logger: logging.Logger
+            The logger that will be used to send messages to stdout.
+        """
         self.logger = logger
         self.socket = None
 
@@ -36,11 +42,12 @@ class WazuhGCloudIntegration:
         Parameters
         ----------
         msg : str
-            Message to be formatted
+            Message to be formatted.
 
         Returns
         -------
-        A str with the formatted message
+        str
+            The formatted message.
         """
         # Insert msg as value of self.key_name key.
         return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
@@ -60,14 +67,14 @@ class WazuhGCloudIntegration:
         """
         try:
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            self.socket.connect(self.wazuh_queue)
+            self.socket.connect(ANALYSISD)
             return self.socket
         except OSError as e:
             if e.errno == 111:
                 self.logger.critical('Wazuh must be running')
                 raise e
             else:
-                self.logger.critical('Error sending event to Wazuh')
+                self.logger.critical(f'Error initializing {ANALYSISD} socket')
                 raise e
 
     def process_data(self):
@@ -79,7 +86,7 @@ class WazuhGCloudIntegration:
         Parameters
         ----------
         msg : str
-            Event to be sent
+            Event to be sent.
 
         Raises
         ------
