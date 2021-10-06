@@ -30,7 +30,7 @@
 
 <decoder name="wazuh-api-son">
   <parent>wazuh-api</parent>
-  <regex type="pcre2">(\d+.\d+.\d+.\d+)</regex>
+  <regex type="pcre2">:\s(\d+\.\d+\.\d+\.\d+)\s</regex>
   <order>srcip</order>
 </decoder>
 
@@ -72,7 +72,7 @@
 
 <decoder name="wazuh-api-son">
   <parent>wazuh-api-block</parent>
-  <regex type="pcre2">:\s(\d+.\d+.\d+.\d+)</regex>
+  <regex type="pcre2">:\s(\d+\.\d+\.\d+\.\d+)\s\"</regex>
   <order>srcip</order>
 </decoder>
 
