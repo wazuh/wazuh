@@ -151,8 +151,8 @@ def test_check_cluster_status():
     """
     assert isinstance(cluster.check_cluster_status(), bool)
 
-
-def test_walk_dir():
+@patch('wazuh.core.utils.md5', return_value="some hash")
+def test_walk_dir(mock_md5):
     """
     Test to check the different outputs of the walk_files function
     """
@@ -162,10 +162,21 @@ def test_walk_dir():
                           default={"/some/path/": {"mod_time": 45}})) as mock_cluster_integrity_mtime:
         with patch('os.path.join', return_value='/some/path/'):
             with patch('wazuh.core.cluster.cluster.walk') as w:
-                w.return_value = [('/foo/', ('bar',), ('baz',)), ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
-                cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
                 with patch('os.path.getmtime', return_value=45):
+                    w.return_value = [('/foo/bar', (), ('spam', 'eggs', '.merged'))]
                     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+
+    print("Segunda funcion")
+    with patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
+               ContextVar('cluster_integrity_mtime',
+                          default={"/some/path/": {"mod_time_wrong": 45}})) as mock_cluster_integrity_mtime:
+        with patch('os.path.join', return_value='/some/path/'):
+            with patch('wazuh.core.cluster.cluster.walk') as w:
+                with patch('os.path.getmtime', return_value=45):
+                    w.return_value = [('/foo/bar', (), ('spam', 'eggs', '.merged'))]
+                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", False)
+                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+                    cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
 
                 with patch('os.path.getmtime', side_effect=FileNotFoundError):
                     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
@@ -175,15 +186,6 @@ def test_walk_dir():
 
             with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
                 with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-
-    with patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
-               ContextVar('cluster_integrity_mtime',
-                          default={"/some/path/": {"mod_time_wrong": 45}})) as mock_cluster_integrity_mtime:
-        with patch('os.path.join', return_value='/some/path/'):
-            with patch('wazuh.core.cluster.cluster.walk') as w:
-                with patch('os.path.getmtime', return_value=45):
-                    w.return_value = [('/foo/', ('bar',), ('baz',)), ('/foo/bar', (), ('spam', 'eggs', '.merged'))]
                     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
 
 
@@ -250,23 +252,25 @@ def test_update_cluster_control_with_failed():
 
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
-@patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x'))
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files(mock_path_exists, mock_zipfile, mock_path_dirname, mock_mkdir_with_mode):
+def test_compress_files(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
     """
     Test to check if the compressing function is working properly
     """
-    cluster.compress_files("some_name", ["some/path", "another/path"], {"ko_file": "file"})
-    mock_mkdir_with_mode.assert_called_once_with('/some/path')
+    with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
+        cluster.compress_files("some_name", ["some/path", "another/path"],
+                               {"ko_file": "file"})
+        mock_mkdir_with_mode.assert_called_once_with('/some/path')
 
-    with patch('zipfile.ZipFile.write', side_effect=zipfile.LargeZipFile):
-        with pytest.raises(WazuhError, match=r'.* 3001 .*'):
-            cluster.compress_files("some_name", ["some/path", "another/path"])
+    with patch("zipfile.ZipFile.write", side_effect=zipfile.LargeZipFile):
+        with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
+            with pytest.raises(WazuhError, match=r'.* 3001 .*'):
+                cluster.compress_files("some_name", ["some/path"])
 
-    with patch('zipfile.ZipFile.writestr',
-               side_effect=zipfile.LargeZipFile):
-        with pytest.raises(WazuhError, match=r'.* 3001 .*'):
-            cluster.compress_files("some_name", ["some/path", "another/path"])
+    with patch("zipfile.ZipFile.writestr", side_effect=Exception):
+        with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
+            with pytest.raises(WazuhError, match=r'.* 3001 .*'):
+                cluster.compress_files("some_name", ["some/path"])
 
 
 async def test_decompress_files():

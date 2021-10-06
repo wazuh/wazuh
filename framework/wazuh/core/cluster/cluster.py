@@ -46,7 +46,7 @@ def check_cluster_config(config):
         - Cluster config block is not empty.
         - len(key) == 32 and only alphanumeric characters are used.
         - node_type is 'master' or 'worker'.
-        - Port is a int type.
+        - Port is an int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
         - Reserved IPs are not used.
@@ -67,8 +67,7 @@ def check_cluster_config(config):
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
 
-    elif not iv.check_name(config['key']) or not iv.check_length(config['key'],
-                                                                 32, eq):
+    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
@@ -251,7 +250,6 @@ def get_files_status(get_md5=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
-
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
@@ -263,6 +261,7 @@ def get_files_status(get_md5=True):
             logger.warning(f"Error getting file status: {e}.")
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
+
     return final_items
 
 
@@ -310,10 +309,8 @@ def compress_files(name, list_path, cluster_control_json=None):
     """
     failed_files = list()
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
-
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
-
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
         # write files
         if list_path:
@@ -359,6 +356,7 @@ async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
         mkdir_with_mode(zip_dir)
         with zipfile.ZipFile(zip_path) as zipf:
             zipf.extractall(path=zip_dir)
+
         if path.exists(path.join(zip_dir, ko_files_name)):
             with open(path.join(zip_dir, ko_files_name)) as ko:
                 ko_files = json.loads(ko.read())
@@ -413,7 +411,6 @@ def compare_files(good_files, check_files, node_name):
         generator
             Items that do not meet the condition.
         """
-
         l1, l2 = itertools.tee((condition(item), item) for item in seq)
         return (i for p, i in l1 if p), (i for p, i in l2 if not p)
 
@@ -479,6 +476,7 @@ def clean_up(node_name=""):
         if not path.exists(local_rm_path):
             logger.debug(f"Nothing to remove in '{local_rm_path}'.")
             return
+
         for f in listdir(local_rm_path):
             if f == "c-internal.sock":
                 continue
