@@ -61,10 +61,10 @@ int wdb_set_agent_sys_osinfo_triaged(int id,
  * @param[in] check_pkg_existence If TRUE, it enables a package existence verification in sys_programs table.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns cJSON object with 'action': 'INSERT' | 'UPDATE'.
- *                               and 'status': 'SUCCESS' | 'ERROR' | 'PKG_NOT_FOUND'
+ *                               and 'status': 'SUCCESS' | 'ERROR'.
  *         If the vulnerability already exists in vuln_cve table, 'status' field will contain 'UPDATE' string. Otherwise, it contains 'INSERT'.
  *         If the action was completed successfully, 'status' contains 'SUCCESS' string.
- *         If check_pkg_existence is enabled and the package wasn't found 'status' contains 'PKG_NOT_FOUND'.
+ *         If check_pkg_existence is enabled and the package wasn't found 'status', the package is inserted anyway with the 'OBSOLETE' status.
  *         On any error, 'status' contains 'ERROR' string.
  *         The cJSON object must be freed by the caller.
  */
