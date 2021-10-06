@@ -150,26 +150,26 @@
 <rule id="406" level="4">
  <if_sid>400</if_sid>
  <field name="method">GET</field>
- <description>API: GET method event afecting $(uri) with parameters %(parameters)</description>
+ <description>API: GET method event afecting $(uri) with parameters $(parameters)</description>
 </rule>
 
 <rule id="407" level="6">
  <if_sid>400</if_sid>
  <field name="method">PUT</field>
- <description>API: PUT method event afecting $(uri) with parameters %(parameters)</description>
+ <description>API: PUT method event afecting $(uri) with parameters $(parameters)</description>
 </rule>
 
 <rule id="408" level="8">
  <if_sid>400</if_sid>
  <field name="method">DELETE</field>
- <description>API: DELETE method event afecting $(uri) with parameters %(parameters)</description>
+ <description>API: DELETE method event afecting $(uri) with parameters $(parameters)</description>
  <group>pci_dss_8.1.2,hipaa_164.312.a.2.I,hipaa_164.312.c.1</group>
 </rule>
 
 <rule id="409" level="6">
  <if_sid>400</if_sid>
  <field name="method">POST</field>
- <description>API: POST method event afecting $(uri) with parameters %(parameters)</description>
+ <description>API: POST method event afecting $(uri) with parameters $(parameters)</description>
  <group>hipaa_164.312.c.1</group>
 </rule>
 
