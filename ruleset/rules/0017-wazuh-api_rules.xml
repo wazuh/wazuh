@@ -10,7 +10,7 @@
  <description>Rules for Wazuh API events</description>
  <mitre>
   <id>T1102</id>
- <mitre>
+ </mitre>
 </rule>
 
 <rule id="401" level="3">
@@ -46,7 +46,7 @@
  <description>API blocking informative event</description>
  <mitre>
   <id>T1102</id>
-</mitre>
+ </mitre>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5</group>
 </rule>
 
@@ -56,7 +56,7 @@
  <description>API blocking warning event</description>
  <mitre>
   <id>T1102</id>
-</mitre>
+ </mitre>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12</group>
 </rule>
 
@@ -66,7 +66,7 @@
  <description>API blocking error event</description>
  <mitre>
   <id>T1102</id>
-</mitre>
+ </mitre>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3</group>
 </rule>
 
@@ -76,7 +76,7 @@
  <description>API blocking critical error event, requires inmediate atention</description>
  <mitre>
   <id>T1102</id>
-</mitre>
+ </mitre>
    <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3,pci_dss_10.6.1,gpg13_4.1</group>
 </rule>
 
@@ -100,7 +100,7 @@
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
  <mitre>
   <id>T1102</id>
-</mitre>
+ </mitre>
 </rule>
 
 <rule id="412" level="7">
@@ -193,8 +193,7 @@
  <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
  <mitre>
   <id>T1102</id>
-</mitre>
+ </mitre>
 </rule>
-
 
 </group>
