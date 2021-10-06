@@ -347,7 +347,14 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
 
         if (0 != loadTableData(table))
         {
-            const auto& tableFields { m_tableFields[table] };
+            auto tableFields { m_tableFields[table] };
+            // Remove uneeded fields before looking for the expected ones.
+            tableFields.erase(std::remove_if(tableFields.begin(), tableFields.end(), [](const ColumnData & column)
+            {
+                const auto isNotTxnStatusField { !std::get<TableHeader::TXNStatusField>(column) };
+                const auto isNotPK             { !std::get<TableHeader::PK>(column) };
+                return isNotTxnStatusField && isNotPK;
+            }), tableFields.end());
             const auto& stmt { getStatement(getSelectAllQuery(table, tableFields)) };
 
             while (SQLITE_ROW == stmt->step())
