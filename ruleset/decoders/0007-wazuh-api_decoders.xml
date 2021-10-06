@@ -13,7 +13,7 @@
 <decoder name="wazuh-api-son">
   <parent>wazuh-api</parent>
   <regex type="pcre2">^(\d+\/\d+\/\d+\s\d+:\d+:\d+)</regex>
-  <order>timestamp</order>
+  <order>event-time</order>
 </decoder>
 
 <decoder name="wazuh-api-son">
