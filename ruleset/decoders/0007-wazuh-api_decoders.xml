@@ -48,7 +48,7 @@
 
 <decoder name="wazuh-api-son">
   <parent>wazuh-api</parent>
-  <regex type="pcre2">"(.+)"\swith\sparameters\s\{.+\}\sand</regex>
+  <regex type="pcre2">\s"(.+)"\swith\sparameters\s\{</regex>
   <order>endpoint</order>
 </decoder>
 
