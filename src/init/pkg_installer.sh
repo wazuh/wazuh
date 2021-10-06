@@ -22,10 +22,11 @@ function create_ossec_ug {
     # Create the ossec group if it doesn't exist
     if [ -z "${exists_group}" ]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring ossec group." >> ./logs/upgrade.log
-            if command -v groupadd > /dev/null 2>&1; then
-                groupadd -r ossec >> ./logs/upgrade.log 2>&1
-            else
+
+            if command -v addgroup >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1; then
                 addgroup --system ossec >> ./logs/upgrade.log 2>&1
+            else
+                groupadd -r ossec >> ./logs/upgrade.log 2>&1
             fi
     fi
 
@@ -41,10 +42,10 @@ function create_ossec_ug {
                 fi
             fi
 
-            if command -v useradd > /dev/null 2>&1; then
-               useradd -g ossec -G ossec -d "${WAZUH_HOME}" -r -s ${NO_SHELL} ossec >> ./logs/upgrade.log 2>&1
+            if command -v adduser >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1; then
+                adduser --system --home "${WAZUH_HOME}" --shell ${NO_SHELL} --ingroup ossec ossec >> ./logs/upgrade.log 2>&1
             else
-               adduser --system --home "${WAZUH_HOME}" --shell ${NO_SHELL} --ingroup ossec ossec >> ./logs/upgrade.log 2>&1
+                useradd -g ossec -G ossec -d "${WAZUH_HOME}" -r -s ${NO_SHELL} ossec >> ./logs/upgrade.log 2>&1
             fi
     fi
 
