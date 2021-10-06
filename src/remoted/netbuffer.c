@@ -195,25 +195,28 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
     w_mutex_lock(&mutex);
 
-    for (unsigned int retries = 0; retries < 2; retries++) {
+    if (buffer->buffers[socket].bqueue) {
 
-        if (buffer->buffers[socket].bqueue) {
+        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
-            if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
-
-                wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
-                retval = 0;
-                break;
-            } else {
-                mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
-                    buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
-
-                w_mutex_unlock(&mutex);
-                sleep(send_timeout_to_retry);
-                w_mutex_lock(&mutex);
-            }
+            wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+            retval = 0;
         } else {
-            break;
+            mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
+                buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
+
+            w_mutex_unlock(&mutex);
+            sleep(send_timeout_to_retry);
+            w_mutex_lock(&mutex);
+
+            if (buffer->buffers[socket].bqueue) {
+
+                if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
+
+                    wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+                    retval = 0;
+                }
+            }
         }
     }
 
