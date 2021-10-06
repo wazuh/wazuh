@@ -96,7 +96,7 @@
 <rule id="427" level="7">
  <if_sid>425</if_sid>
  <field name="http_status_code" negate="yes">200</field>
- <description>API authentication failure from $(srcip)</description>
+ <description>API: authentication failure from $(srcip)</description>
  <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
  <mitre>
   <id>T1102</id>
@@ -106,20 +106,20 @@
 <rule id="405" level="7">
  <if_sid>400</if_sid>
  <field name="http_status_code" negate="yes">200</field>
- <description>API response code returned error</description>
+ <description>API: $(endpoint) $(http_status_code) response code returned error</description>
  <group>gpg13_4.3</group>
 </rule>
 
 <rule id="410" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">400</field>
- <description>API response code: Bad request.</description>
+ <description>API: $(endpoint) $(http_status_code) Bad request.</description>
 </rule>
 
 <rule id="411" level="6">
  <if_sid>405</if_sid>
  <field name="http_status_code">401</field>
- <description>API response code: Unauthorized.</description>
+ <description>API: $(endpoint) $(http_status_code) Unauthorized.</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
  <mitre>
   <id>T1102</id>
@@ -129,70 +129,70 @@
 <rule id="412" level="7">
  <if_sid>405</if_sid>
  <field name="http_status_code">403</field>
- <description>API response code: Permission denied.</description>
+ <description>API: $(endpoint) $(http_status_code) Permission denied.</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_10.2.4,nist_800_53_AC.7</group>
 </rule>
 
 <rule id="413" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">404</field>
- <description>API response code: Resource not found.</description>
+ <description>API: $(endpoint) $(http_status_code) Resource not found.</description>
 </rule>
 
 <rule id="414" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">405</field>
- <description>API response code: Invalid HTTP method.</description>
+ <description>API: $(endpoint) $(http_status_code) Invalid HTTP method.</description>
 </rule>
 
 <rule id="415" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">406</field>
- <description>API response code returned: Invalid content-type</description>
+ <description>API: $(endpoint) $(http_status_code) Invalid content-type</description>
 </rule>
 
 <rule id="416" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">413</field>
- <description>API response code: Maximum request body size exceeded</description>
+ <description>API: $(endpoint) $(http_status_code) Maximum request body size exceeded</description>
 </rule>
 
 <rule id="417" level="7">
  <if_sid>405</if_sid>
  <field name="http_status_code">429</field>
- <description>API response code: Max number of requests per minute reached</description>
+ <description>API: $(endpoint) $(http_status_code) Max number of requests per minute reached</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_8.1.6,pci_dss_10.2.4,nist_800_53_AC.7</group>
 </rule>
 
 <rule id="418" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">500</field>
- <description>API response code: Internal error</description>
+ <description>API: $(endpoint) $(http_status_code) Internal error</description>
 </rule>
 
 <rule id="406" level="4">
  <if_sid>400</if_sid>
  <field name="method">GET</field>
- <description>API: GET method event afecting $(uri) with parameters $(parameters)</description>
+ <description>API: $(endpoint) success</description>
 </rule>
 
 <rule id="407" level="6">
  <if_sid>400</if_sid>
  <field name="method">PUT</field>
- <description>API: PUT method event afecting $(uri) with parameters $(parameters)</description>
+ <description>API:$(endpoint) success</description>
 </rule>
 
 <rule id="408" level="8">
  <if_sid>400</if_sid>
  <field name="method">DELETE</field>
- <description>API: DELETE method event afecting $(uri) with parameters $(parameters)</description>
+ <description>API: $(endpoint) success</description>
  <group>pci_dss_8.1.2,hipaa_164.312.a.2.I,hipaa_164.312.c.1</group>
 </rule>
 
 <rule id="409" level="6">
  <if_sid>400</if_sid>
  <field name="method">POST</field>
- <description>API: POST method event afecting $(uri) with parameters $(parameters)</description>
+ <description>API: $(endpoint) success</description>
  <group>hipaa_164.312.c.1</group>
 </rule>
 
