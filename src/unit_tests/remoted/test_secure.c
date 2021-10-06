@@ -415,42 +415,6 @@ void test_HandleSecureMessage_unvalid_message(void **state)
     HandleSecureMessage(buffer, recv_b, &peer_info, sock_client, &wdb_sock);
 }
 
-void test_HandleSecureMessage_unvalid_message_socket_closed(void **state)
-{
-    char buffer[OS_MAXSTR + 1] = "!1234!";
-    int recv_b = 4;
-    struct sockaddr_in peer_info;
-    int sock_client = 1;
-    int wdb_sock;
-
-    global_counter = 0;
-
-    peer_info.sin_family = AF_INET;
-    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-    expect_function_call(__wrap_key_lock_read);
-
-    // OS_IsAllowedDynamicID
-    expect_string(__wrap_OS_IsAllowedDynamicID, id, "1234");
-    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
-    will_return(__wrap_OS_IsAllowedDynamicID, 1234);
-
-    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
-
-    expect_function_call(__wrap_key_unlock);
-
-    expect_function_call(__wrap_key_lock_read);
-
-    // OS_DeleteSocket
-    expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
-    will_return(__wrap_OS_DeleteSocket, -1);
-
-    expect_function_call(__wrap_key_unlock);
-
-    HandleSecureMessage(buffer, recv_b, &peer_info, sock_client, &wdb_sock);
-
-}
-
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -462,7 +426,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2_close_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
         // Tests HandleSecureMessage
-        cmocka_unit_test(test_HandleSecureMessage_unvalid_message_socket_closed),
         cmocka_unit_test(test_HandleSecureMessage_unvalid_message)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
