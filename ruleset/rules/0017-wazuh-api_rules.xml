@@ -23,18 +23,21 @@
  <if_sid>400</if_sid>
  <field name="type">WARNING</field>
  <description>API warning event</description>
+ <group>gpg13_4.12</group>
 </rule>
 
 <rule id="403" level="8">
  <if_sid>400</if_sid>
  <field name="type">ERROR</field>
  <description>API error event</description>
+ <groups>gpg13_4.3,gpg13_4.12</groups>
 </rule>
 
 <rule id="404" level="12">
  <if_sid>400</if_sid>
  <field name="type">CRITICAL</field>
  <description>API critical error event, requires inmediate atention</description>
+ <groups>pci_dss_10.6.1,gpg13_4.1,gpg13_4.3,gpg13_4.12</groups>
 </rule>
 
 <rule id="421" level="3">
@@ -44,6 +47,7 @@
  <mitre>
   <id>T1102</id>
  <mitre>
+ <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5</group>
 </rule>
 
 <rule id="422" level="5">
@@ -53,6 +57,7 @@
  <mitre>
   <id>T1102</id>
  <mitre>
+ <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12</group>
 </rule>
 
 <rule id="423" level="8">
@@ -62,6 +67,7 @@
  <mitre>
   <id>T1102</id>
  <mitre>
+ <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3</group>
 </rule>
 
 <rule id="424" level="12">
@@ -71,12 +77,14 @@
  <mitre>
   <id>T1102</id>
  <mitre>
+   <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3,pci_dss_10.6.1,gpg13_4.1</group>
 </rule>
 
 <rule id="405" level="7">
  <if_sid>400</if_sid>
  <field name="http_status_code" negate="yes">200</field>
  <description>API's response code returned error</description>
+ <group>gpg13_4.3</group>
 </rule>
 
 <rule id="410" level="4">
@@ -89,6 +97,7 @@
  <if_sid>405</if_sid>
  <field name="http_status_code">401</field>
  <description>API's response code returned error: Unauthorized.</description>
+ <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
  <mitre>
   <id>T1102</id>
  <mitre>
@@ -98,6 +107,7 @@
  <if_sid>405</if_sid>
  <field name="http_status_code">403</field>
  <description>API's response code returned error: Permission denied.</description>
+ <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_10.2.4,nist_800_53_AC.7</group>
 </rule>
 
 <rule id="413" level="4">
@@ -128,6 +138,7 @@
  <if_sid>405</if_sid>
  <field name="http_status_code">429</field>
  <description>API's response code: Max number of requests per minute reached</description>
+ <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_8.1.6,pci_dss_10.2.4,nist_800_53_AC.7</group>
 </rule>
 
 <rule id="418" level="4">
@@ -152,12 +163,14 @@
  <if_sid>400</if_sid>
  <field name="method">DELETE</field>
  <description>API's DELETE protocol event, data were deleted</description>
+ <group>pci_dss_8.1.2,hipaa_164.312.a.2.I,hipaa_164.312.c.1</group>
 </rule>
 
 <rule id="409" level="6">
  <if_sid>400</if_sid>
  <field name="method">POST</field>
  <description>API's POST protocol event, data were transfered</description>
+ <group>hipaa_164.312.c.1</group>
 </rule>
 
 <rule id="425" level="0">
@@ -170,12 +183,14 @@
  <if_sid>425</if_sid>
  <field name="http_status_code">200</field>
  <description>Authentication success to the API</description>
+ <group>hipaa_164.312.d,pci_dss_8.2</group>
 </rule>
 
 <rule id="427" level="7">
  <if_sid>425</if_sid>
  <field name="http_status_code" negate="yes">200</field>
  <description>API authentication failure</description>
+ <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
  <mitre>
   <id>T1102</id>
  <mitre>
