@@ -179,7 +179,7 @@
  <description>Authentication attempt</description>
 </rule>
 
-<rule id="426" level="3">
+<rule id="426" level="4">
  <if_sid>425</if_sid>
  <field name="http_status_code">200</field>
  <description>API: Authentication success from $(srcip)</description>
