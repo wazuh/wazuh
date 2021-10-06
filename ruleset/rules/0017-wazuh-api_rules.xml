@@ -37,7 +37,7 @@
  <if_sid>400</if_sid>
  <field name="type">CRITICAL</field>
  <description>API critical error event, requires inmediate atention</description>
- <groups>pci_dss_10.6.1,gpg13_4.1,gpg13_4.3,gpg13_4.12</groups>
+ <group>pci_dss_10.6.1,gpg13_4.1,gpg13_4.3,gpg13_4.12</group>
 </rule>
 
 <rule id="421" level="3">
