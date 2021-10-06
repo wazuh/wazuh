@@ -30,7 +30,7 @@
  <if_sid>400</if_sid>
  <field name="type">ERROR</field>
  <description>API error event</description>
- <groups>gpg13_4.3,gpg13_4.12</groups>
+ <group>gpg13_4.3,gpg13_4.12</group>
 </rule>
 
 <rule id="404" level="12">
