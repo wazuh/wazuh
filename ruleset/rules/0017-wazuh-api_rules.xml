@@ -8,6 +8,9 @@
 <rule id="420" level="0">
  <decoded_as>wazuh-api-block</decoded_as>
  <description>Rules for Wazuh API events</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 <rule id="401" level="3">
@@ -38,24 +41,36 @@
  <if_sid>420</if_sid>
  <field name="type">INFO</field>
  <description>API blocking informative event</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 <rule id="422" level="5">
  <if_sid>420</if_sid>
  <field name="type">WARNING</field>
  <description>API blocking warning event</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 <rule id="423" level="8">
  <if_sid>420</if_sid>
  <field name="type">ERROR</field>
  <description>API blocking error event</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 <rule id="424" level="12">
  <if_sid>420</if_sid>
  <field name="type">CRITICAL</field>
  <description>API blocking critical error event, requires inmediate atention</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 <rule id="405" level="7">
@@ -74,6 +89,9 @@
  <if_sid>405</if_sid>
  <field name="http_status_code">401</field>
  <description>API's response code returned error: Unauthorized.</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 <rule id="412" level="7">
@@ -158,6 +176,9 @@
  <if_sid>425</if_sid>
  <field name="http_status_code" negate="yes">200</field>
  <description>API authentication failure</description>
+ <mitre>
+  <id>T1102</id>
+ <mitre>
 </rule>
 
 
