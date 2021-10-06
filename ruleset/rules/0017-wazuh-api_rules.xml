@@ -16,27 +16,27 @@
 <rule id="401" level="3">
  <if_sid>400</if_sid>
  <field name="type">INFO</field>
- <description>API informative event</description>
+ <description>API: informative event</description>
 </rule>
 
 <rule id="402" level="5">
  <if_sid>400</if_sid>
  <field name="type">WARNING</field>
- <description>API warning event</description>
+ <description>API: warning event</description>
  <group>gpg13_4.12</group>
 </rule>
 
 <rule id="403" level="8">
  <if_sid>400</if_sid>
  <field name="type">ERROR</field>
- <description>API error event</description>
+ <description>API: error event</description>
  <group>gpg13_4.3,gpg13_4.12</group>
 </rule>
 
 <rule id="404" level="12">
  <if_sid>400</if_sid>
  <field name="type">CRITICAL</field>
- <description>API critical error event, requires inmediate atention</description>
+ <description>API: critical error event, requires inmediate atention</description>
  <group>pci_dss_10.6.1,gpg13_4.1,gpg13_4.3,gpg13_4.12</group>
 </rule>
 
@@ -83,20 +83,20 @@
 <rule id="405" level="7">
  <if_sid>400</if_sid>
  <field name="http_status_code" negate="yes">200</field>
- <description>API's response code returned error</description>
+ <description>API response code returned error</description>
  <group>gpg13_4.3</group>
 </rule>
 
 <rule id="410" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">400</field>
- <description>API's response code returned error: Bad request.</description>
+ <description>API response code: Bad request.</description>
 </rule>
 
 <rule id="411" level="6">
  <if_sid>405</if_sid>
  <field name="http_status_code">401</field>
- <description>API's response code returned error: Unauthorized.</description>
+ <description>API response code: Unauthorized.</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
  <mitre>
   <id>T1102</id>
@@ -106,70 +106,70 @@
 <rule id="412" level="7">
  <if_sid>405</if_sid>
  <field name="http_status_code">403</field>
- <description>API's response code returned error: Permission denied.</description>
+ <description>API response code: Permission denied.</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_10.2.4,nist_800_53_AC.7</group>
 </rule>
 
 <rule id="413" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">404</field>
- <description>API's response code returned error: Resource not found.</description>
+ <description>API response code: Resource not found.</description>
 </rule>
 
 <rule id="414" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">405</field>
- <description>API's response code returned error: Invalid HTTP method.</description>
+ <description>API response code: Invalid HTTP method.</description>
 </rule>
 
 <rule id="415" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">406</field>
- <description>API's response code returned error: Invalid content-type</description>
+ <description>API response code returned: Invalid content-type</description>
 </rule>
 
 <rule id="416" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">413</field>
- <description>API's response code returned: Maximum request body size exceeded</description>
+ <description>API response code: Maximum request body size exceeded</description>
 </rule>
 
 <rule id="417" level="7">
  <if_sid>405</if_sid>
  <field name="http_status_code">429</field>
- <description>API's response code: Max number of requests per minute reached</description>
+ <description>API response code: Max number of requests per minute reached</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_8.1.6,pci_dss_10.2.4,nist_800_53_AC.7</group>
 </rule>
 
 <rule id="418" level="4">
  <if_sid>405</if_sid>
  <field name="http_status_code">500</field>
- <description>API's response code: Internal error</description>
+ <description>API response code: Internal error</description>
 </rule>
 
 <rule id="406" level="4">
  <if_sid>400</if_sid>
  <field name="method">GET</field>
- <description>API's GET protocol event, data were received</description>
+ <description>API: GET method event affecting $(uri)</description>
 </rule>
 
 <rule id="407" level="6">
  <if_sid>400</if_sid>
  <field name="method">PUT</field>
- <description>API's PUT protocol event, data were saved</description>
+ <description>API: PUT method event affecting $(uri)</description>
 </rule>
 
 <rule id="408" level="8">
  <if_sid>400</if_sid>
  <field name="method">DELETE</field>
- <description>API's DELETE protocol event, data were deleted</description>
+ <description>API: DELETE method event affecting $(uri)</description>
  <group>pci_dss_8.1.2,hipaa_164.312.a.2.I,hipaa_164.312.c.1</group>
 </rule>
 
 <rule id="409" level="6">
  <if_sid>400</if_sid>
  <field name="method">POST</field>
- <description>API's POST protocol event, data were transfered</description>
+ <description>API: POST method event affecting $(uri)</description>
  <group>hipaa_164.312.c.1</group>
 </rule>
 
@@ -182,14 +182,14 @@
 <rule id="426" level="3">
  <if_sid>425</if_sid>
  <field name="http_status_code">200</field>
- <description>Authentication success to the API</description>
+ <description>API: Authentication success from $(srcip)</description>
  <group>hipaa_164.312.d,pci_dss_8.2</group>
 </rule>
 
 <rule id="427" level="7">
  <if_sid>425</if_sid>
  <field name="http_status_code" negate="yes">200</field>
- <description>API authentication failure</description>
+ <description>API authentication failure from $(srcip)</description>
  <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
  <mitre>
   <id>T1102</id>
