@@ -6,7 +6,7 @@
 </rule>
 
 <rule id="420" level="0">
- <decoded_as>wazuh-api-block</decoded_as>
+ <decoded_as>wazuh-api-info</decoded_as>
  <description>Rules for Wazuh API events</description>
  <mitre>
   <id>T1102</id>
@@ -43,7 +43,7 @@
 <rule id="421" level="3">
  <if_sid>420</if_sid>
  <field name="type">INFO</field>
- <description>API blocking informative event</description>
+ <description>API informative event</description>
  <mitre>
   <id>T1102</id>
  </mitre>
@@ -53,7 +53,7 @@
 <rule id="422" level="5">
  <if_sid>420</if_sid>
  <field name="type">WARNING</field>
- <description>API blocking warning event</description>
+ <description>API warning event</description>
  <mitre>
   <id>T1102</id>
  </mitre>
@@ -63,7 +63,7 @@
 <rule id="423" level="8">
  <if_sid>420</if_sid>
  <field name="type">ERROR</field>
- <description>API blocking error event</description>
+ <description>API error event</description>
  <mitre>
   <id>T1102</id>
  </mitre>
@@ -73,7 +73,7 @@
 <rule id="424" level="12">
  <if_sid>420</if_sid>
  <field name="type">CRITICAL</field>
- <description>API blocking critical error event, requires inmediate atention</description>
+ <description>API critical error event, requires inmediate atention</description>
  <mitre>
   <id>T1102</id>
  </mitre>
