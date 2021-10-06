@@ -42,7 +42,7 @@ void nb_close(netbuffer_t * buffer, int sock) {
         bqueue_destroy(buffer->buffers[sock].bqueue);
     }
 
-    free(buffer->buffers[sock].data);
+    os_free(buffer->buffers[sock].data);
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
 
     w_mutex_unlock(&mutex);
