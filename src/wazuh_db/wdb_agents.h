@@ -62,6 +62,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  * @param [in] type The package type.
  * @param [in] status The vulnerability status.
  * @param [in] check_pkg_existence If TRUE, it enables a package existence verification in sys_programs table.
+                                   If the package isn't found, the vulnerability is inserted with status OBSOLETE.
  * @param [in] severity A string representing the severity of the vulnerability.
  * @param [in] cvss2_score The vulnerability score according to CVSS v2.
  * @param [in] cvss3_score The vulnerability score according to CVSS v3.
