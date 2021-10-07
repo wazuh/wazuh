@@ -52,6 +52,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
+    const char *key_polling = "agent-key-polling";      /* Deprecated Agent Key Polling module */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *osreports = "reports";                  /* Server Config */
 #endif
@@ -177,10 +178,16 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+            if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+#ifndef CLIENT
+        } else if (strcmp(node[i]->element, key_polling) == 0) {
+            if ((modules & CAUTHD) && (authd_key_request_read(chld_node, d1) < 0)) {
                 goto fail;
             }
         }
+#endif
 #endif
         else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
