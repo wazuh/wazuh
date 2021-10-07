@@ -8,7 +8,7 @@
 </decoder>
 
 <decoder name="wazuh-api-info">
-  <prematch type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\sINFO|WARNING|ERROR|CRITICAL:\s\w+\s\w+</prematch>
+  <prematch type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\sINFO:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sWARNING:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sERROR:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sCRITICAL:\s\w+\s\w+</prematch>
 </decoder>
 
 <decoder name="wazuh-api-son">
