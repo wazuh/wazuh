@@ -17,7 +17,6 @@
 #include "remoted/remoted.h"
 #include "headers/shared.h"
 #include "../wrappers/common.h"
-#include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"

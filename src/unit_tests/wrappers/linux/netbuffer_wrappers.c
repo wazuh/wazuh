@@ -23,3 +23,11 @@
 void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
     check_expected(sock);
 }
+
+int __wrap_nb_queue(__attribute__((unused)) netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
+    check_expected(socket);
+    check_expected(crypt_msg);
+    check_expected(msg_size);
+
+    return mock();
+}

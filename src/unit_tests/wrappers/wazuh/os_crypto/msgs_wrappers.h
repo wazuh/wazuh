@@ -7,11 +7,11 @@
  * Foundation
  */
 
-#ifndef NETBUFFER_WRAPPERS_H
-#define NETBUFFER_WRAPPERS_H
+#ifndef MSGS_WRAPPERS_H
+#define MSGS_WRAPPERS_H
 
-void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock);
+#include <sys/types.h>
 
-int __wrap_nb_queue(__attribute__((unused)) netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size);
+size_t __wrap_CreateSecMSG(__attribute__((unused)) keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id);
 
 #endif

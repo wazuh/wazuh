@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "remoted/remoted.h"
+
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
@@ -22,8 +24,6 @@
 #include "../wrappers/wazuh/shared/bqueue_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/notify_op_wrappers.h"
-
-#include "remoted/remoted.h"
 
 extern wnotify_t * notify;
 
