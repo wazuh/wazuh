@@ -195,7 +195,9 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
         if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
-            wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+            if (bqueue_used(buffer->buffers[socket].bqueue) == (size_t)(msg_size + header_size)) {
+                wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+            }
             retval = 0;
         } else {
             mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
@@ -209,18 +211,20 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
                 if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
-                    wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+                    if (bqueue_used(buffer->buffers[socket].bqueue) == (size_t)(msg_size + header_size)) {
+                        wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+                    }
                     retval = 0;
                 }
             }
         }
     }
 
+    w_mutex_unlock(&mutex);
+
     if (retval < 0) {
         merror("Package dropped. Could not append data into buffer.");
     }
-
-    w_mutex_unlock(&mutex);
 
     return retval;
 }

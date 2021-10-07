@@ -95,7 +95,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    w_mutex_unlock(&keys.keyentries[key_id]->mutex);
+
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
+
+    w_mutex_lock(&keys.keyentries[key_id]->mutex);
 
     if (msg_size <= 0) {
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);

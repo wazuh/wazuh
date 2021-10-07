@@ -93,6 +93,9 @@ void test_nb_queue_ok(void ** state) {
     expect_value(__wrap_bqueue_push, flags, BQUEUE_NOFLAG);
     will_return(__wrap_bqueue_push, 0);
 
+    expect_memory(__wrap_bqueue_used, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
+    will_return(__wrap_bqueue_used, final_size);
+
     expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
     expect_value(__wrap_wnotify_modify, fd, sock);
     expect_value(__wrap_wnotify_modify, op, WO_READ | WO_WRITE);
@@ -139,6 +142,9 @@ void test_nb_queue_retry_ok(void ** state) {
     expect_value(__wrap_bqueue_push, length, final_size);
     expect_value(__wrap_bqueue_push, flags, BQUEUE_NOFLAG);
     will_return(__wrap_bqueue_push, 0);
+
+    expect_memory(__wrap_bqueue_used, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
+    will_return(__wrap_bqueue_used, final_size);
 
     expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
     expect_value(__wrap_wnotify_modify, fd, sock);

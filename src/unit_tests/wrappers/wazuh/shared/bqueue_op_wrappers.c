@@ -37,3 +37,8 @@ int __wrap_bqueue_drop(bqueue_t * queue, size_t length) {
 void __wrap_bqueue_clear(bqueue_t * queue) {
     check_expected_ptr(queue);
 }
+
+size_t __wrap_bqueue_used(bqueue_t * queue) {
+    check_expected_ptr(queue);
+    return mock();
+}
