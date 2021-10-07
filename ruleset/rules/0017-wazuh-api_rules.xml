@@ -170,7 +170,7 @@
  <description>API: $(endpoint) Internal error</description>
 </rule>
 
-<rule id="406" level="3">
+<rule id="406" level="4">
  <if_sid>400</if_sid>
  <field name="method">GET</field>
  <description>API: $(endpoint) success</description>
