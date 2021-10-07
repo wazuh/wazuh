@@ -11,8 +11,7 @@
 #include <stdio.h>
 
 // Reading function
-int wm_key_request_read(xml_node **nodes, wmodule *module)
-{
+int wm_key_request_read(xml_node **nodes, wmodule *module) {
     (void)nodes;
     (void)module;
 

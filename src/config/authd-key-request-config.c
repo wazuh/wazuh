@@ -36,25 +36,20 @@ int authd_key_request_read(xml_node **nodes, void *config)
     key_request.threads = 1;
     key_request.queue_size = 1024;
 
-    if (!nodes)
+    if (!nodes) {
         return 0;
+    }
 
-    for(i = 0; nodes[i]; i++)
-    {
-        if(!nodes[i]->element)
-        {
+    for(i = 0; nodes[i]; i++) {
+        if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        }
-        else if (!strcmp(nodes[i]->element, XML_ENABLED))
-        {
+        } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (key_request.enabled = eval_bool(nodes[i]->content), key_request.enabled == OS_INVALID) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, "Key Request");
                 return OS_INVALID;
             }
-        }
-        else if(!strcmp(nodes[i]->element, XML_EXEC_PATH))
-        {
+        } else if (!strcmp(nodes[i]->element, XML_EXEC_PATH)) {
             if(key_request.exec_path) {
                 free(key_request.exec_path);
             }
@@ -64,9 +59,7 @@ int authd_key_request_read(xml_node **nodes, void *config)
                 return OS_INVALID;
             }
             key_request.exec_path = strdup(nodes[i]->content);
-        }
-        else if(!strcmp(nodes[i]->element, XML_SOCKET))
-        {
+        } else if(!strcmp(nodes[i]->element, XML_SOCKET)) {
             if(key_request.socket) {
                 free(key_request.socket);
             }
@@ -76,9 +69,7 @@ int authd_key_request_read(xml_node **nodes, void *config)
                 return OS_INVALID;
             }
             key_request.socket = strdup(nodes[i]->content);
-        }
-        else if(!strcmp(nodes[i]->element, XML_TIMEOUT))
-        {
+        } else if(!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             key_request.timeout = atol(nodes[i]->content);
 
             if (key_request.timeout < 1 || key_request.timeout >= UINT_MAX) {
@@ -87,34 +78,27 @@ int authd_key_request_read(xml_node **nodes, void *config)
             }
 
             mdebug2("Timeout read: %d", key_request.timeout);
-        }
-        else if (!strcmp(nodes[i]->element, XML_THREADS))
-        {
+        } else if (!strcmp(nodes[i]->element, XML_THREADS)) {
             key_request.threads = atol(nodes[i]->content);
 
             if (key_request.threads < 1 || key_request.threads > 32) {
                 merror("Invalid number of threads at module '%s'", "Key Request");
                 return OS_INVALID;
             }
-        }
-        else if (!strcmp(nodes[i]->element, XML_QUEUE_SIZE))
-        {
+        } else if (!strcmp(nodes[i]->element, XML_QUEUE_SIZE)) {
             key_request.queue_size = atol(nodes[i]->content);
 
             if (key_request.queue_size < 1 || key_request.queue_size > 220000) {
                 merror("Invalid queue size at module '%s'", "Key Request");
                 return OS_INVALID;
             }
-        }
-        else if (!strcmp(nodes[i]->element, XML_FORCE_INSERT))
-        {
+        } else if (!strcmp(nodes[i]->element, XML_FORCE_INSERT)) {
             mwarn("Deprecated option");
-        }
-        else
-        {
+        } else {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, "Key Request");
         }
 
     }
+
     return 0;
 }
