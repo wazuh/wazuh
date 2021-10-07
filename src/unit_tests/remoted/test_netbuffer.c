@@ -189,13 +189,6 @@ void test_nb_queue_retry_err(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "Package dropped. Could not append data into buffer.");
 
-    expect_memory(__wrap_bqueue_clear, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-
-    expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
-    expect_value(__wrap_wnotify_modify, fd, sock);
-    expect_value(__wrap_wnotify_modify, op, WO_READ);
-    will_return(__wrap_wnotify_modify, 0);
-
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     int retval = nb_queue(netbuffer, sock, msg, size);
@@ -308,9 +301,7 @@ void test_nb_send_err(void ** state) {
 
     will_return(__wrap_send, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "socket: 15, bqueue clear queue, send fail");
-
-    expect_memory(__wrap_bqueue_clear, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
+    expect_string(__wrap__merror, formatted_msg, "socket: 15, send fail");
 
     expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
     expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
@@ -329,46 +320,6 @@ void test_nb_send_err(void ** state) {
     assert_int_equal(retval, -1);
 }
 
-void test_nb_send_drop_err(void ** state) {
-    netbuffer_t *netbuffer = *state;
-    char final_msg[14] = {0};
-
-    ssize_t final_size = snprintf(final_msg, 14, "4321abcdefghi");
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-    expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
-    will_return(__wrap_bqueue_peek, final_msg);
-    will_return(__wrap_bqueue_peek, final_size);
-
-    will_return(__wrap_send, final_size);
-
-    expect_memory(__wrap_bqueue_drop, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-    expect_value(__wrap_bqueue_drop, length, final_size);
-    will_return(__wrap_bqueue_drop, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "socket: 15, bqueue clear queue, could not drop 13 bytes");
-
-    expect_memory(__wrap_bqueue_clear, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-
-    expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-    expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
-    will_return(__wrap_bqueue_peek, "");
-    will_return(__wrap_bqueue_peek, 0);
-
-    expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
-    expect_value(__wrap_wnotify_modify, fd, sock);
-    expect_value(__wrap_wnotify_modify, op, WO_READ);
-    will_return(__wrap_wnotify_modify, 0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    int retval = nb_send(netbuffer, sock);
-
-    assert_int_equal(retval, final_size);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nb_queue_ok, test_setup, test_teardown),
@@ -378,7 +329,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_send_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_send_would_block_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_send_err, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_nb_send_drop_err, test_setup, test_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

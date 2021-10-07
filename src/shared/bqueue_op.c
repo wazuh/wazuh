@@ -114,9 +114,9 @@ bqueue_t * bqueue_init(size_t max_length, unsigned flags) {
     queue->max_length = max_length;
     queue->flags = flags;
 
-    pthread_mutex_init(&queue->mutex, NULL);
-    pthread_cond_init(&queue->cond_pushed, NULL);
-    pthread_cond_init(&queue->cond_popped, NULL);
+    w_mutex_init(&queue->mutex, NULL);
+    w_cond_init(&queue->cond_pushed, NULL);
+    w_cond_init(&queue->cond_popped, NULL);
 
     return queue;
 }
@@ -130,9 +130,9 @@ void bqueue_destroy(bqueue_t * queue) {
 
     free(queue->memory);
 
-    pthread_mutex_destroy(&queue->mutex);
-    pthread_cond_destroy(&queue->cond_pushed);
-    pthread_cond_destroy(&queue->cond_popped);
+    w_mutex_destroy(&queue->mutex);
+    w_cond_destroy(&queue->cond_pushed);
+    w_cond_destroy(&queue->cond_popped);
 
     free(queue);
 }
@@ -140,12 +140,12 @@ void bqueue_destroy(bqueue_t * queue) {
 // Push data into the queue
 
 int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned flags) {
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     // Check if data would fit
 
     if (length >= queue->max_length) {
-        pthread_mutex_unlock(&queue->mutex);
+        w_mutex_unlock(&queue->mutex);
         return -1;
     }
 
@@ -153,12 +153,12 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
 
     if (flags & BQUEUE_WAIT) {
         while (length + used >= queue->max_length) {
-            pthread_cond_wait(&queue->cond_popped, &queue->mutex);
+            w_cond_wait(&queue->cond_popped, &queue->mutex);
             used = _bqueue_used(queue);
         }
     } else {
         if (length + used >= queue->max_length) {
-            pthread_mutex_unlock(&queue->mutex);
+            w_mutex_unlock(&queue->mutex);
             return -1;
         }
     }
@@ -171,8 +171,8 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
 
     _bqueue_insert(queue, data, length);
 
-    pthread_cond_signal(&queue->cond_pushed);
-    pthread_mutex_unlock(&queue->mutex);
+    w_cond_signal(&queue->cond_pushed);
+    w_mutex_unlock(&queue->mutex);
 
     return 0;
 }
@@ -180,17 +180,17 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
 // Get and remove data from the queue
 
 size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags) {
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     // Check if there is data available
 
     if (flags & BQUEUE_WAIT) {
         while (_bqueue_empty(queue)) {
-            pthread_cond_wait(&queue->cond_pushed, &queue->mutex);
+            w_cond_wait(&queue->cond_pushed, &queue->mutex);
         }
     } else {
         if (_bqueue_empty(queue)) {
-            pthread_mutex_unlock(&queue->mutex);
+            w_mutex_unlock(&queue->mutex);
             return 0;
         }
     }
@@ -204,8 +204,8 @@ size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags
         _bqueue_shrink(queue, queue->length / 2);
     }
 
-    pthread_cond_signal(&queue->cond_popped);
-    pthread_mutex_unlock(&queue->mutex);
+    w_cond_signal(&queue->cond_popped);
+    w_mutex_unlock(&queue->mutex);
 
     return write_len;
 }
@@ -213,23 +213,23 @@ size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags
 // Get data from the queue
 
 size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flags) {
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     // Check if there is data available
 
     if (flags & BQUEUE_WAIT) {
         while (_bqueue_empty(queue)) {
-            pthread_cond_wait(&queue->cond_pushed, &queue->mutex);
+            w_cond_wait(&queue->cond_pushed, &queue->mutex);
         }
     } else {
         if (_bqueue_empty(queue)) {
-            pthread_mutex_unlock(&queue->mutex);
+            w_mutex_unlock(&queue->mutex);
             return 0;
         }
     }
 
     size_t write_len = _bqueue_extract(queue, buffer, length);
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
 
     return write_len;
 }
@@ -239,7 +239,7 @@ size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flag
 int bqueue_drop(bqueue_t * queue, size_t length) {
     int retval;
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     if (length <= _bqueue_used(queue)) {
         queue->head = queue->memory + (queue->head - queue->memory + length) % queue->length;
@@ -250,22 +250,22 @@ int bqueue_drop(bqueue_t * queue, size_t length) {
             _bqueue_shrink(queue, queue->length / 2);
         }
 
-        pthread_cond_signal(&queue->cond_popped);
+        w_cond_signal(&queue->cond_popped);
         retval = 0;
     } else {
         retval = -1;
     }
 
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return retval;
 }
 
 // Get the current queue size
 
 size_t bqueue_used(bqueue_t * queue) {
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
     size_t used = _bqueue_used(queue);
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
 
     return used;
 }
@@ -273,9 +273,9 @@ size_t bqueue_used(bqueue_t * queue) {
 // Clear the queue
 
 void bqueue_clear(bqueue_t * queue) {
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
     _bqueue_trim(queue);
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
 }
 
 // Get the current queue size

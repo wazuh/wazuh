@@ -453,8 +453,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         if (*tmp_msg != '!') {
             merror(ENCFORMAT_ERROR, "(unknown)", srcip);
 
-            if (sock_client >= 0)
+            if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
+            }
 
             return;
         }
@@ -483,8 +484,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             // Send key request by id
             push_request(buffer + 1,"id");
-            if (sock_client >= 0)
+            if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
+            }
 
             return;
         }
@@ -515,8 +517,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             // Send key request by ip
             push_request(srcip,"ip");
-            if (sock_client >= 0)
+            if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
+            }
 
             return;
         } else {
@@ -529,8 +532,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     if (recv_b <= 0) {
         mwarn("Received message is empty");
         key_unlock();
-        if (sock_client >= 0)
+        if (sock_client >= 0) {
             _close_sock(&keys, sock_client);
+        }
 
         return;
     }
@@ -548,9 +552,10 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             }
         }
 
-        if (sock_client >= 0)
+        if (sock_client >= 0) {
             mwarn("Decrypt the message fail, socket %d", sock_client);
             _close_sock(&keys, sock_client);
+        }
 
         return;
     }

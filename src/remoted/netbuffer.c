@@ -157,10 +157,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
         }
 
         if (sent_bytes > 0) {
-            if (bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes) < 0) {
-                merror("socket: %d, bqueue clear queue, could not drop %lu bytes", socket, sent_bytes);
-                bqueue_clear(buffer->buffers[socket].bqueue);
-            }
+            bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes);
         } else if (sent_bytes < 0) {
             switch (errno) {
             case EAGAIN:
@@ -169,8 +166,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
     #endif
                 break;
             default:
-                merror("socket: %d, bqueue clear queue, send fail", socket);
-                bqueue_clear(buffer->buffers[socket].bqueue);
+                merror("socket: %d, send fail", socket);
             }
         }
 
@@ -222,10 +218,6 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
     if (retval < 0) {
         merror("Package dropped. Could not append data into buffer.");
-        if (buffer->buffers[socket].bqueue) {
-            bqueue_clear(buffer->buffers[socket].bqueue);
-        }
-        wnotify_modify(notify, socket, WO_READ);
     }
 
     w_mutex_unlock(&mutex);
