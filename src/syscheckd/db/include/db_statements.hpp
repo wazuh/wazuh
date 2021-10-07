@@ -1,4 +1,4 @@
-/**
+/*
  * @file db_statement.hpp
  * @brief Definition of FIM database statements.
  * @date 2021-09-06
@@ -67,4 +67,42 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 
     PRIMARY KEY(key_id, name)
     FOREIGN KEY (key_id) REFERENCES registry_key(id));)"
+};
+
+constexpr auto FIM_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"file",
+        "component":"syscollector_osinfo",
+        "index":"os_name",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE os_name ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
 };

@@ -81,6 +81,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->scan_time                       = NULL;
     syscheck->file_limit_enabled              = true;
     syscheck->file_limit                      = 100000;
+    syscheck->value_limit                      = 100000;
     syscheck->directories                     = OSList_Create();
 
     if (syscheck->directories == NULL) {

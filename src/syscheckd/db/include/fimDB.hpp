@@ -53,5 +53,10 @@ private:
     FIMDB(const FIMDB&) = delete;
     std::unique_ptr<DBSync>       m_dbsyncHandler;
     std::unique_ptr<RemoteSync>   m_rsyncHandler;
+    std::string createStatement();
+    void setFileLimit();
+    void setRegistryLimit();
+    void setValueLimit();
+
 };
 #endif //_FIMDB_HPP

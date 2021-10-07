@@ -376,7 +376,8 @@ typedef struct _config {
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
 
-    int file_limit;        /* maximum number of files to monitor */
+    int file_limit;                 /* maximum number of files to monitor */
+    int value_limit;                /* maximum number of registry values to monitor */
     unsigned int file_limit_enabled;    /* Enable file_limit option */
 
     char **ignore;                  /* list of files/dirs to ignore */
