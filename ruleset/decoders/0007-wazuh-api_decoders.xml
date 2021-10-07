@@ -4,7 +4,7 @@
 -->
 
 <decoder name="wazuh-api">
-   <prematch type="pcre2">\s\d+:\d+:\d+\s\w+:\s\w+\s\d+.\d+.\d+.\d+</prematch>
+   <prematch type="pcre2">\s\d+:\d+:\d+\s\w+:\s\S+\s\d+.\d+.\d+.\d+</prematch>
 </decoder>
 
 <decoder name="wazuh-api-info">
@@ -19,7 +19,7 @@
 
 <decoder name="wazuh-api-son">
   <parent>wazuh-api</parent>
-  <regex type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\s\w+:\s(\w+)</regex>
+  <regex type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\s\w+:\s(\S+)</regex>
   <order>user</order>
 </decoder>
 
@@ -31,7 +31,7 @@
 
 <decoder name="wazuh-api-son">
   <parent>wazuh-api</parent>
-  <regex type="pcre2">:\s\w+\s(\d+\.\d+\.\d+\.\d+)\s</regex>
+  <regex type="pcre2">:\s\S+\s(\d+\.\d+\.\d+\.\d+)\s</regex>
   <order>srcip</order>
 </decoder>
 
