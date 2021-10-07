@@ -33,13 +33,16 @@ from sys import exit, path
 from typing import Union
 
 path.insert(0, dirname(dirname(abspath(__file__))))
-import utils
+from utils import ANALYSISD, find_wazuh_path
 
 date_file = "last_dates.json"
 last_dates_file = join(dirname(abspath(__file__)), date_file)
-url_log_analytics = 'https://api.loganalytics.io/v1'
-graph_base_url = 'https://graph.microsoft.com'
-loggin_url = 'https://login.microsoftonline.com'
+
+# URLs
+url_logging = 'https://login.microsoftonline.com'
+url_analytics = 'https://api.loganalytics.io'
+url_graph = 'https://graph.microsoft.com'
+
 socket_header = '1:Azure:'
 
 ################################################################################################
@@ -129,92 +132,42 @@ def set_logger():
         logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     else:
-        log_path = "{}/logs/azure_logs.log".format(utils.find_wazuh_path())
+        log_path = "{}/logs/azure_logs.log".format(find_wazuh_path())
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
-def read_auth_file(path: str):
+def read_auth_file(auth_path: str):
     """Read the authentication file. Its contents must be in 'field = value' format.
 
     Parameters
     ----------
-    path : str
+    auth_path : str
         Path to the authentication file
 
     Returns
     -------
-    A dict with the processed "application_id" and "application_key" values for authentication.
+    A tuple with the "application_id" and "application_key" values for authentication.
     """
+    credentials = {}
     try:
-        credentials = {}
-        with open(path, 'r') as auth_file:
+        with open(auth_path, 'r') as auth_file:
             for line in auth_file:
                 key, value = line.replace(" ", "").split("=")
                 if not value:
                     continue
                 credentials[key] = value.replace("\n", "")
-        if "application_id" not in credentials or "application_key" not in credentials:
-            logging.error("Error: The authentication file does not contains the expected 'application_id' "
-                          "and 'application_key' fields.")
-            exit(1)
-        return credentials
     except OSError as e:
         logging.error("Error: The authentication file could not be opened: '{}'".format(e))
         exit(1)
+    if "application_id" not in credentials or "application_key" not in credentials:
+        logging.error("Error: The authentication file does not contains the expected 'application_id' "
+                      "and 'application_key' fields.")
+        exit(1)
+    return credentials["application_id"], credentials["application_key"]
 
 
-def build_query(service_name: str, offset: str, md5_hash: str, dates_json: dict):
-    """Build a query to use with the specified service filtering its results by the desired_datetime.
-
-    Parameters
-    ----------
-    service_name : str
-        Name of the service to fetch the data from the "last_dates_file"
-    offset : str
-        The filtering condition for the query
-    md5_hash : str
-        md5 value used to search the query in the file containing the dates
-    dates_json : dict
-        The contents of the "last_dates_file"
-
-    Returns
-    -------
-    The required URL for the requested query in str format
-    """
-    desired_datetime = offset_to_datetime(offset) if offset else None
-    service_name_lower = service_name.lower()
-    if dates_json.get(service_name_lower) and md5_hash in dates_json[service_name_lower]:
-        # This adds compatibility with "last_dates_files" from previous releases
-        if isinstance(dates_json[service_name_lower][md5_hash], dict):
-            min_datetime = parse(dates_json[service_name_lower][md5_hash].get('min'), fuzzy=True)
-            max_datetime = parse(dates_json[service_name_lower][md5_hash].get('max'), fuzzy=True)
-        else:
-            min_datetime = parse(dates_json[service_name_lower][md5_hash], fuzzy=True)
-            max_datetime = parse(dates_json[service_name_lower][md5_hash], fuzzy=True)
-    else:
-        logging.info(f"{md5_hash} was not found in {last_dates_file} for {service_name_lower}. Updating the file")
-        min_datetime = desired_datetime
-        max_datetime = desired_datetime
-        dates_json[service_name_lower][md5_hash] = {'min': f"{min_datetime}", 'max': f"{max_datetime}"}
-
-    filtering_condition = "createdDateTime" if "signinEventsV2" in graph_formatted_query else "activityDateTime"
-
-    if desired_datetime < min_datetime:
-        filter_value = f"({filtering_condition}+lt+{min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')}" \
-                       f"+and+{filtering_condition}+ge+{desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')})" \
-                       f"+or+({filtering_condition}+gt+{max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')})"
-    elif desired_datetime > max_datetime:
-        filter_value = f"{filtering_condition}+ge+{desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')}"
-    else:
-        filter_value = f"{filtering_condition}+gt+{max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')}"
-
-    logging.info(f"Graph: The search starts for query: '{graph_formatted_query}' using {filter_value}")
-
-    return f"{graph_base_url}/v1.0/{graph_formatted_query}?$filter={filter_value}"
-
-
-def load_dates():
+def load_dates_json():
     """Read the "last_dates_file" containing the different processed dates. It will be created with empty values in
     case it does not exist.
 
@@ -226,6 +179,11 @@ def load_dates():
     try:
         if exists(last_dates_file):
             contents = load(open(last_dates_file))
+            # This adds compatibility with "last_dates_files" from previous releases as the format was different
+            for key in contents.keys():
+                for md5_hash in contents[key].keys():
+                    if not isinstance(contents[key][md5_hash], dict):
+                        contents[key][md5_hash] = {"min": contents[key][md5_hash], "max": contents[key][md5_hash]}
         else:
             contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
             with open(join(last_dates_file), 'w') as file:
@@ -236,7 +194,7 @@ def load_dates():
         exit(1)
 
 
-def save_dates(json_obj):
+def save_dates_json(json_obj):
     """Save the json object containing the different processed dates in the "date_file" file."""
     logging.info(f"Updating {last_dates_file} file.")
     try:
@@ -246,208 +204,275 @@ def save_dates(json_obj):
         logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
 
 
-################################################################################################
-# The client or application must have permission to read Log Analytics.
-# https://dev.loganalytics.io/documentation/1-Tutorials/Direct-API
-################################################################################################
+def update_dates_json(new_min: str, new_max: str, service_name: str, md5_hash: str):
+    """Update the dates_json dictionary with the specified values if applicable.
+
+    Parameters
+    ----------
+    new_min : str
+        Value to compare with the current min value stored.
+    new_max : str
+        Value to compare with the current max value stored.
+    service_name : str
+        Name of the service used as the key for the dates_json.
+    md5_hash : str
+        md5 value used to search the query in the file containing the dates.
+    """
+    if parse(new_min, fuzzy=True) < parse(dates_json[service_name.lower()][md5_hash]["min"], fuzzy=True):
+        dates_json[service_name.lower()][md5_hash]["min"] = new_min
+    if parse(new_max, fuzzy=True) > parse(dates_json[service_name.lower()][md5_hash]["max"], fuzzy=True):
+        dates_json[service_name.lower()][md5_hash]["max"] = new_max
+
+
+# LOG ANALYTICS
 
 def start_log_analytics():
+    """Run the Log Analytics integration processing the logs available for the given time offset. The client or
+    application must have "Contributor" permission to read Log Analytics."""
     logging.info("Azure Log Analytics starting.")
 
-    try:
-        # Getting authentication token
-        logging.info("Log Analytics: Getting authentication token.")
-        logging.info(args.la_auth_path)
-        if args.la_auth_path and args.la_tenant_domain:
-            auth = read_auth_file(path=args.la_auth_path)
-            logging.error(auth)
-            client_id = auth['application_id']
-            secret = auth['application_key']
-        elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-            client_id = args.graph_id
-            secret = args.graph_key
-        else:
-            logging.error("Log Analytics: No parameters have been provided for authentication.")
-            exit(1)
+    # Read credentials
+    if args.la_auth_path and args.la_tenant_domain:
+        client, secret = read_auth_file(auth_path=args.la_auth_path)
+    elif args.la_id and args.la_key and args.la_tenant_domain:
+        client = args.la_id
+        secret = args.la_key
+    else:
+        logging.error("Log Analytics: No parameters have been provided for authentication.")
+        exit(1)
 
-        # log_analytics_token = get_token(client_id, secret, 'https://api.loganalytics.io', args.la_tenant_domain)
-        log_analytics_token = get_token(client_id=client_id, secret=secret, domain=args.la_tenant_domain)
+    # Get authentication token
+    logging.info("Log Analytics: Getting authentication token.")
+    token = get_token(client_id=client, secret=secret, domain=args.la_tenant_domain, scope=f'{url_analytics}/.default')
 
-        log_analytics_headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + log_analytics_token
-        }
-        first_run = False
-        if not first_run:
-            first_time = "0"
-        else:
-            first_time = offset_to_datetime(args.la_time_offset)
+    # Build the request
+    md5_hash = md5(la_format_query.encode()).hexdigest()
+    url = f"{url_analytics}/v1/workspaces/{args.workspace}/query"
+    body = build_log_analytics_query(offset=args.la_time_offset, md5_hash=md5_hash)
+    headers = {"Authorization": f"Bearer {token}"}
 
-        try:
-            dates_json = load(open(last_dates_file))
-            get_analytic(first_time, dates_json, url_log_analytics, log_analytics_headers)
-            with open(join(last_dates_file), 'w') as jsonFile:
-                dump(dates_json, jsonFile)
-        except Exception as e:
-            logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
-
-    except Exception as e:
-        logging.error("Log Analytics: Couldn't get the token for authentication: '{}'.".format(e))
-
+    # Get the logs
+    get_log_analytics_events(url=url, body=body, headers=headers, md5_hash=md5_hash)
     logging.info("Azure Log Analytics ending.")
 
 
-################################################################################################
-# Prepares and makes the request, building the query based on the time of event generation.
-################################################################################################
+def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
+    """Prepares and makes the request, building the query based on the time of event generation.
 
-def get_analytic(date, last_time_list, url, log_headers):
-    analytics_url = "{}/workspaces/{}/query".format(url, args.workspace)
-    logging.info("Log Analytics: Sending a request to the Log Analytics API.")
+    Parameters
+    ----------
+    offset : str
+        The filtering condition for the query
+    md5_hash : str
+        md5 value used to search the query in the file containing the dates
 
+    Returns
+    -------
+    The required body for the requested query in dict format
+    """
+    desired_datetime = offset_to_datetime(offset) if offset else None
+
+    # Get min and max values from the file
     try:
-        md5_hash = md5(la_format_query.encode()).hexdigest()
-        # Differentiates the first execution of the script from the rest of the executions.
-        if date != "0":
-            date_search = date
-        else:
-            if md5_hash not in last_time_list["log_analytics"]:
-                date_search = date
-            else:
-                date_search = last_time_list["log_analytics"][md5_hash]
+        # We use "parse" to handle any datetime with more than 6 digits for the microseconds value provided by Azure
+        min_datetime = parse(dates_json["log_analytics"][md5_hash]['min'], fuzzy=True)
+        max_datetime = parse(dates_json["log_analytics"][md5_hash]['max'], fuzzy=True)
+    except KeyError:
+        # The "graph" key or the md5 value is not present in the dates file
+        logging.info(f"{md5_hash} was not found in {last_dates_file} for Log Analytics. Updating the file")
+        min_datetime = max_datetime = desired_datetime
+        dates_json["log_analytics"][md5_hash] = {'min': f"{desired_datetime}", 'max': f"{desired_datetime}"}
 
-        logging.info(
-            "Log Analytics: The search starts from the date: {} for query: '{}' ".format(date_search, la_format_query))
-        query = "{} | order by TimeGenerated asc | where TimeGenerated > datetime({}) ".format(la_format_query,
-                                                                                               date_search)
-        body = {'query': query}
-        analytics_request = get(analytics_url, params=body, headers=log_headers)
-        get_time_list(analytics_request, last_time_list, date_search, md5_hash)
-    except Exception as e:
-        logging.error("Error: The query requested to the API Log Analytics has failed. '{}'.".format(e))
+    min_strf = f"datetime({min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+    max_strf = f"datetime({max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+    desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
 
-
-################################################################################################
-# Obtains the list with the last time generated of each query.
-################################################################################################
-
-def get_time_list(request_received, last_timegen, no_results, md5_hash):
-    try:
-        if request_received.status_code == 200:
-            columns = request_received.json()['tables'][0]['columns']
-            rows = request_received.json()['tables'][0]['rows']
-            time_position = get_TimeGenerated_position(columns)
-            # Searches for the position of the TimeGenerated field
-            if time_position == -1:
-                logging.error("Error: Couldn't get TimeGenerated position")
-            else:
-                last_row = len(request_received.json()['tables'][0]['rows']) - 1
-                # Checks for new results
-                if last_row < 0:
-                    logging.info("Log Analytics: There are no new results")
-                    last_timegen['log_analytics'][md5_hash] = str(no_results)
-                else:
-                    last_timegen['log_analytics'][md5_hash] = request_received.json()['tables'][0]['rows'][last_row][
-                        time_position]
-                    file_json = request_received.json()
-                    get_log_analytics_event(columns, rows)
-        else:
-            if args.verbose:
-                logging.info("Log Analytics request: {}".format(request_received.status_code))
-            request_received.raise_for_status()
-    except Exception as e:
-        logging.error("Error: It was not possible to obtain the latest event: '{}'.".format(e))
-
-
-################################################################################################
-# Obtains the position of the time field in which the event was generated.
-################################################################################################
-
-def get_TimeGenerated_position(columns):
-    position = 0
-    found = "false"
-    for column in columns:
-        if column['name'] == 'TimeGenerated':
-            found = "true"
-            break
-        position += 1
-    if found == "false":
-        return -1
+    # Build the filter taking into account the min and max values
+    if desired_datetime < min_datetime:
+        filter_value = f"( TimeGenerated < {min_strf} and TimeGenerated >= {desired_strf} ) or " \
+                       f"( TimeGenerated > {max_strf} )"
+    elif desired_datetime > max_datetime:
+        filter_value = f"TimeGenerated >= {desired_strf}"
     else:
-        return position
+        filter_value = f"TimeGenerated > {max_strf}"
+
+    query = f"{la_format_query} | order by TimeGenerated asc | where {filter_value} "
+    logging.info(f"Log Analytics: The search starts for query: '{query}'")
+    return {"query": query}
 
 
-################################################################################################
-# Adds the field name to each row of the result and converts it to json. Writes or sends events
-################################################################################################
+def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str):
+    """ Obtains the list with the last time generated of each query.
 
-def get_log_analytics_event(columns, rows):
+    Parameters
+    ----------
+    url : str
+        The url for the request
+    body : dict
+        Body for the request containing the query
+    headers : dict
+        The header for the request, containing the authentication token
+    md5_hash : str
+        md5 value used to search the query in the file containing the dates
+
+    Raises
+    ------
+    HTTPError if the response for the request is not 200 OK.
+    """
+    def get_time_position():
+        """Get the position of the 'TimeGenerated' field in the columns list.
+
+        Returns
+        -------
+        The index of the 'TimeGenerated' field in the given list or None if it's not present.
+        """
+        for i in range(0, len(columns)):
+            if columns[i]['name'] == 'TimeGenerated':
+                return i
+
+    logging.info("Log Analytics: Sending a request to the Log Analytics API.")
+    response = get(url, params=body, headers=headers)
+    if response.status_code == 200:
+        try:
+            columns = response.json()['tables'][0]['columns']
+            rows = response.json()['tables'][0]['rows']
+        except KeyError as e:
+            logging.error("Error: It was not possible to obtain the columns and rows from the event: '{}'.".format(e))
+        else:
+            if len(rows) == 0:
+                logging.info("Log Analytics: There are no new results")
+            elif time_position := get_time_position():
+                iter_log_analytics_events(columns, rows)
+                update_dates_json(new_min=rows[0][time_position],
+                                  new_max=rows[len(rows) - 1][time_position],
+                                  service_name="log_analytics",
+                                  md5_hash=md5_hash)
+                save_dates_json(dates_json)
+            else:
+                logging.error("Error: No TimeGenerated field was found")
+    else:
+        response.raise_for_status()
+
+
+def iter_log_analytics_events(columns: list, rows: list):
+    """Iterate through the columns and rows to build the events and sent them to the socket.
+
+    Parameters
+    ----------
+    columns : list
+        List of dicts containing the names and the types of each column
+    rows : list
+        List of rows containing the values for each column. Each rows is an event
+    """
+    # Add tag columns
     columns.append({u'type': u'string', u'name': u'azure_tag'})
     if args.la_tag:
         columns.append({u'type': u'string', u'name': u'log_analytics_tag'})
 
     for row in rows:
+        # Add tag values
         row.append("azure-log-analytics")
         if args.la_tag:
             row.append(args.la_tag)
 
-    columns_len = len(columns)
-    rows_len = len(rows)
-    row_iterator = 0
-
-    while row_iterator < rows_len:
-        la_result = {}
-        column_iterator = 0
-        while column_iterator < columns_len:
-            la_result[columns[column_iterator]['name']] = rows[row_iterator][column_iterator]
-            column_iterator += 1
-        row_iterator += 1
-        json_result = dumps(la_result)
+        # Build the events and send them
+        event = {}
+        for c in range(0, len(columns)):
+            event[columns[c]['name']] = row[c]
         logging.info("Log Analytics: Sending event by socket.")
-        send_message(json_result)
+        send_message(dumps(event))
 
+
+# GRAPH
 
 def start_graph():
     """Run the Microsoft Graph integration processing the logs available for the given query and offset values in
     the configuration. The client or application must have permission to access Microsoft Graph."""
     logging.info("Azure Graph starting.")
 
+    # Read credentials
     if args.graph_auth_path and args.graph_tenant_domain:
-        auth = read_auth_file(args.graph_auth_path)
-        client_id = auth['application_id']
-        secret = auth['application_key']
+        client, secret = read_auth_file(auth_path=args.graph_auth_path)
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-        client_id = args.graph_id
+        client = args.graph_id
         secret = args.graph_key
     else:
         logging.error("Graph: No parameters have been provided for authentication.")
         exit(1)
 
+    # Get the token
     logging.info("Graph: Getting authentication token.")
-    graph_token = get_token(client_id=client_id, secret=secret, domain=args.graph_tenant_domain)
-    headers = {'Authorization': 'Bearer ' + graph_token}
-    md5_hash = md5(graph_formatted_query.encode()).hexdigest()
-    dates_json = load_dates()
+    token = get_token(client_id=client, secret=secret, domain=args.graph_tenant_domain, scope=f"{url_graph}/.default")
+    headers = {'Authorization': f'Bearer {token}'}
+
+    # Build the query
     logging.info(f"Graph: Building url for {offset_to_datetime(args.graph_time_offset)}.")
-    url = build_query(service_name="Graph", offset=args.graph_time_offset, md5_hash=md5_hash, dates_json=dates_json)
+    md5_hash = md5(graph_formatted_query.encode()).hexdigest()
+    url = build_graph_query(offset=args.graph_time_offset, md5_hash=md5_hash)
     logging.info(f"Graph: The URL is '{url}'")
+
+    # Get events
     logging.info("Graph: Pagination starts")
-    graph_pagination(url=url, headers=headers, md5_hash=md5_hash, dates_json=dates_json)
+    get_graph_events(url=url, headers=headers, md5_hash=md5_hash)
     logging.info("Graph: End")
 
 
-def graph_pagination(url: str, headers: dict, md5_hash: str, dates_json: dict):
+def build_graph_query(offset: str, md5_hash: str):
+    """Build a query to use with the specified service filtering its results by the desired_datetime.
+
+    Parameters
+    ----------
+    offset : str
+        The filtering condition for the query
+    md5_hash : str
+        md5 value used to search the query in the file containing the dates
+
+    Returns
+    -------
+    The required URL for the requested query in str format
+    """
+    desired_datetime = offset_to_datetime(offset) if offset else None
+    filtering_condition = "createdDateTime" if "signinEventsV2" in graph_formatted_query else "activityDateTime"
+
+    # Get min and max values from the file
+    try:
+        # We use "parse" to handle any datetime with more than 6 digits for the microseconds value provided by Azure
+        min_datetime = parse(dates_json["graph"][md5_hash]['min'], fuzzy=True)
+        max_datetime = parse(dates_json["graph"][md5_hash]['max'], fuzzy=True)
+    except KeyError:
+        logging.info(f"{md5_hash} was not found in {last_dates_file} for Graph. Updating the file")
+        min_datetime = max_datetime = desired_datetime
+        dates_json["graph"][md5_hash] = {'min': f"{desired_datetime}", 'max': f"{desired_datetime}"}
+
+    min_strf = min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+    max_strf = max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+    desired_strf = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
+
+    # Build the filter taking into account the min and max values
+    if desired_datetime < min_datetime:
+        filter_value = f"({filtering_condition}+lt+{min_strf}+and+{filtering_condition}+ge+{desired_strf})" \
+                       f"+or+({filtering_condition}+gt+{max_strf})"
+    elif desired_datetime > max_datetime:
+        filter_value = f"{filtering_condition}+ge+{desired_strf}"
+    else:
+        filter_value = f"{filtering_condition}+gt+{max_strf}"
+
+    logging.info(f"Graph: The search starts for query: '{graph_formatted_query}' using {filter_value}")
+    return f"{url_graph}/v1.0/{graph_formatted_query}?$filter={filter_value}"
+
+
+def get_graph_events(url: str, headers: dict, md5_hash: str):
     """Request the data using the specified url and process the values in the response.
 
     Parameters
     ----------
     url : str
-        The url for the required query
+        The url for the request
     headers : dict
         The header for the request, containing the authentication token
     md5_hash : str
         md5 value used to search the query in the file containing the dates
-    dates_json
+
     Returns
     -------
     The nextLink url value contained in the response or None.
@@ -463,35 +488,31 @@ def graph_pagination(url: str, headers: dict, md5_hash: str, dates_json: dict):
         response_json = response.json()
         values_json = response_json.get('value')
         for value in values_json:
-            logging.info(value["activityDateTime"])
-            activityDateTime = parse(value["activityDateTime"], fuzzy=True)
-            if activityDateTime > parse(dates_json['graph'][md5_hash]['max'], fuzzy=True):
-                logging.info(f"Graph: The current item's activityDateTime is greater that the MAX value stored. "
-                             f"Updating the MAX value to {value['activityDateTime']}")
-                dates_json['graph'][md5_hash]['max'] = value["activityDateTime"]
-            if activityDateTime < parse(dates_json['graph'][md5_hash]['min'], fuzzy=True):
-                logging.info(f"Graph: The current item's activityDateTime is lower that the MIN value stored. "
-                             f"Updating the MIN value to {value['activityDateTime']}")
-                dates_json['graph'][md5_hash]['min'] = value["activityDateTime"]
+            update_dates_json(new_min=value["activityDateTime"],
+                              new_max=value["activityDateTime"],
+                              service_name="graph",
+                              md5_hash=md5_hash)
             value["azure_tag"] = "azure-ad-graph"
             if args.graph_tag:
                 value['azure_aad_tag'] = args.graph_tag
             json_result = dumps(value)
             logging.info("Graph: Sending event by socket.")
             send_message(json_result)
-        save_dates(dates_json)
+        save_dates_json(dates_json)
 
         if len(values_json) == 0:
             logging.info("Graph: There are no new results")
 
         if nex_url := response_json.get('@odata.nextLink'):
-            graph_pagination(url=next_url, headers=headers, md5_hash=md5_hash, dates_json=dates_json)
+            get_graph_events(url=next_url, headers=headers, md5_hash=md5_hash)
     elif response.status_code == 400:
         logging.error(f"Bad Request for url: {response.url}")
         logging.error(f"Ensure the URL is valid and there is data available for the specified datetime.")
     else:
         response.raise_for_status()
 
+
+# STORAGE
 
 ################################################################################################
 # Get access and content of the storage accounts
@@ -673,7 +694,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, da
             logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
 
 
-def get_token(client_id: str, secret: str, domain: str, resource: str = None):
+def get_token(client_id: str, secret: str, domain: str, scope: str):
     """Get the authentication token for accessing a given resource in the specified domain.
 
     Parameters
@@ -684,8 +705,8 @@ def get_token(client_id: str, secret: str, domain: str, resource: str = None):
         The client secret
     domain : str
         The tenant domain
-    resource : str
-        The resource for which access is requested
+    scope : str
+        The scope for the token requested
 
     Returns
     -------
@@ -694,15 +715,14 @@ def get_token(client_id: str, secret: str, domain: str, resource: str = None):
     body = {
         'client_id': client_id,
         'client_secret': secret,
-        'scope': f'{resource if resource else graph_base_url}/.default',
+        'scope': scope,
         'grant_type': 'client_credentials'
     }
-    auth_url = f'{loggin_url}/{domain}/oauth2/v2.0/token'
+    auth_url = f'{url_logging}/{domain}/oauth2/v2.0/token'
     try:
         token_response = post(auth_url, data=body)
-        logging.info(f"RESPONSE: {token_response}")
         return token_response.json()['access_token']
-    except Exception as e:
+    except (ValueError, KeyError) as e:
         logging.error("Error: Couldn't get the token for authentication: '{}'.".format(e))
         exit(1)
 
@@ -717,7 +737,7 @@ def send_message(message):
     """
     s = socket(AF_UNIX, SOCK_DGRAM)
     try:
-        s.connect(utils.ANALYSISD)
+        s.connect(ANALYSISD)
         s.send(f'{socket_header}{message}'.encode(errors='replace'))
     except socket_error as e:
         if e.errno == 111:
@@ -759,6 +779,7 @@ def offset_to_datetime(date):
 
 if __name__ == "__main__":
     set_logger()
+    dates_json = load_dates_json()
 
     if args.log_analytics:
         start_log_analytics()
