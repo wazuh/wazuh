@@ -64,7 +64,7 @@ int wdb_set_agent_sys_osinfo_triaged(int id,
  *                               and 'status': 'SUCCESS' | 'ERROR'.
  *         If the vulnerability already exists in vuln_cve table, 'status' field will contain 'UPDATE' string. Otherwise, it contains 'INSERT'.
  *         If the action was completed successfully, 'status' contains 'SUCCESS' string.
- *         If check_pkg_existence is enabled and the package wasn't found 'status', the package is inserted anyway with the 'OBSOLETE' status.
+ *         If check_pkg_existence is enabled and the package wasn't found 'status', the package is inserted with the 'OBSOLETE' status.
  *         On any error, 'status' contains 'ERROR' string.
  *         The cJSON object must be freed by the caller.
  */
