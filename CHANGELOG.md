@@ -128,7 +128,7 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Fixed enabled-like checks for Amazon Linux 2 SCA ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-  - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas)
+  - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas) ([#10406](https://github.com/wazuh/wazuh/pull/10406))
 
 ### Removed
 
