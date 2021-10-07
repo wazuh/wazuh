@@ -12,5 +12,12 @@
 
 void __wrap_rem_inc_tcp();
 void __wrap_rem_dec_tcp();
+void __wrap_rem_inc_evt();
+void __wrap_rem_inc_ctrl_msg();
+void __wrap_rem_inc_msg_queued();
+void __wrap_rem_add_send(unsigned long bytes);
+void __wrap_rem_inc_discarded();
+void __wrap_rem_add_recv(unsigned long bytes);
+void __wrap_rem_inc_dequeued();
 
 #endif

@@ -27,3 +27,32 @@ void __wrap_rem_dec_tcp() {
     function_called();
 }
 
+void __wrap_rem_inc_evt() {
+    function_called();
+}
+
+void __wrap_rem_inc_ctrl_msg() {
+    function_called();
+}
+
+void __wrap_rem_inc_msg_queued() {
+    function_called();
+}
+
+void __wrap_rem_add_send(unsigned long bytes) {
+    function_called();
+    check_expected(bytes);
+}
+
+void __wrap_rem_inc_discarded() {
+    function_called();
+}
+
+void __wrap_rem_add_recv(unsigned long bytes) {
+    function_called();
+    check_expected(bytes);
+}
+
+void __wrap_rem_inc_dequeued() {
+    function_called();
+}

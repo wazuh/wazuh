@@ -17,6 +17,8 @@
 
 int __wrap_wnotify_modify(wnotify_t * notify, int fd, const woperation_t op);
 
+int __wrap_wnotify_add(wnotify_t * notify, int fd, const woperation_t op);
+
 #endif
 
 #endif
