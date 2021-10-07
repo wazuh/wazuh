@@ -379,24 +379,6 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         cJSON_Delete(j_osinfo);
     }
 
-    // Getting old data to preserve triaged value
-    if (j_osinfo = wdb_agents_get_sys_osinfo(wdb), !j_osinfo) {
-        merror("Retrieving old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-    else {
-        cJSON *j_triaged = cJSON_GetObjectItem(j_osinfo->child, "triaged");
-        cJSON *j_reference = cJSON_GetObjectItem(j_osinfo->child, "reference");
-        if (!cJSON_IsNumber(j_triaged) || !cJSON_IsString(j_reference)) {
-            mdebug2("No previous data related to the triaged status and reference of the OS");
-        }
-        else {
-            triaged = j_triaged->valueint;
-            os_strdup(j_reference->valuestring, reference);
-        }
-        cJSON_Delete(j_osinfo);
-    }
-
     /* Delete old OS information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
         mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_DEL);
