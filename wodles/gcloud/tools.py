@@ -26,7 +26,7 @@ log_levels = {0: logging.NOTSET,
               4: logging.ERROR,
               5: logging.CRITICAL,
               }
-logging_format = logging.Formatter('%(name)s: %(levelname)s: %(message)s', '%Y/%m/%d %H:%M:%S')
+logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 min_num_threads = 1
 min_num_messages = 1
 

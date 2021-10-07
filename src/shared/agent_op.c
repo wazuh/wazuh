@@ -849,8 +849,15 @@ int w_request_agent_add_clustered(char *err_response,
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };
+    cJSON* message;
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force);
+    if (agent_id){
+        // Create key polling request
+        message = w_create_agent_add_payload(name, ip, groups, NULL, key_hash, agent_id, force);
+    } else {
+        // Create dispatching request
+        message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force);
+    }
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);

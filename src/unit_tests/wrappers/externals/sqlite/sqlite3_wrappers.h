@@ -27,6 +27,7 @@ int __wrap_sqlite3_bind_double(sqlite3_stmt *pStmt, int index, double value);
 
 int __wrap_sqlite3_bind_null(sqlite3_stmt *pStmt, int index);
 
+
 void expect_sqlite3_bind_int64_call(int idx, double val, int ret);
 
 int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,
