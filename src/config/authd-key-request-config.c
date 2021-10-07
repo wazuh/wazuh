@@ -19,22 +19,18 @@ static const char *XML_EXEC_PATH = "exec_path";
 static const char *XML_SOCKET = "socket";
 static const char *XML_FORCE_INSERT = "force_insert";
 
-static short eval_bool(const char *str)
-{
-    return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
-}
+static short eval_bool(const char *str) { return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID; }
 
 // Reading function
-int authd_key_request_read(xml_node **nodes, void *config)
-{
+int authd_key_request_read(xml_node **nodes, void *config) {
     unsigned int i;
     authd_config_t *authd_config = (authd_config_t *)config;
-    authd_key_request_t key_request = authd_config->key_request;
+    authd_key_request_t *key_request = &(authd_config->key_request);
 
-    key_request.enabled = 1;
-    key_request.timeout = 60;
-    key_request.threads = 1;
-    key_request.queue_size = 1024;
+    key_request->enabled = 1;
+    key_request->timeout = 60;
+    key_request->threads = 1;
+    key_request->queue_size = 1024;
 
     if (!nodes) {
         return 0;
@@ -45,50 +41,50 @@ int authd_key_request_read(xml_node **nodes, void *config)
             merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
-            if (key_request.enabled = eval_bool(nodes[i]->content), key_request.enabled == OS_INVALID) {
+            if (key_request->enabled = eval_bool(nodes[i]->content), key_request->enabled == OS_INVALID) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, "Key Request");
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_EXEC_PATH)) {
-            if(key_request.exec_path) {
-                free(key_request.exec_path);
+            if(key_request->exec_path) {
+                free(key_request->exec_path);
             }
 
             if(strlen(nodes[i]->content) >= PATH_MAX) {
                 merror("Exec path is too long at module '%s'. Max path length is %d", "Key Request", PATH_MAX);
                 return OS_INVALID;
             }
-            key_request.exec_path = strdup(nodes[i]->content);
+            key_request->exec_path = strdup(nodes[i]->content);
         } else if(!strcmp(nodes[i]->element, XML_SOCKET)) {
-            if(key_request.socket) {
-                free(key_request.socket);
+            if(key_request->socket) {
+                free(key_request->socket);
             }
 
             if(strlen(nodes[i]->content) >= PATH_MAX) {
                 merror("Socket path is too long at module '%s'. Max path length is %d", "Key Request", PATH_MAX);
                 return OS_INVALID;
             }
-            key_request.socket = strdup(nodes[i]->content);
+            key_request->socket = strdup(nodes[i]->content);
         } else if(!strcmp(nodes[i]->element, XML_TIMEOUT)) {
-            key_request.timeout = atol(nodes[i]->content);
+            key_request->timeout = atol(nodes[i]->content);
 
-            if (key_request.timeout < 1 || key_request.timeout >= UINT_MAX) {
+            if (key_request->timeout < 1 || key_request->timeout >= UINT_MAX) {
                 merror("Invalid interval at module '%s'", "Key Request");
                 return OS_INVALID;
             }
 
-            mdebug2("Timeout read: %d", key_request.timeout);
+            mdebug2("Timeout read: %d", key_request->timeout);
         } else if (!strcmp(nodes[i]->element, XML_THREADS)) {
-            key_request.threads = atol(nodes[i]->content);
+            key_request->threads = atol(nodes[i]->content);
 
-            if (key_request.threads < 1 || key_request.threads > 32) {
+            if (key_request->threads < 1 || key_request->threads > 32) {
                 merror("Invalid number of threads at module '%s'", "Key Request");
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_QUEUE_SIZE)) {
-            key_request.queue_size = atol(nodes[i]->content);
+            key_request->queue_size = atol(nodes[i]->content);
 
-            if (key_request.queue_size < 1 || key_request.queue_size > 220000) {
+            if (key_request->queue_size < 1 || key_request->queue_size > 220000) {
                 merror("Invalid queue size at module '%s'", "Key Request");
                 return OS_INVALID;
             }

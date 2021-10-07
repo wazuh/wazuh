@@ -31,7 +31,7 @@ typedef struct authd_flags_t {
 } authd_flags_t;
 
 typedef struct authd_key_request_t {
-    bool            enabled;
+    int             enabled;
     char            *exec_path;
     char            *socket;
     unsigned int    timeout;
@@ -52,5 +52,3 @@ typedef struct authd_config_t {
     long timeout_usec;
     bool worker_node;
 } authd_config_t;
-
-int authd_key_request_read(xml_node **nodes, void *config);
