@@ -495,6 +495,7 @@ int main(int argc, char **argv)
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
+        OS_ReadTimestamps(&keys);
     }
 
     /* Start working threads */
@@ -559,12 +560,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-
-    if (!config.worker_node) {
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-        OS_ReadTimestamps(&keys);
-    }
 
     mdebug1("Dispatch thread ready.");
 
