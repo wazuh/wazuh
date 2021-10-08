@@ -8,28 +8,28 @@
   <!--Event 10-->
   <rule id="57802" level="3">
      <if_sid>57801</if_sid>
-     <field name="signature_id" type="pcre2">^10</field>
+     <field name="signature_id" type="pcre2">^10$</field>
      <description>Grouping of Trend Micro Rules - Custom Intrusion Prevention (IPS) rule</description>
   </rule>
 
   <!--Event 20-->
   <rule id="57803" level="3">
      <if_sid>57801</if_sid>
-     <field name="signature_id" type="pcre2">^20</field>
+     <field name="signature_id" type="pcre2">^20$</field>
      <description>Grouping of Trend Micro Rules - Log-only Firewall rule</description>
   </rule>
 
   <!--Event 21-->
   <rule id="57804" level="3">
      <if_sid>57801</if_sid>
-     <field name="signature_id" type="pcre2">^21</field>
+     <field name="signature_id" type="pcre2">^21$</field>
      <description>Grouping of Trend Micro Rules - Deny Firewall rule</description>
   </rule>
 
   <!--Event 30-->
   <rule id="57805" level="3">
      <if_sid>57801</if_sid>
-     <field name="signature_id" type="pcre2">^30</field>
+     <field name="signature_id" type="pcre2">^30$</field>
      <description>Grouping of Trend Micro Rules - Custom Integrity Monitoring rule</description>
   </rule>
 
@@ -37,7 +37,7 @@
   <!--Event 40-->
   <rule id="57806" level="3">
      <if_sid>57801</if_sid>
-     <field name="signature_id" type="pcre2">^40</field>
+     <field name="signature_id" type="pcre2">^40$</field>
      <description>Grouping of Trend Micro Rules - Custom Log Inspection rule</description>
   </rule>
 
