@@ -818,6 +818,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteKeys(copy_keys) < 0) {
             merror("Couldn't write file client.keys");
+            sleep(1);
         }
 
         gettime(&t1);

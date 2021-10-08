@@ -579,24 +579,40 @@ int OS_WriteKeys(const keystore *keys) {
 
    for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key);
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
     /* Write saved removed keys */
 
     for (i = 0; i < keys->removed_keys_size; i++) {
-        fprintf(file.fp, "%s\n", keys->removed_keys[i]);
+        if (fprintf(file.fp, "%s\n", keys->removed_keys[i]) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
-    fclose(file.fp);
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        goto error;
+    }
 
     if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
-        free(file.name);
-        return -1;
+        goto error;
     }
 
     free(file.name);
     return 0;
+
+error:
+    unlink(file.name);
+    free(file.name);
+    return -1;
 }
 
 /* Duplicate keystore except key hashes and file pointer */
