@@ -949,7 +949,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
 def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Read upgrade result output from agent.
 
@@ -992,13 +992,8 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         not_found_agents = agent_list - system_agents
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
-        # Add non active agents to failed_items
-        non_active_agents = set([agent['id'] for agent in data if agent['status'] != 'active'])
-        [result.add_failed_item(id_=agent, error=WazuhError(1707))
-         for agent in non_active_agents]
-
         # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - non_active_agents - can_upgrade_agents
+        non_eligible_agents = agent_list - not_found_agents - can_upgrade_agents
         [result.add_failed_item(id_=ag, error=WazuhError(
             1731,
             extra_message="some of the requirements are not met -> {}".format(
