@@ -110,7 +110,6 @@ int authd_read_key_request(xml_node **nodes, void *config) {
             mwarn("Deprecated option from older 'agent-key-polling' module: This parameter is now inherited from 'authd' configuration");
         } else {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, KREQUEST_NAME);
-
         }
     }
 
