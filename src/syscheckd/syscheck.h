@@ -91,6 +91,13 @@ typedef struct diff_data {
     char *diff_file;
 } diff_data;
 
+typedef enum audit_key_type {
+    FIM_AUDIT_UNKNOWN_KEY = 0,
+    FIM_AUDIT_KEY,
+    FIM_AUDIT_HC_KEY,
+    FIM_AUDIT_CUSTOM_KEY
+} audit_key_type;
+
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
 #define FIM_RT_HANDLE_CLOSED 0
@@ -579,14 +586,6 @@ int audit_health_check(int audit_socket);
  */
 void clean_rules(void);
 
-/**
- * @brief
- *
- * @param buffer
- * @return 0 if no key is found, 1 if AUDIT_KEY is found, 2 if an existing key is found, 3 if AUDIT_HEALTHCHECK_KEY is found
- */
-
-int filterkey_audit_events(char *buffer);
 
 #elif WIN32
 /**
