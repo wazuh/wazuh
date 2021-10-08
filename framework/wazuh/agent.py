@@ -11,8 +11,7 @@ from typing import Union
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
-    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding, \
-    send_restart_command
+    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, send_restart_command
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -23,6 +22,21 @@ from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
+
+# Error codes generated from upgrade socket error codes that should be excluded in upgrade functions
+# 1820 -> Upgrade procedure could not start. Agent already upgrading
+# 1821 -> Remote upgrade is not available for this agent version
+# 1822 -> Current agent version is greater or equal
+ERROR_CODES_UPGRADE_SOCKET = [1820, 1821, 1822]
+
+# Error codes generated from upgrade socket error codes that should be raised as bad request (400)
+# The rest of codes are WazuhInternalErrors (500)
+# 1819 -> The WPK for this platform is not available
+# 1824 -> The repository is not reachable
+# 1825 -> The version of the WPK does not exist in the repository
+# 1826 -> The WPK file does not exist
+# 1827 -> The WPK sha1 of the file is not valid
+ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1819, 1824, 1825, 1826, 1827]
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -814,9 +828,10 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1703, 1818]})
-def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, use_http=False,
-                   file_path=None, installer=None):
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
+def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
+                   use_http: bool = False, file_path: str = None, installer: str = None, filters: dict = None,
+                   q: str = None) -> AffectedItemsWazuhResult:
     """Start the agent upgrade process.
 
     Parameters
@@ -835,83 +850,188 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
         Path to the installation file.
     installer : str
         Selected installer.
+    filters : dict
+        Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    q : str
+        Define query to filter in DB.
 
     Returns
     -------
-    ID of created tasks
+    AffectedItemsWazuhResult
+        Result with IDs of created tasks.
     """
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were created',
                                       some_msg='Some upgrade tasks were not created',
                                       none_msg='No upgrade task was created',
                                       sort_fields=['agent'], sort_ascending='True')
 
-    agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    if version and not version.startswith('v'):
-        version = f'v{version}'
+    if agent_list:
+        system_agents = get_agents_info()
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
+                                        filters=filters)
 
-    agents_result_chunks = [agent_list[x:x + 500] for x in range(0, len(agent_list), 500)]
+        with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
+            data = db_query.run()
 
-    agent_results = list()
-    for agents_chunk in agents_result_chunks:
-        agent_results.append(
-            core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
-                                agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force,
-                                use_http=use_http, file_path=file_path, installer=installer))
+        can_upgrade_agents = set(map(operator.itemgetter('id'), data['items']))
+        agent_list = set(agent_list)
 
-    for agent_result_chunk in agent_results:
-        for agent_result in agent_result_chunk['data']:
-            if agent_result['error'] == 0:
-                task_agent = {
-                    'agent': str(agent_result['agent']).zfill(3),
-                    'task_id': agent_result['task_id']
-                }
-                result.affected_items.append(task_agent)
-                result.total_affected_items += 1
-            else:
-                error = WazuhError(code=1810 + agent_result['error'], cmd_error=True,
-                                   extra_message=agent_result['message'])
-                result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
-    result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
+        try:
+            agent_list.remove('000')
+            result.add_failed_item('000', WazuhError(1703))
+        except KeyError:
+            pass
+
+        # Add non existent agents to failed_items
+        not_found_agents = agent_list - system_agents
+        [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
+
+        # Add non active agents to failed_items
+        non_active_agents = set([agent['id'] for agent in data if agent['status'] != 'active'])
+        [result.add_failed_item(id_=agent, error=WazuhError(1707))
+         for agent in non_active_agents]
+
+        # Add non eligible agents to failed_items
+        non_eligible_agents = agent_list - not_found_agents - non_active_agents - can_upgrade_agents
+        [result.add_failed_item(id_=ag, error=WazuhError(
+            1731,
+            extra_message="some of the requirements are not met -> {}".format(
+                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                (f', q: {q}' if q else '')
+            )
+        )) for ag in non_eligible_agents]
+
+        if version and not version.startswith('v'):
+            version = f'v{version}'
+
+        eligible_agents = list(agent_list.intersection(system_agents).intersection(can_upgrade_agents))
+
+        # Transform the format of the agent ids to the general format
+        eligible_agents = [int(agent) for agent in eligible_agents]
+
+        agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
+
+        agent_results = list()
+        for agents_chunk in agents_result_chunks:
+            agent_results.append(
+                core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
+                                    agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force,
+                                    use_http=use_http, file_path=file_path, installer=installer))
+
+        for agent_result_chunk in agent_results:
+            for agent_result in agent_result_chunk['data']:
+                socket_error = agent_result['error']
+                # Success, return agent and task IDs
+                if socket_error == 0:
+                    task_agent = {
+                        'agent': str(agent_result['agent']).zfill(3),
+                        'task_id': agent_result['task_id']
+                    }
+                    result.affected_items.append(task_agent)
+                    result.total_affected_items += 1
+
+                # Upgrade error for specific agents
+                elif (error_code := 1810 + socket_error) in ERROR_CODES_UPGRADE_SOCKET:
+                    error = WazuhError(code=error_code, cmd_error=True, extra_message=agent_result['message'])
+                    result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
+
+                # Upgrade error for all agents, bad request
+                elif error_code in ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST:
+                    raise WazuhError(error_code, cmd_error=True, extra_message=agent_result['message'])
+
+                # Upgrade error for all agents, internal server error
+                else:
+                    raise WazuhInternalError(error_code, cmd_error=True, extra_message=agent_result['message'])
+
+        result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1703, 1817]})
-def get_upgrade_result(agent_list=None):
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731]})
+def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Read upgrade result output from agent.
 
     Parameters
     ----------
     agent_list : list
         List of agent ID's.
+    filters : dict
+        Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    q : str
+        Define query to filter in DB.
 
     Returns
     -------
-    Upgrade result.
+    AffectedItemsWazuhResult
+        Upgrade results..
     """
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were returned',
                                       some_msg='Some upgrade tasks were not returned',
                                       none_msg='No upgrade task was returned')
 
-    agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    agents_result_chunks = [agent_list[x:x + 500] for x in range(0, len(agent_list), 500)]
+    if agent_list:
+        system_agents = get_agents_info()
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
+                                        filters=filters)
 
-    task_results = list()
-    for agents_chunk in agents_result_chunks:
-        task_results.append(core_upgrade_agents(agents_chunk=agents_chunk, get_result=True))
+        with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
+            data = db_query.run()
 
-    for task_result_chunk in task_results:
-        for task_result in task_result_chunk['data']:
-            task_error = task_result.pop('error')
-            if task_error == 0:
-                task_result['agent'] = str(task_result['agent']).zfill(3)
-                result.affected_items.append(task_result)
-                result.total_affected_items += 1
-            else:
-                error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['message'])
-                result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
-    result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
+        can_upgrade_agents = set(map(operator.itemgetter('id'), data['items']))
+        agent_list = set(agent_list)
+
+        try:
+            agent_list.remove('000')
+            result.add_failed_item('000', WazuhError(1703))
+        except KeyError:
+            pass
+
+        # Add non existent agents to failed_items
+        not_found_agents = agent_list - system_agents
+        [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
+
+        # Add non active agents to failed_items
+        non_active_agents = set([agent['id'] for agent in data if agent['status'] != 'active'])
+        [result.add_failed_item(id_=agent, error=WazuhError(1707))
+         for agent in non_active_agents]
+
+        # Add non eligible agents to failed_items
+        non_eligible_agents = agent_list - not_found_agents - non_active_agents - can_upgrade_agents
+        [result.add_failed_item(id_=ag, error=WazuhError(
+            1731,
+            extra_message="some of the requirements are not met -> {}".format(
+                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                (f', q: {q}' if q else '')
+            )
+        )) for ag in non_eligible_agents]
+
+        eligible_agents = list(agent_list.intersection(system_agents).intersection(can_upgrade_agents))
+
+        # Transform the format of the agent ids to the general format
+        eligible_agents = [int(agent) for agent in eligible_agents]
+
+        agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
+
+        task_results = list()
+        for agents_chunk in agents_result_chunks:
+            task_results.append(core_upgrade_agents(agents_chunk=agents_chunk, get_result=True))
+
+        for task_result_chunk in task_results:
+            for task_result in task_result_chunk['data']:
+                task_error = task_result.pop('error')
+                # Success, return agent and task IDs
+                if task_error == 0:
+                    task_result['agent'] = str(task_result['agent']).zfill(3)
+                    result.affected_items.append(task_result)
+                    result.total_affected_items += 1
+
+                # Upgrade error for all agents, internal server error
+                else:
+                    raise WazuhInternalError(1810 + task_error, cmd_error=True, extra_message=task_result['message'])
+
+        result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
 
