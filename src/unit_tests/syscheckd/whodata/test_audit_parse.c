@@ -96,6 +96,26 @@ static int free_string(void **state) {
     return 0;
 }
 
+static int setup_custom_key(void **state) {
+    syscheck.audit_key = calloc(2, sizeof(char *));
+    if (syscheck.audit_key == NULL) {
+        return 1;
+    }
+
+    syscheck.audit_key[0] = calloc(OS_SIZE_64, sizeof(char));
+    if (syscheck.audit_key[0] == NULL) {
+        return 1;
+    }
+    return 0;
+}
+
+static int teardown_custom_key(void **state) {
+    free(syscheck.audit_key[0]);
+    free(syscheck.audit_key);
+    syscheck.audit_key = NULL;
+    return 0;
+}
+
 
 void test_filterkey_audit_events_custom(void **state) {
     (void) state;
