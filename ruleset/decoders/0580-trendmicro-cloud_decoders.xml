@@ -7,5 +7,5 @@
 <decoder name="trendmicroCEF-version">
   <parent>trendmicroCEF</parent>
   <regex>(\d)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|</regex>
-  <order>version,device_vendor,device_product,device_version,Signature ID,name,Severity,Extension</order>
+  <order>version,device_vendor,device_product,device_version,signature_id,name,severity,extension</order>
 </decoder>
