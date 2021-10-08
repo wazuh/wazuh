@@ -771,6 +771,7 @@ int OS_ReadTimestamps(keystore * keys) {
 
 int OS_WriteTimestamps(keystore * keys) {
     File file;
+    int r = 0;
 
     if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
         merror("Couldn't open timestamp file for writing.");
@@ -789,11 +790,27 @@ int OS_WriteTimestamps(keystore * keys) {
         struct tm tm_result = { .tm_sec = 0 };
 
         strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp);
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            r = -1;
+            break;
+        }
     }
 
-    fclose(file.fp);
-    int r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        r = -1;
+    }
+
+    if (r == 0) {
+        r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    }
+
+    if (r != 0) {
+        unlink(file.name);
+    }
+
     free(file.name);
 
     return r;

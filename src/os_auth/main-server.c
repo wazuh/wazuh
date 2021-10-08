@@ -828,6 +828,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteTimestamps(copy_keys) < 0) {
             merror("Couldn't write file agents-timestamp.");
+            sleep(1);
         }
 
         gettime(&t1);
