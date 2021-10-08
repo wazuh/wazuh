@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #include "headers/shared.h"
 #include "remoted/remoted.h"
 #include "../wrappers/common.h"
@@ -32,14 +31,13 @@
 #include "../wrappers/linux/queue.h"
 #include "remoted/secure.c"
 
-
 extern keystore keys;
 extern remoted logr;
+extern wnotify_t * notify;
 
 /* Forward declarations */
 void * close_fp_main(void * args);
 void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
-
 
 /* Setup/teardown */
 
@@ -53,6 +51,19 @@ static int setup_config(void **state) {
 static int teardown_config(void **state) {
     linked_queue_free(keys.opened_fp_queue);
     test_mode = 0;
+    return 0;
+}
+
+static int setup_new_tcp(void **state) {
+    test_mode = 1;
+    os_calloc(1, sizeof(wnotify_t), notify);
+    notify->fd = 0;
+    return 0;
+}
+
+static int teardown_new_tcp(void **state) {
+    test_mode = 0;
+    os_free(notify);
     return 0;
 }
 
@@ -423,11 +434,8 @@ void test_handle_new_tcp_connection_success(void **state)
     struct sockaddr_in peer_info;
     int sock_client = 12;
 
-    wnotify_t * notify;
-
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("192.168.0.10");
-
 
     will_return(__wrap_accept, sock_client);
 
@@ -455,11 +463,8 @@ void test_handle_new_tcp_connection_wnotify_fail(void **state)
     struct sockaddr_in peer_info;
     int sock_client = 12;
 
-    wnotify_t * notify;
-
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("192.168.0.10");
-
 
     will_return(__wrap_accept, sock_client);
 
@@ -510,8 +515,6 @@ void test_handle_new_tcp_connection_socket_fail(void **state)
     struct sockaddr_in peer_info;
     int sock_client = 12;
 
-    wnotify_t * notify;
-
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("192.168.0.10");
 
@@ -526,8 +529,6 @@ void test_handle_new_tcp_connection_socket_fail_err(void **state)
 {
     struct sockaddr_in peer_info;
     int sock_client = 12;
-
-    wnotify_t * notify;
 
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("192.168.0.10");
@@ -551,7 +552,6 @@ void test_handle_incoming_data_from_udp_socket_0(void **state)
 
     handle_incoming_data_from_udp_socket(&peer_info);
 }
-
 
 void test_handle_incoming_data_from_udp_socket_success(void **state)
 {
@@ -588,7 +588,7 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "Too big message size from 192.168.0.10 [8].");
 
     expect_function_call(__wrap_key_lock_read);
-    
+
     // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
     will_return(__wrap_OS_DeleteSocket, 0);
@@ -625,7 +625,7 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "handle incoming close socket 192.168.0.10 [7].");
 
     expect_function_call(__wrap_key_lock_read);
-    
+
     // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
     will_return(__wrap_OS_DeleteSocket, 0);
@@ -666,7 +666,7 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "handle incoming close socket 192.168.0.10 [7].");
 
     expect_function_call(__wrap_key_lock_read);
-    
+
     // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
     will_return(__wrap_OS_DeleteSocket, 0);
@@ -742,7 +742,7 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "handle outgoing close socket 192.168.0.10 [10].");
 
     expect_function_call(__wrap_key_lock_read);
-    
+
     // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
     will_return(__wrap_OS_DeleteSocket, 0);
@@ -782,7 +782,6 @@ void test_handle_outgoing_data_to_tcp_socket_success(void **state)
     handle_outgoing_data_to_tcp_socket(sock_client, &peer_info);
 }
 
-
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -796,10 +795,10 @@ int main(void)
         // Tests HandleSecureMessage
         cmocka_unit_test(test_HandleSecureMessage_unvalid_message),
         // Tests handle_new_tcp_connection
-        cmocka_unit_test(test_handle_new_tcp_connection_success),
-        cmocka_unit_test(test_handle_new_tcp_connection_wnotify_fail),
-        cmocka_unit_test(test_handle_new_tcp_connection_socket_fail),
-        cmocka_unit_test(test_handle_new_tcp_connection_socket_fail_err),
+        cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
+        cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_wnotify_fail, setup_new_tcp, teardown_new_tcp),
+        cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_socket_fail, setup_new_tcp, teardown_new_tcp),
+        cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_socket_fail_err, setup_new_tcp, teardown_new_tcp),
         // Tests handle_incoming_data_from_udp_socket
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_0),
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_success),
@@ -816,5 +815,3 @@ int main(void)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
-
-
