@@ -91,6 +91,13 @@ DisableAuthd()
     echo "    <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
     echo "    <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
     echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG
+    echo "    <key_request>" >> $NEWCONFIG
+    echo "      <enabled>yes</enabled>" >> $NEWCONFIG
+    echo "      <exec_path>/usr/bin/python /home/script.py</exec_path> | <socket>/path/to/socket</socket>" >> $NEWCONFIG
+    echo "      <timeout>60</timeout>" >> $NEWCONFIG
+    echo "      <threads>1</threads>" >> $NEWCONFIG
+    echo "      <queue_size>1024</queue_size>" >> $NEWCONFIG
+    echo "    </key_request>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
