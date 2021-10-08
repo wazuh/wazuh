@@ -13,8 +13,10 @@
 
 #ifdef ENABLE_AUDIT
 
-#ifdef WAZUH_UNIT_TESTING
-#define static
+#ifndef WAZUH_UNIT_TESTING
+#define STATIC static
+#else
+#define STATIC
 #endif
 
 static regex_t regexCompiled_uid;
@@ -241,7 +243,7 @@ void clean_regex() {
  * @param key Audit field to look for
  * @return Value of the field specified in key.
  */
-static char *get_audit_field(const char *buffer, const char *key) {
+STATIC char *get_audit_field(const char *buffer, const char *key) {
     char *value = NULL;
     char *start = NULL;
     char *ascii_value = NULL;
@@ -287,7 +289,7 @@ static char *get_audit_field(const char *buffer, const char *key) {
  * @retval FIM_AUDIT_HC_KEY if the key of the event is AUDIT_HEALTHCHECK_KEY.
  * @retval FIM_AUDIT_CUSTOM_KEY if the key of the event is configured using audit_key option.
  */
-static audit_key_type filterkey_audit_events(char *buffer) {
+STATIC audit_key_type filterkey_audit_events(char *buffer) {
     char *save_ptr = NULL;
     char *full_key = NULL;
     char *key = NULL;
