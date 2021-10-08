@@ -185,6 +185,7 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_DELETE_TASK,
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
@@ -287,6 +288,8 @@ extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
+extern char *schema_global_upgrade_v3_sql;
+
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -1240,6 +1243,15 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
+
+/**
+ * @brief Enables foreign keys usage into the specified database.
+ *
+ * @param [in] db Pointer to an open database.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_enable_foreign_keys(sqlite3 *db);
 
 /**
  * @brief Function to insert an agent.
