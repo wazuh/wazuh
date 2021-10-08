@@ -52,9 +52,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
-    const char *key_polling = "agent-key-polling";      /* Deprecated Agent Key Polling module */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *osreports = "reports";                  /* Server Config */
+#ifndef CLIENT
+    const char *key_polling = "agent-key-polling";      /* Deprecated Agent Key Polling module */
+#endif
 #endif
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
@@ -186,10 +188,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAUTHD) && (authd_key_request_read(chld_node, d1) < 0)) {
                 goto fail;
             }
-        }
 #endif
 #endif
-        else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+        } else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
