@@ -156,7 +156,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
+            } 
+#ifndef CLIENT
+            else if ((node[i]->attributes[0] && node[i]->values[0]) && (!strcmp(node[i]->attributes[0], "name") && !strcmp(node[i]->values[0], key_polling))) {
+                if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
+                    goto fail;
+                }
             }
+#endif
         } else if (strcmp(node[i]->element, ossca) == 0) {
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
@@ -183,13 +190,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-#ifndef CLIENT
-        } else if (strcmp(node[i]->element, key_polling) == 0) {
-            minfo("Detected old configuration block from deprecated agent-key-polling module.");
-            if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
-                goto fail;
-            }
-#endif
 #endif
         } else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
