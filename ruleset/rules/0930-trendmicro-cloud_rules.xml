@@ -44,7 +44,7 @@
   <!--Event 500 a 899-->
   <rule id="57807" level="3">
      <if_sid>57801</if_sid>
-     <field name="signature_id" type="pcre2">^[6-8]{1}[0-9]{2}$</field>
+     <field name="signature_id" type="pcre2">^[5-8]{1}[0-9]{2}$</field>
      <description>Grouping of Trend Micro Rules - PS normalization</description>
   </rule>
 
