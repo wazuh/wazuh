@@ -18,15 +18,24 @@ static const char *XML_QUEUE_SIZE = "queue_size";
 static const char *XML_EXEC_PATH = "exec_path";
 static const char *XML_SOCKET = "socket";
 static const char *XML_FORCE_INSERT = "force_insert";
+static const char *KREQUEST_NAME = "key-request";
 
 static short eval_bool(const char *str) { return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID; }
 
 // Reading function
-int authd_key_request_read(xml_node **nodes, void *config) {
-    unsigned int i;
+int authd_read_key_request(xml_node **nodes, void *config) {
     authd_config_t *authd_config = (authd_config_t *)config;
     authd_key_request_t *key_request = &(authd_config->key_request);
 
+    /*
+    * Mechanism to avoid overwritting configuration settings when both 'key-request'
+    * and 'agent-key-polling' configurations are present
+    */
+    if (key_request->compatibility_flag == 1) {
+        return 0;
+    }
+
+    // Default configuration
     key_request->enabled = 1;
     key_request->timeout = 60;
     key_request->threads = 1;
@@ -36,64 +45,73 @@ int authd_key_request_read(xml_node **nodes, void *config) {
         return 0;
     }
 
-    for(i = 0; nodes[i]; i++) {
+    for (unsigned int i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
+        // Flag to enable or disable the module
         } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (key_request->enabled = eval_bool(nodes[i]->content), key_request->enabled == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, "Key Request");
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, KREQUEST_NAME);
                 return OS_INVALID;
             }
+        // Local path for script execution
         } else if (!strcmp(nodes[i]->element, XML_EXEC_PATH)) {
-            if(key_request->exec_path) {
+            if (key_request->exec_path) {
                 free(key_request->exec_path);
             }
 
-            if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Exec path is too long at module '%s'. Max path length is %d", "Key Request", PATH_MAX);
+            if (strlen(nodes[i]->content) >= PATH_MAX) {
+                merror("Exec path is too long at module '%s'. Max path length is %d", KREQUEST_NAME, PATH_MAX);
                 return OS_INVALID;
             }
-            key_request->exec_path = strdup(nodes[i]->content);
-        } else if(!strcmp(nodes[i]->element, XML_SOCKET)) {
-            if(key_request->socket) {
+
+            os_strdup(nodes[i]->content, key_request->exec_path);
+        // Socket path for script execution
+        } else if (!strcmp(nodes[i]->element, XML_SOCKET)) {
+            if (key_request->socket) {
                 free(key_request->socket);
             }
 
-            if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Socket path is too long at module '%s'. Max path length is %d", "Key Request", PATH_MAX);
+            if (strlen(nodes[i]->content) >= PATH_MAX) {
+                merror("Socket path is too long at module '%s'. Max path length is %d", KREQUEST_NAME, PATH_MAX);
                 return OS_INVALID;
             }
-            key_request->socket = strdup(nodes[i]->content);
-        } else if(!strcmp(nodes[i]->element, XML_TIMEOUT)) {
+
+            os_strdup(nodes[i]->content, key_request->socket);
+        // Timeout
+        } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             key_request->timeout = atol(nodes[i]->content);
 
             if (key_request->timeout < 1 || key_request->timeout >= UINT_MAX) {
-                merror("Invalid interval at module '%s'", "Key Request");
+                merror("Invalid interval at module '%s'", KREQUEST_NAME);
                 return OS_INVALID;
             }
 
             mdebug2("Timeout read: %d", key_request->timeout);
+        // Maximum number of threads
         } else if (!strcmp(nodes[i]->element, XML_THREADS)) {
             key_request->threads = atol(nodes[i]->content);
 
             if (key_request->threads < 1 || key_request->threads > 32) {
-                merror("Invalid number of threads at module '%s'", "Key Request");
+                merror("Invalid number of threads at module '%s'", KREQUEST_NAME);
                 return OS_INVALID;
             }
+        // Queue size
         } else if (!strcmp(nodes[i]->element, XML_QUEUE_SIZE)) {
             key_request->queue_size = atol(nodes[i]->content);
 
             if (key_request->queue_size < 1 || key_request->queue_size > 220000) {
-                merror("Invalid queue size at module '%s'", "Key Request");
+                merror("Invalid queue size at module '%s'", KREQUEST_NAME);
                 return OS_INVALID;
             }
+        // Deprecated "force-insert" function from older Agent Key Polling module
         } else if (!strcmp(nodes[i]->element, XML_FORCE_INSERT)) {
-            mwarn("Deprecated option");
+            mwarn("Deprecated option from older 'agent-key-polling' module: This parameter is now inherited from 'authd' configuration");
         } else {
-            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, "Key Request");
-        }
+            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, KREQUEST_NAME);
 
+        }
     }
 
     return 0;

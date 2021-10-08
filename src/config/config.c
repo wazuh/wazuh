@@ -185,7 +185,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #ifndef CLIENT
         } else if (strcmp(node[i]->element, key_polling) == 0) {
-            if ((modules & CAUTHD) && (authd_key_request_read(chld_node, d1) < 0)) {
+            if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
                 goto fail;
             }
 #endif

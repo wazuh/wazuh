@@ -11,10 +11,8 @@
 #include <stdio.h>
 
 // Reading function
-int wm_key_request_read(xml_node **nodes, wmodule *module) {
-    (void)nodes;
-    (void)module;
-
-    mwarn("Detected deprecated configuration block for 'agent-key-polling' module. The content will be ");
+int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) wmodule *module) {
+    minfo("Ignoring deprecated configuration block for old 'agent-key-polling' module: " \
+         "The key-requesting feature is now part of the 'auth' daemon");
     return 0;
 }

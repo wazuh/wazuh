@@ -37,6 +37,7 @@ typedef struct authd_key_request_t {
     unsigned int    timeout;
     unsigned int    threads;
     unsigned int    queue_size;
+    unsigned short  compatibility_flag; // Flag to avoid overwritting configuration settings
 } authd_key_request_t;
 
 typedef struct authd_config_t {

@@ -149,7 +149,9 @@ int Read_Authd(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *d
                 continue;
             }
 
-            authd_key_request_read(node, config);
+            config->key_request.compatibility_flag = 0;
+            authd_read_key_request(node, config);
+            config->key_request.compatibility_flag = 1;
             OS_ClearNode(children);
 #endif
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {

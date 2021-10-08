@@ -17,6 +17,7 @@
 int authd_read_config(const char *path) {
     config.port = DEFAULT_PORT;
     config.force_options.connection_time = -1;
+    config.key_request.compatibility_flag = 0;
 
     mdebug2("Reading configuration '%s'", path);
 
