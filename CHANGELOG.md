@@ -42,8 +42,10 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Added a context variable to indicate origin module in socket communication messages. ([#9209](https://github.com/wazuh/wazuh/pull/9209))
 
-- **Ruleset**
+. **Ruleset:**
+  - Added Rules and Decoders for Wazuh API. ([#10428](https://github.com/wazuh/wazuh/pull/10428))
   - Added Rules and Decoders for TrendMicro Cloud One. ([#10458](https://github.com/wazuh/wazuh/pull/10458))
+
 ### Changed
 
 - **Core:**
