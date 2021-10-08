@@ -72,7 +72,7 @@ cJSON *getAuthdConfig(void) {
     if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);
     if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
-    if (config.key_request.enabled) cJSON_AddStringToObject(auth,"enabled","yes"); else cJSON_AddStringToObject(authd,"enabled","no");
+    if (config.key_request.enabled) cJSON_AddStringToObject(auth,"enabled","yes"); else cJSON_AddStringToObject(auth,"enabled","no");
     if (config.key_request.exec_path) cJSON_AddStringToObject(auth,"exec_path",config.key_request.exec_path);
     if (config.key_request.socket) cJSON_AddStringToObject(auth,"socket",config.key_request.socket);
     if (config.key_request.timeout) cJSON_AddNumberToObject(auth,"timeout",config.key_request.timeout);
