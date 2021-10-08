@@ -185,6 +185,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #ifndef CLIENT
         } else if (strcmp(node[i]->element, key_polling) == 0) {
+            minfo("Detected old configuration block from deprecated 'agent-key-polling' module");
             if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
                 goto fail;
             }
