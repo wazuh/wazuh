@@ -1132,9 +1132,14 @@ InstallAgent()
 
     if [ ! -d ${INSTALLDIR}/wodles/gcloud ]; then
         ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud/pubsub
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud/buckets
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/gcloud.py ${INSTALLDIR}/wodles/gcloud/gcloud
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/integration.py ${INSTALLDIR}/wodles/gcloud/integration.py
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/tools.py ${INSTALLDIR}/wodles/gcloud/tools.py
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/buckets/bucket.py ${INSTALLDIR}/wodles/gcloud/buckets/bucket.py
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/buckets/access_logs.py ${INSTALLDIR}/wodles/gcloud/buckets/access_logs.py
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/pubsub/subscriber.py ${INSTALLDIR}/wodles/gcloud/pubsub/subscriber.py
     fi
 
     if [ ! -d ${INSTALLDIR}/wodles/docker ]; then
