@@ -27,6 +27,7 @@ class ISysOsInfoProvider
         virtual std::string minorVersion() const = 0;
         virtual std::string build() const = 0;
         virtual std::string release() const = 0;
+        virtual std::string displayVersion() const = 0;
         virtual std::string machine() const = 0;
         virtual std::string nodeName() const = 0;
         // LCOV_EXCL_STOP
@@ -48,6 +49,7 @@ class SysOsInfo
             output["os_version"] = osInfoProvider->version();
             output["hostname"] = osInfoProvider->nodeName();
             output["os_release"] = osInfoProvider->release();
+            output["os_display_version"] = osInfoProvider->displayVersion();
             output["architecture"] = osInfoProvider->machine();
         }
 };

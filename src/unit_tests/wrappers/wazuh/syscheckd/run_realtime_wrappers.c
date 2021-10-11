@@ -39,3 +39,7 @@ int __wrap_fim_add_inotify_watch(const char *dir,
 
     return mock();
 }
+
+void __wrap_realtime_sanitize_watch_map() {
+    function_called();
+}

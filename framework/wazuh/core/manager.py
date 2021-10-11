@@ -9,7 +9,6 @@ import re
 import socket
 from collections import OrderedDict
 from datetime import datetime
-from datetime import timezone
 from os.path import exists, join
 from typing import Dict
 
@@ -18,7 +17,7 @@ from wazuh import WazuhInternalError, WazuhError, WazuhException
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.utils import tail
-from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhSocket
+from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 wcom_lockfile = join(common.wazuh_path, "var", "run", ".api_wcom_lock")
@@ -67,8 +66,8 @@ def get_ossec_logs(limit=2000):
             date, tag, level, description = log_fields
 
             # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': date.astimezone(timezone.utc),
-                        'tag': tag, 'level': level, 'description': description}
+            log_line = {'timestamp': date.strftime(common.date_format), 'tag': tag,
+                        'level': level, 'description': description}
             logs.append(log_line)
 
     return logs

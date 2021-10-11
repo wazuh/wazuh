@@ -28,6 +28,7 @@ typedef struct wm_aws_bucket {
     char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
+    char *iam_role_duration;            // IAM role session duration
     char *aws_organization_id;          // AWS organization ID
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
@@ -38,6 +39,8 @@ typedef struct wm_aws_bucket {
     char *type;                         // String defining bucket type.
     char *discard_field;                // Name of the event's field to apply the discard_regex on
     char *discard_regex;                // REGEX to determine if an event should be skipped
+    char *sts_endpoint;                 // URL for the VPC endpoint to use to obtain the STS token
+    char *service_endpoint;             // URL for the endpoint to use to obtain the logs
     unsigned int remove_from_bucket:1;  // Remove the logs from the bucket
     struct wm_aws_bucket *next;     // Pointer to next
 } wm_aws_bucket;
@@ -49,6 +52,7 @@ typedef struct wm_aws_service {
     char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
+    char *iam_role_duration;            // IAM role session duration
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
@@ -57,6 +61,8 @@ typedef struct wm_aws_service {
     char *discard_field;                // Name of the event's field to apply the discard_regex on
     char *discard_regex;                // REGEX to determine if an event should be skipped
     unsigned int remove_log_streams:1;  // Remove the log stream from the log group
+    char *sts_endpoint;                 // URL for the VPC endpoint to use to obtain the STS token
+    char *service_endpoint;             // URL for the endpoint to use to obtain the logs
     struct wm_aws_service *next;     // Pointer to next
 } wm_aws_service;
 

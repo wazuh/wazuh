@@ -185,6 +185,7 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_DELETE_TASK,
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
@@ -287,6 +288,8 @@ extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
+extern char *schema_global_upgrade_v3_sql;
+
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -646,10 +649,10 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace);
 
 // Save OS info into DB.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace);
@@ -1240,6 +1243,15 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
+
+/**
+ * @brief Enables foreign keys usage into the specified database.
+ *
+ * @param [in] db Pointer to an open database.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdb_enable_foreign_keys(sqlite3 *db);
 
 /**
  * @brief Function to insert an agent.

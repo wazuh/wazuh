@@ -34,7 +34,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
+STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -74,7 +74,7 @@ void HandleSecure()
     int sock_client;
     int n_events = 0;
     char buffer[OS_MAXSTR + 1];
-    ssize_t recv_b;
+    int recv_b;
     struct sockaddr_in peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
@@ -147,7 +147,11 @@ void HandleSecure()
 
     /* Read authentication keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
+
+    key_lock_write();
+    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
+    key_unlock();
+
     OS_StartCounter(&keys);
 
     // Key reloader thread
@@ -364,7 +368,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
+STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
     const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -471,6 +475,15 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         tmp_msg = buffer;
+    }
+
+    if (recv_b <= 0) {
+        mwarn("Received message is empty");
+        key_unlock();
+        if (sock_client >= 0)
+            _close_sock(&keys, sock_client);
+
+        return;
     }
 
     /* Decrypt the message */

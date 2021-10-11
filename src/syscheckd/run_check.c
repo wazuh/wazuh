@@ -622,10 +622,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, dir_it->symbolic_links)) {
-                        minfo(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
+                        mdebug2(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
                         fim_link_update(real_path, dir_it);
                     } else {
-                        mdebug1(FIM_LINKCHECK_NOCHANGE, dir_it->symbolic_links);
+                        mdebug2(FIM_LINKCHECK_NOCHANGE, dir_it->symbolic_links);
                     }
                 } else {
                     // Broken link
@@ -705,7 +705,7 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
                 break;
             }
         } else if (strcmp(new_path, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0) {
-            mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
+            mdebug2(FIM_LINK_ALREADY_ADDED, dir_it->path);
             is_new_link = false;
             break;
         }
@@ -766,13 +766,9 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
     // Create the sqlite LIKE pattern.
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
     if (fim_db_get_path_from_pattern(syscheck.database, pattern, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_PATTERN, pattern);
     }
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (file && file->elements) {
         if (fim_db_delete_range(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store,
@@ -804,7 +800,7 @@ STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) 
         dir_it = node_it->data;
         if (strcmp(path, dir_it->path) == 0) {
             // If a configuration directory exists don't reload
-            mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
+            mdebug2(FIM_LINK_ALREADY_ADDED, dir_it->path);
             return;
         }
     }

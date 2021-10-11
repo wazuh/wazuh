@@ -136,7 +136,7 @@ D	Debug, for All Verbosity Levels > 0
         <field name="mongodb.component">ACCESS</field>
         <regex>Unauthorized not authorized on \S+ to execute command</regex>
         <description>MongoDB: Execute commands without the necessary privileges</description>
-        <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
 </group>

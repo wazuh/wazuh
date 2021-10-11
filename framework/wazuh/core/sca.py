@@ -71,25 +71,6 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _default_count_query(self):
         return f"SELECT COUNT(DISTINCT {self.count_field})" + " FROM ({0})"
 
-    def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
-            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
-            # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
-            self._filter_date(q_filter, field_name)
-        else:
-            if q_filter['value'] is not None:
-                self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
-                    r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
-                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
-                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
-                                                 field_filter)
-                if not field_filter.isdigit():
-                    # filtering without being uppercase/lowercase sensitive
-                    self.query += ' COLLATE NOCASE'
-            else:
-                self.query += '{} IS null'.format(self.fields[field_name])
-
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
             if field_name in ['end_scan', 'start_scan']:

@@ -45,7 +45,7 @@
       <if_sid>22403</if_sid>
       <field name="vuls.score">^4|^5|^6</field>
       <description>Medium vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
-      <group>gdpr_IV_35.7.d,</group>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 
@@ -53,7 +53,7 @@
       <if_sid>22403</if_sid>
       <field name="vuls.score">^7|^8</field>
       <description>High vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
-      <group>gdpr_IV_35.7.d,</group>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 
@@ -61,7 +61,7 @@
       <if_sid>22403</if_sid>
       <field name="vuls.score">^9|^10</field>
       <description>Critical vulnerability $(vuls.scanned_cve) detected in scanning launched on $(vuls.scan_date) with $(vuls.assurance) reliability ($(vuls.detection_method)). $(vuls.tittle). Score: $(vuls.score) ($(vuls.source)). Affected packages: $(vuls.affected_packages)</description>
-      <group>gdpr_IV_35.7.d,</group>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 
@@ -69,7 +69,7 @@
       <if_sid>22401</if_sid>
       <field name="vuls.affected_packages">kernel</field>
       <description>Vulnerability $(vuls.scanned_cve) affects critical parts of the system.</description>
-      <group>gdpr_IV_35.7.d,</group>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 

@@ -22,7 +22,7 @@
         <if_sid>83000</if_sid>
         <id>1116</id>
         <description>Windows Defender: detected potentially unwanted software</description>
-        <group>gdpr_IV_35.7.d,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -32,7 +32,7 @@
         <if_sid>83000</if_sid>
         <id>1117</id>
         <description>Windows Defender: taken action to protect machine from unwanted software</description>
-        <group>gdpr_IV_35.7.d,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
 </group>

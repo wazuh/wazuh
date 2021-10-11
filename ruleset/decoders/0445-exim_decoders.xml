@@ -56,6 +56,7 @@
 
 <decoder name="exim-unrouteable-address">
   <parent>windows-date-format</parent>
+  <prematch offset="after_parent">rejected RCPT</prematch>
   <regex>H=(\.*) [(\d*.\d*.\d*.\d*)]\.*rejected RCPT \<(\.*)>: (\.*)</regex>
   <order>host,host_ip,src_email,error_message</order>
 </decoder>

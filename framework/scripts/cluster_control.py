@@ -111,8 +111,6 @@ async def print_health(config, more, filter_node):
             msg2 += "                Synchronized files: Shared: {} | Missing: {} | Extra: {} | Extra valid: {}.\n".format(
                 n_shared, n_missing, n_extra, n_extra_valid)
 
-            msg2 += "                Permission to sync extra valid files: {}.\n".format(
-                str(node_info['status']['sync_extravalid_free']))
             msg2 += "                Extra valid files correctly updated in master: {}.\n".format(
                 str(node_info['status']['last_sync_integrity']['total_extra_valid']))
 

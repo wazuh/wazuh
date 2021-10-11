@@ -787,7 +787,7 @@ LIBPLIST_LIB = $(EXTERNAL_LIBPLIST)/bin/lib/libplist-2.0.a
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
-DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
+DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-18.1.a
 LIBALPM_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
 LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
@@ -1082,7 +1082,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 14
+DEPS_VERSION = 15
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
@@ -1328,6 +1328,9 @@ wrappers_windows_lib_o := $(wrappers_windows_lib_c:.c=.o)
 wrappers_windows_posix_c := $(wildcard unit_tests/wrappers/windows/posix/*.c)
 wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 
+wrappers_wazuh_remoted_c := $(wildcard unit_tests/wrappers/wazuh/remoted/*.c)
+wrappers_wazuh_remoted_o := $(wrappers_wazuh_remoted_c:.c=.o)
+
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
@@ -1359,6 +1362,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
@@ -1635,7 +1639,7 @@ os_execd_o := $(os_execd_c:.c=.o)
 os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
 
-wazuh-execd: ${os_execd_o}
+wazuh-execd: ${os_execd_o} active-response/active_responses.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
@@ -2161,6 +2165,9 @@ unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
+unit_tests/wrappers/wazuh/remoted/%.o: unit_tests/wrappers/wazuh/remoted/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
 .PHONY: test
 
 ###################
@@ -2192,10 +2199,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o}
@@ -2362,6 +2369,7 @@ clean-unit-tests:
 	rm -f ${wrappers_windows_lib_o}
 	rm -f ${wrappers_windows_posix_o}
 	rm -f ${wrappers_client_agent_o}
+	rm -f ${wrappers_wazuh_remoted_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

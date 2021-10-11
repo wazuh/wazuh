@@ -144,3 +144,19 @@ nlohmann::json SysInfo::getPorts() const
     // Currently not supported for this OS
     return nlohmann::json {};
 }
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+{
+    // Currently not supported for this OS.
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+{
+    // Currently not supported for this OS.
+}
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    // Currently not supported for this OS.
+    return nlohmann::json();
+}

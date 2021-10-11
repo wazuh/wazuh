@@ -1,10 +1,10 @@
 <!--
   -  Freepbx decoders.
-  -  Author: rafamunoz98.
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
+
 <!--
 [2019-07-25 14:29:19] Asterisk 15.7.3 built by root @ centos-7-31 on a x86_64 running Linux on 2019-07-25 14:15:02 UTC
 May 19 00:22:05 freepbx-a pacemakerd[1310]:   notice: crm_add_logfile: Additional logging available in /var/log/cluster/corosync.log

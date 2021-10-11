@@ -264,6 +264,40 @@ def test_process_array(array, filters, limit, search_text, sort_by, expected_ite
     assert result == {'items': expected_items, 'totalItems': len_expected_items}
 
 
+@pytest.mark.parametrize('array, q, expected_items', [
+    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
+                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
+     'datetime=2017-10-25T14:48:53.732000Z', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
+    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
+                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
+     'datetime<2017-10-26', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
+    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
+                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
+     'datetime>2019-10-26,datetime<2017-10-26', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
+    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
+                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
+     'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', [{'item': 'value_1',
+                                                                   'datetime': '2018-05-15T12:34:12.544000Z'}]),
+    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'}, {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
+     'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', [{'item': 'value_1',
+                                                                   'datetime': '2018-05-15T12:34:12Z'}]),
+])
+def test_process_array_q(array, q, expected_items):
+    """Check the proper functioning of the q parameter.
+
+    Parameters
+    ----------
+    array : list
+        List of values on which to apply the filter.
+    q : str
+    expected_items : list
+        List of items after applying the filter
+    """
+    result = process_array(array=array, q=q)
+
+    assert result == {'items': expected_items, 'totalItems': len(expected_items)}
+
+
 def test_sort_array_type():
     """Test sort_array function."""
     assert isinstance(sort_array(mock_array, mock_sort_by), list)
@@ -419,11 +453,13 @@ def test_safe_move(mock_utime, mock_chmod, mock_chown, ownership, time, permissi
         target_file = join(tmpdirname, 'target')
         safe_move(tmp_file.name, target_file, ownership=ownership, time=time, permissions=permissions)
         assert (os.path.exists(target_file))
-        mock_chown.assert_called_once_with(target_file, *ownership)
+
+        tmp_path = os.path.join(os.path.dirname(tmp_file.name), ".target.tmp")
+        mock_chown.assert_called_once_with(tmp_path, *ownership)
         if time is not None:
-            mock_utime.assert_called_once_with(target_file, time)
+            mock_utime.assert_called_once_with(tmp_path, time)
         if permissions is not None:
-            mock_chmod.assert_called_once_with(target_file, permissions)
+            mock_chmod.assert_called_once_with(tmp_path, permissions)
 
 
 @patch('wazuh.core.utils.chown')

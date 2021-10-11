@@ -182,6 +182,7 @@
       "data.os.platform",
       "data.os.release",
       "data.os.release_version",
+      "data.os.display_version",
       "data.os.sysname",
       "data.os.version",
       "data.oscap.check.description",
@@ -1217,6 +1218,9 @@
                 "type": "keyword"
               },
               "release_version": {
+                "type": "keyword"
+              },
+              "display_version": {
                 "type": "keyword"
               }
             }
