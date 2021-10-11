@@ -156,7 +156,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.extra_valid_requested = False
 
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        default_date = datetime.fromtimestamp(0).strftime(decimals_date_format)
+        default_date = datetime.fromtimestamp(0)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
         self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
                                       'date_end_master': default_date, 'total_extra_valid': 0,
