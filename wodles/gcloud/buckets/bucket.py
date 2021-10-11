@@ -21,7 +21,7 @@ except ImportError:
     exit(1)
 from google.api_core import exceptions as google_exceptions
 
-path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
+path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
 import utils
 from integration import WazuhGCloudIntegration
 
