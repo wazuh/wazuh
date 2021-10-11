@@ -57,7 +57,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88202" level="1">
+  <rule id="88202" level="3">
     <if_sid>88200,88201</if_sid>
     <match>Login attempt: </match>
     <description>NextCloud authentication attempt.</description>
@@ -65,7 +65,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88210" level="6">
+  <rule id="88210" level="3">
     <if_sid>88200,88201</if_sid>
     <match>Logout occurred</match>
     <description>NextCloud logout successful.</description>
@@ -73,7 +73,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88211" level="6">
+  <rule id="88211" level="4">
     <if_sid>88200,88201</if_sid>
     <match>Login successful: </match>
     <description>NextCloud authentication successful.</description>
@@ -100,7 +100,7 @@
 
   </rule>
 
-  <rule id="88213" level="6">
+  <rule id="88213" level="4">
     <if_sid>88200,88201</if_sid>
     <match>File accessed: </match>
     <description>NextCloud file accessed.</description>
@@ -108,7 +108,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88214" level="6">
+  <rule id="88214" level="5">
     <if_sid>88200,88201</if_sid>
     <match>File created: </match>
     <description>NextCloud file created.</description>
@@ -132,7 +132,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88204" level="6">
+  <rule id="88204" level="8">
     <if_sid>88200,88201</if_sid>
     <match>Passed filename is not valid, might be malicious </match>
     <description>NextCloud possible malicious request.</description>
@@ -148,28 +148,28 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88206" level="4">
+  <rule id="88206" level="6">
     <if_sid>88200,88201</if_sid>
     <field name="level">^3$</field>
     <description>NextCloud ERROR message.</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88207" level="3">
+  <rule id="88207" level="5">
     <if_sid>88200,88201</if_sid>
     <field name="level">^2$</field>
     <description>NextCloud WARN message.</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88208" level="2">
+  <rule id="88208" level="3">
     <if_sid>88200,88201</if_sid>
     <field name="level">^1$</field>
     <description>NextCloud INFO message.</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="88209" level="1">
+  <rule id="88209" level="2">
     <if_sid>88200,88201</if_sid>
     <field name="level">^0$</field>
     <description>NextCloud DEBUG message.</description>
