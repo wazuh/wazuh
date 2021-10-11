@@ -158,7 +158,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             } 
 #ifndef CLIENT
-            else if ((node[i]->attributes[0] && node[i]->values[0]) && (!strcmp(node[i]->attributes[0], "name") && !strcmp(node[i]->values[0], key_polling))) {
+            else if ((node[i]->attributes[0] && !strcmp(node[i]->attributes[0], "name")) &&
+                     (node[i]->values[0] && !strcmp(node[i]->values[0], key_polling))) {
                 if ((modules & CAUTHD) && (authd_read_key_request(chld_node, d1) < 0)) {
                     goto fail;
                 }

@@ -34,7 +34,9 @@ int Read_Authd(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *d
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
+#ifndef CLIENT
     static const char *xml_key_request = "key_request";
+#endif
 
     authd_config_t *config = (authd_config_t *)d1;
     int i;
@@ -149,7 +151,6 @@ int Read_Authd(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *d
                 continue;
             }
 
-            config->key_request.compatibility_flag = 0;
             authd_read_key_request(children, config);
             config->key_request.compatibility_flag = 1;
             OS_ClearNode(children);
