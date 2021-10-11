@@ -3,13 +3,15 @@
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of GPLv2
 import io
-import pytest
 import sys
 import zipfile
 from contextvars import ContextVar
 from datetime import datetime
 from time import time
 from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
+
 from wazuh.core import common
 
 with patch('wazuh.common.wazuh_uid'):
@@ -65,36 +67,27 @@ custom_incomplete_configuration = {
 
 
 def test_get_localhost_ips():
-    """
-    Test to check the correct output from the get_localhost_ips function
-    """
-    assert type(cluster.get_localhost_ips()) is set
+    """Check the correct output from the get_localhost_ips function"""
+    assert isinstance(cluster.get_localhost_ips(), set)
 
 
-@pytest.mark.parametrize('read_config', [
-    {'cluster': {'key': ''}}, {'cluster': {'key': 'a' * 15}},
-    {'cluster': {'node_type': 'random', 'key': 'a' * 32}},
-    {'cluster': {'port': 'string', 'node_type': 'master'}},
-    {'cluster': {'port': 90}}, {'cluster': {'port': 70000}},
-    {'cluster': {'port': 1516}}, {'cluster': {'nodes': ['NODE_IP'],
-                                              'key': 'a' * 32,
-                                              'node_type': 'master'}},
-    {'cluster': {'nodes': ['localhost'], 'key': 'a' * 32,
-                 'node_type': 'master'}},
-    {'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32,
-                 'node_type': 'master'}},
-    {'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32,
-                 'node_type': 'master'}},
-    {'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'key': 'a' * 32,
-                 'node_type': 'master'}}
+@pytest.mark.parametrize('read_config, message', [
+    ({'cluster': {'key': ''}}, "Unspecified key"),
+    ({'cluster': {'key': 'a' * 15}}, "Key must be"),
+    ({'cluster': {'node_type': 'random', 'key': 'a' * 32}}, "Invalid node type"),
+    ({'cluster': {'port': 'string', 'node_type': 'master'}}, "Port has to"),
+    ({'cluster': {'port': 90}}, "Port must be"),
+    ({'cluster': {'port': 70000}}, "Port must be"),
+    ({'cluster': {'port': 1516, 'nodes': ['NODE_IP'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
 ])
-def test_check_cluster_config_ko(read_config):
-    """
-    Checks wrong configurations to check the proper exceptions are raised
-    """
-    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
-        m.return_value = read_config.copy()
-        with pytest.raises(WazuhException, match=r'.* 3004 .*'):
+def test_check_cluster_config_ko(read_config, message):
+    """Check wrong configurations to check the proper exceptions are raised"""
+    with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value=read_config) as m:
+        with pytest.raises(WazuhException, match=rf'.* 3004 .* {message}'):
             configuration = wazuh.core.cluster.utils.read_config()
 
             for key in m.return_value["cluster"]:
@@ -105,34 +98,23 @@ def test_check_cluster_config_ko(read_config):
 
 
 def test_get_cluster_items_master_intervals():
-    """
-    Test to check the correct output of the get_cluster_items_master_intervals
-    function
-    """
+    """Check the correct output of the get_cluster_items_master_intervals function"""
     assert isinstance(cluster.get_cluster_items_master_intervals(), dict)
 
 
 def test_get_cluster_items_communication_intervals():
-    """
-    Test to check the correct output of the get_cluster_items
-    communication_intervals function
-    """
+    """Check the correct output of the get_cluster_items communication_intervals function"""
     assert isinstance(cluster.get_cluster_items_communication_intervals(),
                       dict)
 
 
 def test_get_cluster_items_worker_intervals():
-    """
-    Test to check the correct output of the get_cluster_items_worker_intervals
-    function
-    """
+    """Check the correct output of the get_cluster_items_worker_intervals function"""
     assert isinstance(cluster.get_cluster_items_worker_intervals(), dict)
 
 
 def test_get_node():
-    """
-    Test to check the correct output of the get_node function
-    """
+    """Check the correct output of the get_node function"""
     test_dict = {"node_name": "master", "name": "master",
                  "node_type": "master"}
 
@@ -146,47 +128,63 @@ def test_get_node():
 
 
 def test_check_cluster_status():
-    """
-    Test to check the correct output of the check_cluster_status function
-    """
+    """Check the correct output of the check_cluster_status function"""
     assert isinstance(cluster.check_cluster_status(), bool)
 
-@patch('wazuh.core.utils.md5', return_value="some hash")
-def test_walk_dir(mock_md5):
-    """
-    Test to check the different outputs of the walk_files function
-    """
 
-    with patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
-               ContextVar('cluster_integrity_mtime',
-                          default={"/some/path/": {"mod_time": 45}})) as mock_cluster_integrity_mtime:
-        with patch('os.path.join', return_value='/some/path/'):
-            with patch('wazuh.core.cluster.cluster.walk') as w:
-                with patch('os.path.getmtime', return_value=45):
-                    w.return_value = [('/foo/bar', (), ('spam', 'eggs', '.merged'))]
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+@patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
+       ContextVar('cluster_integrity_mtime', default={"/foo/bar": {"mod_time": 45}}))
+@patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ('spam', 'eggs', '.merged'))])
+@patch('os.path.join', return_value='/foo/bar')
+@patch('wazuh.core.cluster.cluster.md5', return_value="some hash")
+def test_walk_dir(mock_md5, mock_path_join, mock_walk):
+    """Check the different outputs of the walk_files function"""
 
-    print("Segunda funcion")
-    with patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
-               ContextVar('cluster_integrity_mtime',
-                          default={"/some/path/": {"mod_time_wrong": 45}})) as mock_cluster_integrity_mtime:
-        with patch('os.path.join', return_value='/some/path/'):
-            with patch('wazuh.core.cluster.cluster.walk') as w:
-                with patch('os.path.getmtime', return_value=45):
-                    w.return_value = [('/foo/bar', (), ('spam', 'eggs', '.merged'))]
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", False)
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-                    cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+    with patch('os.path.getmtime', return_value=45):
+        walk_dir = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+        assert isinstance(walk_dir, dict)
+        assert walk_dir == {"/foo/bar": {"mod_time": 45}}
 
-                with patch('os.path.getmtime', side_effect=FileNotFoundError):
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+    with patch('os.path.getmtime', return_value=35):
+        # Check that the output is a dictionary and also has the key "md5"
+        walk_md5 = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+        assert isinstance(walk_md5, dict)
+        assert "md5" in walk_md5["/foo/bar"].keys()
+        assert walk_md5["/foo/bar"]["md5"] == "some hash"
 
-                with patch('os.path.getmtime', side_effect=PermissionError):
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+        # Check that the output is a dictionary and does not have the key "md5"
+        walk_no_md5 = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", False)
+        assert isinstance(walk_no_md5, dict)
+        assert "md5" not in walk_no_md5["/foo/bar"].keys()
 
-            with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
-                with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
-                    cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+    with patch('os.path.join', return_value='/foo/bar/testing'):
+        walk_no_recursive = cluster.walk_dir("/foo/bar", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+        assert isinstance(walk_no_recursive, dict)
+        assert len(walk_no_recursive.keys()) == 0
+
+
+@patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
+       ContextVar('cluster_integrity_mtime', default={"/foo/bar": {"mod_time_wrong": 45}}))
+@patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ['spam'])])
+@patch('os.path.join', return_value='/foo/bar')
+def test_walk_dir_ko(mock_path_join, mock_walk):
+    """Check all errors that can be raised by the function walk_dir"""
+    with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
+        with patch('os.path.getmtime', side_effect=FileNotFoundError):
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            mock_logger.assert_called_with("File spam was deleted in previous iteration: ")
+
+    with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_logger:
+        with patch('os.path.getmtime', side_effect=PermissionError):
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            mock_logger.assert_called_with("Can't read metadata from file spam: ")
+
+    with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
+        with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+
+    with patch('os.path.getmtime', return_value=35):
+        cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", False)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
@@ -216,9 +214,7 @@ def test_walk_dir(mock_md5):
     }
 })
 def test_get_files_status(mock_get_cluster_items):
-    """
-    Test to check the different outputs of the get_files_status function
-    """
+    """Check the different outputs of the get_files_status function"""
 
     test_dict = {"path": "metadata"}
 
@@ -231,9 +227,7 @@ def test_get_files_status(mock_get_cluster_items):
 
 
 def test_update_cluster_control_with_failed():
-    """
-    Check if cluster_control json is updated as expected
-    """
+    """Check if cluster_control json is updated as expected"""
     ko_files = {
         'missing': {'/test_file0': 'test',
                     '/test_file3': 'ok'},
@@ -253,14 +247,24 @@ def test_update_cluster_control_with_failed():
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
-    """
-    Test to check if the compressing function is working properly
-    """
-    with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
-        cluster.compress_files("some_name", ["some/path", "another/path"],
-                               {"ko_file": "file"})
-        mock_mkdir_with_mode.assert_called_once_with('/some/path')
+def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
+    """Check if the compressing function is working properly"""
+    with patch("zipfile.ZipFile.write"):
+        with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
+            assert isinstance(cluster.compress_files("some_name", ["some/path", "another/path"], 
+                                                     {"ko_file": "file"}), str)
+
+
+@patch('wazuh.core.cluster.cluster.mkdir_with_mode')
+@patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
+@patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
+def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
+    """Check if the compressing function is raising every exception"""
+    with patch("zipfile.ZipFile.write", side_effect=Exception):
+        with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
+            with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
+                cluster.compress_files("some_name", ["some/path", "another/path"], {"ko_file": "file"})
+                mock_logger.assert_called_with(f"[Cluster] {str(WazuhException(3001))}")
 
     with patch("zipfile.ZipFile.write", side_effect=zipfile.LargeZipFile):
         with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
@@ -273,21 +277,28 @@ def test_compress_files(mock_path_exists, mock_path_dirname, mock_mkdir_with_mod
                 cluster.compress_files("some_name", ["some/path"])
 
 
-async def test_decompress_files():
-    """
-    Test to check if the decompressing function is working properly
-    """
+async def test_decompress_files_ok():
+    """Check if the decompressing function is working properly"""
 
     with patch('wazuh.core.cluster.cluster.mkdir_with_mode'):
         with patch('zipfile.ZipFile'):
+            # Mock the 'os-path.exists' in order to enter the condition
             with patch('os.path.exists', return_value=True):
+                # Mocking the 'open' function as well
                 with patch('builtins.open'):
-                    with patch('json.loads',
-                               return_value="some string with files"):
+                    with patch('json.loads', return_value="some string with files"):
                         with patch('wazuh.core.cluster.cluster.remove'):
-                            await cluster.decompress_files('/some/path')
+                            ko_files, zip_dir = await cluster.decompress_files('/some/path')
+                            assert ko_files == "some string with files"
+                            assert zip_dir == "/some/pathdir"
 
+
+async def test_decompress_files_ko():
+    """Check if the decompressing function raising the necessary exceptions"""
+
+    with patch('wazuh.core.cluster.cluster.mkdir_with_mode'):
         with patch('zipfile.ZipFile', return_value=Exception):
+            # Raising the expected Exception
             with pytest.raises(Exception):
                 with patch('os.path.exists', return_value=True):
                     with patch('shutil.rmtree'):
@@ -296,95 +307,131 @@ async def test_decompress_files():
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
 def test_compare_files(mock_get_cluster_items):
-    """
-    Test to check the different outputs of the compare_files function
-    """
-    mock_get_cluster_items.return_value = {'files': {'key':
-                                                     {'extra_valid': True}}}
+    """Check the different outputs of the compare_files function"""
+    mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
 
-    with patch('wazuh.core.cluster.cluster.merge_info',
-               return_values=[1, "random/path/"]):
-        cluster.compare_files({'some/path3/': {'cluster_item_key': 'key',
-                                               'md5': 'md5 value'},
-                               'some/path2/': {'cluster_item_key': "key",
-                                               'md5': 'md5 value'}},
-                              {'some/path2/': {'cluster_item_key': 'key',
-                                               'md5': 'md5 def value'},
-                               'some/path4/': {'cluster_item_key': "key",
-                                               'md5': 'md5 value'}}, 'worker1')
+    seq = {'some/path3/': {'cluster_item_key': 'key', 'md5': 'md5 value'},
+           'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
+    condition = {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
 
-    cluster.compare_files({'some/path3/': {'cluster_item_key': 'key',
-                                           'md5': 'md5 value'},
-                           'some/path2/': {'cluster_item_key': "key",
-                                           'md5': 'md5 value'}},
-                          {'some/path2/': {'cluster_item_key': 'key',
-                                           'md5': 'md5 value'},
-                           'some/path4/': {'cluster_item_key': "key",
-                                           'md5': 'md5 value'}}, 'worker1')
+    # First condition
+    with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, "random/path/"]):
+        files, count = cluster.compare_files(seq, condition, 'worker1')
+        assert count["missing"] == 1
+        assert count["extra"] == 0
+        assert count["extra_valid"] == 1
+        assert count["shared"] == 1
+
+    # Second condition
+    condition = {'some/path5/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
+
+    files, count = cluster.compare_files(seq, condition, 'worker1')
+    assert count["missing"] == 2
+    assert count["extra"] == 0
+    assert count["extra_valid"] == 2
+    assert count["shared"] == 0
 
 
-def test_clean_up():
-    """
-    Test to check if the cleaning function is working properly
-    """
+def test_clean_up_ok():
+    """Check if the cleaning function is working properly"""
+
+    with patch('os.path.join', return_value="some/path/") as path_join_mock:
+        with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
+            with patch('os.path.exists', return_value=False) as path_exists_mock:
+                cluster.clean_up("worker1")
+                mock_logger.assert_any_call("Removing 'some/path/'.")
+                mock_logger.assert_any_call("Nothing to remove in 'some/path/'.")
+                mock_logger.assert_called_with("Removed 'some/path/'.")
+
+                path_exists_mock.return_value = True
+                with patch('wazuh.core.cluster.cluster.listdir',
+                           return_value=["c-internal.sock", "other_file.txt"]) as listdir_mock:
+
+                    with patch('os.path.isdir', return_value=True) as is_dir_mock:
+                        with patch('wazuh.core.cluster.cluster.rmtree'):
+                            cluster.clean_up("worker1")
+                            mock_logger.assert_any_call("Removing 'some/path/'.")
+                            mock_logger.assert_called_with("Removed 'some/path/'.")
+
+                        is_dir_mock.return_value = False
+                        with patch('wazuh.core.cluster.cluster.remove'):
+                            cluster.clean_up("worker1")
+                            mock_logger.assert_any_call("Removing 'some/path/'.")
+                            mock_logger.assert_called_with("Removed 'some/path/'.")
+
+
+def test_clean_up_ko():
+    """Check if the cleaning function raising the exceptions properly"""
+    error_cleaning = "Error cleaning up: stat: path should be string, bytes, os.PathLike or integer, not type."
+    error_removing = f"Error removing '{Exception}': " \
+        f"'stat: path should be string, bytes, os.PathLike or integer, not type'."   
 
     with patch('os.path.join') as path_join_mock:
-        path_join_mock.return_value = Exception
-        cluster.clean_up("worker1")
-
-        path_join_mock.return_value = "some/path/"
-        with patch('os.path.exists') as path_exists_mock:
-            path_exists_mock.return_value = False
-            cluster.clean_up("worker1")
-
-        with patch('os.path.exists') as path_exists_mock:
-            path_exists_mock.return_value = True
-            with patch('wazuh.core.cluster.cluster.listdir') as listdir_mock:
-                listdir_mock.return_value = ["c-internal.sock",
-                                             "other_file.txt"]
+        with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
+            with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_debug_logger:
+                path_join_mock.return_value = Exception
                 cluster.clean_up("worker1")
+                mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
+                mock_error_logger.assert_called_once_with(error_cleaning)
 
-                with patch('os.path.isdir', return_value=True):
-                    cluster.clean_up("worker1")
+                with patch('os.path.exists', return_value=True):
+                    with patch('wazuh.core.cluster.cluster.listdir',
+                               return_value=["c-internal.sock", "other_file.txt"]):
 
-                with patch('wazuh.core.cluster.cluster.rmtree',
-                           side_effect=Exception):
-                    cluster.clean_up("worker1")
+                        with patch('wazuh.core.cluster.cluster.rmtree', side_effect=Exception):
+                            cluster.clean_up("worker1")
+                            mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
+                            mock_error_logger.assert_any_call(error_removing)
+                            mock_debug_logger.assert_called_with(f"Removed '{Exception}'.")
 
 
 @patch('wazuh.core.cluster.cluster.listdir', return_value=['005', '006'])
 @patch('wazuh.core.cluster.cluster.stat')
 def test_merge_info(stat_mock, listdir_mock):
-    """
-    Tests merge agent info function
-    """
+    """Test merge agent info function"""
     stat_mock.return_value.st_mtime = time()
     stat_mock.return_value.st_size = len(agent_groups)
 
-    with patch('builtins.open', mock_open(read_data=agent_groups)) as m:
-        cluster.merge_info('agent-groups', 'worker1', file_type='-shared')
-        m.assert_any_call(common.wazuh_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
-        m.assert_any_call(common.wazuh_path + '/queue/agent-groups/005', 'rb')
-        m.assert_any_call(common.wazuh_path + '/queue/agent-groups/006', 'rb')
-        handle = m()
+    with patch('builtins.open', mock_open(read_data=agent_groups)) as open_mock:
+
+        files_to_send, output_file = cluster.merge_info('agent-groups', 'worker1', file_type='-shared')
+        open_mock.assert_any_call(common.wazuh_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
+        open_mock.assert_any_call(common.wazuh_path + '/queue/agent-groups/005', 'rb')
+        open_mock.assert_any_call(common.wazuh_path + '/queue/agent-groups/006', 'rb')
+
+        assert files_to_send == 2
+        assert output_file == "queue/cluster/worker1/agent-groups-shared.merged"
+
+        handle = open_mock()
         expected = f'{len(agent_groups)} 005 ' \
                    f'{datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_groups
         handle.write.assert_any_call(expected)
 
+        files_to_send, output_file = cluster.merge_info('agent-groups', 'worker1', files=["one", "two"],
+                                                        file_type='-shared')
 
-@pytest.mark.parametrize('agent_info, exception', [
-    (f"23 005 2019-03-29 14:57:29.610934\n{agent_groups}".encode(), None),
-    (f"2i58 006 2019-03-29 14:57:29.610934\n{agent_groups}".encode(),
-     ValueError)
-])
-@patch('wazuh.core.cluster.cluster.stat')
-def test_unmerge_info(stat_mock, agent_info, exception):
-    """
-    Tests unmerge agent info function
-    """
-    stat_mock.return_value.st_size = len(agent_info)
+        assert files_to_send == 0
+
+
+def test_unmerge_info():
+    """Tests unmerge agent info function"""
+    agent_info = f"23 005 2019-03-29 14:57:29.610934\n{agent_groups}".encode()
+
     with patch('builtins.open', mock_open(read_data=agent_info)):
-        agent_groups = list(
-            cluster.unmerge_info('agent-groups', '/random/path',
-                                 'agent-groups-shared.merged'))
-        assert len(agent_groups) == (1 if exception is None else 0)
+        with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
+            # Make sure that the function is running correctly
+            stat_mock.return_value.st_size = len(agent_info) - 5
+            assert list(cluster.unmerge_info("destination/directory/", "path/file/",
+                                             "filename")) == [('queue/destination/directory/005',
+                                                               b"b'default,windows-serve",
+                                                               '2019-03-29 14:57:29.610934')]
+
+            # Make sure that the Exception is being properly called
+            stat_mock.return_value.st_size = len(agent_info)
+            with patch.object(wazuh.core.cluster.cluster.logger, "warning") as mock_logger:
+                list(cluster.unmerge_info("destination/directory/", "path/file/", "filename"))
+                mock_logger.assert_called_once_with("Malformed file (not enough values to unpack "
+                                                    "(expected 3, got 1)). Parsed line: rs'. "
+                                                    "Some files won't be synced")
