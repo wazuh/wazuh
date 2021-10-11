@@ -65,6 +65,8 @@ class CommandLineParser:
             "--scheck", help=f'Run AStyle on the code for checking purposes. Example: python3 build.py --scheck <{module_list_str}>')
         parser.add_argument(
             "--sformat", help=f'Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <{module_list_str}>')
+        parser.add_argument(
+            "--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
 
         args = parser.parse_args()
         if self._argIsValid(args.readytoreview):
