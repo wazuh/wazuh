@@ -110,6 +110,7 @@ if(UNIT_TEST)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
   add_subdirectory(tests)
+  add_subdirectory(testtool)
 else()
   if(FSANITIZE)
     target_link_libraries(fimdb gcov)

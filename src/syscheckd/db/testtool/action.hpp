@@ -19,10 +19,10 @@
 #include "dbRegistryValue.hpp"
 // #include "fimDBWrapper.hpp"
 #include "syscheck.h"
+#include "fim_entry.h"
 #include <iostream>
 
 
-std::unique_ptr<DBItem> fillFileItemJson(const std::string& table, const nlohmann::json& json_data);
 
 class TestAction
 {
@@ -51,14 +51,14 @@ public:
 
     void execute() override
     {
-
+        fim_entry *entry = nullptr;
         for (auto it : m_actionData) {
             // std::cout << it["path"] << std::endl;
-            auto insertItem = fillFileItemJson(m_table, it);
-            // db.insertItem(insertItem);
+            entry = fillFileEntry(it);
+            std::cout << "execute insert" << std::endl;
+            free_entry(entry);
         }
 
-        std::cout << "execute insert" << std::endl;
     }
 };
 
@@ -104,64 +104,6 @@ private:
     nlohmann::json m_preconData;
 };
 
-fim_entry fillFileEntry(const nlohmann::json& json_data) {
-    fim_entry entry;
-    entry.type = FIM_TYPE_FILE;
-    entry.file_entry.path = const_cast<char *>(static_cast<std::string> (json_data["path"]).c_str());
-    entry.file_entry.data = fillFileEntryData(json_data);
 
-}
-
-fim_file_data fillFileEntryData(const nlohmann::json& json_data) {
-
-
-        fill_entry.type = FIM_TYPE_FILE;
-        fim_file_data file_data;
-        fill_entry.file_entry.path = const_cast<char *>(static_cast<std::string> (json_data["path"]).c_str());
-
-        file_data.size = json_data["size"];
-        file_data.perm = const_cast<char *>(static_cast<std::string> (json_data["perm"]).c_str());
-        file_data.attributes = const_cast<char *>(static_cast<std::string> (json_data["attributes"]).c_str());
-        file_data.uid = const_cast<char *>(static_cast<std::string> (json_data["uid"]).c_str());
-        file_data.gid = const_cast<char *>(static_cast<std::string> (json_data["gid"]).c_str());
-
-        file_data.user_name = const_cast<char *>(static_cast<std::string> (json_data["user_name"]).c_str());
-        file_data.group_name = const_cast<char *>(static_cast<std::string> (json_data["group_name"]).c_str());
-
-        std::strncpy(file_data.hash_md5, const_cast<char *>(static_cast<std::string> (json_data["sha1"]).c_str()), sizeof(fill_entry.file_entry.data->hash_md5));
-        std::strncpy(file_data.hash_sha1, const_cast<char *>(static_cast<std::string> (json_data["sha1"]).c_str()), sizeof(fill_entry.file_entry.data->hash_sha1));
-        std::strncpy(file_data.hash_sha256, const_cast<char *>(static_cast<std::string> (json_data["sha256"]).c_str()), sizeof(fill_entry.file_entry.data->hash_sha256));
-        std::strncpy(file_data.checksum, const_cast<char *>(static_cast<std::string> (json_data["checksum"]).c_str()), sizeof(fill_entry.file_entry.data->checksum));
-
-        file_data.mtime = json_data["mtime"];
-        file_data.inode = json_data["inode"];
-        file_data.mode = json_data["mode"];
-        file_data.last_event = json_data["last_event"];
-
-        file_data.dev = json_data["dev"];
-        file_data.scanned = json_data["scanned"];
-
-        fill_entry.file_entry.data = &file_data;
-        // ret = std::make_unique<FileItem>(fill_entry);
-
-    } else if (table == "KEY") {
-        fill_entry.type = FIM_TYPE_REGISTRY;
-
-
-
-    } else if (table == "VALUE") {
-
-    } else {
-        free_entry(fill_entry);
-
-        throw std::runtime_error
-        {
-            "Unknown table."
-        };
-    }
-
-    // free_entry(fill_entry);
-    return ret;
-}
 
 #endif //_ACTION_H

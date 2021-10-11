@@ -43,7 +43,7 @@ class CmdLineArgs
 
         static void showHelp()
         {
-            std::cout << "\nUsage: dbsync_test_tool <option(s)> SOURCES \n"
+            std::cout << "\nUsage: fimdb_testtool <option(s)> SOURCES \n"
                       << "Options:\n"
                       << "\t-h \t\t\tShow this help message\n"
                       << "\t-c JSON_CONFIG_FILE\tSpecifies the json config file to initialize the database.\n"
