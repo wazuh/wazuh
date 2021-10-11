@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 
 int __wrap_chmod(const char *path);
+int __wrap_fchmod(int fd, mode_t mode);
 
 int __wrap_chown(const char *__file, int __owner, int __group);
 
@@ -38,5 +39,7 @@ void expect_mkdir(const char *__path, __mode_t __mode, int ret);
 #endif
 
 int __wrap_stat(const char * __file, struct stat * __buf);
+
+mode_t __wrap_umask(mode_t mode);
 
 #endif
