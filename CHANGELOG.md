@@ -87,6 +87,7 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1 ([#10354](https://github.com/wazuh/wazuh/pull/10354))
+  - Updated Rule level and compliance tags and MITRE mapping for NextCloud Rules. ([#10476](https://github.com/wazuh/wazuh/pull/10476))
 
 ### Fixed
 
@@ -133,6 +134,7 @@ All notable changes to this project will be documented in this file.
   - Fixed enabled-like checks for Amazon Linux 2 SCA ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA ([#10354](https://github.com/wazuh/wazuh/pull/10354))
   - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas) ([#10406](https://github.com/wazuh/wazuh/pull/10406))
+  - Fixed wrong rule for brute force events in NextCloud Rules, originally suggested by Pawel Krawczyk (@kravietz) in ([#700](https://github.com/wazuh/wazuh-ruleset/pull/770)) and added in ([#10476](https://github.com/wazuh/wazuh/pull/10476))
 
 ### Removed
 
