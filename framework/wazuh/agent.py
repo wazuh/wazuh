@@ -38,6 +38,9 @@ ERROR_CODES_UPGRADE_SOCKET = [1820, 1821, 1822]
 # 1827 -> The WPK sha1 of the file is not valid
 ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1819, 1824, 1825, 1826, 1827]
 
+# Error code generated from upgrade socket error codes that should be excluded in get upgrade results
+NO_TASK_IN_DB_CODE = 1817
+
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.database_limit, sort: str = None,
@@ -887,7 +890,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
         # Add non active agents to failed_items
-        non_active_agents = set([agent['id'] for agent in data if agent['status'] != 'active'])
+        non_active_agents = set([agent['id'] for agent in data['items'] if agent['status'] != 'active'])
         [result.add_failed_item(id_=agent, error=WazuhError(1707))
          for agent in non_active_agents]
 
@@ -949,7 +952,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731, NO_TASK_IN_DB_CODE]})
 def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Read upgrade result output from agent.
 
@@ -992,8 +995,13 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         not_found_agents = agent_list - system_agents
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
+        # Add non active agents to failed_items
+        non_active_agents = set([agent['id'] for agent in data['items'] if agent['status'] != 'active'])
+        [result.add_failed_item(id_=agent, error=WazuhError(1707))
+         for agent in non_active_agents]
+
         # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - can_upgrade_agents
+        non_eligible_agents = agent_list - not_found_agents - non_active_agents - can_upgrade_agents
         [result.add_failed_item(id_=ag, error=WazuhError(
             1731,
             extra_message="some of the requirements are not met -> {}".format(
@@ -1022,9 +1030,14 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
                     result.affected_items.append(task_result)
                     result.total_affected_items += 1
 
+                # Upgrade error for specific agents (no task in DB)
+                elif (error_code := 1810 + task_error) == NO_TASK_IN_DB_CODE:
+                    error = WazuhError(code=error_code, cmd_error=True, extra_message=task_result['message'])
+                    result.add_failed_item(id_=str(task_result['agent']).zfill(3), error=error)
+
                 # Upgrade error for all agents, internal server error
                 else:
-                    raise WazuhInternalError(1810 + task_error, cmd_error=True, extra_message=task_result['message'])
+                    raise WazuhInternalError(error_code, cmd_error=True, extra_message=task_result['message'])
 
         result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
