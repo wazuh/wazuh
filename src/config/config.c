@@ -181,9 +181,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_GCP(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        }
 #ifndef WIN32
-        else if (strcmp(node[i]->element, osfluent_forward) == 0) {
+        } else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
