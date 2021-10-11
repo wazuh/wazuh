@@ -5,14 +5,18 @@
 import os
 import subprocess
 from functools import lru_cache
+from sys import exit
 
 
 @lru_cache(maxsize=None)
-def find_wazuh_path():
+def find_wazuh_path() -> str:
     """
-    Gets the path where Wazuh is installed dinamically
+    Dynamically gets the Wazuh installation path.
 
-    :return: str path where Wazuh is installed or empty string if there is no framework in the environment
+    Returns
+    -------
+    str
+        Path where Wazuh is installed or empty string if there is no framework in the environment.
     """
     abs_path = os.path.abspath(os.path.dirname(__file__))
     allparts = []
@@ -38,17 +42,45 @@ def find_wazuh_path():
     return wazuh_path
 
 
-def call_wazuh_control(option) -> str:
+def call_wazuh_control(option: str) -> str:
+    """
+    Executes the wazuh-control script with the parameters specified.
+
+    Parameters
+    ----------
+    option : str
+        The option that will be passed to the script.
+
+    Returns
+    -------
+    str
+        The output of the call to wazuh-control.
+    """
     wazuh_control = os.path.join(find_wazuh_path(), "bin", "wazuh-control")
     try:
         proc = subprocess.Popen([wazuh_control, option], stdout=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
         return stdout.decode()
-    except Exception:
-        pass
+    except (OSError, ChildProcessError):
+        print(f'ERROR: a problem occurred while executing {wazuh_control}')
+        exit(1)
 
 
 def get_wazuh_info(field) -> str:
+    """
+    Executes the wazuh-control script with the 'info' argument, filtering by field if specified.
+
+    Parameters
+    ----------
+    field : str
+        The field of the output that's being requested. Its value can be 'WAZUH_VERSION', 'WAZUH_REVISION' or
+        'WAZUH_TYPE'.
+
+    Returns
+    -------
+    str
+        The output of the wazuh-control script.
+    """
     wazuh_info = call_wazuh_control("info")
     if not wazuh_info:
         return "ERROR"
@@ -68,7 +100,41 @@ def get_wazuh_info(field) -> str:
 
 @lru_cache(maxsize=None)
 def get_wazuh_version() -> str:
+    """
+    Returns the version of Wazuh installed.
+
+    Returns
+    -------
+    str
+        The version of Wazuh installed.
+    """
     return get_wazuh_info("WAZUH_VERSION")
+
+
+@lru_cache(maxsize=None)
+def get_wazuh_revision() -> str:
+    """
+    Returns the revision of the Wazuh instance installed.
+
+    Returns
+    -------
+    str
+        The revision of the Wazuh instance installed.
+    """
+    return get_wazuh_info("WAZUH_REVISION")
+
+
+@lru_cache(maxsize=None)
+def get_wazuh_type() -> str:
+    """
+    Returns the type of Wazuh instance installed.
+
+    Returns
+    -------
+    str
+        The type of Wazuh instance installed.
+    """
+    return get_wazuh_info("WAZUH_TYPE")
 
 
 ANALYSISD = os.path.join(find_wazuh_path(), 'queue', 'sockets', 'queue')
