@@ -22,6 +22,12 @@ int __wrap_chmod(const char *path) {
     return mock();
 }
 
+int __wrap_fchmod(int fd, mode_t mode) {
+    check_expected(fd);
+    check_expected(mode);
+    return mock();
+}
+
 int __wrap_chown(const char *__file, int __owner, int __group) {
     check_expected(__file);
     check_expected(__owner);
@@ -92,4 +98,9 @@ int __wrap_stat(const char * __file, struct stat * __buf) {
         return mock_type(int);
     }
     return __real_stat(__file, __buf);
+}
+
+mode_t __wrap_umask(mode_t mode) {
+    check_expected(mode);
+    return mock();
 }
