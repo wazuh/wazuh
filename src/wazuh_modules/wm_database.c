@@ -78,7 +78,7 @@ static void wm_check_agents();
 static void wm_sync_agents();
 
 // Clean dangling database files
-static void wm_clean_dangling_db();
+static void wm_clean_dangling_legacy_dbs();
 static void wm_clean_dangling_wdb_dbs();
 
 // Clean dangling group files
@@ -122,7 +122,7 @@ void* wm_database_main(wm_database *data) {
 
 #ifndef LOCAL
     wm_clean_dangling_groups();
-    wm_clean_dangling_db();
+    wm_clean_dangling_legacy_dbs();
     wm_clean_dangling_wdb_dbs();
 #endif
 
@@ -356,49 +356,13 @@ void wm_sync_agents() {
 }
 
 // Clean dangling database files
-void wm_clean_dangling_db() {
+void wm_clean_dangling_legacy_dbs() {
     char dirname[PATH_MAX + 1];
-    char path[PATH_MAX + 1];
-    char * end;
-    char * name;
-    struct dirent * dirent = NULL;
-    DIR * dir;
-
     snprintf(dirname, sizeof(dirname), "%s/agents", WDB_DIR);
-    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
 
-    if (!(dir = opendir(dirname))) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
-        return;
+    if (cldir_ex(dirname) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", dirname, strerror(errno), errno);
     }
-
-    while ((dirent = readdir(dir)) != NULL) {
-        if (dirent->d_name[0] != '.') {
-            if (end = strchr(dirent->d_name, '-'), end) {
-                *end = 0;
-
-                if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
-                    if (*name == '\0') {
-                        // Agent not found.
-                        *end = '-';
-
-                        if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
-                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
-                            if (remove(path) < 0) {
-                                mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
-                            }
-                        }
-                    }
-
-                    free(name);
-                }
-            } else {
-                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
-            }
-        }
-    }
-
-    closedir(dir);
 }
 
 void wm_clean_dangling_wdb_dbs() {
