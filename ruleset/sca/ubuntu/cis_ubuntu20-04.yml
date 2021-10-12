@@ -2586,7 +2586,7 @@ checks:
 
 # 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
   - id: 19151
-    title: "Ensure at/cron is restricted to authorized users"
+    title: "Ensure cron is restricted to authorized users"
     description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cronjobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
     remediation: "Run the following commands to remove /etc/cron.deny and create and set permissions and ownership for /etc/cron.allow: # rm /etc/cron.deny # touch /etc/cron.allow # chmod og-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
@@ -2599,7 +2599,6 @@ checks:
     condition: all
     rules:
       - 'f:/etc/cron.allow'
-      - 'f:/etc/at.allow'
       - 'not f:/etc/cron.deny'
       - 'c:stat /etc/cron.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
