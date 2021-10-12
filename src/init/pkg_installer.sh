@@ -56,7 +56,7 @@ function restore_ossec_ownership {
         while read -r line; do
             TFILE_OWN=$(echo $line | cut -d " " -f -1)
             TFILE_PATH=$(echo $line | cut -d " " -f 2-)
-            chown $TFILE_OWN "${TFILE_PATH}" >> ./logs/upgrade.log 2>&1
+            chown $TFILE_OWN "${TFILE_PATH}"
         done <<< "$OSSEC_LIST_FILES"
 
         # If the list is not empty, then it is assumed that the version to restore is lower than 4.3
@@ -196,8 +196,7 @@ chmod +x ./var/upgrade/install.sh
 ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
 
 # Check installation result
-# RESULT=$?
-RESULT=1
+RESULT=$?
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/upgrade.log
 
