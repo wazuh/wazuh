@@ -601,36 +601,20 @@ def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
         agent.reconnect(mock_queue)
 
 
-@pytest.mark.parametrize('status', [
-    'stopped', 'running'
-])
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
-@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
-def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
-    """Tests if method remove() works as expected
+def test_agent_remove(mock_remove_authd):
+    """Tests if method remove() works as expected."""
 
-    Parameters
-    ----------
-    status : string
-        Status to be mocked in wazuh-authd.
-    """
-
-    with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': status}):
+    with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'}):
         agent = Agent(0)
         result = agent.remove()
         assert result == 'Agent was successfully deleted', 'Not expected message'
 
-        if status == 'stopped':
-            mock_remove_manual.assert_called_once_with(False, False), 'Not expected params'
-            mock_remove_authd.assert_not_called(), '_remove_authd should not be called'
-        else:
-            mock_remove_manual.assert_not_called(), '_remove_manual should not be called'
-            mock_remove_authd.assert_called_once_with(False), 'Not expected params'
+        mock_remove_authd.assert_called_once_with(False), 'Not expected params'
 
 
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
-@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
-def test_agent_remove_ko(mock_remove_manual, mock_remove_authd):
+def test_agent_remove_ko(mock_remove_authd):
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent = Agent(0)
@@ -653,14 +637,13 @@ def test_agent_remove_authd(mock_wazuh_socket):
     'stopped'
 ])
 @pytest.mark.parametrize("ip, id, key, force", [
-    ('192.168.0.0', None, None, -1),
-    ('192.168.0.0/28', '002', None, -1),
-    ('any', '002', 'WMPlw93l2PnwQMN', -1),
-    ('any', '003', 'WMPlw93l2PnwQMN', 1),
+    ('192.168.0.0', None, None, {"enabled": False}),
+    ('192.168.0.0/28', '002', None, {"enabled": False}),
+    ('any', '002', 'WMPlw93l2PnwQMN', {"enabled": False}),
+    ('any', '003', 'WMPlw93l2PnwQMN', {"enabled": True}),
 ])
-@patch('wazuh.core.agent.Agent._add_manual')
 @patch('wazuh.core.agent.Agent._add_authd')
-def test_agent_add(mock_add_authd, mock_add_manual, authd_status, ip, id, key, force):
+def test_agent_add(mock_add_authd, authd_status, ip, id, key, force):
     """Test method _add() call other functions with correct params.
 
     Parameters
@@ -673,8 +656,8 @@ def test_agent_add(mock_add_authd, mock_add_manual, authd_status, ip, id, key, f
         ID of the new agent.
     key : str
         Key of the new agent.
-    force : int
-        Remove old agents with same IP if disconnected since <force> seconds.
+    force : dict
+        Remove old agents with same name or IP if conditions are met.
     """
     agent = Agent(1)
 
@@ -772,8 +755,7 @@ def test_get_manager_name(mock_connect, mock_send):
 @patch('wazuh.core.common.backup_path', new=os.path.join(test_data_path, 'backup'))
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.time', return_value=0)
-@patch('wazuh.core.agent.Agent._remove_manual', return_value='Agent was successfully deleted')
-def test_agent_delete_single_group(mock_remove_manual, mock_time, mock_safe_move, mock_exists):
+def test_agent_delete_single_group(mock_time, mock_safe_move, mock_exists):
     """Tests if method delete_single_group() works as expected"""
 
     agent = Agent(0)

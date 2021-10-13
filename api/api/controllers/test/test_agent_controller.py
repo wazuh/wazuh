@@ -11,7 +11,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.agent_controller import (
-            use_only_auth, add_agent, delete_agents, delete_groups,
+            add_agent, delete_agents, delete_groups,
             delete_multiple_agent_single_group,
             delete_single_agent_multiple_groups,
             delete_single_agent_single_group, get_agent_config,

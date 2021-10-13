@@ -386,33 +386,6 @@ class Agent:
 
         return dictionary
 
-    @staticmethod
-    def _acquire_client_keys_lock(timeout=None):
-        timeout = aconf.api_conf['intervals']['request_timeout'] - 1 if not timeout else timeout
-        if mutex.acquire(timeout=timeout):
-            global lock_file
-            lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
-            fcntl.lockf(lock_file, fcntl.LOCK_EX)
-            global lock_acquired
-            lock_acquired = True
-            return True
-
-        return False
-
-    @staticmethod
-    def _release_client_keys_lock():
-        global lock_file
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file is not None and lock_file.close()
-        lock_file = None
-        global lock_acquired
-        try:
-            mutex.release()
-        except RuntimeError:
-            raise WazuhInternalError(1758)
-        finally:
-            lock_acquired = False
-
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
         """
