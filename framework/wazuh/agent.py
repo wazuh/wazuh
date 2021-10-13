@@ -38,8 +38,9 @@ ERROR_CODES_UPGRADE_SOCKET = [1820, 1821, 1822]
 # 1827 -> The WPK sha1 of the file is not valid
 ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1819, 1824, 1825, 1826, 1827]
 
-# Error code generated from upgrade socket error codes that should be excluded in get upgrade results
-NO_TASK_IN_DB_CODE = 1817
+# Error codes generated from upgrade socket error codes that should be excluded in get upgrade results
+# 1813 -> No task in DB
+NO_TASK_IN_DB_CODE = 1813
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
