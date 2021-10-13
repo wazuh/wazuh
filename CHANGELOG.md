@@ -88,7 +88,6 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1 ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-  - Updated Rule level and compliance tags and MITRE mapping for NextCloud Rules. ([#10476](https://github.com/wazuh/wazuh/pull/10476))
 
 ### Fixed
 
