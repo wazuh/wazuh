@@ -357,18 +357,15 @@ void wm_sync_agents() {
 
 // Clean dangling database files
 void wm_clean_dangling_legacy_dbs() {
-    char dirname[PATH_MAX + 1];
-    snprintf(dirname, sizeof(dirname), "%s/agents", WDB_DIR);
-
-    if (cldir_ex(dirname) == -1 && errno != ENOENT) {
-        merror("Unable to clear directory '%s': %s (%d)", dirname, strerror(errno), errno);
+    if (cldir_ex(WDB_DIR "/agents") == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", WDB_DIR "/agents", strerror(errno), errno);
     }
 }
 
 void wm_clean_dangling_wdb_dbs() {
-    char path[PATH_MAX + 1];
-    char * end;
-    char * name;
+    char path[PATH_MAX];
+    char * end = NULL;
+    char * name = NULL;
     struct dirent * dirent = NULL;
     DIR * dir;
 
@@ -382,12 +379,11 @@ void wm_clean_dangling_wdb_dbs() {
         // exclude global.db, global.db-journal, wdb socket, and current directory.
         if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
             if (end = strchr(dirent->d_name, '.'), end) {
-                *end = 0;
+                int id = (int)strtol(dirent->d_name, &end, 10);
 
-                if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
+                if (id > 0 && strncmp(end, ".db", 3) == 0 && (name = wdb_get_agent_name(id, &wdb_wmdb_sock)) != NULL) {
                     if (*name == '\0') {
                         // Agent not found.
-                        *end = '.';
 
                         if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
                             mtwarn(WM_DATABASE_LOGTAG, "Removing dangling WDB DB file: '%s'", path);
