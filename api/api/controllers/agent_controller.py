@@ -472,9 +472,9 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
 
 async def put_upgrade_agents(request, agents_list: list = None, pretty: bool = False, wait_for_complete: bool = False,
                              wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
-                             force: bool = False,
-                             q: str = None, manager: str = None, version: str = None, group: str = None,
-                             node_name: str = None, name: str = None, ip: str = None) -> web.Response:
+                             force: bool = False, q: str = None, manager: str = None, version: str = None,
+                             group: str = None, node_name: str = None, name: str = None,
+                             ip: str = None) -> web.Response:
     """Upgrade agents using a WPK file from online repository.
 
     Parameters

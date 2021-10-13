@@ -29,7 +29,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
-            ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET, NO_TASK_IN_DB_CODE
+            ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
@@ -1179,7 +1179,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
     (
             {'000', '001', '002', '003', '006', '999'},
-            {'1703': {'000'}, '1701': {'999'}, '1707': {'003'}, '1817': {'006'}},
+            {'1703': {'000'}, '1701': {'999'}, '1707': {'003'}, '1813': {'006'}},
             {'error': 0,
              'data': [
                  {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1,
@@ -1191,7 +1191,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
                   'status': 'Legacy upgrade: ...',
                   'create_time': '2020/09/23 11:24:27',
                   'update_time': '2020/09/23 11:24:47'},
-                 {'error': 7, 'message': 'No task in DB', 'agent': 6}],
+                 {'error': 3, 'message': 'No task in DB', 'agent': 6}],
              'message': 'Success'},
             None,
             False
