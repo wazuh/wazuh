@@ -22,88 +22,197 @@
 #include "fim_entry.h"
 #include <iostream>
 
-
-
 class TestAction
 {
-public:
-    TestAction() = default;
-    virtual void execute() {};
-    virtual ~TestAction() {}
-protected:
-    std::string m_dbPath;
-    std::string m_outPath;
-    std::string m_table;
-    nlohmann::json m_actionData;
-    int m_actionId;
+    public:
+        TestAction() = default;
+        virtual void execute() {};
+        virtual ~TestAction() {}
+
+    protected:
+        std::string m_dbPath;
+        std::string m_outPath;
+        std::string m_table;
+        nlohmann::json m_actionData;
+        int m_actionId;
 };
 
 class InsertAction final : public TestAction
 {
-public:
-    InsertAction(const std::string& table, const nlohmann::json& actionData) {
-        m_table = table;
-        m_actionData = actionData;
-        // FIMDB::getInstance().init();
-    }
-
-    ~InsertAction() {}
-
-    void execute() override
-    {
-        fim_entry *entry = nullptr;
-        for (auto it : m_actionData) {
-            // std::cout << it["path"] << std::endl;
-            entry = fillFileEntry(it);
-            std::cout << "execute insert" << std::endl;
-            free_entry(entry);
+    public:
+        InsertAction(const std::string& table, const nlohmann::json& actionData)
+        {
+            m_table = table;
+            m_actionData = actionData;
+            // FIMDB::getInstance().init();
         }
 
-    }
+        ~InsertAction() {}
+
+        void execute() override
+        {
+            fim_entry* entry = nullptr;
+
+            std::cout << "Executing insert action.\n"
+                      << std::endl;
+
+            for (auto it : m_actionData)
+            {
+                if (m_table == "FILE")
+                {
+                    entry = fillFileEntry(it);
+                }
+                else if (m_table == "REGISTRY_KEY")
+                {
+                    entry = fillKeyEntry(it);
+                }
+                else if (m_table == "REGISTRY_VALUE")
+                {
+                    entry = fillValueEntry(it);
+                }
+
+                std::cout << "Inserting:" << std::endl;
+                print_entry(*entry);
+
+                free_entry(entry);
+            }
+        }
 };
 
 class UpdateAction final : public TestAction
 {
-public:
-    UpdateAction(const std::string& table, const nlohmann::json& actionData)
-    {
-        m_table = table;
-        m_precondData = actionData["precondition_data"];
-        m_actionData = actionData["modification_data"];
-        // FIMDB::getInstance().init();
+    public:
+        UpdateAction(const std::string& table, const nlohmann::json& actionData)
+        {
+            m_table = table;
+            m_precondData = actionData["precondition_data"];
+            m_actionData = actionData["modification_data"];
+            // FIMDB::getInstance().init();
+        }
+        void execute() override
+        {
+            fim_entry* entry = nullptr;
 
-    }
-    void execute() override
-    {
-        std::cout << "execute update preconditions" << std::endl;
-        std::cout << "execute modify preconditions" << std::endl;
-    }
-private:
-    nlohmann::json m_precondData;
+            std::cout << "Executing update preconditions.\n"
+                      << std::endl;
+
+            for (auto it : m_precondData)
+            {
+
+                if (m_table == "FILE")
+                {
+                    entry = fillFileEntry(it);
+                }
+                else if (m_table == "REGISTRY_KEY")
+                {
+                    entry = fillKeyEntry(it);
+                }
+                else if (m_table == "REGISTRY_VALUE")
+                {
+                    entry = fillValueEntry(it);
+                }
+
+                std::cout << "Inserting:" << std::endl;
+                print_entry(*entry);
+
+                free_entry(entry);
+            }
+
+            std::cout << "Executing modify actions.\n"
+                      << std::endl;
+
+            for (auto it : m_actionData)
+            {
+
+                if (m_table == "FILE")
+                {
+                    entry = fillFileEntry(it);
+                }
+                else if (m_table == "REGISTRY_KEY")
+                {
+                    entry = fillKeyEntry(it);
+                }
+                else if (m_table == "REGISTRY_VALUE")
+                {
+                    entry = fillValueEntry(it);
+                }
+
+                std::cout << "Modifying:" << std::endl;
+                print_entry(*entry);
+
+                free_entry(entry);
+            }
+        }
+
+    private:
+        nlohmann::json m_precondData;
 };
 
 class RemoveAction final : public TestAction
 {
-public:
-    RemoveAction(const std::string& table, const nlohmann::json& actionData) {
-        m_table = table;
-        m_preconData = actionData["precondition_data"];
-        m_actionData = actionData["delete_data"];
-        // FIMDB::getInstance().init();
+    public:
+        RemoveAction(const std::string& table, const nlohmann::json& actionData)
+        {
+            m_table = table;
+            m_precondData = actionData["precondition_data"];
+            m_actionData = actionData["delete_data"];
+            // FIMDB::getInstance().init();
+        }
+        void execute() override
+        {
 
-    }
-    void execute() override
-    {
+            fim_entry* entry = nullptr;
 
-        std::cout << "executing delete preconditions" << std::endl;
+            std::cout << "Executing delete preconditions" << std::endl;
 
+            for (auto it : m_precondData)
+            {
+                if (m_table == "FILE")
+                {
+                    entry = fillFileEntry(it);
+                }
+                else if (m_table == "REGISTRY_KEY")
+                {
+                    entry = fillKeyEntry(it);
+                }
+                else if (m_table == "REGISTRY_VALUE")
+                {
+                    entry = fillValueEntry(it);
+                }
 
-        std::cout << "execute remove test" << std::endl;
-    }
-private:
-    nlohmann::json m_preconData;
+                std::cout << "Inserting:" << std::endl;
+                print_entry(*entry);
+
+                free_entry(entry);
+            }
+
+            std::cout << "Executing remove actions.\n"
+                      << std::endl;
+
+            for (auto it : m_actionData)
+            {
+                if (m_table == "FILE")
+                {
+                    entry = fillFileEntry(it);
+                }
+                else if (m_table == "REGISTRY_KEY")
+                {
+                    entry = fillKeyEntry(it);
+                }
+                else if (m_table == "REGISTRY_VALUE")
+                {
+                    entry = fillValueEntry(it);
+                }
+
+                std::cout << "Removing:" << std::endl;
+                print_entry(*entry);
+
+                free_entry(entry);
+            }
+        }
+
+    private:
+        nlohmann::json m_precondData;
 };
-
-
 
 #endif //_ACTION_H

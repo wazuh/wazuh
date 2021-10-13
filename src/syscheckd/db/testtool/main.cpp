@@ -31,17 +31,23 @@ int main(int argc, const char* argv[])
     std::string action = input["action"];
     std::unique_ptr<TestAction> testAction = nullptr;
 
-    if (action == "DB_INSERT") {
+    if (action == "DB_INSERT")
+    {
         testAction = std::make_unique<InsertAction>(input["table"], input["data"]);
-    } else if (action == "DB_UPDATE") {
+    }
+    else if (action == "DB_UPDATE")
+    {
         testAction = std::make_unique<UpdateAction>(input["table"], input["data"]);
-    } else if (action == "DB_REMOVE") {
+    }
+    else if (action == "DB_REMOVE")
+    {
         testAction = std::make_unique<RemoveAction>(input["table"], input["data"]);
-    } else {
+    }
+    else
+    {
         throw std::runtime_error
         {
-            "Action not valid."
-        };
+            "Action not valid."};
     }
 
     testAction->execute();
