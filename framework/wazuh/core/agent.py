@@ -481,13 +481,11 @@ class Agent:
 
         return ret_msg
 
-    def remove(self, backup=False, purge=False):
+    def remove(self, purge=False):
         """Delete the agent.
         
         Parameters
         ----------
-        backup : boolean
-            Create backup before removing the agent.
         purge : boolean
             Remove key from store.
 
@@ -511,10 +509,7 @@ class Agent:
             raise WazuhError(1726)
 
         try:
-            if not is_authd_running:
-                data = self._remove_manual(backup, purge)
-            else:
-                data = self._remove_authd(purge)
+            data = self._remove_authd(purge)
 
             return data
         except WazuhException as e:
@@ -536,134 +531,6 @@ class Agent:
         authd_socket.close()
 
         return data
-
-    def _remove_manual(self, backup=False, purge=False):
-        """Deletes the agent.
-
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :return: Message.
-        """
-        # Check if agent exists
-        self.load_info_from_db()
-
-        client_keys_entries = []
-
-        # Try to acquire client keys lock
-        if not Agent._acquire_client_keys_lock():
-            raise WazuhInternalError(1759)
-
-        try:
-            agent_found = False
-            with open(common.client_keys) as f_k:
-                for line in f_k.readlines():
-                    line = line.rstrip()
-                    if line:
-                        if not line.startswith('#') and not line.startswith(' '):
-                            try:
-                                entry_id, entry_name, entry_ip, entry_key = line.split(' ')
-                            except ValueError:
-                                # Bad entries will be ignored and not rewritten to the new file
-                                continue
-                        else:
-                            # Ignore void entries, but preserve them
-                            client_keys_entries.append(line)
-                            continue
-                        if self.id == entry_id and not (entry_name.startswith('#') or entry_name.startswith('!')):
-                            # If not purging then create a void entry
-                            agent_found = True
-                            if not purge:
-                                client_keys_entries.append(
-                                    '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
-                        else:
-                            client_keys_entries.append(line)
-
-            if not agent_found:
-                raise WazuhResourceNotFound(1701, extra_message=self.id)
-
-            self.delete_agent_files(self.id, self.name, self.registerIP, backup=backup)
-
-            # Write temporary client.keys file
-            handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
-            with open(handle, 'a') as f_kt:
-                client_keys_entries.append('')
-                f_kt.writelines('\n'.join(client_keys_entries))
-
-            # Overwrite client.keys
-            f_keys_st = stat(common.client_keys)
-            safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
-        except WazuhResourceNotFound as e:
-            raise e
-        except Exception as e:
-            raise WazuhInternalError(1746, extra_message=str(e))
-        finally:
-            Agent._release_client_keys_lock()
-
-        return 'Agent was successfully deleted'
-
-    @staticmethod
-    def delete_agent_files(agent_id, agent_name, agent_register_ip, backup=True):
-        # Tell wazuh-db to delete agent database
-        wdb_backend_conn = WazuhDBBackend(agent_id).connect_to_db()
-        wdb_backend_conn.delete_agents_db([agent_id])
-
-        # Remove agent from groups
-        try:
-            wdb_conn = WazuhDBConnection()
-            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {agent_id}')
-        except Exception as e:
-            raise WazuhInternalError(1747, extra_message=str(e))
-
-        # Clean up agent files
-        try:
-            # Remove rid file
-            rids_file = path.join(common.wazuh_path, 'queue/rids', agent_id)
-            if path.exists(rids_file):
-                remove(rids_file)
-
-            if backup:
-                # Create backup directory
-                # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
-                date_part = date.today().strftime('%Y/%b/%d')
-                main_agent_backup_dir = path.join(common.backup_path,
-                                                  f'agents/{date_part}/{agent_id}-{agent_name}-{agent_register_ip}')
-                agent_backup_dir = main_agent_backup_dir
-
-                not_agent_dir = True
-                i = 0
-                while not_agent_dir:
-                    if path.exists(agent_backup_dir):
-                        i += 1
-                        agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
-                    else:
-                        makedirs(agent_backup_dir)
-                        chmod_r(agent_backup_dir, 0o750)
-                        not_agent_dir = False
-            else:
-                agent_backup_dir = ''
-
-            # Move agent file
-            agent_files = [
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.wazuh_path, agent_name, agent_register_ip),
-                 '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.wazuh_path, agent_id),
-                 '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/var/db/agents/{}-{}.db'.format(common.wazuh_path, agent_name, agent_id),
-                 '{}/var_db'.format(agent_backup_dir)),
-                ('{}/queue/diff/{}'.format(common.wazuh_path, agent_name), '{}/diff'.format(agent_backup_dir))
-            ]
-
-            for agent_file, backup_file in agent_files:
-                if path.exists(agent_file):
-                    if not backup:
-                        if path.isdir(agent_file):
-                            rmtree(agent_file)
-                        else:
-                            remove(agent_file)
-                    elif not path.exists(backup_file):
-                        safe_move(agent_file, backup_file, permissions=0o660)
-        except Exception as e:
-            raise WazuhInternalError(1748, extra_message=str(e))
 
     def _add(self, name, ip, id=None, key=None, force=None):
         """Add an agent to Wazuh.
