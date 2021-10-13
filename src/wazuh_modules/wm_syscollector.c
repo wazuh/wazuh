@@ -143,7 +143,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
-                               tagged_log_function,
+                               taggedLogFunction,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                SYSCOLLECTOR_NORM_TYPE,

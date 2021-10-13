@@ -18,7 +18,7 @@
 #include "loggingHelper.h"
 
 
-std::string createStatement()
+std::string FIMDB::createStatement()
 {
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
@@ -29,23 +29,34 @@ std::string createStatement()
     return ret;
 }
 
-void setFileLimit()
+void FIMDB::setFileLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("file_entry", syscheck.file_limit);
+    m_dbsyncHandler->setTableMaxRow("file_entry", m_max_rows_file);
 }
 
-void setRegistryLimit()
+#ifdef WIN32
+void FIMDB::setRegistryLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("registry_key", syscheck.value_limit);
+    m_dbsyncHandler->setTableMaxRow("registry_key", m_max_rows_registry);
 }
 
-void setValueLimit()
+void FIMDB::setValueLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("registry_data", syscheck.value_limit);
+    m_dbsyncHandler->setTableMaxRow("registry_data", m_max_rows_registry);
 }
+#endif
 
-void FIMDB::init(const std::string& dbPath)
+#ifdef WIN32
+void FIMDB::init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file, const unsigned int max_rows_registry)
+#else
+void FIMDB::init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file)
+#endif
 {
+    m_interval_synchronization = interval_synchronization
+    m_max_rows_file = max_rows_file;
+#ifdef WIN32
+    m_max_rows_registry = max_rows_registry;
+#endif
     m_dbsyncHandler = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, createStatement());
     m_rsyncHandler = std::make_unique<RemoteSync>();
 
@@ -56,7 +67,7 @@ void FIMDB::init(const std::string& dbPath)
 #endif
 }
 
-int insertItem(std::unique_ptr<DBItem> const item)
+int FIMDB::insertItem(DBItem const &item)
 {
     try
     {
@@ -64,19 +75,19 @@ int insertItem(std::unique_ptr<DBItem> const item)
     }
     catch(const DbSync::max_rows_error &ex)
     {
-        logging_function(LOG_INFO, ex.what());
+        loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
     catch(const std::exception &ex)
     {
-        logging_function(LOG_ERROR, ex.what());
+        loggingFunction(LOG_ERROR, ex.what());
         return 2;
     }
 
     return 0;
 }
 
-int removeItem(DBItem* item)
+int FIMDB::removeItem(DBItem const &item)
 {
     try
     {
@@ -84,19 +95,19 @@ int removeItem(DBItem* item)
     }
     catch(const DbSync::max_rows_error &ex)
     {
-        logging_function(LOG_INFO, ex.what());
+        loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
     catch(const std::exception &ex)
     {
-        logging_function(LOG_ERROR, ex.what());
+        loggingFunction(LOG_ERROR, ex.what());
         return 2;
     }
 
     return 0;
 }
 
-int updateItem(DBItem* item, ResultCallbackData callbackData)
+int FIMDB::updateItem(DBItem const &item, ResultCallbackData callbackData)
 {
     try
     {
@@ -104,91 +115,24 @@ int updateItem(DBItem* item, ResultCallbackData callbackData)
     }
     catch(const DbSync::max_rows_error &ex)
     {
-        logging_function(LOG_INFO, ex.what());
+        loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
     catch(const std::exception &ex)
     {
-        logging_function(LOG_ERROR, ex.what());
+        loggingFunction(LOG_ERROR, ex.what());
         return 2;
     }
 
     return 0;
 }
 
-
-void registerRsync()
+void FIMDB::registerRsync()
 {
-    const auto reportFimWrapper
-    {
-        // [this](const std::string & dataString)
-        // {
-        //     auto jsonData(nlohmann::json::parse(dataString));
-        //     auto it{jsonData.find("data")};
-
-        //     if (!m_stopping)
-        //     {
-        //         if (it != jsonData.end())
-        //         {
-        //             auto& data{*it};
-        //             it = data.find("attributes");
-
-        //             if (it != data.end())
-        //             {
-        //                 auto& fieldData { *it };
-        //                 removeKeysWithEmptyValue(fieldData);
-        //                 fieldData["scan_time"] = Utils::getCurrentTimestamp();
-        //                 const auto msgToSend{jsonData.dump()};
-        //                 m_reportSyncFunction(msgToSend);
-        //                 m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
-        //             }
-        //             else
-        //             {
-        //                 m_reportSyncFunction(dataString);
-        //                 m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-        //             }
-        //         }
-        //         else
-        //         {
-        //             //LCOV_EXCL_START
-        //             m_reportSyncFunction(dataString);
-        //             m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-        //             //LCOV_EXCL_STOP
-        //         }
-        //     }
-        // }
-    };
-
-    try
-    {
-        m_rsyncHandler->registerSyncID("fim_sync",
-                                       m_spDBSync->handle(),
-                                       nlohmann::json::parse(OS_SYNC_CONFIG_STATEMENT),
-                                       reportSyncWrapper);
-    }
-
 }
 
-void loopRsync()
+void FIMDB::loopRsync()
 {
-//     m_logFunction(LOG_INFO, "Module started.");
-
-//     if (m_scanOnStart)
-//     {
-//         scan();
-//         sync();
-//     }
-
-//     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
-// {
-//     return m_stopping;
-// }))
-//     {
-//         scan();
-//         sync();
-//     }
-//     m_spRsync.reset(nullptr);
-//     m_spDBSync.reset(nullptr);
 }
 
 #endif

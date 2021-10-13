@@ -74,35 +74,69 @@ constexpr auto FIM_SYNC_CONFIG_STATEMENT
     R"(
     {
         "decoder_type":"JSON_RANGE",
-        "table":"file",
-        "component":"syscollector_osinfo",
-        "index":"os_name",
+        "table":"file_entry",
+        "component":"fim_sync",
+        "index":"path",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE os_name ='?'",
+                "row_filter":"WHERE path ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         }
     }
     )"
+};
+
+constexpr auto FIM_START_CONFIG_STATEMENT
+{
+    R"({"table":"file_entry",
+        "first_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_hwinfo",
+        "index":"board_serial",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
+                "column_list":["board_serial, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
 };

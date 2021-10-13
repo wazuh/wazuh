@@ -12,7 +12,6 @@
 #ifndef _FIMDB_HPP
 #define _FIMDB_HPP
 #include "dbsync.hpp"
-#include "fimDB.hpp"
 #include "dbItem.hpp"
 #include "rsync.hpp"
 #include "shared.h"
@@ -39,11 +38,14 @@ class FIMDB final
             return m_isFull;
         };
 
-    void init();
-    void syncDB();
-    int insertItem(DBItem*);
-    int removeItem(DBItem*);
-    int updateItem(DBItem*);
+#ifdef WIN32
+    void init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file, const unsigned int max_rows_registry);
+#else
+    void init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file);
+#endif
+    int insertItem(DBItem const &item);
+    int removeItem(DBItem const &item);
+    int updateItem(DBItem const &item, ResultCallbackData callbackData);
     int setAllUnscanned();
     int executeQuery();
 
@@ -51,9 +53,16 @@ private:
     FIMDB();
     ~FIMDB() = default;
     FIMDB(const FIMDB&) = delete;
+
+    const unsigned int            m_max_rows_file;
+    const unsigned int            m_max_rows_registry;
+    const unsigned int            m_interval_synchronization;
     std::unique_ptr<DBSync>       m_dbsyncHandler;
     std::unique_ptr<RemoteSync>   m_rsyncHandler;
+
     std::string createStatement();
+
+protected:
     void setFileLimit();
     void setRegistryLimit();
     void setValueLimit();
