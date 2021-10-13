@@ -383,6 +383,7 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
             ['002', '005']),
     (['000'], {'status': 'all', 'older_than': '1s'}, None, 1703, []),
     (['001', '500'], {'status': 'all', 'older_than': '1s'}, None, 1701, ['001']),
+    (['001', '002'], {'status': 'all', 'older_than': '1s'}, None, WazuhError(1726), None),
 ])
 @patch('wazuh.agent.Agent.remove')
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
@@ -404,11 +405,16 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
     expected_items : List of str
         List of expected agent ID's returned by
     """
-    result = delete_agents(agent_list, filters=filters, q=q)
-    assert result.affected_items == sorted(expected_items), \
-        f'"Affected_items" does not match. Should be "{result.affected_items}".'
-    if result.failed_items:
-        assert next(iter(result.failed_items)).code == error_code
+    if not isinstance(error_code, WazuhException):
+        result = delete_agents(agent_list, filters=filters, q=q)
+        assert result.affected_items == sorted(expected_items), \
+            f'"Affected_items" does not match. Should be "{result.affected_items}".'
+        if result.failed_items:
+            assert next(iter(result.failed_items)).code == error_code
+    else:
+        with pytest.raises(error_code.__class__, match=f'.* {error_code.code} .*'):
+            mock_remove.side_effect = error_code
+            delete_agents(agent_list, filters=filters, q=q)
 
 
 @pytest.mark.xfail(reason="`_add_manual` method is not compatible with the authd force rework: "

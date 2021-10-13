@@ -412,6 +412,9 @@ def delete_agents(agent_list=None, purge=False, filters=None, q=None):
                 my_agent.remove(purge=purge)
                 result.affected_items.append(agent_id)
             except WazuhException as e:
+                if e.code == 1726:
+                    raise e
+
                 result.add_failed_item(id_=agent_id, error=e)
 
         # Clear temporary cache
