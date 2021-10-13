@@ -907,7 +907,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         if version and not version.startswith('v'):
             version = f'v{version}'
 
-        eligible_agents = list(agent_list.intersection(system_agents).intersection(can_upgrade_agents))
+        eligible_agents = list(agent_list - not_found_agents - non_active_agents - non_eligible_agents)
 
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
@@ -1010,7 +1010,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
             )
         )) for ag in non_eligible_agents]
 
-        eligible_agents = list(agent_list.intersection(system_agents).intersection(can_upgrade_agents))
+        eligible_agents = list(agent_list - not_found_agents - non_active_agents - non_eligible_agents)
 
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
