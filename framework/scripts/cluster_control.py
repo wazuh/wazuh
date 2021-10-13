@@ -60,7 +60,36 @@ async def print_nodes(filter_node):
 
 
 async def print_health(config, more, filter_node):
+    """Print the current status of the cluster as well as additional information.
+
+    Parameters
+    ----------
+    config : dict
+        Cluster current configuration.
+    more : bool
+        Indicate whether additional information is desired or not.
+    filter_node : str, list
+        Node to return.
+
+    Returns
+    -------
+
+    """
     def calculate_seconds(start_time, end_time):
+        """Calculate the time difference between two dates.
+
+        Parameters
+        ----------
+        start_time : str
+            Start date.
+        end_time : str
+            End date.
+
+        Returns
+        -------
+        str
+            Total seconds between the two dates.
+        """
         if end_time != 'n/a' and start_time != 'n/a':
             seconds = \
                 datetime.strptime(end_time, decimals_date_format) - datetime.strptime(start_time, decimals_date_format)
