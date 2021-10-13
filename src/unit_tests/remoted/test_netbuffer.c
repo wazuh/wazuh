@@ -193,7 +193,7 @@ void test_nb_queue_retry_err(void ** state) {
     expect_value(__wrap_bqueue_push, flags, BQUEUE_NOFLAG);
     will_return(__wrap_bqueue_push, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Package dropped. Could not append data into buffer.");
+    expect_string(__wrap__mwarn, formatted_msg, "Package dropped. Could not append data into buffer.");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 

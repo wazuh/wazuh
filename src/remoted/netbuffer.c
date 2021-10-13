@@ -223,7 +223,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
     w_mutex_unlock(&mutex);
 
     if (retval < 0) {
-        merror("Package dropped. Could not append data into buffer.");
+        mwarn("Package dropped. Could not append data into buffer.");
     }
 
     return retval;

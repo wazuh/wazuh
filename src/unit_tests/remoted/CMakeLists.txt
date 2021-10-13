@@ -31,12 +31,13 @@ list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -
                             -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=OS_IsAllowedDynamicID -Wl,--wrap=_mwarn \
                             -Wl,--wrap=OS_DeleteSocket -Wl,--wrap=nb_close -Wl,--wrap=rem_setCounter -Wl,--wrap=key_lock_read \
                             -Wl,--wrap=_mdebug1 -Wl,--wrap=rem_inc_tcp -Wl,--wrap=rem_dec_tcp -Wl,--wrap=close -Wl,--wrap=accept \
-                            -Wl,--wrap=wnotify_add -Wl,--wrap,fcntl -Wl,--wrap,_merror -Wl,--wrap=nb_open -Wl,--wrap=recvfrom \ -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send -Wl,--wrap=rem_add_send")
+                            -Wl,--wrap=wnotify_add -Wl,--wrap,fcntl -Wl,--wrap,_merror -Wl,--wrap=nb_open -Wl,--wrap=recvfrom \
+                            -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send -Wl,--wrap=rem_add_send")
 
 list(APPEND remoted_names "test_netbuffer")
-list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify -Wl,--wrap,bqueue_push \
-                            -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep -Wl,--wrap,send \
-                            -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
+list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
+                            -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
+                            -Wl,--wrap,send -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
                             -Wl,--wrap,bqueue_used")
 
 list(APPEND remoted_names "test_sendmsg")
