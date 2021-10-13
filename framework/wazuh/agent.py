@@ -848,7 +848,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     if version and not version.startswith('v'):
         version = f'v{version}'
 
-    agents_result_chunks = [agent_list[x:x + 100] for x in range(0, len(agent_list), 100)]
+    agents_result_chunks = [agent_list[x:x + 500] for x in range(0, len(agent_list), 500)]
 
     agent_results = list()
     for agents_chunk in agents_result_chunks:
@@ -894,7 +894,7 @@ def get_upgrade_result(agent_list=None):
                                       none_msg='No upgrade task was returned')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
-    agents_result_chunks = [agent_list[x:x + 100] for x in range(0, len(agent_list), 100)]
+    agents_result_chunks = [agent_list[x:x + 500] for x in range(0, len(agent_list), 500)]
 
     task_results = list()
     for agents_chunk in agents_result_chunks:

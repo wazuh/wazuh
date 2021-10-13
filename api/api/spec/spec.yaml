@@ -6193,7 +6193,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "All upgrade tasks have been created"
+                message: "All upgrade tasks were created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6238,7 +6238,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "All upgrade tasks have been created"
+                message: "All upgrade tasks were created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6286,7 +6286,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "All agents have been updated"
+                message: "All upgrade tasks were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
