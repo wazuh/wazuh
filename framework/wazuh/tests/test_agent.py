@@ -454,7 +454,7 @@ def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, 
 
     with patch('wazuh.core.agent.open', new=mock_open):
         try:
-            add_result = add_agent(name=name, agent_id=agent_id, key=key, force=force, use_only_authd=False)
+            add_result = add_agent(name=name, agent_id=agent_id, key=key, force=force)
             assert add_result.dikt['data']['id'] == agent_id
             assert add_result.dikt['data']['key']
         except WazuhError as e:

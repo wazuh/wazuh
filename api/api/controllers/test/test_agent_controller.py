@@ -47,7 +47,6 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
         mock_alist = None
     f_kwargs = {'agent_list': mock_alist,
                 'purge': False,
-                'use_only_authd': use_only_auth,
                 'filters': {
                     'status': None,
                     'older_than': None,
@@ -530,7 +529,6 @@ async def test_post_new_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     f_kwargs = {
         'name': 'agent_name_value',
         'ip': None,
-        'use_only_authd': use_only_auth,
         'force': {
             'enabled': False,
             'disconnected_time': {

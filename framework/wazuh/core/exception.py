@@ -265,8 +265,8 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1726: {'message': 'Ossec authd is not running and API use_only_authd is enabled',
-               'remediation': f'Please enable authd or change the API use_only_authd configuration'
+        1726: {'message': 'Wazuh authd is not running',
+               'remediation': f'Please enable authd or check if there is any error'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'

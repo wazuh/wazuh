@@ -617,7 +617,7 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
 
     with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': status}):
         agent = Agent(0)
-        result = agent.remove(use_only_authd=False)
+        result = agent.remove()
         assert result == 'Agent was successfully deleted', 'Not expected message'
 
         if status == 'stopped':
@@ -634,7 +634,7 @@ def test_agent_remove_ko(mock_remove_manual, mock_remove_authd):
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent = Agent(0)
-        agent.remove(use_only_authd=True)
+        agent.remove()
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')

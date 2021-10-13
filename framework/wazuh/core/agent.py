@@ -481,20 +481,33 @@ class Agent:
 
         return ret_msg
 
-
-    def remove(self, backup=False, purge=False, use_only_authd=False):
+    def remove(self, backup=False, purge=False):
         """Delete the agent.
+        
+        Parameters
+        ----------
+        backup : boolean
+            Create backup before removing the agent.
+        purge : boolean
+            Remove key from store.
 
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :param use_only_authd: Force the use of authd when adding and removing agents.
-        :return: Message.
+        Raises
+        ------
+        WazuhError(1726)
+            Authd is not running.
+
+        WazuhInternalError(1757)
+            Unhandled exception.
+
+        Returns
+        -------
+        WazuhResult
         """
 
         manager_status = get_manager_status(cache=True)
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
-        if use_only_authd and not is_authd_running:
+        if not is_authd_running:
             raise WazuhError(1726)
 
         try:
