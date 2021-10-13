@@ -60,6 +60,7 @@ api_config_schema = {
     "properties": {
         "host": {"type": "string"},
         "port": {"type": "number"},
+        "use_only_authd": {"type": "boolean"},  # Deprecated. To be removed on later versions
         "drop_privileges": {"type": "boolean"},
         "experimental_features": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
