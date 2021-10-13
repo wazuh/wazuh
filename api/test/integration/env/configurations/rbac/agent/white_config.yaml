@@ -60,8 +60,10 @@
 - actions:
   - agent:upgrade
   resources:
-  - agent:id:001
-  - agent:id:002
+  - agent:id:005
+  - agent:id:006
+  - agent:id:007
+  - agent:id:008
   effect: allow
 
 - actions:
