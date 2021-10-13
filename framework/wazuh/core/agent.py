@@ -328,16 +328,28 @@ class Agent:
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time'}
 
-    def __init__(self, id=None, name=None, ip=None, key=None, force=None, use_only_authd=False):
+    def __init__(self, id=None, name=None, ip=None, key=None, force=None):
         """Initialize an agent.
+        
+        `id` when the agent exists.
+        `name` and `ip`: generate ID and key automatically.
+        `name`, `ip` and `force`: generate ID and key automatically, removing old agent with same name or IP if `force`
+            configuration is met.
+        `name`, `ip`, `id`, `key` and `force`: insert an agent with an existent ID and key, removing old agent with 
+            the same name or IP if `force` configuration is met.
 
-        :param: id: When the agent exists
-        :param: name and ip: Add an agent (generate id and key automatically)
-        :param: name, ip and force: Add an agent (generate id and key automatically), removing old agent with same IP if
-        disconnected since <force> seconds.
-        :param: name, ip, id, key: Insert an agent with an existent id and key
-        :param: name, ip, id, key, force: Insert an agent with an existent id and key, removing old agent with same IP
-         if disconnected since <force> seconds.
+        Parameters
+        ----------
+        id : str
+            ID of the agent, if it exists.
+        name : str 
+            Name of the agent.
+        ip : str
+            IP of the agent.
+        key : str
+            Key of the agent.
+        force : dict
+            Authd force parameters.
         """
         self.id = id
         self.name = name
@@ -360,7 +372,7 @@ class Agent:
         # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
         if name is not None and ip is not None:
-            self._add(name=name, ip=ip, id=id, key=key, force=force, use_only_authd=use_only_authd)
+            self._add(name=name, ip=ip, id=id, key=key, force=force)
 
     def __str__(self):
         return str(self.to_dict())
@@ -640,7 +652,7 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1748, extra_message=str(e))
 
-    def _add(self, name, ip, id=None, key=None, force=None, use_only_authd=False):
+    def _add(self, name, ip, id=None, key=None, force=None):
         """Add an agent to Wazuh.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -658,8 +670,6 @@ class Agent:
             Key of the new agent.
         force : dict
             Remove old agents with same name or IP if conditions are met.
-        use_only_authd : bool
-            Force the use of authd when adding and removing agents.
 
         Raises
         ------
@@ -690,14 +700,11 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
-        if use_only_authd and not is_authd_running:
+        if not is_authd_running:
             raise WazuhError(1726)
 
         try:
-            if not is_authd_running:
-                self._add_manual(name, ip, id, key, force)
-            else:
-                self._add_authd(name, ip, id, key, force)
+            self._add_authd(name, ip, id, key, force)
         except WazuhException as e:
             raise e
         except Exception as e:
@@ -772,137 +779,6 @@ class Agent:
 
         self.id = data['id']
         self.internal_key = data['key']
-        self.key = self.compute_key()
-
-    def _add_manual(self, name, ip, id=None, key=None, force=-1):
-        """Add an agent to Wazuh manually.
-        2 uses:
-            - name and ip [force]: Add an agent like manage_agents (generate id and key).
-            - name, ip, id, key [force]: Insert an agent with an existing id and key.
-
-        Parameters
-        ----------
-        name : str
-            Name of the new agent.
-        ip : str
-            IP of the new agent. It can be an IP, IP/NET or ANY.
-        id : str
-            ID of the new agent.
-        key : str
-            Key of the new agent.
-        force : int
-            Remove old agents with same IP if disconnected since <force> seconds.
-
-        Raises
-        ------
-        WazuhError(1705)
-            If there is an agent with the same name
-        WazuhError(1706)
-            If there is an agent with the same IP or the IP is invalid.
-        WazuhError(1708)
-            If there is an agent with the same ID.
-        WazuhError(1709)
-            If the key size is too short.
-
-        Returns
-        -------
-        Agent ID.
-        """
-        # Check arguments
-        if id:
-            agent_id = id.zfill(3)
-        else:
-            agent_id = None
-
-        if key:
-            if len(key) < 64:
-                raise WazuhError(1709)
-            else:
-                agent_key = key
-        else:
-            hash1 = hashlib.md5("{0}{1}{2}".format(int(time()), name, platform()).encode())
-            hash1.update(urandom(128))
-            hash2 = hashlib.md5(f"{ip}{agent_id}".encode())
-            agent_key = hash1.hexdigest() + hash2.hexdigest()
-
-        force = int(force)
-
-        # Check manager name
-        manager_name = get_manager_name()
-
-        if name == manager_name:
-            raise WazuhError(1705, extra_message=f"Agent 000 (manager) has name {name}")
-
-        # Never allow duplication or replacement of an agent id. Check before running through the client.keys to avoid
-        # deleting an entry with duplicate name or ip and then find out that the id was already present
-        if agent_id in get_agents_info():
-            raise WazuhError(1708, agent_id)
-
-        # Check if ip or name exist in client.keys
-        last_id = 0
-
-        # Try to acquire client keys lock
-        if not Agent._acquire_client_keys_lock():
-            raise WazuhInternalError(1759)
-
-        try:
-            with open(common.client_keys) as f_k:
-                with mmap.mmap(f_k.fileno(), length=0, access=mmap.ACCESS_READ) as file_client:
-                    content = file_client.read().decode()
-                    # Remove lines that do not follow the general scheme
-                    client_keys_entries = detect_wrong_lines.findall(content)
-
-                    # Update last_id with highest value
-                    if not agent_id:
-                        try:
-                            last_id = max(int(line[0]) for line in detect_valid_lines.findall(content))
-                        except ValueError:
-                            last_id = 0
-
-                    # Detect entries with duplicate name or ip
-                    if (name in content and f'!{name}' not in content) or (ip != 'any' and ip in content):
-                        # Regular expression that will help us to search for the target line
-                        regex = rf'.* {name} .* .*|.* {name} {ip} .*' if name in content else rf'.* .* {ip} .*'
-
-                        for index, line in enumerate(client_keys_entries):
-                            agent_match = re.match(regex, line.rstrip())
-
-                            # Line found
-                            if agent_match:
-                                entry_id, entry_name, entry_ip, entry_key = agent_match[0].split(' ')
-
-                                # If force is non-negative then we check to remove the agent using value of force as
-                                # the max age in seconds
-                                if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
-                                    self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
-                                    # We add a void entry
-                                    client_keys_entries[index] = f'{entry_id} !{entry_name} {entry_ip} {entry_key}'
-                                else:
-                                    # If force is negative or the agent is not older than the max age we raise
-                                    # an error based on the duplicate field.
-                                    if name == entry_name:
-                                        raise WazuhError(1705, extra_message=name)
-                                    else:
-                                        raise WazuhError(1706, extra_message=ip)
-
-            # If id not specified then create a new id 1 greater than the last id created.
-            if not agent_id:
-                agent_id = str(last_id + 1).zfill(3)
-
-            # Write temporary client.keys file
-            handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
-            with open(handle, 'a') as f_kt:
-                client_keys_entries.append('')
-                f_kt.writelines('\n'.join(client_keys_entries))
-                f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
-
-            # Overwrite client.keys
-            f_keys_st = stat(common.client_keys)
-            safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
-        finally:
-            Agent._release_client_keys_lock()
-        self.id = agent_id
-        self.internal_key = agent_key
         self.key = self.compute_key()
 
     @staticmethod
