@@ -52,7 +52,7 @@ int authd_read_key_request(xml_node **nodes, void *config) {
         // Flag to enable or disable the module
         } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (key_request->enabled = eval_bool(nodes[i]->content), key_request->enabled == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, KREQUEST_NAME);
+                merror("Invalid content for tag '%s' at module '%s'", XML_ENABLED, KREQUEST_NAME);
                 return OS_INVALID;
             }
         // Local path for script execution
@@ -62,7 +62,7 @@ int authd_read_key_request(xml_node **nodes, void *config) {
             }
 
             if (strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Exec path is too long at module '%s'. Max path length is %d", KREQUEST_NAME, PATH_MAX);
+                merror("Exec path is too long at module '%s'. Max path length is '%d'", KREQUEST_NAME, PATH_MAX);
                 return OS_INVALID;
             }
 
@@ -74,7 +74,7 @@ int authd_read_key_request(xml_node **nodes, void *config) {
             }
 
             if (strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Socket path is too long at module '%s'. Max path length is %d", KREQUEST_NAME, PATH_MAX);
+                merror("Socket path is too long at module '%s'. Max path length is '%d'", KREQUEST_NAME, PATH_MAX);
                 return OS_INVALID;
             }
 
@@ -107,9 +107,9 @@ int authd_read_key_request(xml_node **nodes, void *config) {
             }
         // Deprecated "force-insert" function from older Agent Key Polling module
         } else if (!strcmp(nodes[i]->element, XML_FORCE_INSERT)) {
-            mwarn("Deprecated option from older 'agent-key-polling' module: This parameter is now inherited from 'authd' configuration");
+            mwarn("Deprecated option. This parameter is now inherited from Authd configuration.");
         } else {
-            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, KREQUEST_NAME);
+            mwarn("No such tag <%s> at module '%s'", nodes[i]->element, KREQUEST_NAME);
         }
     }
 

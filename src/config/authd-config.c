@@ -145,7 +145,7 @@ int Read_Authd(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *d
             config->flags.remote_enrollment = b;
 #ifndef CLIENT
         } else if (!strcmp(node[i]->element, xml_key_request)) {
-            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            XML_NODE children = OS_GetElementsbyNode(xml, node[i]);
 
             if (children == NULL) {
                 continue;

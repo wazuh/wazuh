@@ -12,7 +12,6 @@
 
 // Reading function
 int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) wmodule *module) {
-    minfo("Ignoring deprecated configuration block for old agent-key-polling module: " \
-         "The key-requesting feature is now part of the auth daemon.");
+    minfo("Ignoring configuration block for deprecated agent-key-polling module: This configuration is read now by Authd.");
     return 0;
 }
