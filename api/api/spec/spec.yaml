@@ -6160,7 +6160,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents"
-      description: "Upgrade agents using a WPK file from online repository"
+      description: "Upgrade agents using a WPK file from online repository. Despite the fact that there is no API limit when upgrading agents at the same time, it is not advised to upgrade an agents list exceeding 3000 agents. In case of doing it, it is highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
       operationId: api.controllers.agent_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
@@ -6218,7 +6218,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents custom"
-      description: "Upgrade the agents using a local WPK file"
+      description: "Upgrade the agents using a local WPK file. Despite the fact that there is no API limit when upgrading agents at the same time, it is not advised to upgrade an agents list exceeding 3000 agents. In case of doing it, it is highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
       operationId: api.controllers.agent_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'

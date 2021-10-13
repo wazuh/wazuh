@@ -24,23 +24,20 @@ cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 # Error codes generated from upgrade socket error codes that should be excluded in upgrade functions
+# 1819 -> The WPK for this platform is not available
 # 1820 -> Upgrade procedure could not start. Agent already upgrading
 # 1821 -> Remote upgrade is not available for this agent version
 # 1822 -> Current agent version is greater or equal
-ERROR_CODES_UPGRADE_SOCKET = [1820, 1821, 1822]
+ERROR_CODES_UPGRADE_SOCKET = [1819, 1820, 1821, 1822]
 
 # Error codes generated from upgrade socket error codes that should be raised as bad request (400)
 # The rest of codes are WazuhInternalErrors (500)
-# 1819 -> The WPK for this platform is not available
-# 1824 -> The repository is not reachable
-# 1825 -> The version of the WPK does not exist in the repository
-# 1826 -> The WPK file does not exist
-# 1827 -> The WPK sha1 of the file is not valid
-ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1819, 1824, 1825, 1826, 1827]
+# 1823 -> Upgrading an agent to a version higher than the manager requires the force flag
+ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1823]
 
 # Error codes generated from upgrade socket error codes that should be excluded in get upgrade results
 # 1813 -> No task in DB
-NO_TASK_IN_DB_CODE = 1813
+ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT = [1813]
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -953,7 +950,8 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731, NO_TASK_IN_DB_CODE]})
+                  post_proc_kwargs=
+                  {'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT})
 def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Read upgrade result output from agent.
 
@@ -969,7 +967,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
     Returns
     -------
     AffectedItemsWazuhResult
-        Upgrade results..
+        Upgrade results.
     """
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were returned',
                                       some_msg='Some upgrade tasks were not returned',
@@ -1032,7 +1030,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
                     result.total_affected_items += 1
 
                 # Upgrade error for specific agents (no task in DB)
-                elif (error_code := 1810 + task_error) == NO_TASK_IN_DB_CODE:
+                elif (error_code := 1810 + task_error) in ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT:
                     error = WazuhError(code=error_code, cmd_error=True, extra_message=task_result['message'])
                     result.add_failed_item(id_=str(task_result['agent']).zfill(3), error=error)
 
