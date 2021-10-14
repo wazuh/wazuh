@@ -593,7 +593,7 @@ int _close_sock(keystore * keys, int sock) {
 
 int key_request_connect() {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
+    return OS_ConnectUnixDomain(AUTH_LOCAL_SOCK, SOCK_DGRAM, OS_MAXSTR);
 #else
     return -1;
 #endif
