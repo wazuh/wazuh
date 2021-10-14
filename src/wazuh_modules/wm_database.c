@@ -120,12 +120,6 @@ void* wm_database_main(wm_database *data) {
         wm_sync_manager();
     }
 
-#ifndef LOCAL
-    wm_clean_dangling_groups();
-    wm_clean_dangling_legacy_dbs();
-    wm_clean_dangling_wdb_dbs();
-#endif
-
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
         char * path;
@@ -173,6 +167,9 @@ void* wm_database_main(wm_database *data) {
                 wm_check_agents();
                 wm_scan_directory(GROUPS_DIR);
                 wm_sync_multi_groups(SHAREDCFG_DIR);
+                wm_clean_dangling_groups();
+                wm_clean_dangling_legacy_dbs();
+                wm_clean_dangling_wdb_dbs();
             }
 #endif
             gettime(&spec1);
@@ -737,6 +734,9 @@ void wm_inotify_setup(wm_database * data) {
         wm_sync_agents();
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
+        wm_clean_dangling_groups();
+        wm_clean_dangling_legacy_dbs();
+        wm_clean_dangling_wdb_dbs();
     }
 
 #endif
