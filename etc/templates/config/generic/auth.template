@@ -13,12 +13,4 @@
     <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>
     <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>
     <ssl_auto_negotiate>no</ssl_auto_negotiate>
-    <key_request>
-        <enabled>yes</enabled>
-        <exec_path>/usr/bin/python /home/script.py</exec_path>
-        <socket>/path/to/socket</socket>
-        <timeout>60</timeout>
-        <threads>1</threads>
-        <queue_size>1024</queue_size>
-    </key_request>
   </auth>
