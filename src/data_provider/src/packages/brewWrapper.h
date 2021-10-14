@@ -23,6 +23,7 @@ class BrewWrapper final : public IPackageWrapper
         explicit BrewWrapper(const PackageContext& ctx)
             : m_name{ctx.package}
             , m_version{Utils::splitIndex(ctx.version, '_', 0)}
+            , m_architecture{UNKNOWN_VALUE}
             , m_format{"pkg"}
             , m_source{"homebrew"}
             , m_location{ctx.filePath}
