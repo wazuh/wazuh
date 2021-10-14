@@ -417,8 +417,6 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
             delete_agents(agent_list, filters=filters, q=q)
 
 
-@pytest.mark.xfail(reason="`_add_manual` method is not compatible with the authd force rework: "
-                   "https://github.com/wazuh/wazuh/issues/10395")
 @pytest.mark.parametrize('name, agent_id, key, force', [
     ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', None),
     ('agent-1', '012', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', {'enabled': True}),
