@@ -838,6 +838,7 @@ def test_agent_add_manual_content(socket_mock, check_delete_mock, load_info_mock
                                   mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid, mock_wazuh_uid,
                                   mock_release_lock, mock_acquire_lock, mock_get_agents_info, test_case):
     """Tests if method _add_manual() modify the content of a client.keys as expected"""
+
     def calculate_final_file(file_str, id_, name_, ip_, key_):
         file_str += f"{id_} {name_} {ip_} {key_}\n"
         return file_str
@@ -1630,3 +1631,41 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
     expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
     assert result == expected_result
+
+
+@pytest.mark.parametrize('create_time, update_time', [
+    ('2021/10/11 10:06:25', '2021/10/11 10:06:25'),
+    ('2021/10/11 10:06:25', '0')])
+@patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
+@patch('wazuh.core.wazuh_socket.WazuhSocket.send')
+@patch('wazuh.core.wazuh_socket.WazuhSocket.close')
+def test_core_upgrade_agents(socket_close_mock, socket_send_mock, socket_connect_mock, create_time,
+                             update_time):
+    """Check that the function core_upgrade_agents sent the upgrade command properly to the task module.
+
+    Parameters
+    ----------
+    create_time : str
+        String used to parametrize the create_time variable in the result from socket.
+    update_time : str
+        String used to parametrize the update_time variable in the result from socket.
+    """
+
+    agent_list = [1, 2, 3, 4]
+    with patch('wazuh.core.wazuh_socket.WazuhSocket.receive',
+               return_value=bytes(
+                   dumps({"data": [{"create_time": create_time, "update_time": update_time, "agent": "001"}]}),
+                   encoding='utf8')) as socket_receive_mock:
+        result = core_upgrade_agents(agents_chunk=agent_list, command='upgrade', wpk_repo='repo', version='version',
+                                     force=False, use_http=False, file_path='path', installer='installer',
+                                     get_result=False)
+        socket_connect_mock.assert_called_once()
+        socket_send_mock.assert_called_once()
+        socket_receive_mock.assert_called_once()
+
+        assert result["data"][0]["create_time"] == datetime.strptime(
+            loads(socket_receive_mock.return_value.decode())["data"][0]["create_time"], "%Y/%m/%d %H:%M:%S").strftime(
+            date_format)
+        assert result["data"][0]["update_time"] == datetime.strptime(
+            loads(socket_receive_mock.return_value.decode())["data"][0]["update_time"], "%Y/%m/%d %H:%M:%S").strftime(
+            date_format) if update_time != "0" else "0"

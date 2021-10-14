@@ -27,7 +27,7 @@ from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError,
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
+from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
 
 detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
@@ -1244,27 +1244,6 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
     return {'filters': filters, 'rbac_negate': negate}
 
 
-def agents_padding(result, agent_list):
-    """Remove agent 000 from agent_list and transform the format of the agent ids to the general format
-
-    Parameters
-    ----------
-    result : AffectedItemsWazuhResult
-    agent_list : list
-        List of agent's IDs
-
-    Returns
-    -------
-    Formatted agent list
-    """
-    agent_list = [str(agent).zfill(3) for agent in agent_list]
-    if '000' in agent_list:
-        result.add_failed_item(id_='000', error=WazuhError(code=1703))
-        agent_list.remove('000')
-
-    return agent_list
-
-
 def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
                         force=False, use_http=False, file_path=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
@@ -1294,23 +1273,17 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     -------
     Message received from the socket (Task module or Upgrade module)
     """
-    if not get_result:
-        msg = {'version': 1,
-               'origin': {'module': 'api'},
-               'command': command,
-               'parameters': {
-                   'agents': agents_chunk,
-                   'version': version,
-                   'force_upgrade': force,
-                   'use_http': use_http,
-                   'wpk_repo': wpk_repo,
-                   'file_path': file_path,
-                   'installer': installer
-               }
-               }
-    else:
-        msg = {'version': 1, 'origin': {'module': 'api'}, 'command': command,
-               'module': 'api', 'parameters': {'agents': agents_chunk}}
+    msg = create_wazuh_socket_message(origin={'module': 'api'},
+                                      command=command,
+                                      parameters={
+                                          'agents': agents_chunk,
+                                          'version': version,
+                                          'force_upgrade': force,
+                                          'use_http': use_http,
+                                          'wpk_repo': wpk_repo,
+                                          'file_path': file_path,
+                                          'installer': installer
+                                      } if not get_result else {'agents': agents_chunk})
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 
