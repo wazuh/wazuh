@@ -70,10 +70,6 @@ async def print_health(config, more, filter_node):
         Indicate whether additional information is desired or not.
     filter_node : str, list
         Node to return.
-
-    Returns
-    -------
-
     """
     def calculate_seconds(start_time, end_time):
         """Calculate the time difference between two dates.
