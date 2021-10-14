@@ -299,6 +299,38 @@ ID: 80200 - 80499
         <options>no_full_log</options>
     </rule>
 
+    <rule id="80444" level="4">
+        <if_sid>80440</if_sid>
+        <field name="aws.action">UNKNOWN</field>
+        <description>AWS WAF - Unknown request.</description>
+        <group>aws_waf,aws_waf_unknown,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80445" level="4">
+        <if_sid>80440</if_sid>
+        <field name="aws.source">UNKNOWN</field>
+        <description>AWS WAF - Unknown source.</description>
+        <group>aws_waf,aws_waf_unknown,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80446" level="4">
+        <if_sid>80440</if_sid>
+        <field name="aws.clientIPClass">UNKNOWN</field>
+        <description>AWS WAF - Unknown visitor's IP address.</description>
+        <group>aws_waf,aws_waf_unknown,</group>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="80447" level="6">
+        <if_sid>80440</if_sid>
+        <field name="aws.clientIPClass">BADHOST</field>
+        <description>AWS WAF - badHost visitor's IP address.</description>
+        <group>aws_waf,aws_waf_badhost,</group>
+        <options>no_full_log</options>
+    </rule>
+
     <!-- AWS Config -->
     <!-- Documentation: https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html -->
     <rule id="80450" level="0">
@@ -589,7 +621,7 @@ ID: 80200 - 80499
         <description>AWS S3: POST operation: $(aws.request_uri)</description>
     </rule>
 
-   
+
 
 
 
