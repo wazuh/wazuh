@@ -1,7 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.2.3]
+## [v4.2.4]
+
+### Manager
+
+#### Fixed
+
+- Prevented files belonging to deleted agents from remaining in the manager. ([#9158](https://github.com/wazuh/wazuh/pull/9158))
+- Fixed inaccurate agent group file cleanup in the database sync module. ([#10432](https://github.com/wazuh/wazuh/pull/10432))
+- Prevented the manager from corrupting the agent data integrity when the disk gets full. ([#10479](https://github.com/wazuh/wazuh/pull/10479))
+
+
+## [v4.2.3] - 2021-10-06
 
 ### Manager
 
