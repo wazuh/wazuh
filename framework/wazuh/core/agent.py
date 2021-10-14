@@ -88,6 +88,9 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         selected_fields |= self.min_select_fields
         aux = list()
         for item in self._data:
+            # As this is a timestamp, we remove it when its value is 0
+            if item.get("disconnection_time") == 0:
+                del item["disconnection_time"]
             aux_dict = dict()
             for key, value in item.items():
                 if key in selected_fields:
@@ -323,7 +326,7 @@ class Agent:
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
-              'registerIP': 'register_ip'}
+              'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time'}
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=None, use_only_authd=False):
         """Initialize an agent.
@@ -352,6 +355,7 @@ class Agent:
         self.manager = None
         self.node_name = None
         self.registerIP = ip
+        self.disconnection_time = None
 
         # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -365,7 +369,8 @@ class Agent:
         dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
                       'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
-                      'group': self.group, 'manager': self.manager, 'node_name': self.node_name}
+                      'group': self.group, 'manager': self.manager, 'node_name': self.node_name,
+                      'disconnection_time': self.disconnection_time}
 
         return dictionary
 
@@ -1187,7 +1192,7 @@ def format_fields(field_name, value):
         return str(value).zfill(3)
     elif field_name == 'group':
         return value.split(',')
-    elif field_name in ['dateAdd', 'lastKeepAlive']:
+    elif field_name in ['dateAdd', 'lastKeepAlive', 'disconnection_time']:
         return datetime.utcfromtimestamp(value) if not isinstance(value, str) else value
     else:
         return value

@@ -6,6 +6,7 @@
 import os
 import sqlite3
 import sys
+from copy import copy
 from unittest.mock import ANY, patch, mock_open, call, MagicMock
 
 import pytest
@@ -84,6 +85,7 @@ class InitAgent:
         self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
         self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
+        self.disconnected_fields = self.active_fields | {"disconnection_time"}
         self.manager_fields -= {'registerIP'}
 
 
@@ -113,8 +115,10 @@ def check_agent(test_data, agent):
     assert 'id' in agent
     if agent['id'] == '000':
         assert agent.keys() == test_data.manager_fields
-    elif agent['status'] == 'active' or agent['status'] == 'disconnected':
+    elif agent['status'] == 'active':
         assert agent.keys() == test_data.active_fields
+    elif agent['status'] == 'disconnected':
+        assert agent.keys() == test_data.disconnected_fields
     elif agent['status'] == 'pending':
         assert agent.keys() == test_data.pending_fields
     elif agent['status'] == 'never_connected':
@@ -189,28 +193,37 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
     assert 'OR id LIKE :search_id)' in query_agent.query, 'Query returned does not match the expected one'
 
 
+@pytest.mark.parametrize('data', [
+    [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'manager': 'master', 'dateAdd': 1000000000,
+      'disconnection_time': 0}],
+    [{'id': 3, 'status': 'disconnected', 'group': 'default', 'manager': 'worker1', 'dateAdd': 1000000000,
+      'disconnection_time': 19345809}]
+])
 @patch('socket.socket.connect')
-def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn):
+def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
     """Tests _format_data_into_dictionary of WazuhDBQueryAgents returns expected data"""
-    data = [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'manager': 'master',
-             'dateAdd': 1000000000}]
-
     query_agent = WazuhDBQueryAgents(offset=0, limit=1, sort=None,
-                                     search=None, select={'id', 'status', 'group', 'dateAdd', 'manager'},
+                                     search=None, select={'id', 'status', 'group', 'dateAdd', 'manager',
+                                                          'disconnection_time'},
                                      default_sort_field=None, query=None, count=5,
                                      get_data=None, min_select_fields={'os.version'})
 
     # Mock _data variable with our own data
+    d = copy(data[0])
     query_agent._data = data
     result = query_agent._format_data_into_dictionary()
 
     # Assert format_fields inside _format_data_into_dictionary is working as expected
-    assert result['items'][0]['id'] == '000', 'ID is not as expected'
-    assert result['items'][0]['status'] == 'active', 'status is not as expected'
-    assert type(result['items'][0]['group']) == list and len(result['items'][0]['group']) == 3, \
-        '"group" has different type or length than expected'
-    assert type(result['items'][0]['dateAdd']) == datetime, 'Not date type'
-    assert result['items'][0]['manager'] == 'master'
+    res = result['items'][0]
+
+    assert res["id"] == str(d["id"]).zfill(3), "ID is not as expected"
+    assert res["status"] == d["status"], "status is not as expected"
+    assert isinstance(res["group"], list) and len(res["group"]) == len(d["group"].split(",")), \
+        "'group' has different type or length than expected"
+    assert isinstance(res["dateAdd"], datetime), "Not date type"
+    assert res["manager"] == d["manager"]
+    assert "disconnection_time" not in res if d["disconnection_time"] == 0 \
+        else isinstance(res["disconnection_time"], datetime)
 
 
 @patch('socket.socket.connect')
@@ -662,7 +675,7 @@ def test_agent_remove_authd(mock_wazuh_socket):
 @patch('socket.socket.connect')
 def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
                              safe_move_mock, isdir_mock, isfile_mock, exists_mock, stat_mock, chmod_mock,
-                             rmtree_mock, remove_mock, mock_delete_agents, lockf_mock, mkstemp_mock,  backup,
+                             rmtree_mock, remove_mock, mock_delete_agents, lockf_mock, mkstemp_mock, backup,
                              exists_backup_dir):
     """Test the _remove_manual function
 
@@ -872,6 +885,7 @@ def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, l
                                   mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid, mock_wazuh_uid,
                                   mock_release_lock, mock_acquire_lock, mock_get_agents_info, test_case):
     """Tests if method _add_manual() modify the content of a client.keys as expected"""
+
     def calculate_final_file(file_str, id_, name_, ip_, key_):
         file_str += f"{id_} {name_} {ip_} {key_}\n"
         return file_str
