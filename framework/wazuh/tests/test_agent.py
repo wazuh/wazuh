@@ -412,9 +412,12 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
         assert next(iter(result.failed_items)).code == error_code
 
 
+@pytest.mark.xfail(reason="`_add_manual` method is not compatible with the authd force rework: "
+                   "https://github.com/wazuh/wazuh/issues/10395")
 @pytest.mark.parametrize('name, agent_id, key, force', [
     ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', None),
-    ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d', {'enabled': True})
+    ('agent-1', '012', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', {'enabled': True}),
+    ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d', None)
 ])
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))

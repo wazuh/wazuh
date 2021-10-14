@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS agent (
     connection_status TEXT NOT NULL CHECK (connection_status IN ('active', 'pending', 'disconnected', 'never_connected')) DEFAULT 'never_connected',
     fim_offset INTEGER NOT NULL DEFAULT 0,
     reg_offset INTEGER NOT NULL DEFAULT 0,
-    `group` TEXT DEFAULT 'default'
+    `group` TEXT DEFAULT 'default',
+    disconnection_time INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
@@ -95,13 +96,13 @@ INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, 
 -- Disconnected agent
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
-                   last_keepalive, status, connection_status) VALUES (5,'agent-5','172.17.0.300','172.17.0.300',
+                   last_keepalive, status, connection_status, disconnection_time) VALUES (5,'agent-5','172.17.0.300','172.17.0.300',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a42ba2455d53a90927747f', 'Ubuntu','18.08.1 LTS','18','08',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-5 days'),
-                    strftime('%s','now','-2 hour'),'updated','disconnected');
+                    strftime('%s','now','-2 hour'),'updated','disconnected', strftime('%s','now','-2 hour'));
 
 
 -- Connected agent in group-1
