@@ -93,7 +93,7 @@ async def print_health(config, more, filter_node):
         if end_time != 'n/a' and start_time != 'n/a':
             seconds = \
                 datetime.strptime(end_time, decimals_date_format) - datetime.strptime(start_time, decimals_date_format)
-            total_seconds = f"{seconds.total_seconds()}s"
+            total_seconds = f"{round(seconds.total_seconds(), 3) if seconds.total_seconds() >= 0.0005 else 0.001}s"
         else:
             total_seconds = 'n/a'
 
