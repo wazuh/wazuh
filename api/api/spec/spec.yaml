@@ -5260,7 +5260,7 @@ components:
         default: false
     upgrade_version:
       in: query
-      name: version
+      name: upgrade_version
       description: "Wazuh version to upgrade to"
       schema:
         type: string
@@ -6160,7 +6160,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents"
-      description: "Upgrade agents using a WPK file from online repository"
+      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
       operationId: api.controllers.agent_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
@@ -6172,6 +6172,17 @@ paths:
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Agents upgraded"
@@ -6207,7 +6218,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents custom"
-      description: "Upgrade the agents using a local WPK file"
+      description: "Upgrade the agents using a local WPK file. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
       operationId: api.controllers.agent_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
@@ -6217,6 +6228,17 @@ paths:
         - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Agents upgraded"
@@ -6260,6 +6282,17 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Get agent upgrade results"
