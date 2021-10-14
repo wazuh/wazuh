@@ -11,7 +11,6 @@ ID: 80200 - 80499
 
 <group name="amazon,aws,">
 
-
     <!-- AWS wodle -->
     <rule id="80200" level="0">
         <decoded_as>json</decoded_as>
@@ -19,7 +18,6 @@ ID: 80200 - 80499
         <description>AWS alert.</description>
         <options>no_full_log</options>
     </rule>
-
 
     <!-- Cloudtrail -->
 
@@ -102,7 +100,6 @@ ID: 80200 - 80499
         <options>no_full_log</options>
     </rule>
 
-
     <!-- Guard Duty -->
     <!-- Documentation: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types.html -->
     <rule id="80300" level="0">
@@ -128,6 +125,7 @@ ID: 80200 - 80499
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
     </rule>
+
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
         <field name="aws.severity">7|8|9</field>
@@ -187,7 +185,7 @@ ID: 80200 - 80499
       <group>aws_alb,</group>
       <options>no_full_log</options>
     </rule>
-    
+
     <rule id="80328" level="5">
       <if_sid>80325</if_sid>
       <field name="aws.elb_status_code">403</field>
@@ -195,9 +193,6 @@ ID: 80200 - 80499
       <group>aws_alb,</group>
       <options>no_full_log</options>
     </rule>
-
-
-
 
     <!-- Macie Alerts -->
     <!-- Documentation: https://docs.aws.amazon.com/macie/latest/userguide/macie-alerts.html#macie-alert-severity -->
@@ -598,9 +593,5 @@ ID: 80200 - 80499
         <field name="aws.operation">POST</field>
         <description>AWS S3: POST operation: $(aws.request_uri)</description>
     </rule>
-
-
-
-
 
 </group>
