@@ -20,8 +20,10 @@ void FileItem::createFimEntry() {
     data->size = m_size;
     data->perm = const_cast<char*>(m_perm.c_str());
     data->attributes = const_cast<char*>(m_attributes.c_str());
-    data->uid = const_cast<char*>(std::to_string(m_uid).c_str());
-    data->gid = const_cast<char*>(std::to_string(m_gid).c_str());
+    data->uid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
+    std::strncpy(data->uid, std::to_string(m_uid).c_str(), sizeof(std::to_string(m_uid).size()));
+    data->gid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
+    std::strncpy(data->gid, std::to_string(m_gid).c_str(), sizeof(std::to_string(m_gid).size()));
     data->user_name = const_cast<char*>(m_username.c_str());
     data->group_name = const_cast<char*>(m_groupname.c_str());
     data->mtime = m_time;
