@@ -874,7 +874,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
-        can_upgrade_agents = set(map(operator.itemgetter('id'), data['items']))
+        can_upgrade_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
 
         try:
@@ -981,7 +981,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
-        can_upgrade_agents = set(map(operator.itemgetter('id'), data['items']))
+        can_upgrade_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
 
         try:

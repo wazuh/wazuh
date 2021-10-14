@@ -1340,24 +1340,17 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     -------
     Message received from the socket (Task module or Upgrade module)
     """
-    if not get_result:
-        msg = create_wazuh_socket_message(origin={'module': 'api'},
-                                          command=command,
-                                          parameters={
-                                              'agents': agents_chunk,
-                                              'version': version,
-                                              'force_upgrade': force,
-                                              'use_http': use_http,
-                                              'wpk_repo': wpk_repo,
-                                              'file_path': file_path,
-                                              'installer': installer
-                                          })
-
-    else:
-        msg = create_wazuh_socket_message(origin={'module': 'api'},
-                                          command=command,
-                                          parameters={'agents': agents_chunk})
-        msg['module'] = 'api'
+    msg = create_wazuh_socket_message(origin={'module': 'api'},
+                                      command=command,
+                                      parameters={
+                                          'agents': agents_chunk,
+                                          'version': version,
+                                          'force_upgrade': force,
+                                          'use_http': use_http,
+                                          'wpk_repo': wpk_repo,
+                                          'file_path': file_path,
+                                          'installer': installer
+                                      } if not get_result else {'agents': agents_chunk})
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 

@@ -282,7 +282,7 @@ class WazuhException(Exception):
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for the action to be performed',
-               'remediation': f"Please, make sure the agent meets the requirements."
+               'remediation': 'Please, make sure the agent meets the requirements.'
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent to perform the operation.'
