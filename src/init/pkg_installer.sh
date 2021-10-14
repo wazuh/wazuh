@@ -71,7 +71,7 @@ function restore_ossec_ownership {
                userdel wazuh > /dev/null 2>&1
             fi
             # Delete user and group
-            if command -v wazuh > /dev/null 2>&1; then
+            if command -v delgroup > /dev/null 2>&1; then
                delgroup wazuh > /dev/null 2>&1
             else
                groupdel wazuh >/dev/null 2>&1
