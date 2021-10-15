@@ -28,15 +28,20 @@ requirements:
     - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*11\p'
 
 checks:
+
+############################################################
+#1 Install Updates, Patches and Additional Security Software
+############################################################
 # jal
 # 1.1 Verify all Apple provided software is current (Automated)
   - id: 18000
     title: "Verify all Apple provided software is current"
     description: "Software vendors release security patches and software updates for their products when security vulnerabilities are discovered. There is no simple way to complete this action without a network connection to an Apple software repository. Please ensure appropriate access for this control. This check is only for what Apple provides through software update."
     rationale: "It is important that these updates be applied in a timely manner to prevent unauthorized persons from exploiting the identified vulnerabilities."
-    remediation: "1. In Terminal, run the following: softwareupdate -l    2. In Terminal, run the following for any packages that show up in step 1: sudo softwareupdate -i packagename"
+    remediation: "1. In Terminal, run the following: softwareupdate -i -a      2. In Terminal, run the following for any packages that show up in step 1: sudo softwareupdate -i packagename"
     compliance:
       - cis: ["1.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:softwareupdate -l -> r:No new software available'
@@ -50,6 +55,7 @@ checks:
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true"
     compliance:
       - cis: ["1.2"]
+      - cis_level: ["1"]
     references:
       - https://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/
       - https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/
@@ -66,6 +72,7 @@ checks:
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true"
     compliance:
       - cis: ["1.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -> 1'
@@ -79,6 +86,7 @@ checks:
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate - bool TRUE"
     compliance:
       - cis: ["1.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1'
@@ -92,6 +100,7 @@ checks:
     remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true && sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true"
     compliance:
       - cis: ["1.5"]
+      - cis_level: ["1"]
     references:
       - https://www.thesafemac.com/tag/xprotect/
       - https://support.apple.com/en-us/HT202491
@@ -106,12 +115,13 @@ checks:
     title: "Enable macOS update installs"
     description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
-    remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate - bool TRUE"
+    remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates AutoUpdate - bool TRUE"
     compliance:
       - cis: ["1.6"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -> 1'
 
 # jal
 # 2.1.1 Turn off Bluetooth, if no paired devices exist (Automated)
