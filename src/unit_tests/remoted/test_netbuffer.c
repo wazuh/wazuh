@@ -221,10 +221,8 @@ void test_nb_send_ok(void ** state) {
     expect_value(__wrap_bqueue_drop, length, final_size);
     will_return(__wrap_bqueue_drop, final_size);
 
-    expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-    expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
-    will_return(__wrap_bqueue_peek, "");
-    will_return(__wrap_bqueue_peek, 0);
+    expect_memory(__wrap_bqueue_used, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
+    will_return(__wrap_bqueue_used, 0);
 
     expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
     expect_value(__wrap_wnotify_modify, fd, sock);
@@ -278,10 +276,8 @@ void test_nb_send_would_block_ok(void ** state) {
 
     will_return(__wrap_send, -1);
 
-    expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-    expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
-    will_return(__wrap_bqueue_peek, final_msg);
-    will_return(__wrap_bqueue_peek, final_size);
+    expect_memory(__wrap_bqueue_used, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
+    will_return(__wrap_bqueue_used, final_size);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -309,10 +305,8 @@ void test_nb_send_err(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "socket: 15, send fail");
 
-    expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
-    expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
-    will_return(__wrap_bqueue_peek, "");
-    will_return(__wrap_bqueue_peek, 0);
+    expect_memory(__wrap_bqueue_used, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
+    will_return(__wrap_bqueue_used, 0);
 
     expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
     expect_value(__wrap_wnotify_modify, fd, sock);

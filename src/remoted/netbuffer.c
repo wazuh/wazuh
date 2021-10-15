@@ -170,7 +170,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
             }
         }
 
-        if (!peeked_bytes || bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG) == 0) {
+        if (!peeked_bytes || bqueue_used(buffer->buffers[socket].bqueue) == 0) {
             wnotify_modify(notify, socket, WO_READ);
         }
     }
