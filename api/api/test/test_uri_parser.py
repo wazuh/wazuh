@@ -1,42 +1,54 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from api.api_exception import APIError
 from connexion.lifecycle import ConnexionRequest
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         from api.uri_parser import APIUriParser
 
+QUERY_DICT = {'component': 'VaLuE',
+              'configuration': 'VaLuE',
+              'hash': 'VaLuE',
+              'requirement': 'VaLuE',
+              'status': 'VaLuE',
+              'type': 'VaLuE',
+              'section': 'VaLuE',
+              'tag': 'VaLuE',
+              'level': 'VaLuE',
+              'resource': 'VaLuE0',
+              'q': ''
+              }
+QUERY_DICT_Q = QUERY_DICT.copy()
+QUERY_DICT_Q['q'] = 'q=value'
+QUERY_DICT_Q_SC = QUERY_DICT.copy()
+QUERY_DICT_Q_SC['q'] = 'q=;'
 
-@patch('api.uri_parser.APIUriParser.resolve_query')
-@patch('api.uri_parser.APIError')
-@patch('api.uri_parser.raise_if_exc')
-@pytest.mark.parametrize('mock_parse_return, mock_q',
+
+@pytest.mark.parametrize('query_value',
                          [
-                             (';', True),
-                             ('mock_parse_return_value', False),
-                             ('mock_parse_return_value', True)
+                             (QUERY_DICT),
+                             (QUERY_DICT_Q),
+                             (QUERY_DICT_Q_SC)
                              ]
                          )
-def test_apiuriparser_call(mock_exc, mock_aerror, mock_rquery, mock_parse_return, mock_q):
-    with patch('api.uri_parser.parse_api_param', return_value=mock_parse_return) as mock_parse:
-        QUERY_DICT = {'q': 'q_value', 'status': 'StAtUs_Value'} if mock_q else {'status': 'StAtUs_ValuE'}
-
-        uri_parser = APIUriParser({}, {})
-        function = MagicMock()
-        request = ConnexionRequest('url_value',
-                                   'method_value',
-                                   query=QUERY_DICT
-                                   )
-
-        result = uri_parser(function)(request)
-        if mock_q:
-            mock_parse.assert_called_once_with(request.url, 'q')
-            if mock_parse_return == ';':
-                mock_exc.assert_called_once_with(mock_aerror.return_value)
-                mock_aerror.assert_called_once_with(code=2009)
-            mock_rquery.assert_called_once_with({'q': 'q_value', 'status': 'status_value'})
-        else:
-            mock_rquery.assert_called_once_with({'status': 'status_value'})
-        assert result == function.return_value
-        function.assert_called_once_with(request)
+def test_apiuriparser_call(query_value):
+    uri_parser = APIUriParser({}, {})
+    function = MagicMock()
+    request = ConnexionRequest(url=query_value['q'],
+                               method='method_value',
+                               query=query_value
+                               )
+    expected_request = ConnexionRequest(url=query_value['q'],
+                                        method='method_value',
+                                        query=dict((k, v.lower()) for k, v in query_value.items())
+                                        )
+    # uri_parser(function)(request):
+    # Its calling __call__ class method. We're parametrizing the wrapper with the second parameter between brackets.
+    if ';' in query_value['q']:
+        with pytest.raises(APIError, match='2009 .*'):
+            uri_parser(function)(request)
+    else:
+        uri_parser(function)(request)
+        assert request.query == expected_request.query
