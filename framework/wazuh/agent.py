@@ -366,6 +366,11 @@ def delete_agents(agent_list=None, purge=False, filters=None, q=None):
     q : str
         Define query to filter in DB.
 
+    Raises
+    ------
+    WazuhError(1726)
+        Authd is not running.
+
     Returns
     -------
     result : AffectedItemsWazuhResult
@@ -411,7 +416,7 @@ def delete_agents(agent_list=None, purge=False, filters=None, q=None):
                 my_agent = Agent(agent_id)
                 my_agent.remove(purge=purge)
                 result.affected_items.append(agent_id)
-            except WazuhException as e:
+            except WazuhError as e:
                 if e.code == 1726:
                     raise e
 
