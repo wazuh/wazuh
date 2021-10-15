@@ -48,6 +48,7 @@ public:
                 m_uid = std::atoi(fim->file_entry.data->uid);
                 m_username = std::string(fim->file_entry.data->user_name);
                 m_fimEntry.reset(fim);
+                createJSON();
             }
     FileItem(const std::string &path,
              const std::string &checksum,
@@ -85,10 +86,32 @@ public:
              , m_username( username )
              {
                 createFimEntry();
+                createJSON();
              }
+    FileItem(const nlohmann::json &fim)
+    : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
+    {
+        m_options = fim.at("options");
+        m_time = fim.at("mtime");
+        m_size = fim.at("size");
+        m_dev = fim.at("dev");
+        m_inode = fim.at("inode");
+        m_attributes = fim.at("attributes");
+        m_gid = fim.at("gid");
+        m_groupname = fim.at("group_name");
+        m_md5 = fim.at("hash_md5");
+        m_perm = fim.at("perm");
+        m_sha1 = fim.at("hash_sha1");
+        m_sha256 = fim.at("hash_sha256");
+        m_uid = fim.at("uid");
+        m_username = fim.at("user_name");
+
+        createFimEntry();
+        m_statementConf = std::make_unique<nlohmann::json>(fim);
+    };
     ~FileItem() = default;
     fim_entry* toFimEntry() { return m_fimEntry.get(); };
-    nlohmann::json* toJSON();
+    nlohmann::json* toJSON() { return m_statementConf.get(); };
 
 private:
     int                                             m_options;
@@ -107,7 +130,7 @@ private:
     std::string                                     m_username;
     std::unique_ptr<fim_entry, FimFileDataDeleter>  m_fimEntry;
     std::unique_ptr<nlohmann::json>                 m_statementConf;
-    
+
     void createFimEntry();
     void createJSON();
 };
