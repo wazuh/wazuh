@@ -120,7 +120,6 @@ void* wm_database_main(wm_database *data) {
     }
 
 #ifndef LOCAL
-    wm_clean_dangling_groups();
     wm_clean_dangling_db();
 #endif
 
@@ -131,6 +130,9 @@ void* wm_database_main(wm_database *data) {
 
         wm_inotify_setup(data);
 
+#ifndef LOCAL
+        wm_clean_dangling_groups();
+#endif
         while (1) {
             path = wm_inotify_pop();
 
@@ -171,6 +173,7 @@ void* wm_database_main(wm_database *data) {
                 wm_check_agents();
                 wm_scan_directory(GROUPS_DIR);
                 wm_sync_multi_groups(SHAREDCFG_DIR);
+                wm_clean_dangling_groups();
             }
 #endif
             gettime(&spec1);

@@ -42,6 +42,11 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Added a context variable to indicate origin module in socket communication messages. ([#9209](https://github.com/wazuh/wazuh/pull/9209))
 
+. **Ruleset:**
+  - Added Rules and Decoders for Wazuh API. ([#10428](https://github.com/wazuh/wazuh/pull/10428))
+  - Added Rules and Decoders for TrendMicro Cloud One. ([#10458](https://github.com/wazuh/wazuh/pull/10458))
+  - Added Rules for Sophos UTM Firewall. ([#10496](https://github.com/wazuh/wazuh/pull/10496))
+
 ### Changed
 
 - **Core:**
@@ -83,6 +88,7 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1 ([#10354](https://github.com/wazuh/wazuh/pull/10354))
+  - Updated Amazon rules to add more granularity. ([10507](https://github.com/wazuh/wazuh/pull/10507))
 
 ### Fixed
 
@@ -128,6 +134,8 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Fixed enabled-like checks for Amazon Linux 2 SCA ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA ([#10354](https://github.com/wazuh/wazuh/pull/10354))
+  - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas) ([#10406](https://github.com/wazuh/wazuh/pull/10406))
+
 ### Removed
 
 - **Core:**
@@ -140,7 +148,16 @@ All notable changes to this project will be documented in this file.
   - Removed old framework functions used to calculate agent status. ([#8846](https://github.com/wazuh/wazuh/pull/8846))
 
 
-## [v4.2.2]
+## [v4.2.3]
+
+### Manager
+
+#### Fixed
+
+- Fixed a bug in Remoted that might lead it to crash when retrieving an agent's group. ([#10388](https://github.com/wazuh/wazuh/pull/10388))
+
+
+## [v4.2.2] - 2021-09-28
 
 ### Manager
 

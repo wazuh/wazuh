@@ -6,6 +6,8 @@
  * and/or modify it under the terms of GPLv2.
  */
 
+PRAGMA foreign_keys=ON;
+
 CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -56,7 +58,7 @@ CREATE TABLE IF NOT EXISTS `group` (
 );
 
 CREATE TABLE IF NOT EXISTS belongs (
-    id_agent INTEGER,
+    id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
     id_group INTEGER,
     PRIMARY KEY (id_agent, id_group)
 );
@@ -66,4 +68,4 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '2');
+INSERT INTO metadata (key, value) VALUES ('db_version', '3');

@@ -170,6 +170,13 @@ class DistributedAPI:
             return response if isinstance(response, (wresults.AbstractWazuhResult, exception.WazuhException)) \
                 else wresults.WazuhResult(response)
 
+        except json.decoder.JSONDecodeError:
+            e = exception.WazuhInternalError(3036)
+            e.dapi_errors = self.get_error_info(e)
+            if self.debug:
+                raise
+            self.logger.error(f"{e.message}")
+            return e
         except exception.WazuhError as e:
             e.dapi_errors = self.get_error_info(e)
             return e
@@ -177,7 +184,7 @@ class DistributedAPI:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
-            self.logger.error(f'{e.message}', exc_info=True)
+            self.logger.error(f"{e.message}", exc_info=True)
             return e
         except Exception as e:
             if self.debug:
@@ -250,17 +257,20 @@ class DistributedAPI:
                 lc = local_client.LocalClient()
                 self.f_kwargs[self.local_client_arg] = lc
 
-            if self.is_async:
-                task = run_local()
-            else:
-                loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(threadpool, run_local)
             try:
-                data = await asyncio.wait_for(task, timeout=timeout)
-            except asyncio.TimeoutError:
-                raise exception.WazuhInternalError(3021)
-            except OperationalError:
-                raise exception.WazuhInternalError(2008)
+                if self.is_async:
+                    task = run_local()
+                else:
+                    loop = asyncio.get_running_loop()
+                    task = loop.run_in_executor(threadpool, run_local)
+                try:
+                    data = await asyncio.wait_for(task, timeout=timeout)
+                except asyncio.TimeoutError:
+                    raise exception.WazuhInternalError(3021)
+                except OperationalError:
+                    raise exception.WazuhInternalError(2008)
+            except json.decoder.JSONDecodeError:
+                raise exception.WazuhInternalError(3036)
 
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
@@ -271,8 +281,8 @@ class DistributedAPI:
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
-            # Avoid exception info if it is an asyncio timeout
-            self.logger.error(f"{e.message}", exc_info=True if e.code != 3021 else False)
+            # Avoid exception info if it is an asyncio timeout or JSONDecodeError
+            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036})
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -378,7 +388,6 @@ class DistributedAPI:
                                              data=json.dumps(self.to_dict(),
                                                              cls=c_common.WazuhJSONEncoder).encode(),
                                              wait_for_complete=self.wait_for_complete)
-
         return json.loads(node_response,
                           object_hook=c_common.as_wazuh_object)
 

@@ -2209,6 +2209,56 @@ void test_wdb_remove_agent_db_success(void **state) {
 
 /* Tests wdb_remove_agent */
 
+void test_wdb_remove_agent_remove_db_error(void **state)
+{
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int ret = 0;
+    int id = 1;
+
+    char *query_str = "global delete-agent 1";
+    const char *response = "ok";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    str = __real_cJSON_CreateString("agent1");
+    __real_cJSON_AddItemToObject(row, "name", str);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB in select-agent-name
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Error on removing DB files
+    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
+    will_return(__wrap_remove, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to remove agent DB: 1 - agent1");
+
+    ret = wdb_remove_agent(id, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+
+    __real_cJSON_Delete(root);
+}
+
 void test_wdb_remove_agent_error_socket(void **state)
 {
     int ret = 0;
@@ -2342,50 +2392,6 @@ void test_wdb_remove_agent_error_result(void **state)
     __real_cJSON_Delete(root);
 }
 
-void test_wdb_remove_agent_error_delete_belongs_and_name(void **state)
-{
-    int ret = 0;
-    int id = 1;
-
-    char *query_str = "global delete-agent 1";
-    const char *response = "ok";
-
-    // Calling Wazuh DB
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    char *query_belong_str = "global delete-agent-belong 1";
-    response = "err";
-
-    // Calling Wazuh DB in delete-agent-belong
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_belong_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_INVALID);
-
-    // Handling result
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global delete-agent-belong 1");
-
-    // Calling Wazuh DB in select-agent-name
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 name.");
-
-    ret = wdb_remove_agent(id, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
 void test_wdb_remove_agent_success(void **state)
 {
     cJSON *root = NULL;
@@ -2400,20 +2406,6 @@ void test_wdb_remove_agent_success(void **state)
     // Calling Wazuh DB
     expect_any(__wrap_wdbc_query_ex, *sock);
     expect_string(__wrap_wdbc_query_ex, query, query_str);
-    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
-
-    // Parsing Wazuh DB result
-    expect_any(__wrap_wdbc_parse_result, result);
-    will_return(__wrap_wdbc_parse_result, WDBC_OK);
-
-    char *query_belongs_str = "global delete-agent-belong 1";
-    response = "ok";
-
-    // Calling Wazuh DB in delete-agent-belong
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, query_belongs_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
@@ -4839,10 +4831,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db_shm_wal, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_agent */
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_remove_db_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_delete_belongs_and_name, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_keepalive */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_name_nor_ip, setup_wdb_global_helpers, teardown_wdb_global_helpers),
