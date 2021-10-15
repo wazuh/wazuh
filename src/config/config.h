@@ -72,7 +72,10 @@ int Read_GCP(const OS_XML *xml, xml_node *node, void *d1);
 #ifndef WIN32
 int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
-int Read_Authd(XML_NODE node, void *d1, void *d2);
+int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+#ifndef CLIENT
+int authd_read_key_request(xml_node **nodes, void *config);
+#endif
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
