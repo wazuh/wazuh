@@ -10,7 +10,7 @@ import logging
 import pytz
 import sqlite3
 from sys import exit, path
-from datetime import datetime
+from datetime import datetime, timezone
 from json import dumps
 from os.path import join, dirname, realpath
 
@@ -45,7 +45,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             Expected prefix for the logs. It can be used to specify the relative path where the logs are stored.
         delete_file : bool
             Indicate whether blobs should be deleted after being processed.
-        only_logs_after : str
+        only_logs_after : datetime
             Date after which obtain logs.
         """
         super().__init__(logger)
@@ -56,7 +56,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
         self.only_logs_after = only_logs_after
-
+        self.default_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
@@ -159,6 +159,28 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                                                                                 creation_time=blob.time_created))
     processed_files = list()
 
+    def _get_last_creation_time(self):
+        """Get the latest creation time value stored in the database for the given project, bucket_name and
+        prefix.
+
+        Returns
+        -------
+        datetime or None
+            The datetime of the last log parsed or None if no log have been parsed yet for that bucket.
+        """
+        creation_time = None
+        query_creation_time = self.db_connector.execute(
+            self.sql_find_last_creation_time.format(table_name=self.db_table_name,
+                                                    project_id=self.project_id,
+                                                    bucket_name=self.bucket_name,
+                                                    prefix=self.prefix))
+        try:
+            creation_time = query_creation_time.fetchone()[0]
+            creation_time = datetime.strptime(creation_time, self.datetime_format)
+        except (TypeError, IndexError):
+            pass
+        return creation_time
+
     def check_permissions(self):
         """Check if the Service Account has access to the bucket."""
         try:
@@ -193,30 +215,26 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         int
             Number of blobs processed.
         """
-        def get_last_creation_time():
-            """Get the latest creation time value stored in the database for the given project, bucket_name and
-            prefix."""
-            creation_time = datetime.min.replace(tzinfo=pytz.UTC)
-            query_creation_time = self.db_connector.execute(
-                self.sql_find_last_creation_time.format(table_name=self.db_table_name,
-                                                        project_id=self.project_id,
-                                                        bucket_name=self.bucket_name,
-                                                        prefix=self.prefix))
-            try:
-                creation_time = query_creation_time.fetchone()[0]
-                creation_time = datetime.strptime(creation_time, self.datetime_format)
-            except (TypeError, IndexError):
-                pass
-            return creation_time
+        def block_process_blob():
+            """Helper function that wraps all the code that must be executed for each processed blob."""
+            nonlocal blob, processed_files, processed_messages, new_creation_time, current_creation_time
+            self.logger.info(f'Processing {blob.name}')
+            processed_messages += self.process_blob(blob)
 
-        processed_files = []
+            if current_creation_time > new_creation_time:
+                processed_files.clear()
+                new_creation_time = current_creation_time
+
+            processed_files.append(blob)
+
         try:
             bucket_contents = self.bucket.list_blobs(prefix=self.prefix, delimiter='/')
+            processed_files = []
             processed_messages = 0
             new_creation_time = datetime.min.replace(tzinfo=pytz.UTC)
 
             self.init_db()
-            last_creation_time = get_last_creation_time()
+            last_creation_time = self._get_last_creation_time()
             previous_processed_files = self._get_last_processed_files()
 
             for blob in bucket_contents:
@@ -226,22 +244,28 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
                 current_creation_time = blob.time_created
 
-                if current_creation_time >= self.only_logs_after:
-                    if (current_creation_time > last_creation_time) or \
-                            (current_creation_time == last_creation_time and blob.name not in previous_processed_files):
-                        self.logger.info(f'Processing {blob.name}')
-                        processed_messages += self.process_blob(blob)
+                if not self.only_logs_after or current_creation_time >= self.only_logs_after:
+                    if last_creation_time:
+                        if current_creation_time > last_creation_time:
+                            block_process_blob()
 
-                        if current_creation_time > new_creation_time:
-                            processed_files.clear()
-                            new_creation_time = current_creation_time
-
-                        processed_files.append(blob)
+                        if current_creation_time == last_creation_time:
+                            if blob.name not in previous_processed_files:
+                                block_process_blob()
+                            else:
+                                self.logger.info(f'Skipping previously processed file: {blob.name}')
+                    elif not self.only_logs_after:
+                        if current_creation_time >= self.default_date:
+                            block_process_blob()
+                        else:
+                            self.logger.info(f'The creation time of {blob.name} is older than {self.default_date}. '
+                                             f'Skipping it...')
                     else:
-                        self.logger.info(f'Skipping previously processed file: {blob.name}')
+                        block_process_blob()
                 else:
                     self.logger.info(f'The creation time of {blob.name} is older than {self.only_logs_after}. '
                                      f'Skipping it...')
+
         finally:
             # Ensure the changes are committed to the database even if an exception was raised
             if self.db_connector:
