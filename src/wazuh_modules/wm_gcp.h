@@ -53,7 +53,18 @@ typedef struct wm_gcp_bucket_base {
 extern const wm_context WM_GCP_PUBSUB_CONTEXT;   // Context
 extern const wm_context WM_GCP_BUCKET_CONTEXT;   // Context
 
+/**
+ * @brief Read the configuration for Google Cloud Pub/Sub
+ * @param nodes XML nodes to analyze
+ * @param module Wazuh module to initialize
+ */
 int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module);
+
+/**
+ * @brief Read the configuration for a Google Cloud bucket
+ * @param nodes XML nodes to analyze
+ * @param module Wazuh module to initialize
+ */
 int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif
