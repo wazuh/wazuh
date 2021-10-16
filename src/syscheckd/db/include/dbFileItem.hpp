@@ -37,8 +37,7 @@ public:
             , fim->file_entry.data->scanned
             , fim->file_entry.data->last_event
             , fim->file_entry.data->checksum
-            , fim->file_entry.data->mode)
-            {
+            , fim->file_entry.data->mode) {
                 m_options = fim->file_entry.data->options;
                 m_time = fim->file_entry.data->mtime;
                 m_size = fim->file_entry.data->size;
@@ -55,7 +54,7 @@ public:
                 m_username = std::string(fim->file_entry.data->user_name);
                 createJSON();
                 createFimEntry();
-            }
+    }
     FileItem(const std::string &path,
              const std::string &checksum,
              const time_t &lastEvent,
@@ -89,14 +88,12 @@ public:
              , m_perm( perm )
              , m_sha1( sha1)
              , m_sha256( sha256 )
-             , m_username( username )
-             {
+             , m_username( username ) {
                 createFimEntry();
                 createJSON();
-             }
+    }
     FileItem(const nlohmann::json &fim)
-    : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
-    {
+    : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode")) {
         m_options = fim.at("options");
         m_time = fim.at("mtime");
         m_size = fim.at("size");
