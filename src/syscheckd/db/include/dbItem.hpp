@@ -30,7 +30,7 @@ public:
     virtual ~DBItem() = default;
     virtual fim_entry* toFimEntry() = 0;
     virtual nlohmann::json* toJSON() = 0;
-    bool getState() { return m_scanned; };
+    bool state() { return m_scanned; };
 
 protected:
     std::string             m_identifier;

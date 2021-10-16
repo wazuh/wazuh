@@ -47,8 +47,10 @@ void FileItemTest::TearDown() {
 
 TEST_F(FileItemTest, fileItemConstructorFromFIM) {
     EXPECT_NO_THROW({
-       auto file = new FileItem(fimEntryTest);
-       delete file;
+        auto file = new FileItem(fimEntryTest);
+        auto scanned = file->state();
+        EXPECT_TRUE(scanned);
+        delete file;
     });
 }
 
@@ -61,6 +63,8 @@ TEST_F(FileItemTest, fileItemConstructorFromParameters) {
                                  "fakeGroup", "d41d8cd98f00b204e9800998ecf8427e", "-rw-rw-r--",
                                  "da39a3ee5e6b4b0d3255bfef95601890afd80709",
                                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "fakeUser");
+        auto scanned = file->state();
+        EXPECT_TRUE(scanned);
         delete file;
     });
 }
@@ -77,6 +81,8 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON) {
     )"_json;
     EXPECT_NO_THROW({
         auto fileTest = new FileItem(json);
+        auto scanned = fileTest->state();
+        EXPECT_TRUE(scanned);
         delete fileTest;
     });
 }
