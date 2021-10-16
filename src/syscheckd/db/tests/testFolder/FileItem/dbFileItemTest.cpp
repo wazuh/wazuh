@@ -41,6 +41,8 @@ void FileItemTest::SetUp() {
 }
 
 void FileItemTest::TearDown() {
+    free(fimEntryTest->file_entry.data);
+    free(fimEntryTest);
 }
 
 TEST_F(FileItemTest, fileItemConstructorFromFIM) {
