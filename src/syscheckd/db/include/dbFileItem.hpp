@@ -11,13 +11,19 @@
 
 #ifndef _FILEITEM_HPP
 #define _FILEITEM_HPP
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 #include "dbItem.hpp"
 
 struct FimFileDataDeleter {
     void operator()(fim_entry* address) {
         if (address) {
             if (address->file_entry.data) {
+                if (address->file_entry.data->gid){
+                    std::free(address->file_entry.data->gid);
+                }
+                if (address->file_entry.data->uid){
+                    std::free(address->file_entry.data->uid);
+                }
                 std::free(address->file_entry.data);
             }
             std::free(address);
@@ -47,8 +53,8 @@ public:
                 m_sha256 = std::string(fim->file_entry.data->hash_sha256);
                 m_uid = std::atoi(fim->file_entry.data->uid);
                 m_username = std::string(fim->file_entry.data->user_name);
-                m_fimEntry.reset(fim);
                 createJSON();
+                createFimEntry();
             }
     FileItem(const std::string &path,
              const std::string &checksum,
