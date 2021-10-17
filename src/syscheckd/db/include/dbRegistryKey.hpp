@@ -33,21 +33,21 @@ struct FimRegistryKeyDeleter {
 class RegistryKey final : public DBItem {
 public:
     RegistryKey(fim_entry * const fim)
-            : DBItem(std::string(fim->registry_entry.key->id)
-            , fim->registry_entry.key->scanned
-            , fim->registry_entry.key->last_event
-            , fim->registry_entry.key->checksum
-            , NULL) {
-                m_arch = fim->registry_entry.key->arch;
-                m_gid = std::atoi(fim->registry_entry.key->gid);
-                m_groupname = std::string(fim->registry_entry.key->group_name);
-                m_path = std::string(fim->registry_entry.key->path);
-                m_perm = std::string(fim->registry_entry.key->perm);
-                m_time = fim->registry_entry.key->mtime;
-                m_uid = std::atoi(fim->registry_entry.key->uid);
-                m_username = std::string(fim->registry_entry.key->user_name);
-                createJSON();
-                createFimEntry();
+                : DBItem(std::to_string(fim->registry_entry.key->id)
+                , fim->registry_entry.key->scanned
+                , fim->registry_entry.key->last_event
+                , fim->registry_entry.key->checksum
+                , FIM_SCHEDULED) {
+                    m_arch = fim->registry_entry.key->arch;
+                    m_gid = std::atoi(fim->registry_entry.key->gid);
+                    m_uid = std::atoi(fim->registry_entry.key->uid);
+                    m_groupname = std::string(fim->registry_entry.key->group_name);
+                    m_path = std::string(fim->registry_entry.key->path);
+                    m_perm = std::string(fim->registry_entry.key->perm);
+                    m_username = std::string(fim->registry_entry.key->user_name);
+                    m_time = fim->registry_entry.key->mtime;
+                    createJSON();
+                    createFimEntry();
     }
     RegistryKey(const std::string &id,
                 const std::string &checksum,
@@ -61,17 +61,17 @@ public:
                 const unsigned int &time,
                 const int &uid,
                 const std::string &username)
-             : DBItem(id, scanned, lastEvent, checksum, NULL)
-             , m_arch( arch )
-             , m_gid ( gid )
-             , m_groupname( groupname )
-             , m_path( path )
-             , m_perm( perm )
-             , m_time( time )
-             , m_uid( uid )
-             , m_username( username ) {
-                createFimEntry();
-                createJSON();
+                : DBItem(id, scanned, lastEvent, checksum, FIM_SCHEDULED)
+                , m_arch( arch )
+                , m_gid ( gid )
+                , m_uid( uid )
+                , m_groupname( groupname )
+                , m_path( path )
+                , m_perm( perm )
+                , m_username( username )
+                , m_time( time ) {
+                    createFimEntry();
+                    createJSON();
     }
     RegistryKey(const nlohmann::json &fim)
     : DBItem(fim.at("id"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode")) {
