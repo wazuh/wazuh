@@ -8,3 +8,4 @@ include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 add_subdirectory(db/FileItem)
+add_subdirectory(db/RegistryKey)

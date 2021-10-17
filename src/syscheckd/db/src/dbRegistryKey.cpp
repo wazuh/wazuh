@@ -16,7 +16,7 @@ void RegistryKey::createFimEntry() {
     fim_registry_key *key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
 
     fim->type = FIM_TYPE_REGISTRY;
-    key->id = const_cast<char*>(m_identifier.c_str());
+    key->id = std::atoi(m_identifier.c_str());
     key->arch = m_arch;
     std::strncpy(key->checksum, m_checksum.c_str(), sizeof(key->checksum));
     key->gid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
