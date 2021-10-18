@@ -11,7 +11,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.agent_controller import (
-            use_only_auth, add_agent, delete_agents, delete_groups,
+            add_agent, delete_agents, delete_groups,
             delete_multiple_agent_single_group,
             delete_single_agent_multiple_groups,
             delete_single_agent_single_group, get_agent_config,
@@ -47,7 +47,6 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
         mock_alist = None
     f_kwargs = {'agent_list': mock_alist,
                 'purge': False,
-                'use_only_authd': use_only_auth,
                 'filters': {
                     'status': None,
                     'older_than': None,
@@ -530,7 +529,6 @@ async def test_post_new_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     f_kwargs = {
         'name': 'agent_name_value',
         'ip': None,
-        'use_only_authd': use_only_auth,
         'force': {
             'enabled': False,
             'disconnected_time': {
