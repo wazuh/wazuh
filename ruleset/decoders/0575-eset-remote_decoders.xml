@@ -1,24 +1,6 @@
 <!-- Sample logs
-{"timestamp":"2021-08-17T16:20:55.204+0000","agent":{"id":"000","name":"soc"},"manager":{"name":"soc"},"id":"1629217255.9550906","full_log":"<12>1 2021-08-17T16:20:54.653Z esmc ERAServer 11836 - -   {\"event_type\":\"FilteredWebsites_Event\",\"ipv4\":\"192.168.0.2\",\"hostname\":\"cm-czapata.com\",\"source_uuid\":\"b1ef23b2-c218-4cf6-b527-3994688f623c\",\"occured\":\"17-Aug-2021 16:20:14\",\"severity\":\"Warning\",\"event\":\"An attempt to connect to URL\",\"target_address\":\"139.45.195.6\",\"target_address_type\":\"IPv4\",\"scanner_id\":\"HTTP filter\",\"action_taken\":\"Blocked\",\"handled\":true,\"object_uri\":\"https://offclaydolon.com\",\"hash\":\"5C985DDDF74B5CC7E8A8A0E817EEC2EBC3AEA04E\",\"username\":\"GRUPOANDES\\\\DVIRGUEZ\",\"processname\":\"C:\\\\Program Files (x86)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\",\"rule_id\":\"Blocked by PUA blacklist\"}","decoder":{},"location":"xxx.yy.zz.aaa"}
-{"timestamp":"2021-08-17T16:20:55.344+0000","agent":{"id":"000","name":"soc"},"manager":{"name":"soc"},"id":"1629217255.9550906","full_log":"<12>1 2021-08-17T16:20:54.899Z esmc ERAServer 11836 - -   {\"event_type\":\"FilteredWebsites_Event\",\"ipv4\":\"192.168.56.127\",\"hostname\":\"tpc56127.tpcallao.gob.pe\",\"source_uuid\":\"d148de73-6c6f-400b-af16-1ea9a05636fb\",\"occured\":\"17-Aug-2021 16:19:47\",\"severity\":\"Warning\",\"event\":\"An attempt to connect to URL\",\"target_address\":\"52.109.12.24\",\"target_address_type\":\"IPv4\",\"scanner_id\":\"HTTP filter\",\"action_taken\":\"Blocked\",\"handled\":true,\"object_uri\":\"nexus.officeapps.live.com\",\"hash\":\"6ED9FC3387359BAFC128E2715326FC1C175AE6B1\",\"username\":\"TPCALLAO\\\\sfcloc1\",\"processname\":\"C:\\\\Program Files\\\\Microsoft Office\\\\Office15\\\\WINWORD.EXE\",\"rule_id\":\"Website certificate revoked\"}","decoder":{},"location":"xxx.yy.zz.aaa"}
-{"timestamp":"2021-08-17T17:01:18.985+0000","rule":{"level":2,"id":"1002","firedtimes":2,"mail":false,"groups":["syslog","errors"],"gpg13":["4.3"]},"agent":{"id":"000","name":"soc"},"manager":{"name":"soc"},"id":"1629219678.9701348","full_log":"<12>1 2021-08-17T17:01:18.773Z esmc ERAServer 11836 - - {\"event_type\":\"FirewallAggregated_Event\",\"ipv4\":\"192.168.1.52\",\"hostname\":\"desktop-s720l3s\",\"source_uuid\":\"e58a4e1c-192a-4b4f-bc78-2e7c2abbd4cc\",\"occured\":\"17-Aug-2021 16:32:38\",\"severity\":\"Warning\",\"event\":\"ARP Cache Poisoning attack\",\"source_address\":\"192.168.1.170\",\"source_address_type\":\"IPv4\",\"target_address\":\"192.168.1.170\",\"target_address_type\":\"IPv4\",\"protocol\":\"ARP\",\"action\":\"Blocked\",\"handled\":true,\"inbound\":true,\"aggregate_count\":3}","decoder":{},"location":"xxx.yy.zz.aaa"}
+May  6 10:59:37 XXXXX ERAServer[5032]: {"event_type":"Audit_Event","ipv4":"XXX.XXX.XXX.XXX","hostname":"XXXXX","source_uuid":"9416183d-3XX3-4776-9783-9532a3a027bb","occured":"06-May-2021 09:59:37","severity":"Information","domain":"Domain group","action":"Login attempt","target":"a49d257e-ecc6-4063-95c6-5eb5e6b3e5df","detail":"Authenticating domain user 'XXXXXXXX'.","user":"","result":"Success"}
 -->
-<decoder name="eset-main">
-  <prematch>^\<\d+>\d+ \d+-\d+-\d+T\d+:\d+:\d+.\d+\w \w+ \w+ \d+</prematch>
-</decoder>
-
-<decoder name="eset-main-child">
-  <parent>eset-main</parent>
-  <prematch>-\s+</prematch>
-  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
-</decoder>
-
-<decoder name="eset-main-child">
-  <parent>eset-main</parent>
-  <regex>^\<\d+>\d+ (\d+-\d+-\d+T\d+:\d+:\d+.\d+\w) (\w+) (\w+) (\d+)</regex>
-  <order>timestamp,type,source,msg_id</order>
-</decoder>
-
 <decoder name="eset-bsd">
   <program_name>ERAServer</program_name>
 </decoder>

@@ -12,8 +12,9 @@ import argparse
 import logging
 import sys
 from logging.handlers import TimedRotatingFileHandler
+from os.path import abspath, dirname
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
 import utils
 
 logger_name = 'gcloud_wodle'
@@ -25,7 +26,7 @@ log_levels = {0: logging.NOTSET,
               4: logging.ERROR,
               5: logging.CRITICAL,
               }
-logging_format = logging.Formatter('%(name)s: %(levelname)s: %(message)s', '%Y/%m/%d %H:%M:%S')
+logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 min_num_threads = 1
 min_num_messages = 1
 

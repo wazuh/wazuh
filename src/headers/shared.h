@@ -234,6 +234,7 @@ extern const char *__local_name;
 #include "rbtree_op.h"
 #include "queue_op.h"
 #include "queue_linked_op.h"
+#include "bqueue_op.h"
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"

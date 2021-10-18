@@ -85,4 +85,16 @@ void mq_log_builder_init();
 
 int mq_log_builder_update();
 
+/**
+ *  Reconnect a Message Queue.
+ *  @param key path where the message queue will be reconnect.
+ *  @param fn_ptr pointer to function that evaluates a predicate.
+ *  @return
+ *  UNIX -> OS_INVALID if queue failed to reconnect.
+ *  UNIX -> int(rc) file descriptor of initialized queue
+ *  WIN32 -> 0
+ */
+int MQReconnectPredicated(const char *key, bool (*fn_ptr)()) __attribute__((nonnull));
+
+
 #endif /* MQ_H */

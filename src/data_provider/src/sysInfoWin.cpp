@@ -173,8 +173,9 @@ class SysInfoProcess final
 
             for (const auto& logicalDrive : logicalDrives)
             {
+                const auto normalizedName { logicalDrive.back() == L'\\' ? logicalDrive.substr(0, logicalDrive.length() - 1) : logicalDrive };
                 const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
-                res = QueryDosDevice(logicalDrive.c_str(), spDosDevice.get(), OS_MAXSTR);
+                res = QueryDosDevice(normalizedName.c_str(), spDosDevice.get(), OS_MAXSTR);
 
                 if (res)
                 {
@@ -354,7 +355,7 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
     return jsProcessInfo;
 }
 
-static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data, const REGSAM access = 0)
+static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::function<void(nlohmann::json&)> returnCallback, const REGSAM access = 0)
 {
     try
     {
@@ -421,7 +422,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                     packageJson["architecture"] = std::move(architecture);
                     packageJson["format"]       = "win";
 
-                    data.push_back(std::move(packageJson));
+                    returnCallback(packageJson);
                 }
             }
         };
@@ -565,14 +566,10 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
 nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
-    fillProcessesData([&jsProcessesList](const auto & processEntry)
-    {
-        const auto& processInfo { getProcessInfo(processEntry) };
 
-        if (!processInfo.empty())
-        {
-            jsProcessesList.push_back(processInfo);
-        }
+    getProcessesInfo([&jsProcessesList](nlohmann::json & data)
+    {
+        jsProcessesList.push_back(data);
     });
 
     return jsProcessesList;
@@ -581,15 +578,10 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
-    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, ret, KEY_WOW64_64KEY);
-    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, ret, KEY_WOW64_32KEY);
-
-    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    getPackages([&ret](nlohmann::json & data)
     {
-        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
-    }
-    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+        ret.push_back(data);
+    });
     return ret;
 }
 
@@ -697,7 +689,7 @@ void expandPortData(T data, const std::map<pid_t, std::string>& processDataList,
         {
             nlohmann::json port;
             std::make_unique<PortImpl>(std::make_shared<WindowsPortWrapper>(data->table[i], processDataList))->buildPortData(port);
-            result["ports"].push_back(port);
+            result.push_back(port);
         }
     }
 }
@@ -754,4 +746,38 @@ nlohmann::json SysInfo::getPorts() const
     expandPortData(portTable.udp6.get(), processDataList, ports);
 
     return ports;
+}
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
+{
+    fillProcessesData([&callback](const auto & processEntry)
+    {
+        auto processInfo = getProcessInfo(processEntry);
+
+        if (!processInfo.empty())
+        {
+            callback(processInfo);
+        }
+    });
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
+{
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, callback, KEY_WOW64_64KEY);
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, callback, KEY_WOW64_32KEY);
+
+    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    {
+        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, callback);
+    }
+}
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    nlohmann::json ret;
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, ret);
+    return ret;
 }

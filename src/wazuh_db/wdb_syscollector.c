@@ -374,7 +374,7 @@ int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -413,6 +413,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         release,
         version,
         os_release,
+        os_display_version,
         checksum,
         replace) < 0) {
 
@@ -423,7 +424,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT) < 0) {
@@ -449,7 +450,8 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 14, release, -1, NULL);
     sqlite3_bind_text(stmt, 15, version, -1, NULL);
     sqlite3_bind_text(stmt, 16, os_release, -1, NULL);
-    sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 17, os_display_version, -1, NULL);
+    sqlite3_bind_text(stmt, 18, checksum, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -1244,8 +1246,9 @@ int wdb_syscollector_osinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const char * release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "release"));
     const char * version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "version"));
     const char * os_release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_release"));
+    const char * os_display_version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_display_version"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, checksum, TRUE);
+    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, TRUE);
 }
 
 

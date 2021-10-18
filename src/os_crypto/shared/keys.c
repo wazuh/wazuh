@@ -689,10 +689,13 @@ int OS_DeleteSocket(keystore * keys, int sock) {
     w_mutex_lock(&keys->keytree_sock_mutex);
 
     if (entry = rbtree_get(keys->keytree_sock, strsock), entry) {
+        w_mutex_lock(&entry->mutex);
+
         if (sock == entry->sock) {
             entry->sock = -1;
         }
 
+        w_mutex_unlock(&entry->mutex);
         rbtree_delete(keys->keytree_sock, strsock);
     } else {
         retval = -1;

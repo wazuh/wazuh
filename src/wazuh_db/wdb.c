@@ -45,8 +45,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_FIND_DATE_ENTRIES] = "SELECT full_path, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
     [WDB_STMT_FIM_GET_ATTRIBUTES] = "SELECT file, attributes from fim_entry WHERE attributes IS NOT '0';",
     [WDB_STMT_FIM_UPDATE_ATTRIBUTES] = "UPDATE fim_entry SET attributes = ? WHERE file = ?;",
-    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_OSINFO_INSERT2] = "INSERT OR REPLACE INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_OSINFO_INSERT2] = "INSERT OR REPLACE INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_OSINFO_DEL] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_PROGRAM_INSERT] = "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PROGRAM_INSERT2] = "INSERT OR REPLACE INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -168,6 +168,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_TASK_DELETE_TASK] = "DELETE FROM TASKS WHERE TASK_ID = ?;",
     [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
+    [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE] = "DELETE FROM sys_processes WHERE pid > ? AND pid < ?;",
@@ -262,6 +263,7 @@ wdb_t * wdb_open_global() {
             wdb_pool_append(wdb);
             wdb = wdb_upgrade_global(wdb);
         }
+        wdb_enable_foreign_keys(wdb->db);
     }
 
     // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
@@ -1280,6 +1282,20 @@ int wdb_journal_wal(sqlite3 *db) {
 
     if (sql_error != NULL) {
         merror("Cannot set database journaling mode to WAL: '%s'", sql_error);
+        sqlite3_free(sql_error);
+        return -1;
+    }
+
+    return 0;
+}
+
+int wdb_enable_foreign_keys(sqlite3 *db) {
+    char *sql_error = NULL;
+
+    sqlite3_exec(db, SQL_STMT[WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS], NULL, NULL, &sql_error);
+
+    if (sql_error != NULL) {
+        merror("Cannot enable foreign keys: '%s'", sql_error);
         sqlite3_free(sql_error);
         return -1;
     }

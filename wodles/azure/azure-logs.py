@@ -48,7 +48,7 @@ except Exception as e:
 	print("Azure Storage SDK for Python is missing: '{}', try 'pip install azure-storage-blob'.".format(e))
 	sys.exit(1)
 
-ADDR = '{}/queue/sockets/queue'.format(utils.wazuh_path)
+ADDR = '{}/queue/sockets/queue'.format(utils.find_wazuh_path())
 BLEN = 212992
 
 utc = pytz.UTC
@@ -113,7 +113,7 @@ def set_logger():
 	if args.verbose:
 		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 	else:
-		log_path = "{}/logs/azure_logs.log".format(utils.wazuh_path)
+		log_path = "{}/logs/azure_logs.log".format(utils.find_wazuh_path())
 		logging.basicConfig(filename=log_path, level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 
 

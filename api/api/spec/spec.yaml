@@ -1694,8 +1694,6 @@ components:
                           format: int32
                 sync_agentinfo_free:
                   type: boolean
-                sync_extravalid_free:
-                  type: boolean
                 sync_integrity_free:
                   type: boolean
 
@@ -2383,10 +2381,14 @@ components:
           type: number
           format: float
           description: "Number of events sent to analysisd during the last five seconds"
-        msg_sent:
+        queued_msgs:
           type: number
           format: float
-          description: "Number of messages sent to the agents during the last five seconds"
+          description: "Number of messages queued to be sent to agents during the last five seconds"
+        sent_bytes:
+          type: number
+          format: float
+          description: "Number of sent bytes to the agents during the last five seconds"
         queue_size:
           type: number
           format: float
@@ -7830,7 +7832,6 @@ paths:
                         n_active_agents: 3
                       status:
                         sync_integrity_free: true
-                        sync_extravalid_free: true
                         last_check_integrity:
                           date_start_master: 2021-05-27T10:50:51.325656Z
                           date_end_master: 2021-05-27T10:50:51.342140Z
@@ -7857,7 +7858,6 @@ paths:
                         n_active_agents: 1
                       status:
                         sync_integrity_free: true
-                        sync_extravalid_free: true
                         last_check_integrity:
                           date_start_master: 2021-05-27T10:50:51.939323Z
                           date_end_master: 2021-05-27T10:50:51.955007Z
@@ -9108,7 +9108,8 @@ paths:
                       evt_count: 9089.0
                       ctrl_msg_count: 2099.0
                       discarded_count: 0
-                      msg_sent: 4210.0
+                      queued_msgs: 4210.0
+                      sent_bytes: 784598.0
                       recv_bytes: 4541779.0
                       dequeued_after_close: 0.0
                   total_affected_items: 1
@@ -10511,7 +10512,8 @@ paths:
                       evt_count: 0
                       ctrl_msg_count: 0
                       discarded_count: 0
-                      msg_sent: 0
+                      queued_msgs: 0
+                      sent_bytes: 0
                       recv_bytes: 0
                   total_affected_items: 0
                   failed_items: []
