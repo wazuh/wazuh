@@ -22,7 +22,6 @@
  **/
 typedef struct authd_force_options_t {
     bool enabled;
-    int connection_time;
     bool key_mismatch;
     bool disconnected_time_enabled;
     time_t disconnected_time;
