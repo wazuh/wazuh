@@ -695,9 +695,10 @@ checks:
 ############################################################
 # 5 System Access, Authentication and Authorization
 ############################################################
+# 5.1 File System Permissions and Access Controls
+############################################################
 # not implemented - SCA Limit -> 5.1.1 Secure Home Folders (Automated)
 
-# jal
 # 5.1.2 Check System Wide Applications for appropriate permissions (Automated)
   - id: 18044
     title: "Check System Wide Applications for appropriate permissions"
@@ -706,11 +707,11 @@ checks:
     remediation: "Run the following command to change the permissions for each application that does not meet the requirements: sudo chmod -R o-w /Applications/<applicationname>"
     compliance:
       - cis: ["5.1.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:find /Applications -iname "*.app" -type d -perm -2 -ls -> r:^$'
+      - 'c:sudo find /Applications -iname "*.app" -type d -perm -2 -ls -> r:^$'
 
-# jal
 # 5.1.3 Check System folder for world writable files (Automated)
   - id: 18045
     title: "Check System folder for world writable files"
@@ -719,11 +720,11 @@ checks:
     remediation: "Run the following command to set permissions so that folders are not world writable in the /System folder: sudo chmod -R o-w /Path/<baddirectory>"
     compliance:
       - cis: ["5.1.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:find /System -type d -perm -2 -ls -> r:^$|Public/Drop Box'
+      - 'c:find /System -type d -perm -2 -ls -> r:^$'
 
-# jal
 # 5.1.4 Check Library folder for world writable files (Automated)
   - id: 18046
     title: "Check Library folder for world writable files"
@@ -732,11 +733,14 @@ checks:
     remediation: "Run the following command to set permissions so that folders are not world writable in the /Library folder: sudo chmod -R o-w /Library/<baddirectory>"
     compliance:
       - cis: ["5.1.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
-      - 'c:find /Library -type d -perm -2 -ls -> r:^$|Caches'
+      - 'c:sudo find /System/Volumes/Data/Library -type d -perm -2 -ls | grep -v Caches | grep -v Audio -> r:^$'
 
-# jal
+############################################################
+# 5.2 Password Management
+############################################################
 # not implemented - SCA Limit -> 5.2.1 Configure account lockout threshold (Automated)
 # not implemented - SCA Limit -> 5.2.2 Set a minimum password length (Automated)
 # not implemented - SCA Limit -> 5.2.3 Complex passwords must contain an Alphabetic Character (Manual)
@@ -746,7 +750,6 @@ checks:
 # not implemented - SCA Limit -> 5.2.7 Password Age (Automated)
 # not implemented - SCA Limit -> 5.2.8 Password History (Automated)
 
-# jal
 # 5.3 Reduce the sudo timeout period (Automated) 18051
   - id: 18051
     title: "Reduce the sudo timeout period"
@@ -755,15 +758,14 @@ checks:
     remediation: "Run the following command to edit the sudo settings: sudo visudo -> Add the line Defaults timestamp_timeout=0 in the Override built-in defaults section. "
     compliance:
       - cis: ["5.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:grep -e "timestamp" /etc/sudoers -> r:Defaults timestamp_timeout=0'
+      - 'c:sudo grep -e "timestamp" /etc/sudoers -> r:Defaults timestamp_timeout=0'
 
-# jal
 # not implemented - SCA Limit -> 5.4 Automatically lock the login keychain for inactivity (Manual)
 
-# jal
-# 5.5 Use a separate timestamp for each user/tty combo (Automated) 18052
+# 5.5 Use a separate timestamp for each user/tty combo (Automated)
   - id: 18052
     title: "Use a separate timestamp for each user/tty combo"
     description: "Using tty tickets ensures that a user must enter the sudo password in each Terminal session. With sudo versions 1.8 and higher, introduced in 10.12, the default value is to have tty tickets for each interface so that root access is limited to a specific terminal. The default configuration can be overwritten or not configured correctly on earlier versions of macOS."
@@ -771,28 +773,27 @@ checks:
     remediation: "Run the following command to edit the sudo settings: sudo visudo -> Add the line Defaults timestamp_timeout=0 in the Override built-in defaults section. "
     compliance:
       - cis: ["5.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:grep -E -s "!tty_tickets" /etc/sudoers /etc/sudoers.d/* -> r:^$'
-      - 'c:grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
+      - 'c:sudo grep -E -s '!tty_tickets' /etc/sudoers /etc/sudoers.d/* -> r:^$'
+      - 'c:sudo grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
 
-# jal
 # not implemented - SCA Limit -> 5.6 Ensure login keychain is locked when the computer sleeps (Manual)
 
-# jal
 # 5.7 Do not enable the "root" account (Automated)
   - id: 18053
     title: "Do not enable the \"root\" account"
     description: "The root account is a superuser account that has access privileges to perform any actions and read/write to any file on the computer. With some Linux distros the system administrator may commonly uses the root account to perform administrative functions."
     rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
-    remediation: "Open System Preferences, Uses & Groups. Click the lock icon to unlock it. In the Network Account Server section, click Join or Edit. Click Open Directory Utility. Click the lock icon to unlock it. Select the Edit menu > Disable Root User."
+    remediation: "Open System Preferences, Uses & Groups. Click the lock icon to unlock it. In the Network Account Server section, click Join or Edit. Click Open Directory Utility. Click the lock icon to unlock it. Select the Edit menu > Disable Root User. Terminal Method: Run the following command to disable the root user: sudo dsenableroot -d"
     compliance:
       - cis: ["5.7"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority'
+      - 'c:sudo dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority'
 
-# jal
 # 5.8 Disable automatic login (Automated)
   - id: 18054
     title: "Disable automatic login"
@@ -801,17 +802,38 @@ checks:
     remediation: "Run the following command in Terminal: sudo defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser"
     compliance:
       - cis: ["5.8"]
-    condition: none
+      - cis_level: ["1"]
+    condition: all
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.loginwindow -> r:autoLoginUser'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser -> r:^$'
 
-# jal
 # not implemented - process - 5.9 Require a password to wake the computer from sleep or screen saver (Manual)
 # not implemented - SCA Limit -> 5.10 Ensure system is set to hibernate (Automated)
-# not implemented - SCA Limit -> 5.11 Require an administrator password to access system-wide preferences (Automated)
-# not implemented - SCA Limit -> 5.12 Disable ability to login to another user's active and locked session (Automated)
+# 5.11 Require an administrator password to access system-wide preferences (Automated)
+  - id: 18056
+    title: "Require an administrator password to access system-wide preferences"
+    description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer. "
+    rationale: "By requiring a password to unlock system-wide System Preferences the risk is mitigated of a user changing configurations that affect the entire system and requires an admin user to re-authenticate to make changes."
+    remediation: "Perform the following to verify that an administrator password is required to access system-wide preferences: 1.  Open System Preferences 2.  Select Security & Privacy 3.  Select General 4.  Select Advanced... 5.  Set Require an administrator password to access system-wide preferences"
+    compliance:
+      - cis: ["5.11"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'c:sudo security authorizationdb read system.preferences 2> /dev/null | grep -A1 shared | grep false -> r:^<false/>'
+# 5.12 Disable ability to login to another user's active and locked session (Automated)
+  - id: 18057
+    title: "Ensure an administrator account cannot login to another user's active and locked session"
+    description: "macOS has a privilege that can be granted to any user that will allow that user to unlock active user's sessions."
+    rationale: "Disabling the admins and/or user's ability to log into another user's active and locked session prevents unauthorized persons from viewing potentially sensitive and/or personal information."
+    remediation: "Run the following command to disable a user logging into another user's active and/or locked session: $ sudo security authorizationdb write system.login.screensaver use-login-window-ui"
+    compliance:
+      - cis: ["5.12"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'c:sudo security authorizationdb read system.login.screensaver 2>&1 | /usr/bin/grep -c 'use-login-window-ui' -> 1'
 
-# jal
 # 5.13 Create a custom message for the Login Screen (Automated)
   - id: 18058
     title: "Create a custom message for the Login Screen"
@@ -820,11 +842,11 @@ checks:
     remediation: "Run the following command to enable a custom login screen message: sudo defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText \"<custom.message>\""
     compliance:
       - cis: ["5.13"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> !r:does not exist'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> !r:does not exist'
 
-# jal
 # 5.14 Create a Login window banner (Automated)
   - id: 18059
     title: "Create a Login window banner"
@@ -833,14 +855,13 @@ checks:
     remediation: "Edit (or create) a PolicyBanner.txt or PolicyBanner.rtf file, in the /Library/Security/ folder, to include the required login window banner text."
     compliance:
       - cis: ["5.14"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'd:/Library/Security -> r:^PolicyBanner'
+      - 'd:/Library/Security -> !r:^no matches found: /Library/Security/PolicyBanner'
 
-# jal
 # not implemented - SCA Limit -> 5.15 Do not enter a password-related hint (Automated)
 
-# jal
 # 5.16 Disable Fast User Switching (Manual)
   - id: 18060
     title: "Disable Fast User Switching"
@@ -849,27 +870,56 @@ checks:
     remediation: "Run the following command to turn fast user switching off:  sudo defaults write /Library/Preferences/.GlobalPreferences MultipleSessionEnabled -bool false"
     compliance:
       - cis: ["5.16"]
+      - cis_level: ["2"]
     condition: any
     rules:
-      - 'c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> r:does not exist'
-      - 'c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> 0'
+      - 'c:sudo defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> r:does not exist'
+      - 'c:sudo defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> 0'
 
-# jal
 # not implemented - process - 5.17 Secure individual keychains and items (Manual)
-# not implemented - process - 5.18 Create specialized keychains for different purposes (Manual)
 
-# jal
-# 5.19 System Integrity Protection status (Automated)
+# 5.18 System Integrity Protection status (Automated)
   - id: 18061
     title: "System Integrity Protection status"
     description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan. System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
     rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
-    remediation: "Perform the following while booted in macOS Recovery Partition.  1. Select Terminal from the Utilities menu    2. Run the following command in Terminal: /usr/bin/csrutil enable    3. The output should be: Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect.    4. Reboot."
+    remediation: "Perform the following while booted in macOS Recovery Partition.  1. Select Terminal from the Utilities menu    2. Run the following command in Terminal: /usr/bin/csrutil enable   3. The output should be: Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect.    4. Reboot."
     compliance:
-      - cis: ["5.19"]
+      - cis: ["5.18"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:/usr/bin/csrutil status -> r:^System Integrity Protection status: enabled'
+      - 'c:sudo /usr/bin/csrutil status -> r:^System Integrity Protection status: enabled'
+
+# 5.19 Enable Sealed System Volume (SSV) (Automated)
+  - id: 18070
+    title: "Enable Sealed System Volume (SSV)"
+    description: "SThe seal is verified by the boot loader at startup. macOS will not boot if system files have been tampered with. If validation fails, the user will be instructed to reinstall the operating system. During read operations for files located in the Sealed System Volume, a hash is calculated and compared to the value stored in the Merkle tree."
+    rationale: "Running without Sealed System Volume on a production system could run the risk of Apple software, that integrates directly with macOS, being modified. "
+    remediation: "Perform the following while booted in macOS Recovery Partition.  1. Select Terminal from the Utilities menu    2. Run the following command in Terminal: /usr/bin/csrutil enable authenticated-root 3. The output should be: Successfully enabled System authenticated root. Please restart the machine for the changes to take effect.    4. Reboot."
+    compliance:
+      - cis: ["5.19"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'c:sudo /usr/bin/csrutil authenticated-root status  -> r:^SAuthenticated Root status: enabled'
+
+# 5.20 Enable Library Validation (Automated)
+  - id: 18070
+    title: "Enable Library Validation"
+    description: "Library Validation is a security feature introduced in macOS 10.10 Yosemite. Library Validation protects processes from loading arbitrary libraries. This stops root from loading arbitrary libraries into any process (depending on SIP status),and keeps root from becoming more powerful. Security is strengthened, because some user processes can no longer be fooled to run additional code without root's explicit request, which may grant access to daemons that depend on LibraryValidation for secure validation of code identity."
+    rationale: "Running without Library Validation on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by Library Validation."
+    remediation: "Run the following command to set Library Validation: sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation DisableLibraryValidation -bool false"ç
+    references:
+      - https://github.com/Automattic/wp-desktop/issues/790
+      - https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/
+      - http://www.newosxbook.com/articles/CodeSigning.pdf 
+    compliance:
+      - cis: ["5.20"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'c:sudo defaults read /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation  -> r:^0'
 
 # jal
 # 6.1.1 Display login window as name and password (Automated)
