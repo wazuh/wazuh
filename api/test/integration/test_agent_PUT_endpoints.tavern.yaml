@@ -1192,7 +1192,6 @@ stages:
       params:
         agents_list: '005'
         file_path: "{custom_wpk_path:s}"
-        wait_for_complete: 'true'
     response:
       status_code: 200
       json:
