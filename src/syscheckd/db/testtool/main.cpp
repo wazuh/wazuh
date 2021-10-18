@@ -33,15 +33,15 @@ int main(int argc, const char* argv[])
 
     if (action == "DB_INSERT")
     {
-        testAction = std::make_unique<InsertAction>(input["table"], input["data"]);
+        testAction = std::make_unique<InsertAction>(input["table"], input["data"], loggerFunction);
     }
     else if (action == "DB_UPDATE")
     {
-        testAction = std::make_unique<UpdateAction>(input["table"], input["data"]);
+        testAction = std::make_unique<UpdateAction>(input["table"], input["data"], loggerFunction);
     }
     else if (action == "DB_REMOVE")
     {
-        testAction = std::make_unique<RemoveAction>(input["table"], input["data"]);
+        testAction = std::make_unique<RemoveAction>(input["table"], input["data"], loggerFunction);
     }
     else
     {

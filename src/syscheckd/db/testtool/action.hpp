@@ -26,22 +26,26 @@ class TestAction
 {
     public:
         TestAction() = default;
-        virtual void execute() {};
-        virtual ~TestAction() {}
+        virtual void                      execute() {};
+        virtual                           ~TestAction() {}
 
     protected:
-        std::string m_dbPath;
-        std::string m_outPath;
-        std::string m_table;
-        nlohmann::json m_actionData;
-        int m_actionId;
+        int                               m_actionId;
+        std::string                       m_dbPath;
+        std::string                       m_outPath;
+        std::string                       m_table;
+        nlohmann::json                    m_actionData;
+        std::function<void(const char*)> m_reportFunction;
+
 };
 
 class InsertAction final : public TestAction
 {
     public:
-        InsertAction(const std::string& table, const nlohmann::json& actionData)
+        InsertAction(const std::string& table, const nlohmann::json& actionData,
+                     const std::function<void(const char*)> reportFunction)
         {
+            m_reportFunction = reportFunction;
             m_table = table;
             m_actionData = actionData;
             // FIMDB::getInstance().init();
@@ -51,30 +55,29 @@ class InsertAction final : public TestAction
 
         void execute() override
         {
-            fim_entry* entry = nullptr;
-
-            std::cout << "Executing insert action.\n"
-                      << std::endl;
+            m_reportFunction("Executing insert action.\n");
 
             for (auto it : m_actionData)
             {
                 if (m_table == "FILE")
                 {
-                    entry = fillFileEntry(it);
-                }
-                else if (m_table == "REGISTRY_KEY")
-                {
-                    entry = fillKeyEntry(it);
-                }
-                else if (m_table == "REGISTRY_VALUE")
-                {
-                    entry = fillValueEntry(it);
-                }
+                    fim_entry* file_entry = fillFileEntry(it);
+                    m_reportFunction("Inserting file entry:");
 
-                std::cout << "Inserting:" << std::endl;
-                print_entry(*entry);
+                    print_entry(*file_entry, m_reportFunction);
+                    free_entry(file_entry);
+                }
+                else if (m_table == "REGISTRY")
+                {
+                    auto entry_vector = fillRegistryEntry(it);
 
-                free_entry(entry);
+                    for (fim_entry* entry : entry_vector)
+                    {
+                        m_reportFunction("Inserting registry entry:");
+                        print_entry(*entry, m_reportFunction);
+                        free_entry(entry);
+                    }
+                }
             }
         }
 };
@@ -82,65 +85,66 @@ class InsertAction final : public TestAction
 class UpdateAction final : public TestAction
 {
     public:
-        UpdateAction(const std::string& table, const nlohmann::json& actionData)
+        UpdateAction(const std::string& table, const nlohmann::json& actionData,
+                     const std::function<void(const char*)> reportFunction)
         {
+            m_reportFunction = reportFunction;
             m_table = table;
             m_precondData = actionData["precondition_data"];
-            m_actionData = actionData["modification_data"];
+            m_actionData = actionData["update_data"];
             // FIMDB::getInstance().init();
         }
         void execute() override
         {
-            fim_entry* entry = nullptr;
-
-            std::cout << "Executing update preconditions.\n"
-                      << std::endl;
+            m_reportFunction("Executing update preconditions.\n");
 
             for (auto it : m_precondData)
             {
-
                 if (m_table == "FILE")
                 {
-                    entry = fillFileEntry(it);
-                }
-                else if (m_table == "REGISTRY_KEY")
-                {
-                    entry = fillKeyEntry(it);
-                }
-                else if (m_table == "REGISTRY_VALUE")
-                {
-                    entry = fillValueEntry(it);
-                }
+                    fim_entry* file_entry = fillFileEntry(it);
+                    m_reportFunction("Inserting file entry:");
 
-                std::cout << "Inserting:" << std::endl;
-                print_entry(*entry);
+                    print_entry(*file_entry, m_reportFunction);
+                    free_entry(file_entry);
+                }
+                else if (m_table == "REGISTRY")
+                {
+                    auto entry_vector = fillRegistryEntry(it);
 
-                free_entry(entry);
+                    for (auto entry : entry_vector)
+                    {
+                        m_reportFunction("Inserting registry entry:");
+                        print_entry(*entry, m_reportFunction);
+                        free_entry(entry);
+                    }
+                }
             }
 
-            std::cout << "Executing modify actions.\n"
-                      << std::endl;
+            m_reportFunction("Executing update actions.\n");
 
             for (auto it : m_actionData)
             {
 
                 if (m_table == "FILE")
                 {
-                    entry = fillFileEntry(it);
-                }
-                else if (m_table == "REGISTRY_KEY")
-                {
-                    entry = fillKeyEntry(it);
-                }
-                else if (m_table == "REGISTRY_VALUE")
-                {
-                    entry = fillValueEntry(it);
-                }
+                    fim_entry* file_entry = fillFileEntry(it);
+                    m_reportFunction("Updating file entry:");
 
-                std::cout << "Modifying:" << std::endl;
-                print_entry(*entry);
+                    print_entry(*file_entry, m_reportFunction);
+                    free_entry(file_entry);
+                }
+                else if (m_table == "REGISTRY")
+                {
+                    auto entry_vector = fillRegistryEntry(it);
 
-                free_entry(entry);
+                    for (fim_entry* entry : entry_vector)
+                    {
+                        m_reportFunction("Updating registry entry:");
+                        print_entry(*entry, m_reportFunction);
+                        free_entry(entry);
+                    }
+                }
             }
         }
 
@@ -151,8 +155,10 @@ class UpdateAction final : public TestAction
 class RemoveAction final : public TestAction
 {
     public:
-        RemoveAction(const std::string& table, const nlohmann::json& actionData)
+        RemoveAction(const std::string& table, const nlohmann::json& actionData,
+                     const std::function<void(const char*)> reportFunction)
         {
+            m_reportFunction = reportFunction;
             m_table = table;
             m_precondData = actionData["precondition_data"];
             m_actionData = actionData["delete_data"];
@@ -160,54 +166,55 @@ class RemoveAction final : public TestAction
         }
         void execute() override
         {
-
-            fim_entry* entry = nullptr;
-
-            std::cout << "Executing delete preconditions" << std::endl;
+            m_reportFunction("Executing remove preconditions.\n");
 
             for (auto it : m_precondData)
             {
                 if (m_table == "FILE")
                 {
-                    entry = fillFileEntry(it);
-                }
-                else if (m_table == "REGISTRY_KEY")
-                {
-                    entry = fillKeyEntry(it);
-                }
-                else if (m_table == "REGISTRY_VALUE")
-                {
-                    entry = fillValueEntry(it);
-                }
+                    fim_entry* file_entry = fillFileEntry(it);
+                    m_reportFunction("Inserting file entry:");
 
-                std::cout << "Inserting:" << std::endl;
-                print_entry(*entry);
+                    print_entry(*file_entry, m_reportFunction);
+                    free_entry(file_entry);
+                }
+                else if (m_table == "REGISTRY")
+                {
+                    auto entry_vector = fillRegistryEntry(it);
 
-                free_entry(entry);
+                    for (auto entry : entry_vector)
+                    {
+                        m_reportFunction("Inserting registry entry:");
+                        print_entry(*entry, m_reportFunction);
+                        free_entry(entry);
+                    }
+                }
             }
 
-            std::cout << "Executing remove actions.\n"
-                      << std::endl;
+            m_reportFunction("Executing remove actions.\n");
 
             for (auto it : m_actionData)
             {
+
                 if (m_table == "FILE")
                 {
-                    entry = fillFileEntry(it);
-                }
-                else if (m_table == "REGISTRY_KEY")
-                {
-                    entry = fillKeyEntry(it);
-                }
-                else if (m_table == "REGISTRY_VALUE")
-                {
-                    entry = fillValueEntry(it);
-                }
+                    fim_entry* file_entry = fillFileEntry(it);
+                    m_reportFunction("Removing file entry:");
 
-                std::cout << "Removing:" << std::endl;
-                print_entry(*entry);
+                    print_entry(*file_entry, m_reportFunction);
+                    free_entry(file_entry);
+                }
+                else if (m_table == "REGISTRY")
+                {
+                    auto entry_vector = fillRegistryEntry(it);
 
-                free_entry(entry);
+                    for (auto entry : entry_vector)
+                    {
+                        m_reportFunction("Removing registry entry:");
+                        print_entry(*entry, m_reportFunction);
+                        free_entry(entry);
+                    }
+                }
             }
         }
 

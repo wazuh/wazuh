@@ -154,46 +154,24 @@ fim_entry *fillFileEntry(const nlohmann::json &json_data)
  * @param json_data JSON with the data that will be used.
  * @return A fim_registry_key structure with the data.
  */
-fim_registry_key *fillRegistryKeyData(const nlohmann::json &json_data)
+void fillRegistryKeyData(const nlohmann::json &json_data, fim_registry_key &fill_entry)
 {
-    fim_registry_key *fill_entry = (fim_registry_key *)calloc(1, sizeof(fim_registry_key));
 
-    fill_entry->user_name = strdup(static_cast<std::string>(json_data["user_name"]).c_str());
-    fill_entry->id = json_data["id"];
-    fill_entry->path = strdup(static_cast<std::string>(json_data["path"]).c_str());
-    fill_entry->perm = strdup(static_cast<std::string>(json_data["perm"]).c_str());
-    fill_entry->uid = strdup(static_cast<std::string>(json_data["uid"]).c_str());
-    fill_entry->gid = strdup(static_cast<std::string>(json_data["gid"]).c_str());
-    fill_entry->user_name = strdup(static_cast<std::string>(json_data["user_name"]).c_str());
-    fill_entry->group_name = strdup(static_cast<std::string>(json_data["group_name"]).c_str());
-    fill_entry->mtime = json_data["mtime"];
-    fill_entry->arch = json_data["arch"];
-    fill_entry->scanned = json_data["scanned"];
-    fill_entry->last_event = json_data["last_event"];
+    fill_entry.id = json_data["id"];
+    fill_entry.path = strdup(static_cast<std::string>(json_data["path"]).c_str());
+    fill_entry.perm = strdup(static_cast<std::string>(json_data["perm"]).c_str());
+    fill_entry.uid = strdup(static_cast<std::string>(json_data["uid"]).c_str());
+    fill_entry.gid = strdup(static_cast<std::string>(json_data["gid"]).c_str());
+    fill_entry.user_name = strdup(static_cast<std::string>(json_data["user_name"]).c_str());
+    fill_entry.group_name = strdup(static_cast<std::string>(json_data["group_name"]).c_str());
+    fill_entry.mtime = json_data["mtime"];
+    fill_entry.arch = json_data["arch"];
+    fill_entry.scanned = json_data["scanned"];
+    fill_entry.last_event = json_data["last_event"];
 
-    std::strncpy(fill_entry->checksum, const_cast<char *>(static_cast<std::string>(json_data["checksum"]).c_str()), sizeof(fill_entry->checksum));
-
-    return fill_entry;
+    std::strncpy(fill_entry.checksum, const_cast<char *>(static_cast<std::string>(json_data["checksum"]).c_str()), sizeof(fill_entry.checksum));
 }
 
-/**
- * @brief Function to fill a registry key entry.
- *
- * @param json_data JSON with the data to use.
- * @return A fim_entry with the data.
- */
-fim_entry *fillKeyEntry(const nlohmann::json &json_data)
-{
-    fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
-    if (fill_entry == NULL)
-    {
-        throw std::runtime_error{
-            "Cannot allocate memory"};
-    }
-    fill_entry->type = FIM_TYPE_REGISTRY;
-    fill_entry->registry_entry.key = fillRegistryKeyData(json_data);
-    return fill_entry;
-}
 
 /**
  * @brief Function to fill a registry value entry.
@@ -201,46 +179,77 @@ fim_entry *fillKeyEntry(const nlohmann::json &json_data)
  * @param json_data JSON with the data to use.
  * @return A fim_entry with the data.
  */
-fim_entry *fillValueEntry(const nlohmann::json &json_data)
+void fillValueEntry(const nlohmann::json &json_data, fim_registry_value_data &fill_entry)
 {
-    fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
-    if (fill_entry == NULL)
-    {
-        throw std::runtime_error{
-            "Cannot allocate memory"};
-    }
-    fill_entry->type = FIM_TYPE_REGISTRY;
-    fill_entry->registry_entry.key = fillRegistryKeyData(json_data);
-    fill_entry->registry_entry.value = (fim_registry_value_data *)calloc(1, sizeof(fim_registry_value_data));
 
-    fill_entry->registry_entry.value->id = json_data["id"];
-    fill_entry->registry_entry.value->name = strdup(static_cast<std::string>(json_data["name"]).c_str());
-    fill_entry->registry_entry.value->type = json_data["type"];
-    fill_entry->registry_entry.value->size = json_data["size"];
+    fill_entry.id = json_data["id"];
+    fill_entry.name = strdup(static_cast<std::string>(json_data["name"]).c_str());
+    fill_entry.type = json_data["type"];
+    fill_entry.size = json_data["size"];
 
-    std::strncpy(fill_entry->registry_entry.value->hash_md5, const_cast<char *>(static_cast<std::string>(json_data["sha1"]).c_str()), sizeof(fill_entry->registry_entry.value->hash_md5));
-    std::strncpy(fill_entry->registry_entry.value->hash_sha1, const_cast<char *>(static_cast<std::string>(json_data["sha1"]).c_str()), sizeof(fill_entry->registry_entry.value->hash_sha1));
-    std::strncpy(fill_entry->registry_entry.value->hash_sha256, const_cast<char *>(static_cast<std::string>(json_data["sha256"]).c_str()), sizeof(fill_entry->registry_entry.value->hash_sha256));
-    std::strncpy(fill_entry->registry_entry.value->checksum, const_cast<char *>(static_cast<std::string>(json_data["checksum"]).c_str()), sizeof(fill_entry->registry_entry.value->checksum));
-
-    return fill_entry;
+    std::strncpy(fill_entry.hash_md5, const_cast<char *>(static_cast<std::string>(json_data["sha1"]).c_str()), sizeof(fill_entry.hash_md5));
+    std::strncpy(fill_entry.hash_sha1, const_cast<char *>(static_cast<std::string>(json_data["sha1"]).c_str()), sizeof(fill_entry.hash_sha1));
+    std::strncpy(fill_entry.hash_sha256, const_cast<char *>(static_cast<std::string>(json_data["sha256"]).c_str()), sizeof(fill_entry.hash_sha256));
+    std::strncpy(fill_entry.checksum, const_cast<char *>(static_cast<std::string>(json_data["checksum"]).c_str()), sizeof(fill_entry.checksum));
 }
 
+std::vector<fim_entry*> fillRegistryEntry(const nlohmann::json &json_data) {
+    std::vector<fim_entry *> return_vector;
+    auto key_info = json_data["key"];
+    if (json_data.contains("values") == false) {
+        fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
+        fill_entry->type = FIM_TYPE_REGISTRY;
+
+        fill_entry->registry_entry.key = (fim_registry_key *) calloc(1, sizeof(fim_registry_key));
+        fillRegistryKeyData(key_info, *fill_entry->registry_entry.key);
+        return_vector.push_back(fill_entry);
+    }
+    else
+    {
+        for (auto value_data: json_data["values"]){
+            fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
+            if (fill_entry == NULL)
+            {
+                throw std::runtime_error{
+                    "Cannot allocate memory"};
+            }
+
+            fill_entry->type = FIM_TYPE_REGISTRY;
+            fill_entry->registry_entry.key = (fim_registry_key *) calloc(1, sizeof(fim_registry_key));
+            fill_entry->registry_entry.value = (fim_registry_value_data *) calloc(1, sizeof(fim_registry_value_data));
+
+            fillRegistryKeyData(key_info, *fill_entry->registry_entry.key);
+            fillValueEntry(value_data, *fill_entry->registry_entry.value);
+
+            return_vector.push_back(fill_entry);
+        }
+    }
+
+    return return_vector;
+}
 /**
  * @brief Print information about a fim_entry
  *
  * @param entry fim_entry where the data is stored.
   */
-void print_entry(const fim_entry& entry)
+void print_entry(const fim_entry& entry, const std::function<void(const char *)>& reportFunction)
 {
+    char to_print[OS_MAXSTR + 1] = {0};
     if (entry.type == FIM_TYPE_FILE)
     {
-        std::cout << "File path: " << entry.file_entry.path << '\n' << std::endl;
-    } else if (entry.type == FIM_TYPE_REGISTRY) {
-        std::cout << "Key path: " << entry.registry_entry.key->path << '\n' << std::endl;
-        if (entry.registry_entry.value != NULL) {
-            std::cout << "Value name: " << entry.registry_entry.value->name << '\n' << std::endl;
-        }
+        snprintf(to_print, OS_MAXSTR, "File path = %s", entry.file_entry.path);
     }
+    else
+    {
+        if (entry.registry_entry.value != NULL) {
+            snprintf(to_print, OS_MAXSTR, "Key path = %s Value name = %s", entry.registry_entry.key->path,
+                     entry.registry_entry.value->name);
+        } else {
+            snprintf(to_print, OS_MAXSTR, "Key path = %s", entry.registry_entry.key->path);
+        }
+
+    }
+
+    reportFunction(to_print);
 }
 #endif // _ENTRY_H
