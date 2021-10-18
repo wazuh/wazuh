@@ -167,7 +167,7 @@ int receive_msg()
             }
 
             /* Security configuration assessment DB request */
-            else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+            else if (strncmp(tmp_msg, CFGA_DB_DUMP, strlen(CFGA_DB_DUMP)) == 0) {
 #ifndef WIN32
                 /* Connect to the Security configuration assessment queue */
                 if (agt->cfgadq >= 0) {

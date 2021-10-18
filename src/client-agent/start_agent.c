@@ -379,7 +379,7 @@ static void send_msg_on_startup(void) {
             keys.keyentries[0]->name,
             keys.keyentries[0]->ip->ip);
     os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-            "ossec", msg);
+            "wazuh-agent", msg);
 
     send_msg(fmsg, -1);
 }
