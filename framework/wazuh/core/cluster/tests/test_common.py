@@ -1,22 +1,23 @@
+# Copyright (C) 2015-2021, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import abc
-from asyncio.events import AbstractEventLoop
-from datetime import datetime
-from importlib import import_module
-from subprocess import call
-from typing import Type
-import cryptography
+import asyncio
 import hashlib
 import json
 import logging
 import os
-import asyncio
 import sys
-from unittest.mock import Mock, patch, MagicMock
+from asyncio.events import AbstractEventLoop
+from datetime import datetime
+from unittest.mock import patch, MagicMock
+
+import cryptography
+import pytest
 
 from wazuh import Wazuh
-import pytest
-from framework.wazuh.core import cluster
-from wazuh.core import common, exception
+from wazuh.core import exception
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -30,12 +31,29 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.common as cluster_common
         import wazuh.core.cluster.master as master
         import wazuh.core.cluster.server as server
-        import wazuh.core.cluster.utils
         import wazuh.core.results as wresults
 
-# Testing Response class methods
+# Globals
 
 resp = cluster_common.Response()
+in_buffer = cluster_common.InBuffer()
+cluster_items = {"etc/":
+                 {"permissions": "0o640", "source": "master", "files": ["client.keys"],
+                  "description": "client keys file database"}, "intervals":
+                      {"worker": {"sync_integrity": 9, "sync_agent_info": 10, "sync_agent_info_ko_retry": 1,
+                                  "keep_alive": 60, "connection_retry": 10, "max_failed_keepalive_attempts": 2},
+                       "master": {"recalculate_integrity": 8, "check_worker_lastkeepalive": 60,
+                                  "max_allowed_time_without_keepalive": 120},
+                       "communication": {"timeout_cluster_request": 20, "timeout_dapi_request": 200,
+                                         "timeout_receiving_file": 120}
+                       }
+                 }
+
+fernet_key = "00000000000000000000000000000000"
+wazuh_common = cluster_common.WazuhCommon()
+
+
+# Test Response class methods
 
 async def test_response():
     """Test for the 'write' method that belongs to the Response class"""
@@ -50,9 +68,8 @@ async def test_response():
             wait_mock.assert_called_once()
             set_mock.assert_called_once()
 
-# Testing InBuffer class methods
 
-in_buffer = cluster_common.InBuffer()
+# Test InBuffer class methods
 
 @patch('struct.unpack')
 def test_inbuffer_get_info_from_header(unpack_mock):
@@ -84,17 +101,18 @@ def test_inbuffer_receive_data():
     assert isinstance(in_buffer.receive_data(b"data"), bytes)
     assert in_buffer.received == 1028
 
-# Testing ReceiveStringTask methods
+
+# Test ReceiveStringTask methods
 
 @patch('wazuh.core.cluster.common.WazuhCommon')
 @patch('logging.Logger')
 def test_rst_str_method(logger_mock, wazuh_common_mock):
-    """Test the '__str__' method
+    """Test the '__str__' method.
 
     Parameters
     ----------
-        logger_mock : Mock Object
-        wazuh_common_mock : Mock Object
+    logger_mock : Mock Object
+    wazuh_common_mock : Mock Object
     """
 
     with patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro'):
@@ -107,12 +125,12 @@ def test_rst_str_method(logger_mock, wazuh_common_mock):
 @patch('wazuh.core.cluster.common.WazuhCommon')
 @patch('logging.Logger')
 def test_rst_set_up_coro_ko(logger_mock, wazuh_common_mock):
-    """Test the 'set_up_cor' method
+    """Test the 'set_up_cor' method.
 
     Parameters
     ----------
-        logger_mock : Mock Object
-        wazuh_common_mock : Mock Object
+    logger_mock : Mock Object
+    wazuh_common_mock : Mock Object
     """
 
     with pytest.raises(NotImplementedError):
@@ -123,15 +141,17 @@ def test_rst_set_up_coro_ko(logger_mock, wazuh_common_mock):
 @patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro')
 @patch('asyncio.get_running_loop')
 def test_rst_done_callback(running_loop_mock, set_up_coro_mock, create_task_mock):
-    """Test the 'done_callback' method
+    """Test the 'done_callback' method.
 
     Parameters
     ----------
-        running_loop_mock : Mock Object
-        set_up_coro_mock : Mock Object
-        create_task_mock : Mock Object
+    running_loop_mock : Mock Object
+    set_up_coro_mock : Mock Object
+    create_task_mock : Mock Object
     """
     class LoggerMock:
+        def __init__(self):
+            self.exc = None
 
         def error(self, exc):
             self.exc = exc
@@ -156,18 +176,17 @@ def test_rst_done_callback(running_loop_mock, set_up_coro_mock, create_task_mock
     assert isinstance(logger_mock.exc, exception.WazuhClusterError)
 
 
-# Testing ReceiveFileTask methods
-
+# Test ReceiveFileTask methods
 
 @patch('wazuh.core.cluster.common.WazuhCommon')
 @patch('logging.Logger')
 def test_rft_str_method(logger_mock, wazuh_common_mock):
-    """Test the '__str__' method
+    """Test the '__str__' method.
 
     Parameters
     ----------
-        logger_mock : Mock Object
-        wazuh_common_mock : Mock Object
+    logger_mock : Mock Object
+    wazuh_common_mock : Mock Object
     """
 
     with patch('wazuh.core.cluster.common.ReceiveFileTask.set_up_coro'):
@@ -179,12 +198,12 @@ def test_rft_str_method(logger_mock, wazuh_common_mock):
 @patch('wazuh.core.cluster.common.WazuhCommon')
 @patch('logging.Logger')
 def test_rft_set_up_coro(logger_mock, wazuh_common_mock):
-    """Test the 'set_up_cor' method
+    """Test the 'set_up_cor' method.
 
     Parameters
     ----------
-        logger_mock : Mock Object
-        wazuh_common_mock : Mock Object
+    logger_mock : Mock Object
+    wazuh_common_mock : Mock Object
     """
 
     with pytest.raises(NotImplementedError):
@@ -195,15 +214,17 @@ def test_rft_set_up_coro(logger_mock, wazuh_common_mock):
 @patch('wazuh.core.cluster.common.ReceiveFileTask.set_up_coro')
 @patch('asyncio.get_running_loop')
 def test_rft_done_callback(running_loop_mock, set_up_coro_mock, create_task_mock):
-    """Test the 'done_callback' method
+    """Test the 'done_callback' method.
 
     Parameters
     ----------
-        running_loop_mock : Mock Object
-        set_up_coro_mock : Mock Object
-        create_task_mock : Mock Object
+    running_loop_mock : Mock Object
+    set_up_coro_mock : Mock Object
+    create_task_mock : Mock Object
     """
     class LoggerMock:
+        def __init__(self):
+            self.exc = None
 
         def error(self, exc):
             self.exc = exc
@@ -226,21 +247,7 @@ def test_rft_done_callback(running_loop_mock, set_up_coro_mock, create_task_mock
     assert isinstance(logger_mock.exc, exception.WazuhClusterError)
 
 
-# Testing Handler class methods
-cluster_items = {"etc/":
-                 {"permissions": "0o640", "source": "master", "files": ["client.keys"],
-                  "description": "client keys file database"}, "intervals":
-                      {"worker": {"sync_integrity": 9, "sync_agent_info": 10, "sync_agent_info_ko_retry": 1,
-                                  "keep_alive": 60, "connection_retry": 10, "max_failed_keepalive_attempts": 2},
-                       "master": {"recalculate_integrity": 8, "check_worker_lastkeepalive": 60,
-                                  "max_allowed_time_without_keepalive": 120},
-                       "communication": {"timeout_cluster_request": 20, "timeout_dapi_request": 200,
-                                         "timeout_receiving_file": 120}
-                       }
-                 }
-
-fernet_key = "00000000000000000000000000000000"
-
+# Test Handler class methods
 
 def test_handler_push():
     """Test the 'push' method"""
@@ -282,7 +289,7 @@ def test_handler_msg_build_ko():
 
 
 def test_handler_msg_parse():
-    """Test the 'msg_handler' method is properly wotking"""
+    """Test the 'msg_handler' method is properly working"""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
     # self.in_buffer is False
@@ -400,11 +407,11 @@ def test_handler_get_manager():
 async def test_handler_forward_dapi_response_ok():
     """Test the 'forward_dapi_response' method"""
 
-    class ParentManager():
+    class ParentManager:
         def __init__(self) -> None:
             self.local_server = self.LocalServer()
 
-        class LocalServer():
+        class LocalServer:
             def __init__(self) -> None:
                 self.clients = {"client": self}
 
@@ -425,11 +432,12 @@ async def test_handler_forward_dapi_response_ok():
 
 async def test_handler_forward_dapi_response_ko():
     """Test the exceptions present in 'forward_dapi_response' method"""
-    class ParentManager():
+
+    class ParentManager:
         def __init__(self) -> None:
             self.local_server = self.LocalServer()
 
-        class LocalServer():
+        class LocalServer:
             def __init__(self) -> None:
                 self.clients = {"client": self}
 
@@ -444,10 +452,8 @@ async def test_handler_forward_dapi_response_ko():
         # Mock the functions with the expected exceptions
         with patch.object(mock_manager.local_server, "send_string",
                           side_effect=exception.WazuhException(1001)) as send_string_mock:
-
             with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
                 with patch('wazuh.core.cluster.common.Handler.send_request', return_value="some value"):
-
                     with patch('json.dumps', return_value="some value"):
                         await handler.forward_dapi_response(b"client string_id")
                         assert handler.in_str == {b'other_string': 'some value'}
@@ -463,11 +469,11 @@ async def test_handler_forward_dapi_response_ko():
 async def test_handler_forward_sendsync_response_ok():
     """Test the 'forward_sendsync_response' method"""
 
-    class ParentManager():
+    class ParentManager:
         def __init__(self) -> None:
             self.local_server = self.LocalServer()
 
-        class LocalServer():
+        class LocalServer:
             def __init__(self) -> None:
                 self.clients = {"client": self}
 
@@ -485,11 +491,11 @@ async def test_handler_forward_sendsync_response_ok():
 
 async def test_handler_forward_sendsync_response_ko():
     """Test the exceptions present in 'forward_sendsync_response' method"""
-    class ParentManager():
+    class ParentManager:
         def __init__(self) -> None:
             self.local_server = self.LocalServer()
 
-        class LocalServer():
+        class LocalServer:
             def __init__(self) -> None:
                 self.clients = {"client": self}
 
@@ -504,10 +510,8 @@ async def test_handler_forward_sendsync_response_ko():
         # Mock the functions with the expected exceptions
         with patch.object(mock_manager.local_server, "send_request",
                           side_effect=exception.WazuhException(1001)) as send_request_mock:
-
             with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
                 with patch('wazuh.core.cluster.common.Handler.send_request', return_value="some value"):
-
                     with patch('json.dumps', return_value="some value"):
                         await handler.forward_sendsync_response(b"client string_id")
                         assert handler.in_str == {b'other_string': 'some value'}
@@ -538,7 +542,6 @@ def test_handler_data_received_ok():
     # Test first else and first nested if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
         with patch('cryptography.fernet.Fernet.decrypt', return_value="decrypted payload"):
-
             # Test second nested if and the else inside of it
             with patch('asyncio.WriteTransport.write') as write_mock:
                 handler.box = {123: asyncio.WriteTransport}
@@ -753,9 +756,8 @@ def test_handler_setup_task_logger():
 
     assert isinstance(handler.setup_task_logger("task_tag"), logging.Logger)
 
-# Test 'WazuhCommon' class methods
 
-wazuh_common = cluster_common.WazuhCommon()
+# Test 'WazuhCommon' class methods
 
 def test_wazuh_common_get_logger():
     """Test the 'get_logger' correct functioning"""
@@ -846,24 +848,12 @@ def test_wazuh_common_get_node():
         def get_node(self):
             pass
 
-    mock_clas = MockClass()
+    mock_class = MockClass()
     mock_manager = MockManager()
 
     with patch('wazuh.core.cluster.common.Handler.get_manager', return_value=mock_manager) as manager_mock:
-        mock_clas.get_node()
+        mock_class.get_node()
         manager_mock.assert_called_once()
-
-#     with patch.object(wazuh.core.cluster.server, "AbstractServer") as mock_server:
-#         master_handler = master.MasterHandler(server=mock_server, loop=AbstractEventLoop, fernet_key=fernet_key,
-#                                               cluster_items=cluster_items)
-#         print(master_handler.get_node())
-
-    # class MockManager(cluster_common.Handler):
-
-    #     def get_node():
-    #         pass
-
-    # with patch.object(MockManager, "get")
 
 
 def test_asyncio_exception_handler():
@@ -911,31 +901,28 @@ def test_WazuhJSONEcoder_default():
 
         # Test second condition
         assert isinstance(wazuh_encoder.default(exception.WazuhException(3011)), dict)
-        assert wazuh_encoder.default(exception.WazuhException(3011)) == {'__wazuh_exception__':
-                                                                            {'__class__': 'WazuhException', '__object__':
-                                                                            {'type': 'about:blank', 'title':
-                                                                                'WazuhException', 'code': 3011,
-                                                                                'extra_message': None,
-                                                                                'extra_remediation': None,
-                                                                                'cmd_error': False, 'dapi_errors': {}}}}
+        assert wazuh_encoder.default(exception.WazuhException(3011)) == \
+               {'__wazuh_exception__': {'__class__': 'WazuhException',
+                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3011,
+                                                       'extra_message': None, 'extra_remediation': None,
+                                                       'cmd_error': False, 'dapi_errors': {}}}}
 
         # Test third condition
         abstract_wazuh_result = wresults.AffectedItemsWazuhResult()
 
         assert isinstance(wazuh_encoder.default(abstract_wazuh_result), dict)
-        assert wazuh_encoder.default(abstract_wazuh_result) == {'__wazuh_result__':
-                                                                {'__class__': 'AffectedItemsWazuhResult', '__object__':
-                                                                    {'affected_items': [], 'sort_fields': None,
-                                                                     'sort_casting': ['int'], 'sort_ascending': [True],
-                                                                     'total_affected_items': 0, 'total_failed_items': 0,
-                                                                     'dikt': {}, 'all_msg': '', 'some_msg': '',
-                                                                     'none_msg': '', 'failed_items_keys': [],
-                                                                     'failed_items_values': []}}}
+        assert wazuh_encoder.default(abstract_wazuh_result) == \
+               {'__wazuh_result__': {'__class__': 'AffectedItemsWazuhResult',
+                                     '__object__': {'affected_items': [], 'sort_fields': None, 'sort_casting': ['int'],
+                                                    'sort_ascending': [True], 'total_affected_items': 0,
+                                                    'total_failed_items': 0, 'dikt': {}, 'all_msg': '', 'some_msg': '',
+                                                    'none_msg': '', 'failed_items_keys': [],
+                                                    'failed_items_values': []}}}
 
         # Test fourth condition
         date = datetime(2021, 10, 15)
         assert isinstance(wazuh_encoder.default(date), dict)
-        assert wazuh_encoder.default(date) == {'__wazuh_datetime__': '2021-10-15T00:00:00'}
+        assert wazuh_encoder.default(date) == {'__wazuh_datetime__': '2021-10-15T00:00:00Z'}
 
         # Test simple return
         with pytest.raises(TypeError):
@@ -956,16 +943,14 @@ def test_as_wazuh_object_ok():
                                                             "__module__": "itertools"}}) == "itertools"
 
     # Test the second condition
-    assert isinstance(cluster_common.as_wazuh_object({"__wazuh_exception__":
-                                                     {"__class__": "WazuhException", "__object__":
-                                                      {"code": 1001}}}), exception.WazuhException)
+    assert isinstance(cluster_common.as_wazuh_object(
+        {"__wazuh_exception__": {"__class__": "WazuhException", "__object__": {"code": 1001}}}),
+        exception.WazuhException)
 
     # Test the third condition
-    with patch('wazuh.core.results.AbstractWazuhResult.decode_json',
-               return_value=wresults.AbstractWazuhResult):
-        assert isinstance(cluster_common.as_wazuh_object({"__wazuh_result__":
-                                                          {"__class__": "AbstractWazuhResult", "__object__":
-                                                           {"code": 1001}}}), abc.ABCMeta)
+    with patch('wazuh.core.results.AbstractWazuhResult.decode_json', return_value=wresults.AbstractWazuhResult):
+        assert isinstance(cluster_common.as_wazuh_object(
+            {"__wazuh_result__": {"__class__": "AbstractWazuhResult", "__object__": {"code": 1001}}}), abc.ABCMeta)
 
     # Test the fourth condition
     assert isinstance(cluster_common.as_wazuh_object({"__wazuh_datetime__": "2021-10-14"}), datetime)
@@ -973,8 +958,8 @@ def test_as_wazuh_object_ok():
 
     # No condition fulfilled
     assert isinstance(cluster_common.as_wazuh_object({"__wazuh_datetime_bad__": "2021-10-14"}), dict)
-    assert cluster_common.as_wazuh_object({"__wazuh_datetime_bad__": "2021-10-14"}) == {"__wazuh_datetime_bad__":
-                                                                                        "2021-10-14"}
+    assert cluster_common.as_wazuh_object({"__wazuh_datetime_bad__": "2021-10-14"}) == \
+           {"__wazuh_datetime_bad__": "2021-10-14"}
 
 
 def test_as_wazuh_object_ko():
