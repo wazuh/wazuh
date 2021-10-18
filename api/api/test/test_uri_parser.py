@@ -1,14 +1,15 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from api.api_exception import APIError
 from connexion.lifecycle import ConnexionRequest
+
+from api.api_exception import APIError
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         from api.uri_parser import APIUriParser
 
-QUERY_DICT = {'component': 'VaLuE',
+query_dict = {'component': 'VaLuE',
               'configuration': 'VaLuE',
               'hash': 'VaLuE',
               'requirement': 'VaLuE',
@@ -17,36 +18,35 @@ QUERY_DICT = {'component': 'VaLuE',
               'section': 'VaLuE',
               'tag': 'VaLuE',
               'level': 'VaLuE',
-              'resource': 'VaLuE0',
-              'q': ''
+              'resource': 'VaLuE'
               }
-QUERY_DICT_Q = QUERY_DICT.copy()
-QUERY_DICT_Q['q'] = 'q=value'
-QUERY_DICT_Q_SC = QUERY_DICT.copy()
-QUERY_DICT_Q_SC['q'] = 'q=;'
+LOWER_FIELDS = ['component', 'configuration', 'hash', 'requirement', 'status', 'type', 'section', 'tag',
+                'level', 'resource']
 
 
-@pytest.mark.parametrize('query_value',
+@pytest.mark.parametrize('q_value',
                          [
-                             (QUERY_DICT),
-                             (QUERY_DICT_Q),
-                             (QUERY_DICT_Q_SC)
+                             '',
+                             'q=value',
+                             'q=;'
                              ]
                          )
-def test_apiuriparser_call(query_value):
+def test_apiuriparser_call(q_value):
+    query_dict.update({'q': q_value})
     uri_parser = APIUriParser({}, {})
     function = MagicMock()
-    request = ConnexionRequest(url=query_value['q'],
+    request = ConnexionRequest(url=q_value,
                                method='method_value',
-                               query=query_value
+                               query=query_dict
                                )
-    expected_request = ConnexionRequest(url=query_value['q'],
+    expected_request = ConnexionRequest(url=q_value,
                                         method='method_value',
-                                        query=dict((k, v.lower()) for k, v in query_value.items())
+                                        query={k: v.lower() if k in LOWER_FIELDS else v for k, v in query_dict.items()}
                                         )
     # uri_parser(function)(request):
-    # Its calling __call__ class method. We're parametrizing the wrapper with the second parameter between brackets.
-    if ';' in query_value['q']:
+    # It's calling the __call__ class method.
+    # The wrapper is being parametrized by the second parameter between brackets.
+    if ';' in q_value:
         with pytest.raises(APIError, match='2009 .*'):
             uri_parser(function)(request)
     else:
