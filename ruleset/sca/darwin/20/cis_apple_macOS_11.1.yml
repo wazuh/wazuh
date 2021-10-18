@@ -578,7 +578,9 @@ checks:
 # not implemented - requires supervision -> 2.13 Review Siri Settings (Manual)
 # not implemented - requires supervision -> 2.14 Review Sidecar Settings (Manual)
 
-# jal
+############################################################
+# 3 Logging and Auditing
+############################################################
 # 3.1 Enable security auditing (Automated)
   - id: 18035
     title: "Enable security auditing"
@@ -587,15 +589,14 @@ checks:
     remediation: "Run the following command in Terminal: sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.auditd.plist"
     compliance:
       - cis: ["3.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:launchctl list -> r:com.apple.auditd'
+      - 'c:sudo launchctl list | grep -i auditd -> r:com.apple.auditd'
 
-# jal
 # not implemented - process -> 3.2 Configure Security Auditing Flags per local organizational requirements (Manual)
 
 
-# jal
 # 3.3 Retain install.log for 365 or more days with no maximum size (Automated)
   - id: 18036
     title: "Retain install.log for 365 or more days with no maximum size"
@@ -604,14 +605,14 @@ checks:
     remediation: "Perform the following to ensure that install logs are retained for at least 365 days:Edit the /etc/asl/com.apple.install file and add or modify the ttl value to 365 or greater on the file line. Also, remove the all_max= setting and value from the file line."
     compliance:
       - cis: ["3.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
+      - 'c:sudo grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
+      - 'not c:sudo grep -i all_max= /etc/asl/com.apple.install -> r:.*'
 
-# jal
 # not implemented - SCA Limit -> 3.4 Ensure security auditing retention (Automated)
 
-# jal
 # 3.5 Control access to audit records (Automated)
   - id: 18037
     title: "Control access to audit records"
@@ -620,12 +621,12 @@ checks:
     remediation: "Run the following to commands to set the audit records to the root user and wheel group:  sudo chown -R root:wheel /etc/security/audit_control && sudo chown -R root:wheel /var/audit/"
     compliance:
       - cis: ["3.5"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:ls -le /etc/security/audit_control -> r:root\s*\t*wheel|total'
-      - 'c:ls -le /var/audit/ -> r:root\s*\t*wheel|total'
+      - 'c:sudo ls -le /etc/security/audit_control -> r:root\s*\t*wheel|root'
+      - 'c:sudo ls -le /var/audit/ -> r:root\s*\t*wheel|root'
 
-# jal
 # 3.6 Ensure Firewall is configured to log (Automated)
   - id: 18038
     title: "Ensure Firewall is configured to log"
@@ -634,11 +635,16 @@ checks:
     remediation: "Run the following command to enable logging of the firewall: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setloggingmode on"
     compliance:
       - cis: ["3.6"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getloggingmode -> r:Log mode is on'
+      - 'c:sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getloggingmode -> r:Log mode is on'
 
-# jal
+# not implemented - process -> 3.7 Software Inventory Considerations (Manual)
+
+############################################################
+# 4 Network Configurations 
+############################################################
 # 4.1 Disable Bonjour advertising service (Automated)
   - id: 18039
     title: "Disable Bonjour advertising service"
