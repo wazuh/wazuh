@@ -643,7 +643,7 @@ checks:
 # not implemented - process -> 3.7 Software Inventory Considerations (Manual)
 
 ############################################################
-# 4 Network Configurations 
+# 4 Network Configurations
 ############################################################
 # 4.1 Disable Bonjour advertising service (Automated)
   - id: 18039
@@ -653,15 +653,14 @@ checks:
     remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -bool true"
     compliance:
       - cis: ["4.1"]
+      - cis_level: ["2"]
     condition: all
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -> 1'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -> 1'
 
-# jal
 # not implemented - SCA Limit -> 4.2 Enable "Show Wi-Fi status in menu bar" (Automated)
 # not implemented - process -> 4.3 Create network specific locations (Manual)
 
-# jal
 # 4.4 Ensure http server is not running (Automated)
   - id: 18041
     title: "Ensure http server is not running"
@@ -670,12 +669,12 @@ checks:
     remediation: "Ensure that the Web Server is not running and is not set to start at boot Stop the Web Server: sudo apachectl stop    Ensure that the web server will not auto-start at boot sudo: defaults write /System/Library/LaunchDaemons/org.apache.httpd Disabled - bool true"
     compliance:
       - cis: ["4.4"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'p:httpd'
       - 'p:/usr/sbin/httpd'
 
-# jal
 # 4.5 Ensure nfs server is not running (Scored)
   - id: 18042
     title: "Ensure nfs server is not running"
@@ -684,13 +683,18 @@ checks:
     remediation: "Ensure that the NFS Server is not running and is not set to start at boot Stop the NFS Server: sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.nfsd.plist   Remove the exported Directory listing: sudo rm /etc/export"
     compliance:
       - cis: ["4.5"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'p:nfsd'
       - 'p:/sbin/nfsd'
       - 'f:/etc/exports'
 
-# jal
+# not implemented - Review -> 4.6 Review Wi-Fi Settings (Manual)
+
+############################################################
+# 5 System Access, Authentication and Authorization
+############################################################
 # not implemented - SCA Limit -> 5.1.1 Secure Home Folders (Automated)
 
 # jal
