@@ -2682,10 +2682,6 @@ components:
               description: "Browsers will only expose the response to frontend JavaScript code if this is enabled"
               type: boolean
               default: false
-        use_only_authd:
-          description: "Force the use of authd when adding and removing agents"
-          type: boolean
-          default: false
         experimental_features:
           description: "Enable features under development"
           type: boolean
@@ -8105,7 +8101,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
@@ -8144,7 +8139,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
@@ -8182,7 +8176,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
@@ -10751,7 +10744,6 @@ paths:
                         cache:
                           enabled: true
                           time: 0.75
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760

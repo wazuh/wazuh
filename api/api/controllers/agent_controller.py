@@ -22,7 +22,6 @@ from wazuh.core.common import database_limit
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
-use_only_auth = configuration.api_conf['use_only_authd']
 
 
 async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status=None,
@@ -68,7 +67,6 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, agents_l
         agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'purge': purge,
-                'use_only_authd': use_only_auth,
                 'filters': {
                     'status': status,
                     'older_than': older_than,
@@ -180,7 +178,7 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await AgentAddedModel.get_kwargs(request, additional_kwargs={"use_only_authd": use_only_auth})
+    f_kwargs = await AgentAddedModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -747,8 +745,7 @@ async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=Fa
     -------
     Response
     """
-    f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name},
-                                                additional_kwargs={'use_only_authd': use_only_auth})
+    f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name})
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1169,8 +1166,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await AgentInsertedModel.get_kwargs(request,
-                                                   additional_kwargs={"use_only_authd": use_only_auth})
+    f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
