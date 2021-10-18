@@ -149,6 +149,10 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wra
                                 -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                                 -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
                                 -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+
+list(APPEND shared_tests_names "test_bqueue")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
+
 endif()
 
 list(APPEND shared_tests_names "test_atomic")

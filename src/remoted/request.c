@@ -252,7 +252,7 @@ void * req_dispatch(req_node_t * node) {
 
             // Try to send message
 
-            if (send_msg(agentid, payload, ldata)) {
+            if (send_msg(agentid, payload, ldata) < 0) {
                 mwarn("Sending request to agent '%s'.", agentid);
 
                 if (OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR) < 0) {

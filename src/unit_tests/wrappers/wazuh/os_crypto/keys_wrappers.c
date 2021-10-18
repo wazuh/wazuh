@@ -36,3 +36,8 @@ int __wrap_OS_IsAllowedIP(__attribute__((unused)) keystore *keys, const char *sr
     return mock();
 }
 
+int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore *keys, const char *id) {
+    check_expected(id);
+
+    return mock();
+}
