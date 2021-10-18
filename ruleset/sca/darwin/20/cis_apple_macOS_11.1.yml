@@ -913,15 +913,19 @@ checks:
     references:
       - https://github.com/Automattic/wp-desktop/issues/790
       - https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/
-      - http://www.newosxbook.com/articles/CodeSigning.pdf 
+      - http://www.newosxbook.com/articles/CodeSigning.pdf
     compliance:
       - cis: ["5.20"]
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sudo defaults read /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation  -> r:^0'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation  -> 0'
 
-# jal
+############################################################
+# 6 User Accounts and Environment
+############################################################
+# 6.1 Accounts Preferences Action Items
+############################################################
 # 6.1.1 Display login window as name and password (Automated)
   - id: 18062
     title: "Display login window as name and password"
@@ -930,11 +934,11 @@ checks:
     remediation: "Run the following command to enable the login window to display name and password: sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true"
     compliance:
       - cis: ["6.1.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -> 1'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -> 1'
 
-# jal
 # 6.1.2 Disable "Show password hints" (Automated)
   - id: 18063
     title: "Disable \"Show password hints\""
@@ -943,12 +947,12 @@ checks:
     remediation: "Run the following command to disable password hints: sudo defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0"
     compliance:
       - cis: ["6.1.2"]
+      - cis_level: ["1"]
     condition: any
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> 0'
-      - 'c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> r:does not exist'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> 0'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> r:does not exist'
 
-# jal
 # 6.1.3 Disable guest account login (Automated)
   - id: 18064
     title: "Disable guest account login"
@@ -957,11 +961,11 @@ checks:
     remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled - bool false"
     compliance:
       - cis: ["6.1.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> 0'
+      - 'c:sudo defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> 0'
 
-# jal
 # 6.1.4 Disable "Allow guests to connect to shared folders" (Automated)
   - id: 18065
     title: "Disable \"Allow guests to connect to shared folders\""
@@ -970,6 +974,7 @@ checks:
     remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled - bool false"
     compliance:
       - cis: ["6.1.4"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.AppleFileServer guestAccess -> 0'
@@ -977,8 +982,6 @@ checks:
       - 'c:defaults read /Library/Preferences/com.apple.AppleFileServer guestAccess -> r:does not exist'
       - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.smb.server AllowGuestAccess -> r:does not exist'
 
-
-# jal
 # 6.1.5 Remove Guest home folder (Automated)
   - id: 18066
     title: "Remove Guest home folder"
@@ -987,11 +990,11 @@ checks:
     remediation: "1. Run the following command in Terminal: sudo rm -R /Users/Guest  2. Make sure there is no output"
     compliance:
       - cis: ["6.1.5"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'd:/Users/Guest'
 
-# jal
 # 6.2 Turn on filename extensions (Automated)
   - id: 18067
     title: "Turn on filename extensions"
@@ -1000,20 +1003,21 @@ checks:
     remediation: "Perform the following to implement the prescribed state: 1. Select Finder 2. Select Preferences 3. Check Show all filename extensions    Alternatively, use the following command: defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
     compliance:
       - cis: ["6.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:defaults read NSGlobalDomain AppleShowAllExtensions -> 1'
       # - 'c:defaults read /Users/<username>/Library/Preferences/.GlobalPreferences.plist AppleShowAllExtensions -> 1'
 
-# jal
 # 6.3 Disable the automatic run of safe files in Safari (Automated)
   - id: 18068
     title: "Disable the automatic run of safe files in Safari"
     description: "Safari will automatically run or execute what it considers safe files. This can include installers and other files that execute on the operating system. Safari bases file safety by using a list of filetypes maintained by Apple. The list of files include text, image, video and archive formats that would be run in the context of the OS rather than the browser."
     rationale: "Hackers have taken advantage of this setting via drive-by attacks. These attacks occur when a user visits a legitimate website that has been corrupted. The user unknowingly downloads a malicious file either by closing an infected pop-up or hovering over a malicious banner. An attacker can create a malicious file that will fall within Safari's safe file list that will download and execute without user input."
-    remediation: "Perform the following to implement the prescribed state: 1. Open Safari 2. Select Safari from the menu bar 3. Select Preferences 4. Select General 5. Uncheck Open \"safe\" files after downloading    Alternatively run the following command in Terminal: defaults write com.apple.Safari AutoOpenSafeDownloads -boolean no"
+    remediation: "Perform the following to implement the prescribed state: 1. Open Safari 2. Select Safari from the menu bar 3. Select Preferences 4. Select General 5. Uncheck Open \"safe\" files after downloading    Alternatively run the following command in Terminal: defaults write com.apple.Safari AutoOpenSafeDownloads -boolean no       Terminal Method: Run the following command to disable safe files from not opening in Safari: sudo -u <username> defaults write /Users/<username>/LibraryContainers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari AutoOpenSafeDownloads -bool false"
     compliance:
       - cis: ["6.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:defaults read com.apple.Safari AutoOpenSafeDownloads -> 0'
+      - 'c:sudo defaults read com.apple.Safari AutoOpenSafeDownloads -> 0'
