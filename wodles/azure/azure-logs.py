@@ -18,22 +18,24 @@
 ################################################################################################
 
 import logging
+import sys
 from argparse import ArgumentParser
+from azure.common import AzureException, AzureHttpError
 from azure.storage.blob import BlockBlobService
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from hashlib import md5
-from json import dump, dumps, load, JSONDecodeError
+from json import dump, dumps, load, loads, JSONDecodeError
 from os import linesep
 from os.path import abspath, dirname, exists, join
 from pytz import UTC
 from requests import get, post
 from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
-from sys import exit, path
 from typing import Union
 
-path.insert(0, dirname(dirname(abspath(__file__))))
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from utils import ANALYSISD, find_wazuh_path
+
 
 date_file = "last_dates.json"
 last_dates_file = join(dirname(abspath(__file__)), date_file)
@@ -94,13 +96,13 @@ parser.add_argument("--graph_time_offset", metavar="time", type=str, required=Fa
 parser.add_argument("--storage", action="store_true", required=False,
                     help="Activates Storage API call.")
 parser.add_argument("--account_name", metavar='account', type=str, required=False,
-                    help="Storage account name for authenticacion.")
+                    help="Storage account name for authentication.")
 parser.add_argument("--account_key", metavar='KEY', type=str, required=False,
                     help="Storage account key for authentication.")
 parser.add_argument("--storage_auth_path", metavar="filepath", type=str, required=False,
                     help="Path of the file containing the credentials authentication.")
 parser.add_argument("--container", metavar="container", type=str, required=False,
-                    help="Name of the container where searchs the blobs.")
+                    help="Name of the container where searches the blobs.")
 parser.add_argument("--blobs", metavar="blobs", type=str, required=False,
                     help="Extension of blobs. For example: '*.log'")
 parser.add_argument("--storage_tag", metavar="tag", type=str, required=False,
@@ -113,6 +115,10 @@ parser.add_argument("--json_inline", action="store_true", required=False,
                          "By default, the content of the blob is considered to be plain text.")
 parser.add_argument("--storage_time_offset", metavar="time", type=str, required=False,
                     help="Time range for the request.")
+
+# General parameters #
+parser.add_argument('--reparse', action='store_true', dest='reparse',
+                    help='Parse the log, even if its been parsed before', default=False)
 
 args = parser.parse_args()
 
@@ -137,34 +143,66 @@ def set_logger():
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
-def read_auth_file(auth_path: str):
+def read_auth_file(auth_path: str, fields: tuple):
     """Read the authentication file. Its contents must be in 'field = value' format.
 
     Parameters
     ----------
     auth_path : str
         Path to the authentication file
+    fields : tuple
+        Tuple of 2 str field names expected to be in the authentication file
 
     Returns
     -------
-    A tuple with the "application_id" and "application_key" values for authentication.
+    A tuple with the field values for the requested authentication fields.
     """
     credentials = {}
     try:
         with open(auth_path, 'r') as auth_file:
             for line in auth_file:
-                key, value = line.replace(" ", "").split("=")
+                key, value = line.replace(" ", "").replace("\n", "").split("=", maxsplit=1)
                 if not value:
                     continue
                 credentials[key] = value.replace("\n", "")
+        if fields[0] not in credentials or fields[1] not in credentials:
+            logging.error(f"Error: The authentication file does not contains the expected '{fields[0]}' "
+                          f"and '{fields[1]}' fields.")
+            sys.exit(1)
+        return credentials[fields[0]], credentials[fields[1]]
     except OSError as e:
         logging.error("Error: The authentication file could not be opened: '{}'".format(e))
-        exit(1)
-    if "application_id" not in credentials or "application_key" not in credentials:
-        logging.error("Error: The authentication file does not contains the expected 'application_id' "
-                      "and 'application_key' fields.")
-        exit(1)
-    return credentials["application_id"], credentials["application_key"]
+        sys.exit(1)
+
+
+def get_min_max(service_name: str, md5_hash: str, offset: str):
+    """Get the min and max values from the "last_dates_file" for the given service.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service to look up in the file
+    md5_hash : str
+        Hash of the query, used as the key in the last_dates dict
+    offset : str
+        The filtering condition for the query
+
+    Returns
+    -------
+    A tuple with the min and max values
+    """
+    try:
+        # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
+        # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+        min_ = parse(dates_json[service_name][md5_hash]['min'], fuzzy=True)
+        max_ = parse(dates_json[service_name][md5_hash]['max'], fuzzy=True)
+    except KeyError:
+        # The service name or the md5 value is not present in the dates file
+        desired_datetime = offset_to_datetime(offset) if offset else datetime.now()
+        logging.info(f"{md5_hash} was not found in {last_dates_file} for {service_name}. Updating the file")
+        dates_json[service_name][md5_hash] = {'min': f"{desired_datetime}", 'max': f"{desired_datetime}"}
+        min_ = max_ = UTC.localize(desired_datetime)
+    return min_, max_
 
 
 def load_dates_json():
@@ -191,11 +229,11 @@ def load_dates_json():
         return contents
     except (JSONDecodeError, OSError) as e:
         logging.error("Error: The file of the last dates could not be read: '{}.".format(e))
-        exit(1)
+        sys.exit(1)
 
 
 def save_dates_json(json_obj):
-    """Save the json object containing the different processed dates in the "date_file" file."""
+    """Save the json object containing the different processed dates in the "last_dates_file"."""
     logging.info(f"Updating {last_dates_file} file.")
     try:
         with open(join(last_dates_file), 'w') as jsonFile:
@@ -233,13 +271,13 @@ def start_log_analytics():
 
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
-        client, secret = read_auth_file(auth_path=args.la_auth_path)
+        client, secret = read_auth_file(auth_path=args.la_auth_path, fields=("application_id", "application_key"))
     elif args.la_id and args.la_key and args.la_tenant_domain:
         client = args.la_id
         secret = args.la_key
     else:
         logging.error("Log Analytics: No parameters have been provided for authentication.")
-        exit(1)
+        sys.exit(1)
 
     # Get authentication token
     logging.info("Log Analytics: Getting authentication token.")
@@ -256,7 +294,7 @@ def start_log_analytics():
     logging.info("Azure Log Analytics ending.")
 
 
-def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
+def build_log_analytics_query(offset: str, md5_hash: str):
     """Prepares and makes the request, building the query based on the time of event generation.
 
     Parameters
@@ -270,31 +308,27 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
     -------
     The required body for the requested query in dict format
     """
-    desired_datetime = offset_to_datetime(offset) if offset else None
-
-    # Get min and max values from the file
-    try:
-        # We use "parse" to handle any datetime with more than 6 digits for the microseconds value provided by Azure
-        min_datetime = parse(dates_json["log_analytics"][md5_hash]['min'], fuzzy=True)
-        max_datetime = parse(dates_json["log_analytics"][md5_hash]['max'], fuzzy=True)
-    except KeyError:
-        # The "graph" key or the md5 value is not present in the dates file
-        logging.info(f"{md5_hash} was not found in {last_dates_file} for Log Analytics. Updating the file")
-        min_datetime = max_datetime = desired_datetime
-        dates_json["log_analytics"][md5_hash] = {'min': f"{desired_datetime}", 'max': f"{desired_datetime}"}
-
-    min_strf = f"datetime({min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
-    max_strf = f"datetime({max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+    min_datetime, max_datetime = get_min_max(service_name="log_analytics", md5_hash=md5_hash, offset=offset)
+    # If no offset value was provided continue from the previous processed date
+    desired_datetime = offset_to_datetime(offset) if offset else max_datetime
     desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
 
-    # Build the filter taking into account the min and max values
-    if desired_datetime < min_datetime:
-        filter_value = f"( TimeGenerated < {min_strf} and TimeGenerated >= {desired_strf} ) or " \
-                       f"( TimeGenerated > {max_strf} )"
-    elif desired_datetime > max_datetime:
+    # If reparse was provided, get the logs ignoring if they were already processed
+    if args.reparse:
         filter_value = f"TimeGenerated >= {desired_strf}"
+    # Build the filter taking into account the min and max values from the file
     else:
-        filter_value = f"TimeGenerated > {max_strf}"
+        min_strf = f"datetime({min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+        max_strf = f"datetime({max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+
+        # Build the filter taking into account the min and max values
+        if desired_datetime < min_datetime:
+            filter_value = f"( TimeGenerated < {min_strf} and TimeGenerated >= {desired_strf} ) or " \
+                           f"( TimeGenerated > {max_strf} )"
+        elif desired_datetime > max_datetime:
+            filter_value = f"TimeGenerated >= {desired_strf}"
+        else:
+            filter_value = f"TimeGenerated > {max_strf}"
 
     query = f"{la_format_query} | order by TimeGenerated asc | where {filter_value} "
     logging.info(f"Log Analytics: The search starts for query: '{query}'")
@@ -319,29 +353,16 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
     ------
     HTTPError if the response for the request is not 200 OK.
     """
-    def get_time_position():
-        """Get the position of the 'TimeGenerated' field in the columns list.
-
-        Returns
-        -------
-        The index of the 'TimeGenerated' field in the given list or None if it's not present.
-        """
-        for i in range(0, len(columns)):
-            if columns[i]['name'] == 'TimeGenerated':
-                return i
-
     logging.info("Log Analytics: Sending a request to the Log Analytics API.")
     response = get(url, params=body, headers=headers)
     if response.status_code == 200:
         try:
             columns = response.json()['tables'][0]['columns']
             rows = response.json()['tables'][0]['rows']
-        except KeyError as e:
-            logging.error("Error: It was not possible to obtain the columns and rows from the event: '{}'.".format(e))
-        else:
+
             if len(rows) == 0:
                 logging.info("Log Analytics: There are no new results")
-            elif time_position := get_time_position():
+            elif time_position := get_time_position(columns):
                 iter_log_analytics_events(columns, rows)
                 update_dates_json(new_min=rows[0][time_position],
                                   new_max=rows[len(rows) - 1][time_position],
@@ -350,8 +371,28 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
                 save_dates_json(dates_json)
             else:
                 logging.error("Error: No TimeGenerated field was found")
+
+        except KeyError as e:
+            logging.error("Error: It was not possible to obtain the columns and rows from the event: '{}'.".format(e))
     else:
         response.raise_for_status()
+
+
+def get_time_position(columns: list):
+    """Get the position of the 'TimeGenerated' field in the columns list.
+
+    Parameters
+    ----------
+    columns : list
+        List of columns of the log analytic logs
+
+    Returns
+    -------
+    The index of the 'TimeGenerated' field in the given list or None if it's not present.
+    """
+    for i in range(0, len(columns)):
+        if columns[i]['name'] == 'TimeGenerated':
+            return i
 
 
 def iter_log_analytics_events(columns: list, rows: list):
@@ -392,13 +433,13 @@ def start_graph():
 
     # Read credentials
     if args.graph_auth_path and args.graph_tenant_domain:
-        client, secret = read_auth_file(auth_path=args.graph_auth_path)
+        client, secret = read_auth_file(auth_path=args.graph_auth_path, fields=("application_id", "application_key"))
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
         client = args.graph_id
         secret = args.graph_key
     else:
         logging.error("Graph: No parameters have been provided for authentication.")
-        exit(1)
+        sys.exit(1)
 
     # Get the token
     logging.info("Graph: Getting authentication token.")
@@ -431,31 +472,28 @@ def build_graph_query(offset: str, md5_hash: str):
     -------
     The required URL for the requested query in str format
     """
-    desired_datetime = offset_to_datetime(offset) if offset else None
+    min_datetime, max_datetime = get_min_max(service_name="graph", md5_hash=md5_hash, offset=offset)
+    # If no offset value was provided continue from the previous processed date
+    desired_datetime = offset_to_datetime(offset) if offset else max_datetime
+    desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
     filtering_condition = "createdDateTime" if "signinEventsV2" in graph_formatted_query else "activityDateTime"
 
-    # Get min and max values from the file
-    try:
-        # We use "parse" to handle any datetime with more than 6 digits for the microseconds value provided by Azure
-        min_datetime = parse(dates_json["graph"][md5_hash]['min'], fuzzy=True)
-        max_datetime = parse(dates_json["graph"][md5_hash]['max'], fuzzy=True)
-    except KeyError:
-        logging.info(f"{md5_hash} was not found in {last_dates_file} for Graph. Updating the file")
-        min_datetime = max_datetime = desired_datetime
-        dates_json["graph"][md5_hash] = {'min': f"{desired_datetime}", 'max': f"{desired_datetime}"}
-
-    min_strf = min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
-    max_strf = max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
-    desired_strf = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%sZ')
-
-    # Build the filter taking into account the min and max values
-    if desired_datetime < min_datetime:
-        filter_value = f"({filtering_condition}+lt+{min_strf}+and+{filtering_condition}+ge+{desired_strf})" \
-                       f"+or+({filtering_condition}+gt+{max_strf})"
-    elif desired_datetime > max_datetime:
+    # If reparse was provided, get the logs ignoring if they were already processed
+    if args.reparse:
         filter_value = f"{filtering_condition}+ge+{desired_strf}"
+    # Build the filter taking into account the min and max values from the file
     else:
-        filter_value = f"{filtering_condition}+gt+{max_strf}"
+        min_strf = f"datetime({min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+        max_strf = f"datetime({max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+        desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+
+        if desired_datetime < min_datetime:
+            filter_value = f"({filtering_condition}+lt+{min_strf}+and+{filtering_condition}+ge+{desired_strf})" \
+                           f"+or+({filtering_condition}+gt+{max_strf})"
+        elif desired_datetime > max_datetime:
+            filter_value = f"{filtering_condition}+ge+{desired_strf}"
+        else:
+            filter_value = f"{filtering_condition}+gt+{max_strf}"
 
     logging.info(f"Graph: The search starts for query: '{graph_formatted_query}' using {filter_value}")
     return f"{url_graph}/v1.0/{graph_formatted_query}?$filter={filter_value}"
@@ -473,16 +511,15 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
     md5_hash : str
         md5 value used to search the query in the file containing the dates
 
+    Raises
+    ------
+    HTTPError if the response for the request is not 200 OK.
+
     Returns
     -------
     The nextLink url value contained in the response or None.
     """
-    try:
-        response = get(url=url, headers=headers)
-        logging.info("Graph: Request status: {}".format(response.status_code))
-    except Exception as e:
-        logging.error(f"Error: The request for the query could not be made: '{e}'")
-        return
+    response = get(url=url, headers=headers)
 
     if response.status_code == 200:
         response_json = response.json()
@@ -514,184 +551,129 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
 
 # STORAGE
 
-################################################################################################
-# Get access and content of the storage accounts
-# https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python
-################################################################################################
-
-def start_storage(first_run):
+def start_storage():
+    """Get access and content of the storage accounts."""
     logging.info("Azure Storage starting.")
 
-    storage_time = offset_to_datetime(args.storage_time_offset)
-    time_format = str(storage_time)
-    length_time_format = len(time_format) - 7
-    time_format = time_format[:length_time_format]
-    time_format_storage = datetime.strptime(time_format, '%Y-%m-%d %H:%M:%S')
+    # Read credentials
+    logging.info("Storage: Authenticating.")
+    if args.storage_auth_path:
+        name, key = read_auth_file(auth_path=args.storage_auth_path, fields=("account_name", "account_key"))
+    elif args.account_name and args.account_key:
+        name = args.account_name
+        key = args.account_key
+    else:
+        logging.error("Storage: No parameters have been provided for authentication.")
+        sys.exit(1)
 
     try:
-        dates_json = load(open(last_dates_file))
-    except Exception as e:
-        logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
+        # Authenticate
+        block_blob_service = BlockBlobService(account_name=name, account_key=key)
+        logging.info("Storage: Authenticated.")
 
-    try:
-        # Authentication
-        logging.info("Storage: Authenticating.")
-        if args.storage_auth_path:
-            auth_fields = read_auth_file(args.storage_auth_path)
-            block_blob_service = BlockBlobService(account_name=auth_fields['id'], account_key=auth_fields['key'])
-            logging.info("Storage: Authenticated.")
-        elif args.account_name and args.account_key:
-            block_blob_service = BlockBlobService(account_name=args.account_name, account_key=args.account_key)
-            logging.info("Storage: Authenticated.")
-        else:
-            logging.error("Storage: No parameters have been provided for authentication.")
-
+        # Get containers from the storage account or the configuration file
         logging.info("Storage: Getting containers.")
-        # Getting containers from the storage account
-        if container_format == '*':
-            try:
-                containers = block_blob_service.list_containers()
-            except Exception as e:
-                logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
+        containers = block_blob_service.list_containers() if container_format == '*' else [container_format]
 
-        # Getting containers from the configuration file
-        else:
-            try:
-                containers = [container_format]
-            except Exception as e:
-                logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
-
-        # Getting blobs
-        get_blobs(containers, block_blob_service, time_format_storage, first_run, dates_json, last_dates_file)
-
-    except Exception as e:
-        logging.error(" Storage account: '{}'.".format(e))
+        # Get the blobs
+        for container in containers:
+            name = container.name if container_format == '*' else container_format
+            get_blobs(container_name=name, blob_service=blob_service)
+    except AzureException as e:
+        logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
+        sys.exit(1)
 
     logging.info("Storage: End")
 
 
-################################################################################################
-# Get the blobs from a container and sends or writes their content
-################################################################################################
-def get_blobs(containers, block_blob_service, time_format_storage, first_run, dates_json, path):
-    for container in containers:
+def get_blobs(container_name: str, blob_service: BlockBlobService, next_marker: str = None):
+    """Get the blobs from a container and send their content.
 
-        # Differentiates possible cases of access to containers
-        if container_format == '*':
-            name = container.name
-        else:
-            name = container_format
+    Parameters
+    ----------
+    container_name : str
+        Name of container to read the blobs from
+    blob_service : BlockBlobService
+        Client used to obtain the blobs
+    next_marker : str
+        Token used as a marker to continue from previous iteration
+    """
+    try:
+        # Get the blob list
+        logging.info("Storage: Getting blobs.")
+        blobs = blob_service.list_blobs(name, marker=next_marker)
+    except AzureException as e:
+        logging.error(f"Storage: Error getting blobs: '{e}'.")
+        sys.exit(1)
+    else:
+        desired_datetime = offset_to_datetime(args.storage_time_offset) if args.storage_time_offset else max_datetime
+        logging.info(f"Storage: The search starts from the date: {desired_datetime} for blobs in "
+                     f"container: '{container_name}' ")
+        search = "." if blobs_format == '*' else blobs_format.replace('*', '')
+        for blob in blobs:
+            # Skip the blob if its name has not the expected format
+            if search not in blob.name:
+                continue
 
-        container_md5 = md5(name.encode()).hexdigest()
-        next_marker = None
+            # Skip the blob if already processed
+            last_modified = blob.properties.last_modified
+            md5_hash = md5(name.encode()).hexdigest()
+            min_datetime, max_datetime = get_min_max(service_name="storage", md5_hash=md5_hash, offset=offset)
+            if not args.reparse and (last_modified < desired_datetime or (
+                    min_datetime <= last_modified <= max_datetime)):
+                continue
 
-        while True:
+            # Get the blob data
             try:
-                # Extraction of blobs from containers
-                logging.info("Storage: Getting blobs.")
-                blobs = block_blob_service.list_blobs(name, marker=next_marker)
-            except Exception as e:
-                logging.error("Error getting blobs: '{}'.".format(e))
-
-            if blobs_format == '*':
-                search = "."
+                data = blob_service.get_blob_to_text(name, blob.name)
+            except (ValueError, AzureException, AzureHttpError) as e:
+                logging.error(f"Storage: Error reading the blob data: '{e}'.")
+                continue
             else:
-                search = blobs_format
-                search = search.replace('*', '')
-
-            max_blob = UTC.localize(time_format_storage)
-
-            for blob in blobs:
-                try:
-                    # Access to the desired blobs
-                    if search in blob.name:
-                        data = block_blob_service.get_blob_to_text(name, blob.name)
-                        last_modified = blob.properties.last_modified
-
-                        if first_run == False:
-                            if container_md5 not in dates_json["storage"]:
-                                last_blob = time_format_storage
-                            else:
-                                blob_date_format = dates_json["storage"][container_md5]
-                                blob_date_length = len(blob_date_format) - 6
-                                blob_date_format = blob_date_format[:blob_date_length]
-                                last_blob = datetime.strptime(blob_date_format, '%Y-%m-%d %H:%M:%S')
-                        else:
-                            last_blob = time_format_storage
-
-                        last_blob = UTC.localize(last_blob)
-                        logging.info(
-                            "Storage: The search starts from the date: {} for blobs in container: '{}' ".format(
-                                last_blob, name))
-
-                        if last_modified > last_blob:
-                            if last_modified > max_blob:
-                                max_blob = last_modified
-                            socket_data = str(data.content)
-                            socket_data = linesep.join([s for s in socket_data.splitlines() if s])
-                            split_data = socket_data.splitlines()
-                            storage_counter = 0
-
-                            if args.json_file:
-                                content_list = loads(data.content)
-                                content_records = content_list["records"]
-                                for log_record in content_records:
-                                    log_record['azure_tag'] = ('azure-storage')
-                                    if args.storage_tag:
-                                        log_record['azure_storage_tag'] = (args.storage_tag)
-                                    logging.info("Storage: Sending event by socket.")
-                                    log_json = dumps(log_record)
-                                    send_message(log_json)
-                                    storage_counter += 1
-                            else:
-                                for line in split_data:
-                                    if args.json_inline:
-                                        size = len(line)
-                                        sub_data = line[1:size]
-                                        if args.storage_tag:
-                                            send_data = '{"azure_tag": "azure-storage",' + '"azure_storage_tag": "' + args.storage_tag + '", ' + sub_data
-                                        else:
-                                            send_data = '{"azure_tag": "azure-storage",' + sub_data
-                                    else:
-                                        if args.storage_tag:
-                                            send_data = "azure_tag: azure-storage. azure_storage_tag: {}. {}".format(
-                                                args.storage_tag, line)
-                                        else:
-                                            send_data = "azure_tag: azure-storage. {}".format(line)
-
-                                    if send_data != "":
-                                        logging.info("Storage: Sending event by socket.")
-                                        send_message(send_data)
-                                        storage_counter += 1
-                except Exception as e:
-                    logging.error("Storage: sending blob: '{}'.".format(e))
-
-            next_marker = blobs.next_marker
-            if not next_marker:
-                break
-
-        try:
-            if first_run == True:
-                write_time = max_blob
-            else:
-                if container_md5 in dates_json["storage"]:
-                    previous_time = dates_json["storage"][container_md5]
-                    previous_time_length = len(previous_time) - 6
-                    previous_time_format = previous_time[:previous_time_length]
-                    previous_date = datetime.strptime(previous_time_format, '%Y-%m-%d %H:%M:%S')
-                    previous_date = UTC.localize(previous_date)
-                    if previous_date > max_blob:
-                        write_time = previous_date
+                # Process the data as a JSON
+                if args.json_file:
+                    try:
+                        content_list = loads(data.content)
+                        records = content_list["records"]
+                    except (JSONDecodeError, TypeError) as e:
+                        logging.error(f"Storage: Error reading the contents of the blob: '{e}'.")
+                        continue
+                    except KeyError as e:
+                        logging.error(f"Storage: No records found in the blob's contents: '{e}'.")
+                        continue
                     else:
-                        write_time = max_blob
+                        for log_record in records:
+                            # Add azure tags
+                            log_record['azure_tag'] = 'azure-storage'
+                            if args.storage_tag:
+                                log_record['azure_storage_tag'] = args.storage_tag
+                            logging.info("Storage: Sending event by socket.")
+                            send_message(dumps(log_record))
+                # Process the data as plain text
                 else:
-                    write_time = max_blob
+                    for line in [s for s in str(data.content).splitlines() if s]:
+                        if args.json_inline:
+                            msg = '{"azure_tag": "azure-storage"'
+                            if args.storage_tag:
+                                msg = f'{msg}, "azure_storage_tag": {args.storage_tag}'
+                            msg = f'{msg}, {line[1:]}'
+                        else:
+                            msg = "azure_tag: azure-storage."
+                            if args.storage_tag:
+                                msg = f'{msg} azure_storage_tag: {args.storage_tag}.'
+                            msg = f'{msg} {line}'
+                        logging.info("Storage: Sending event by socket.")
+                        send_message(msg)
 
-            dates_json['storage'][container_md5] = str(write_time)
-            with open(join(path), 'w') as jsonFile:
-                dump(dates_json, jsonFile)
-        except Exception as e:
-            logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
+            update_dates_json(new_min=str(last_modified),
+                              new_max=str(last_modified),
+                              service_name="storage",
+                              md5_hash=md5_hash)
+            save_dates_json(dates_json)
+
+            # Continue until no marker is returned
+            if blobs.next_marker:
+                get_blobs(container_name=container_name, blob_service=blob_service,next_marker=blobs.next_marker)
 
 
 def get_token(client_id: str, secret: str, domain: str, scope: str):
@@ -724,7 +706,7 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
         return token_response.json()['access_token']
     except (ValueError, KeyError) as e:
         logging.error("Error: Couldn't get the token for authentication: '{}'.".format(e))
-        exit(1)
+        sys.exit(1)
 
 
 def send_message(message):
@@ -742,12 +724,12 @@ def send_message(message):
     except socket_error as e:
         if e.errno == 111:
             logging.error("ERROR: Wazuh must be running.")
-            exit(1)
+            sys.exit(1)
         elif e.errno == 90:
             logging.error("ERROR: Message too long to send to Wazuh.  Skipping message...")
         else:
             logging.error("ERROR: Error sending message to wazuh: {}".format(e))
-            exit(1)
+            sys.exit(1)
     finally:
         s.close()
 
@@ -789,4 +771,4 @@ if __name__ == "__main__":
         start_storage()
     else:
         logging.error("No valid API was specified. Please use 'graph', 'log_analytics' or 'storage'.")
-        exit(1)
+        sys.exit(1)
