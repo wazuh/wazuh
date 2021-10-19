@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Prevented files belonging to deleted agents from remaining in the manager. ([#9158](https://github.com/wazuh/wazuh/pull/9158))
 - Fixed inaccurate agent group file cleanup in the database sync module. ([#10432](https://github.com/wazuh/wazuh/pull/10432))
 - Prevented the manager from corrupting the agent data integrity when the disk gets full. ([#10479](https://github.com/wazuh/wazuh/pull/10479))
+- Fixed a resource leak in Vulnerability Detector when scanning Windows agents. ([#10559](https://github.com/wazuh/wazuh/pull/10559))
 
 
 ## [v4.2.3] - 2021-10-06
