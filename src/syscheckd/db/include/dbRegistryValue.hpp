@@ -13,7 +13,6 @@
 #define _REGISTRYVALUE_HPP
 #include <nlohmann/json.hpp>
 #include "dbItem.hpp"
-#include <iostream>
 
 struct FimRegistryValueDeleter {
     void operator()(fim_entry* address) {
@@ -68,7 +67,6 @@ public:
     }
     RegistryValue(const nlohmann::json &fim)
     : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode")) {
-        std::cout << fim.dump() << std::endl;
         m_keyUid = fim.at("id");
         m_registryKey = 0;
         m_size = fim.at("size");
