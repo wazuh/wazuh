@@ -22,6 +22,10 @@
 #include "fim_entry.h"
 #include <iostream>
 
+/**
+ * @brief Abstract class that represents a test action
+ *
+ */
 class TestAction
 {
     public:
@@ -30,18 +34,28 @@ class TestAction
         virtual                           ~TestAction() {}
 
     protected:
-        int                               m_actionId;
-        std::string                       m_dbPath;
-        std::string                       m_outPath;
-        std::string                       m_table;
-        nlohmann::json                    m_actionData;
-        std::function<void(const char*)> m_reportFunction;
+        int                               m_actionId;        /**< Integer to store the action identifier.       */
+        std::string                       m_dbPath;          /**< String with the database path.                */
+        std::string                       m_outPath;         /**< */
+        std::string                       m_table;           /**< Database table where the action is performed. */
+        nlohmann::json                    m_actionData;      /**< Json storing the data to perform the action.  */
+        std::function<void(const char*)> m_reportFunction;   /**< Function to log */
 
 };
 
+/**
+ * @brief Class to perform insertions into a specific table using a JSON as a source.
+ */
 class InsertAction final : public TestAction
 {
     public:
+        /**
+         * @brief Construct a new Insert Action object
+         *
+         * @param table Store the table where the action will be performed.
+         * @param actionData Data that will be used.
+         * @param reportFunction Function that will be use to log.
+         */
         InsertAction(const std::string& table, const nlohmann::json& actionData,
                      const std::function<void(const char*)> reportFunction)
         {
@@ -51,8 +65,16 @@ class InsertAction final : public TestAction
             // FIMDB::getInstance().init();
         }
 
+        /**
+         * @brief Destroy the Insert Action object
+         *
+         */
         ~InsertAction() {}
 
+        /**
+         * @brief Execute the insert test. It will use the data stored in m_actionData to insert new entries in the DB.
+         *
+         */
         void execute() override
         {
             m_reportFunction("Executing insert action.\n");
@@ -70,10 +92,11 @@ class InsertAction final : public TestAction
                 else if (m_table == "REGISTRY")
                 {
                     auto entry_vector = fillRegistryEntry(it);
-
-                    for (fim_entry* entry : entry_vector)
-                    {
+                    while (entry_vector.empty() == false) {
+                        fim_entry *entry = entry_vector.back();
+                        entry_vector.pop_back();
                         m_reportFunction("Inserting registry entry:");
+
                         print_entry(*entry, m_reportFunction);
                         free_entry(entry);
                     }
@@ -82,9 +105,21 @@ class InsertAction final : public TestAction
         }
 };
 
+/**
+ * @brief Class to perform updates in a specific table using a JSON as a source.
+ *
+ */
 class UpdateAction final : public TestAction
 {
     public:
+        /**
+         * @brief Construct a new Update Action object
+         *
+         *
+         * @param table Store the table where the action will be performed.
+         * @param actionData Data that will be used.
+         * @param reportFunction Function that will be use to log.
+         */
         UpdateAction(const std::string& table, const nlohmann::json& actionData,
                      const std::function<void(const char*)> reportFunction)
         {
@@ -94,6 +129,12 @@ class UpdateAction final : public TestAction
             m_actionData = actionData["update_data"];
             // FIMDB::getInstance().init();
         }
+
+        /**
+         * @brief Execute the update test. It will insert the entries stored in m_precondData and after that it will
+         *        update the entries stored in m_actionData
+         *
+         */
         void execute() override
         {
             m_reportFunction("Executing update preconditions.\n");
@@ -111,10 +152,11 @@ class UpdateAction final : public TestAction
                 else if (m_table == "REGISTRY")
                 {
                     auto entry_vector = fillRegistryEntry(it);
-
-                    for (auto entry : entry_vector)
-                    {
+                    while (entry_vector.empty() == false) {
+                        fim_entry *entry = entry_vector.back();
+                        entry_vector.pop_back();
                         m_reportFunction("Inserting registry entry:");
+
                         print_entry(*entry, m_reportFunction);
                         free_entry(entry);
                     }
@@ -137,10 +179,11 @@ class UpdateAction final : public TestAction
                 else if (m_table == "REGISTRY")
                 {
                     auto entry_vector = fillRegistryEntry(it);
-
-                    for (fim_entry* entry : entry_vector)
-                    {
+                    while (entry_vector.empty() == false) {
+                        fim_entry *entry = entry_vector.back();
+                        entry_vector.pop_back();
                         m_reportFunction("Updating registry entry:");
+
                         print_entry(*entry, m_reportFunction);
                         free_entry(entry);
                     }
@@ -149,12 +192,19 @@ class UpdateAction final : public TestAction
         }
 
     private:
-        nlohmann::json m_precondData;
+        nlohmann::json m_precondData; /**< JSON with the data that will be inserted before updating. */
 };
 
 class RemoveAction final : public TestAction
 {
     public:
+        /**
+         * @brief Construct a new Remove Action object
+         *
+         * @param table Store the table where the action will be performed.
+         * @param actionData Data that will be used.
+         * @param reportFunction Function that will be use to log.
+         */
         RemoveAction(const std::string& table, const nlohmann::json& actionData,
                      const std::function<void(const char*)> reportFunction)
         {
@@ -164,6 +214,12 @@ class RemoveAction final : public TestAction
             m_actionData = actionData["delete_data"];
             // FIMDB::getInstance().init();
         }
+
+        /**
+         * @brief Execute the update test. It will insert the entries stored in m_precondData and after that it will
+         *        remove the entries stored in m_actionData
+         *
+         */
         void execute() override
         {
             m_reportFunction("Executing remove preconditions.\n");
@@ -181,10 +237,11 @@ class RemoveAction final : public TestAction
                 else if (m_table == "REGISTRY")
                 {
                     auto entry_vector = fillRegistryEntry(it);
-
-                    for (auto entry : entry_vector)
-                    {
+                    while (entry_vector.empty() == false) {
+                        fim_entry *entry = entry_vector.back();
+                        entry_vector.pop_back();
                         m_reportFunction("Inserting registry entry:");
+
                         print_entry(*entry, m_reportFunction);
                         free_entry(entry);
                     }
@@ -207,10 +264,11 @@ class RemoveAction final : public TestAction
                 else if (m_table == "REGISTRY")
                 {
                     auto entry_vector = fillRegistryEntry(it);
-
-                    for (auto entry : entry_vector)
-                    {
+                    while (entry_vector.empty() == false) {
+                        fim_entry *entry = entry_vector.back();
+                        entry_vector.pop_back();
                         m_reportFunction("Removing registry entry:");
+
                         print_entry(*entry, m_reportFunction);
                         free_entry(entry);
                     }
@@ -219,7 +277,7 @@ class RemoveAction final : public TestAction
         }
 
     private:
-        nlohmann::json m_precondData;
+        nlohmann::json m_precondData;  /**< JSON with the data that will be inserted before removing. */
 };
 
 #endif //_ACTION_H

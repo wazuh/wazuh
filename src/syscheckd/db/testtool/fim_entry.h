@@ -152,7 +152,7 @@ fim_entry *fillFileEntry(const nlohmann::json &json_data)
  * @brief Auxiliar function to fill the data of a registry key using a json as a source.
  *
  * @param json_data JSON with the data that will be used.
- * @return A fim_registry_key structure with the data.
+ * @param fill_entry The fim_registry_key structure to save the data.
  */
 void fillRegistryKeyData(const nlohmann::json &json_data, fim_registry_key &fill_entry)
 {
@@ -177,7 +177,7 @@ void fillRegistryKeyData(const nlohmann::json &json_data, fim_registry_key &fill
  * @brief Function to fill a registry value entry.
  *
  * @param json_data JSON with the data to use.
- * @return A fim_entry with the data.
+ * @param fill_entry The fim_registry_value_data structure to save the data.
  */
 void fillValueEntry(const nlohmann::json &json_data, fim_registry_value_data &fill_entry)
 {
@@ -193,6 +193,12 @@ void fillValueEntry(const nlohmann::json &json_data, fim_registry_value_data &fi
     std::strncpy(fill_entry.checksum, const_cast<char *>(static_cast<std::string>(json_data["checksum"]).c_str()), sizeof(fill_entry.checksum));
 }
 
+/**
+ * @brief Function to get one or more registry entries from a JSON.
+ *
+ * @param json_data JSON holding the key data and it's values.
+ * @return std::vector<fim_entry*> Vector holding the fim_entries stored in the JSON.
+ */
 std::vector<fim_entry*> fillRegistryEntry(const nlohmann::json &json_data) {
     std::vector<fim_entry *> return_vector;
     auto key_info = json_data["key"];

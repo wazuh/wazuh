@@ -18,11 +18,21 @@
 #include <iostream>
 #include <json.hpp>
 
+/**
+ * @brief Class to handle command line arguments.
+ *        It will capture the arguments, check and assign them to the proper type.
+ *
+ */
 class CmdLineArgs final
 {
 public:
+    /**
+     * @brief Construct a new Cmd Line Args object.
+     *
+     * @param argc Number of arguments.
+     * @param argv Arguments.
+     */
     CmdLineArgs(const int argc, const char *argv[])
-        : m_updatePeriod{0}
     {
         const bool input{paramValueOf(argc, argv, "-i", m_inputData)};
         const bool config{paramValueOf(argc, argv, "-c", m_config)};
@@ -39,26 +49,36 @@ public:
         }
     }
 
-    const std::string &outputFolder() const
-    {
-        return m_outputFolder;
-    }
+    /**
+     * @brief Gets the input data
+     *
+     * @return const nlohmann::json& JSON holding the input data.
+     */
     const nlohmann::json &inputData() const
     {
         return m_inputData;
     }
+
+    /**
+     * @brief Gets the config.
+     *
+     * @return const nlohmann::json& JSON holding the configuration data.
+     */
     const nlohmann::json &config() const
     {
         return m_config;
     }
 
+    /**
+     * @brief Function to show the help message.
+     *
+     */
     static void showHelp()
     {
         std::cout << "\nUsage: fimdb_testtool <option(s)> SOURCES \n"
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-c CONFIG_FILE_PATH\tSpecifies the configuration path for the testtool.\n"
-                  << "\t-o OUTPUT_FOLDER\t.\n"
                   << "\t-i INPUT_DATA\tSpecifies the input data that will be used.\n"
                   << "\nExample:"
                   << "\n\t./fimdb_testtool -c /tmp/config.json -i /tmp/test1.json\n"
@@ -66,6 +86,17 @@ public:
     }
 
 private:
+    /**
+     * @brief Looks for a string value in the arguments
+     *
+     * @param argc Number of arguments.
+     * @param argv Arguments.
+     * @param switchValue Option to look for.
+     * @param value String where the data will be saved
+     *
+     * @return true If the option was specified and if there was no error.
+     * @return false If the option wasn't specified or if there is a error
+    */
     static bool paramValueOf(const int argc,
                              const char *argv[],
                              const std::string &switchValue,
@@ -88,6 +119,18 @@ private:
 
         return ret;
     }
+
+    /**
+     * @brief Looks for a JSON value in the arguments
+     *
+     * @param argc Number of arguments.
+     * @param argv Arguments.
+     * @param switchValue Option to look for.
+     * @param value JSON where the data will be saved
+     *
+     * @return true If the option was specified and if there was no error.
+     * @return false If the option wasn't specified or if there is a error
+    */
     static bool paramValueOf(const int argc,
                              const char *argv[],
                              const std::string &switchValue,
@@ -112,10 +155,8 @@ private:
         return true;
     }
 
-    std::string m_outputFolder;
-    nlohmann::json m_inputData;
-    nlohmann::json m_config;
-    unsigned long m_updatePeriod;
+    nlohmann::json m_inputData; /**< JSON storing the data that the testtool will use. */
+    nlohmann::json m_config;    /**< JSON storing the configuration for FIMDB          */
 };
 
 #endif // _CMD_LINE_ARGS_HELPER_H_
