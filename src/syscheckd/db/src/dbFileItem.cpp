@@ -9,7 +9,6 @@
  * Foundation.
  */
 #include "dbFileItem.hpp"
-#include "syscheck.h"
 
 void FileItem::createFimEntry() {
     fim_entry *fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
