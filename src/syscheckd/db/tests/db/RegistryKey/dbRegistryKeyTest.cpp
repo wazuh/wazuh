@@ -25,7 +25,7 @@ void RegistryKeyTest::SetUp() {
     key->id = 50;
     key->last_event = 1596489275;
     key->mtime = 1578075431;
-    key->path = const_cast<char*>("/etc/wgetrc");
+    key->path = const_cast<char*>("HKEY_LOCAL_MACHINE\\SOFTWARE");
     key->perm = const_cast<char*>("-rw-rw-r--");
     key->scanned = 1;
     key->uid = const_cast<char*>("0");
@@ -50,7 +50,7 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM) {
 TEST_F(RegistryKeyTest, registryKeyConstructorFromParameters) {
     EXPECT_NO_THROW({
         auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                    0, "root", "/etc/wgetrc", "-rw-rw-r--", 1578075431, 0, "fakeUser");
+                                    0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
         auto scanned = key->state();
         EXPECT_TRUE(scanned);
         delete key;
@@ -61,7 +61,7 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON) {
     const auto json = R"(
         {
             "id":"50", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
-            "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1,
+            "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--", "scanned":1,
             "uid":0, "user_name":"fakeUser"
         }
     )"_json;
@@ -75,7 +75,7 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON) {
 
 TEST_F(RegistryKeyTest, getFIMEntryWithParametersCtr) {
     auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                0, "root", "/etc/wgetrc", "-rw-rw-r--", 1578075431, 0, "fakeUser");
+                                0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
     auto keyEntry = key->toFimEntry();
     ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->checksum, fimEntryTest->registry_entry.key->checksum), 0);
@@ -116,13 +116,13 @@ TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr) {
     const auto json = R"(
         {
             "id":"50", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
-            "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1,
+            "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--", "scanned":1,
             "uid":0, "user_name":"fakeUser"
         }
     )"_json;
     auto key = new RegistryKey(json);
     auto keyEntry = key->toFimEntry();
-        ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
+    ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->checksum, fimEntryTest->registry_entry.key->checksum), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->gid, fimEntryTest->registry_entry.key->gid), 0);
     ASSERT_EQ(fimEntryTest->registry_entry.key->arch, fimEntryTest->registry_entry.key->arch);
@@ -140,11 +140,11 @@ TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr) {
 
 TEST_F(RegistryKeyTest, getJSONWithParametersCtr) {
     auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                0, "root", "/etc/wgetrc", "-rw-rw-r--", 1578075431, 0, "fakeUser");
+                                0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
     const auto expectedValue = R"(
         {
             "arch":1, "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root",
-            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"/etc/wgetrc", "perm":"-rw-rw-r--",
+            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
             "scanned":1, "uid":0, "user_name":"fakeUser"
         }
     )"_json;
@@ -157,7 +157,7 @@ TEST_F(RegistryKeyTest, getJSONWithFimCtr) {
     const auto expectedValue = R"(
         {
             "arch":1, "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root",
-            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"/etc/wgetrc", "perm":"-rw-rw-r--",
+            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
             "scanned":1, "uid":0, "user_name":"fakeUser"
         }
     )"_json;
@@ -170,7 +170,7 @@ TEST_F(RegistryKeyTest, getJSONWithJSONCtr) {
     const auto expectedValue = R"(
         {
             "arch":1, "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root",
-            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"/etc/wgetrc", "perm":"-rw-rw-r--",
+            "id":"50", "last_event":1596489275, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
             "scanned":1, "uid":0, "user_name":"fakeUser"
         }
     )"_json;
