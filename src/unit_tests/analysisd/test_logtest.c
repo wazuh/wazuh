@@ -3158,7 +3158,6 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     will_return(__wrap_ReadDecodeXML, 0);
 
     // test_w_logtest_remove_session_ok_error_load_decoder_cbd_rules_hash
-    will_return(__wrap_OSStore_Free, (OSStore *) 8);
     will_return(__wrap_pthread_mutex_destroy, 0);
 
 
