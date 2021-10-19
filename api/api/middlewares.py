@@ -114,7 +114,7 @@ async def security_middleware(request, handler):
     access_conf = api_conf['access']
     if access_conf['max_request_per_minute'] > 0:
         await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
-    await unlock_ip(request=request, block_time=access_conf['block_time'])
+    await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)
 
