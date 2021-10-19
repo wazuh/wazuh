@@ -1,0 +1,156 @@
+{
+    "action": "DB_UPDATE",
+    "table": "REGISTRY",
+    "data": {
+        "precondition_data": [
+            {
+                "key": {
+                    "id": 0,
+                    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE",
+                    "perm": "rwxrwxrwx",
+                    "uid": "0",
+                    "gid": "0",
+                    "user_name": "Administrator",
+                    "group_name": "Administrator",
+                    "mtime": 987654321,
+                    "arch": 0,
+                    "scanned": 1,
+                    "last_event": 12345678,
+                    "checksum": "123456789abcdf"
+                },
+                "values": [
+                    {
+                        "id": 0,
+                        "name": "value_1",
+                        "type": 1,
+                        "size": 32323,
+                        "md5": "123456789abcdef",
+                        "sha1": "123456789abcdef",
+                        "sha256": "123456789abcdef",
+                        "scanned": 1,
+                        "last_event": 12345678,
+                        "checksum": "123456789abcdf",
+                        "mode": 0
+                    },
+                    {
+                        "id": 0,
+                        "name": "value_2",
+                        "type": 1,
+                        "size": 32323,
+                        "md5": "123456789abcdef",
+                        "sha1": "123456789abcdef",
+                        "sha256": "123456789abcdef",
+                        "scanned": 1,
+                        "last_event": 12345678,
+                        "checksum": "123456789abcdf",
+                        "mode": 0
+                    },
+                    {
+                        "id": 0,
+                        "name": "value_2",
+                        "type": 1,
+                        "size": 32323,
+                        "md5": "123456789abcdef",
+                        "sha1": "123456789abcdef",
+                        "sha256": "123456789abcdef",
+                        "scanned": 1,
+                        "last_event": 12345678,
+                        "checksum": "123456789abcdf",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "key": {
+                    "id": 1,
+                    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\key",
+                    "perm": "rwxrwxrwx",
+                    "uid": "0",
+                    "gid": "0",
+                    "user_name": "Administrator",
+                    "group_name": "Administrator",
+                    "mtime": 987654321,
+                    "arch": 0,
+                    "scanned": 1,
+                    "last_event": 12345678,
+                    "checksum": "123456789abcdf"
+                }
+            }
+        ],
+        "update_data": [
+            {
+                "key": {
+                    "id": 0,
+                    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE",
+                    "perm": "rwxrwxrwx",
+                    "uid": "1",
+                    "gid": "1",
+                    "user_name": "Administrator",
+                    "group_name": "Administrator",
+                    "mtime": 93254321,
+                    "arch": 0,
+                    "scanned": 1,
+                    "last_event": 13332345678,
+                    "checksum": "123456789abcdf"
+                },
+                "values": [
+                    {
+                        "id": 0,
+                        "name": "value_1",
+                        "type": 4,
+                        "size": 2323,
+                        "md5": "2323456789abcdef",
+                        "sha1": "3223456789abcdef",
+                        "sha256": "3223456789abcdef",
+                        "scanned": 1,
+                        "last_event": 1212345678,
+                        "checksum": "12332456789abcdf",
+                        "mode": 0
+                    },
+                    {
+                        "id": 0,
+                        "name": "value_2",
+                        "type": 1,
+                        "size": 323323,
+                        "md5": "123456789abcdef",
+                        "sha1": "123456789abcdef",
+                        "sha256": "123456789a123bcdef",
+                        "scanned": 1,
+                        "last_event": 123453678,
+                        "checksum": "12345672389abcdf",
+                        "mode": 0
+                    },
+                    {
+                        "id": 0,
+                        "name": "value_2",
+                        "type": 1,
+                        "size": 323323,
+                        "md5": "1233456789abcdef",
+                        "sha1": "1233456789abcdef",
+                        "sha256": "1233456789abcdef",
+                        "scanned": 1,
+                        "last_event": 12345678,
+                        "checksum": "123456789abcdf",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "key": {
+                    "id": 1,
+                    "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\key",
+                    "perm": "rwxrwxrwx",
+                    "uid": "1",
+                    "gid": "1",
+                    "user_name": "Administrator",
+                    "group_name": "Administrator",
+                    "mtime": 9876534321,
+                    "arch": 1,
+                    "scanned": 1,
+                    "last_event": 1232345678,
+                    "checksum": "1234356789abcdf"
+                }
+            }
+        ]
+    }
+}

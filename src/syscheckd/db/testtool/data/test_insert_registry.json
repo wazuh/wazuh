@@ -1,0 +1,79 @@
+{
+    "action": "DB_INSERT",
+    "table": "REGISTRY",
+    "data": [
+        {
+            "key": {
+                "id": 0,
+                "path": "HKEY_LOCAL_MACHINE\\SOFTWARE",
+                "perm": "rwxrwxrwx",
+                "uid": "0",
+                "gid": "0",
+                "user_name": "Administrator",
+                "group_name": "Administrator",
+                "mtime": 987654321,
+                "arch": 0,
+                "scanned": 1,
+                "last_event": 12345678,
+                "checksum": "123456789abcdf"
+            },
+            "values": [
+                {
+                    "id": 0,
+                    "name": "value_1",
+                    "type": 1,
+                    "size": 32323,
+                    "md5": "123456789abcdef",
+                    "sha1": "123456789abcdef",
+                    "sha256": "123456789abcdef",
+                    "scanned": 1,
+                    "last_event": 12345678,
+                    "checksum": "123456789abcdf",
+                    "mode": 0
+                },
+                {
+                    "id": 0,
+                    "name": "value_2",
+                    "type": 1,
+                    "size": 32323,
+                    "md5": "123456789abcdef",
+                    "sha1": "123456789abcdef",
+                    "sha256": "123456789abcdef",
+                    "scanned": 1,
+                    "last_event": 12345678,
+                    "checksum": "123456789abcdf",
+                    "mode": 0
+                },
+                {
+                    "id": 0,
+                    "name": "value_2",
+                    "type": 1,
+                    "size": 32323,
+                    "md5": "123456789abcdef",
+                    "sha1": "123456789abcdef",
+                    "sha256": "123456789abcdef",
+                    "scanned": 1,
+                    "last_event": 12345678,
+                    "checksum": "123456789abcdf",
+                    "mode": 0
+                }
+            ]
+        },
+        {
+            "key": {
+                "id": 1,
+                "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\key",
+                "perm": "rwxrwxrwx",
+                "uid": "0",
+                "gid": "0",
+                "user_name": "Administrator",
+                "group_name": "Administrator",
+                "mtime": 987654321,
+                "arch": 0,
+                "scanned": 1,
+                "last_event": 12345678,
+                "checksum": "123456789abcdf"
+            }
+        }
+    ]
+}
