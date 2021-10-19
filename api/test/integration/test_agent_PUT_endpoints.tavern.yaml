@@ -917,8 +917,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Upgrade an agent
-    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
+  - name: Upgrade an agent to the latest version (task created but agent cannot be upgraded because the WPK does not exist)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -926,7 +925,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        force: True
         agents_list: '006'
     response:
       status_code: 200
@@ -941,7 +939,6 @@ stages:
         message: !anystr
 
   - name: Try to upgrade an agent that is updated to the latest version
-    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -949,7 +946,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '006'
+        agents_list: '001'
     response:
       status_code: 200
       json:
@@ -959,35 +956,11 @@ stages:
           total_failed_items: 1
           failed_items:
             - error:
-                code: 1819
+                code: 1822
                 message: !anystr
                 remediation: !anything
               id:
-                - '006'
-        message: !anystr
-
-  - name: Downgrade agent to an specific version using force
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        upgrade_version: v3.9.3
-        force: true
-        wait_for_complete: 'true'
-        agents_list: '003'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - agent: '003'
-              task_id: !anyint
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: [ ]
+                - '001'
         message: !anystr
 
   - name: Upgrade an agent using http and wpk repo
@@ -1203,7 +1176,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 006
+        agents_list: '006'
     response:
       status_code: 400
       json:
@@ -1219,7 +1192,6 @@ stages:
       params:
         agents_list: '005'
         file_path: "{custom_wpk_path:s}"
-        wait_for_complete: 'true'
     response:
       status_code: 200
       json:
