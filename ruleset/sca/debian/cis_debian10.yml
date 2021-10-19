@@ -758,8 +758,9 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
-    condition: all
+    condition: any
     rules:
+      - 'not f:/etc/motd'
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   - id: 2545
