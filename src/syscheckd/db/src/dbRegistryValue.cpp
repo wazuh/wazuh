@@ -42,5 +42,6 @@ void RegistryValue::createJSON() {
     conf.push_back(nlohmann::json::object_t::value_type("hash_md5", m_md5));
     conf.push_back(nlohmann::json::object_t::value_type("hash_sha1", m_sha1));
     conf.push_back(nlohmann::json::object_t::value_type("hash_sha256", m_sha256));
+    conf.push_back(nlohmann::json::object_t::value_type("type", m_type));
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 }
