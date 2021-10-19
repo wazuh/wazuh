@@ -34,11 +34,12 @@ package "db" <<Folder>> #DDDDDD{
             - string m_sha256
             - unsigned long int m_dev
             - int m_options
-            - fim_entry *m_fimEntry
-            - nlohman::json *m_statementConf
+            - unique_ptr<fim_entry> m_fimEntry
+            - unique_ptr<nlohman::json> m_statementConf
 
             + FileItem(args)
             + FileItem(fim_entry)
+            + FileItem(nlohman::json)
             + ~FileItem()
             + fim_entry* toFIMEntry()
             + nlohman::json* toJsonEntry()
@@ -46,32 +47,36 @@ package "db" <<Folder>> #DDDDDD{
         class "RegistryValue" {
             - int m_type
             - int m_keyUid
+            - int m_registryKey
             - int m_size
             - string m_md5
             - string m_sha1
             - string m_sha256
-            - fim_entry *m_fimEntry
-            - nlohman::json *m_statementConf
+            - unique_ptr<fim_entry> m_fimEntry
+            - unique_ptr<nlohman::json> m_statementConf
 
             + RegistryValue(args)
             + RegistryValue(fim_entry)
+            + RegistryValue(nlohman::json)
             + ~RegistryValue()
             + fim_entry toFIMEntry()
             + json toJson()
         }
         class "RegistryKey" {
-            - string m_perms
+            - string m_perm
+            - string m_path
             - int m_uid
             - string m_username
             - int m_gid
             - string m_groupname
-            - int m_time
-            - enum m_arch
-            - fim_entry *m_fimEntry
-            - nlohman::json *m_statementConf
+            - time_t m_time
+            - int m_arch
+            - unique_ptr<fim_entry> m_fimEntry
+            - unique_ptr<nlohman::json> m_statementConf
 
             + RegistryKey(args)
             + RegistryKey(fim_entry)
+            + RegistryKey(nlohman::json)
             + ~RegistryKey()
             + fim_entry toFIMEntry()
             + json to_Json()
