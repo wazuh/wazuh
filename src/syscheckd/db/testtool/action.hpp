@@ -19,7 +19,7 @@
 #include "dbRegistryValue.hpp"
 // #include "fimDBWrapper.hpp"
 #include "syscheck.h"
-#include "fim_entry.h"
+#include "fim_entry.hpp"
 #include <iostream>
 
 /**
