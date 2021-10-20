@@ -29,7 +29,7 @@ from json import dump, dumps, load, loads, JSONDecodeError
 from os import linesep
 from os.path import abspath, dirname, exists, join
 from pytz import UTC
-from requests import get, post
+from requests import get, post, HTTPError
 from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
 from typing import Union
 
@@ -128,8 +128,7 @@ if args.graph_query:
     graph_formatted_query = args.graph_query.replace("'", "")
 if args.container:
     container_format = args.container.replace('"', '')
-if args.blobs:
-    blobs_format = args.blobs.replace('"', '')
+blobs_format = args.blobs.replace('"', '') if args.blobs else "*"
 
 
 def set_logger():
@@ -171,7 +170,7 @@ def read_auth_file(auth_path: str, fields: tuple):
             sys.exit(1)
         return credentials[fields[0]], credentials[fields[1]]
     except OSError as e:
-        logging.error("Error: The authentication file could not be opened: '{}'".format(e))
+        logging.error("Error: The authentication file could not be opened: {}".format(e))
         sys.exit(1)
 
 
@@ -189,19 +188,22 @@ def get_min_max(service_name: str, md5_hash: str, offset: str):
 
     Returns
     -------
-    A tuple with the min and max values
+    A tuple with the min and max values in str format
     """
     try:
-        # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
-        # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
-        min_ = parse(dates_json[service_name][md5_hash]['min'], fuzzy=True)
-        max_ = parse(dates_json[service_name][md5_hash]['max'], fuzzy=True)
+        min_ = dates_json[service_name][md5_hash]["min"]
+        max_ = dates_json[service_name][md5_hash]["max"]
     except KeyError:
         # The service name or the md5 value is not present in the dates file
-        desired_datetime = offset_to_datetime(offset) if offset else datetime.now()
+        if service_name not in dates_json:
+            dates_json[service_name] = {}
+
+        desired_datetime = offset_to_datetime(offset) if offset else datetime.utcnow().replace(hour=0, minute=0,
+                                                                                               second=0, microsecond=0)
+        desired_datetime = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         logging.info(f"{md5_hash} was not found in {last_dates_file} for {service_name}. Updating the file")
-        dates_json[service_name][md5_hash] = {'min': f"{desired_datetime}", 'max': f"{desired_datetime}"}
-        min_ = max_ = UTC.localize(desired_datetime)
+        dates_json[service_name][md5_hash] = {"min": desired_datetime, "max": desired_datetime}
+        min_ = max_ = desired_datetime
     return min_, max_
 
 
@@ -232,8 +234,14 @@ def load_dates_json():
         sys.exit(1)
 
 
-def save_dates_json(json_obj):
-    """Save the json object containing the different processed dates in the "last_dates_file"."""
+def save_dates_json(json_obj: dict):
+    """Save the json object containing the different processed dates in the "last_dates" file.
+
+    Parameters
+    ----------
+    json_obj : dict
+        Dict with the contents to write to the 'last_dates' file
+    """
     logging.info(f"Updating {last_dates_file} file.")
     try:
         with open(join(last_dates_file), 'w') as jsonFile:
@@ -290,7 +298,10 @@ def start_log_analytics():
     headers = {"Authorization": f"Bearer {token}"}
 
     # Get the logs
-    get_log_analytics_events(url=url, body=body, headers=headers, md5_hash=md5_hash)
+    try:
+        get_log_analytics_events(url=url, body=body, headers=headers, md5_hash=md5_hash)
+    except HTTPError as e:
+        logging.error(f"Log Analytics: {e}")
     logging.info("Azure Log Analytics ending.")
 
 
@@ -308,27 +319,28 @@ def build_log_analytics_query(offset: str, md5_hash: str):
     -------
     The required body for the requested query in dict format
     """
-    min_datetime, max_datetime = get_min_max(service_name="log_analytics", md5_hash=md5_hash, offset=offset)
+    min_str, max_str = get_min_max(service_name="log_analytics", md5_hash=md5_hash, offset=offset)
+    # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
+    # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+    min_datetime = parse(min_str, fuzzy=True)
+    max_datetime = parse(max_str, fuzzy=True)
     # If no offset value was provided continue from the previous processed date
     desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-    desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+    desired_str = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if args.reparse:
-        filter_value = f"TimeGenerated >= {desired_strf}"
+        filter_value = f"TimeGenerated >= {desired_str}"
     # Build the filter taking into account the min and max values from the file
     else:
-        min_strf = f"datetime({min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
-        max_strf = f"datetime({max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
-
         # Build the filter taking into account the min and max values
         if desired_datetime < min_datetime:
-            filter_value = f"( TimeGenerated < {min_strf} and TimeGenerated >= {desired_strf} ) or " \
-                           f"( TimeGenerated > {max_strf} )"
+            filter_value = f"( TimeGenerated < {min_str} and TimeGenerated >= {desired_str} ) or " \
+                           f"( TimeGenerated > {max_str} )"
         elif desired_datetime > max_datetime:
-            filter_value = f"TimeGenerated >= {desired_strf}"
+            filter_value = f"TimeGenerated >= {desired_str}"
         else:
-            filter_value = f"TimeGenerated > {max_strf}"
+            filter_value = f"TimeGenerated > {max_str}"
 
     query = f"{la_format_query} | order by TimeGenerated asc | where {filter_value} "
     logging.info(f"Log Analytics: The search starts for query: '{query}'")
@@ -336,7 +348,7 @@ def build_log_analytics_query(offset: str, md5_hash: str):
 
 
 def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str):
-    """ Obtains the list with the last time generated of each query.
+    """Obtain the list with the last time generated of each query.
 
     Parameters
     ----------
@@ -447,14 +459,17 @@ def start_graph():
     headers = {'Authorization': f'Bearer {token}'}
 
     # Build the query
-    logging.info(f"Graph: Building url for {offset_to_datetime(args.graph_time_offset)}.")
+    logging.info(f"Graph: Building the url.")
     md5_hash = md5(graph_formatted_query.encode()).hexdigest()
     url = build_graph_query(offset=args.graph_time_offset, md5_hash=md5_hash)
     logging.info(f"Graph: The URL is '{url}'")
 
     # Get events
     logging.info("Graph: Pagination starts")
-    get_graph_events(url=url, headers=headers, md5_hash=md5_hash)
+    try:
+        get_graph_events(url=url, headers=headers, md5_hash=md5_hash)
+    except HTTPError as e:
+        logging.error(f"Graph: {e}")
     logging.info("Graph: End")
 
 
@@ -472,10 +487,14 @@ def build_graph_query(offset: str, md5_hash: str):
     -------
     The required URL for the requested query in str format
     """
-    min_datetime, max_datetime = get_min_max(service_name="graph", md5_hash=md5_hash, offset=offset)
+    min_str, max_str = get_min_max(service_name="graph", md5_hash=md5_hash, offset=offset)
+    # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
+    # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+    min_datetime = parse(min_str, fuzzy=True)
+    max_datetime = parse(max_str, fuzzy=True)
     # If no offset value was provided continue from the previous processed date
     desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-    desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
+    desired_str = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if offset else max_str
     filtering_condition = "createdDateTime" if "signinEventsV2" in graph_formatted_query else "activityDateTime"
 
     # If reparse was provided, get the logs ignoring if they were already processed
@@ -483,17 +502,13 @@ def build_graph_query(offset: str, md5_hash: str):
         filter_value = f"{filtering_condition}+ge+{desired_strf}"
     # Build the filter taking into account the min and max values from the file
     else:
-        min_strf = f"datetime({min_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
-        max_strf = f"datetime({max_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
-        desired_strf = f"datetime({desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ')})"
-
         if desired_datetime < min_datetime:
-            filter_value = f"({filtering_condition}+lt+{min_strf}+and+{filtering_condition}+ge+{desired_strf})" \
-                           f"+or+({filtering_condition}+gt+{max_strf})"
+            filter_value = f"({filtering_condition}+lt+{min_str}+and+{filtering_condition}+ge+{desired_str})" \
+                           f"+or+({filtering_condition}+gt+{max_str})"
         elif desired_datetime > max_datetime:
-            filter_value = f"{filtering_condition}+ge+{desired_strf}"
+            filter_value = f"{filtering_condition}+ge+{desired_str}"
         else:
-            filter_value = f"{filtering_condition}+gt+{max_strf}"
+            filter_value = f"{filtering_condition}+gt+{max_str}"
 
     logging.info(f"Graph: The search starts for query: '{graph_formatted_query}' using {filter_value}")
     return f"{url_graph}/v1.0/{graph_formatted_query}?$filter={filter_value}"
@@ -578,7 +593,7 @@ def start_storage():
         # Get the blobs
         for container in containers:
             name = container.name if container_format == '*' else container_format
-            get_blobs(container_name=name, blob_service=blob_service)
+            get_blobs(container_name=name, blob_service=block_blob_service)
     except AzureException as e:
         logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
         sys.exit(1)
@@ -601,12 +616,19 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, next_marker: 
     try:
         # Get the blob list
         logging.info("Storage: Getting blobs.")
-        blobs = blob_service.list_blobs(name, marker=next_marker)
+        blobs = blob_service.list_blobs(container_name, marker=next_marker)
     except AzureException as e:
         logging.error(f"Storage: Error getting blobs: '{e}'.")
         sys.exit(1)
     else:
-        desired_datetime = offset_to_datetime(args.storage_time_offset) if args.storage_time_offset else max_datetime
+        md5_hash = md5(container_name.encode()).hexdigest()
+        offset = args.storage_time_offset
+        min_str, max_str = get_min_max(service_name="storage", md5_hash=md5_hash, offset=offset)
+        # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
+        # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+        min_datetime = parse(min_str, fuzzy=True)
+        max_datetime = parse(max_str, fuzzy=True)
+        desired_datetime = offset_to_datetime(offset) if offset else max_datetime
         logging.info(f"Storage: The search starts from the date: {desired_datetime} for blobs in "
                      f"container: '{container_name}' ")
         search = "." if blobs_format == '*' else blobs_format.replace('*', '')
@@ -617,15 +639,13 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, next_marker: 
 
             # Skip the blob if already processed
             last_modified = blob.properties.last_modified
-            md5_hash = md5(name.encode()).hexdigest()
-            min_datetime, max_datetime = get_min_max(service_name="storage", md5_hash=md5_hash, offset=offset)
             if not args.reparse and (last_modified < desired_datetime or (
                     min_datetime <= last_modified <= max_datetime)):
                 continue
 
             # Get the blob data
             try:
-                data = blob_service.get_blob_to_text(name, blob.name)
+                data = blob_service.get_blob_to_text(container_name, blob.name)
             except (ValueError, AzureException, AzureHttpError) as e:
                 logging.error(f"Storage: Error reading the blob data: '{e}'.")
                 continue
@@ -664,16 +684,15 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, next_marker: 
                             msg = f'{msg} {line}'
                         logging.info("Storage: Sending event by socket.")
                         send_message(msg)
-
-            update_dates_json(new_min=str(last_modified),
-                              new_max=str(last_modified),
+            update_dates_json(new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
                               service_name="storage",
                               md5_hash=md5_hash)
             save_dates_json(dates_json)
 
             # Continue until no marker is returned
             if blobs.next_marker:
-                get_blobs(container_name=container_name, blob_service=blob_service,next_marker=blobs.next_marker)
+                get_blobs(container_name=container_name, blob_service=blob_service, next_marker=blobs.next_marker)
 
 
 def get_token(client_id: str, secret: str, domain: str, scope: str):
@@ -709,7 +728,7 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
         sys.exit(1)
 
 
-def send_message(message):
+def send_message(message: str):
     """Send a message with a header to the analysisd queue.
 
     Parameters
@@ -734,7 +753,7 @@ def send_message(message):
         s.close()
 
 
-def offset_to_datetime(date):
+def offset_to_datetime(date: str):
     """Transform an offset value to a datetime object.
 
     Parameters
@@ -757,6 +776,9 @@ def offset_to_datetime(date):
         return datetime.utcnow().replace(tzinfo=UTC) - timedelta(minutes=value)
     if unit == 'd':
         return datetime.utcnow().replace(tzinfo=UTC) - timedelta(days=value)
+
+    logging.error("Invalid offset format. Use 'h', 'm' or 'd' time unit.")
+    exit(1)
 
 
 if __name__ == "__main__":
