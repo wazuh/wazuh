@@ -110,6 +110,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         cJSON *file = cJSON_CreateObject();
 
         if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
+        if (list[i].channel_str != NULL) cJSON_AddStringToObject(file, "channel", list[i].channel_str);
         if (list[i].logformat) cJSON_AddStringToObject(file,"logformat",list[i].logformat);
         if (list[i].command) cJSON_AddStringToObject(file,"command",list[i].command);
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
