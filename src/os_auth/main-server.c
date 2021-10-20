@@ -495,6 +495,7 @@ int main(int argc, char **argv)
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
+        OS_ReadTimestamps(&keys);
     }
 
     /* Start working threads */
@@ -559,12 +560,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-
-    if (!config.worker_node) {
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-        OS_ReadTimestamps(&keys);
-    }
 
     mdebug1("Dispatch thread ready.");
 
@@ -823,6 +818,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteKeys(copy_keys) < 0) {
             merror("Couldn't write file client.keys");
+            sleep(1);
         }
 
         gettime(&t1);
@@ -832,6 +828,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteTimestamps(copy_keys) < 0) {
             merror("Couldn't write file agents-timestamp.");
+            sleep(1);
         }
 
         gettime(&t1);
@@ -894,7 +891,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
             gettime(&t0);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
             gettime(&t1);
