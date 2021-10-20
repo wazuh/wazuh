@@ -411,29 +411,9 @@ def delete_agents(agent_list: list = None, purge: bool = False, use_only_authd: 
 
         for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
             try:
-<<<<<<< HEAD
                 my_agent = Agent(agent_id)
-                my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
+                my_agent.remove(purge=purge, use_only_authd=use_only_authd)
                 result.affected_items.append(agent_id)
-=======
-                if agent_id == "000":
-                    raise WazuhError(1703)
-                elif agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                elif agent_id not in can_purge_agents:
-                    raise WazuhError(
-                        1731,
-                        extra_message="some of the requirements are not met -> {}".format(
-                            ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                            (f', q: {q}' if q else '')
-                        )
-                    )
-                else:
-                    my_agent = Agent(agent_id)
-                    my_agent.load_info_from_db()
-                    my_agent.remove(purge=purge, use_only_authd=use_only_authd)
-                    result.affected_items.append(agent_id)
->>>>>>> 4.2
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
 

@@ -6,12 +6,8 @@
 import os
 import sqlite3
 import sys
-<<<<<<< HEAD
-from unittest.mock import ANY, patch, mock_open, call, MagicMock
-=======
 from shutil import rmtree
 from unittest.mock import ANY, patch, mock_open, call
->>>>>>> 4.2
 
 import pytest
 from freezegun import freeze_time
@@ -666,34 +662,6 @@ def test_agent_remove_manual(socket_mock, send_mock, grp_mock, pwd_mock, safe_mo
                                   for row in test_data.global_db.execute(
             'select id, name, register_ip, internal_key from agent where id > 0')])
 
-<<<<<<< HEAD
-    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
-        with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
-            if exists_backup_dir:
-                exists_mock.side_effect = [True, True, True] + [False] * 10
-            else:
-                exists_mock.side_effect = lambda x: not (common.backup_path in x)
-            Agent('001')._remove_manual(backup=backup)
-
-            m.assert_any_call(common.client_keys)
-            stat_mock.assert_called_once_with(common.client_keys)
-            mock_delete_agents.assert_called_once_with(['001'])
-            run_wdb_mock.assert_called_once_with('global sql DELETE FROM belongs WHERE id_agent = 001')
-            remove_mock.assert_any_call(os.path.join(common.wazuh_path, 'queue/rids/001'))
-            mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
-
-            # make sure the mock is called with a string according to a non-backup path
-            exists_mock.assert_any_call('{0}/queue/agent-groups/001'.format(test_data_path))
-            safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
-                                              permissions=stat_mock().st_mode)
-            if backup:
-                if exists_backup_dir:
-                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
-                else:
-                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
-                makedirs_mock.assert_called_once_with(backup_path)
-                chmod_r_mock.assert_called_once_with(backup_path, 0o750)
-=======
     with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
         Agent('001')._remove_manual()
 
@@ -704,7 +672,6 @@ def test_agent_remove_manual(socket_mock, send_mock, grp_mock, pwd_mock, safe_mo
         # make sure the mock is called with a string according to a non-backup path
         safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
                                           permissions=stat_mock().st_mode)
->>>>>>> 4.2
 
 
 @pytest.mark.parametrize("authd_status", [
@@ -867,13 +834,8 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
 @patch('wazuh.core.agent.Agent.load_info_from_db')
 @patch('wazuh.core.agent.Agent.check_if_delete_agent', return_value=True)
 @patch('socket.socket.connect')
-<<<<<<< HEAD
-def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
-                                  mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid, mock_wazuh_uid,
-=======
 def test_agent_add_manual_content(socket_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
-                                  mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid, mosck_ossec_uid,
->>>>>>> 4.2
+                                  mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid, mock_wazuh_uid,
                                   mock_release_lock, mock_acquire_lock, mock_get_agents_info, test_case):
     """Tests if method _add_manual() modify the content of a client.keys as expected"""
     def calculate_final_file(file_str, id_, name_, ip_, key_):
@@ -1638,15 +1600,6 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, isdi
                                   test_data.global_db.execute(
                                       'select id, name, register_ip, internal_key from agent where id > 0')])
 
-<<<<<<< HEAD
-    rmtree_mock.side_effect = Exception("Boom!")
-
-    if expected_exception == 1747:
-        with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command', side_effect=WazuhInternalError):
-            check_exception(client_keys_text)
-
-=======
->>>>>>> 4.2
     if expected_exception == 1701:
         with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
             check_exception(client_keys_text)
