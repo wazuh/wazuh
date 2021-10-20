@@ -13,7 +13,8 @@
 #include "syscheck.h"
 
 
-void FileItemTest::SetUp() {
+void FileItemTest::SetUp()
+{
     fimEntryTest = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
     fim_file_data* data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
 
@@ -40,13 +41,16 @@ void FileItemTest::SetUp() {
     fimEntryTest->file_entry.data = data;
 }
 
-void FileItemTest::TearDown() {
+void FileItemTest::TearDown()
+{
     free(fimEntryTest->file_entry.data);
     free(fimEntryTest);
 }
 
-TEST_F(FileItemTest, fileItemConstructorFromFIM) {
-    EXPECT_NO_THROW({
+TEST_F(FileItemTest, fileItemConstructorFromFIM)
+{
+    EXPECT_NO_THROW(
+    {
         auto file = new FileItem(fimEntryTest);
         auto scanned = file->state();
         EXPECT_TRUE(scanned);
@@ -54,8 +58,10 @@ TEST_F(FileItemTest, fileItemConstructorFromFIM) {
     });
 }
 
-TEST_F(FileItemTest, fileItemConstructorFromParameters) {
-    EXPECT_NO_THROW({
+TEST_F(FileItemTest, fileItemConstructorFromParameters)
+{
+    EXPECT_NO_THROW(
+    {
         auto file = new FileItem("/tmp/hello_world.txt",
                                  "0f05afadabd7e2bc6840e85b0dd1ad2902de9635",
                                  std::time_t(0), FIM_SCHEDULED,
@@ -69,7 +75,8 @@ TEST_F(FileItemTest, fileItemConstructorFromParameters) {
     });
 }
 
-TEST_F(FileItemTest, fileItemConstructorFromJSON) {
+TEST_F(FileItemTest, fileItemConstructorFromJSON)
+{
     const auto json = R"(
         {
             "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":0, "group_name":"root",
@@ -79,7 +86,8 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON) {
             "uid":0, "user_name":"fakeUser"
         }
     )"_json;
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto fileTest = new FileItem(json);
         auto scanned = fileTest->state();
         EXPECT_TRUE(scanned);
@@ -87,7 +95,8 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON) {
     });
 }
 
-TEST_F(FileItemTest, getFIMEntryWithParametersCtr) {
+TEST_F(FileItemTest, getFIMEntryWithParametersCtr)
+{
     auto file = new FileItem("/etc/wgetrc", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, FIM_SCHEDULED,
                              1, 131583, 0, 0, 1578075431, 4925, 2051, 18277083, "10", "root",
                              "4b531524aa13c8a54614100b570b3dc7", "-rw-rw-r--", "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
@@ -116,7 +125,8 @@ TEST_F(FileItemTest, getFIMEntryWithParametersCtr) {
     delete file;
 }
 
-TEST_F(FileItemTest, getFIMEntryWithFimCtr) {
+TEST_F(FileItemTest, getFIMEntryWithFimCtr)
+{
     auto file = new FileItem(fimEntryTest);
     auto fileEntry = file->toFimEntry();
     ASSERT_EQ(std::strcmp(fileEntry->file_entry.path, fimEntryTest->file_entry.path), 0);
@@ -142,7 +152,8 @@ TEST_F(FileItemTest, getFIMEntryWithFimCtr) {
     delete file;
 }
 
-TEST_F(FileItemTest, getFIMEntryWithJSONCtr) {
+TEST_F(FileItemTest, getFIMEntryWithJSONCtr)
+{
     const auto json = R"(
         {
             "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2051, "gid":0, "group_name":"root",
@@ -177,7 +188,8 @@ TEST_F(FileItemTest, getFIMEntryWithJSONCtr) {
     delete file;
 }
 
-TEST_F(FileItemTest, getJSONWithParametersCtr) {
+TEST_F(FileItemTest, getJSONWithParametersCtr)
+{
     auto file = new FileItem("/etc/wgetrc", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, FIM_SCHEDULED,
                              1, 131583, 0, 0, 1578075431, 4925, 2051, 18277083, "10", "root",
                              "4b531524aa13c8a54614100b570b3dc7", "-rw-rw-r--", "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
@@ -195,7 +207,8 @@ TEST_F(FileItemTest, getJSONWithParametersCtr) {
     delete file;
 }
 
-TEST_F(FileItemTest, getJSONWithFimCtr) {
+TEST_F(FileItemTest, getJSONWithFimCtr)
+{
     auto file = new FileItem(fimEntryTest);
     const auto expectedValue = R"(
         {
@@ -210,7 +223,8 @@ TEST_F(FileItemTest, getJSONWithFimCtr) {
     delete file;
 }
 
-TEST_F(FileItemTest, getJSONWithJSONCtr) {
+TEST_F(FileItemTest, getJSONWithJSONCtr)
+{
     auto file = new FileItem(fimEntryTest);
     const auto expectedValue = R"(
         {

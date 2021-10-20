@@ -10,9 +10,10 @@
  */
 #include "dbRegistryValue.hpp"
 
-void RegistryValue::createFimEntry() {
-    fim_entry *fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
-    fim_registry_value_data *value = reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
+void RegistryValue::createFimEntry()
+{
+    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
+    fim_registry_value_data* value = reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
 
     fim->type = FIM_TYPE_REGISTRY;
     value->size = m_size;
@@ -29,7 +30,8 @@ void RegistryValue::createFimEntry() {
     m_fimEntry = std::unique_ptr<fim_entry, FimRegistryValueDeleter>(fim);
 }
 
-void RegistryValue::createJSON() {
+void RegistryValue::createJSON()
+{
     nlohmann::json conf = {};
 
     conf.push_back(nlohmann::json::object_t::value_type("id", m_keyUid));
