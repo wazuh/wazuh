@@ -15,7 +15,8 @@
 #include "dbItem.hpp"
 #include "shared.h"
 
-class DBItemWrapper final {
+class DBItemWrapper final
+{
     public:
         DBItemWrapper();
         ~DBItemWrapper();

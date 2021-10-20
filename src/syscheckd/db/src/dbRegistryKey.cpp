@@ -10,9 +10,10 @@
  */
 #include "dbRegistryKey.hpp"
 
-void RegistryKey::createFimEntry() {
-    fim_entry *fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
-    fim_registry_key *key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
+void RegistryKey::createFimEntry()
+{
+    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
+    fim_registry_key* key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
 
     fim->type = FIM_TYPE_REGISTRY;
     key->id = std::atoi(m_identifier.c_str());
@@ -34,7 +35,8 @@ void RegistryKey::createFimEntry() {
     m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
 }
 
-void RegistryKey::createJSON() {
+void RegistryKey::createJSON()
+{
     nlohmann::json conf = {};
 
     conf.push_back(nlohmann::json::object_t::value_type("arch", m_arch));

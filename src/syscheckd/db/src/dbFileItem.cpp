@@ -10,9 +10,10 @@
  */
 #include "dbFileItem.hpp"
 
-void FileItem::createFimEntry() {
-    fim_entry *fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
-    fim_file_data *data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
+void FileItem::createFimEntry()
+{
+    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
+    fim_file_data* data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
 
     fim->type = FIM_TYPE_FILE;
     fim->file_entry.path = const_cast<char*>(m_identifier.c_str());
@@ -40,7 +41,8 @@ void FileItem::createFimEntry() {
     m_fimEntry = std::unique_ptr<fim_entry, FimFileDataDeleter>(fim);
 }
 
-void FileItem::createJSON() {
+void FileItem::createJSON()
+{
     nlohmann::json conf = {};
 
     conf.push_back(nlohmann::json::object_t::value_type("path", m_identifier));

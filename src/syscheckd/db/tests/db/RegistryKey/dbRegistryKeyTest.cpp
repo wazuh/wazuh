@@ -13,7 +13,8 @@
 #include "syscheck.h"
 
 
-void RegistryKeyTest::SetUp() {
+void RegistryKeyTest::SetUp()
+{
     fimEntryTest = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
     fim_registry_key* key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
 
@@ -33,13 +34,16 @@ void RegistryKeyTest::SetUp() {
     fimEntryTest->registry_entry.key = key;
 }
 
-void RegistryKeyTest::TearDown() {
+void RegistryKeyTest::TearDown()
+{
     free(fimEntryTest->registry_entry.key);
     free(fimEntryTest);
 }
 
-TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM) {
-    EXPECT_NO_THROW({
+TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM)
+{
+    EXPECT_NO_THROW(
+    {
         auto key = new RegistryKey(fimEntryTest);
         auto scanned = key->state();
         EXPECT_TRUE(scanned);
@@ -47,17 +51,20 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromFIM) {
     });
 }
 
-TEST_F(RegistryKeyTest, registryKeyConstructorFromParameters) {
-    EXPECT_NO_THROW({
+TEST_F(RegistryKeyTest, registryKeyConstructorFromParameters)
+{
+    EXPECT_NO_THROW(
+    {
         auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                    0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
+                                   0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
         auto scanned = key->state();
         EXPECT_TRUE(scanned);
         delete key;
     });
 }
 
-TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON) {
+TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON)
+{
     const auto json = R"(
         {
             "id":"50", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
@@ -65,7 +72,8 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON) {
             "uid":0, "user_name":"fakeUser"
         }
     )"_json;
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto keyTest = new RegistryKey(json);
         auto scanned = keyTest->state();
         EXPECT_TRUE(scanned);
@@ -73,9 +81,10 @@ TEST_F(RegistryKeyTest, registryKeyConstructorFromJSON) {
     });
 }
 
-TEST_F(RegistryKeyTest, getFIMEntryWithParametersCtr) {
+TEST_F(RegistryKeyTest, getFIMEntryWithParametersCtr)
+{
     auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
+                               0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
     auto keyEntry = key->toFimEntry();
     ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->checksum, fimEntryTest->registry_entry.key->checksum), 0);
@@ -93,7 +102,8 @@ TEST_F(RegistryKeyTest, getFIMEntryWithParametersCtr) {
     delete key;
 }
 
-TEST_F(RegistryKeyTest, getFIMEntryWithFimCtr) {
+TEST_F(RegistryKeyTest, getFIMEntryWithFimCtr)
+{
     auto key = new RegistryKey(fimEntryTest);
     auto keyEntry = key->toFimEntry();
     ASSERT_EQ(keyEntry->registry_entry.key->id, fimEntryTest->registry_entry.key->id);
@@ -112,7 +122,8 @@ TEST_F(RegistryKeyTest, getFIMEntryWithFimCtr) {
     delete key;
 }
 
-TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr) {
+TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr)
+{
     const auto json = R"(
         {
             "id":"50", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
@@ -138,9 +149,10 @@ TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr) {
     delete key;
 }
 
-TEST_F(RegistryKeyTest, getJSONWithParametersCtr) {
+TEST_F(RegistryKeyTest, getJSONWithParametersCtr)
+{
     auto key = new RegistryKey("50", "a2fbef8f81af27155dcee5e3927ff6243593b91a", 1596489275, 1, ARCH_64BIT,
-                                0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
+                               0, "root", "HKEY_LOCAL_MACHINE\\SOFTWARE", "-rw-rw-r--", 1578075431, 0, "fakeUser");
     const auto expectedValue = R"(
         {
             "arch":1, "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root",
@@ -152,7 +164,8 @@ TEST_F(RegistryKeyTest, getJSONWithParametersCtr) {
     delete key;
 }
 
-TEST_F(RegistryKeyTest, getJSONWithFimCtr) {
+TEST_F(RegistryKeyTest, getJSONWithFimCtr)
+{
     auto key = new RegistryKey(fimEntryTest);
     const auto expectedValue = R"(
         {
@@ -165,7 +178,8 @@ TEST_F(RegistryKeyTest, getJSONWithFimCtr) {
     delete key;
 }
 
-TEST_F(RegistryKeyTest, getJSONWithJSONCtr) {
+TEST_F(RegistryKeyTest, getJSONWithJSONCtr)
+{
     auto key = new RegistryKey(fimEntryTest);
     const auto expectedValue = R"(
         {
