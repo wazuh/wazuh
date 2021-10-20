@@ -239,7 +239,8 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'], post_proc_func=None)
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True})
 def restart_agents_by_node(agent_list=None):
     """Restart all agents belonging to a node.
 
@@ -247,8 +248,6 @@ def restart_agents_by_node(agent_list=None):
     ----------
     agent_list : list, optional
         List of agents. Default `None`
-    node_id : str, optional
-        Node name. Only used for RBAC. Default `None`
 
     Returns
     -------
