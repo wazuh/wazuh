@@ -69,13 +69,13 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     FOREIGN KEY (key_id) REFERENCES registry_key(id));)"
 };
 
-constexpr auto FIM_SYNC_CONFIG_STATEMENT
+constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
 {
     R"(
     {
         "decoder_type":"JSON_RANGE",
         "table":"file_entry",
-        "component":"fim_sync",
+        "component":"fim_file_sync",
         "index":"path",
         "checksum_field":"checksum",
         "no_data_query_json": {
@@ -107,7 +107,83 @@ constexpr auto FIM_SYNC_CONFIG_STATEMENT
     )"
 };
 
-constexpr auto FIM_START_CONFIG_STATEMENT
+constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"registry_key",
+        "component":"fim_registry_sync",
+        "index":"path",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE path ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"registry_data",
+        "component":"fim_value_sync",
+        "index":"path",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE path ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto FIM_FILE_START_CONFIG_STATEMENT
 {
     R"({"table":"file_entry",
         "first_query":
@@ -126,7 +202,75 @@ constexpr auto FIM_START_CONFIG_STATEMENT
                 "order_by_opt":"board_serial ASC",
                 "count_opt":1
             },
-        "component":"syscollector_hwinfo",
+        "component":"fim_file_sync",
+        "index":"board_serial",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
+                "column_list":["board_serial, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
+{
+    R"({"table":"registry_key",
+        "first_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial ASC",
+                "count_opt":1
+            },
+        "component":"fim_registry_sync",
+        "index":"board_serial",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
+                "column_list":["board_serial, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
+{
+    R"({"table":"registry_data",
+        "first_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial ASC",
+                "count_opt":1
+            },
+        "component":"fim_value_sync",
         "index":"board_serial",
         "last_event":"last_event",
         "checksum_field":"checksum",

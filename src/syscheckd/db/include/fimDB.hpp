@@ -14,7 +14,9 @@
 #include "dbsync.hpp"
 #include "dbItem.hpp"
 #include "rsync.hpp"
-#include "shared.h"
+#include "db_statements.hpp"
+#include <condition_variable>
+#include <mutex>
 
 enum class dbResult
 {
@@ -44,21 +46,24 @@ class FIMDB final
     void init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file);
 #endif
     int insertItem(DBItem const &item);
+    void funcTest();
     int removeItem(DBItem const &item);
     int updateItem(DBItem const &item, ResultCallbackData callbackData);
-    int setAllUnscanned();
-    int executeQuery();
 
 private:
     FIMDB();
     ~FIMDB() = default;
     FIMDB(const FIMDB&) = delete;
 
-    const unsigned int            m_max_rows_file;
-    const unsigned int            m_max_rows_registry;
-    const unsigned int            m_interval_synchronization;
-    std::unique_ptr<DBSync>       m_dbsyncHandler;
-    std::unique_ptr<RemoteSync>   m_rsyncHandler;
+    const unsigned int                                                      m_max_rows_file;
+    const unsigned int                                                      m_max_rows_registry;
+    const unsigned int                                                      m_interval_synchronization;
+    std::condition_variable                                                 m_cv;
+    std::mutex                                                              m_mutex;
+    std::unique_ptr<DBSync>                                                 m_dbsyncHandler;
+    std::unique_ptr<RemoteSync>                                             m_rsyncHandler;
+    std::function<void(const std::string&, const std::string&)>             m_syncMessageFunction;
+    std::function<void(const modules_log_level_t, const std::string&)>      m_loggingFunction;
 
     std::string createStatement();
 
@@ -66,6 +71,8 @@ protected:
     void setFileLimit();
     void setRegistryLimit();
     void setValueLimit();
+    void registerWithRsync();
+    void loopRsync(std::unique_lock<std::mutex>& lock);
 
 };
 #endif //_FIMDB_HPP
