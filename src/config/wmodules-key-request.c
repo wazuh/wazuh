@@ -11,7 +11,7 @@
 #include <stdio.h>
 
 // Reading function
-int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) wmodule *module) {
+int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) void *module) {
     minfo("Ignoring configuration block for deprecated agent-key-polling module: This configuration is read now by Authd.");
     return 0;
 }

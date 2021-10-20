@@ -31,7 +31,7 @@
 #define WM_HEADER_SIZE  OS_SIZE_2048
 #define VU_WM_NAME "vulnerability-detector"
 #define AZ_WM_NAME "azure-logs"
-#define KEY_WM_NAME "agent-key-polling"
+#define KEY_WM_NAME "agent-key-polling"             // Deprecated key-polling module
 #define SCA_WM_NAME "sca"
 #define GCP_WM_NAME "gcp-pubsub"
 #define FLUENT_WM_NAME "fluent-forward"
@@ -71,7 +71,6 @@ typedef enum crypto_type {
 #include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
-#include "wm_keyrequest.h"
 #include "wm_sca.h"
 #include "wm_fluent.h"
 #include "wm_control.h"
@@ -171,6 +170,7 @@ int wm_get_path(const char *binary, char **validated_comm);
     -2 invalid parameters.
 */
 int wm_validate_command(const char *command, const char *digest, crypto_type ctype);
+
 
 #ifndef WIN32
 // Com request thread dispatcher
