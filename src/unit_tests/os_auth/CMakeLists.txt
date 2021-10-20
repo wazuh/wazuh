@@ -33,6 +33,8 @@ list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
 list(APPEND os_auth_names "test_ssl")
 list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
+list(APPEND os_auth_names "test_auth_key_request")
+list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")
