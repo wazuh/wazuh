@@ -28,6 +28,7 @@ static const char *XML_PROJECT_ID = "project_id";
 static const char *XML_SUBSCRIPTION_NAME = "subscription_name";
 static const char *XML_CREDENTIALS_FILE = "credentials_file";
 static const char *XML_MAX_MESSAGES = "max_messages";
+static const char *XML_NUM_THREADS = "num_threads";
 static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_LOGGING = "logging";
 
@@ -172,6 +173,7 @@ static int setup_test_pubsub(void **state) {
                         "<credentials_file>credentials.json</credentials_file>"
                         "<logging>disabled</logging>"
                         "<max_messages>100</max_messages>"
+                        "<num_threads>2</num_threads>"
                         "<day>15</day>";
 
 
@@ -193,6 +195,7 @@ static int setup_test_pubsub_no_project_id(void **state) {
                         "<credentials_file>credentials.json</credentials_file>"
                         "<logging>disabled</logging>"
                         "<max_messages>100</max_messages>"
+                        "<num_threads>2</num_threads>"
                         "<day>15</day>";
 
 
@@ -214,6 +217,7 @@ static int setup_test_pubsub_no_subscription_name(void **state) {
                         "<credentials_file>credentials.json</credentials_file>"
                         "<logging>disabled</logging>"
                         "<max_messages>100</max_messages>"
+                        "<num_threads>2</num_threads>"
                         "<day>15</day>";
 
 
@@ -235,6 +239,7 @@ static int setup_test_pubsub_no_credentials_file(void **state) {
                         "<subscription_name>testing-id</subscription_name>"
                         "<logging>disabled</logging>"
                         "<max_messages>100</max_messages>"
+                        "<num_threads>2</num_threads>"
                         "<day>15</day>";
 
 
@@ -487,9 +492,30 @@ static void test_wm_gcp_pubsub_read_full_configuration(void **state) {
     assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 0);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
+}
+
+static void test_wm_gcp_pubsub_read_sched_read_invalid(void **state) {
+    group_data_t *data = *state;
+    wm_gcp_pubsub *gcp;
+    int ret;
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_value(__wrap_sched_scan_read, nodes, data->nodes);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_PUBSUB_WM_NAME);
+    will_return(__wrap_sched_scan_read, -1);
+
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
+
+    assert_int_equal(ret, -1);
 }
 
 static void test_wm_gcp_pubsub_read_enabled_tag_invalid(void **state) {
@@ -605,6 +631,7 @@ static void test_wm_gcp_pubsub_read_credentials_file_full_path(void **state) {
     assert_string_equal(gcp->credentials_file, "/some/path/credentials.json");
     assert_int_equal(gcp->logging, 0);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
@@ -730,6 +757,46 @@ static void test_wm_gcp_pubsub_read_max_messages_tag_not_digit(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wm_gcp_pubsub_read_num_threads_tag_empty(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    if(replace_configuration_value(data->nodes, XML_NUM_THREADS, "") != 0)
+        fail();
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'num_threads'");
+
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wm_gcp_pubsub_read_num_threads_tag_not_digit(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    if(replace_configuration_value(data->nodes, XML_NUM_THREADS, "invalid") != 0)
+        fail();
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Tag 'num_threads' from the 'gcp-pubsub' module should not have an alphabetic character.");
+
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 static void test_wm_gcp_pubsub_read_pull_on_start_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
@@ -776,6 +843,7 @@ static void test_wm_gcp_pubsub_read_logging_tag_debug(void **state) {
     assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 1);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
@@ -813,6 +881,7 @@ static void test_wm_gcp_pubsub_read_logging_tag_info(void **state) {
     assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 2);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
@@ -850,6 +919,7 @@ static void test_wm_gcp_pubsub_read_logging_tag_warning(void **state) {
     assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 3);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
@@ -887,6 +957,7 @@ static void test_wm_gcp_pubsub_read_logging_tag_error(void **state) {
     assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 4);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
@@ -924,6 +995,7 @@ static void test_wm_gcp_pubsub_read_logging_tag_critical(void **state) {
     assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 5);
     assert_int_equal(gcp->max_messages, 100);
+    assert_int_equal(gcp->num_threads, 2);
 
     assert_ptr_equal(data->module->context, &WM_GCP_PUBSUB_CONTEXT);
     assert_string_equal(data->module->tag, GCP_PUBSUB_WM_NAME);
@@ -943,6 +1015,26 @@ static void test_wm_gcp_pubsub_read_logging_tag_invalid(void **state) {
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'logging'");
+
+    ret = wm_gcp_pubsub_read(data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wm_gcp_pubsub_read_logging_tag_empty(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    if(replace_configuration_value(data->nodes, XML_LOGGING, "") != 0)
+        fail();
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'logging'");
 
     ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
@@ -981,6 +1073,17 @@ static void test_wm_gcp_pubsub_read_invalid_element(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_wm_gcp_pubsub_read_invalid_nodes(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Empty configuration at module 'gcp-pubsub'.");
+
+    ret = wm_gcp_pubsub_read(NULL, data->module);
+
+    assert_int_equal(ret, -1);
+}
+
 /* tests */
 /* wm_gcp_pubsub_read */
 static void test_wm_gcp_bucket_read_full_configuration(void **state) {
@@ -998,7 +1101,6 @@ static void test_wm_gcp_bucket_read_full_configuration(void **state) {
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
-
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1018,6 +1120,27 @@ static void test_wm_gcp_bucket_read_full_configuration(void **state) {
 
     assert_ptr_equal(data->module->context, &WM_GCP_BUCKET_CONTEXT);
     assert_string_equal(data->module->tag, GCP_BUCKET_WM_NAME);
+}
+
+static void test_wm_gcp_bucket_read_sched_read_invalid(void **state) {
+    group_data_t *data = *state;
+    wm_gcp_bucket_base *gcp;
+
+    int ret;
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_value(__wrap_sched_scan_read, nodes, data->nodes);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
+    will_return(__wrap_sched_scan_read, -1);
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, -1);
 }
 
 static void test_wm_gcp_bucket_read_enabled_tag_invalid(void **state) {
@@ -1441,6 +1564,20 @@ static void test_wm_gcp_bucket_read_logging_tag_invalid(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wm_gcp_bucket_read_logging_tag_empty(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    if(replace_configuration_value(data->nodes, XML_LOGGING, "") != 0)
+        fail();
+
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'logging'");
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 static void test_wm_gcp_bucket_read_invalid_tag(void **state) {
     group_data_t *data = *state;
     int ret;
@@ -1473,9 +1610,21 @@ static void test_wm_gcp_bucket_read_invalid_element(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_wm_gcp_bucket_read_invalid_nodes(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Empty configuration at module 'gcp-bucket'.");
+
+    ret = wm_gcp_bucket_read(data->xml, NULL, data->module);
+
+    assert_int_equal(ret, -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_full_configuration, setup_test_pubsub, teardown_test_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_sched_read_invalid, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_enabled_tag_invalid, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_project_id_tag_invalid, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_no_project_id_tag, setup_test_pubsub_no_project_id, teardown_test_pubsub),
@@ -1489,6 +1638,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_no_credentials_file_tag, setup_test_pubsub_no_credentials_file, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_max_messages_tag_empty, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_max_messages_tag_not_digit, setup_test_pubsub, teardown_test_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_num_threads_tag_empty, setup_test_pubsub, teardown_test_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_num_threads_tag_not_digit, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_pull_on_start_tag_invalid, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_debug, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_info, setup_test_pubsub, teardown_test_pubsub),
@@ -1496,10 +1647,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_error, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_critical, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_invalid, setup_test_pubsub, teardown_test_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_logging_tag_empty, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_invalid_tag, setup_test_pubsub, teardown_test_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_invalid_element, setup_test_pubsub, teardown_test_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_read_invalid_nodes, setup_test_pubsub, teardown_test_pubsub),
 
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_full_configuration, setup_test_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_sched_read_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_enabled_tag_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_bucket_type_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_no_bucket_type, setup_test_bucket_no_bucket_type, teardown_test_bucket),
@@ -1519,8 +1673,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_logging_tag_error, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_logging_tag_critical, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_logging_tag_invalid, setup_test_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_logging_tag_empty, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_invalid_tag, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_invalid_element, setup_test_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_invalid_nodes, setup_test_bucket, teardown_test_bucket),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
