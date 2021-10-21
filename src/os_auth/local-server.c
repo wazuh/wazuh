@@ -269,13 +269,19 @@ char* local_dispatch(const char *input) {
                 force_options.disconnected_time_enabled = (bool)item->valueint;
 
                 item = cJSON_GetObjectItem(disconnected_time, "value");
-                if (!item || get_time_interval(item->valuestring, &force_options.disconnected_time)) {
+                if(cJSON_IsNumber(item)) {
+                    force_options.disconnected_time = item->valueint;
+                }
+                else if (!cJSON_IsString(item) || get_time_interval(item->valuestring, &force_options.disconnected_time)) {
                     ierror = EJSON;
                     goto fail;
                 }
 
                 item = cJSON_GetObjectItem(force, "after_registration_time");
-                if (!item || get_time_interval(item->valuestring, &force_options.after_registration_time)) {
+                if(cJSON_IsNumber(item)) {
+                    force_options.after_registration_time = item->valueint;
+                }
+                else if (!cJSON_IsString(item) || get_time_interval(item->valuestring, &force_options.after_registration_time)) {
                     ierror = EJSON;
                     goto fail;
                 }
