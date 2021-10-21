@@ -171,7 +171,6 @@ int wm_get_path(const char *binary, char **validated_comm);
 */
 int wm_validate_command(const char *command, const char *digest, crypto_type ctype);
 
-
 #ifndef WIN32
 // Com request thread dispatcher
 void * wmcom_main(void * arg);
