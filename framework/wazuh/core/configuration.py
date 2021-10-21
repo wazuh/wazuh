@@ -12,8 +12,8 @@ import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
-from xml.etree.ElementTree import tostring
 
+from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 
 from wazuh.core import common

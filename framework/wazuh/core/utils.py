@@ -21,7 +21,7 @@ from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from signal import signal, alarm, SIGALRM
-from xml.etree.ElementTree import ElementTree
+from subprocess import CalledProcessError, check_output
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -1713,7 +1713,7 @@ def upload_file(content, path, check_xml_formula_values=True):
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ElementTree(fromstring(f'<root>{xml_string}</root>'))
+        et = fromstring(f'<root>{xml_string}</root>')
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):
