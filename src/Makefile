@@ -1873,7 +1873,7 @@ syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
 
-${FIMDB_LIB}: $(WAZUHEXT_LIB) $(syscheck_db_cpp)
+${FIMDB_LIB}: $(WAZUHEXT_LIB) $(syscheck_db_cpp) $(libwazuh.a)
 	cd ${FIMDB} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FIMDB_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
