@@ -177,7 +177,8 @@ checks:
       -  https://dev-sec.io/baselines/nginx/
     condition: none
     rules:
-      - 'c:ls -l /etc/nginx/ | egrep -v "^d|^l|^total" | grep -v "^-rw-r-----" -> r:\.'
+      - 'c:ls -Rl /etc/nginx/ | egrep "^-" | grep -v "^-rw-r-----" -> r:\.'
+      - 'c:ls -Rl /etc/nginx/ | egrep "^d" | grep -v "^drwxr-x---" -> r:\.'
 
 # 2.3.3 Ensure the NGINX process ID (PID) file is secured (Scored)
   - id: 23013
