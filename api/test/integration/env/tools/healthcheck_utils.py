@@ -87,12 +87,19 @@ def check(result):
         return 1
 
 
-def get_master_health():
+def get_master_health(docker_compose_file):
     os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
+
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
-    check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
+
+    if docker_compose_file == "docker-compose_standalone.yml":
+        check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check_no_cluster.txt"))
+    else:
+        check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
+
     check2 = get_api_health()
+
     return check0 or check1 or check2
 
 
@@ -101,8 +108,9 @@ def get_worker_health():
     return check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
 
 
-def get_manager_health_base():
-    return get_master_health() if socket.gethostname() == 'wazuh-master' else get_worker_health()
+def get_manager_health_base(docker_compose_file):
+    return get_master_health(
+        docker_compose_file=docker_compose_file) if socket.gethostname() == 'wazuh-master' else get_worker_health()
 
 
 def get_api_health():

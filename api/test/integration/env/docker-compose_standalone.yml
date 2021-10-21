@@ -13,40 +13,10 @@ services:
       - ./configurations/tmp/manager:/tmp
       - ./tools/:/tools
     entrypoint:
-      - /scripts/entrypoint.sh
+      - /scripts/entrypoint_no_cluster.sh
       - wazuh-master
       - master-node
       - master
-
-  wazuh-worker1:
-    build:
-      context: .
-      dockerfile: base/manager/manager.Dockerfile
-    image: integration_test_wazuh-manager
-    hostname: wazuh-worker1
-    volumes:
-      - ./configurations/tmp/manager:/tmp
-      - ./tools/:/tools
-    entrypoint:
-      - /scripts/entrypoint.sh
-      - wazuh-master
-      - worker1
-      - worker
-
-  wazuh-worker2:
-    build:
-      context: .
-      dockerfile: base/manager/manager.Dockerfile
-    image: integration_test_wazuh-manager
-    hostname: wazuh-worker2
-    volumes:
-      - ./configurations/tmp/manager:/tmp
-      - ./tools/:/tools
-    entrypoint:
-      - /scripts/entrypoint.sh
-      - wazuh-master
-      - worker2
-      - worker
 
   wazuh-agent1:
     build:
@@ -62,8 +32,6 @@ services:
       - nginx-lb
       - wazuh-agent1
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - nginx-lb
 
   wazuh-agent2:
@@ -80,8 +48,6 @@ services:
       - nginx-lb
       - wazuh-agent2
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent1
       - nginx-lb
 
@@ -99,8 +65,6 @@ services:
       - nginx-lb
       - wazuh-agent3
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent2
       - nginx-lb
 
@@ -118,8 +82,6 @@ services:
       - nginx-lb
       - wazuh-agent4
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent3
       - nginx-lb
 
@@ -138,8 +100,6 @@ services:
       - wazuh-agent5
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent4
       - nginx-lb
 
@@ -158,8 +118,6 @@ services:
       - wazuh-agent6
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent5
       - nginx-lb
 
@@ -178,8 +136,6 @@ services:
       - wazuh-agent7
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent6
       - nginx-lb
 
@@ -198,14 +154,12 @@ services:
       - wazuh-agent8
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent7
       - nginx-lb
 
   nginx-lb:
     build:
-      context: ./base/nginx-lb
-    image: integration_test_nginx-lb
+      context: ./base/nginx-lb-standalone
+    image: integration_test_nginx-lb-standalone
     entrypoint:
       - /scripts/entrypoint.sh
