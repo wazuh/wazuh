@@ -231,3 +231,7 @@ sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb,
 int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
     return mock();
 }
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
+    return mock_ptr_type(sqlite3_stmt*);
+}
