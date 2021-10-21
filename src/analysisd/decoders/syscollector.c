@@ -306,7 +306,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
     else if (strncmp(msg_type, "dbsync_", 7) == 0) {
         if (decode_dbsync(lf, msg_type, logJSON, socket) < 0) {
-            mdebug1("Unable to send %s information to Wazuh DB.", msg_type);
+            mdebug1(UNABLE_TO_SEND_INFORMATION_TO_WDB);
             cJSON_Delete (logJSON);
             return (0);
         }
@@ -1965,16 +1965,16 @@ const struct deltas_fields_match_list * get_field_list(const char *type) {
     } else if(strcmp(type, "osinfo") == 0) {
         ret_val = OS_FIELDS;
     } else {
-        merror("Incorrect/unknown type value %s.", type);
+        merror(INVALID_TYPE, type);
     }
     return ret_val;
 }
 
-bool fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field_list, buffer_t * const msg) {
-    bool ret_val = false;
+void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field_list, buffer_t * const msg) {
     static const int NULL_TEXT_LENGTH = 4;
     static const int SEPARATOR_LENGTH = 1;
     struct deltas_fields_match_list const * head = field_list;
+
     while (NULL != head) {
         const cJSON *key = cJSON_GetObjectItem(data, head->current.key);
         if (NULL != key) {
@@ -1987,12 +1987,8 @@ bool fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
                     buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
                 } else {
                     char *value_string = wstr_replace(key->valuestring, FIELD_SEPARATOR_DBSYNC, "?");
-                    if (NULL != value_string) {
-                        buffer_push(msg, value_string, strlen(value_string));
-                        os_free(value_string);
-                    } else {
-                        buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
-                    }
+                    buffer_push(msg, value_string, strlen(value_string));
+                    os_free(value_string);
                 }
             } else {
                 buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
@@ -2005,48 +2001,77 @@ bool fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
         // do not correspond will not be proccessed in wazuh-db
         buffer_push(msg, FIELD_SEPARATOR_DBSYNC, SEPARATOR_LENGTH);
         head = head->next;
-        ret_val = true;
     }
-    return ret_val;
+}
+
+void fill_event_alert( Eventinfo * lf, const struct deltas_fields_match_list * field_list, const char * operation, char * response) {
+    char *r = NULL;
+    char * field_value = strtok_r(response, FIELD_SEPARATOR_DBSYNC, &r);
+    struct deltas_fields_match_list const * head = field_list;
+    while (NULL != head) {
+        if (field_value) {
+            if (strlen(head->current.value) != 0) {
+                fillData(lf, head->current.value, field_value);
+            }
+            field_value = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
+        }
+        head = head->next;
+    }
+    fillData(lf, "operation_type", operation);
 }
 
 int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) {
-    int ret_val = -1;
-    if (NULL != msg_type && NULL != lf && NULL != lf->agent_id && NULL != logJSON) {
-        char *type = NULL;
-        if (strtok(msg_type, "_")) {
-            type = strtok(NULL, "\0");
-        }
-        if (NULL != type) {
+    int ret_val = OS_INVALID;
+    if (NULL != lf->agent_id) {
+        char * type = NULL;
+        strtok_r(msg_type, "_", &type);
+
+        if (strlen(type) > 0) {
             cJSON * operation_object = cJSON_GetObjectItem(logJSON, "operation");
             cJSON * data = cJSON_GetObjectItem(logJSON, "data");
-            if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
+            if (cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
                 const struct deltas_fields_match_list * field_list = get_field_list(type);
 
                 if (NULL != field_list) {
                     char *response = NULL;
+                    os_calloc(OS_SIZE_6144, sizeof(char), response);
                     char header[OS_SIZE_256] = { 0 };
-                    os_calloc(OS_SIZE_128, sizeof(char), response);
-                    int header_size = snprintf(header, OS_SIZE_256 - 1, "agent %s dbsync %s %s ", lf->agent_id, type, cJSON_GetStringValue(operation_object));
+                    char * operation = cJSON_GetStringValue(operation_object);
+                    int header_size = snprintf(header, OS_SIZE_256 - 1, "agent %s dbsync %s %s ", lf->agent_id, type, operation);
 
                     buffer_t *msg = buffer_initialize(OS_SIZE_6144);
                     buffer_push(msg, header, header_size);
-                    if (fill_data_dbsync(data, field_list, msg) && TRUE == msg->status) {
-                        ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_128);
-                        if (ret_val != 0) {
-                            merror("Wazuh-db query error, check wdb logs.");
+                    fill_data_dbsync(data, field_list, msg);
+
+                    if (msg->status) {
+                        ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
+                        if (ret_val != 0 || strcmp(response, "error") == 0) {
+                            merror(A_QUERY_ERROR);
+                        } else {
+                            if (strcmp(operation, "INSERTED") == 0) {
+                                fill_event_alert(lf, field_list, operation, msg->data);
+                            } else {
+                                char *response_data = NULL;
+                                strtok_r(response, " ", &response_data);
+                                if (strlen(response_data) > 0) {
+                                    fill_event_alert(lf, field_list, operation, response_data);
+                                } else {
+                                    merror(INVALID_RESPONSE);
+                                }
+                            }
                         }
                     } else {
-                        merror("Error in fill data population");
+                        mdebug2(MESSAGE_TOO_LONG);
                     }
+
                     buffer_free(msg);
                     os_free(response);
                 }
             } else {
-                merror("Incorrect/unknown operation, type: %s.", type);
+                merror(INVALID_OPERATION, type);
             }
         } else {
-            merror("Incorrect prefix message, message type: %s.", msg_type);
+            merror(INVALID_PREFIX, msg_type);
         }
     }
     return ret_val;
