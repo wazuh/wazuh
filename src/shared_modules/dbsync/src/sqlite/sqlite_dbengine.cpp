@@ -360,17 +360,20 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
             while (SQLITE_ROW == stmt->step())
             {
                 Row registerFields;
+                auto index { 0 };
 
                 for (const auto& field : tableFields)
                 {
                     if (!std::get<TableHeader::TXNStatusField>(field))
                     {
                         getTableData(stmt,
-                                     std::get<TableHeader::CID>(field),
+                                     index,
                                      std::get<TableHeader::Type>(field),
                                      std::get<TableHeader::Name>(field),
                                      registerFields);
                     }
+
+                    ++index;
                 }
 
                 nlohmann::json object {};
