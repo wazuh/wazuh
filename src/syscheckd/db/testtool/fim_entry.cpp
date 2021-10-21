@@ -178,7 +178,7 @@ void fillRegistryEntry(const nlohmann::json &json_data, std::vector<fim_entry*>&
     }
 }
 
-void print_entry(const fim_entry& entry, const std::function<void(const char *)>& reportFunction)
+void print_entry(const fim_entry& entry, log_fnc_t reportFunction)
 {
     char to_print[OS_MAXSTR + 1] = {0};
     if (entry.type == FIM_TYPE_FILE)

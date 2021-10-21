@@ -38,7 +38,7 @@ class TestAction
         std::string                       m_dbPath;          /**< String with the database path.                */
         std::string                       m_table;           /**< Database table where the action is performed. */
         nlohmann::json                    m_actionData;      /**< Json storing the data to perform the action.  */
-        std::function<void(const char*)> m_reportFunction;   /**< Function to log */
+        log_fnc_t m_reportFunction;                          /**< Function to log */
 
 };
 
@@ -56,7 +56,7 @@ class InsertAction final : public TestAction
          * @param reportFunction Function that will be use to log.
          */
         InsertAction(const std::string& table, const nlohmann::json& actionData,
-                     const std::function<void(const char*)>& reportFunction)
+                     log_fnc_t reportFunction)
         {
             m_reportFunction = reportFunction;
             m_table = table;
@@ -121,7 +121,7 @@ class UpdateAction final : public TestAction
          * @param reportFunction Function that will be use to log.
          */
         UpdateAction(const std::string& table, const nlohmann::json& actionData,
-                     const std::function<void(const char*)> reportFunction)
+                     log_fnc_t reportFunction)
         {
             m_reportFunction = reportFunction;
             m_table = table;
@@ -208,7 +208,7 @@ class RemoveAction final : public TestAction
          * @param reportFunction Function that will be use to log.
          */
         RemoveAction(const std::string& table, const nlohmann::json& actionData,
-                     const std::function<void(const char*)> reportFunction)
+                     log_fnc_t reportFunction)
         {
             m_reportFunction = reportFunction;
             m_table = table;

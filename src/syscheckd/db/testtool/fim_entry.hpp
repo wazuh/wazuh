@@ -13,6 +13,8 @@
 #include <json.hpp>
 #include "syscheck.h"
 
+typedef void((*log_fnc_t)(const char* msg));  /**< Type definition for a logging callback */
+
 /**
  * @brief Function to free the fim_file_data struct.
  *
@@ -86,5 +88,5 @@ void fillRegistryEntry(const nlohmann::json &json_data, std::vector<fim_entry *>
  *
  * @param entry fim_entry where the data is stored.
   */
-void print_entry(const fim_entry& entry, const std::function<void(const char *)>& reportFunction);
+void print_entry(const fim_entry& entry, log_fnc_t reportFunction);
 #endif // _ENTRY_H
