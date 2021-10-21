@@ -1,8 +1,11 @@
 FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic
 
+# DOCKER_COMPOSE_FILE needs to be assigned to an environment variable as it is going to be used at run time (CMD)
+ARG DOCKER_COMPOSE_FILE
+ENV DOCKER_COMPOSE_FILE ${DOCKER_COMPOSE_FILE}
+
 # INSTALL MANAGER
 ARG WAZUH_BRANCH
-ARG DOCKER_COMPOSE_FILE
 
 ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 
