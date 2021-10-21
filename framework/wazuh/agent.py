@@ -873,7 +873,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
-        can_upgrade_agents = set([agent['id'] for agent in data['items']])
+        filtered_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
 
         try:
@@ -887,12 +887,13 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
         # Add non active agents to failed_items
-        non_active_agents = set([agent['id'] for agent in data['items'] if agent['status'] != 'active'])
+        non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
         [result.add_failed_item(id_=agent, error=WazuhError(1707))
          for agent in non_active_agents]
+        non_active_agents = set(non_active_agents)
 
         # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - non_active_agents - can_upgrade_agents
+        non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents
         [result.add_failed_item(id_=ag, error=WazuhError(
             1731,
             extra_message="some of the requirements are not met -> {}".format(
@@ -904,10 +905,10 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         if version and not version.startswith('v'):
             version = f'v{version}'
 
-        eligible_agents = list(agent_list - not_found_agents - non_active_agents - non_eligible_agents)
+        eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
 
         # Transform the format of the agent ids to the general format
-        eligible_agents = [int(agent) for agent in eligible_agents]
+        eligible_agents = sorted([int(agent) for agent in eligible_agents])
 
         agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
 
@@ -942,8 +943,6 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 # Upgrade error for all agents, internal server error
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=agent_result['message'])
-
-        result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
 
@@ -980,7 +979,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
-        can_upgrade_agents = set([agent['id'] for agent in data['items']])
+        filtered_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
 
         try:
@@ -994,12 +993,13 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
         # Add non active agents to failed_items
-        non_active_agents = set([agent['id'] for agent in data['items'] if agent['status'] != 'active'])
+        non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
         [result.add_failed_item(id_=agent, error=WazuhError(1707))
          for agent in non_active_agents]
+        non_active_agents = set(non_active_agents)
 
         # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - non_active_agents - can_upgrade_agents
+        non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents
         [result.add_failed_item(id_=ag, error=WazuhError(
             1731,
             extra_message="some of the requirements are not met -> {}".format(
@@ -1008,10 +1008,10 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
             )
         )) for ag in non_eligible_agents]
 
-        eligible_agents = list(agent_list - not_found_agents - non_active_agents - non_eligible_agents)
+        eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
 
         # Transform the format of the agent ids to the general format
-        eligible_agents = [int(agent) for agent in eligible_agents]
+        eligible_agents = sorted([int(agent) for agent in eligible_agents])
 
         agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
 
@@ -1036,8 +1036,6 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
                 # Upgrade error for all agents, internal server error
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=task_result['message'])
-
-        result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
 
