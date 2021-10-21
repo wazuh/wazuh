@@ -337,8 +337,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         return OS_INVALID;
                     }
                 } else {
-                    merror("Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes,
-                    XML_BUCKET_TYPE, WM_GCP_BUCKET_LOGTAG);
+                    merror("Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }

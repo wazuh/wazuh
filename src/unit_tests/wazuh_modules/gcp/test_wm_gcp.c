@@ -20,6 +20,7 @@
 #include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 void wm_gcp_pubsub_run(const wm_gcp_pubsub *data);
@@ -350,6 +351,7 @@ static void test_wm_gcp_pubsub_run_success_log_disabled(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -358,11 +360,11 @@ static void test_wm_gcp_pubsub_run_success_log_disabled(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -384,6 +386,7 @@ static void test_wm_gcp_pubsub_run_error_running_command(void **state)  {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -392,11 +395,11 @@ static void test_wm_gcp_pubsub_run_error_running_command(void **state)  {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -418,6 +421,7 @@ static void test_wm_gcp_pubsub_run_unknown_error(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -426,11 +430,11 @@ static void test_wm_gcp_pubsub_run_unknown_error(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -459,6 +463,7 @@ static void test_wm_gcp_pubsub_run_unknown_error_no_description(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -467,11 +472,11 @@ static void test_wm_gcp_pubsub_run_unknown_error_no_description(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -500,6 +505,7 @@ static void test_wm_gcp_pubsub_run_error_parsing_args(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -508,11 +514,11 @@ static void test_wm_gcp_pubsub_run_error_parsing_args(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -541,6 +547,7 @@ static void test_wm_gcp_pubsub_run_error_parsing_args_no_description(void **stat
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -549,11 +556,11 @@ static void test_wm_gcp_pubsub_run_error_parsing_args_no_description(void **stat
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -582,6 +589,7 @@ static void test_wm_gcp_pubsub_run_generic_error(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -590,11 +598,11 @@ static void test_wm_gcp_pubsub_run_generic_error(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -623,6 +631,7 @@ static void test_wm_gcp_pubsub_run_generic_error_no_description(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -631,11 +640,11 @@ static void test_wm_gcp_pubsub_run_generic_error_no_description(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -664,6 +673,7 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_debug(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 1;    // debug
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -672,11 +682,11 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_debug(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -698,6 +708,7 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_not_debug(void **state)
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 1;    // debug
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -706,11 +717,11 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_not_debug(void **state)
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -733,6 +744,7 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_not_debug_discarded(voi
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 1;    // debug
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -741,11 +753,11 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_not_debug_discarded(voi
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -764,6 +776,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_info(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 2;    // info
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -772,11 +785,11 @@ static void test_wm_gcp_pubsub_run_logging_info_message_info(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -798,6 +811,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_debug(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 2;    // info
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -806,11 +820,11 @@ static void test_wm_gcp_pubsub_run_logging_info_message_debug(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -829,6 +843,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_warning(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 2;    // info
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -837,11 +852,11 @@ static void test_wm_gcp_pubsub_run_logging_info_message_warning(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -860,6 +875,7 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_warning(void **state)
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 3;    // warning
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -868,11 +884,11 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_warning(void **state)
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 3");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 3");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -894,6 +910,7 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_debug(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 3;    // warning
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -902,11 +919,11 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_debug(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 3");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 3");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -925,6 +942,7 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_error(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 3;    // warning
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -933,11 +951,11 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_error(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 3");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 3");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -956,6 +974,7 @@ static void test_wm_gcp_pubsub_run_logging_error_message_error(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 4;    // error
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -964,11 +983,11 @@ static void test_wm_gcp_pubsub_run_logging_error_message_error(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 4");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 4");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -990,6 +1009,7 @@ static void test_wm_gcp_pubsub_run_logging_error_message_info(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 4;    // error
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -998,11 +1018,11 @@ static void test_wm_gcp_pubsub_run_logging_error_message_info(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 4");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 4");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -1021,6 +1041,7 @@ static void test_wm_gcp_pubsub_run_logging_error_message_critical(void **state) 
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 4;    // error
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -1029,11 +1050,11 @@ static void test_wm_gcp_pubsub_run_logging_error_message_critical(void **state) 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 4");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 4");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -1052,6 +1073,7 @@ static void test_wm_gcp_pubsub_run_logging_critical_message_critical(void **stat
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 5;    // critical
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -1060,11 +1082,11 @@ static void test_wm_gcp_pubsub_run_logging_critical_message_critical(void **stat
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 5");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 5");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -1086,6 +1108,7 @@ static void test_wm_gcp_pubsub_run_logging_critical_message_debug(void **state) 
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 5;    // critical
 
     expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -1094,15 +1117,114 @@ static void test_wm_gcp_pubsub_run_logging_critical_message_debug(void **state) 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 5");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 5");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
     will_return(__wrap_wm_exec, "Test output - DEBUG - This is a debug message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_logging_default_message_info(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+    gcp_config->logging = 6;    // default
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 6");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 6");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "- INFO - This is an info message");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_logging_default_message_debug(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+    gcp_config->logging = 6;    // default
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 6");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 6");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output - DEBUG - This is an info message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_logging_default_message_warning(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+    gcp_config->logging = 6;    // default
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 6");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 6");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -1117,6 +1239,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_disabled(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 1;
     gcp_pubsub_dump_data->config->logging = 0;    // disabled
     gcp_pubsub_dump_data->config->max_messages = 10;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1136,7 +1259,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_disabled(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
@@ -1145,6 +1268,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_disabled(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 10);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1162,6 +1288,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_debug(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 0;
     gcp_pubsub_dump_data->config->logging = 1;    // debug
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1181,7 +1308,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_debug(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "no");
@@ -1190,6 +1317,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_debug(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 100);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1208,6 +1338,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_info(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 0;
     gcp_pubsub_dump_data->config->logging = 2;    // info
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1227,7 +1358,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_info(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
@@ -1236,6 +1367,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_info(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 100);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1253,6 +1387,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_warning(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 1;
     gcp_pubsub_dump_data->config->logging = 3;    // warning
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1272,7 +1407,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_warning(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "no");
@@ -1281,6 +1416,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_warning(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 100);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1298,6 +1436,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_error(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 0;
     gcp_pubsub_dump_data->config->logging = 4;    // error
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1317,7 +1456,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_error(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "no");
@@ -1326,6 +1465,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_error(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 100);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1343,6 +1485,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_critical(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 0;
     gcp_pubsub_dump_data->config->logging = 5;    // critical
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1362,7 +1505,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_critical(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "no");
@@ -1371,6 +1514,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_critical(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 100);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1388,6 +1534,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_default(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 0;
     gcp_pubsub_dump_data->config->logging = 256;    // default
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1407,7 +1554,7 @@ static void test_wm_gcp_pubsub_dump_success_logging_default(void **state) {
 
     cJSON *gcp_pubsub = cJSON_GetObjectItem(gcp_pubsub_dump_data->dump, "gcp-pubsub");
     assert_non_null(gcp_pubsub);
-    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 7);
+    assert_int_equal(cJSON_GetArraySize(gcp_pubsub), 8);
 
     cJSON *enabled = cJSON_GetObjectItem(gcp_pubsub, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "no");
@@ -1416,6 +1563,9 @@ static void test_wm_gcp_pubsub_dump_success_logging_default(void **state) {
     cJSON *max_messages = cJSON_GetObjectItem(gcp_pubsub, "max_messages");
     assert_non_null(max_messages);
     assert_int_equal(max_messages->valueint, 100);
+    cJSON *num_threads = cJSON_GetObjectItem(gcp_pubsub, "num_threads");
+    assert_non_null(num_threads);
+    assert_int_equal(num_threads->valueint, 2);
     cJSON *project_id = cJSON_GetObjectItem(gcp_pubsub, "project_id");
     assert_string_equal(cJSON_GetStringValue(project_id), "wazuh-gcp-test");
     cJSON *subscription_name = cJSON_GetObjectItem(gcp_pubsub, "subscription_name");
@@ -1433,6 +1583,7 @@ static void test_wm_gcp_pubsub_dump_error_allocating_wm_wd(void **state) {
     gcp_pubsub_dump_data->config->pull_on_start = 0;
     gcp_pubsub_dump_data->config->logging = 256;    // default
     gcp_pubsub_dump_data->config->max_messages = 100;
+    gcp_pubsub_dump_data->config->num_threads = 2;
 
     snprintf(gcp_pubsub_dump_data->config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
     snprintf(gcp_pubsub_dump_data->config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
@@ -1519,6 +1670,7 @@ static void test_wm_gcp_pubsub_main_pull_on_start(void **state) {
     snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
 
     gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
     gcp_config->logging = 0;    // disabled
 
     expect_string(__wrap__mtinfo, tag, WM_GCP_PUBSUB_LOGTAG);
@@ -1538,11 +1690,80 @@ static void test_wm_gcp_pubsub_main_pull_on_start(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
 
     expect_string(__wrap_wm_exec, command,
         "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
-        "--credentials_file /wazuh/credentials/test.json --max_messages 10");
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Fetching logs finished.");
+
+    will_return(__wrap_FOREVER, 0);
+
+    ret = wm_gcp_pubsub_main(gcp_config);
+
+    assert_null(ret);
+}
+
+static void test_wm_gcp_pubsub_main_sleep_then_run(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+    void *ret;
+
+    gcp_config->enabled = 1;
+    gcp_config->pull_on_start = 1;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+    gcp_config->logging = 0;    // disabled
+
+    int create_time = 123456789;
+    gcp_config->scan_config.next_scheduled_scan_time = create_time; // sleep 10 seconds
+
+    char *create_time_timestamp = NULL;
+    os_strdup("20/10/21 15:35:48.111", create_time_timestamp);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
+
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &gcp_config->scan_config);
+    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_GCP_PUBSUB_LOGTAG);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
+    will_return(__wrap_sched_scan_get_time_until_next_scan, create_time);
+
+    expect_value(__wrap_w_get_timestamp, time, create_time);
+    will_return(__wrap_w_get_timestamp, create_time_timestamp);
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sleeping until: 20/10/21 15:35:48.111");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
@@ -2396,6 +2617,111 @@ static void test_wm_gcp_bucket_run_logging_critical_message_debug(void **state) 
     wm_gcp_bucket_run(gcp_config, cur_bucket);
 }
 
+static void test_wm_gcp_bucket_run_logging_default_message_info(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+
+    snprintf(cur_bucket->bucket, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+    gcp_config->logging = 6;    // default
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 6");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 6");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "- INFO - This is an info message");
+
+    wm_gcp_bucket_run(gcp_config, cur_bucket);
+}
+
+static void test_wm_gcp_bucket_run_logging_default_message_debug(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+
+    snprintf(cur_bucket->bucket, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+    gcp_config->logging = 6;    // default
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 6");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 6");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output - DEBUG - This is an info message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    wm_gcp_bucket_run(gcp_config, cur_bucket);
+}
+
+static void test_wm_gcp_bucket_run_logging_default_message_warning(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+
+    snprintf(cur_bucket->bucket, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+    gcp_config->logging = 6;    // default
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 6");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 6");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    wm_gcp_bucket_run(gcp_config, cur_bucket);
+}
+
 /* wm_gcp_bucket_dump */
 static void test_wm_gcp_bucket_dump_success_logging_disabled(void **state) {
     gcp_bucket_dump_t *gcp_bucket_dump_data = *state;
@@ -2872,6 +3198,80 @@ static void test_wm_gcp_bucket_main_run_on_start(void **state) {
     assert_null(ret);
 }
 
+static void test_wm_gcp_bucket_main_sleep_then_run(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+    void *ret;
+
+    os_free(cur_bucket->bucket);
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+    gcp_config->logging = 0;    // disabled
+    gcp_config->enabled = 1;
+    gcp_config->run_on_start = 1;
+
+    int create_time = 123456789;
+    gcp_config->scan_config.next_scheduled_scan_time = create_time; // sleep 10 seconds
+
+    char *create_time_timestamp = NULL;
+    os_strdup("20/10/21 15:35:48.111", create_time_timestamp);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Module started.");
+
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, config, &gcp_config->scan_config);
+    expect_string(__wrap_sched_scan_get_time_until_next_scan, MODULE_TAG, WM_GCP_BUCKET_LOGTAG);
+    expect_value(__wrap_sched_scan_get_time_until_next_scan, run_on_start, 1);
+    will_return(__wrap_sched_scan_get_time_until_next_scan, create_time);
+
+    expect_value(__wrap_w_get_timestamp, time, create_time);
+    will_return(__wrap_w_get_timestamp, create_time_timestamp);
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sleeping until: 20/10/21 15:35:48.111");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting fetching of logs.");
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Test output");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing Bucket Analysis: (Bucket: unknown_bucket, "
+        "Path: access_logs/, Type: access_logs, Credentials file: /wazuh/credentials/test.json)");
+
+    expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Fetching logs finished.");
+
+    will_return(__wrap_FOREVER, 0);
+
+    ret = wm_gcp_bucket_main(gcp_config);
+
+    assert_null(ret);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2898,6 +3298,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_error_message_critical, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_critical_message_critical, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_critical_message_debug, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_default_message_info, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_default_message_debug, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_default_message_warning, setup_group_pubsub, teardown_group_pubsub),
 
         /* wm_gcp_pubsub_dump */
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_dump_success_logging_disabled, setup_gcp_pubsub_dump, teardown_gcp_pubsub_dump),
@@ -2916,6 +3319,7 @@ int main(void) {
         /* wm_gcp_pubsub_main */
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_main_disabled, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_main_pull_on_start, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_main_sleep_then_run, setup_group_pubsub, teardown_group_pubsub),
 
         /* wm_gcp_bucket_run */
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_success_log_disabled, setup_group_bucket, teardown_group_bucket),
@@ -2940,6 +3344,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_error_message_critical, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_critical_message_critical, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_critical_message_debug, setup_group_bucket, teardown_group_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_default_message_info, setup_group_bucket, teardown_group_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_default_message_debug, setup_group_bucket, teardown_group_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_default_message_warning, setup_group_bucket, teardown_group_bucket),
 
         /* wm_gcp_bucket_dump */
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_dump_success_logging_disabled, setup_gcp_bucket_dump, teardown_gcp_bucket_dump),
@@ -2959,6 +3366,7 @@ int main(void) {
         /* wm_gcp_bucket_main */
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_main_disabled, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_main_run_on_start, setup_group_bucket, teardown_group_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_main_sleep_then_run, setup_group_bucket, teardown_group_bucket),
     };
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
