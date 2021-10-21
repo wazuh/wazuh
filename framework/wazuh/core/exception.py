@@ -315,8 +315,6 @@ class WazuhException(Exception):
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1746: {'message': "Could not parse current client.keys file"},
-        1747: {'message': "Could not remove agent group assigment from database"},
-        1748: {'message': "Could not remove agent files"},
         1749: {'message': "Downgrading an agent requires the [force] flag.",
                'remediation': "Use force=1 parameter to force the downgrade"
                },
@@ -338,6 +336,8 @@ class WazuhException(Exception):
         1758: {'message': 'Tried to release an already unlocked client.keys thread lock',
                },
         1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
+               },
+        1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
         # CDB List: 1800 - 1899

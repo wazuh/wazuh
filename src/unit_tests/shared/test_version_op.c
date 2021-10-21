@@ -1206,6 +1206,98 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
+void test_get_unix_version_zscaler(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Fail to open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /usr/lib/os-release
+    expect_string(__wrap_fopen, path, "/usr/lib/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/centos-release
+    expect_string(__wrap_fopen, path, "/etc/centos-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/fedora-release
+    expect_string(__wrap_fopen, path, "/etc/fedora-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/redhat-release
+    expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_fopen, path, "/etc/lsb-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/gentoo-release
+    expect_string(__wrap_fopen, path, "/etc/gentoo-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/SuSE-release
+    expect_string(__wrap_fopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/debian_version
+    expect_string(__wrap_fopen, path, "/etc/debian_version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/slackware-version
+    expect_string(__wrap_fopen, path, "/etc/slackware-version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // uname
+    expect_string(__wrap_popen, command, "uname");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ZscalerOS\n");
+
+    // uname - r
+    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "10-R");
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "BSD");
+    assert_string_equal(ret->os_major, "10");
+    assert_string_equal(ret->os_version, "10-R");
+    assert_string_equal(ret->os_platform, "bsd");
+}
+
 void test_get_unix_version_fail_os_release_uname_aix(void **state)
 {
     (void) state;
@@ -1342,6 +1434,7 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_hp_ux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_aix, delete_os_info),
             cmocka_unit_test(test_OSX_ReleaseName),
 #endif

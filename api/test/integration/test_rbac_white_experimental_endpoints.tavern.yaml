@@ -106,15 +106,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
-          affected_items:
-            - '001'
-            - '003'
-            - '005'
-            - '007'
+          affected_items: []  # Some agents are allowed but they raise error 1706, which is excluded as the agents newer than 3.12 are not affected.
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 0
           total_failed_items: 0
 
   - name: Request a list of agents (Partially allowed, user aware)
@@ -131,17 +127,20 @@ stages:
       json:
         error: !anyint
         data:
-          affected_items:
-            - '001'
-            - '005'
+          affected_items: []
           failed_items:
+            - error:
+                code: 1760
+              id:
+                - '001'
+                - '005'
             - error:
                 code: 4000
               id:
                 - '002'
                 - '006'
-          total_affected_items: 2
-          total_failed_items: 2
+          total_affected_items: 0
+          total_failed_items: 4
 
 ---
 test_name: GET /experimental/ciscat/results

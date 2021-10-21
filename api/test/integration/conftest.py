@@ -13,6 +13,8 @@ import yaml
 from py.xml import html
 
 current_path = os.path.dirname(os.path.abspath(__file__))
+test_logs_path = os.path.join(current_path, '_test_results', 'logs')
+docker_log_path = os.path.join(test_logs_path, 'docker.log')
 results = dict()
 
 with open('common.yaml', 'r') as stream:
@@ -80,20 +82,24 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
     }
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
-    while values_build_env['retries'] < values_build_env['max_retries']:
-        if build:
-            current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
-                                                f"WAZUH_BRANCH={current_branch}"])
+    os.makedirs(test_logs_path, exist_ok=True)
+    with open(docker_log_path, mode='w') as fdocker:
+        while values_build_env['retries'] < values_build_env['max_retries']:
+            if build:
+                current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
+                                                    f"WAZUH_BRANCH={current_branch}"],
+                                                   stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
+                current_process.wait()
+            current_process = subprocess.Popen(["docker-compose", "up", "-d"],
+                                               stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
-        current_process = subprocess.Popen(["docker-compose", "up", "-d"])
-        current_process.wait()
 
-        if current_process.returncode == 0:
-            time.sleep(values_build_env['interval'])
-            break
-        else:
-            time.sleep(values_build_env['interval'])
-            values_build_env['retries'] += 1
+            if current_process.returncode == 0:
+                time.sleep(values_build_env['interval'])
+                break
+            else:
+                time.sleep(values_build_env['interval'])
+                values_build_env['retries'] += 1
 
     return values
 
@@ -102,8 +108,10 @@ def down_env():
     """Stop all Docker environments for the current test."""
     pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
     os.chdir(pwd)
-    current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"])
-    current_process.wait()
+    with open(docker_log_path, mode='a') as fdocker:
+        current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"],
+                                           stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process.wait()
 
 
 def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
@@ -258,9 +266,13 @@ def save_logs(test_name):
         Name of the test.
     """
     logs_path = '/var/ossec/logs'
+<<<<<<< HEAD
     logs = ['api.log', 'cluster.log', 'wazuh.log']
     test_logs_path = os.path.join(current_path, '_test_results', 'logs')
     os.makedirs(test_logs_path, exist_ok=True)
+=======
+    logs = ['api.log', 'cluster.log', 'ossec.log']
+>>>>>>> master
     for log in logs:
         try:
             subprocess.check_output(

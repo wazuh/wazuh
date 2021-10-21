@@ -453,11 +453,13 @@ def test_safe_move(mock_utime, mock_chmod, mock_chown, ownership, time, permissi
         target_file = join(tmpdirname, 'target')
         safe_move(tmp_file.name, target_file, ownership=ownership, time=time, permissions=permissions)
         assert (os.path.exists(target_file))
-        mock_chown.assert_called_once_with(target_file, *ownership)
+
+        tmp_path = os.path.join(os.path.dirname(tmp_file.name), ".target.tmp")
+        mock_chown.assert_called_once_with(tmp_path, *ownership)
         if time is not None:
-            mock_utime.assert_called_once_with(target_file, time)
+            mock_utime.assert_called_once_with(tmp_path, time)
         if permissions is not None:
-            mock_chmod.assert_called_once_with(target_file, permissions)
+            mock_chmod.assert_called_once_with(tmp_path, permissions)
 
 
 @patch('wazuh.core.utils.chown')

@@ -63,7 +63,7 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
         key = buffer;
     }
 
-    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key, time(NULL));
 }
 
 #ifndef CLIENT
@@ -171,7 +171,7 @@ int OS_RemoveAgent(const char *u_id) {
     // Remove DB from wazuh-db
     int sock = -1;
     int error;
-    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", u_id);
     os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
     if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
         mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
@@ -680,10 +680,7 @@ void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
     File file;
-    char *buffer;
     char line[OS_BUFFER_SIZE];
-    int pos = 0;
-    struct stat fp_stat;
     char * sep;
 
     fp = fopen(TIMESTAMP_FILE, "r");
@@ -692,12 +689,11 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    if (fstat(fileno(fp), &fp_stat) < 0) {
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("Couldn't open timestamp file.");
         fclose(fp);
         return;
     }
-
-    os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (sep = strchr(line, ' '), sep) {
@@ -706,24 +702,14 @@ void OS_RemoveAgentTimestamp(const char *id)
             continue;
         }
 
-        if (strcmp(id, line)) {
+        if (strcmp(id, line) != 0) {
             *sep = ' ';
-            strncpy(&buffer[pos], line, fp_stat.st_size - pos);
-            pos += strlen(line);
+            fputs(line, file.fp);
         }
     }
 
     fclose(fp);
-
-    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
-        merror("Couldn't open timestamp file.");
-        free(buffer);
-        return;
-    }
-
-    fprintf(file.fp, "%s", buffer);
     fclose(file.fp);
-    free(buffer);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
 }

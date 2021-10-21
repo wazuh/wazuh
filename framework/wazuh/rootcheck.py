@@ -3,12 +3,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from typing import Union
-
 from wazuh import common
 from wazuh.core.agent import get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan
+from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan, rootcheck_delete_agent
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
@@ -91,7 +90,7 @@ def clear(agent_list=None):
     eligible_agents = agent_list - not_found_agents
     for agent_id in eligible_agents:
         try:
-            wdb_conn.execute(f"agent {agent_id} rootcheck delete", delete=True)
+            rootcheck_delete_agent(agent_id, wdb_conn)
             result.affected_items.append(agent_id)
         except WazuhError as e:
             result.add_failed_item(id_=agent_id, error=e)

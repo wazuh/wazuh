@@ -15,6 +15,9 @@ password = 'wazuh'
 base_url = "{}://{}:{}".format(protocol, host, port)
 login_url = "{}/security/user/authenticate".format(base_url)
 
+HEALTHCHECK_TOKEN_FILE = '/tmp/healthcheck/healthcheck.token'
+OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
+
 
 def get_login_header(user, password):
     from base64 import b64encode
@@ -47,7 +50,11 @@ def get_response(url, headers):
         return json.loads(request_result.content.decode())
 
 
+<<<<<<< HEAD
 def get_agent_health_base(agent_old=False):
+=======
+def get_agent_health_base():
+>>>>>>> master
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
     # restarted due to shared configuration changes.
     # Using agentd when using grep as the module name can vary between ossec-agentd and wazuh-agentd,
@@ -91,16 +98,25 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = get_response(login_url, get_login_header(user, password)) is None
+    check2 = get_api_health()
     return check0 or check1 or check2
 
 
 def get_worker_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check1 = get_response(login_url, get_login_header(user, password)) is None
-    return check0 or check1
+    return check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
 
 
 def get_manager_health_base():
     return get_master_health() if socket.gethostname() == 'wazuh-master' else get_worker_health()
+
+
+def get_api_health():
+    if not os.path.exists(HEALTHCHECK_TOKEN_FILE):
+        if get_response(login_url, get_login_header(user, password)):
+            open(HEALTHCHECK_TOKEN_FILE, mode='w').close()
+            return 0
+        else:
+            return 1
+    else:
+        return 0

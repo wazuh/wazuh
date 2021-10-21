@@ -1,0 +1,48 @@
+<group name="sophos-utm,firewall,">
+  <rule id="15001" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="full_log">fw-int-name</field>
+    <description>Sophos UTM firewall events</description>
+  </rule>
+
+  <rule id="15002" level="3">
+    <if_sid>15001</if_sid>
+    <field name="full_log">severity="info"</field>
+    <description>Sophos UTM firewall Informational event</description>
+  </rule>
+
+  <rule id="15003" level="5">
+    <if_sid>15001</if_sid>
+    <field name="full_log">severity="warn"|Warning</field>
+    <description>Sophos UTM firewall Warning event</description>
+    <group>gpg13_4.12</group>
+  </rule>
+
+  <rule id="15004" level="6">
+    <if_sid>15001</if_sid>
+    <field name="full_log">:error]|Error</field>
+    <description>Sophos UTM firewall Error event</description>
+    <group>gpg13_4.3,gpg13_4.12</group>
+  </rule>
+
+  <rule id="15005" level="4">
+    <if_sid>15001</if_sid>
+    <field name="full_log">method="POST"</field>
+    <description>Sophos UTM firewall method POST event</description>
+    <group>hipaa_164.312.c.1</group>
+  </rule>
+
+  <rule id="15006" level="3">
+    <if_sid>15001</if_sid>
+    <field name="full_log">method="GET"</field>
+    <description>Sophos UTM firewall method GET event</description>
+  </rule>
+
+  <rule id="15007" level="4">
+    <if_sid>15001</if_sid>
+    <field name="full_log">method="OPTIONS"</field>
+    <description>Sophos UTM firewall method OPTIONS event</description>
+    <group>hipaa_164.312.c.1</group>
+  </rule>
+
+</group>

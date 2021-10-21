@@ -182,7 +182,7 @@ void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_system_invalid_platform_darwin(void **state)
+void test_wm_agent_upgrade_validate_system_darwin_ok(void **state)
 {
     (void) state;
     char *platform = "darwin";
@@ -192,7 +192,7 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_darwin(void **state)
 
     int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
 
-    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
@@ -422,6 +422,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_http_ok(void **state)
     assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
 }
 
+
 void test_wm_agent_upgrade_validate_wpk_version_windows_invalid_version(void **state)
 {
     wm_agent_info *agent = state[0];
@@ -526,6 +527,25 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_http_ok(void **state)
     assert_string_equal(task->wpk_repository, "http://packages.wazuh.com/wpk/linux/x64/");
     assert_string_equal(task->wpk_file, "wazuh_agent_v3.13.1_linux_x64.wpk");
     assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_str_version(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("x64", agent->architecture);
+
+    task->use_http = true;
+    os_strdup("v.4.1", task->wpk_version);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
 }
 
 void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_version(void **state)
@@ -649,14 +669,70 @@ void test_wm_agent_upgrade_validate_wpk_version_no_version(void **state)
     assert_null(task->wpk_sha1);
 }
 
+void test_wm_agent_upgrade_validate_wpk_version_macos_https_ok(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("darwin", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("15", agent->minor_version);
+    os_strdup("x64", agent->architecture);
+
+    task->use_http = false;
+    os_strdup("v4.0.0", task->wpk_version);
+
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/macos/x64/pkg/versions");
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/macos/x64/pkg/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.0.0_macos_x64.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_macos_http_ok(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("darwin", agent->platform);
+    os_strdup("10", agent->major_version);
+    os_strdup("15", agent->minor_version);
+    os_strdup("x64", agent->architecture);
+
+    task->use_http = true;
+    os_strdup("v3.13.1", task->wpk_version);
+
+    os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/macos/x64/pkg/versions");
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "http://packages.wazuh.com/wpk/macos/x64/pkg/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v3.13.1_macos_x64.wpk");
+    assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
+}
+
+
 void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = false;
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
     assert_string_equal(task->wpk_version, "v3.13.0");
@@ -666,8 +742,9 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_ok(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE_CUSTOM, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
@@ -676,8 +753,9 @@ void test_wm_agent_upgrade_validate_version_upgrade_non_minimal(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v2.1.1";
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
@@ -686,8 +764,9 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal(void **st
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v2.1.1";
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE_CUSTOM, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
@@ -709,11 +788,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_older_version(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.13.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = false;
     os_strdup("v3.12.0", task->custom_version);
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT);
     assert_string_equal(task->wpk_version, "v3.12.0");
@@ -723,11 +803,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_greater_version(void **state
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = false;
     os_strdup("v3.13.1", task->custom_version);
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_GREATER_MASTER);
     assert_string_equal(task->wpk_version, "v3.13.1");
@@ -737,11 +818,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = true;
     os_strdup("v3.13.1", task->custom_version);
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
     assert_string_equal(task->wpk_version, "v3.13.1");
@@ -750,10 +832,37 @@ void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
 void test_wm_agent_upgrade_validate_version_version_null(void **state)
 {
     wm_upgrade_task *task = state[1];
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(NULL, WM_UPGRADE_UPGRADE_CUSTOM, task);
+    int ret = wm_agent_upgrade_validate_version(NULL, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_ok_macos(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.3.0";
+    char *platform = "darwin";
+
+    task->force_upgrade = true;
+    os_strdup("v4.3.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_version, "v4.3.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.2.0";
+    char *platform = "darwin";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
 
 void test_wm_agent_upgrade_validate_wpk_exist(void **state)
@@ -1193,7 +1302,7 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_windows_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rhel_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_ubuntu_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_darwin),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_suse),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),
@@ -1217,9 +1326,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_windows_invalid_repo, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_https_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_http_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_invalid_str_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_invalid_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_invalid_repo, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_ubuntu_old_version, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_macos_https_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_macos_http_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_rhel_old_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_no_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_version
@@ -1232,6 +1344,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_greater_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_force, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_version_null, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_ok_macos, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_wpk
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist, setup_validate_wpk, teardown_validate_wpk),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_diff_sha1, setup_validate_wpk, teardown_validate_wpk),
