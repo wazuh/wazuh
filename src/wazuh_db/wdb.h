@@ -51,6 +51,8 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+#define WDB_RESPONSE_OK_SIZE     3
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -1669,7 +1671,7 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb);
  * @retval true when the database single row insertion is executed successfully.
  * @retval false on error.
  */
-bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
 
 /**
  * @brief Function to insert new rows with a dynamic query based on metadata.
@@ -1681,7 +1683,7 @@ bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *
  * @retval true when the database insertion is executed successfully.
  * @retval false on error.
  */
-bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
 
 /**
  * @brief Function to modify existing rows with a dynamic query based on metadata.
@@ -1693,7 +1695,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
  * @retval true when the database update is executed successfully.
  * @retval false on error.
  */
-bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
 
 /**
  * @brief Function to delete rows with a dynamic query based on metadata.
@@ -1705,7 +1707,18 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
  * @retval true when the database delete is executed successfully.
  * @retval false on error.
  */
-bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
+
+/**
+ * @brief Function to select rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @param output Output values separated with pipe character '|'.
+ */
+void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data, char *output);
 
 /**
  * @brief Function to parse the insert upgrade request.
@@ -1893,5 +1906,14 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
+
+/**
+ * Get cache stmt cached for specific query.
+ * @param wdb The task struct database
+ * @param query is the query to be executed.
+ * @return Pointer to the statement already cached. NULL On error.
+ * */
+
+sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 #endif

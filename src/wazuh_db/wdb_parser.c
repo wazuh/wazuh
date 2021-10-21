@@ -184,6 +184,7 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
     { .current = { "ports", "sys_ports", false, TABLE_PORTS }, .next = &TABLE_MAP[6]},
     { .current = { "packages", "sys_programs", false, TABLE_PACKAGES }, .next = &TABLE_MAP[7]},
+    { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES }, .next = &TABLE_MAP[8]},
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES}, .next = NULL},
 };
 
@@ -440,8 +441,8 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                if (wdb_parse_dbsync(wdb, next, output)){
-                    mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
+                if (wdb_parse_dbsync(wdb, next, output) != OS_SUCCESS){
+                    mdebug1("Unable to updated based on table deltas for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "ciscat") == 0) {
@@ -2893,18 +2894,18 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         }
 
         iface = curr;
-		*next++ = '\0';
-		curr = next;
+        *next++ = '\0';
+        curr = next;
 
-		if (next = strchr(curr, '|'), !next) {
-			mdebug1("Invalid netaddr query syntax.");
-			mdebug2("netaddr query: %s", iface);
-			snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
-			return -1;
-		}
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid netaddr query syntax.");
+            mdebug2("netaddr query: %s", iface);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
+            return -1;
+        }
 
-		if (!strcmp(iface, "NULL"))
-			iface = NULL;
+        if (!strcmp(iface, "NULL"))
+            iface = NULL;
 
         proto = strtol(curr,NULL,10);
 
@@ -5690,7 +5691,7 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, char *data)
+bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, const char *data, char *output)
 {
     bool ret_val = false;
     if (NULL != kv_value) {
@@ -5700,19 +5701,21 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
             if (strcmp(operation, "INSERTED") == 0) {
                 ret_val = wdb_insert_dbsync(wdb, kv_value, data);
             } else if (strcmp(operation, "MODIFIED") == 0) {
-                ret_val = wdb_modify_dbsync(wdb, kv_value, data);
+                if (ret_val = wdb_modify_dbsync(wdb, kv_value, data), ret_val) {
+                    wdb_select_dbsync(wdb, kv_value, data, output);
+                }
             } else if (strcmp(operation, "DELETED") == 0) {
+                wdb_select_dbsync(wdb, kv_value, data, output);
                 ret_val = wdb_delete_dbsync(wdb, kv_value, data);
             }
         }
     }
-
     return ret_val;
 }
 
 
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     char *next = NULL;
     char *curr = input;
     if (next = strchr(curr, ' '), !next) {
@@ -5734,25 +5737,25 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '\0'), !next) {
+    if (!strlen(curr)) {
         mdebug2("DBSYNC query: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid dbsync query syntax, near '%.32s'", input);
         return ret_val;
     }
 
     char *data = curr;
-
+    char select_output[OS_SIZE_6144 - WDB_RESPONSE_OK_SIZE - 1] = { '\0' };
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
-            ret_val = process_dbsync_data(wdb, &head->current, operation, data);
+            ret_val = process_dbsync_data(wdb, &head->current, operation, data, select_output) ? OS_SUCCESS : OS_NOTFOUND;
             break;
         }
         head = head->next;
     }
 
-    if (ret_val) {
-        strcat(output, "ok");
+    if (OS_SUCCESS == ret_val) {
+        snprintf(output, OS_SIZE_6144 - 1, "ok %s", select_output);
     } else {
         strcat(output, "error");
     }
