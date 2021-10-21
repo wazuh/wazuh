@@ -79,7 +79,7 @@ void fillValueEntry(const nlohmann::json &json_data, fim_registry_value_data &fi
  * @param json_data JSON holding the key data and it's values.
  * @return std::vector<fim_entry*> Vector holding the fim_entries stored in the JSON.
  */
-std::vector<fim_entry*> fillRegistryEntry(const nlohmann::json &json_data);
+void fillRegistryEntry(const nlohmann::json &json_data, std::vector<fim_entry *> &entry_vector);
 
 /**
  * @brief Print information about a fim_entry

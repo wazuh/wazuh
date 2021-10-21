@@ -36,7 +36,6 @@ class TestAction
     protected:
         int                               m_actionId;        /**< Integer to store the action identifier.       */
         std::string                       m_dbPath;          /**< String with the database path.                */
-        std::string                       m_outPath;         /**< */
         std::string                       m_table;           /**< Database table where the action is performed. */
         nlohmann::json                    m_actionData;      /**< Json storing the data to perform the action.  */
         std::function<void(const char*)> m_reportFunction;   /**< Function to log */
@@ -57,7 +56,7 @@ class InsertAction final : public TestAction
          * @param reportFunction Function that will be use to log.
          */
         InsertAction(const std::string& table, const nlohmann::json& actionData,
-                     const std::function<void(const char*)> reportFunction)
+                     const std::function<void(const char*)>& reportFunction)
         {
             m_reportFunction = reportFunction;
             m_table = table;
@@ -91,7 +90,8 @@ class InsertAction final : public TestAction
                 }
                 else if (m_table == "REGISTRY")
                 {
-                    auto entry_vector = fillRegistryEntry(it);
+                    std::vector<fim_entry *> entry_vector;
+                    fillRegistryEntry(it, entry_vector);
                     while (entry_vector.empty() == false) {
                         fim_entry *entry = entry_vector.back();
                         entry_vector.pop_back();
@@ -151,7 +151,8 @@ class UpdateAction final : public TestAction
                 }
                 else if (m_table == "REGISTRY")
                 {
-                    auto entry_vector = fillRegistryEntry(it);
+                    std::vector<fim_entry *> entry_vector;
+                    fillRegistryEntry(it, entry_vector);
                     while (entry_vector.empty() == false) {
                         fim_entry *entry = entry_vector.back();
                         entry_vector.pop_back();
@@ -178,7 +179,8 @@ class UpdateAction final : public TestAction
                 }
                 else if (m_table == "REGISTRY")
                 {
-                    auto entry_vector = fillRegistryEntry(it);
+                    std::vector<fim_entry *> entry_vector;
+                    fillRegistryEntry(it, entry_vector);
                     while (entry_vector.empty() == false) {
                         fim_entry *entry = entry_vector.back();
                         entry_vector.pop_back();
@@ -236,7 +238,8 @@ class RemoveAction final : public TestAction
                 }
                 else if (m_table == "REGISTRY")
                 {
-                    auto entry_vector = fillRegistryEntry(it);
+                    std::vector<fim_entry *> entry_vector;
+                    fillRegistryEntry(it, entry_vector);
                     while (entry_vector.empty() == false) {
                         fim_entry *entry = entry_vector.back();
                         entry_vector.pop_back();
@@ -263,7 +266,8 @@ class RemoveAction final : public TestAction
                 }
                 else if (m_table == "REGISTRY")
                 {
-                    auto entry_vector = fillRegistryEntry(it);
+                    std::vector<fim_entry *> entry_vector;
+                    fillRegistryEntry(it, entry_vector);
                     while (entry_vector.empty() == false) {
                         fim_entry *entry = entry_vector.back();
                         entry_vector.pop_back();

@@ -151,6 +151,7 @@ private:
         }
 
         value = nlohmann::json::parse(jsonFile);
+        jsonFile.close();
 
         return true;
     }

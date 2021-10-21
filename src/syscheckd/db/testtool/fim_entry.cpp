@@ -80,7 +80,7 @@ void free_entry(fim_entry *entry)
 
 fim_entry *fillFileEntry(const nlohmann::json &json_data)
 {
-    fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
+    fim_entry *fill_entry = (fim_entry *) std::calloc(1, sizeof(fim_entry));
     if (fill_entry == NULL)
     {
         throw std::runtime_error{
@@ -88,7 +88,7 @@ fim_entry *fillFileEntry(const nlohmann::json &json_data)
     }
     fill_entry->type = FIM_TYPE_FILE;
     fill_entry->file_entry.path = strdup(static_cast<std::string>(json_data["path"]).c_str());
-    fill_entry->file_entry.data = (fim_file_data *)calloc(1, sizeof(fim_file_data));
+    fill_entry->file_entry.data = (fim_file_data *) std::calloc(1, sizeof(fim_file_data));
     fill_entry->file_entry.data->size = json_data["size"];
     fill_entry->file_entry.data->perm = strdup(static_cast<std::string>(json_data["perm"]).c_str());
     fill_entry->file_entry.data->attributes = strdup(static_cast<std::string>(json_data["attributes"]).c_str());
@@ -146,21 +146,20 @@ void fillValueEntry(const nlohmann::json &json_data, fim_registry_value_data &fi
     std::strncpy(fill_entry.checksum, const_cast<char *>(static_cast<std::string>(json_data["checksum"]).c_str()), sizeof(fill_entry.checksum));
 }
 
-std::vector<fim_entry*> fillRegistryEntry(const nlohmann::json &json_data) {
-    std::vector<fim_entry *> return_vector;
+void fillRegistryEntry(const nlohmann::json &json_data, std::vector<fim_entry*>& entry_vector) {
     auto key_info = json_data["key"];
     if (json_data.contains("values") == false) {
-        fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
+        fim_entry *fill_entry = (fim_entry *)std::calloc(1, sizeof(fim_entry));
         fill_entry->type = FIM_TYPE_REGISTRY;
 
-        fill_entry->registry_entry.key = (fim_registry_key *) calloc(1, sizeof(fim_registry_key));
+        fill_entry->registry_entry.key = (fim_registry_key *) std::calloc(1, sizeof(fim_registry_key));
         fillRegistryKeyData(key_info, *fill_entry->registry_entry.key);
-        return_vector.push_back(fill_entry);
+        entry_vector.push_back(fill_entry);
     }
     else
     {
         for (auto value_data: json_data["values"]){
-            fim_entry *fill_entry = (fim_entry *)calloc(1, sizeof(fim_entry));
+            fim_entry *fill_entry = (fim_entry *)std::calloc(1, sizeof(fim_entry));
             if (fill_entry == NULL)
             {
                 throw std::runtime_error{
@@ -168,17 +167,15 @@ std::vector<fim_entry*> fillRegistryEntry(const nlohmann::json &json_data) {
             }
 
             fill_entry->type = FIM_TYPE_REGISTRY;
-            fill_entry->registry_entry.key = (fim_registry_key *) calloc(1, sizeof(fim_registry_key));
-            fill_entry->registry_entry.value = (fim_registry_value_data *) calloc(1, sizeof(fim_registry_value_data));
+            fill_entry->registry_entry.key = (fim_registry_key *) std::calloc(1, sizeof(fim_registry_key));
+            fill_entry->registry_entry.value = (fim_registry_value_data *) std::calloc(1, sizeof(fim_registry_value_data));
 
             fillRegistryKeyData(key_info, *fill_entry->registry_entry.key);
             fillValueEntry(value_data, *fill_entry->registry_entry.value);
 
-            return_vector.push_back(fill_entry);
+            entry_vector.push_back(fill_entry);
         }
     }
-
-    return return_vector;
 }
 
 void print_entry(const fim_entry& entry, const std::function<void(const char *)>& reportFunction)
