@@ -17,33 +17,20 @@
 #include "rsync.hpp"
 #include "shared.h"
 
-// Define EXPORTED for any platform
-#ifdef _WIN32
-#ifdef WIN_EXPORT
-#define EXPORTED __declspec(dllexport)
-#else
-#define EXPORTED __declspec(dllimport)
-#endif
-#elif __GNUC__ >= 4
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
-#endif
-
 enum class dbResult
 {
     DB_SUCCESS,
     DB_ERROR
 };
 
-class EXPORTED FIMDB final
+class FIMDB final
 {
     public:
         static FIMDB& getInstance()
         {
             static FIMDB s_instance;
             return s_instance;
-        }
+        };
 
         void init();
         void syncDB();
@@ -51,6 +38,7 @@ class EXPORTED FIMDB final
         {
             return m_isFull;
         };
+
         int insertItem(DBItem*);
         int removeItem(DBItem*);
         int updateItem(DBItem*);

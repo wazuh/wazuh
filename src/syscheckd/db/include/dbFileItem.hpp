@@ -11,7 +11,7 @@
 
 #ifndef _FILEITEM_HPP
 #define _FILEITEM_HPP
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include "dbItem.hpp"
 
 struct FimFileDataDeleter
@@ -39,6 +39,7 @@ struct FimFileDataDeleter
         }
     }
 };
+
 class FileItem final : public DBItem
 {
     public:
@@ -66,6 +67,7 @@ class FileItem final : public DBItem
             createJSON();
             createFimEntry();
         }
+
         FileItem(const std::string& path,
                  const std::string& checksum,
                  const time_t& lastEvent,
@@ -104,6 +106,7 @@ class FileItem final : public DBItem
             createFimEntry();
             createJSON();
         }
+
         FileItem(const nlohmann::json& fim)
             : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
@@ -125,11 +128,13 @@ class FileItem final : public DBItem
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
         };
+
         ~FileItem() = default;
         fim_entry* toFimEntry()
         {
             return m_fimEntry.get();
         };
+
         nlohmann::json* toJSON()
         {
             return m_statementConf.get();
