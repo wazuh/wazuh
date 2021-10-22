@@ -8,6 +8,15 @@ for conf_file in /tmp/configuration_files/*.conf; do
   python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
 done
 
+if [ $4 == "disable_cluster" ]; then
+  sed -i -e "/<cluster>/,/<\/cluster>/ s|<disabled>[a-z]\+</disabled>|<disabled>yes</disabled>|g" /var/ossec/etc/ossec.conf
+else
+  sed -i "s:<key>key</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
+  sed -i "s:<node>NODE_IP</node>:<node>$1</node>:g" /var/ossec/etc/ossec.conf
+  sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/ossec/etc/ossec.conf
+  sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scripts/wazuh-apid.py
+fi
+
 sed -i "s:<key>key</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
 sed -i "s:<node>NODE_IP</node>:<node>$1</node>:g" /var/ossec/etc/ossec.conf
 sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/ossec/etc/ossec.conf
