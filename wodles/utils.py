@@ -66,7 +66,7 @@ def call_wazuh_control(option: str) -> str:
         exit(1)
 
 
-def get_wazuh_info(field) -> str:
+def get_wazuh_info(field: str) -> str:
     """
     Executes the wazuh-control script with the 'info' argument, filtering by field if specified.
 

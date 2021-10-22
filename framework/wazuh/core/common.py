@@ -27,14 +27,14 @@ except (FileNotFoundError, PermissionError):
 
 
 @lru_cache(maxsize=None)
-def find_wazuh_path():
+def find_wazuh_path() -> str:
     """
-    Returns the version of Wazuh installed.
+    Dynamically gets the Wazuh installation path.
 
     Returns
     -------
     str
-        The version of Wazuh installed.
+        Path where Wazuh is installed or empty string if there is no framework in the environment.
     """
     abs_path = os.path.abspath(os.path.dirname(__file__))
     allparts = []
