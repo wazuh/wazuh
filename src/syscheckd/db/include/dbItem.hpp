@@ -12,6 +12,7 @@
 #ifndef _DBITEM_HPP
 #define _DBITEM_HPP
 #include "syscheck.h"
+#include "json.hpp"
 
 class DBItem
 {
@@ -28,6 +29,7 @@ class DBItem
             , m_mode( mode )
         {
         }
+
         virtual ~DBItem() = default;
         virtual fim_entry* toFimEntry() = 0;
         virtual nlohmann::json* toJSON() = 0;

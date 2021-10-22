@@ -11,7 +11,7 @@
 
 #ifndef _REGISTRYVALUE_HPP
 #define _REGISTRYVALUE_HPP
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include "dbItem.hpp"
 
 struct FimRegistryValueDeleter
@@ -29,6 +29,7 @@ struct FimRegistryValueDeleter
         }
     }
 };
+
 class RegistryValue final : public DBItem
 {
     public:
@@ -49,6 +50,7 @@ class RegistryValue final : public DBItem
             createJSON();
             createFimEntry();
         }
+
         RegistryValue(const std::string& name,
                       const std::string& checksum,
                       const time_t& lastEvent,
@@ -73,6 +75,7 @@ class RegistryValue final : public DBItem
             createFimEntry();
             createJSON();
         }
+
         RegistryValue(const nlohmann::json& fim)
             : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
@@ -86,11 +89,13 @@ class RegistryValue final : public DBItem
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
         }
+
         ~RegistryValue() = default;
         fim_entry* toFimEntry()
         {
             return m_fimEntry.get();
         };
+
         nlohmann::json* toJSON()
         {
             return m_statementConf.get();
