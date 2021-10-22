@@ -159,7 +159,7 @@ services:
 
   nginx-lb:
     build:
-      context: ./base/nginx-lb-standalone
+      context: ./base/nginx-lb
     image: integration_test_nginx-lb-standalone
     entrypoint:
       - /scripts/entrypoint.sh
