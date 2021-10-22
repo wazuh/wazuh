@@ -13,10 +13,11 @@ services:
       - ./configurations/tmp/manager:/tmp
       - ./tools/:/tools
     entrypoint:
-      - /scripts/entrypoint_no_cluster.sh
+      - /scripts/entrypoint.sh
       - wazuh-master
       - master-node
       - master
+      - disable_cluster
 
   wazuh-agent1:
     build:
