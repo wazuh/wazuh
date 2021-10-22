@@ -2,7 +2,6 @@ FROM nginx
 
 # Variable used to indicate which nginx configuration should be copied
 ARG DOCKER_COMPOSE_FILE
-ENV DOCKER_COMPOSE_FILE ${DOCKER_COMPOSE_FILE}
 
 # Copy both nginx configurations to the nginx folder
 COPY nginx_cluster.conf /etc/nginx/nginx_cluster.conf
