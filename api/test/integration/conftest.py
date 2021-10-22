@@ -98,8 +98,8 @@ def build_and_up(docker_compose_file: str, interval: int = 10, interval_build_en
                                                     f"DOCKER_COMPOSE_FILE={docker_compose_file}"],
                                                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
-                current_process = subprocess.Popen(["docker-compose", "-f", docker_compose_file, "up", "-d"],
-                                                   stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+            current_process = subprocess.Popen(["docker-compose", "-f", docker_compose_file, "up", "-d"],
+                                               stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
 
             if current_process.returncode == 0:
