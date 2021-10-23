@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "wazuhdb_op.h"
 #include "wdb.h"
 #include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
@@ -21,6 +22,7 @@ static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_TEXT, 3, false, true, "hotfix" }, .next = &TABLE_HOTFIXES[3] },
     { .value = {FIELD_TEXT, 4, false, false, "checksum" }, .next = NULL },
 };
+#define HOTFIXES_FIELD_COUNT 3
 
 static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 1,true,false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
@@ -55,6 +57,7 @@ static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 30,false,false,"processor"}, .next = &TABLE_PROCESSES[30] },
     { .value = { FIELD_TEXT, 31, false, false, "checksum" }, .next = NULL }
 };
+#define PROCESSES_FIELD_COUNT 30
 
 static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_NETIFACE[1] } ,
@@ -76,6 +79,7 @@ static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_NETIFACE[17] } ,
     { .value = { FIELD_TEXT, 18, false, false, "item_id" }, .next = NULL }
 };
+#define NETIFACE_FIELD_COUNT 17
 
 static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETPROTO[1]},
@@ -87,6 +91,7 @@ static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETPROTO[7]},
     { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL }
 };
+#define NETPROTO_FIELD_COUNT 7
 
 static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETADDR[1]},
@@ -98,6 +103,7 @@ static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETADDR[7]},
     { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL},
 };
+#define NETADDR_FIELD_COUNT 7
 
 static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_PORTS[1]},
@@ -116,6 +122,7 @@ static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_TEXT,14, false, false, "checksum" }, .next = &TABLE_PORTS[14]},
     { .value = { FIELD_TEXT,15, false, false, "item_id" }, .next = NULL},
 };
+#define PORTS_FIELD_COUNT 14
 
 static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_INTEGER, 1, true, true, "scan_id" }, .next = &TABLE_PACKAGES[1] },
@@ -139,6 +146,7 @@ static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = &TABLE_PACKAGES[19] },
     { .value = { FIELD_TEXT, 20, false, false, "item_id" }, .next = NULL },
 };
+#define PACKAGES_FIELD_COUNT 19
 
 static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_OS[1] },
@@ -160,6 +168,7 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 17, false, false, "os_display_version" }, .next = &TABLE_OS[17] },
     { .value = { FIELD_TEXT, 18, false, false, "checksum" }, .next = NULL }
 };
+#define OS_FIELD_COUNT 17
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
@@ -173,19 +182,19 @@ static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 9, false, false, "ram_usage" }, .next = &TABLE_HARDWARE[9] },
     { .value = { FIELD_TEXT, 10, false, false, "checksum" }, .next = NULL }
 };
-
+#define HARDWARE_FIELD_COUNT 9
 
 
 static struct kv_list const TABLE_MAP[] = {
-    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE }, .next = &TABLE_MAP[1]},
-    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO }, .next = &TABLE_MAP[2]},
-    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR }, .next = &TABLE_MAP[3]},
-    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS }, .next = &TABLE_MAP[4]},
-    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
-    { .current = { "ports", "sys_ports", false, TABLE_PORTS }, .next = &TABLE_MAP[6]},
-    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES }, .next = &TABLE_MAP[7]},
-    { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES }, .next = &TABLE_MAP[8]},
-    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES}, .next = NULL},
+    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE, NETIFACE_FIELD_COUNT }, .next = &TABLE_MAP[1]},
+    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO, NETPROTO_FIELD_COUNT }, .next = &TABLE_MAP[2]},
+    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR, NETADDR_FIELD_COUNT }, .next = &TABLE_MAP[3]},
+    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS, OS_FIELD_COUNT }, .next = &TABLE_MAP[4]},
+    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE, HARDWARE_FIELD_COUNT }, .next = &TABLE_MAP[5]},
+    { .current = { "ports", "sys_ports", false, TABLE_PORTS, PORTS_FIELD_COUNT }, .next = &TABLE_MAP[6]},
+    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES, PACKAGES_FIELD_COUNT }, .next = &TABLE_MAP[7]},
+    { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
+    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
 
@@ -5621,7 +5630,12 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
-            ret_val = process_dbsync_data(wdb, &head->current, operation, data, select_output) ? OS_SUCCESS : OS_NOTFOUND;
+            const size_t field_count = os_strcnt(data, *FIELD_SEPARATOR_DBSYNC);
+            if (field_count == head->current.field_count) {
+                ret_val = process_dbsync_data(wdb, &head->current, operation, data, select_output) ? OS_SUCCESS : OS_NOTFOUND;
+            } else {
+                merror(DB_INVALID_DELTA_MSG, data, head->current.field_count, field_count);
+            }
             break;
         }
         head = head->next;
