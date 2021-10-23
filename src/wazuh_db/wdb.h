@@ -349,6 +349,7 @@ struct kv {
     char value[OS_SIZE_256];
     bool single_row_table;
     struct column_list const *column_list;
+    size_t field_count;
 };
 
 struct kv_list {

@@ -323,6 +323,7 @@
 #define DB_CACHE_ERROR        "(5213): Cannot cache statement."
 #define DB_CACHE_NULL_STMT    "(5214): Null statement on internal cache."
 #define DB_AGENT_SQL_ERROR    "(5215): DB(%s) SQL Error: '%s'."
+#define DB_INVALID_DELTA_MSG  "(5216): Delta (%s) field count mismatch: expect %zu, received %zu."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."
