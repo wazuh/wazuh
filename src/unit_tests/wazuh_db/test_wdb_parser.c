@@ -990,39 +990,31 @@ void test_dbsync_insert_type_not_exists(void **state) {
     os_free(query);
 }
 
-void test_dbsync_insert_type_exists_data_1(void **state) {
+void test_dbsync_insert_type_exists_data_incorrect(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
+    char error_message[128] = { "\0" };
 
-    os_strdup("osinfo INSERTED data?", query);
+    os_strdup("hotfixes INSERTED data?", query);
+    sprintf(error_message, DB_INVALID_DELTA_MSG, "data?", 3ul, 0ul);
 
-    will_return(__wrap_wdb_get_cache_stmt, 1);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data?");
-    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    expect_string(__wrap__merror, formatted_msg, error_message);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "error");
+    assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
 
-void test_dbsync_insert_type_exists_data_2(void **state) {
+void test_dbsync_insert_type_exists_data_correct(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("osinfo INSERTED data?|data2?", query);
+    os_strdup("hotfixes INSERTED data1|data2|data3|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1031,44 +1023,15 @@ void test_dbsync_insert_type_exists_data_2(void **state) {
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data?");
-    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
 
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data2?");
-
-    will_return(__wrap_wdb_step, SQLITE_DONE);
-
-    ret = wdb_parse_dbsync(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok ");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_dbsync_insert_type_exists_data_3(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("osinfo INSERTED data?|data2?|data3?", query);
-
-    will_return(__wrap_wdb_get_cache_stmt, 1);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data?");
-    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data2?");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data3?");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "data3");
+
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
@@ -1085,7 +1048,7 @@ void test_dbsync_delete_type_exists_data_1(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("osinfo DELETED NULL|NULL|NULL|data5", query);
+    os_strdup("hotfixes DELETED NULL|data5|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1115,24 +1078,22 @@ void test_dbsync_modify_type_exists_data_1(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("osinfo MODIFIED data1|data2|data3|data4", query);
+    os_strdup("hotfixes MODIFIED data1|data2|data3|", query);
 
     will_return_always(__wrap_wdb_get_cache_stmt, 1);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data3");
-    expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data4");
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "data4");
+    expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
@@ -1148,7 +1109,7 @@ void test_dbsync_insert_type_exists_null_stmt(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("osinfo INSERTED data?|data2?|data3?", query);
+    os_strdup("hotfixes INSERTED data?|data2?|data3?|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 0);
 
@@ -1167,7 +1128,7 @@ void test_dbsync_delete_type_exists_data_compound_pk(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("network_protocol DELETED data1|data2", query);
+    os_strdup("network_protocol DELETED data1|data2|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1205,7 +1166,7 @@ void test_dbsync_modify_type_exists_data_real_value(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("hwinfo MODIFIED data1|data2|data3", query);
+    os_strdup("hwinfo MODIFIED data1|data2|data3|NULL|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return_always(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1256,7 +1217,7 @@ void test_dbsync_modify_type_exists_data_compound_pk(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("network_protocol MODIFIED data1|data2|data3|NULL", query);
+    os_strdup("network_protocol MODIFIED data1|data2|data3|NULL|NULL|NULL|NULL|", query);
 
     will_return_always(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1306,7 +1267,7 @@ void test_dbsync_modify_type_exists_data_stmt_fail(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("network_protocol MODIFIED data1|data2|data3|NULL", query);
+    os_strdup("network_protocol MODIFIED data1|data2|data3|NULL|NULL|NULL|NULL|", query);
 
     will_return_always(__wrap_wdb_get_cache_stmt, 0);
 
@@ -1324,7 +1285,7 @@ void test_dbsync_delete_type_exists_data_select_stmt_fail(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("network_protocol DELETED data1|data2", query);
+    os_strdup("network_protocol DELETED data1|data2|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 0);
 
@@ -1353,7 +1314,7 @@ void test_dbsync_delete_type_exists_data_stmt_fail(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("network_protocol DELETED data1|data2", query);
+    os_strdup("network_protocol DELETED data1|data2|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 0);
     expect_string(__wrap__merror, formatted_msg, DB_CACHE_NULL_STMT);
@@ -1378,7 +1339,7 @@ void test_dbsync_delete_type_exists_data_bind_error(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("osinfo DELETED NULL|NULL|NULL|data5", query);
+    os_strdup("osinfo DELETED NULL|NULL|NULL|data5|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
     will_return_always(__wrap_sqlite3_errmsg, error_value);
@@ -1414,7 +1375,7 @@ void test_dbsync_modify_type_exists_data_bind_error(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("hwinfo MODIFIED data1|data2|data3|0", query);
+    os_strdup("hwinfo MODIFIED data1|data2|data3|0|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return_always(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1457,7 +1418,7 @@ void test_dbsync_delete_type_exists_data_bind_error_ports(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("ports DELETED NULL|data1|data2|0|NULL|NULL|NULL|NULL|1", query);
+    os_strdup("ports DELETED NULL|data1|data2|0|NULL|NULL|NULL|NULL|1|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
     will_return_always(__wrap_sqlite3_errmsg, error_value);
@@ -1514,7 +1475,7 @@ void test_dbsync_modify_type_exists_data_bind_error_ports(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("ports MODIFIED MMM|data1|data2|0|NULL|NULL|NULL|NULL|1", query);
+    os_strdup("ports MODIFIED MMM|data1|data2|0|NULL|NULL|NULL|NULL|1|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return_always(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1559,7 +1520,7 @@ void test_dbsync_delete_type_exists_data_compound_pk_select_data(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("network_protocol DELETED data1|data2", query);
+    os_strdup("network_protocol DELETED data1|data2|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1616,7 +1577,7 @@ void test_dbsync_delete_type_exists_data_compound_pk_select_data_fail(void **sta
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("network_protocol DELETED data1|data2", query);
+    os_strdup("network_protocol DELETED data1|data2|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
 
@@ -1661,17 +1622,18 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("ports INSERTED data?|data2?|data3?|4", query);
+    os_strdup("ports INSERTED data?|data2?|data3?|4|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
 
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
-    will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data?");
-    will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2?");
@@ -1682,8 +1644,48 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 5);
     expect_value(__wrap_sqlite3_bind_int, value, 4);
 
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 8);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 9);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 10);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+
+    expect_value(__wrap_sqlite3_bind_int, index, 12);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+
     will_return_always(__wrap_sqlite3_errmsg, error_value);
 
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
+    expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
@@ -1762,11 +1764,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_dbsync_insert_fail_1_arguments, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_insert_fail_2_arguments, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_insert_type_not_exists, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_data_1, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_data_incorrect, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_data_correct, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_delete_type_exists_data_1, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_data_1, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_data_2, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_data_3, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_null_stmt, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_data_real_value, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_delete_type_exists_data_compound_pk, test_setup, test_teardown),
