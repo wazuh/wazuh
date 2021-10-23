@@ -357,16 +357,11 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
                                              const char * replace) {
 
     bool ret_val = false;
-    const char * replaced_value;
     const char * default_values[] = {[FIELD_TEXT] = "", [FIELD_INTEGER] = "0", [FIELD_REAL] = "0"};
 
-    if (stmt != NULL && value != NULL) {
+    if (NULL != stmt && NULL != value) {
 
-        if (replace != NULL && strcmp(value, replace) == 0) {
-            replaced_value = default_values[type];
-        } else {
-            replaced_value = value;
-        }
+        const char * replaced_value = NULL != replace && strcmp(value, replace) == 0 ? default_values[type] : value;
 
         switch (type) {
         case FIELD_TEXT:
@@ -376,7 +371,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
             break;
         case FIELD_INTEGER: {
             char * endptr;
-            int integer_number = (int) strtol(replaced_value, &endptr, 10);
+            const int integer_number = (int) strtol(replaced_value, &endptr, 10);
             if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_int(stmt, index, integer_number)) {
                 ret_val = true;
             }
@@ -384,7 +379,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
         }
         case FIELD_REAL: {
             char * endptr;
-            double real_value = strtod(replaced_value, &endptr);
+            const double real_value = strtod(replaced_value, &endptr);
             if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
                 ret_val = true;
             }
