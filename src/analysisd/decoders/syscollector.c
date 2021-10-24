@@ -1975,10 +1975,12 @@ void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
                     buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
                 } else {
                     char *value_string = wstr_replace(key->valuestring, FIELD_SEPARATOR_DBSYNC, "?");
-                    buffer_push(msg, value_string, strlen(value_string));
+                    char *final_text_value = wstr_replace(value_string, "NULL", "_NULL_");
                     os_free(value_string);
+                    buffer_push(msg, final_text_value, strlen(final_text_value));
+                    os_free(final_text_value);
                 }
-            } else {
+            } else if (!cJSON_IsNull(key)) {
                 buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
             }
         } else {
