@@ -426,6 +426,18 @@ int main(int argc, char **argv)
     fclose(fp);
 
     if (config.flags.remote_enrollment) {
+        /* Start SSL */
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
+            merror("SSL error. Exiting.");
+            exit(1);
+        }
+
+        /* Connect via TCP */
+        if (remote_sock = OS_Bindporttcp(config.port, NULL, 0), remote_sock <= 0) {
+            merror(BIND_ERROR, config.port, errno, strerror(errno));
+            exit(1);
+        }
+
         /* Check if password is enabled */
         if (config.flags.use_password) {
             fp = fopen(AUTHD_PASS, "r");
@@ -456,18 +468,6 @@ int main(int argc, char **argv)
             }
         } else {
             minfo("Accepting connections on port %hu. No password required.", config.port);
-        }
-
-        /* Start SSL */
-        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
-            merror("SSL error. Exiting.");
-            exit(1);
-        }
-
-        /* Connect via TCP */
-        if (remote_sock = OS_Bindporttcp(config.port, NULL, 0), remote_sock <= 0) {
-            merror(BIND_ERROR, config.port, errno, strerror(errno));
-            exit(1);
         }
     }
 
