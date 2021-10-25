@@ -9,7 +9,8 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree.ElementTree import Element, parse
+from xml.etree.ElementTree import Element
+from defusedxml.ElementTree import parse
 
 import pytest
 
