@@ -383,6 +383,10 @@
 #define PRODUCT_STORAGE_WORKGROUP_SERVER_CORE_C "Storage Server Workgroup (core installation) "
 #endif
 
+#ifndef FIRST_BUILD_WINDOWS_11
+#define FIRST_BUILD_WINDOWS_11 22000
+#endif
+
 #define mkstemp(x) 0
 #define mkdir(x, y) mkdir(x)
 #endif /* WIN32 */
@@ -1897,6 +1901,15 @@ const char *getuname()
                         }
                         else {
                             snprintf(__wp, 63, " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
+
+                            char *endptr = NULL, *osVersion = NULL;
+                            const int buildNumber = (int) strtol(wincomp, endptr, 10);
+
+                            if ('\0' == endptr && buildNumber >= FIRST_BUILD_WINDOWS_11) {
+                                if (osVersion = strstr(ret, "Microsoft Windows 10"), osVersion != NULL) {
+                                    memcpy(osVersion, "Microsoft Windows 11", strlen("Microsoft Windows 11"));
+                                }
+                            }
                         }
                     }
                     RegCloseKey(RegistryKey);
