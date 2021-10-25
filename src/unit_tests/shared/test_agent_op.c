@@ -190,8 +190,8 @@ static void test_parse_agent_add_response(void **state) {
     int err = 0;
     char err_response[OS_MAXSTR + 1];
 
-    // Remove _merror checks
-    expect_any_always(__wrap__merror, formatted_msg);
+    // Remove _mwarn checks
+    expect_any_always(__wrap__mwarn, formatted_msg);
 
     /* Success parse */
     err = w_parse_agent_add_response(success_response, err_response, new_id, new_key, FALSE, FALSE);
