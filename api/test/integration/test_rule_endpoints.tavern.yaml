@@ -3,6 +3,8 @@ test_name: GET /rules
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -372,6 +374,10 @@ stages:
 
 ---
 test_name: GET /rules filters
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -767,6 +773,10 @@ stages:
 ---
 test_name: GET /rules/requirement/pci_dss
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to show the rules by requirement pci_dss
@@ -874,6 +884,10 @@ stages:
 
 ---
 test_name: GET /rules/requirement/gdpr
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -983,6 +997,10 @@ stages:
 
 ---
 test_name: GET /rules/requirement/gpg13
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1098,6 +1116,10 @@ stages:
 ---
 test_name: GET /rules/requirement/hipaa
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to show the rules by requirement hipaa
@@ -1184,6 +1206,10 @@ stages:
 
 ---
 test_name: GET /rules/requirement/nist-800-53
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1272,6 +1298,10 @@ stages:
 ---
 test_name: GET /rules/requirement/tsc
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to show the rules by requirement tsc
@@ -1356,6 +1386,10 @@ stages:
 
 ---
 test_name: GET /rules/requirement/mitre
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1444,6 +1478,10 @@ stages:
 ---
 test_name: GET /rules/groups
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to show the rules groups
@@ -1528,6 +1566,10 @@ stages:
 
 ---
 test_name: GET /rules/files
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1626,6 +1668,10 @@ stages:
 ---
 test_name: GET /rules/files/{filename}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Download rule (JSON format)
@@ -1704,6 +1750,10 @@ stages:
 
 ---
 test_name: PUT /rule/files/{filename}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1805,6 +1855,10 @@ stages:
 ---
 test_name: DELETE /rules/files/{filename}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Delete user rule
@@ -1882,6 +1936,10 @@ stages:
 
 ---
 test_name: GET /rules?rule_ids
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

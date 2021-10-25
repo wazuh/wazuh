@@ -3,6 +3,8 @@ test_name: DELETE /experimental/rootcheck
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -63,6 +65,10 @@ stages:
 ---
 test_name: DELETE /experimental/syscheck
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to delete syscheck scans (Some failed, agents are newer than expected)
@@ -115,6 +121,10 @@ stages:
 ---
 test_name: GET /experimental/ciscat/results
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Request
@@ -138,6 +148,8 @@ stages:
 test_name: GET /experimental/syscollector/hardware
 
 marks:
+  - standalone
+  - cluster
   - xfail # https://github.com/wazuh/wazuh-jenkins/issues/2415
 
 stages:
@@ -211,6 +223,10 @@ stages:
 ---
 test_name: GET /experimental/syscollector/netaddr
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Request
@@ -275,6 +291,10 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/netiface
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -352,6 +372,10 @@ stages:
 ---
 test_name: GET /experimental/syscollector/netproto
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Request
@@ -415,6 +439,10 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/os
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -489,6 +517,10 @@ stages:
 ---
 test_name: GET /experimental/syscollector/packages
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Request
@@ -529,6 +561,10 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/ports
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -618,6 +654,10 @@ stages:
 ---
 test_name: GET /experimental/syscollector/processes
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Request
@@ -658,6 +698,10 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/hotfixes
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

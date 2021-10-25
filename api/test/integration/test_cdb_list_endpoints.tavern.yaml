@@ -3,6 +3,8 @@ test_name: GET /lists
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -293,6 +295,10 @@ stages:
 ---
 test_name: GET /lists/files
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /lists/files
@@ -453,6 +459,10 @@ stages:
 ---
 test_name: GET /lists/files/{filename}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /lists/files/{filename}
@@ -553,6 +563,10 @@ stages:
 
 ---
 test_name: PUT /lists/files/{filename}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -695,6 +709,10 @@ stages:
 
 ---
 test_name: DELETE /lists/files/{filename}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

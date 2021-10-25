@@ -3,6 +3,8 @@ test_name: PUT /logtest
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -89,6 +91,10 @@ stages:
 
 ---
 test_name: DELETE /logtest/sessions
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

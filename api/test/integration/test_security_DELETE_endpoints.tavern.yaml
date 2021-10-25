@@ -3,6 +3,8 @@ test_name: DELETE /security/roles/{role_id}
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -68,6 +70,10 @@ stages:
 
 ---
 test_name: DELETE /security/roles/{role_id}/policies/{policy_id}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -174,6 +180,10 @@ stages:
 ---
 test_name: DELETE /security/roles/{role_id}/rules
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # DELETE /security/roles/{role_id}/rules/{rule_id}
@@ -276,6 +286,10 @@ stages:
 ---
 test_name: DELETE /security/user/{user_id}/roles/{role_id}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # DELETE /security/user/{user_id}/roles/{role_id}
@@ -340,6 +354,10 @@ stages:
 ---
 test_name: DELETE /security/policies/{policy_id}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # DELETE /security/policies/{role_id}
@@ -395,6 +413,10 @@ stages:
         <<: *error
 ---
 test_name: DELETE /security/roles
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -466,6 +488,10 @@ stages:
 ---
 test_name: DELETE /security/policies
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # DELETE /security/policies
@@ -532,6 +558,10 @@ stages:
 
 ---
 test_name: DELETE /security/users
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -692,6 +722,10 @@ stages:
 ---
 test_name: DELETE /security/rules
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Delete a non-existent rule
@@ -786,6 +820,10 @@ stages:
 ---
 test_name: DELETE /security/rules (invalid)
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Delete all rules in the system (invalid)
@@ -802,6 +840,10 @@ stages:
 
 ---
 test_name: PUT /security/config
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -821,6 +863,10 @@ stages:
 ---
 test_name: RESTORE /security/config
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # DELETE /security/roles
@@ -836,6 +882,10 @@ stages:
 
 ---
 test_name: CHECK /security/config
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -857,6 +907,10 @@ stages:
 ---
 test_name: CLEANER DELETE /security/{policies}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to delete all policies
@@ -874,6 +928,10 @@ stages:
 
 ---
 test_name: CLEANER DELETE /security/{roles}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

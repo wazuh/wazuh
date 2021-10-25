@@ -2,6 +2,8 @@ test_name: GET /overview/agents
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
