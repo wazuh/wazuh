@@ -672,7 +672,7 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                     printf("%s", buffer);
                 }
                 else {
-                    merror("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+                    mwarn("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
                 }
                 result = -1;
             }
