@@ -53,7 +53,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
                                 -Wl,--wrap=pthread_cond_signal")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid -Wl,--wrap,_mwarn")
 
 list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
