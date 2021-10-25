@@ -5728,7 +5728,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     if (OS_SUCCESS == ret_val) {
         snprintf(output, OS_SIZE_6144 - 1, "ok %s", select_output);
     } else {
-        strcat(output, "error");
+        strcat(output, "err");
     }
     return ret_val;
 }

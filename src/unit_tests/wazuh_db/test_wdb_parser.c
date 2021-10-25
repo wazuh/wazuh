@@ -980,7 +980,7 @@ void test_dbsync_insert_type_not_exists(void **state) {
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -999,7 +999,7 @@ void test_dbsync_insert_type_exists_data_incorrect(void **state) {
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1060,6 +1060,7 @@ void test_dbsync_delete_type_exists_data_1(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1086,6 +1087,7 @@ void test_dbsync_modify_type_exists_data_1(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_changes, 1);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -1113,7 +1115,7 @@ void test_dbsync_insert_type_exists_null_stmt(void **state) {
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1148,6 +1150,7 @@ void test_dbsync_delete_type_exists_data_compound_pk(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1174,6 +1177,7 @@ void test_dbsync_modify_type_exists_data_real_value(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_sqlite3_changes, 1);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -1227,6 +1231,8 @@ void test_dbsync_modify_type_exists_data_compound_pk(void **state) {
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
+
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
@@ -1270,7 +1276,7 @@ void test_dbsync_modify_type_exists_data_stmt_fail(void **state) {
     expect_string(__wrap__merror, formatted_msg, DB_CACHE_NULL_STMT);
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1295,6 +1301,7 @@ void test_dbsync_delete_type_exists_data_select_stmt_fail(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     expect_string(__wrap__merror, formatted_msg, DB_CACHE_NULL_STMT);
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
@@ -1320,7 +1327,7 @@ void test_dbsync_delete_type_exists_data_stmt_fail(void **state) {
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1353,10 +1360,9 @@ void test_dbsync_delete_type_exists_data_bind_error(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
     expect_string(__wrap__merror, formatted_msg, error_message);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1395,11 +1401,9 @@ void test_dbsync_modify_type_exists_data_bind_error(void **state) {
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
-
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1453,10 +1457,9 @@ void test_dbsync_delete_type_exists_data_bind_error_ports(void **state) {
     expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1497,11 +1500,9 @@ void test_dbsync_modify_type_exists_data_bind_error_ports(void **state) {
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
-
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1555,6 +1556,7 @@ void test_dbsync_delete_type_exists_data_compound_pk_select_data(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1600,6 +1602,7 @@ void test_dbsync_delete_type_exists_data_compound_pk_select_data_fail(void **sta
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1688,11 +1691,9 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
     expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
-
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "error");
+    assert_string_equal(data->output, "err");
     assert_int_equal(ret, OS_NOTFOUND);
 
     os_free(query);
@@ -1754,6 +1755,7 @@ void test_dbsync_delete_type_exists_data_null_value(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1786,6 +1788,8 @@ void test_dbsync_modify_type_exists_data_null_value(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "NULL");
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
+
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
     assert_string_equal(data->output, "ok ");
@@ -1849,6 +1853,7 @@ void test_dbsync_delete_type_exists_data_null_value_variant(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1881,6 +1886,8 @@ void test_dbsync_modify_type_exists_data_null_value_variant(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "_NULL_");
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
+
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
     assert_string_equal(data->output, "ok ");
@@ -1944,6 +1951,7 @@ void test_dbsync_delete_type_exists_data_null_value_from_json(void **state) {
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -1976,6 +1984,8 @@ void test_dbsync_modify_type_exists_data_null_value_from_json(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "_NULL_");
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
+
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
     assert_string_equal(data->output, "ok ");

@@ -75,7 +75,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
                 }
             }
 
-            ret_val = SQLITE_DONE == wdb_step(stmt) && !has_error;
+            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt);
             os_free(data_temp);
         } else {
             merror(DB_CACHE_NULL_STMT);
@@ -187,7 +187,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
                 }
             }
 
-            ret_val = SQLITE_DONE == wdb_step(stmt) && !has_error;
+            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt) && sqlite3_changes(wdb->db) > 0;
         } else {
             merror(DB_CACHE_NULL_STMT);
         }
@@ -255,7 +255,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
                     }
                 }
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) && !has_error;
+            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt) && sqlite3_changes(wdb->db) > 0;
             os_free(data_temp);
         } else {
             merror(DB_CACHE_NULL_STMT);
