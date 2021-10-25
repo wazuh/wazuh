@@ -852,7 +852,7 @@ int w_request_agent_add_clustered(char *err_response,
     cJSON* message;
 
     if (agent_id){
-        // Create key polling request
+        // Create agent key request
         message = w_create_agent_add_payload(name, ip, groups, NULL, key_hash, agent_id, force);
     } else {
         // Create dispatching request
