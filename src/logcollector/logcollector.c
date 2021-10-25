@@ -614,13 +614,13 @@ void LogCollectorStart()
                         fclose(current->fp);
                         CloseHandle(current->h);
                         current->fp = NULL;
-                        merror(FILE_ERROR, current->file);
+                        minfo(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                     } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                         fclose(current->fp);
                         CloseHandle(current->h);
                         CloseHandle(h1);
                         current->fp = NULL;
-                        merror(FILE_ERROR, current->file);
+                        minfo(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                     }
 
                     if (!current->fp) {
@@ -742,14 +742,14 @@ void LogCollectorStart()
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
-                            mdebug1(FILE_ERROR, current->file);
+                            mdebug1(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                             file_exists = 0;
                             w_logcollector_state_delete_file(current->file);
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
-                            mdebug1(FILE_ERROR, current->file);
+                            mdebug1(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                             file_exists = 0;
                             w_logcollector_state_delete_file(current->file);
                         }
