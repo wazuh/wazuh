@@ -639,8 +639,7 @@ class AWSBucket(WazuhIntegration):
                 self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
                                                         table_name=self.db_table_name,
                                                         aws_account_id=aws_account_id,
-                                                        aws_region=aws_region,
-                                                        prefix=self.prefix))
+                                                        aws_region=aws_region))
             try:
                 last_key = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
