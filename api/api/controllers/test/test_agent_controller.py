@@ -28,6 +28,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh import agent, stats
         from wazuh.core.common import database_limit
         from wazuh.tests.util import RBAC_bypasser
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
@@ -415,27 +416,51 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('agents_list', [
+    (['all']),
+    (['001', '002']),
+])
 @patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, agents_list):
     """Verify 'put_upgrade_agents' endpoint is working as expected."""
-    result = await put_upgrade_agents(request=mock_request)
-    f_kwargs = {'agent_list': None,
+    mock_request = MagicMock()
+    result = await put_upgrade_agents(request=mock_request, agents_list=agents_list)
+
+    if 'all' in agents_list:
+        agents_list = '*'
+    f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': None,
                 'version': None,
                 'use_http': False,
-                'force': False
+                'force': False,
+                'filters': {
+                    'manager': None,
+                    'version': None,
+                    'group': None,
+                    'node_name': None,
+                    'name': None,
+                    'ip': None,
+                    'registerIP': mock_request.query.get('registerIP', None)
+                },
+                'q': None
                 }
+
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = mock_request.query.get(field, None)
+
     mock_dapi.assert_called_once_with(f=agent.upgrade_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                      broadcasting=agents_list == '*'
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
@@ -443,26 +468,49 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('agents_list', [
+    (['all']),
+    (['001', '002']),
+])
 @patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
-                                         mock_request=MagicMock()):
+async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, agents_list):
     """Verify 'put_upgrade_custom_agents' endpoint is working as expected."""
-    result = await put_upgrade_custom_agents(request=mock_request)
-    f_kwargs = {'agent_list': None,
+    mock_request = MagicMock()
+    result = await put_upgrade_custom_agents(request=mock_request, agents_list=agents_list)
+
+    if 'all' in agents_list:
+        agents_list = '*'
+    f_kwargs = {'agent_list': agents_list,
                 'file_path': None,
-                'installer': None
+                'installer': None,
+                'filters': {
+                    'manager': None,
+                    'version': None,
+                    'group': None,
+                    'node_name': None,
+                    'name': None,
+                    'ip': None,
+                    'registerIP': mock_request.query.get('registerIP', None)
+                },
+                'q': None
                 }
+
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = mock_request.query.get(field, None)
+
     mock_dapi.assert_called_once_with(f=agent.upgrade_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                      broadcasting=agents_list == '*'
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
@@ -500,11 +548,28 @@ async def test_get_component_stats(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp):
     """Verify 'get_agent_upgrade' endpoint is working as expected."""
+    mock_request = MagicMock()
     result = await get_agent_upgrade(request=mock_request)
-    f_kwargs = {'agent_list': None
+    f_kwargs = {'agent_list': None,
+                'filters': {
+                    'manager': None,
+                    'version': None,
+                    'group': None,
+                    'node_name': None,
+                    'name': None,
+                    'ip': None,
+                    'registerIP': mock_request.query.get('registerIP', None)
+                },
+                'q': None
                 }
+
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = mock_request.query.get(field, None)
+
     mock_dapi.assert_called_once_with(f=agent.get_upgrade_result,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
