@@ -363,6 +363,132 @@ void test_w_socket_launcher_warn_wstatus(void **state) {
     assert_null(ret);    
 }
 
+// Test keyrequest_exec_output()
+
+void test_keyrequest_exec_output_too_long_request(void **state) {
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+
+    char debug_msg[BUFFERSIZE];
+    snprintf(debug_msg, BUFFERSIZE, "Request is too long.");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret);
+}
+
+void test_keyrequest_exec_output_error_flag_to_one(void **state) {
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+    int error_flag = 0;
+
+    will_return(__wrap_error_flag,error_flag);
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret)
+}
+
+void test_keyrequest_exec_output_result_code_no_zero(void **state) {
+    char *exec_path = config.key_request.exec_path;
+    config.key_request.exec_path = "python3 /tmp/test.py";
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+    int error_flag = 0;
+    int result_code = 0;
+
+    will_return(__wrap_error_flag,error_flag);
+    will_return(__wrap_result_code,result_code);
+    will_return(__wrap_wm_exec, 0);
+
+    char debug_msg[BUFFERSIZE];
+    snprintf(debug_msg, BUFFERSIZE, "Key request integration (%s) returned code %d.", config.key_request.exec_path, result_code);
+    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
+
+    config.key_request.exec_path = exec_path;
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret)
+}
+
+void test_keyrequest_exec_output_timeout_error(void **state) {
+    char *exec_path = config.key_request.exec_path;
+    config.key_request.exec_path = "python3 /tmp/test.py";
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+    int error_flag = 0;
+    int result_code = 0;
+
+    will_return(__wrap_error_flag,error_flag);
+    will_return(__wrap_result_code,result_code);
+    will_return(__wrap_wm_exec, KR_ERROR_TIMEOUT);
+
+    char debug_msg[BUFFERSIZE];
+    snprintf(debug_msg, BUFFERSIZE, "Timeout received while running key request integration (%s)", config.key_request.exec_path);
+    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
+
+    config.key_request.exec_path = exec_path;
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret)
+}
+
+void test_keyrequest_exec_output_path_invalid(void **state) {
+    char *exec_path = config.key_request.exec_path;
+    config.key_request.exec_path = "python3 /tmp/test.py";
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+    int error_flag = 1;
+    int result_code = EXECVE_ERROR;
+
+    will_return(__wrap_error_flag,error_flag);
+    will_return(__wrap_result_code,result_code);
+    will_return(__wrap_wm_exec, 1);
+
+    char debug_msg[BUFFERSIZE];
+    snprintf(debug_msg, BUFFERSIZE, "Cannot run key request integration (%s): path is invalid or file has insufficient permissions.", config.key_request.exec_path);
+    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
+
+    config.key_request.exec_path = exec_path;
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret)
+}
+
+void test_keyrequest_exec_output_error_executing(void **state) {
+    char *exec_path = config.key_request.exec_path;
+    config.key_request.exec_path = "python3 /tmp/test.py";
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+    int error_flag = 1;
+
+    will_return(__wrap_error_flag,error_flag);
+    will_return(__wrap_wm_exec, 1);
+
+    char debug_msg[BUFFERSIZE];
+    snprintf(debug_msg, BUFFERSIZE, "Error executing [%s]", config.key_request.exec_path);
+    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
+
+    config.key_request.exec_path = exec_path;
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret)
+}
+
+void test_keyrequest_exec_output_chroot_error(void **state) {
+    _request_type_t type = (_request_type_t*)*state;
+    char *request = "";
+    int error_flag = 1;
+
+    will_return(__wrap_error_flag,error_flag);
+
+    char debug_msg[BUFFERSIZE];
+    snprintf(debug_msg, BUFFERSIZE, CHROOT_ERROR, "/var/ossec", errno, strerror(errno));
+    expect_string(__wrap__merror, formatted_msg, debug_msg);
+
+    void *ret = keyrequest_exec_output(type,request);
+    assert_null(ret)
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(),
