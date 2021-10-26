@@ -2366,7 +2366,22 @@ class AWSServerAccess(AWSCustomBucket):
             print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
-    def marker_only_logs_after(self, aws_region, aws_account_id):
+    def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
+        """
+        Return a marker to filter AWS log files using the `only_logs_after` value.
+
+        Parameters
+        ----------
+        aws_region : str
+            The region where the bucket is located.
+        aws_account_id : str
+            The account ID of the AWS account.
+
+        Returns
+        -------
+        str
+            The filter, with the file's prefix and date.
+        """
         return self.get_full_prefix(aws_account_id, aws_region) + self.only_logs_after.strftime('%Y-%m-%d')
 
     def check_bucket(self):
