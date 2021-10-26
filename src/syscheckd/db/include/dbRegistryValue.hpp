@@ -16,16 +16,16 @@
 
 struct FimRegistryValueDeleter
 {
-    void operator()(fim_entry* address)
+    void operator()(fim_entry* fimRegistryValue)
     {
-        if (address)
+        if (fimRegistryValue)
         {
-            if (address->registry_entry.value)
+            if (fimRegistryValue->registry_entry.value)
             {
-                std::free(address->registry_entry.value);
+                std::free(fimRegistryValue->registry_entry.value);
             }
 
-            std::free(address);
+            std::free(fimRegistryValue);
         }
     }
 };

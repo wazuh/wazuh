@@ -16,26 +16,26 @@
 
 struct FimRegistryKeyDeleter
 {
-    void operator()(fim_entry* address)
+    void operator()(fim_entry* fimRegistryKey)
     {
-        if (address)
+        if (fimRegistryKey)
         {
-            if (address->registry_entry.key)
+            if (fimRegistryKey->registry_entry.key)
             {
-                if (address->registry_entry.key->gid)
+                if (fimRegistryKey->registry_entry.key->gid)
                 {
-                    std::free(address->registry_entry.key->gid);
+                    std::free(fimRegistryKey->registry_entry.key->gid);
                 }
 
-                if (address->registry_entry.key->uid)
+                if (fimRegistryKey->registry_entry.key->uid)
                 {
-                    std::free(address->registry_entry.key->uid);
+                    std::free(fimRegistryKey->registry_entry.key->uid);
                 }
 
-                std::free(address->registry_entry.key);
+                std::free(fimRegistryKey->registry_entry.key);
             }
 
-            std::free(address);
+            std::free(fimRegistryKey);
         }
     }
 };
