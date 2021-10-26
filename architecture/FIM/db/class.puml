@@ -16,7 +16,7 @@ package "db" <<Folder>> #DDDDDD{
             + ~DBItem()
             + {abstract} fim_entry toFimEntry()
             + {abstract} nlohman::json toJson()
-            + bool getState()
+            + bool state()
         }
 
         class FileItem {

@@ -16,26 +16,26 @@
 
 struct FimFileDataDeleter
 {
-    void operator()(fim_entry* address)
+    void operator()(fim_entry* fimFile)
     {
-        if (address)
+        if (fimFile)
         {
-            if (address->file_entry.data)
+            if (fimFile->file_entry.data)
             {
-                if (address->file_entry.data->gid)
+                if (fimFile->file_entry.data->gid)
                 {
-                    std::free(address->file_entry.data->gid);
+                    std::free(fimFile->file_entry.data->gid);
                 }
 
-                if (address->file_entry.data->uid)
+                if (fimFile->file_entry.data->uid)
                 {
-                    std::free(address->file_entry.data->uid);
+                    std::free(fimFile->file_entry.data->uid);
                 }
 
-                std::free(address->file_entry.data);
+                std::free(fimFile->file_entry.data);
             }
 
-            std::free(address);
+            std::free(fimFile);
         }
     }
 };
