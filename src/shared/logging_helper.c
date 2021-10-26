@@ -12,7 +12,7 @@
 #include "logging_helper.h"
 #include "debug_op.h"
 
-void taggedLogFunction(const modules_log_level_t level, const char* log, const char* tag) {
+void taggedLogFunction(modules_log_level_t level, const char* log, const char* tag) {
 
     switch(level) {
         case LOG_ERROR:
@@ -31,7 +31,7 @@ void taggedLogFunction(const modules_log_level_t level, const char* log, const c
     }
 }
 
-void loggingFunction(const modules_log_level_t level, const char* log) {
+void loggingFunction(modules_log_level_t level, const char* log) {
 
     switch(level) {
         case LOG_ERROR:

@@ -20,8 +20,8 @@ typedef enum modules_log_level_t {
     LOG_DEBUG_VERBOSE
 } modules_log_level_t;
 
-void taggedLogFunction(const modules_log_level_t level, const char* log, const char* tag);
-void loggingFunction(const modules_log_level_t level, const char* log);
+void taggedLogFunction(modules_log_level_t level, const char* log, const char* tag);
+void loggingFunction(modules_log_level_t level, const char* log);
 
 
 #endif //_LOGGINGHELPER_H

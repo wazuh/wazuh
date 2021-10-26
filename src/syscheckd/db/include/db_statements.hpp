@@ -6,6 +6,9 @@
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
+#ifndef DB_STATEMENT_HPP
+#define DB_STATEMENT_HPP
+
 constexpr auto DATABASE_TEMP {"queue/fim/db/fim_dbsync.db"};
 
 constexpr auto CREATE_FILE_DB_STATEMENT
@@ -48,7 +51,7 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    UNIQUE (arch, path));)"
+    PRIMARY KEY (arch, path));)"
 };
 
 constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
@@ -284,3 +287,5 @@ constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
             }
         })"
 };
+
+#endif // DB_STATEMENT_HPP

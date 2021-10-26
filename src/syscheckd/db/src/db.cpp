@@ -9,6 +9,7 @@
 #include "dbsync.hpp"
 #include "db.hpp"
 #include "db_statements.hpp"
+#include "fimDB.hpp"
 
 #ifdef __cplusplus
 extern "C" {

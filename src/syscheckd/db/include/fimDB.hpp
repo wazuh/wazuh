@@ -12,11 +12,20 @@
 #ifndef _FIMDB_HPP
 #define _FIMDB_HPP
 #include "dbsync.hpp"
-#include "dbItem.hpp"
 #include "rsync.hpp"
 #include "db_statements.hpp"
 #include <condition_variable>
 #include <mutex>
+
+#ifdef __cplusplus
+extern "C"
+{
+#include "logging_helper.h"
+}
+#endif
+
+typedef void((*send_data_callback_t)(const char* log, const char* tag));
+typedef void((*logging_callback_t)(modules_log_level_t level, const char* tag));
 
 enum class dbResult
 {
@@ -41,38 +50,48 @@ class FIMDB final
         };
 
 #ifdef WIN32
-    void init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file, const unsigned int max_rows_registry);
+void init(const std::string& dbPath,
+          unsigned int interval_synchronization,
+          unsigned int max_rows_file,
+          unsigned int max_rows_registry,
+          send_data_callback_t callbackSync,
+          logging_callback_t callbackLog);
 #else
-    void init(const std::string& dbPath, const unsigned int interval_synchronization, const unsigned int max_rows_file);
+void init(const std::string& dbPath,
+          unsigned int interval_synchronization,
+          unsigned int max_rows_file,
+          send_data_callback_t callbackSync,
+          logging_callback_t callbackLog);
 #endif
-    int insertItem(DBItem const &item);
+    int insertItem(const nlohmann::json& item);
+    int removeItem(const nlohmann::json& item);
     void funcTest();
-    int removeItem(DBItem const &item);
-    int updateItem(DBItem const &item, ResultCallbackData callbackData);
+    int updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
 
 private:
-    FIMDB();
-    ~FIMDB() = default;
-    FIMDB(const FIMDB&) = delete;
 
-    const unsigned int                                                      m_max_rows_file;
-    const unsigned int                                                      m_max_rows_registry;
-    const unsigned int                                                      m_interval_synchronization;
+    unsigned int                                                            m_max_rows_file;
+    unsigned int                                                            m_max_rows_registry;
+    unsigned int                                                            m_interval_synchronization;
+    bool                                                                    m_stopping;
     std::condition_variable                                                 m_cv;
     std::mutex                                                              m_mutex;
     std::unique_ptr<DBSync>                                                 m_dbsyncHandler;
     std::unique_ptr<RemoteSync>                                             m_rsyncHandler;
-    std::function<void(const std::string&, const std::string&)>             m_syncMessageFunction;
-    std::function<void(const modules_log_level_t, const std::string&)>      m_loggingFunction;
+    std::function<void(const std::string&)>                                 m_syncMessageFunction;
+    std::function<void(modules_log_level_t, const std::string&)>      m_loggingFunction;
 
     std::string createStatement();
 
 protected:
+    FIMDB() = default;
+    ~FIMDB() = default;
+    FIMDB(const FIMDB&) = delete;
     void setFileLimit();
     void setRegistryLimit();
     void setValueLimit();
-    void registerWithRsync();
+    void registerRsync();
+    void sync();
     void loopRsync(std::unique_lock<std::mutex>& lock);
-
 };
 #endif //_FIMDB_HPP
