@@ -95,23 +95,11 @@
    <description>WAF: $(ClientRequestURI) Invalid HTTP method.</description>
   </rule>
 
-  <rule id="92514" level="4">
-   <if_sid>92508</if_sid>
-   <field name="EdgeResponseStatus">406</field>
-   <description>WAF: $(ClientRequestURI) Invalid content-type</description>
-  </rule>
 
   <rule id="92515" level="4">
    <if_sid>92508</if_sid>
    <field name="EdgeResponseStatus">413</field>
    <description>WAF: $(ClientRequestURI) Maximum request body size exceeded</description>
-  </rule>
-
-  <rule id="92516" level="7">
-   <if_sid>92508</if_sid>
-   <field name="EdgeResponseStatus">429</field>
-   <description>WAF: $(ClientRequestURI) Max number of requests per minute reached</description>
-   <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_8.1.6,pci_dss_10.2.4,nist_800_53_AC.7</group>
   </rule>
 
   <rule id="92517" level="4">
