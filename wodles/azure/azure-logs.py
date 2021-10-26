@@ -155,7 +155,8 @@ def read_auth_file(auth_path: str, fields: tuple):
 
     Returns
     -------
-    A tuple of str with the field values for the requested authentication fields.
+    tuple of str
+        The field values for the requested authentication fields.
     """
     credentials = {}
     try:
@@ -189,7 +190,8 @@ def get_min_max(service_name: str, md5_hash: str, offset: str):
 
     Returns
     -------
-    A tuple with the min and max values in str format.
+    tuple of str
+        The min and max values.
     """
     try:
         min_ = dates_json[service_name][md5_hash]["min"]
@@ -214,7 +216,8 @@ def load_dates_json():
 
     Returns
     -------
-    A dict with the contents of the "last_dates_file".
+    dict
+        The contents of the "last_dates_file".
     """
     logging.info(f"Getting the data from {last_dates_file}.")
     try:
@@ -319,7 +322,8 @@ def build_log_analytics_query(offset: str, md5_hash: str):
 
     Returns
     -------
-    The required body for the requested query in dict format.
+    dict
+        The required body for the requested query.
     """
     min_str, max_str = get_min_max(service_name="log_analytics", md5_hash=md5_hash, offset=offset)
     # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
@@ -367,7 +371,8 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
 
     Raises
     ------
-    HTTPError if the response for the request is not 200 OK.
+    HTTPError
+        If the response for the request is not 200 OK.
     """
     logging.info("Log Analytics: Sending a request to the Log Analytics API.")
     response = get(url, params=body, headers=headers)
@@ -404,7 +409,8 @@ def get_time_position(columns: list):
 
     Returns
     -------
-    The index of the 'TimeGenerated' field in the given list or None if it's not present.
+    int or None
+        The index of the 'TimeGenerated' field in the given list or None if it's not present.
     """
     for i in range(0, len(columns)):
         if columns[i]['name'] == 'TimeGenerated':
@@ -489,7 +495,8 @@ def build_graph_url(offset: str, md5_hash: str):
 
     Returns
     -------
-    The required URL for the requested query in str format.
+    str
+        The required URL for the requested query.
     """
     min_str, max_str = get_min_max(service_name="graph", md5_hash=md5_hash, offset=offset)
     # Using "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
@@ -532,11 +539,8 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
 
     Raises
     ------
-    HTTPError if the response for the request is not 200 OK.
-
-    Returns
-    -------
-    The nextLink url value contained in the response or None.
+    HTTPError
+        If the response for the request is not 200 OK.
     """
     response = get(url=url, headers=headers)
 
@@ -727,7 +731,8 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
 
     Returns
     -------
-    A valid token in str format.
+    str
+        A valid token.
     """
     body = {
         'client_id': client_id,
@@ -780,7 +785,8 @@ def offset_to_datetime(date: str):
 
     Returns
     -------
-    A datetime object resulting from subtracting the offset value from the current datetime.
+    datetime
+        The result of subtracting the offset value from the current datetime.
     """
     date = date.replace(" ", "")
     value = int(date[:len(date) - 1])
