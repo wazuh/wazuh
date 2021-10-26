@@ -173,7 +173,9 @@ char *w_logtest_generate_error_response(char * msg){
 }
 
 
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg) {
+cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
+                              w_logtest_extra_data_t * extra_data,
+                              OSList * list_msg) {
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
@@ -202,7 +204,7 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
     }
 
     /* Rules matching */
-    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, list_msg), check_add_event == -1) {
+    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, extra_data->rules_debug_list, list_msg), check_add_event == -1) {
         Free_Eventinfo(lf);
         return output;
     }
@@ -210,7 +212,7 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
     /* Add alert description to the event and check alert level if exist a match */
     if (lf->generated_rule) {
         lf->comment = ParseRuleComment(lf);
-        *alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level) ? true : false;
+        extra_data->alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level);
     }
 
     /* Parse the alert */
@@ -289,8 +291,9 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session) {
 }
 
 
-int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg) {
-
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
+                                  cJSON * rules_debug_list,
+                                  OSList * list_msg) {
     RuleNode * rulenode = NULL;
     RuleInfo * ruleinformation = NULL;
     bool added_list_event = false;
@@ -311,8 +314,13 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
         }
 
         /* Search the rule that match */
-        if (ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist, &session->cdblistnode,
-            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false), !ruleinformation) {
+        ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist,
+                                              &session->cdblistnode, rulenode,
+                                              &session->rule_match,
+                                              &session->fts_list,
+                                              &session->fts_store, false,
+                                              rules_debug_list);
+        if (!ruleinformation) {
             continue;
         }
 
@@ -762,10 +770,11 @@ int w_logtest_check_input_remove_session(cJSON * root, char ** msg) {
 
 int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) {
 
-    cJSON * location;
-    cJSON * log_format;
-    cJSON * event;
-    cJSON * token;
+    cJSON * location = NULL;
+    cJSON * log_format = NULL;
+    cJSON * event = NULL;
+    cJSON * token = NULL;
+    cJSON * options = NULL;
 
     /* Check JSON fields */
     location = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOCATION);
@@ -808,8 +817,9 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         return W_LOGTEST_CODE_INVALID_JSON;
     }
 
+    /* Session may not be initialized */
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
-    if (token && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
+    if (token != NULL && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
 
         char * str_token = NULL;
 
@@ -824,6 +834,13 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         os_free(str_token);
 
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
+    }
+
+    /* The optional parameters must be in a json object. Otherwise, they will be dismissed. */
+    options = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_OPT);
+    if (options != NULL && !cJSON_IsObject(options)) {
+        cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_OPT);
+        smwarn(list_msg, LOGTEST_WARN_FIELD_NOT_OBJECT_IGNORE, W_LOGTEST_JSON_OPT);
     }
 
     return W_LOGTEST_CODE_SUCCESS;
@@ -1019,15 +1036,23 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     w_logtest_session_t * current_session = NULL;
     int retval = W_LOGTEST_RCODE_SUCCESS;
 
+    /* Get options */
+    cJSON * j_processing_opt = NULL;
+    cJSON * j_rule_verbose = NULL;
+
+    cJSON * json_log_processed = NULL;
+
+    w_logtest_extra_data_t extra_data = {.alert_generated = false, .rules_debug_list = NULL};
+
     /* Search an active session */
     cJSON * j_token;
     char * s_token = NULL;
 
-    if (j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN), j_token) {
+    if (j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN), j_token != NULL) {
         s_token = j_token->valuestring;
     }
 
-    if (s_token) {
+    if (s_token != NULL) {
 
         w_rwlock_wrlock(&w_logtest_sessions->mutex);
 
@@ -1064,23 +1089,41 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
 
     /* Proccess log */
-    bool alert_generated = false;
-    cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, list_msg);
+    j_processing_opt = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_OPT);
+    if (j_processing_opt != NULL) {
+
+        j_rule_verbose = cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULES_DEBUG);
+
+        if (j_rule_verbose != NULL) {
+
+            if (cJSON_IsBool(j_rule_verbose) && cJSON_IsTrue(j_rule_verbose)) {
+                extra_data.rules_debug_list = cJSON_CreateArray();
+            } else if (!cJSON_IsBool(j_rule_verbose)) {
+                smwarn(list_msg, LOGTEST_WARN_FIELD_NOT_BOOLEAN_IGNORE, W_LOGTEST_JSON_OPT_RULES_DEBUG);
+            }
+        }
+    }
+
+    json_log_processed = w_logtest_process_log(json_request, current_session, &extra_data, list_msg);
 
     w_mutex_unlock(&current_session->mutex);
 
-    if (json_log_processed) {
+    if (json_log_processed != NULL) {
         cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
     } else {
         smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
         mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
     }
 
+    if (extra_data.rules_debug_list != NULL) {
+        cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OPT_RULES_DEBUG, extra_data.rules_debug_list);
+    }
+
     /* Generate response */
     w_logtest_add_msg_response(json_response, list_msg, &retval);
 
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
-        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert_generated ? 1 : 0);
+        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, extra_data.alert_generated ? 1 : 0);
     }
 
     return retval;

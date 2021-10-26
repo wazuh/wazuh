@@ -281,7 +281,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
 
             continue;
         }
-        if (wnotify_add(notify_queue, peer) < 0) {
+        if (wnotify_add(notify_queue, peer, WO_READ) < 0) {
             merror("at run_dealer(): wnotify_add(%d): %s (%d)",
                     peer, strerror(errno), errno);
             goto error;
@@ -323,8 +323,8 @@ void * run_worker(__attribute__((unused)) void * args) {
             continue;
         }
 
-        peer = wnotify_get(notify_queue, 0);
-        if (wnotify_delete(notify_queue, peer) < 0) {
+        peer = wnotify_get(notify_queue, 0, NULL);
+        if (wnotify_delete(notify_queue, peer, WO_READ) < 0) {
             merror("at run_worker(): wnotify_delete(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }
@@ -376,7 +376,7 @@ void * run_worker(__attribute__((unused)) void * args) {
             break;
         }
 
-        if (wnotify_add(notify_queue, peer) < 0) {
+        if (wnotify_add(notify_queue, peer, WO_READ) < 0) {
             merror("at run_worker(): wnotify_add(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }
