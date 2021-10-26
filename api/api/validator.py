@@ -321,7 +321,7 @@ def format_wazuh_key(value):
 
 
 @draft4_format_checker.checks("wazuh_version")
-def format_wazuh_path(value):
+def format_wazuh_version(value):
     return check_exp(value, _wazuh_version)
 
 
