@@ -1079,7 +1079,6 @@ def test_agent_get_agents_overview_search(socket_mock, send_mock, search, totalI
     assert len(agents['items']) == totalItems
 
 
-
 @pytest.mark.parametrize("query, totalItems", [
     ("ip=172.17.0.201", 1),
     ("ip=172.17.0.202", 1),
