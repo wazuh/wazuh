@@ -2,13 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
 import logging
-import pytest
 import sys
 import threading
-import asyncio
 import time
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -61,8 +62,8 @@ abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name
                                         logger=None, manager=None, cluster_items=cluster_items)
 with patch("asyncio.get_running_loop"):
     abstract_client_manager = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,
-                                                           enable_ssl=True, performance_test=None,
-                                                           concurrency_test=None, file=None, string=None)
+                                                           enable_ssl=True, performance_test=10,
+                                                           concurrency_test=10, file="/file/path", string=1000)
 
 
 # Test AbstractClientManager methods
@@ -74,10 +75,10 @@ def test_acm_init():
     assert abstract_client_manager.configuration == configuration
     assert abstract_client_manager.cluster_items == cluster_items
     assert abstract_client_manager.ssl is True
-    assert abstract_client_manager.performance_test is None
-    assert abstract_client_manager.concurrency_test is None
-    assert abstract_client_manager.file is None
-    assert abstract_client_manager.string is None
+    assert abstract_client_manager.performance_test is 10
+    assert abstract_client_manager.concurrency_test is 10
+    assert abstract_client_manager.file is "/file/path"
+    assert abstract_client_manager.string is 1000
     assert abstract_client_manager.logger == logging.getLogger("wazuh")
     assert abstract_client_manager.tag == "Client Manager"
     assert abstract_client_manager.tasks == []
@@ -87,9 +88,14 @@ def test_acm_init():
 
 
 def test_acm_add_tasks():
-    """Test the 'add_tasks' method."""
+    """Check that the add_tasks function generates an array of tasks based on the parameters of the
+    AbstractClientManager object."""
 
     abstract_client_manager.client = abstract_client
+    abstract_client_manager.performance_test = None
+    abstract_client_manager.concurrency_test = None
+    abstract_client_manager.file = None
+    abstract_client_manager.string = None
 
     # Test simple return
     assert isinstance(abstract_client_manager.add_tasks(), list)
@@ -119,7 +125,7 @@ def test_acm_add_tasks():
 @pytest.mark.asyncio
 @patch.object(LoopMock, "create_connection")
 async def test_acm_start(create_connection_mock):
-    """Test the 'start' method."""
+    """Check that the 'start' method allow a connection to the server and wait until this connection is closed."""
 
     class ClientMock:
 
@@ -193,7 +199,8 @@ def test_ac_init():
 
 
 def test_ac_connection_result():
-    """Test the 'connection_result' method."""
+    """Check that once an asyncio.Future object is received, a connection is established if no problems were found, or
+    closed if and Exception was received."""
 
     class MultipleMock:
         def __init__(self):
@@ -229,7 +236,7 @@ def test_ac_connection_result():
 
 @patch('asyncio.gather')
 def test_ac_connection_made(gather_mock):
-    """Test 'connection_made' method."""
+    """Check that the process of connection to the manager is correctly performed."""
 
     class TaskMock:
 
@@ -249,7 +256,7 @@ def test_ac_connection_made(gather_mock):
 
 @patch('wazuh.core.cluster.client.AbstractClient._cancel_all_tasks')
 def test_ac_connection_lost(cancel_tasks_mock):
-    """Test 'connection_lost' method."""
+    """Check the behavior when the master closes the connection and when the connection is lost due some problems."""
 
     future_mock_nested = FutureMock()
 
@@ -272,7 +279,7 @@ def test_ac_connection_lost(cancel_tasks_mock):
 
 
 def test_ac_cancel_all_tasks():
-    """Test '_cancel_all_tasks' method."""
+    """Check whether all tasks are being properly closed."""
 
     class TaskMock:
         def __init__(self):
@@ -291,7 +298,7 @@ def test_ac_cancel_all_tasks():
 
 
 def test_ac_process_response():
-    """Test 'process_response' method."""
+    """Check the response the clients receive depending on the input command."""
 
     # Test the fist condition
     assert (abstract_client.process_response(command=b'ok-m',
@@ -304,7 +311,7 @@ def test_ac_process_response():
 
 
 def test_ac_process_request():
-    """Test 'process_request' method."""
+    """Check the command available in clients depending on the input command."""
 
     # Test the fist condition
     with patch('wazuh.core.cluster.client.AbstractClient.echo_client', return_value=b'ok') as echo_mock:
@@ -318,7 +325,7 @@ def test_ac_process_request():
 
 
 def test_ac_echo_client():
-    """Test 'echo_client' method."""
+    """Check the proper output of the 'echo_client' method."""
 
     assert abstract_client.echo_client(b"data") == (b'ok-c', b"data")
 
@@ -327,7 +334,7 @@ def test_ac_echo_client():
 @patch.object(FutureMock, "done", return_value=False)
 @patch('wazuh.core.cluster.client.AbstractClient.send_request', return_value=b"ok")
 async def test_ac_client_echo_ok(send_request_mock, done_mock):
-    """Test 'client_echo' method."""
+    """Test if a keepalive is being send to the server every couple of seconds until the connection is lost."""
 
     class TransportMock:
 
@@ -338,7 +345,7 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock):
             pass
 
     def set_assignment():
-        time.sleep(1)
+        time.sleep(0.4)
         done_mock.return_value = True
 
     abstract_client.connected = True
@@ -377,7 +384,7 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock):
 @patch('wazuh.core.cluster.client.time.time', return_value=10)
 @patch('wazuh.core.cluster.client.AbstractClient.send_request', return_value="ok")
 async def test_ac_performance_test_client(send_request_mock, time_mock, done_mock):
-    """Test 'performance_test_client' method."""
+    """Test is the master replies with aa payload of the same length as the one that was sent."""
 
     def set_assignment():
         time.sleep(1)
@@ -407,7 +414,7 @@ async def test_ac_performance_test_client(send_request_mock, time_mock, done_moc
 @patch('wazuh.core.cluster.client.time.time', return_value=10)
 @patch('wazuh.core.cluster.client.AbstractClient.send_request', return_value="ok")
 async def test_ac_concurrency_test_client(send_request_mock, time_mock, done_mock):
-    """Test 'concurrency_test_client' method."""
+    """Check how the server reply to all requests until the connection is lost."""
 
     def set_assignment():
         time.sleep(1)
@@ -428,7 +435,7 @@ async def test_ac_concurrency_test_client(send_request_mock, time_mock, done_moc
 @patch('wazuh.core.cluster.client.time.time', return_value=10)
 @patch('wazuh.core.cluster.client.AbstractClient.send_file', return_value="ok")
 async def test_ac_send_file_task(send_file_mock, time_mock):
-    """Test 'send_string_task."""
+    """Test the 'send_file' protocol."""
 
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         await abstract_client.send_file_task("filename")
@@ -442,7 +449,7 @@ async def test_ac_send_file_task(send_file_mock, time_mock):
 @patch('wazuh.core.cluster.client.time.time', return_value=10)
 @patch('wazuh.core.cluster.client.AbstractClient.send_string', return_value="ok")
 async def test_ac_send_string_task(send_string_mock, time_mock):
-    """Test 'send_string_task."""
+    """Test the 'send_string' protocol."""
 
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         await abstract_client.send_string_task(10)
