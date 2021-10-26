@@ -113,12 +113,6 @@
     <description>WAF: unknown acction, take no further action</description>
   </rule>
 
-  <rule id="92516" level="3">
-    <if_sid>92501</if_sid>
-    <field name="WAFAction" type="pcre2">unknown</field>
-    <description>WAF: Take no further action</description>
-  </rule>
-
   <rule id="92517" level="3">
     <if_sid>92501</if_sid>
     <field name="WAFAction" type="pcre2">simulate</field>
