@@ -31,6 +31,7 @@ _names = re.compile(r'^[\w\-\.%]+$')
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^\d+|all$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
+_wazuh_version = re.compile(r'^\d+\.\d+\.\d+$|^v\d+\.\d+\.\d+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _cdb_filename_path = re.compile(r'^[\-\w]+$')
 _xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
@@ -43,7 +44,6 @@ _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
 _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
-
 
 security_config_schema = {
     "type": "object",
@@ -320,6 +320,11 @@ def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
 
 
+@draft4_format_checker.checks("wazuh_version")
+def format_wazuh_version(value):
+    return check_exp(value, _wazuh_version)
+
+
 @draft4_format_checker.checks("date")
 def format_date(value):
     return check_exp(value, _iso8601_date)
@@ -358,5 +363,3 @@ def format_group_names(value):
 @draft4_format_checker.checks("group_names_or_all")
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
-
-

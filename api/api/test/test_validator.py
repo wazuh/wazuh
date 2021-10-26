@@ -12,7 +12,7 @@ from api.validator import check_exp, check_xml, _alphanumeric_param, \
     _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes, \
     _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param, \
     _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path, \
-    allowed_fields, is_safe_path
+    allowed_fields, is_safe_path, _wazuh_version
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -60,6 +60,9 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('/var/ossec/etc/rules/local_rules.xml', _paths),
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
+    # version
+    ('v4.3.0', _wazuh_version),
+    ('4.3.0', _wazuh_version),
 ])
 def test_validation_check_exp_ok(exp, regex_name):
     """Verify that check_exp() returns True with correct params"""
@@ -108,7 +111,12 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('../../path', _get_dirnames_path),
     ('/var/ossec/etc/lists/new_lists3', _get_dirnames_path),
     ('../ossec', _get_dirnames_path),
-    ('etc/rules/../../../dir', _get_dirnames_path)
+    ('etc/rules/../../../dir', _get_dirnames_path),
+    # version
+    ('4.3', _wazuh_version),
+    ('v4.3', _wazuh_version),
+    ('Wazuh 4.3.0', _wazuh_version),
+    ('Wazuh v4.3.0', _wazuh_version),
 ])
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
