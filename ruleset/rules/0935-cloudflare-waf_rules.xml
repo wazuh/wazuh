@@ -1,4 +1,4 @@
-<group name="WAF,">
+<group name="WAF, Cloudflare">
 
   <rule id="92500" level="0">
     <decoded_as>json</decoded_as>
