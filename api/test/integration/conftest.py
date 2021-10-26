@@ -266,13 +266,7 @@ def save_logs(test_name):
         Name of the test.
     """
     logs_path = '/var/ossec/logs'
-<<<<<<< HEAD
     logs = ['api.log', 'cluster.log', 'wazuh.log']
-    test_logs_path = os.path.join(current_path, '_test_results', 'logs')
-    os.makedirs(test_logs_path, exist_ok=True)
-=======
-    logs = ['api.log', 'cluster.log', 'ossec.log']
->>>>>>> master
     for log in logs:
         try:
             subprocess.check_output(

@@ -20,21 +20,10 @@ node_id = get_node().get('node') if cluster_enabled else None
 def totals(date):
     """Retrieve statistical information for the current or specified date.
 
-<<<<<<< HEAD
-    stat_filename = ""
-    try:
-        stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
-            f"wazuh-totals-{date.strftime('%d')}.log")
-        stats = open(stat_filename, 'r')
-    except IOError:
-        raise WazuhError(1308, extra_message=stat_filename)
-=======
     Parameters
     ----------
     date: date
         Date object with the date value of the stats.
->>>>>>> master
 
     Returns
     -------

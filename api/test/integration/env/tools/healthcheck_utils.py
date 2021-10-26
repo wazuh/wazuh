@@ -50,11 +50,7 @@ def get_response(url, headers):
         return json.loads(request_result.content.decode())
 
 
-<<<<<<< HEAD
 def get_agent_health_base(agent_old=False):
-=======
-def get_agent_health_base():
->>>>>>> master
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
     # restarted due to shared configuration changes.
     # Using agentd when using grep as the module name can vary between ossec-agentd and wazuh-agentd,
