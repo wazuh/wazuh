@@ -273,6 +273,23 @@ def restart_agents_by_node(agent_list=None):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True})
+def restart_agents_by_group(agent_list=None):
+    """Restart all agents belonging to a group.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    return restart_agents(agent_list=agent_list)
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
                filters=None, q=None):
