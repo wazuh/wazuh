@@ -11,10 +11,23 @@
     <description>WAF rules</description>
   </rule>
 
-  <rule id="92502" level="3">
+  <rule id="92502" level="4">
     <if_sid>92501</if_sid>
     <field name="ClientRequestMethod" type="pcre2">GET</field>
-    <description>WAF: GET request from client</description>
+    <description>WAF: GET request $(ClientRequestURI)</description>
+  </rule>
+
+  <rule id="92503" level="5">
+    <if_sid>92501</if_sid>
+    <field name="ClientRequestMethod" type="pcre2">POST</field>
+    <description>WAF: POST request $(ClientRequestURI)</description>
+  </rule>
+
+  <rule id="92504" level="5">
+    <if_sid>92501</if_sid>
+    <field name="ClientRequestMethod" type="pcre2">PUT</field>
+    <description>WAF: PUT request $(ClientRequestURI)</description>
+    <group>hipaa_164.312.c.1</group>
   </rule>
 
 </group>
