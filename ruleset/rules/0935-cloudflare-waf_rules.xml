@@ -1,0 +1,20 @@
+<group name="WAF,">
+
+  <rule id="92500" level="0">
+    <decoded_as>json</decoded_as>
+    <description>WAF-prerequisite rule</description>
+  </rule>
+
+  <rule id="92501" level="0">
+    <if_sid>92500</if_sid>
+    <field name="WAFAction" type="pcre2">.+</field>
+    <description>WAF rules</description>
+  </rule>
+
+  <rule id="92502" level="3">
+    <if_sid>92501</if_sid>
+    <field name="ClientRequestMethod" type="pcre2">GET</field>
+    <description>WAF: GET request from client</description>
+  </rule>
+
+</group>
