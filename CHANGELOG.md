@@ -46,6 +46,7 @@ All notable changes to this project will be documented in this file.
   - Added Rules and Decoders for Wazuh API. ([#10428](https://github.com/wazuh/wazuh/pull/10428))
   - Added Rules and Decoders for TrendMicro Cloud One. ([#10458](https://github.com/wazuh/wazuh/pull/10458))
   - Added Rules for Sophos UTM Firewall. ([#10496](https://github.com/wazuh/wazuh/pull/10496))
+  - Added Rules for Cloudflare WAF. ([#10658](https://github.com/wazuh/wazuh/pull/10658))
 
 ### Changed
 
