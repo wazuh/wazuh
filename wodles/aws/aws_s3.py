@@ -48,7 +48,6 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from time import mktime
-from typing import Tuple
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
