@@ -195,7 +195,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
     if (legacy_force_insert != -1) {
         mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
-                legacy_force_insert ? "yes" : "no", xml_force_insert);
+                legacy_force_insert ? "'yes'" : "'no'", xml_force_insert);
 
         config->force_options.enabled = legacy_force_insert;
     }
