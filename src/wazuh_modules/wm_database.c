@@ -78,7 +78,8 @@ static void wm_check_agents();
 static void wm_sync_agents();
 
 // Clean dangling database files
-static void wm_clean_dangling_db();
+static void wm_clean_dangling_legacy_dbs();
+static void wm_clean_dangling_wdb_dbs();
 
 // Clean dangling group files
 void wm_clean_dangling_groups();
@@ -118,10 +119,6 @@ void* wm_database_main(wm_database *data) {
     if (data->sync_agents) {
         wm_sync_manager();
     }
-
-#ifndef LOCAL
-    wm_clean_dangling_db();
-#endif
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -174,6 +171,8 @@ void* wm_database_main(wm_database *data) {
                 wm_scan_directory(GROUPS_DIR);
                 wm_sync_multi_groups(SHAREDCFG_DIR);
                 wm_clean_dangling_groups();
+                wm_clean_dangling_legacy_dbs();
+                wm_clean_dangling_wdb_dbs();
             }
 #endif
             gettime(&spec1);
@@ -299,21 +298,52 @@ void wm_sync_agents() {
 
     if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
         char id[9];
+        char wdbquery[OS_SIZE_128 + 1];
+        char *wdboutput = NULL;
+        int error;
 
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1) {
+                char *name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
+
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
-                } else {
-                    // Remove agent-related files
-                    OS_RemoveCounter(id);
-                    OS_RemoveAgentGroup(id);
+                    os_free(name);
+                    continue;
                 }
+
+                if (wdboutput == NULL) {
+                    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+                }
+
+                snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", id);
+                error = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+                if (error == 0) {
+                    mdebug1("DB from agent %s was deleted '%s'", id, wdboutput);
+                } else {
+                    merror("Could not remove the DB of the agent %s. Error: %d.", id, error);
+                }
+
+                // Remove agent-related files
+                OS_RemoveCounter(id);
+                OS_RemoveAgentTimestamp(id);
+                OS_RemoveAgentGroup(id);
+
+                if (name == NULL || *name == '\0') {
+                    os_free(name);
+                    continue;
+                }
+
+                delete_diff(name);
+
+                free(name);
             }
         }
 
+        os_free(wdboutput);
         os_free(agents);
     }
 
@@ -326,34 +356,37 @@ void wm_sync_agents() {
 }
 
 // Clean dangling database files
-void wm_clean_dangling_db() {
-    char dirname[PATH_MAX + 1];
-    char path[PATH_MAX + 1];
-    char * end;
-    char * name;
+void wm_clean_dangling_legacy_dbs() {
+    if (cldir_ex(WDB_DIR "/agents") == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", WDB_DIR "/agents", strerror(errno), errno);
+    }
+}
+
+void wm_clean_dangling_wdb_dbs() {
+    char path[PATH_MAX];
+    char * end = NULL;
+    char * name = NULL;
     struct dirent * dirent = NULL;
     DIR * dir;
 
-    snprintf(dirname, sizeof(dirname), "%s/agents", WDB_DIR);
-    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
-
-    if (!(dir = opendir(dirname))) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
+    if (!(dir = opendir(WDB2_DIR))) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", WDB2_DIR, strerror(errno));
         return;
     }
 
     while ((dirent = readdir(dir)) != NULL) {
-        if (dirent->d_name[0] != '.') {
-            if (end = strchr(dirent->d_name, '-'), end) {
-                *end = 0;
+        // Taking only databases with numbers as a first character in the names to
+        // exclude global.db, global.db-journal, wdb socket, and current directory.
+        if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
+            if (end = strchr(dirent->d_name, '.'), end) {
+                int id = (int)strtol(dirent->d_name, &end, 10);
 
-                if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
+                if (id > 0 && strncmp(end, ".db", 3) == 0 && (name = wdb_get_agent_name(id, &wdb_wmdb_sock)) != NULL) {
                     if (*name == '\0') {
                         // Agent not found.
-                        *end = '-';
 
-                        if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
-                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
+                        if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
+                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling WDB DB file: '%s'", path);
                             if (remove(path) < 0) {
                                 mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
                             }
@@ -363,7 +396,7 @@ void wm_clean_dangling_db() {
                     free(name);
                 }
             } else {
-                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", WDB2_DIR, dirent->d_name);
             }
         }
     }
@@ -704,6 +737,9 @@ void wm_inotify_setup(wm_database * data) {
         wm_sync_agents();
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
+        wm_clean_dangling_groups();
+        wm_clean_dangling_legacy_dbs();
+        wm_clean_dangling_wdb_dbs();
     }
 
 #endif

@@ -23,6 +23,7 @@
 #define OS_TEXT    1
 
 /* Size limit control */
+#define OS_SIZE_1048576 1048576
 #define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
 #define OS_SIZE_20480   20480
