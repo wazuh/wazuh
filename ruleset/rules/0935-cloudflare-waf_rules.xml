@@ -2,7 +2,6 @@
 
   <rule id="92501" level="0">
     <decoded_as>json</decoded_as>
-    <if_sid>92500</if_sid>
     <field name="WAFAction" type="pcre2">.+</field>
     <description>WAF rules</description>
   </rule>
