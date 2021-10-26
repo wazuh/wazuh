@@ -48,7 +48,6 @@ extern BIO *bio_err;
 #define DEFAULT_CENTRALIZED_GROUP "default"
 #define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
 #define MAX_SSL_PACKET_SIZE 16384
-#define RELAUNCH_TIME 300
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -67,10 +66,6 @@ struct keynode {
     struct keynode *next;
 };
 
-typedef enum _request_type{
-    W_TYPE_ID,W_TYPE_IP
-} _request_type_t;
-
 SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert, int auto_method);
 SSL_CTX *get_ssl_context(const char *ciphers, int auto_method);
 int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
@@ -88,8 +83,6 @@ int verify_callback(int ok, X509_STORE_CTX *store);
  * @param num maximum number of bytes to read
  * */
 int wrap_SSL_read(SSL *ssl, void *buf, int num);
-
-int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path); //tmp --
 
 // Thread for internal server
 void* run_local_server(void *arg);
