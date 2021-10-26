@@ -960,15 +960,15 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
                                  rbac_permissions=mock_request['token_info']['rbac_policies']
                                  )
                             ]
-        calls_restart_agents = [call(f=agent.restart_agents,
-                                     f_kwargs=mock_remove.return_value,
-                                     request_type='distributed_master',
-                                     is_async=False,
-                                     wait_for_complete=False,
-                                     logger=ANY,
-                                     rbac_permissions=mock_request['token_info']['rbac_policies']
-                                     )
-                                ]
+        calls_restart_agents_by_group = [call(f=agent.restart_agents_by_group,
+                                              f_kwargs=mock_remove.return_value,
+                                              request_type='distributed_master',
+                                              is_async=False,
+                                              wait_for_complete=False,
+                                              logger=ANY,
+                                              rbac_permissions=mock_request['token_info']['rbac_policies']
+                                              )
+                                         ]
         if not mock_alist.affected_items:
             mock_dapi.assert_has_calls(calls_get_agents)
             assert mock_dapi.call_count == 1
@@ -977,10 +977,10 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
             f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]
                         }
             mock_dapi.assert_has_calls(calls_get_agents,
-                                       calls_restart_agents)
+                                       calls_restart_agents_by_group,)
             assert mock_dapi.call_count == 2
             mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                                      call(mock_dfunc.return_value)])
+                                       call(mock_dfunc.return_value)])
             assert mock_exc.call_count == 2
             mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, web_response.Response)
