@@ -27,6 +27,6 @@ typedef struct wm_krequest_t {
 extern const wm_context WM_KEY_REQUEST_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_key_request_read(xml_node **nodes, wmodule *module);
+int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__((unused)) wmodule *module);
 
 #endif // WM_KEY_REQUEST_H
