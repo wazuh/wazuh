@@ -1,7 +1,7 @@
-<group name="fortiauth-custom">
+<group name="fortiauth">
 
   <rule id="44730" level="0">
-    <decoded_as>fortiauth-custom</decoded_as>
+    <decoded_as>fortiauth</decoded_as>
     <description>Alert from Forti Authenticator</description>
   </rule>
 

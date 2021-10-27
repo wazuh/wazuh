@@ -11,54 +11,54 @@
 -->
 
 
-<decoder name="fortiauth-custom">
+<decoder name="fortiauth">
   <program_name>db</program_name>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>category="(\.+)"</regex>
   <order>category</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>subcategory="(\.+)"</regex>
   <order>subcategory</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>typeid=(\d+) </regex>
   <order>typeid</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>level="(\.+)"</regex>
   <order>level</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>user="(\S+)"</regex>
   <order>user</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>nas="(\S+)"</regex>
   <order>nas</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>action="(\.*)"</regex>
   <order>data.action</order>
 </decoder>
 
-<decoder name="fortiauth-custom-fields">
-  <parent>fortiauth-custom</parent>
+<decoder name="fortiauth-fields">
+  <parent>fortiauth</parent>
   <regex>status="(\.*)"\s(\.+)</regex>
   <order>data.status,description</order>
 </decoder>
