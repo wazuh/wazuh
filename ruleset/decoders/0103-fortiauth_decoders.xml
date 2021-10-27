@@ -1,0 +1,58 @@
+<!--
+  -  FortiAuth decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<decoder name="fortiauth-custom">
+  <program_name>db</program_name>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>category="(\.+)"</regex>
+  <order>category</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>subcategory="(\.+)"</regex>
+  <order>subcategory</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>typeid=(\d+) </regex>
+  <order>typeid</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>level="(\.+)"</regex>
+  <order>level</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>user="(\S+)"</regex>
+  <order>user</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>nas="(\S+)"</regex>
+  <order>nas</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>action="(\.*)"</regex>
+  <order>data.action</order>
+</decoder>
+
+<decoder name="fortiauth-custom-fields">
+  <parent>fortiauth-custom</parent>
+  <regex>status="(\.*)"\s(\.+)</regex>
+  <order>data.status,description</order>
+</decoder>
