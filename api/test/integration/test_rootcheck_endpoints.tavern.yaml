@@ -3,6 +3,8 @@ test_name: GET /rootcheck/001
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -444,6 +446,10 @@ stages:
 ---
 test_name: GET /rootcheck/001/last_scan
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /rootcheck/001/last_scan
@@ -468,6 +474,10 @@ stages:
 
 ---
 test_name: PUT /rootcheck
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -530,6 +540,10 @@ stages:
 
 ---
 test_name: DELETE /rootcheck/{agent_id}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

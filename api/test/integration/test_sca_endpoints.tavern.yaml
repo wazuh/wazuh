@@ -2,6 +2,8 @@ test_name: GET /sca/{agent_id} for agents with Wazuh version >=4.2.0 (001) and <
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -407,6 +409,10 @@ stages:
 
 ---
 test_name: GET /sca/001/checks/{policy}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
   - name: Parameter policy

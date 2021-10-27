@@ -3,6 +3,8 @@ test_name: GET /decoders
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -323,6 +325,8 @@ stages:
 test_name: GET /decoders
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -368,6 +372,10 @@ stages:
 ---
 test_name: GET /decoders/{decoder_name}
 # We use {auditd-selinux_macstatus} as decoder_name for the purpose of this test
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -497,6 +505,8 @@ stages:
 test_name: GET /decoders/{decoder_name}
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -538,6 +548,10 @@ stages:
 
 ---
 test_name: GET /decoders/files
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -738,6 +752,8 @@ stages:
 test_name: GET /decoders/files
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -780,6 +796,10 @@ stages:
 
 ---
 test_name: GET /decoders/parents
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -915,6 +935,8 @@ stages:
 test_name: GET /decoders/parents
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -958,6 +980,10 @@ stages:
 
 ---
 test_name: GET /decoders/files/{file}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1035,6 +1061,10 @@ stages:
 
 ---
 test_name: PUT /rule/decoders/{filename}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1132,6 +1162,10 @@ stages:
 
 ---
 test_name: DELETE /decoders/files/{filename}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

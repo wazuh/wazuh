@@ -3,6 +3,8 @@ test_name: POST /agents
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -162,6 +164,10 @@ stages:
 ---
 test_name: POST /agents (no IP)
 
+marks:
+  - standalone
+  - cluster
+
 stages:
   # POST /agents without IP. It must be any
   - name: Create an agent without IP
@@ -201,6 +207,10 @@ stages:
 
 ---
 test_name: POST /groups
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -264,6 +274,10 @@ stages:
 
 ---
 test_name: POST /agents/insert
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -447,6 +461,10 @@ stages:
 
 ---
 test_name: POST /agents/insert/quick
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

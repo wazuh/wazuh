@@ -3,6 +3,8 @@ test_name: GET /manager/status
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -44,6 +46,10 @@ stages:
 ---
 test_name: GET /manager/info
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /manager/info
@@ -76,7 +82,9 @@ stages:
 test_name: GET /manager/configuration?{section}
 
 marks:
- - parametrize:
+  - standalone
+  - cluster
+  - parametrize:
      key: section
      vals:
        - alerts
@@ -132,6 +140,10 @@ stages:
 
 ---
 test_name: GET /manager/configuration
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -257,6 +269,10 @@ stages:
 ---
 test_name: GET /manager/stats
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /manager/stats
@@ -315,6 +331,10 @@ stages:
 ---
 test_name: GET /manager/stats/hourly
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /manager/stats/hourly
@@ -338,6 +358,10 @@ stages:
             total_failed_items: 0
 ---
 test_name: GET /manager/stats/weekly
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -381,6 +405,10 @@ stages:
             total_failed_items: 0
 ---
 test_name: GET /manager/stats/analysisd
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -450,6 +478,10 @@ stages:
 ---
 test_name: GET /manager/stats/remoted
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /manager/stats/remoted
@@ -481,6 +513,10 @@ stages:
 
 ---
 test_name: GET /manager/logs
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -686,6 +722,10 @@ stages:
 ---
 test_name: GET /manager/logs/summary
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /manager/logs/summary
@@ -731,6 +771,10 @@ stages:
 
 ---
 test_name: GET /manager/api/config
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -787,6 +831,10 @@ stages:
 ---
 test_name: GET /manager/configuration/validation (OK)
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /manager/configuration/validation
@@ -811,6 +859,10 @@ stages:
 
 ---
 test_name: GET /manager/validation (KO)
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -854,6 +906,10 @@ stages:
 
 ---
 test_name: GET /manager/configuration/{component}/{configuration}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -1166,6 +1222,10 @@ stages:
 ---
 test_name: PUT /manager/configuration
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # PUT /manager/configuration
@@ -1301,6 +1361,10 @@ stages:
 
 ---
 test_name: PUT /manager/restart
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

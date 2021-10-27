@@ -3,6 +3,8 @@ test_name: POST /security/roles
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -135,6 +137,10 @@ stages:
 ---
 test_name: POST /security/rules
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # POST /security/rules
@@ -233,6 +239,10 @@ stages:
 
 ---
 test_name: POST /security/policies
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -559,6 +569,10 @@ stages:
 ---
 test_name: POST /security/roles/{role_id}/policies/{policy_id}
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # POST /security/roles/{role_id}/policies/{policy}
@@ -663,6 +677,10 @@ stages:
 
 ---
 test_name: POST /security/roles/{role_id}/rules
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -777,6 +795,10 @@ stages:
 
 ---
 test_name: POST /security/user/{username}/roles/{role_id}
+
+marks:
+  - standalone
+  - cluster
 
 stages:
   - name: Create a new user (empty body)
@@ -1046,6 +1068,10 @@ stages:
 
 ---
 test_name: POST /security/user/authenticate/run_as
+
+marks:
+  - standalone
+  - cluster
 
 stages:
   - name: Log in with wazuh-wui and default rules and expect admin permissions (1/2)

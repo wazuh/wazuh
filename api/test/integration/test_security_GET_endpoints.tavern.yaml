@@ -3,6 +3,8 @@ test_name: GET /security/roles
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -357,6 +359,10 @@ stages:
 ---
 test_name: GET /security/policies
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   # GET /security/policies
@@ -646,6 +652,10 @@ stages:
 
 ---
 test_name: GET /security/rules
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -975,6 +985,10 @@ stages:
 ---
 test_name: GET /security/user/authenticate
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Get an API token in raw format
@@ -995,6 +1009,8 @@ stages:
 test_name: GET /security/users
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -1424,6 +1440,10 @@ stages:
 ---
 test_name: GET /security/users/me
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Get information about the current user
@@ -1454,6 +1474,10 @@ stages:
 ---
 test_name: GET /security/users/me/policies
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Get information about the current user processed policies
@@ -1472,6 +1496,10 @@ stages:
 
 ---
 test_name: GET /security/actions
+
+marks:
+  - standalone
+  - cluster
 
 stages:
   - name: Testing RBAC's actions catalog
@@ -1527,6 +1555,10 @@ stages:
 ---
 test_name: GET /security/resources
 
+marks:
+  - standalone
+  - cluster
+
 stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_resources_request
@@ -1579,6 +1611,10 @@ stages:
 
 ---
 test_name: GET /security/config
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

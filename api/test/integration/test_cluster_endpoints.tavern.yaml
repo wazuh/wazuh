@@ -3,6 +3,7 @@ test_name: GET /cluster/local/config
 
 marks:
   - base_tests
+  - cluster
 
 stages:
 
@@ -34,6 +35,9 @@ stages:
 
 ---
 test_name: GET /cluster/healthcheck
+
+marks:
+  - cluster
 
 stages:
 
@@ -110,6 +114,9 @@ stages:
 ---
 test_name: GET /cluster/local/info
 
+marks:
+  - cluster
+
 stages:
 
   - name: Get cluster node
@@ -134,6 +141,9 @@ stages:
 
 ---
 test_name: GET /cluster/nodes
+
+marks:
+  - cluster
 
 stages:
 
@@ -389,6 +399,7 @@ stages:
 test_name: GET /cluster/nodes
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -425,6 +436,7 @@ stages:
 test_name: GET /cluster/nodes select
 
 marks:
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -456,6 +468,9 @@ stages:
 ---
 test_name: GET /cluster/status
 
+marks:
+  - cluster
+
 stages:
 
   - name: Get cluster status
@@ -475,6 +490,9 @@ stages:
 
 ---
 test_name: GET /cluster/{node_id}/configuration
+
+marks:
+  - cluster
 
 stages:
 
@@ -706,6 +724,9 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
+marks:
+  - cluster
+
 stages:
 
   - name: Request cluster validation
@@ -826,6 +847,9 @@ stages:
 ---
 test_name: GET /cluster/api/config
 
+marks:
+  - cluster
+
 stages:
 
   # GET /cluster/api/config
@@ -911,6 +935,9 @@ stages:
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
+
+marks:
+  - cluster
 
 stages:
 
@@ -1345,6 +1372,7 @@ stages:
 test_name: GET /cluster/{node_id}/info
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1383,6 +1411,7 @@ stages:
 test_name: GET /cluster/{node_id}/logs
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1600,6 +1629,7 @@ stages:
 test_name: GET /cluster/{node_id}/logs/summary
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1630,6 +1660,7 @@ stages:
 test_name: GET /cluster/{node_id}/stats
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1677,6 +1708,9 @@ stages:
 ---
 test_name: GET /cluster/wrong_node/stats
 
+marks:
+  - cluster
+
 stages:
 
   - name: Unexisting_node stats
@@ -1703,6 +1737,7 @@ stages:
 test_name: GET /cluster/{node_id}/stats/analysisd
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1779,6 +1814,7 @@ stages:
 test_name: GET /cluster/{node_id}/stats/hourly
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1811,6 +1847,7 @@ stages:
 test_name: GET /cluster/{node_id}/stats/remoted
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1850,6 +1887,7 @@ stages:
 test_name: GET /cluster/{node_id}/stats/weekly
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1901,6 +1939,7 @@ stages:
 test_name: GET /cluster/{node_id}/status
 
 marks:
+  - cluster
   - parametrize:
       key: node_id
       vals:
@@ -1929,6 +1968,9 @@ stages:
 
 ---
 test_name: PUT /cluster/restart
+
+marks:
+  - cluster
 
 stages:
 
@@ -1977,6 +2019,9 @@ stages:
 
 ---
 test_name: PUT /cluster/{node_id}/configuration
+
+marks:
+  - cluster
 
 stages:
 

@@ -3,6 +3,8 @@ test_name: PUT /active-response/{:agent_id}
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -193,6 +195,10 @@ stages:
 
 ---
 test_name: PUT /active-response
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

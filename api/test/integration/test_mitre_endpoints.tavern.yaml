@@ -3,6 +3,8 @@ test_name: GET /mitre/metadata
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -33,6 +35,8 @@ test_name: GET /mitre/mitigations
 
 marks:
   - base_mitigation_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -353,6 +357,8 @@ test_name: GET /mitre/references
 
 marks:
   - base_reference_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -642,6 +648,8 @@ test_name: GET /mitre/tactics
 
 marks:
   - base_tactic_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -943,6 +951,8 @@ test_name: GET /mitre/techniques
 
 marks:
   - base_technique_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -1252,6 +1262,10 @@ stages:
 ---
 test_name: GET /mitre/groups
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Show one group
@@ -1553,6 +1567,10 @@ stages:
 
 ---
 test_name: GET /mitre/software
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

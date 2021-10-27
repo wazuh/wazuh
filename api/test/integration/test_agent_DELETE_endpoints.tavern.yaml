@@ -3,6 +3,8 @@ test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -129,6 +131,10 @@ stages:
 ---
 test_name: DELETE /agents/{agent_id}/group
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
     # DELETE /agents/000/group
@@ -208,6 +214,10 @@ stages:
 
 ---
 test_name: DELETE /agents/group
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -355,6 +365,10 @@ stages:
 ---
 test_name: DELETE /groups (only one group)
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
     # DELETE /groups?groups_list=wrong_group
@@ -468,6 +482,10 @@ stages:
 ---
 test_name: DELETE /groups (several groups)
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
     # DELETE /groups?groups_list=wrong1,wrong2
@@ -544,6 +562,10 @@ stages:
 
 ---
 test_name: DELETE /agents
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 

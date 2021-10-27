@@ -3,6 +3,8 @@ test_name: GET /syscheck/000
 
 marks:
   - base_tests
+  - standalone
+  - cluster
 
 stages:
 
@@ -407,6 +409,8 @@ stages:
 test_name: GET /syscheck/000
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -465,6 +469,10 @@ stages:
 ---
 test_name: GET /syscheck/000/last_scan
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
     # GET /syscheck/000/last_scan
@@ -489,6 +497,10 @@ stages:
 
 ---
 test_name: PUT /syscheck
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -543,6 +555,10 @@ stages:
 
 ---
 test_name: GET /syscheck/002
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
@@ -900,6 +916,8 @@ stages:
 test_name: GET /syscheck/002
 
 marks:
+  - standalone
+  - cluster
   - parametrize:
       key: field
       vals:
@@ -958,6 +976,10 @@ stages:
 ---
 test_name: GET /syscheck/002/last_scan
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
     # GET /syscheck/002/last_scan
@@ -983,6 +1005,10 @@ stages:
 ---
 test_name: DELETE /syscheck
 
+marks:
+  - standalone
+  - cluster
+
 stages:
 
   - name: Try to delete syscheck scans in agent 001 (Failed, agent is newer than expected)
@@ -1007,6 +1033,10 @@ stages:
           total_failed_items: 1
 ---
 test_name: PUT /syscheck
+
+marks:
+  - standalone
+  - cluster
 
 stages:
 
