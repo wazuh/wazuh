@@ -927,6 +927,51 @@ int test_setup_valid_msg_operation_as_number(void **state)
     return 0;
 }
 
+int test_setup_null_text_field_valid_msg(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"hotfix\":\"KB123456\",\"checksum\":\"NULL\"}}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_null_field_valid_msg(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"hotfix\":\"KB123456\",\"checksum\":null}}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_null_text_variant_field_valid_msg(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"hotfix\":\"KB123456\",\"checksum\":\"_NULL_\"}}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_cleanup(void **state)
 {
     Eventinfo *lf = *state;
@@ -995,8 +1040,8 @@ void test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character(void *
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB12?3456|abcdef?0123456789|";
-    const char *result = "ok NULL|KB12?3456|abcdef?0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB12\uffff3456|abcdef\uffff0123456789|";
+    const char *result = "ok NULL|KB12\uffff3456|abcdef\uffff0123456789|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1465,6 +1510,60 @@ void test_syscollector_dbsync_valid_msg_big_size(void **state)
     assert_int_not_equal(ret, 1);
 }
 
+void test_syscollector_dbsync_null_text_valid_msg(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB123456|_NULL_|";
+    const char *result = "ok NULL|KB123456|_NULL_|";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_null_valid_msg(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB123456||";
+    const char *result = "ok NULL|KB123456||";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_null_text_variant_valid_msg(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB123456|__NULL__|";
+    const char *result = "ok NULL|KB123456|__NULL__|";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -1502,6 +1601,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_null_agentid, test_setup_valid_msg_null_agentid, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_data_as_value, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_big_size, test_setup_hotfixes_valid_msg_big_size, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_text_variant_valid_msg, test_setup_null_text_variant_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_text_valid_msg, test_setup_null_text_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_valid_msg, test_setup_null_field_valid_msg, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }

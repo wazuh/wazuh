@@ -53,26 +53,29 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
         if (NULL != stmt) {
             char * data_temp = NULL;
             os_strdup(data, data_temp);
-            char * r = NULL;
-            char *field_value = strtok_r(data_temp, FIELD_SEPARATOR_DBSYNC, &r);
+            char * curr = data_temp;
+            char *next = strchr(curr, *FIELD_SEPARATOR_DBSYNC);
             for (column = kv_value->column_list; column ; column=column->next) {
                 if (column->value.is_old_implementation) {
                     if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, 0)) {
                         merror(DB_AGENT_SQL_ERROR, wdb->id, sqlite3_errmsg(wdb->db));
                     }
                 } else {
-                    if (NULL != field_value) {
-                        if (!wdb_dbsync_stmt_bind_from_string(stmt, column->value.index, column->value.type, field_value, "NULL")) {
+                    if (NULL != next) {
+                        *next++ = '\0';
+                        if (!wdb_dbsync_stmt_bind_from_string(stmt, column->value.index, column->value.type, curr, "NULL")) {
                             merror(DB_AGENT_SQL_ERROR, wdb->id, sqlite3_errmsg(wdb->db));
                             has_error = true;
                         }
                         if (column->next) {
-                            field_value = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
+                            curr = next;
+                            next = strchr(curr, *FIELD_SEPARATOR_DBSYNC);
                         }
                     }
                 }
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) && !has_error;
+
+            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt);
             os_free(data_temp);
         } else {
             merror(DB_CACHE_NULL_STMT);
@@ -90,7 +93,8 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
         strcat(query, kv_value->value);
         strcat(query, " SET ");
 
-        const size_t size = sizeof(char*) * (os_strcnt(data, '|') + 1);
+        const size_t size = sizeof(char*) * (os_strcnt(data, *FIELD_SEPARATOR_DBSYNC));
+        // field_values vector will be used to point to the beginning of each field.
         char ** field_values = NULL;
         os_calloc(1, size + 1, field_values);
         char **curr = field_values;
@@ -98,18 +102,20 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
         char * data_temp = NULL;
         os_strdup(data, data_temp);
 
-        char *r = NULL;
-        char *tok = strtok_r(data_temp, FIELD_SEPARATOR_DBSYNC, &r);
+        char *curr_data = data_temp;
+        *curr = curr_data;
+        char *next = strchr(curr_data, *FIELD_SEPARATOR_DBSYNC);
+        // This loop replace '|' with '\0' and assign the beggining of each string to field_values vector.
+        while (NULL != next) {
+            *curr = curr_data;
+            *next++ = '\0';
 
-        while (NULL != tok) {
-            *curr = tok;
-            tok = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
+            curr_data = next;
+            next = strchr(curr_data, *FIELD_SEPARATOR_DBSYNC);
             ++curr;
         }
 
-        if (curr) {
-            *curr = NULL;
-        }
+        *curr = NULL;
 
         bool first_condition_element = true;
         curr = field_values;
@@ -134,7 +140,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
 
         first_condition_element = true;
         for (column = kv_value->column_list; column ; column=column->next) {
-            if (column->value.is_pk) {
+            if (column->value.is_pk && !column->value.is_old_implementation) {
                 if (first_condition_element) {
                     strcat(query, column->value.name);
                     strcat(query, "=?");
@@ -180,7 +186,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
                     ++curr;
                 }
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) && !has_error;
+            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt) && sqlite3_changes(wdb->db) > 0;
         } else {
             merror(DB_CACHE_NULL_STMT);
         }
@@ -223,29 +229,32 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
         if (NULL != stmt) {
             char *data_temp = NULL;
             os_strdup(data, data_temp);
-            char * r = NULL;
-            char *field_value = strtok_r(data_temp, FIELD_SEPARATOR_DBSYNC, &r);
+
+            char * curr = data_temp;
+            char *next = strchr(curr, *FIELD_SEPARATOR_DBSYNC);
 
             struct column_list const *column = NULL;
             int index = 1;
             bool has_error = false;
             for (column = kv_value->column_list; column ; column=column->next) {
                 if (!column->value.is_old_implementation) {
-                    if (NULL != field_value) {
+                    if (NULL != next) {
+                        *next++ = '\0';
                         if (column->value.is_pk) {
-                            if (!wdb_dbsync_stmt_bind_from_string(stmt, index, column->value.type, field_value, "NULL")){
+                            if (!wdb_dbsync_stmt_bind_from_string(stmt, index, column->value.type, curr, "NULL")){
                                 merror(DB_AGENT_SQL_ERROR, wdb->id, sqlite3_errmsg(wdb->db));
                                 has_error = true;
                             }
                             ++index;
                         }
                         if (column->next) {
-                            field_value = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
+                            curr = next;
+                            next = strchr(curr, *FIELD_SEPARATOR_DBSYNC);
                         }
                     }
                 }
             }
-            ret_val = SQLITE_DONE == wdb_step(stmt) && !has_error;
+            ret_val = !has_error && SQLITE_DONE == wdb_step(stmt) && sqlite3_changes(wdb->db) > 0;
             os_free(data_temp);
         } else {
             merror(DB_CACHE_NULL_STMT);
@@ -299,22 +308,24 @@ void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data,
         if (NULL != stmt) {
             char * data_temp = NULL;
             os_strdup(data, data_temp);
-            char * r = NULL;
-            char *field_value = strtok_r(data_temp, FIELD_SEPARATOR_DBSYNC, &r);
+            char * curr = data_temp;
+            char *next = strchr(curr, *FIELD_SEPARATOR_DBSYNC);
 
             struct column_list const *column = NULL;
             int index = 1;
             for (column = kv_value->column_list; column ; column=column->next) {
                 if (!column->value.is_old_implementation) {
-                    if (NULL != field_value) {
+                    if (NULL != next) {
+                        *next++ = '\0';
                         if (column->value.is_pk) {
-                            if (!wdb_dbsync_stmt_bind_from_string(stmt, index, column->value.type, field_value, "NULL")){
+                            if (!wdb_dbsync_stmt_bind_from_string(stmt, index, column->value.type, curr, "NULL")){
                                 merror(DB_AGENT_SQL_ERROR, wdb->id, sqlite3_errmsg(wdb->db));
                             }
                             ++index;
                         }
                         if (column->next) {
-                            field_value = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
+                            curr = next;
+                            next = strchr(curr, *FIELD_SEPARATOR_DBSYNC);
                         }
                     }
                 }
@@ -326,15 +337,22 @@ void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data,
                     for (column = kv_value->column_list; column ; column=column->next) {
                         if (!column->value.is_old_implementation) {
                             if (FIELD_TEXT == column->value.type) {
-                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%s", (char *)sqlite3_column_text(stmt, index));
+                                char * value = wstr_replace((char *)sqlite3_column_text(stmt, index),
+                                                            FIELD_SEPARATOR_DBSYNC, FIELD_SEPARATOR_DBSYNC_ESCAPE);
+                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%s",
+                                                value);
+                                os_free(value);
                             }
                             else if (FIELD_INTEGER == column->value.type) {
-                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%d", sqlite3_column_int(stmt, index));
+                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%d",
+                                                sqlite3_column_int(stmt, index));
                             }
                             else if (FIELD_REAL == column->value.type) {
-                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%f", sqlite3_column_double(stmt, index));
+                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%f",
+                                                sqlite3_column_double(stmt, index));
                             }
-                            len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, FIELD_SEPARATOR_DBSYNC);
+                            len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1,
+                                            FIELD_SEPARATOR_DBSYNC);
                             ++index;
                         }
                     }
@@ -362,16 +380,20 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
     if (NULL != stmt && NULL != value) {
 
         const char * replaced_value = NULL != replace && strcmp(value, replace) == 0 ? default_values[type] : value;
+        char * replaced_value_escape_null = wstr_replace(replaced_value, "_NULL_", "NULL");
+        char * replaced_value_escape_pipe = wstr_replace(replaced_value_escape_null, FIELD_SEPARATOR_DBSYNC_ESCAPE,
+                                                         FIELD_SEPARATOR_DBSYNC);
+        os_free(replaced_value_escape_null);
 
         switch (type) {
         case FIELD_TEXT:
-            if (SQLITE_OK == sqlite3_bind_text(stmt, index, replaced_value, -1, NULL)) {
+            if (SQLITE_OK == sqlite3_bind_text(stmt, index, replaced_value_escape_pipe, -1, SQLITE_TRANSIENT)) {
                 ret_val = true;
             }
             break;
         case FIELD_INTEGER: {
             char * endptr;
-            const int integer_number = (int) strtol(replaced_value, &endptr, 10);
+            const int integer_number = (int) strtol(replaced_value_escape_pipe, &endptr, 10);
             if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_int(stmt, index, integer_number)) {
                 ret_val = true;
             }
@@ -379,13 +401,14 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
         }
         case FIELD_REAL: {
             char * endptr;
-            const double real_value = strtod(replaced_value, &endptr);
+            const double real_value = strtod(replaced_value_escape_pipe, &endptr);
             if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
                 ret_val = true;
             }
             break;
         }
         }
+        os_free(replaced_value_escape_pipe);
     }
 
     return ret_val;
