@@ -41,7 +41,7 @@ int _close_sock(keystore * keys, int sock);
 
 STATIC void * close_fp_main(void * args);
 
-/* Status of keypolling wodle */
+/* Status of agent key request */
 static char key_request_available = 0;
 
 /* Decode hostinfo input queue */
@@ -593,7 +593,7 @@ int _close_sock(keystore * keys, int sock) {
 
 int key_request_connect() {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(AUTH_LOCAL_SOCK, SOCK_DGRAM, OS_MAXSTR);
+    return OS_ConnectUnixDomain(KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
 #else
     return -1;
 #endif

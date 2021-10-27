@@ -7,12 +7,12 @@
  * Foundation
  */
 
-#include "os_auth/auth.h"
-#include "os_net/os_net.h"
 #include "shared.h"
-#include "key_request_op.h"
+#include "auth.h"
 
 static OSHash *request_hash = NULL;
+/* Key request queue */
+static w_queue_t * request_queue;
 
 const char *exec_params[2] = { "id", "ip" };
 
@@ -24,6 +24,14 @@ key_request_agent_info * w_key_request_agent_info_init() {
     agent->key = NULL;
     agent->ip = NULL;
     return agent;
+}
+
+void w_key_request_agent_info_destroy(key_request_agent_info *agent) {
+    os_free(agent->id);
+    os_free(agent->name);
+    os_free(agent->key);
+    os_free(agent->ip);
+    os_free(agent);
 }
 
 key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **error_msg) {
@@ -40,6 +48,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
 
     if (json_field = cJSON_GetObjectItem(agent_infoJSON, "error"), !json_field) {
         mdebug1("Malformed JSON output received. No 'error' field found");
+        os_free(agent);
         return NULL;
     }
 
@@ -52,18 +61,21 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
         } else {
             *error_msg = error_message->valuestring;
         }
+        os_free(agent);
         return NULL;
     }
 
     data_json = cJSON_GetObjectItem(agent_infoJSON, "data");
     if (!data_json) {
         mdebug1("Agent data not found.");
+        os_free(agent);
         return NULL;
     }
 
     agent_id = cJSON_GetObjectItem(data_json, "id");
     if (!agent_id) {
         mdebug1("Agent ID not found.");
+        os_free(agent);
         return NULL;
     } else {
         agent->id = agent_id->valuestring;
@@ -72,6 +84,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     agent_name = cJSON_GetObjectItem(data_json, "name");
     if (!agent_name) {
         mdebug1("Agent name not found.");
+        os_free(agent);
         return NULL;
     } else {
         agent->name = agent_name->valuestring;
@@ -80,6 +93,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     agent_address = cJSON_GetObjectItem(data_json, "ip");
     if (!agent_address) {
         mdebug1("Agent address not found.");
+        os_free(agent);
         return NULL;
     } else {
         agent->ip = agent_address->valuestring;
@@ -88,6 +102,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     agent_key = cJSON_GetObjectItem(data_json, "key");
     if (!agent_key) {
         mdebug1("Agent key not found.");
+        os_free(agent);
         return NULL;
     } else {
         agent->key = agent_key->valuestring;
@@ -166,14 +181,6 @@ char * keyrequest_exec_output(request_type_t type, char *request) {
         return NULL;
     }
 
-    // Temp
-    if (chroot("/bin") < 0) {
-        error_flag = 1;
-    }
-    if (chroot("../..") < 0) {
-        error_flag = 1;
-    }
-
     switch (wm_exec(command, &output, &result_code, config.key_request.timeout, NULL)) {
         case 0:
             if (result_code != 0) {
@@ -194,11 +201,6 @@ char * keyrequest_exec_output(request_type_t type, char *request) {
             }
     }
 
-    // Temp
-    if (Privsep_Chroot("/var/ossec") < 0) {
-        merror_exit(CHROOT_ERROR, "/var/ossec", errno, strerror(errno));
-    }
-
     os_free(command);
 
     if (error_flag) {
@@ -209,12 +211,14 @@ char * keyrequest_exec_output(request_type_t type, char *request) {
     return output;
 }
 
-void* run_key_request_main(w_queue_t * request_queue) {
+void* run_key_request_main(__attribute__((unused)) void *arg) {
     int sock;
     int recv;
     unsigned int i;
     char buffer[OS_MAXSTR + 1];
     char * copy;
+
+    authd_sigblock();
 
     // If module is disabled, exit
     if (config.key_request.enabled) {
@@ -235,8 +239,8 @@ void* run_key_request_main(w_queue_t * request_queue) {
     /* Init the queue input */
     request_queue = queue_init(config.key_request.queue_size);
 
-    if ((sock = StartMQ(AUTH_LOCAL_SOCK, READ, 0)) < 0) {
-        merror(QUEUE_ERROR, AUTH_LOCAL_SOCK, strerror(errno));
+    if ((sock = StartMQ(KEY_REQUEST_SOCK, READ, 0)) < 0) {
+        merror(QUEUE_ERROR, KEY_REQUEST_SOCK, strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -254,14 +258,11 @@ void* run_key_request_main(w_queue_t * request_queue) {
     }
 
     for(i = 0; i < config.key_request.threads;i++){
-        w_create_thread(w_request_thread,request_queue);
+        w_create_thread(w_request_thread, NULL);
     }
 
-    while (1) {
-
+    while (running) {
         if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer),recv) {
-            minfo("Buffer tiene el siguiente contenido - %s por socket %d", buffer, sock);
-
             if(OSHash_Get_ex(request_hash,buffer)){
                 mdebug2("Request '%s' already being processed. Discarding...",buffer);
                 continue;
@@ -288,6 +289,7 @@ void* run_key_request_main(w_queue_t * request_queue) {
             }
         }
     }
+    close(sock);
     return NULL;
 }
 
@@ -310,7 +312,7 @@ int w_key_request_dispatch(char * buffer) {
     } else {
         mdebug1("Wrong type of request");
         OSHash_Delete_ex(request_hash,buffer);
-        return -1;
+        return OS_INVALID;
     }
 
     switch (type) {
@@ -321,7 +323,7 @@ int w_key_request_dispatch(char * buffer) {
             if(strlen(request) > 8) {
                 mdebug1("Agent ID is too long");
                 OSHash_Delete_ex(request_hash,buffer);
-                return -1;
+                return OS_INVALID;
             }
             break;
 
@@ -332,14 +334,14 @@ int w_key_request_dispatch(char * buffer) {
             if (strlen(request) > 19) {
                 mdebug1("Agent IP is too long");
                 OSHash_Delete_ex(request_hash,buffer);
-                return -1;
+                return OS_INVALID;
             }
             break;
 
         default:
             mdebug1("Invalid request");
             OSHash_Delete_ex(request_hash,buffer);
-            return -1;
+            return OS_INVALID;
     }
 
     /* Send request to external executable by socket */
@@ -351,7 +353,7 @@ int w_key_request_dispatch(char * buffer) {
             mdebug2("Socket output: %s", output);
         } else {
             OSHash_Delete_ex(request_hash,buffer);
-            return -1;
+            return OS_INVALID;
         }
     } else {
 
@@ -361,7 +363,7 @@ int w_key_request_dispatch(char * buffer) {
             mdebug2("Exec output: %s", output);
         } else {
             OSHash_Delete_ex(request_hash,buffer);
-            return -1;
+            return OS_INVALID;
         }
     }
 
@@ -376,13 +378,13 @@ int w_key_request_dispatch(char * buffer) {
         key_request_agent_info *agent = get_agent_info_from_json(agent_infoJSON, &error_msg);
 
         if (!agent) {
-            cJSON_Delete (agent_infoJSON);
-            OSHash_Delete_ex(request_hash,buffer);
             if (error_msg) {
                 mdebug1("Could not get a key from %s %s. Error: '%s'.", type == W_TYPE_ID ? "ID" : "IP",
                         request, error_msg && *error_msg != '\0' ? error_msg : "unknown");
             }
-            return -1;
+            cJSON_Delete (agent_infoJSON);
+            OSHash_Delete_ex(request_hash,buffer);
+            return OS_INVALID;
         }
 
         char response[OS_SIZE_2048] = {'\0'};
@@ -404,6 +406,9 @@ int w_key_request_dispatch(char * buffer) {
                 if (index = OS_AddNewAgent(&keys, agent->id, agent->name, agent->ip, agent->key), index < 0) {
                     merror("Unable to add agent: %s (internal error)", agent->name);
                     snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s", agent->name);
+                    OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+                    cJSON_Delete (agent_infoJSON);
+                    OSHash_Delete_ex(request_hash,buffer);
                     return OS_INVALID;
                 } else {
                     add_insert(keys.keyentries[keys.keysize - 1], NULL);
@@ -416,16 +421,19 @@ int w_key_request_dispatch(char * buffer) {
         }
 
         cJSON_Delete(agent_infoJSON);
+        os_free(agent);
     }
 
     OSHash_Delete_ex(request_hash,buffer);
     return 0;
 } 
 
-void * w_request_thread(w_queue_t * request_queue) {
+void * w_request_thread(__attribute__((unused)) void *arg) {
     char *msg = NULL;
 
-    while(1) {
+    authd_sigblock();
+
+    while (running) {
 
         /* Receive request from queue */
         if (msg = queue_pop_ex(request_queue), msg) {
@@ -435,16 +443,14 @@ void * w_request_thread(w_queue_t * request_queue) {
             os_free(msg);
         }
     }
+    return NULL;
 }
 
 void * w_socket_launcher(void * args) {
     char * exec_path = (char *)args;
     char ** argv;
-    char buffer[1024];
-    time_t time_started;
-    wfd_t * wfd;
+    char *output;
     int wstatus;
-    char * end;
 
     mdebug1("Running integration daemon: %s", exec_path);
 
@@ -453,63 +459,37 @@ void * w_socket_launcher(void * args) {
         pthread_exit(NULL);
     }
 
+    authd_sigblock();
+
     // We check that the process is up, otherwise we run it again.
-    while(1) {
+    while (running) {
 
         // Run integration
-        if (wfd = wpopenv(argv[0], argv, W_BIND_STDERR), !wfd) {
-            mwarn("Couldn not execute '%s'. Trying again in %d seconds.", exec_path, RELAUNCH_TIME);
-            sleep(RELAUNCH_TIME);
-            continue;
+        switch (wm_exec(argv, &output, &wstatus, config.key_request.timeout, NULL)) {
+            case 0:
+                if (wstatus != 0) {
+                    os_free(output);
+                    mwarn("Key request integration (%s) returned code %d.", config.key_request.exec_path, wstatus);
+                }
+            break;
+            case KR_ERROR_TIMEOUT:
+                os_free(output);
+                mwarn("Timeout received while running key request integration (%s)", config.key_request.exec_path);
+            break;
+            default:
+                os_free(output);
+                if (wstatus == EXECVE_ERROR) {
+                    merror("Cannot run key request integration (%s): path is invalid or file has insufficient permissions. Retrying in %d seconds.", exec_path, RELAUNCH_TIME);
+                    sleep(RELAUNCH_TIME);
+                } else {
+                    mwarn("Error executing [%s]", config.key_request.exec_path);
+                }
         }
 
-#ifdef WIN32
-        wm_append_handle(wfd->pinfo.hProcess);
-#else
-        if (0 <= wfd->pid) {
-            wm_append_sid(wfd->pid);
-        }
-#endif
-
-        time_started = time(NULL);
-
-        // Pick stderr
-        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
-
-            // Remove newline
-            if (end = strchr(buffer, '\n'), end) {
-                *end = '\0';
-            }
-
-            // Dump into the log
-            mdebug1("Integration STDERR: %s", buffer);
-        }
-#ifdef WIN32
-        wm_remove_handle(wfd->pinfo.hProcess);
-#else
-        if (0 <= wfd->pid) {
-            wm_remove_sid(wfd->pid);
-        }
-#endif
-        // At this point, the process exited
-        wstatus = wpclose(wfd);
-
-        wstatus = WEXITSTATUS(wstatus);
-
-        if (wstatus == EXECVE_ERROR) {
-            // 0x7F means error in exec
-            merror("Cannot run key request integration (%s): path is invalid or file has insufficient permissions. Retrying in %d seconds.", exec_path, RELAUNCH_TIME);
-            sleep(RELAUNCH_TIME);
-        } else if (time(NULL) - time_started < 10) {
-            mwarn("Key request integration (%s) returned code %d. Retrying in %d seconds.", exec_path, wstatus, RELAUNCH_TIME);
-            sleep(RELAUNCH_TIME);
-        } else {
-            mwarn("Key request integration (%s) returned code %d. Restarting.", exec_path, wstatus);
-        }
     }
 
     free_strarray(argv);
-
+    
     return NULL;
 }
 

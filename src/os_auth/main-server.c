@@ -31,7 +31,6 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
-#include "key_request_op.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -59,9 +58,6 @@ static int remote_sock = -1;
 
 /* client queue */
 static w_queue_t *client_queue = NULL;
-
-/* Key request queue */
-static w_queue_t * request_queue = NULL;
 
 volatile int write_pending = 0;
 volatile int running = 1;
@@ -533,9 +529,7 @@ int main(int argc, char **argv)
     }
 
     if (config.key_request.enabled) {
-        request_queue = queue_init(AUTH_POOL);
-
-        if (status = pthread_create(&thread_key_request, NULL, (void *)&run_key_request_main, request_queue), status != 0) {
+        if (status = pthread_create(&thread_key_request, NULL, (void *)&run_key_request_main, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
             return EXIT_FAILURE;
         }
@@ -558,7 +552,6 @@ int main(int argc, char **argv)
         pthread_join(thread_key_request, NULL);
     }
 
-    queue_free(request_queue);
     queue_free(client_queue);
     minfo("Exiting...");
     return (0);
