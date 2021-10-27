@@ -1040,8 +1040,8 @@ void test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character(void *
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB12?3456|abcdef?0123456789|";
-    const char *result = "ok NULL|KB12?3456|abcdef?0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB12\uffff3456|abcdef\uffff0123456789|";
+    const char *result = "ok NULL|KB12\uffff3456|abcdef\uffff0123456789|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);

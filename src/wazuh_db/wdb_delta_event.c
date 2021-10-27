@@ -93,7 +93,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
         strcat(query, kv_value->value);
         strcat(query, " SET ");
 
-        const size_t size = sizeof(char*) * (os_strcnt(data, '|') + 1);
+        const size_t size = sizeof(char*) * (os_strcnt(data, *FIELD_SEPARATOR_DBSYNC));
         // field_values vector will be used to point to the beginning of each field.
         char ** field_values = NULL;
         os_calloc(1, size + 1, field_values);
@@ -140,7 +140,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
 
         first_condition_element = true;
         for (column = kv_value->column_list; column ; column=column->next) {
-            if (column->value.is_pk) {
+            if (column->value.is_pk && !column->value.is_old_implementation) {
                 if (first_condition_element) {
                     strcat(query, column->value.name);
                     strcat(query, "=?");
@@ -186,7 +186,6 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
                     ++curr;
                 }
             }
-
             ret_val = !has_error && SQLITE_DONE == wdb_step(stmt) && sqlite3_changes(wdb->db) > 0;
         } else {
             merror(DB_CACHE_NULL_STMT);
@@ -338,15 +337,22 @@ void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data,
                     for (column = kv_value->column_list; column ; column=column->next) {
                         if (!column->value.is_old_implementation) {
                             if (FIELD_TEXT == column->value.type) {
-                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%s", (char *)sqlite3_column_text(stmt, index));
+                                char * value = wstr_replace((char *)sqlite3_column_text(stmt, index),
+                                                            FIELD_SEPARATOR_DBSYNC, FIELD_SEPARATOR_DBSYNC_ESCAPE);
+                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%s",
+                                                value);
+                                os_free(value);
                             }
                             else if (FIELD_INTEGER == column->value.type) {
-                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%d", sqlite3_column_int(stmt, index));
+                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%d",
+                                                sqlite3_column_int(stmt, index));
                             }
                             else if (FIELD_REAL == column->value.type) {
-                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%f", sqlite3_column_double(stmt, index));
+                                len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, "%f",
+                                                sqlite3_column_double(stmt, index));
                             }
-                            len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1, FIELD_SEPARATOR_DBSYNC);
+                            len += snprintf(output + len, OS_SIZE_6144 - len - WDB_RESPONSE_OK_SIZE - 1,
+                                            FIELD_SEPARATOR_DBSYNC);
                             ++index;
                         }
                     }
@@ -375,16 +381,19 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
 
         const char * replaced_value = NULL != replace && strcmp(value, replace) == 0 ? default_values[type] : value;
         char * replaced_value_escape_null = wstr_replace(replaced_value, "_NULL_", "NULL");
+        char * replaced_value_escape_pipe = wstr_replace(replaced_value_escape_null, FIELD_SEPARATOR_DBSYNC_ESCAPE,
+                                                         FIELD_SEPARATOR_DBSYNC);
+        os_free(replaced_value_escape_null);
 
         switch (type) {
         case FIELD_TEXT:
-            if (SQLITE_OK == sqlite3_bind_text(stmt, index, replaced_value_escape_null, -1, SQLITE_TRANSIENT)) {
+            if (SQLITE_OK == sqlite3_bind_text(stmt, index, replaced_value_escape_pipe, -1, SQLITE_TRANSIENT)) {
                 ret_val = true;
             }
             break;
         case FIELD_INTEGER: {
             char * endptr;
-            const int integer_number = (int) strtol(replaced_value_escape_null, &endptr, 10);
+            const int integer_number = (int) strtol(replaced_value_escape_pipe, &endptr, 10);
             if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_int(stmt, index, integer_number)) {
                 ret_val = true;
             }
@@ -392,14 +401,14 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
         }
         case FIELD_REAL: {
             char * endptr;
-            const double real_value = strtod(replaced_value_escape_null, &endptr);
+            const double real_value = strtod(replaced_value_escape_pipe, &endptr);
             if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
                 ret_val = true;
             }
             break;
         }
         }
-        os_free(replaced_value_escape_null);
+        os_free(replaced_value_escape_pipe);
     }
 
     return ret_val;
