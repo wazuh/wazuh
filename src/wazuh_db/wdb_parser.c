@@ -1282,17 +1282,28 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
         snprintf(output, OS_MAXSTR + 1, "ok");
         return 0;
     } else if (strncmp(curr, "integrity_check_", 16) == 0) {
-        switch (wdbi_query_checksum(wdb, component, curr, next)) {
-        case -1:
+        dbsync_msg action = INTEGRITY_CLEAR;
+        if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_GLOBAL])) {
+            action = INTEGRITY_CHECK_GLOBAL;
+        }
+        else if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_LEFT])) {
+            action = INTEGRITY_CHECK_LEFT;
+        }
+        else if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_RIGHT])) {
+            action = INTEGRITY_CHECK_RIGHT;
+        }
+
+        switch (wdbi_query_checksum(wdb, component, action, next)) {
+        case INTEGRITY_SYNC_ERR:
             mdebug1("DB(%s) Cannot query FIM range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
             return -1;
 
-        case 0:
+        case INTEGRITY_SYNC_NO_DATA:
             snprintf(output, OS_MAXSTR + 1, "ok no_data");
             break;
 
-        case 1:
+        case INTEGRITY_SYNC_CKS_FAIL:
             snprintf(output, OS_MAXSTR + 1, "ok checksum_fail");
             break;
 
@@ -1397,17 +1408,28 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         return 0;
     }
     if (strncmp(curr, "integrity_check_", 16) == 0) {
-        switch (wdbi_query_checksum(wdb, component, curr, next)) {
-        case -1:
+        dbsync_msg action = INTEGRITY_CLEAR;
+        if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_GLOBAL])) {
+            action = INTEGRITY_CHECK_GLOBAL;
+        }
+        else if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_LEFT])) {
+            action = INTEGRITY_CHECK_LEFT;
+        }
+        else if (0 == strcmp(curr, INTEGRITY_COMMANDS[INTEGRITY_CHECK_RIGHT])) {
+            action = INTEGRITY_CHECK_RIGHT;
+        }
+
+        switch (wdbi_query_checksum(wdb, component, action, next)) {
+        case INTEGRITY_SYNC_ERR:
             mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
             return -1;
 
-        case 0:
+        case INTEGRITY_SYNC_NO_DATA:
             snprintf(output, OS_MAXSTR + 1, "ok no_data");
             break;
 
-        case 1:
+        case INTEGRITY_SYNC_CKS_FAIL:
             snprintf(output, OS_MAXSTR + 1, "ok checksum_fail");
             break;
 
