@@ -694,12 +694,12 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
                         if args.json_inline:
                             msg = '{"azure_tag": "azure-storage"'
                             if args.storage_tag:
-                                msg = f'{msg}, "azure_storage_tag": {args.storage_tag}'
+                                msg = f'{msg}, "azure_storage_tag": "{args.storage_tag}"'
                             msg = f'{msg}, {line[1:]}'
                         else:
                             msg = "azure_tag: azure-storage."
                             if args.storage_tag:
-                                msg = f'{msg} azure_storage_tag: {args.storage_tag}.'
+                                msg = f'{msg} azure_storage_tag: "{args.storage_tag}".'
                             msg = f'{msg} {line}'
                         logging.info("Storage: Sending event by socket.")
                         send_message(msg)
