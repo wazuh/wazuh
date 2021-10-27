@@ -1974,11 +1974,14 @@ void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
                 if(strlen(key->valuestring) == 0) {
                     buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
                 } else {
-                    char *value_string = wstr_replace(key->valuestring, FIELD_SEPARATOR_DBSYNC, "?");
-                    buffer_push(msg, value_string, strlen(value_string));
+                    char *value_string = wstr_replace(key->valuestring, FIELD_SEPARATOR_DBSYNC,
+                                                      FIELD_SEPARATOR_DBSYNC_ESCAPE);
+                    char *final_text_value = wstr_replace(value_string, "NULL", "_NULL_");
                     os_free(value_string);
+                    buffer_push(msg, final_text_value, strlen(final_text_value));
+                    os_free(final_text_value);
                 }
-            } else {
+            } else if (!cJSON_IsNull(key)) {
                 buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
             }
         } else {
@@ -1994,12 +1997,19 @@ void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
 
 void fill_event_alert( Eventinfo * lf, const struct deltas_fields_match_list * field_list, const char * operation, char * response) {
     char *r = NULL;
+    const bool is_escaped_pipe = strstr(response, FIELD_SEPARATOR_DBSYNC_ESCAPE);
     char * field_value = strtok_r(response, FIELD_SEPARATOR_DBSYNC, &r);
     struct deltas_fields_match_list const * head = field_list;
     while (NULL != head) {
         if (field_value) {
             if (strlen(head->current.value) != 0) {
-                fillData(lf, head->current.value, field_value);
+                if (is_escaped_pipe) {
+                    char *value = wstr_replace(field_value, FIELD_SEPARATOR_DBSYNC_ESCAPE, FIELD_SEPARATOR_DBSYNC);
+                    fillData(lf, head->current.value, value);
+                    os_free(value);
+                } else {
+                    fillData(lf, head->current.value, field_value);
+                }
             }
             field_value = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
         }
@@ -2033,7 +2043,7 @@ int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) 
 
                     if (msg->status) {
                         ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
-                        if (ret_val != 0 || strcmp(response, "error") == 0) {
+                        if (ret_val != 0 || strncmp(response, "err", 3) == 0) {
                             merror(A_QUERY_ERROR);
                         } else {
                             if (strcmp(operation, "INSERTED") == 0) {
