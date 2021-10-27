@@ -854,6 +854,13 @@ endif
 
 OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
 
+ifeq (${uname_M}, i386)
+ifeq ($(findstring BSD,${uname_S}), BSD)
+	OPENSSL_FLAGS += no-asm
+endif
+endif
+
+
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
