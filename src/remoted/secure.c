@@ -41,7 +41,7 @@ int _close_sock(keystore * keys, int sock);
 
 STATIC void * close_fp_main(void * args);
 
-/* Status of keypolling wodle */
+/* Status of key-request module */
 static char key_request_available = 0;
 
 /* Decode hostinfo input queue */
@@ -54,7 +54,7 @@ void * w_key_request_thread(__attribute__((unused)) void * args);
 static void _push_request(const char *request,const char *type);
 #define push_request(x, y) if (key_request_available) _push_request(x, y);
 
-/* Connect to key polling wodle*/
+/* Connect to key-request module*/
 #define KEY_RECONNECT_INTERVAL 300 // 5 minutes
 static int key_request_connect();
 static int key_request_reconnect();
@@ -632,7 +632,7 @@ int key_request_reconnect() {
                 return socket;
             }
         }
-        mdebug1("Key-polling wodle is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
+        mdebug1("Key-request module is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
         sleep(KEY_RECONNECT_INTERVAL);
     }
 }
