@@ -17,6 +17,7 @@
 #define WDBOUTPUT_SIZE OS_MAXSTR
 
 #define FIELD_SEPARATOR_DBSYNC "|"
+#define FIELD_SEPARATOR_DBSYNC_ESCAPE "\uffff"
 
 /// Enumeration of communication with Wazuh DB status.
 typedef enum wdbc_result {

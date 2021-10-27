@@ -207,8 +207,6 @@ void test_wdb_insert_dbsync_bind_fail(void **state)
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
     expect_string(__wrap__merror, formatted_msg, error_message);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
-
     assert_false(wdb_insert_dbsync(data->wdb, &head->current, "data|1"));
 }
 
@@ -277,9 +275,26 @@ void test_wdb_modify_dbsync_ok(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
 
     assert_true(wdb_modify_dbsync(data->wdb, &head->current, "data1|1|data2|2"));
 }
+
+void test_wdb_modify_dbsync_nochanges(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    struct kv_list const *head = TABLE_MAP_TEST;
+    will_return(__wrap_wdb_get_cache_stmt, 1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
+    will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 0);
+
+    assert_false(wdb_modify_dbsync(data->wdb, &head->current, "data1|1|data2|2"));
+}
+
 
 //
 // wdb_delete_dbsync
@@ -318,7 +333,18 @@ void test_wdb_delete_dbsync_ok(void **state)
     struct kv_list const *head = TABLE_MAP_TEST;
     will_return(__wrap_wdb_get_cache_stmt, 1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 1);
     assert_true(wdb_delete_dbsync(data->wdb, &head->current, "test_1"));
+}
+
+void test_wdb_delete_dbsync_nochanges(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    struct kv_list const *head = TABLE_MAP_TEST;
+    will_return(__wrap_wdb_get_cache_stmt, 1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_sqlite3_changes, 0);
+    assert_false(wdb_delete_dbsync(data->wdb, &head->current, "test_1"));
 }
 
 //
@@ -518,11 +544,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_modify_dbsync_bad_cache, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_modify_dbsync_step_nok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_modify_dbsync_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_modify_dbsync_nochanges, test_setup, test_teardown),
         /* wdb_delete_dbsync */
         cmocka_unit_test_setup_teardown(test_wdb_delete_dbsync_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_delete_dbsync_bad_cache, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_delete_dbsync_step_nok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_delete_dbsync_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_delete_dbsync_nochanges, test_setup, test_teardown),
 
     };
 
