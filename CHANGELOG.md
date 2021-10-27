@@ -47,6 +47,7 @@ All notable changes to this project will be documented in this file.
   - Added Rules and Decoders for TrendMicro Cloud One. ([#10458](https://github.com/wazuh/wazuh/pull/10458))
   - Added Rules for Sophos UTM Firewall. ([#10496](https://github.com/wazuh/wazuh/pull/10496))
   - Added SCA policy for Solaris 11.4. ([#10369](https://github.com/wazuh/wazuh/pull/10369))
+  - Added Rules for Cloudflare WAF. ([#10658](https://github.com/wazuh/wazuh/pull/10496))
 
 ### Changed
 
