@@ -206,6 +206,6 @@ services:
   nginx-lb:
     build:
       context: ./base/nginx-lb
-    image: integration_test_nginx-lb-cluster
+    image: integration_test_nginx-lb
     entrypoint:
       - /scripts/entrypoint.sh

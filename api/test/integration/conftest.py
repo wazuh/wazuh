@@ -113,7 +113,7 @@ def build_and_up(docker_compose_file: str, interval: int = 10, interval_build_en
 
 
 def down_env(docker_compose_file: str):
-    """Stop all Docker environments for the current test.
+    """Stop and remove all Docker containers.
 
     Parameters
     ----------
@@ -307,7 +307,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
     """
 
     def clean_up_env():
-        """Clean temporary folder, save environment logs and status; and stop all Docker containers."""
+        """Clean temporary folder, save environment logs and status; and stop and remove all Docker containers."""
         clean_tmp_folder()
         if request.session.testsfailed > 0:
             save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")

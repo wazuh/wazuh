@@ -161,6 +161,7 @@ services:
   nginx-lb:
     build:
       context: ./base/nginx-lb
-    image: integration_test_nginx-lb-standalone
+    image: integration_test_nginx-lb
     entrypoint:
       - /scripts/entrypoint.sh
+      - disable_cluster
