@@ -557,14 +557,6 @@ void Free_Syscheck(syscheck_config *config);
 void free_directory(directory_t *dir);
 
 /**
- * @brief Transforms an ASCII text to HEX
- *
- * @param input The input text to transform
- * @return The HEX string on success, the original string on failure
- */
-char *check_ascci_hex(char *input);
-
-/**
  * @brief Logs the real time engine status
  *
  */
