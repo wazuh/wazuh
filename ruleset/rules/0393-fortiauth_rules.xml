@@ -21,7 +21,7 @@
     <description>FortiAuth: Authentication pending by user $(dstuser)</description>
   </rule>
 
-  <rule id="44733" level="5">
+  <rule id="44733" level="7">
     <if_sid>44731</if_sid>
     <field name="data.status">Failed</field>
     <description>FortiAuth: Authentication failed by user $(dstuser)</description>
