@@ -262,6 +262,18 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
     }
 
     while (running) {
+        if (config.timeout_sec || config.timeout_usec) {
+            if (OS_SetRecvTimeout(sock, config.timeout_sec, config.timeout_usec) < 0) {
+                static int reported = 0;
+
+                if (!reported) {
+                    int error = errno;
+                    merror("Could not set timeout to internal socket: %s (%d)", strerror(error), error);
+                    reported = 1;
+                }
+            }
+        }
+
         if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer),recv) {
             if(OSHash_Get_ex(request_hash,buffer)){
                 mdebug2("Request '%s' already being processed. Discarding...",buffer);
@@ -448,16 +460,10 @@ void * w_request_thread(__attribute__((unused)) void *arg) {
 
 void * w_socket_launcher(void * args) {
     char * exec_path = (char *)args;
-    char ** argv;
-    char *output;
+    char * output;
     int wstatus;
 
     mdebug1("Running integration daemon: %s", exec_path);
-
-    if (argv = w_strtok(exec_path), !argv) {
-        merror("Could not split integration command: %s", exec_path);
-        pthread_exit(NULL);
-    }
 
     authd_sigblock();
 
@@ -465,7 +471,7 @@ void * w_socket_launcher(void * args) {
     while (running) {
 
         // Run integration
-        switch (wm_exec(argv, &output, &wstatus, config.key_request.timeout, NULL)) {
+        switch (wm_exec(exec_path, &output, &wstatus, config.key_request.timeout, NULL)) {
             case 0:
                 if (wstatus != 0) {
                     os_free(output);
@@ -487,8 +493,6 @@ void * w_socket_launcher(void * args) {
         }
 
     }
-
-    free_strarray(argv);
     
     return NULL;
 }
