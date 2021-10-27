@@ -125,7 +125,7 @@ static struct column_list const TABLE_PORTS[] = {
 #define PORTS_FIELD_COUNT 14
 
 static struct column_list const TABLE_PACKAGES[] = {
-    { .value = { FIELD_INTEGER, 1, true, true, "scan_id" }, .next = &TABLE_PACKAGES[1] },
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_PACKAGES[2] },
     { .value = { FIELD_TEXT, 3, false, false, "format" }, .next = &TABLE_PACKAGES[3] },
     { .value = { FIELD_TEXT, 4, false, true, "name" }, .next = &TABLE_PACKAGES[4] },
@@ -5645,7 +5645,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     if (OS_SUCCESS == ret_val) {
         snprintf(output, OS_SIZE_6144 - 1, "ok %s", select_output);
     } else {
-        strcat(output, "error");
+        strcat(output, "err");
     }
     return ret_val;
 }
