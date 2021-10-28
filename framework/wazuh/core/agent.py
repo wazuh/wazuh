@@ -165,9 +165,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
                 self.request[field_filter] = f"%{q_filter['value']}%"
             else:
-                raise WazuhError(1409, "Valid operators for 'group' field: {}. "
-                                       "Used operator: {}".format(', '.join(valid_group_operators),
-                                                                  q_filter['operator']))
+                raise WazuhError(1409, f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
+                                       f"Used operator: {q_filter['operator']}")
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
