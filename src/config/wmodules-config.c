@@ -139,7 +139,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name)) {
+    } else if (!strcmp(node->values[0], KEY_WM_NAME)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -148,7 +148,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #endif
 #endif
     else {
-        if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
+        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME ||
             !strcmp(node->values[0], KEY_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
         } else {
