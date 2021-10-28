@@ -42,31 +42,24 @@ class FIMDB final
             return s_instance;
         };
 
-        void init();
-        void syncDB();
-        bool isFull()
-        {
-            return m_isFull;
-        };
-
 #ifdef WIN32
-void init(const std::string& dbPath,
-          unsigned int interval_synchronization,
-          unsigned int max_rows_file,
-          unsigned int max_rows_registry,
-          send_data_callback_t callbackSync,
-          logging_callback_t callbackLog);
+    void init(const std::string& dbPath,
+              unsigned int interval_synchronization,
+              unsigned int max_rows_file,
+              unsigned int max_rows_registry,
+              send_data_callback_t callbackSync,
+              logging_callback_t callbackLog);
 #else
-void init(const std::string& dbPath,
-          unsigned int interval_synchronization,
-          unsigned int max_rows_file,
-          send_data_callback_t callbackSync,
-          logging_callback_t callbackLog);
+    void init(const std::string& dbPath,
+              unsigned int interval_synchronization,
+              unsigned int max_rows_file,
+              send_data_callback_t callbackSync,
+              logging_callback_t callbackLog);
 #endif
     int insertItem(const nlohmann::json& item);
     int removeItem(const nlohmann::json& item);
-    void funcTest();
     int updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
+    int executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
 private:
 

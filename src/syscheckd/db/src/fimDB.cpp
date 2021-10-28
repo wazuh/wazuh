@@ -156,11 +156,6 @@ void FIMDB::init(const std::string& dbPath,
     loopRsync(lock);
 }
 
-void FIMDB::funcTest()
-{
-    m_loggingFunction(LOG_INFO, "hola");
-}
-
 int FIMDB::insertItem(const nlohmann::json& item)
 {
     try
@@ -206,6 +201,26 @@ int FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackDat
     try
     {
         m_dbsyncHandler->syncRow(item, callbackData);
+    }
+    catch(const DbSync::max_rows_error &ex)
+    {
+        m_loggingFunction(LOG_INFO, ex.what());
+        return 1;
+    }
+    catch(const std::exception &ex)
+    {
+        m_loggingFunction(LOG_ERROR, ex.what());
+        return 2;
+    }
+
+    return 0;
+}
+
+int FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
+{
+    try
+    {
+        m_dbsyncHandler->selectRows(item, callbackData);
     }
     catch(const DbSync::max_rows_error &ex)
     {
