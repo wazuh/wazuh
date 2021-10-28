@@ -148,10 +148,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #endif
 #endif
     else {
-        if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME)) {
+        if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME ||
+            !strcmp(node->values[0], KEY_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
-        } else if (!strcmp(node->values[0], KEY_WM_NAME)) {
-            mwarn("The deprecated '%s' module only works for the manager", node->values[0]);
         } else {
             merror("Unknown module '%s'", node->values[0]);
         }
