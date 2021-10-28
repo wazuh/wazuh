@@ -91,13 +91,13 @@ def check(result):
         return 1
 
 
-def get_master_health(docker_compose_file):
+def get_master_health(env_mode):
     os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
 
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
 
-    if docker_compose_file == "docker-compose_standalone.yml":
+    if env_mode == "standalone":
         # If the environment is in standalone mode, the only difference is in the clusterd daemon
         check1 = check(not
                        (subprocess.run(['diff', '/tmp/daemons.txt', '/tmp/healthcheck/daemons_check.txt'],
@@ -116,9 +116,9 @@ def get_worker_health():
     return check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
 
 
-def get_manager_health_base(docker_compose_file):
+def get_manager_health_base(env_mode):
     return get_master_health(
-        docker_compose_file=docker_compose_file) if socket.gethostname() == 'wazuh-master' else get_worker_health()
+        env_mode=env_mode) if socket.gethostname() == 'wazuh-master' else get_worker_health()
 
 
 def get_api_health():

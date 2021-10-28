@@ -26,8 +26,8 @@ login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
 
-docker_compose_file_standalone = common['docker_compose_file_standalone']
-docker_compose_file_cluster = common['docker_compose_file_cluster']
+standalone_env_mode = 'standalone'
+cluster_env_mode = 'cluster'
 
 
 def pytest_addoption(parser):
@@ -55,14 +55,14 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(docker_compose_file: str, interval: int = 10, interval_build_env: int = 10,
+def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10,
                  build: bool = True) -> dict:
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
-    docker_compose_file : str
-        Name of the docker-compose file to be used in the process.
+    env_mode : str
+        Indicates the environment to be used in the process.
     interval : int
         Time interval between every healthcheck.
     interval_build_env : int
@@ -93,13 +93,14 @@ def build_and_up(docker_compose_file: str, interval: int = 10, interval_build_en
     with open(docker_log_path, mode='w') as f_docker:
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
-                current_process = subprocess.Popen(["docker-compose", "-f", docker_compose_file, "build", "--build-arg",
+                current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
                                                     f"WAZUH_BRANCH={current_branch}", "--build-arg",
-                                                    f"DOCKER_COMPOSE_FILE={docker_compose_file}"],
+                                                    f"ENV_MODE={env_mode}"],
                                                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
-            current_process = subprocess.Popen(["docker-compose", "-f", docker_compose_file, "up", "-d"],
-                                               stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+            current_process = subprocess.Popen(
+                ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
+                stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
 
             if current_process.returncode == 0:
@@ -112,19 +113,13 @@ def build_and_up(docker_compose_file: str, interval: int = 10, interval_build_en
     return values
 
 
-def down_env(docker_compose_file: str):
-    """Stop and remove all Docker containers.
-
-    Parameters
-    ----------
-    docker_compose_file : str
-        Name of the docker-compose file to be used in the process.
-    """
+def down_env():
+    """Stop and remove all Docker containers."""
     pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
     os.chdir(pwd)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker-compose", "-f", docker_compose_file, "down", "-t", "0"],
-                                           stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process = subprocess.Popen(["docker-compose", "down", "-t0"], stdout=f_docker,
+                                           stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
 
 
@@ -315,11 +310,11 @@ def api_test(request: _pytest.fixtures.SubRequest):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        down_env(docker_compose_file)
+        down_env()
 
     # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
     mode = request.node.config.getoption("-m")
-    docker_compose_file = docker_compose_file_standalone if mode == 'standalone' else docker_compose_file_cluster
+    env_mode = standalone_env_mode if mode == 'standalone' else cluster_env_mode
 
     # Add clean_up_env as fixture finalizer
     request.addfinalizer(clean_up_env)
@@ -341,12 +336,11 @@ def api_test(request: _pytest.fixtures.SubRequest):
         enable_white_mode()
 
     general_procedure(module)
-    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'),
-                          docker_compose_file=docker_compose_file)
+    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'), env_mode=env_mode)
 
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'],
-                                       only_check_master_health=docker_compose_file == docker_compose_file_standalone)
+                                       only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
         # Check if entrypoint was successful
         try:

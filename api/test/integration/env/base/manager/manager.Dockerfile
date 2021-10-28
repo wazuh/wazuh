@@ -1,8 +1,8 @@
 FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic
 
-# DOCKER_COMPOSE_FILE needs to be assigned to an environment variable as it is going to be used at run time (CMD)
-ARG DOCKER_COMPOSE_FILE
-ENV DOCKER_COMPOSE_FILE ${DOCKER_COMPOSE_FILE}
+# ENV_MODE needs to be assigned to an environment variable as it is going to be used at run time (CMD)
+ARG ENV_MODE
+ENV ENV_MODE ${ENV_MODE}
 
 # INSTALL MANAGER
 ARG WAZUH_BRANCH
@@ -16,4 +16,4 @@ RUN /wazuh/install.sh
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK
-HEALTHCHECK --retries=600 --interval=1s --timeout=30s --start-period=30s CMD /var/ossec/framework/python/bin/python3 /tmp/healthcheck/healthcheck.py ${DOCKER_COMPOSE_FILE} || exit 1
+HEALTHCHECK --retries=600 --interval=1s --timeout=30s --start-period=30s CMD /var/ossec/framework/python/bin/python3 /tmp/healthcheck/healthcheck.py ${ENV_MODE} || exit 1

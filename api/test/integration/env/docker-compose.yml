@@ -17,7 +17,41 @@ services:
       - wazuh-master
       - master-node
       - master
-      - disable_cluster
+      - ${ENV_MODE}
+
+  wazuh-worker1:
+    profiles:
+      - cluster
+    build:
+      context: .
+      dockerfile: base/manager/manager.Dockerfile
+    image: integration_test_wazuh-manager
+    hostname: wazuh-worker1
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - worker1
+      - worker
+
+  wazuh-worker2:
+    profiles:
+      - cluster
+    build:
+      context: .
+      dockerfile: base/manager/manager.Dockerfile
+    image: integration_test_wazuh-manager
+    hostname: wazuh-worker2
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - worker2
+      - worker
 
   wazuh-agent1:
     build:
@@ -49,7 +83,6 @@ services:
       - nginx-lb
       - wazuh-agent2
     depends_on:
-      - wazuh-agent1
       - nginx-lb
 
   wazuh-agent3:
@@ -66,7 +99,6 @@ services:
       - nginx-lb
       - wazuh-agent3
     depends_on:
-      - wazuh-agent2
       - nginx-lb
 
   wazuh-agent4:
@@ -83,7 +115,6 @@ services:
       - nginx-lb
       - wazuh-agent4
     depends_on:
-      - wazuh-agent3
       - nginx-lb
 
   wazuh-agent5:
@@ -101,7 +132,6 @@ services:
       - wazuh-agent5
       - agent_old
     depends_on:
-      - wazuh-agent4
       - nginx-lb
 
   wazuh-agent6:
@@ -119,7 +149,6 @@ services:
       - wazuh-agent6
       - agent_old
     depends_on:
-      - wazuh-agent5
       - nginx-lb
 
   wazuh-agent7:
@@ -137,7 +166,6 @@ services:
       - wazuh-agent7
       - agent_old
     depends_on:
-      - wazuh-agent6
       - nginx-lb
 
   wazuh-agent8:
@@ -155,7 +183,6 @@ services:
       - wazuh-agent8
       - agent_old
     depends_on:
-      - wazuh-agent7
       - nginx-lb
 
   nginx-lb:
@@ -164,4 +191,4 @@ services:
     image: integration_test_nginx-lb
     entrypoint:
       - /scripts/entrypoint.sh
-      - disable_cluster
+      - ${ENV_MODE}

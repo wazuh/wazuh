@@ -6,9 +6,6 @@ description: File with information such as global variables or repeteable stages
 # Common variables
 # port: 55000 -> Master, 55001 -> Worker1, 55002 -> Worker2
 variables:
-  docker_compose_file_standalone: docker-compose_standalone.yml
-  docker_compose_file_cluster: docker-compose_cluster.yml
-
   protocol: https
   host: localhost
   port: 55000
