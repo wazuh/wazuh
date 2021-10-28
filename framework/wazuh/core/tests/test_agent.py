@@ -6,7 +6,8 @@
 import os
 import sqlite3
 import sys
-from unittest.mock import ANY, patch, mock_open, call, MagicMock
+from shutil import rmtree
+from unittest.mock import ANY, patch, mock_open, call
 
 import pytest
 from freezegun import freeze_time
@@ -224,8 +225,10 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('group', 'field', {'value': '1', 'operator': 'LIKE'}),
+    ('group', 'field', {'value': '1', 'operator': '='}),
+    ('group', 'test', {'value': '1', 'operator': '!='}),
     ('group', 'test', {'value': '1', 'operator': 'LIKE'}),
+    ('group', 'test', {'value': '1', 'operator': '<'}),
     ('os.name', 'field', {'value': '1', 'operator': 'LIKE', 'field': 'status$0'}),
 ])
 @patch('socket.socket.connect')
@@ -241,13 +244,26 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     q_filter : dict
         Query to filter in database.
     """
+    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
+    not_equal_regex = f"NOT {equal_regex}"
+    like_regex = r"[\w`]+ LIKE :\w+"
+
     query_agent = WazuhDBQueryAgents()
-    query_agent._process_filter(field_name, field_filter, q_filter)
+    try:
+        query_agent._process_filter(field_name, field_filter, q_filter)
+    except WazuhError as e:
+        assert e.code == 1409 and q_filter['operator'] not in {'=', '!=', 'LIKE'}
+        return
 
     if field_name == 'group':
-        assert f'`group` LIKE :{field_filter}_1 OR `group` LIKE ' \
-               f':{field_filter}_2 OR `group` LIKE :{field_filter}_3 OR ' \
-               f'`group` = :{field_filter}' in query_agent.query, 'Query returned does not match the expected one'
+        if q_filter['operator'] == '=':
+            assert re.search(equal_regex, query_agent.query)
+        elif q_filter['operator'] == '!=':
+            assert re.search(not_equal_regex, query_agent.query)
+        elif q_filter['operator'] == 'LIKE':
+            assert re.search(like_regex, query_agent.query)
+        else:
+            pytest.fail('Unexpected operator')
     else:
         assert 'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query, \
             'Query returned does not match the expected one'
@@ -608,7 +624,7 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
         assert result == 'Agent was successfully deleted', 'Not expected message'
 
         if status == 'stopped':
-            mock_remove_manual.assert_called_once_with(False, False), 'Not expected params'
+            mock_remove_manual.assert_called_once_with(False), 'Not expected params'
             mock_remove_authd.assert_not_called(), '_remove_authd should not be called'
         else:
             mock_remove_manual.assert_not_called(), '_remove_manual should not be called'
@@ -635,35 +651,21 @@ def test_agent_remove_authd(mock_wazuh_socket):
     mock_wazuh_socket.return_value.close.assert_called_once()
 
 
-@pytest.mark.parametrize('backup, exists_backup_dir', [
-    (False, False),
-    (True, False),
-    (True, True),
-])
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.fcntl.lockf')
-@patch('wazuh.core.wdb.WazuhDBConnection.delete_agents_db')
-@patch('wazuh.core.agent.remove')
-@patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch("wazuh.core.common.wazuh_path", new=test_data_path)
-@patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
 @patch('wazuh.core.agent.path.isdir', return_value=False)
 @patch('wazuh.core.agent.safe_move')
-@patch('wazuh.core.agent.makedirs')
-@patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
 @patch("wazuh.core.common.wazuh_uid", return_value=getpwnam("root"))
 @patch("wazuh.core.common.wazuh_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
-def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, stat_mock, chmod_mock,
-                             rmtree_mock, remove_mock, mock_delete_agents, lockf_mock, mkstemp_mock,  backup,
-                             exists_backup_dir):
+def test_agent_remove_manual(socket_mock, send_mock, grp_mock, pwd_mock, safe_move_mock, isdir_mock, isfile_mock,
+                             stat_mock, chmod_mock, lockf_mock, mkstemp_mock):
     """Test the _remove_manual function
 
     Parameters
@@ -675,32 +677,16 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
                                   for row in test_data.global_db.execute(
             'select id, name, register_ip, internal_key from agent where id > 0')])
 
-    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
-        with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
-            if exists_backup_dir:
-                exists_mock.side_effect = [True, True, True] + [False] * 10
-            else:
-                exists_mock.side_effect = lambda x: not (common.backup_path in x)
-            Agent('001')._remove_manual(backup=backup)
+    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
+        Agent('001')._remove_manual()
 
-            m.assert_any_call(common.client_keys)
-            stat_mock.assert_called_once_with(common.client_keys)
-            mock_delete_agents.assert_called_once_with(['001'])
-            run_wdb_mock.assert_called_once_with('global sql DELETE FROM belongs WHERE id_agent = 001')
-            remove_mock.assert_any_call(os.path.join(common.wazuh_path, 'queue/rids/001'))
-            mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
+        m.assert_any_call(common.client_keys)
+        stat_mock.assert_called_once_with(common.client_keys)
+        mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
 
-            # make sure the mock is called with a string according to a non-backup path
-            exists_mock.assert_any_call('{0}/queue/agent-groups/001'.format(test_data_path))
-            safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
-                                              permissions=stat_mock().st_mode)
-            if backup:
-                if exists_backup_dir:
-                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
-                else:
-                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
-                makedirs_mock.assert_called_once_with(backup_path)
-                chmod_r_mock.assert_called_once_with(backup_path, 0o750)
+        # make sure the mock is called with a string according to a non-backup path
+        safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
+                                          permissions=stat_mock().st_mode)
 
 
 @pytest.mark.parametrize("authd_status", [
@@ -862,12 +848,12 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
 @patch('wazuh.core.wdb.WazuhDBConnection._send')
 @patch('wazuh.core.agent.Agent.load_info_from_db')
 @patch('wazuh.core.agent.Agent.check_if_delete_agent', return_value=True)
-@patch('wazuh.core.agent.Agent.delete_agent_files')
 @patch('socket.socket.connect')
-def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
+def test_agent_add_manual_content(socket_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
                                   mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid, mock_wazuh_uid,
                                   mock_release_lock, mock_acquire_lock, mock_get_agents_info, test_case):
     """Tests if method _add_manual() modify the content of a client.keys as expected"""
+
     def calculate_final_file(file_str, id_, name_, ip_, key_):
         file_str += f"{id_} {name_} {ip_} {key_}\n"
         return file_str
@@ -1586,29 +1572,24 @@ def test_expand_group(group, expected_agents):
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),
     ('006', 1701),
-    ('001', 1747),
-    ('001', 1748),
 ])
+@patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.wdb.WazuhDBConnection.delete_agents_db')
-@patch('wazuh.core.agent.remove')
-@patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch("wazuh.core.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
 @patch('wazuh.core.agent.path.isdir', return_value=True)
-@patch('wazuh.core.agent.makedirs')
-@patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
 @patch("wazuh.core.common.wazuh_uid", return_value=getpwnam("root"))
 @patch("wazuh.core.common.wazuh_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, isdir_mock,
-                                stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock, lockf_mock,
-                                mock_safe_move, agent_id, expected_exception):
+def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, isdir_mock,
+                                stat_mock, chmod_mock, chown_mock, delete_mock, lockf_mock,
+                                mock_safe_move, mock_tempfile, agent_id, expected_exception):
     """Test the _remove_manual function error cases.
 
     Parameters
@@ -1634,12 +1615,6 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
                                   in
                                   test_data.global_db.execute(
                                       'select id, name, register_ip, internal_key from agent where id > 0')])
-
-    rmtree_mock.side_effect = Exception("Boom!")
-
-    if expected_exception == 1747:
-        with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command', side_effect=WazuhInternalError):
-            check_exception(client_keys_text)
 
     if expected_exception == 1701:
         with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
@@ -1671,3 +1646,41 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
     expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
     assert result == expected_result
+
+
+@pytest.mark.parametrize('create_time, update_time', [
+    ('2021/10/11 10:06:25', '2021/10/11 10:06:25'),
+    ('2021/10/11 10:06:25', '0')])
+@patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
+@patch('wazuh.core.wazuh_socket.WazuhSocket.send')
+@patch('wazuh.core.wazuh_socket.WazuhSocket.close')
+def test_core_upgrade_agents(socket_close_mock, socket_send_mock, socket_connect_mock, create_time,
+                             update_time):
+    """Check that the function core_upgrade_agents sent the upgrade command properly to the task module.
+
+    Parameters
+    ----------
+    create_time : str
+        String used to parametrize the create_time variable in the result from socket.
+    update_time : str
+        String used to parametrize the update_time variable in the result from socket.
+    """
+
+    agent_list = [1, 2, 3, 4]
+    with patch('wazuh.core.wazuh_socket.WazuhSocket.receive',
+               return_value=bytes(
+                   dumps({"data": [{"create_time": create_time, "update_time": update_time, "agent": "001"}]}),
+                   encoding='utf8')) as socket_receive_mock:
+        result = core_upgrade_agents(agents_chunk=agent_list, command='upgrade', wpk_repo='repo', version='version',
+                                     force=False, use_http=False, file_path='path', installer='installer',
+                                     get_result=False)
+        socket_connect_mock.assert_called_once()
+        socket_send_mock.assert_called_once()
+        socket_receive_mock.assert_called_once()
+
+        assert result["data"][0]["create_time"] == datetime.strptime(
+            loads(socket_receive_mock.return_value.decode())["data"][0]["create_time"], "%Y/%m/%d %H:%M:%S").strftime(
+            date_format)
+        assert result["data"][0]["update_time"] == datetime.strptime(
+            loads(socket_receive_mock.return_value.decode())["data"][0]["update_time"], "%Y/%m/%d %H:%M:%S").strftime(
+            date_format) if update_time != "0" else "0"

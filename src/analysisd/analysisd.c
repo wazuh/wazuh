@@ -2017,7 +2017,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Check each rule */
             else if (t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
-                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true), !t_currently_rule) {
+                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true, NULL), !t_currently_rule) {
 
                 continue;
             }

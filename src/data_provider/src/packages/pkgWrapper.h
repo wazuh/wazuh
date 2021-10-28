@@ -128,7 +128,8 @@ class PKGWrapper final : public IPackageWrapper
                         }
                     }
 
-                    m_source   = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                    m_architecture = UNKNOWN_VALUE;
+                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
                     m_location = filePath;
                 }
             };

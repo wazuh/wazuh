@@ -636,7 +636,7 @@ test_name: GET /agents/upgrade_result
 
 stages:
 
- - name: Try get upgrade result agents 003 and 004 (Denied)
+ - name: Try to get upgrade results from agents 003 and 004 (Denied)
    request:
      verify: False
      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -1584,12 +1584,13 @@ stages:
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "003,004"
+        file_path: "{custom_wpk_path:s}"
     response:
       <<: *permission_denied
 
@@ -1617,6 +1618,9 @@ stages:
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
+
+marks:
+  - xfail  # https://github.com/wazuh/wazuh/issues/10105
 
 stages:
 

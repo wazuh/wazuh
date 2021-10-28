@@ -135,6 +135,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_CLEAR,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_SYNC_GET_INFO,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
     WDB_STMT_FIM_FILE_DELETE_AROUND,
@@ -176,6 +177,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_AGENT_EXISTS,
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
@@ -1146,7 +1148,49 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp);
+
+/**
+ * @brief Update sync attempt timestamp
+ *
+ * Set the column "last_attempt" with the timestamp argument,
+ * and increase "n_attempts" one unit (non legacy agents).
+ * Save the last calculated component checksum on the manager.
+ *
+ * It should be called when the syncronization with the agents is in process, or the checksum sent
+ * to the manager is not the same than the one calculated locally.
+ *
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
+ */
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum);
+
+/**
+ * @brief Update sync completion timestamp
+ *
+ * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
+ * Increase "n_attempts" and "n_completions" one unit.
+ * Save the last calculated component checksum on the manager.
+ *
+ * It should be called when the syncronization with the agents is complete,
+ * or the checksum sent to the manager is the same than the one calculated locally.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param timestamp Synchronization event timestamp (field "id").
+ * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
+ */
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum);
+
+/**
+ * @brief Get the last stored checksum of a component on the manager
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param manager_checksum os_sha1 where the last checksum is returned
+ */
+int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
@@ -1213,15 +1257,16 @@ int wdb_upgrade_check_manager_keepalive(wdb_t *wdb);
  *
  * @param [in] wdb Database node.
  * @param [in] component Name of the component.
- * @param [in] command Integrity check subcommand: "integrity_check_global", "integrity_check_left" or "integrity_check_right".
+ * @param [in] action Integrity check action: INTEGRITY_CHECK_GLOBAL, INTEGRITY_CHECK_LEFT or INTEGRITY_CHECK_RIGHT.
  * @param [in] payload Operation arguments in JSON format.
  * @pre payload must contain strings "id", "begin", "end" and "checksum", and optionally "tail".
- * @retval 2 Success: checksum matches.
- * @retval 1 Success: checksum does not match.
- * @retval 0 Success: no files were found in this range.
- * @retval -1 On error.
+ * @retval INTEGRITY_SYNC_CKS_OK   Success: checksum matches.
+ * @retval INTEGRITY_SYNC_CKS_FAIL Success: checksum does not match.
+ * @retval INTEGRITY_SYNC_NO_DATA  Success: no files were found in this range.
+ * @retval INTEGRITY_SYNC_ERR      On error.
  */
-int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload);
+
+integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, dbsync_msg action, const char * payload);
 
 /**
  * @brief Query a complete table clear
@@ -1548,6 +1593,17 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
+
+/**
+ * @brief Checks the given ID is in the agent table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] agent_id ID to check.
+ * @retval 0 if the ID was not found.
+ * @retval 1 if the ID was found.
+ * @retval -1 on error.
+ */
+int wdb_global_agent_exists(wdb_t *wdb, int agent_id);
 
 /**
  * @brief Function to reset connection_status column of every agent (excluding the manager).
