@@ -1990,7 +1990,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                     while (key) {
                         if (*key) {
-                            syscheck->audit_key[keyit] = check_ascci_hex(key);
+                            os_strdup(key, syscheck->audit_key[keyit]);
                             os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
                             syscheck->audit_key[keyit + 1] = NULL;
                             key = strtok_r(NULL, delim, &saveptr);
@@ -2329,29 +2329,6 @@ void Free_Syscheck(syscheck_config * config) {
 
         free_strarray(config->audit_key);
     }
-}
-
-char* check_ascci_hex (char *input) {
-    unsigned int j = 0;
-    int hex = 0;
-    char outhex[OS_SIZE_256];
-
-    for (j = 0; j < strlen(input); j++) {
-        snprintf(outhex + j*2, OS_SIZE_256 - j * 2, "%hhX", input[j]);
-        if ((unsigned int)input[j] > 126 ||
-                (unsigned int)input[j] == 32 ||
-                (unsigned int)input[j] == 34) {
-            hex = 1;
-        }
-    }
-
-    char *output;
-    if (hex) {
-        os_strdup(outhex, output);
-    } else {
-        os_strdup(input, output);
-    }
-    return output;
 }
 
 static char **get_paths_from_env_variable (char *environment_variable) {

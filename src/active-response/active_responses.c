@@ -279,11 +279,17 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
 
     // Detect ipAddress
     ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress");
-    if (!cJSON_IsString(ipAddress_json)) {
-        return NULL;
+    if (cJSON_IsString(ipAddress_json)) {
+        return ipAddress_json;
     }
 
-    return ipAddress_json;
+    // Detect destinationIp
+    ipAddress_json = cJSON_GetObjectItem(eventdata_json, "destinationIp");
+    if (cJSON_IsString(ipAddress_json)) {
+        return ipAddress_json;
+    }
+
+    return NULL;
 }
 
 const char* get_username_from_json(const cJSON *input) {

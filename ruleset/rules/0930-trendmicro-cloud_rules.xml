@@ -1,0 +1,125 @@
+<group name="trendmicro,CEF,">
+
+  <rule id="57801" level="3">
+      <decoded_as>trendmicroCEF</decoded_as>
+      <description>Grouping of Trend Micro Rules</description>
+  </rule>
+
+  <!--Event 10-->
+  <rule id="57802" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^10$</field>
+     <description>Grouping of Trend Micro Rules - Custom Intrusion Prevention (IPS) rule</description>
+  </rule>
+
+  <!--Event 20-->
+  <rule id="57803" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^20$</field>
+     <description>Grouping of Trend Micro Rules - Log-only Firewall rule</description>
+  </rule>
+
+  <!--Event 21-->
+  <rule id="57804" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^21$</field>
+     <description>Grouping of Trend Micro Rules - Deny Firewall rule</description>
+  </rule>
+
+  <!--Event 30-->
+  <rule id="57805" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^30$</field>
+     <description>Grouping of Trend Micro Rules - Custom Integrity Monitoring rule</description>
+  </rule>
+
+
+  <!--Event 40-->
+  <rule id="57806" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^40$</field>
+     <description>Grouping of Trend Micro Rules - Custom Log Inspection rule</description>
+  </rule>
+
+  <!--Event 500 a 899-->
+  <rule id="57807" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[5-8]{1}[0-9]{2}$</field>
+     <description>Grouping of Trend Micro Rules - PS normalization</description>
+  </rule>
+
+
+
+  <!--Event 100-199 -->
+  <rule id="57808" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[1]{1}[0-9]{2}$</field>
+     <description>Grouping of Trend Micro Rules - Policy Firewall rule and Firewall stateful configuration </description>
+  </rule>
+
+  <!--Event 200-299 -->
+  <rule id="57809" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[2]{1}[0-9]{2}$</field>
+     <description>Grouping of Trend Micro Rules - IPS internal errors </description>
+  </rule>
+
+
+  <!--Event 300-399 -->
+  <rule id="57810" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[3]{1}[0-9]{2}$</field>
+     <description>Grouping of Trend Micro Rules - SSL/TLS events </description>
+  </rule>
+
+  <!--Event 900 - 7499 -->
+  <rule id="57811" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^9[0-9][0-9]$|^1[0-4][0-9][0-9]$|^1500$</field>
+     <description>Grouping of Trend Micro Rules - System events </description>
+  </rule>
+
+
+  <!--Event 1,000,000-1,999,999 -->
+  <rule id="57812" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[1]{1}[0-9]{6}$</field>
+     <description>Grouping of Trend Micro Rules - Trend Micro IPS rule. The signature ID is the same as the IPS rule ID. </description>
+  </rule>
+
+  <!--Event 2,000,000-2,999,999-->
+  <rule id="57813" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[2]{1}[0-9]{6}$</field>
+     <description>Grouping of Trend Micro Rules - Integrity Monitoring rule. The signature ID is the Integrity Monitoring rule ID + 1,000,000. </description>
+  </rule>
+
+  <!--Event 3,000,000-3,999,999-->
+  <rule id="57814" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[3]{1}[0-9]{6}$</field>
+     <description>Grouping of Trend Micro Rules - Log Inspection rule. The signature ID is the Log Inspection rule ID + 2,000,000. </description>
+  </rule>
+
+  <!--Event 4,000,000-4,999,999 -->
+  <rule id="57815" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[4]{1}[0-9]{6}$</field>
+     <description>Grouping of Trend Micro Rules -  Anti-Malware events </description>
+  </rule>
+
+  <!--Event 5,000,000-5,999,999 -->
+  <rule id="57816" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[5]{1}[0-9]{6}$</field>
+     <description>Grouping of Trend Micro Rules -  Web Reputation events </description>
+  </rule>
+
+  <!--Event 6,000,000-6,999,999 -->
+  <rule id="57817" level="3">
+     <if_sid>57801</if_sid>
+     <field name="signature_id" type="pcre2">^[6]{1}[0-9]{6}$</field>
+     <description>Grouping of Trend Micro Rules -  Application Control events </description>
+  </rule>
+
+</group>

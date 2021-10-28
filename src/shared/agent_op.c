@@ -304,6 +304,7 @@ int set_agent_group(const char * id, const char * group) {
     char path[PATH_MAX];
     FILE *fp;
     mode_t oldmask;
+    int r = 0;
 
     if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
         merror("At set_agent_group(): file path too large for agent '%s'.", id);
@@ -323,12 +324,21 @@ int set_agent_group(const char * id, const char * group) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
     }
 
-    fprintf(fp, "%s\n", group);
-    fclose(fp);
+    if (fprintf(fp, "%s\n", group) < 0) {
+        merror(FWRITE_ERROR, path, errno, strerror(errno));
+        r = -1;
+    }
 
-    // Check for multigroup
+    if (fclose(fp) != 0) {
+        merror(FCLOSE_ERROR, path, errno, strerror(errno));
+        r = -1;
+    }
 
-    return 0;
+    if (r == -1) {
+        unlink(path);
+    }
+
+    return r;
 }
 
 int set_agent_multigroup(char * group) {

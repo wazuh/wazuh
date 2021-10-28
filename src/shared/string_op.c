@@ -861,7 +861,7 @@ char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const 
 
     const size_t decoded_len = buffer_size / 2;
     char *decoded_buffer;
-    os_calloc(decoded_len, sizeof(char), decoded_buffer);
+    os_calloc(decoded_len + 1, sizeof(char), decoded_buffer);
 
     size_t i;
     for(i = 0; i < decoded_len; ++i) {

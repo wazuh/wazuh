@@ -578,24 +578,40 @@ int OS_WriteKeys(const keystore *keys) {
 
    for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key);
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
     /* Write saved removed keys */
 
     for (i = 0; i < keys->removed_keys_size; i++) {
-        fprintf(file.fp, "%s\n", keys->removed_keys[i]);
+        if (fprintf(file.fp, "%s\n", keys->removed_keys[i]) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
-    fclose(file.fp);
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        goto error;
+    }
 
     if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
-        free(file.name);
-        return -1;
+        goto error;
     }
 
     free(file.name);
     return 0;
+
+error:
+    unlink(file.name);
+    free(file.name);
+    return -1;
 }
 
 /* Duplicate keystore except key hashes and file pointer */
@@ -769,6 +785,7 @@ int OS_ReadTimestamps(keystore * keys) {
 
 int OS_WriteTimestamps(keystore * keys) {
     File file;
+    int r = 0;
 
     if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
         merror("Couldn't open timestamp file for writing.");
@@ -787,11 +804,27 @@ int OS_WriteTimestamps(keystore * keys) {
         struct tm tm_result = { .tm_sec = 0 };
 
         strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp);
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            r = -1;
+            break;
+        }
     }
 
-    fclose(file.fp);
-    int r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        r = -1;
+    }
+
+    if (r == 0) {
+        r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    }
+
+    if (r != 0) {
+        unlink(file.name);
+    }
+
     free(file.name);
 
     return r;
