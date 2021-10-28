@@ -160,7 +160,7 @@ class AbstractServerHandler(c_common.Handler):
             Result message.
         """
         if command == b'ok-c':
-            return b"Sucessful response from client: " + payload
+            return b"Successful response from client: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -176,7 +176,7 @@ class AbstractServerHandler(c_common.Handler):
         """
         if self.name:
             if exc is None:
-                self.logger.debug("Disconnected.".format(self.name))
+                self.logger.debug(f"Disconnected {self.name}.")
             else:
                 self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
                                   f"{''.join(traceback.format_tb(exc.__traceback__))}")
