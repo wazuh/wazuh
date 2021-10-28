@@ -20,14 +20,55 @@
 #define static
 #endif
 
+/**
+ * @brief Main function for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
+ */
 static void* wm_gcp_pubsub_main(wm_gcp_pubsub *gcp_config);          // Module main function. It won't return
+
+/**
+ * @brief Run module function for Google Cloud Pub/Sub
+ * @param data Module configuration structure
+ */
 static void wm_gcp_pubsub_run(const wm_gcp_pubsub *data);            // Running python script
+
+/**
+ * @brief Free configuration structure for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
+ */
 static void wm_gcp_pubsub_destroy(wm_gcp_pubsub *gcp_config);        // Destroy data
+
+/**
+ * @brief Dump configuration structure in JSON for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
+ * @return JSON structure with module configuration
+ */
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *gcp_config);          // Read config
 
+/**
+ * @brief Main function for Google Cloud bucket
+ * @param gcp_config Module configuration structure
+ */
 static void* wm_gcp_bucket_main(wm_gcp_bucket_base *gcp_config);          // Module main function. It won't return
+
+/**
+ * @brief Run module function for Google Cloud bucket
+ * @param data Module configuration structure
+ * @param exec_bucket Bucket configuration structure
+ */
 static void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket);            // Running python script
+
+/**
+ * @brief Free configuration structure for Google Cloud bucket
+ * @param gcp_config Module configuration structure
+ */
 static void wm_gcp_bucket_destroy(wm_gcp_bucket_base *gcp_config);        // Destroy data
+
+/**
+ * @brief Dump configuration structure in JSON for Google Cloud bucket
+ * @param gcp_config Module configuration structure
+ * @return JSON structure with module configuration
+ */
 cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *gcp_config);          // Read config
 
 /* Context definition */

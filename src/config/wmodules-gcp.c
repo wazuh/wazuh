@@ -43,8 +43,9 @@ static void clean_bucket(wm_gcp_bucket *cur_bucket, wm_gcp_bucket_base *gcp) {
     if (gcp->buckets) {
         if (gcp->buckets->next) {
             wm_gcp_bucket *buck = gcp->buckets->next;
-            while(buck != NULL)
+            while(buck != NULL) {
                 buck = buck->next;
+            }
         } else {
             os_free(gcp->buckets);
         }
@@ -203,18 +204,17 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s'", XML_LOGGING);
                 return OS_INVALID;
             }
-        } 
+        }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_GCP_PUBSUB_CONTEXT.name);
             return OS_INVALID;
         }
-        
     }
 
     const int sched_read = sched_scan_read(&(gcp->scan_config), nodes, module->context->name);
-    if ( sched_read != 0 ) {
+    if (sched_read != 0 ) {
         return OS_INVALID;
     }
 
@@ -327,7 +327,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             }
 
             // type is an attribute of the bucket tag
-            if (nodes[i]->attributes){
+            if (nodes[i]->attributes) {
                 if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
                     if (!strcmp(*nodes[i]->values, ACCESS_LOGS_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
@@ -351,12 +351,6 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             for (j = 0; children[j]; j++) {
 
                 mtdebug2(WM_GCP_BUCKET_LOGTAG, "Parse child node: %s", children[j]->element);
-
-                if (!children[j]->element) {
-                    merror(XML_ELEMNULL);
-                    OS_ClearNode(children);
-                    return OS_INVALID;
-                }
 
                 // Start
                 if (!strcmp(children[j]->element, XML_BUCKET_NAME)) {
@@ -437,11 +431,6 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
             if (!cur_bucket->bucket) {
                 merror("No value defined for tag '%s' in module '%s'.", XML_BUCKET_NAME, WM_GCP_BUCKET_CONTEXT.name);
-                clean_bucket(cur_bucket, gcp);
-                return OS_INVALID;
-            }
-            else if (!cur_bucket->type) {
-                merror("No value defined for tag '%s' in module '%s'.", XML_BUCKET_TYPE, WM_GCP_BUCKET_CONTEXT.name);
                 clean_bucket(cur_bucket, gcp);
                 return OS_INVALID;
             }

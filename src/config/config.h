@@ -84,6 +84,7 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1);
  * @param d1 Bucket configuration structure
  */
 int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
+
 #ifndef WIN32
 int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);

@@ -284,6 +284,72 @@ static int setup_test_bucket(void **state) {
                           "<only_logs_after>2021-JUN-01</only_logs_after>"
                           "<path>access_logs/</path>"
                           "<remove_from_bucket>no</remove_from_bucket>"
+                        "</bucket>"
+                        "<bucket type='access_logs'>"
+                          "<name>wazuh-gcp-bucket-tests-2</name>"
+                          "<credentials_file>credentials.json</credentials_file>"
+                          "<only_logs_after>2021-JUN-02</only_logs_after>"
+                          "<path>access_logs/</path>"
+                          "<remove_from_bucket>yes</remove_from_bucket>"
+                        "</bucket>"
+                        "<bucket></bucket>";
+
+    if(OS_ReadXMLString(base_config, data->xml) != 0){
+        return -1;
+    }
+
+    if(data->nodes = OS_GetElementsbyNode(data->xml, NULL), data->nodes == NULL)
+        return -1;
+
+    return 0;
+}
+
+static int setup_test_no_bucket(void **state) {
+    group_data_t *data = *state;
+    char *base_config = "<enabled>yes</enabled>"
+                        "<run_on_start>no</run_on_start>"
+                        "<logging>disabled</logging>";
+
+    if(OS_ReadXMLString(base_config, data->xml) != 0){
+        return -1;
+    }
+
+    if(data->nodes = OS_GetElementsbyNode(data->xml, NULL), data->nodes == NULL)
+        return -1;
+
+    return 0;
+}
+
+static int setup_test_element_invalid(void **state) {
+    group_data_t *data = *state;
+    char *base_config = "<enabled>yes</enabled>"
+                        "<run_on_start>no</run_on_start>"
+                        "<logging>disabled</logging>"
+                        "<bucket type='access_logs'>"
+                          "<invalid>wazuh-gcp-bucket-tests</invalid>"
+                        "</bucket>";
+
+    if(OS_ReadXMLString(base_config, data->xml) != 0){
+        return -1;
+    }
+
+    if(data->nodes = OS_GetElementsbyNode(data->xml, NULL), data->nodes == NULL)
+        return -1;
+
+    return 0;
+}
+
+static int setup_test_bucket_attribute_invalid(void **state) {
+    group_data_t *data = *state;
+    char *base_config = "<enabled>yes</enabled>"
+                        "<run_on_start>no</run_on_start>"
+                        "<logging>disabled</logging>"
+                        "<bucket invalid='access_logs'>"
+                          "<name>wazuh-gcp-bucket-tests</name>"
+                          "<credentials_file>credentials.json</credentials_file>"
+                          "<only_logs_after>2021-JUN-01</only_logs_after>"
+                          "<path>access_logs/</path>"
+                          "<remove_from_bucket>no</remove_from_bucket>"
                         "</bucket>";
 
     if(OS_ReadXMLString(base_config, data->xml) != 0){
@@ -374,6 +440,13 @@ static int setup_test_bucket_no_credentials_file(void **state) {
                         "<logging>disabled</logging>"
                         "<bucket type='access_logs'>"
                           "<name>wazuh-gcp-bucket-tests</name>"
+                          "<credentials_file>credentials.json</credentials_file>"
+                          "<only_logs_after>2021-JUN-01</only_logs_after>"
+                          "<path>access_logs/</path>"
+                          "<remove_from_bucket>no</remove_from_bucket>"
+                        "</bucket>"
+                        "<bucket type='access_logs'>"
+                          "<name>wazuh-gcp-bucket-tests</name>"
                           "<only_logs_after>2021-JUN-01</only_logs_after>"
                           "<path>access_logs/</path>"
                           "<remove_from_bucket>no</remove_from_bucket>"
@@ -444,6 +517,17 @@ static int teardown_test_bucket(void **state) {
     os_free(data->module->tag);
 
     if (gcp_bucket) {
+        if (gcp_bucket->next) {
+            if (gcp_bucket->next->next) {
+                os_free(gcp_bucket->next->next);
+            }
+            if (gcp_bucket->next->bucket) os_free(gcp_bucket->next->bucket);
+            if (gcp_bucket->next->type) os_free(gcp_bucket->next->type);
+            if (gcp_bucket->next->credentials_file) os_free(gcp_bucket->next->credentials_file);
+            if (gcp_bucket->next->prefix) os_free(gcp_bucket->next->prefix);
+            if (gcp_bucket->next->only_logs_after) os_free(gcp_bucket->next->only_logs_after);
+            os_free(gcp_bucket->next);
+        }
         if (gcp_bucket->bucket) os_free(gcp_bucket->bucket);
         if (gcp_bucket->type) os_free(gcp_bucket->type);
         if (gcp_bucket->credentials_file) os_free(gcp_bucket->credentials_file);
@@ -1092,11 +1176,11 @@ static void test_wm_gcp_bucket_read_full_configuration(void **state) {
 
     int ret;
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1128,11 +1212,11 @@ static void test_wm_gcp_bucket_read_sched_read_invalid(void **state) {
 
     int ret;
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1151,6 +1235,21 @@ static void test_wm_gcp_bucket_read_enabled_tag_invalid(void **state) {
         fail();
 
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'enabled'");
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wm_gcp_bucket_read_no_bucket(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    expect_value(__wrap_sched_scan_read, nodes, data->nodes);
+    expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
+    will_return(__wrap_sched_scan_read, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "No buckets or services definitions found at module 'gcp-bucket'.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1177,6 +1276,28 @@ static void test_wm_gcp_bucket_read_bucket_type_invalid(void **state) {
         fail();
 
     expect_string(__wrap__merror, formatted_msg, "Invalid bucket type ''. The valid one is 'access_logs'");
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wm_gcp_bucket_read_bucket_element_invalid(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    expect_string(__wrap__merror, formatted_msg, "No such child tag 'invalid' of bucket at module 'gcp-bucket'.");
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wm_gcp_bucket_read_bucket_attribute_invalid(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    expect_string(__wrap__merror, formatted_msg, "Attribute name 'invalid' is not valid. The valid one is 'type'.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1214,6 +1335,46 @@ static void test_wm_gcp_bucket_read_no_bucket_tag(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wm_gcp_bucket_read_remove_from_bucket_tag_invalid(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    if(replace_bucket_configuration_value(data, XML_REMOVE_FROM_BUCKET, "") != 0)
+        fail();
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'remove_from_bucket' at module 'gcp-bucket'.");
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wm_gcp_bucket_read_path_tag_invalid(void **state) {
+    group_data_t *data = *state;
+    int ret;
+
+    if(replace_bucket_configuration_value(data, XML_PREFIX, "") != 0)
+        fail();
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'path' at module 'gcp-bucket'");
+
+    ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 static void test_wm_gcp_bucket_read_only_logs_after_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
@@ -1243,6 +1404,12 @@ static void test_wm_gcp_bucket_read_credentials_file_full_path(void **state) {
         fail();
 
     expect_string(__wrap_IsFile, file, "/some/path/credentials.json");
+    will_return(__wrap_IsFile, 0);
+
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -1338,6 +1505,12 @@ static void test_wm_gcp_bucket_read_no_credentials_file_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
+
+    expect_string(__wrap_IsFile, file, "credentials.json");
+    will_return(__wrap_IsFile, 0);
+
     expect_string(__wrap__merror, formatted_msg, "No value defined for tag 'credentials_file' in module 'gcp-bucket'.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
@@ -1368,11 +1541,11 @@ static void test_wm_gcp_bucket_read_logging_tag_debug(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "debug") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1406,11 +1579,11 @@ static void test_wm_gcp_bucket_read_logging_tag_info(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "info") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1444,11 +1617,11 @@ static void test_wm_gcp_bucket_read_logging_tag_warning(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "warning") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1482,11 +1655,11 @@ static void test_wm_gcp_bucket_read_logging_tag_error(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "error") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1520,11 +1693,11 @@ static void test_wm_gcp_bucket_read_logging_tag_critical(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "critical") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+    expect_string_count(__wrap_realpath, path, "credentials.json", 2);
+    will_return_count(__wrap_realpath, "credentials.json", 2);
 
-    expect_string(__wrap_IsFile, file, "credentials.json");
-    will_return(__wrap_IsFile, 0);
+    expect_string_count(__wrap_IsFile, file, "credentials.json", 2);
+    will_return_count(__wrap_IsFile, 0, 2);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
@@ -1655,10 +1828,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_full_configuration, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_sched_read_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_enabled_tag_invalid, setup_test_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_no_bucket, setup_test_no_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_bucket_element_invalid, setup_test_element_invalid, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_bucket_type_invalid, setup_test_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_bucket_attribute_invalid, setup_test_bucket_attribute_invalid, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_no_bucket_type, setup_test_bucket_no_bucket_type, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_bucket_tag_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_no_bucket_tag, setup_test_bucket_no_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_remove_from_bucket_tag_invalid, setup_test_bucket, teardown_test_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_path_tag_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_only_logs_after_tag_invalid, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_credentials_file_full_path, setup_test_bucket, teardown_test_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_read_credentials_file_tag_empty, setup_test_bucket, teardown_test_bucket),
