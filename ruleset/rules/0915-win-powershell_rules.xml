@@ -6,14 +6,14 @@
 -->
 
 <!--
-  - Rule id interval 91601 - 92000
+  - Rule id interval 91801 - 92000
 -->
 
 <group name="windows, powershell,">
 
 <!-- Powershell Operational grouping -->
     <rule id="91801" level="0">
-        <if_sid>60000</if_sid>
+        <if_sid>60000, 60010</if_sid>
         <field name="win.system.channel">^Microsoft-Windows-PowerShell/Operational$</field>
         <options>no_full_log</options>
         <description>Group of Windows rules for the Powershell/Operational channel</description>
@@ -58,4 +58,38 @@
             <id>T1087.002</id>>
         </mitre>
     </rule>
+
+    <rule id="91810" level="0">
+        <if_sid>91802</if_sid>
+        <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ItemProperty</field>
+        <description>Powershell script did a query on using Get-ItemProperty</description>
+    </rule>>
+
+    <rule id="91811" level="0">
+        <if_sid>91810</if_sid>
+        <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)-Path\sHK(CU|LM)</field>
+        <description>Powershell script queried registry value</description>
+        <mitre>
+            <id>T1012</id>>
+        </mitre>
+    </rule>>
+
+    <rule id="91820" level="10">
+        <if_sid>91802</if_sid>
+        <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)FromBase64String</field>
+        <description>Powershell script may be using Base64 decoding method</description>
+        <mitre>
+            <id>T1140</id>>
+        </mitre>
+    </rule>>
+
+    <rule id="91830" level="10">
+        <if_sid>91802</if_sid>
+        <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)CreateThread</field>
+        <description>Powershell script may be executing suspicious code with CreateThread API</description>
+        <mitre>
+            <id>T1106</id>>
+        </mitre>
+    </rule>>
+
 </group>

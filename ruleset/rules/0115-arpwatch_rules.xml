@@ -25,6 +25,9 @@
     <match>flip flop </match>
     <description>Arpwatch: "flip flop" message. IP address/MAC relation changing too often.</description>
     <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,tsc_CC6.6,tsc_CC6.7,tsc_CC6.8,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1557.002</id>
+    </mitre>
   </rule>
 
   <rule id="7203" level="3">
@@ -71,10 +74,10 @@
     <if_sid>7200</if_sid>
     <match>ethernet mismatch</match>
     <description>Arpwatch: Possible arpspoofing attempt.</description>
+    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,tsc_CC6.6,tsc_CC6.7,tsc_CC6.8,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>ip_spoof,pci_dss_1.3.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CA.3,nist_800_53_SI.4,tsc_CC6.6,tsc_CC6.7,tsc_CC6.8,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>

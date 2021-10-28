@@ -6,40 +6,56 @@
 -->
 
 <group name="sysmon_eid11_detections,">
-    <!-- Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","eventID":"11","version":"2","level":"4","task":"11","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-04-28T20:11:55.0310966Z","eventRecordID":"144500","processID":"2204","threadID":"3300","channel":"Microsoft-Windows-Sysmon/Operational","computer":"DESKTOP-2QKFOBA","severityValue":"INFORMATION","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-04-28 20:11:55.021\r\nProcessGuid: {4dc16835-c189-6089-a003-000000002e00}\r\nProcessId: 6876\r\nImage: C:\\Windows\\system32\\cscript.exe\r\nTargetFilename: C:\\Users\\AtomicRedTeamTest\\AppData\\Roaming\\TransbaseOdbcDriver\\starter.vbs\r\nCreationUtcTime: 2021-04-28 20:11:55.021\""},"eventdata":{"utcTime":"2021-04-28 20:11:55.021","processGuid":"{4dc16835-c189-6089-a003-000000002e00}","processId":"6876","image":"C:\\\\Windows\\\\system32\\\\cscript.exe","targetFilename":"C:\\\\Users\\\\AtomicRedTeamTest\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\starter.vbs","creationUtcTime":"2021-04-28 20:11:55.021"}}} -->
-    <rule id="92000" level="4">
+
+    <rule id="92000" level="6">
         <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.image" type="pcre2">(?i)\\(c|w)script\.exe</field>
         <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
-        <description>Script created a new scripting file under System or User data folder</description>
+        <description>Scripting file created under system or User folder</description>
         <mitre>
+            <id>T1059</id>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92001" level="9">
+        <if_sid>92000</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\((c|w)script|powershell)\.exe</field>
+        <description>$(win.eventdata.image) created a new scripting file under User data folder</description>
+        <mitre>
+            <id>T1105</id>
             <id>T1059</id>
         </mitre>
     </rule>
 
-    <!-- {"win":{"eventdata":{"image":"System","processGuid":"{86107A5D-0B6A-60D6-EB03-000000000000}","processId":"4","utcTime":"2021-06-25 18:09:57.530","targetFilename":"C:\\\\Windows\\\\tiny.exe","creationUtcTime":"2021-06-24 23:36:43.555"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-06-25 18:09:57.530\r\nProcessGuid: {86107A5D-0B6A-60D6-EB03-000000000000}\r\nProcessId: 4\r\nImage: System\r\nTargetFilename: C:\\Windows\\tiny.exe\r\nCreationUtcTime: 2021-06-24 23:36:43.555\"","version":"2","systemTime":"2021-06-25T18:09:57.530600200Z","eventRecordID":"647283","threadID":"3784","computer":"bankdc.ExchangeTest.com","task":"11","processID":"2620","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
-    <rule id="92104" level="6">
+    <rule id="92250" level="6">
         <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.image" type="pcre2">^System$</field>
+        <field name="win.eventdata.image" type="pcre2">(?i)PAExec.</field>
         <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
-        <description>Binary dropped in Windows root folder by System process. Possible abuse of Windows admin shares</description>
+        <description>Binary dropped in Windows root folder by $(win.eventdata.image) process. Possible abuse of Windows admin shares</description>
         <mitre>
             <id>T1570</id>
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","processGuid":"{4dc16835-3136-609c-2c01-000000003b00}","processId":"1488","utcTime":"2021-05-12 19:53:22.467","targetFilename":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\pscp.exe","creationUtcTime":"2021-05-12 19:53:22.467"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-05-12 19:53:22.467\r\nProcessGuid: {4dc16835-3136-609c-2c01-000000003b00}\r\nProcessId: 1488\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nTargetFilename: C:\\Users\\AtomicRed\\AppData\\Roaming\\TransbaseOdbcDriver\\pscp.exe\r\nCreationUtcTime: 2021-05-12 19:53:22.467\"","version":"2","systemTime":"2021-05-12T19:53:22.4784997Z","eventRecordID":"198839","threadID":"3320","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2080","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
     <rule id="92041" level="6">
         <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.image" type="pcre2">\\(?i)powershell\.exe</field>
-        <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\\\Roaming\\\\.*\\\\.+\.(exe|bin|dll)</field>
+        <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|bat|dll|bin)</field>
+        <description>Executable file created by powershell: $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92042" level="9">
+        <if_sid>92041</if_sid>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\\\(Roaming|local)</field>
         <description>Powershell process created executable file in AppData temp folder</description>
         <mitre>
             <id>T1105</id>
         </mitre>
     </rule>
 
-    <!--Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\spoolsv.exe","processGuid":"{4dc16835-6534-60ec-92a4-010000000000}","processId":"1912","utcTime":"2021-07-12 15:58:13.001","targetFilename":"C:\\\\Windows\\\\System32\\\\spool\\\\drivers\\\\x64\\\\3\\\\New\\\\mimispoolbis.dll","ruleName":"technique_id=T1047,technique_name=File System Permissions Weakness","creationUtcTime":"2021-07-12 15:58:13.001"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: technique_id=T1047,technique_name=File System Permissions Weakness\r\nUtcTime: 2021-07-12 15:58:13.001\r\nProcessGuid: {4dc16835-6534-60ec-92a4-010000000000}\r\nProcessId: 1912\r\nImage: C:\\Windows\\System32\\spoolsv.exe\r\nTargetFilename: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\New\\mimispoolbis.dll\r\nCreationUtcTime: 2021-07-12 15:58:13.001\"","version":"2","systemTime":"2021-07-12T15:58:13.0067714Z","eventRecordID":"267528","threadID":"3548","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2092","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
     <rule id="92200" level="12">
         <if_group>sysmon_event_11</if_group>
         <field name="win.eventdata.image" type="pcre2">\\spoolsv.exe$</field>
@@ -50,21 +66,47 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\system32\\\\cmd.exe","processGuid":"{4dc16835-41b5-60ef-7a00-000000001100}","processId":"2860","utcTime":"2021-07-14 20:21:04.678","targetFilename":"C:\\\\Users\\\\Public\\\\Java-Update.vbs","creationUtcTime":"2021-07-14 20:21:04.678"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-07-14 20:21:04.678\r\nProcessGuid: {4dc16835-41b5-60ef-7a00-000000001100}\r\nProcessId: 2860\r\nImage: C:\\Windows\\system32\\cmd.exe\r\nTargetFilename: C:\\Users\\Public\\Java-Update.vbs\r\nCreationUtcTime: 2021-07-14 20:21:04.678\"","version":"2","systemTime":"2021-07-14T20:21:04.6849507Z","eventRecordID":"28558","threadID":"1272","computer":"cfo.ExchangeTest.com","task":"11","processID":"5364","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
     <rule id="92080" level="12">
         <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js)</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js|msi)</field>
         <description>Binary file dropped in Users\Public folder</description>
         <mitre>
             <id>T1105</id>
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\OpenSSH\\\\scp.exe","processGuid":"{4dc16835-44ed-60ef-bdc3-4d0000000000}","processId":"3144","utcTime":"2021-07-14 20:11:27.810","targetFilename":"C:\\\\Users\\\\Public\\\\Java-Update.exe","creationUtcTime":"2021-07-14 20:03:07.766"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-07-14 20:11:27.810\r\nProcessGuid: {4dc16835-44ed-60ef-bdc3-4d0000000000}\r\nProcessId: 3144\r\nImage: C:\\Windows\\System32\\OpenSSH\\scp.exe\r\nTargetFilename: C:\\Users\\Public\\Java-Update.exe\r\nCreationUtcTime: 2021-07-14 20:03:07.766\"","version":"2","systemTime":"2021-07-14T20:11:27.8528377Z","eventRecordID":"28453","threadID":"1272","computer":"cfo.ExchangeTest.com","task":"11","processID":"5364","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
     <rule id="92081" level="15">
         <if_sid>92080</if_sid>
         <field name="win.eventdata.image" type="pcre2">(?i)(scp|pscp|FZSFTP|sftp)\.exe</field>
         <description>Binary file dropped in Users\Public folder by SSH enabled copy software</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92082" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.reg</field>
+        <description>Suspicious registry modification file created in Users\Public folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92083" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(7z|zip|rar)</field>
+        <description>Suspicious file compression activity in Users\Public folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+    
+    <rule id="92084" level="14">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)rundll32.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">\.(exe|bin|dll|vbs|bat|js|msi)</field>
+        <description>Suspicious executable file creation by rundll32: $(win.eventdata.targetFilename)</description>
         <mitre>
             <id>T1105</id>
         </mitre>
@@ -79,4 +121,64 @@
             <id>T1105</id>
         </mitre>
     </rule>
+
+    <rule id="92210" level="15">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt)\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)appdata\\\\.+\.lnk</field>
+        <description>Suspicious file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1027</id>
+        </mitre>
+    </rule>
+
+    <rule id="92220" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)mshta\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|bat|dll)</field>
+        <description>Executable file created by mshta: $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92240" level="0">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.tmp</field>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
+        <description>$(win.eventdata.image) created a new temporary file $(win.eventdata.targetFilename) under system folder</description>
+        <mitre>
+            <id>T1105</id>
+            <id>T1059.001</id>
+        </mitre>
+    </rule>
+    <rule id="92230" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
+        <description>Binary dropped in Windows root folder.</description>
+        <mitre>
+            <id>T1570</id>
+        </mitre>
+    </rule>
+
+    <rule id="92231" level="6">
+        <if_sid>92230</if_sid>
+        <field name="win.eventdata.image" type="pcre2">^System$</field>
+        <description>Possible abuse of Windows admin shares by binary dropped in Windows root folder by system process.</description>
+        <mitre>
+            <id>T1570</id>
+        </mitre>
+    </rule>
+
+    <rule id="92232" level="6">
+        <if_sid>92230</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)svchost.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(\.dll)$</field>
+        <description>Possible DLL search order hijack by $(win.eventdata.targetFilename) created in Windows root folder.</description>
+        <mitre>
+            <id>T1574.001</id>
+            <id>T1574.002</id>
+        </mitre>
+    </rule>
+
 </group>
