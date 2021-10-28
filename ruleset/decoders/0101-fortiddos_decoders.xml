@@ -3,7 +3,7 @@
 -->
 
 <decoder name="fortiddos-like">
-   <prematch>device_id=\S+ date=\S+ time=\S+ | devid=\S+ date=\S+ time=\S+</prematch>
+   <prematch>device_id=\S+ date=\S+ time=\S+|devid=\S+ date=\S+ time=\S+</prematch>
 </decoder>
 
 <decoder name="fortiddos-like-child">
