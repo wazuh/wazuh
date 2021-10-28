@@ -421,6 +421,7 @@ int w_key_request_dispatch(char * buffer) {
                     OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
                     cJSON_Delete (agent_infoJSON);
                     OSHash_Delete_ex(request_hash,buffer);
+                    os_free(agent);
                     return OS_INVALID;
                 } else {
                     add_insert(keys.keyentries[keys.keysize - 1], NULL);
@@ -474,16 +475,13 @@ void * w_socket_launcher(void * args) {
         switch (wm_exec(exec_path, &output, &wstatus, config.key_request.timeout, NULL)) {
             case 0:
                 if (wstatus != 0) {
-                    os_free(output);
                     mwarn("Key request integration (%s) returned code %d.", config.key_request.exec_path, wstatus);
                 }
             break;
             case KR_ERROR_TIMEOUT:
-                os_free(output);
                 mwarn("Timeout received while running key request integration (%s)", config.key_request.exec_path);
             break;
             default:
-                os_free(output);
                 if (wstatus == EXECVE_ERROR) {
                     merror("Cannot run key request integration (%s): path is invalid or file has insufficient permissions. Retrying in %d seconds.", exec_path, RELAUNCH_TIME);
                     sleep(RELAUNCH_TIME);
@@ -491,7 +489,7 @@ void * w_socket_launcher(void * args) {
                     mwarn("Error executing [%s]", config.key_request.exec_path);
                 }
         }
-
+        os_free(output);
     }
     
     return NULL;
