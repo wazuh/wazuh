@@ -2207,7 +2207,7 @@ class AWSServerAccess(AWSCustomBucket):
     def __init__(self, **kwargs):
         db_table_name = 's3_server_access'
         AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
-        self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}).*')
+        self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2})')
 
     def get_last_key_processed(self, aws_account_id: str) -> str or None:
         """
@@ -2232,37 +2232,37 @@ class AWSServerAccess(AWSCustomBucket):
             # if DB is empty for a region
             return None
 
-    def _key_is_old(self, date_match: re.Match, aws_account_id: str) -> bool:
+    def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
         """
         Tells if the file key provided is too old to process.
 
         Parameters
         ----------
-        date_match : re.Match
-            The result of searching for a date pattern in the file key.
-        aws_account_id : str
-            The account ID of the AWS account.
+        file_date : datetime or None
+            The date extracted from a file key.
+        last_key_date : datetime or None
+            The date extracted from a file key.
 
         Returns
         -------
         bool
             True if the file must be skipped, False otherwise.
         """
-        date = datetime.strptime(date_match.group(1), '%Y-%m-%d') if date_match else None
+        if file_date:
+            if (self.only_logs_after and file_date < self.only_logs_after) or \
+                    (last_key_date and file_date < last_key_date):
+                return True
 
-        if (last_key := self.get_last_key_processed(aws_account_id)) and date and last_key < date:
-            date = datetime.strptime(date_match.group(1), '%Y-%m-%d')
-            return self.only_logs_after and date < self.only_logs_after
         return False
 
-    def _different_prefix(self, date_match: re.Match, aws_account_id: str, aws_region: str) -> bool:
+    def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
-        Returns if the prefix of a file key is different than the one expected.
+        Returns if the prefix of a file key is the same as the one expected.
 
         Parameters
         ----------
-        date_match : re.Match
-            The result of searching for a date pattern in the file key.
+        match_start : int or None
+            The position of the string with the file key where it started matching with a date format.
         aws_account_id : str
             The account ID of the AWS account.
         aws_region : str
@@ -2271,9 +2271,9 @@ class AWSServerAccess(AWSCustomBucket):
         Returns
         -------
         bool
-            True if the prefix is different, False otherwise.
+            True if the prefix is the same, False otherwise.
         """
-        return not date_match or (date_match.start() != len(self.get_full_prefix(aws_account_id, aws_region)))
+        return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
 
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
         try:
@@ -2283,15 +2283,21 @@ class AWSServerAccess(AWSCustomBucket):
                 debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                 return
 
+            last_key = self.get_last_key_processed(aws_account_id)
+            last_key_date = datetime.strptime(last_key, '%Y-%m-%d') if last_key else None
+
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
 
                 date_match = self.date_regex.search(bucket_file['Key'])
-                if not self.reparse and self._key_is_old(date_match, aws_account_id):
+                file_date = datetime.strptime(date_match.group(), '%Y-%m-%d') if date_match else None
+                match_start = date_match.span()[0] if date_match else None
+
+                if not self.reparse and self._key_is_old(file_date, last_key_date):
                     debug(f"++ Skipping file too old to process: {bucket_file['Key']}", 1)
                     continue
-                if self._different_prefix(date_match, aws_account_id, aws_region):
+                if not self._same_prefix(match_start, aws_account_id, aws_region):
                     debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                     continue
 
@@ -2329,10 +2335,13 @@ class AWSServerAccess(AWSCustomBucket):
                         continue
 
                     date_match = self.date_regex.search(bucket_file['Key'])
-                    if not self.reparse and self._key_is_old(bucket_file['Key'], date_match, aws_account_id):
+                    file_date = datetime.strptime(date_match.group(), '%Y-%m-%d') if date_match else None
+                    match_start = date_match.span()[0] if date_match else None
+
+                    if not self.reparse and self._key_is_old(file_date, last_key_date):
                         debug(f"++ Skipping file too old to process: {bucket_file['Key']}", 1)
                         continue
-                    if self._different_prefix(date_match, aws_account_id, aws_region):
+                    if not self._same_prefix(match_start, aws_account_id, aws_region):
                         debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                         continue
 
