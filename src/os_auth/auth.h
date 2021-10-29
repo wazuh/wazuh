@@ -40,10 +40,6 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-#define EXECVE_ERROR 0x7F
-#define RELAUNCH_TIME 300
-#define KR_ERROR_TIMEOUT 1  // Error code for timeout.
-
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"
 #define CERTFILE "etc/sslmanager.cert"
@@ -69,23 +65,6 @@ struct keynode {
     char *group;
     struct keynode *next;
 };
-
-/**
- * @brief Enum that define the request type
- * */
-typedef enum _request_type {
-    W_TYPE_ID,W_TYPE_IP
-} request_type_t;
-
-/**
- * @brief Struct that define the add agent parameters 
- * */
-typedef struct _key_request_agent_info {
-    char *id;
-    char *name;
-    char *ip;
-    char *key;
-} key_request_agent_info;
 
 SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key, const char *ca_cert, int auto_method);
 SSL_CTX *get_ssl_context(const char *ciphers, int auto_method);
@@ -122,33 +101,6 @@ size_t authcom_getconfig(const char * section, char ** output);
 
 // Block signals
 void authd_sigblock();
-
-// Module main function. It won't return
-void* run_key_request_main(void *arg);
-
-// Thread for key request connection pool
-void * w_request_thread(void *arg);
-
-// Dispatch request. Write the output into the same input buffer.
-int w_key_request_dispatch(char * buffer);
-
-// Init key request integration
-void * w_socket_launcher(void * args);
-
-// Default key_request_agent_info structure initializer
-key_request_agent_info * w_key_request_agent_info_init();
-
-// Free key_request_agent_info structure
-void w_key_request_agent_info_destroy(key_request_agent_info *agent);
-
-// Get the neccesary agent info from a json message
-key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **error_msg);
-
-// Run the integration DB script to get the output
-char * keyrequest_exec_output(request_type_t type, char *request);
-
-// Connect with a socket to get the output
-char * keyrequest_socket_output(request_type_t type, char *request);
 
 /**
  * @brief Validate if groups are valid for new enrollment
@@ -225,6 +177,5 @@ extern volatile int running;
 extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
-extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
 #endif /* AUTHD_H */

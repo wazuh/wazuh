@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "auth.h"
+#include "key_request.h"
 
 static OSHash *request_hash = NULL;
 /* Key request queue */
@@ -244,19 +245,6 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
         pthread_exit(NULL);
     }
 
-    // Run integration daemon, if socket is defined and not available
-    if (config.key_request.socket && config.key_request.exec_path) {
-        int sock_int = external_socket_connect(config.key_request.socket, config.key_request.timeout);
-
-        if (sock_int < 0) {
-            minfo("Integration connection is down. Running integration.");
-            w_create_thread(w_socket_launcher, config.key_request.exec_path);
-        } else {
-            close(sock_int);
-            minfo("Integration connection is up.");
-        }
-    }
-
     for(i = 0; i < config.key_request.threads;i++){
         w_create_thread(w_request_thread, NULL);
     }
@@ -364,8 +352,16 @@ int w_key_request_dispatch(char * buffer) {
         if (output) {
             mdebug2("Socket output: %s", output);
         } else {
-            OSHash_Delete_ex(request_hash,buffer);
-            return OS_INVALID;
+            if (config.key_request.exec_path) {
+                minfo("Socket connect fail. Trying to run exec_path.");
+                output = keyrequest_exec_output(type, request);
+            }
+            if (output) {
+                mdebug2("Exec output: %s", output);
+            } else {
+                OSHash_Delete_ex(request_hash,buffer);
+                return OS_INVALID;
+            }
         }
     } else {
 
@@ -456,42 +452,6 @@ void * w_request_thread(__attribute__((unused)) void *arg) {
             os_free(msg);
         }
     }
-    return NULL;
-}
-
-void * w_socket_launcher(void * args) {
-    char * exec_path = (char *)args;
-    char * output;
-    int wstatus;
-
-    mdebug1("Running integration daemon: %s", exec_path);
-
-    authd_sigblock();
-
-    // We check that the process is up, otherwise we run it again.
-    while (running) {
-
-        // Run integration
-        switch (wm_exec(exec_path, &output, &wstatus, config.key_request.timeout, NULL)) {
-            case 0:
-                if (wstatus != 0) {
-                    mwarn("Key request integration (%s) returned code %d.", config.key_request.exec_path, wstatus);
-                }
-            break;
-            case KR_ERROR_TIMEOUT:
-                mwarn("Timeout received while running key request integration (%s)", config.key_request.exec_path);
-            break;
-            default:
-                if (wstatus == EXECVE_ERROR) {
-                    merror("Cannot run key request integration (%s): path is invalid or file has insufficient permissions. Retrying in %d seconds.", exec_path, RELAUNCH_TIME);
-                    sleep(RELAUNCH_TIME);
-                } else {
-                    mwarn("Error executing [%s]", config.key_request.exec_path);
-                }
-        }
-        os_free(output);
-    }
-    
     return NULL;
 }
 

@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
+#include "key_request.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
