@@ -7072,7 +7072,7 @@ paths:
         - Agents
       summary: "Add agent full"
       description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using `force_time` parameter"
+      same IP already exists, replace it using the `force` parameter"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -8525,8 +8525,13 @@ paths:
                         disabled: no
                         port: "1515"
                         use_source_ip: "no"
-                        force_insert: "yes"
-                        force_time: "0"
+                        force:
+                          enabled: "yes"
+                          key_mismatch: "yes"
+                          disconnected_time:
+                            enabled: "yes"
+                            value: "1h"
+                          after_registration_time: "1h"
                         purge: "yes"
                         use_password: "no"
                         ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
