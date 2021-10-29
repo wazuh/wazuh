@@ -19,6 +19,7 @@ from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
+from wazuh.core.common import decimals_date_format
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -55,7 +56,9 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
             Synchronization process result.
         """
         super().done_callback(future)
-        self.wazuh_common.sync_integrity_free = True
+        # Integrity task is only freed if master is not waiting for Extra valid files.
+        if not self.wazuh_common.extra_valid_requested:
+            self.wazuh_common.sync_integrity_free = True
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
@@ -91,7 +94,8 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
             Synchronization process result.
         """
         super().done_callback(future)
-        self.wazuh_common.sync_extra_valid_free = True
+        self.wazuh_common.extra_valid_requested = False
+        self.wazuh_common.sync_integrity_free = True
 
 
 class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
@@ -145,9 +149,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         super().__init__(**kwargs, tag="Worker")
         # Sync availability variables. Used to prevent sync process from overlapping.
-        self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
-        self.sync_extra_valid_free = True
         self.sync_agent_info_free = True
+        self.sync_integrity_free = True
+
+        # Variable used to check whether integrity sync process includes extra_valid files.
+        self.extra_valid_requested = False
+
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
         default_date = datetime.fromtimestamp(0)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
@@ -175,9 +182,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free,
-                           'sync_extravalid_free': self.sync_extra_valid_free,
-                           'last_check_integrity': self.integrity_check_status,
-                           'last_sync_integrity': self.integrity_sync_status,
+                           'last_check_integrity': {key: value for key, value in self.integrity_check_status.items() if
+                                                    not key.startswith('tmp')},
+                           'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
+                                                   not key.startswith('tmp')},
                            'last_sync_agentinfo': self.sync_agent_info_status,
                            'last_keep_alive': self.last_keepalive}
                 }
@@ -200,14 +208,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'syn_i_w_m_p' or command == b'syn_e_w_m_p' or command == b'syn_a_w_m_p':
+        if command == b'syn_i_w_m_p' or command == b'syn_a_w_m_p':
             return self.get_permission(command)
         elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m':
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
-        elif command == b'syn_i_w_m_r' or command == b'syn_e_w_m_r':
-            return self.process_sync_error_from_worker(command, data)
+        elif command == b'syn_i_w_m_r':
+            return self.process_sync_error_from_worker(data)
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
@@ -261,7 +269,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             client, request = data.split(b' ', 1)
             client = client.decode()
             if client in self.server.clients:
-                result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+                result = (await self.server.clients[client].send_request(b'dapi',
+                                                                         request_id.encode() + b' ' + request)).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
         # Add request to local API requests queue.
@@ -275,7 +284,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if command == b'dapi' or command == b'dapi_fwd':
             try:
                 timeout = None if wait_for_complete \
-                               else self.cluster_items['intervals']['communication']['timeout_dapi_request']
+                    else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                 request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:
@@ -364,6 +373,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if req_id in self.server.pending_api_requests:
             self.server.pending_api_requests[req_id]['Response'] = self.in_str[string_id].payload.decode()
             self.server.pending_api_requests[req_id]['Event'].set()
+            # Remove the string after using it
+            self.in_str.pop(string_id, None)
             return b'ok', b'Forwarded response'
         elif req_id in self.server.local_server.clients:
             asyncio.create_task(self.forward_dapi_response(data))
@@ -422,8 +433,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         if sync_type == b'syn_i_w_m_p':
             permission = self.sync_integrity_free
-        elif sync_type == b'syn_e_w_m_p':
-            permission = self.sync_extra_valid_free
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
         else:
@@ -449,7 +458,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if sync_type == b'syn_i_w_m':
             self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
         elif sync_type == b'syn_e_w_m':
-            self.sync_extra_valid_free, sync_function = False, ReceiveExtraValidTask
+            sync_function = ReceiveExtraValidTask
         elif sync_type == b'syn_a_w_m':
             self.sync_agent_info_free, sync_function = False, ReceiveAgentInfoTask
         else:
@@ -457,15 +466,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         return super().setup_receive_file(sync_function, data)
 
-    def process_sync_error_from_worker(self, command: bytes, error_msg: bytes) -> Tuple[bytes, bytes]:
+    def process_sync_error_from_worker(self, error_msg: bytes) -> Tuple[bytes, bytes]:
         """Manage error during synchronization process reported by a worker.
 
         Mark the process as free so a new one can start.
 
         Parameters
         ----------
-        command : bytes
-            Specify synchronization process where the error happened.
         error_msg : bytes
             Error information.
 
@@ -476,11 +483,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if command == b'syn_i_w_m_r':
-            sync_type, self.sync_integrity_free = "Integrity", True
-        else:  # command == b'syn_e_w_m_r':
-            sync_type, self.sync_extra_valid_free = "Extra valid", True
-
+        self.sync_integrity_free = True
         return super().error_receiving_file(error_msg.decode())
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
@@ -526,7 +529,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         except KeyError as e:
             await self.send_request(command=b'syn_m_a_err',
                                     data=f"error while trying to access string under task_id {str(e)}.".encode())
-            raise exception.WazuhClusterError(3035, extra_message=f"it should be under task_id {str(e)}, but it's empty.")
+            raise exception.WazuhClusterError(3035,
+                                              extra_message=f"it should be under task_id {str(e)}, but it's empty.")
         except ValueError as e:
             await self.send_request(command=b'syn_m_a_err', data=f"error while trying to load JSON: {str(e)}".encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
@@ -535,7 +539,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         before = time()
         for i, chunk in enumerate(data['chunks']):
             try:
-                logger.debug2(f"Sending chunk {i+1}/{len(data['chunks'])} to wazuh-db: {chunk}")
+                logger.debug2(f"Sending chunk {i + 1}/{len(data['chunks'])} to wazuh-db: {chunk}")
                 response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                 if response[0] != 'ok':
                     result['error_messages'].append(response)
@@ -548,11 +552,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Send result to worker
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
-        self.sync_agent_info_status.update({'date_start_master': date_start_master, 'date_end_master': datetime.now(),
+        date_end_master = datetime.now()
+        self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
+                                            'date_end_master': date_end_master.strftime(decimals_date_format),
                                             'n_synced_chunks': result['updated_chunks']})
-        logger.info("Finished in {:.3f}s ({} chunks updated).".format((self.sync_agent_info_status['date_end_master'] -
-                                                                       self.sync_agent_info_status['date_start_master'])
-                                                                      .total_seconds(), result['updated_chunks']))
+        logger.info("Finished in {:.3f}s ({} chunks updated).".format((date_end_master - date_start_master
+                                                                       ).total_seconds(), result['updated_chunks']))
 
         return response
 
@@ -600,11 +605,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.sync_extra_valid_free = True
-        self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
         self.integrity_sync_status['date_end_master'] = datetime.now()
         logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                   self.integrity_sync_status['date_start_master']).total_seconds()))
+                                                   self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
+        self.integrity_sync_status['date_start_master'] = \
+            self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
+        self.integrity_sync_status['date_end_master'] = \
+            self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
+        self.extra_valid_requested = False
+        self.sync_integrity_free = True
 
     async def sync_integrity(self, task_id: str, received_file: asyncio.Event):
         """Perform the integrity synchronization process by comparing local and received files.
@@ -657,8 +666,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
                                                                            files_metadata, self.name)
 
-        self.integrity_check_status.update({'date_start_master': date_start_master, 'date_end_master': datetime.now()})
-        total_time = (self.integrity_check_status['date_end_master'] - date_start_master).total_seconds()
+        total_time = (datetime.now() - date_start_master).total_seconds()
+        self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
+        self.integrity_check_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
+                                            'date_end_master': datetime.now().strftime(decimals_date_format)})
 
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
@@ -673,7 +684,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                'total_extra_valid': 0})
             logger.info("Files to create in worker: {} | Files to update in worker: {} | Files to delete in worker: {} "
                         "| Files to receive: {}".format(len(worker_files_ko['missing']), len(worker_files_ko['shared']),
-                                                        len(worker_files_ko['extra']), len(worker_files_ko['extra_valid']))
+                                                        len(worker_files_ko['extra']),
+                                                        len(worker_files_ko['extra_valid']))
                         )
 
             # Compress data: master files (only KO shared and missing).
@@ -705,8 +717,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             except exception.WazuhException as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
-                result = await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' +
-                                                 json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+                result = await self.send_request(
+                    command=b'syn_m_c_r', data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
@@ -718,14 +730,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 os.unlink(compressed_data)
                 logger.debug("Finished sending files to worker.")
                 # Log 'Finished in' message only if there are no extra_valid files to sync.
-                if not worker_files_ko['extra_valid']:
-                    self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
+                if not self.extra_valid_requested:
                     self.integrity_sync_status['date_end_master'] = datetime.now()
                     logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                               self.integrity_sync_status['date_start_master'])
+                                                               self.integrity_sync_status['tmp_date_start_master'])
                                                               .total_seconds()))
+                    self.integrity_sync_status['date_start_master'] = self.integrity_sync_status[
+                        'tmp_date_start_master'].strftime(decimals_date_format)
+                    self.integrity_sync_status['date_end_master'] = \
+                        self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
 
-        self.sync_integrity_free = True
         return result
 
     async def process_files_from_worker(self, files_metadata: Dict, decompressed_files_path: str, logger):
@@ -764,13 +778,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 # If the file is merged, create individual files from it.
                 if data['merged']:
-                    for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(data['merge_type'],
-                                                                                                   decompressed_files_path,
-                                                                                                   data['merge_name']):
+                    for file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(
+                            data['merge_type'], decompressed_files_path, data['merge_name']):
                         # Destination path.
                         full_unmerged_name = os.path.join(common.wazuh_path, file_path)
                         # Path where to create the file before moving it to the destination path (with safe_move).
-                        tmp_unmerged_path = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name, os.path.basename(file_path))
+                        tmp_unmerged_path = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name,
+                                                         os.path.basename(file_path))
 
                         try:
                             agent_id = os.path.basename(file_path)
@@ -803,7 +817,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             mtime_epoch = timegm(mtime.timetuple())
                             utils.safe_move(tmp_unmerged_path, full_unmerged_name,
                                             ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                            permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
+                                            permissions=self.cluster_items['files'][data['cluster_item_key']][
+                                                'permissions'],
                                             time=(mtime_epoch, mtime_epoch)
                                             )
                             self.integrity_sync_status['total_extra_valid'] += 1
@@ -813,15 +828,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             n_errors['errors'][data['cluster_item_key']] = 1 \
                                 if n_errors['errors'].get(data['cluster_item_key']) is None \
                                 else n_errors['errors'][data['cluster_item_key']] + 1
-                        await asyncio.sleep(0.0001)
+
+                        # Let other tasks (DAPI, etc) that may arrive while processing extra-valid files to be run.
+                        await asyncio.sleep(0)
 
                 # If the file is not merged, move it directly to the destination path.
                 else:
                     zip_path = os.path.join(decompressed_files_path, name)
-                    utils.safe_move(zip_path, full_path,
-                                    ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                    permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions']
-                                    )
+                    utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
+                                    permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'])
 
             except exception.WazuhException as e:
                 logger.debug2(f"Warning updating file '{name}': {e}")
@@ -852,7 +867,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             for filename, data in files_metadata.items():
                 await update_file(data=data, name=filename)
         except Exception as e:
-            self.logger.error(f"Error updating worker files: '{e}'.")
+            self.logger.error(f"Error updating worker files (extra valid): '{e}'.")
             raise e
 
         # Log errors if any.
@@ -931,7 +946,7 @@ class Master(server.AbstractServer):
             Healthcheck and basic information from master node.
         """
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
-                'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
+                         'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     async def file_status_update(self):
         """Asynchronous task that obtain files status periodically.
@@ -976,10 +991,12 @@ class Master(server.AbstractServer):
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
-            workers_info[node_name]["info"]["n_active_agents"] = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
+            workers_info[node_name]["info"]["n_active_agents"] = \
+            Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
-                    datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
+                    datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
+                                           ).strftime(decimals_date_format))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
 

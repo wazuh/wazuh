@@ -78,7 +78,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         char buffer[4096];
 
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
             char * end = strchr(buffer, '\n');
             if (end) {
                 *end = '\0';

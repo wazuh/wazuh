@@ -44,6 +44,7 @@ def start(foreground, root, config_file):
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
         set_secure_headers
+    from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
@@ -56,7 +57,8 @@ def start(foreground, root, config_file):
             )
             api_logger.setup_logger()
 
-    configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
+    if config_file is not None:
+        configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
     log_path = api_conf['logs']['path']
@@ -83,6 +85,7 @@ def start(foreground, root, config_file):
                 configuration.generate_self_signed_certificate(private_key, api_conf['https']['cert'])
                 logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
 
+            # Load SSL context
             allowed_ssl_protocols = {
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
@@ -91,7 +94,6 @@ def start(foreground, root, config_file):
             }
 
             ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
-
             ssl_context = ssl.SSLContext(protocol=ssl_protocol)
 
             if api_conf['https']['use_ca']:
@@ -100,13 +102,13 @@ def start(foreground, root, config_file):
 
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'], keyfile=api_conf['https']['key'])
 
-            # Loads SSL ciphers if any have been specified
+            # Load SSL ciphers if any has been specified
             if api_conf['https']['ssl_ciphers']:
                 ssl_ciphers = api_conf['https']['ssl_ciphers'].upper()
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
                 except ssl.SSLError:
-                    logger.error(str(APIError(2003, details='SSL ciphers can not be selected')))         
+                    logger.error(str(APIError(2003, details='SSL ciphers cannot be selected')))
                     sys.exit(1)
 
         except ssl.SSLError:
@@ -183,6 +185,9 @@ def start(foreground, root, config_file):
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
 
+    # Add application signals
+    app.app.on_response_prepare.append(modify_response_headers)
+
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
     logger.debug(f'Loaded security API configuration: {security_conf}')
@@ -232,8 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
-    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=common.api_config_path)
+    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file')
     parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
                         dest='debug_level')
     args = parser.parse_args()

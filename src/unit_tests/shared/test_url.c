@@ -86,13 +86,13 @@ void test_wurl_http_request_headers_list_null(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
-
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CAINFO);
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CAINFO);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -385,6 +385,108 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
     assert_null(response);
 }
 
+void test_wurl_http_request_curl_easy_setopt_fail(void **state)
+{
+    curl_response *response = NULL;
+    struct curl_slist* headers = (struct curl_slist*) 1;
+    CURL *curl = (CURL *) 1;
+    char *pheaders = NULL;
+    char *url = "http://test.com";
+    const char *payload = "payload test";
+    size_t max_size = 1;
+
+    #ifdef TEST_WINAGENT
+        will_return(wrap_curl_easy_init, curl);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
+        expect_value(wrap_curl_slist_append, list, NULL);
+        will_return(wrap_curl_slist_append, headers);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_WRITEFUNCTION);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_WRITEDATA);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_HTTPHEADER);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_HEADERFUNCTION);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_HEADERDATA);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, (CURLcode) 49);
+
+        expect_value(wrap_curl_slist_free_all, list, headers);
+        expect_value(wrap_curl_easy_cleanup, curl, curl);
+    #else
+        will_return(__wrap_curl_easy_init, curl);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
+        expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
+        expect_value(__wrap_curl_slist_append, list, NULL);
+        will_return(__wrap_curl_slist_append, headers);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_WRITEFUNCTION);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_WRITEDATA);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_HTTPHEADER);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_HEADERFUNCTION);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_HEADERDATA);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, (CURLcode) 49);
+
+        expect_value(__wrap_curl_slist_free_all, list, headers);
+        expect_value(__wrap_curl_easy_cleanup, curl, curl);
+    #endif
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Parameter setup error at CURL");
+
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size);
+    assert_null(response);
+}
+
 void test_wurl_http_request_success(void **state)
 {
     curl_response *response = NULL;
@@ -513,6 +615,7 @@ int main(void)
         cmocka_unit_test(test_wurl_http_request_headers_tmp_null),
         cmocka_unit_test(test_wurl_http_request_curl_easy_perform_fail_with_headers),
         cmocka_unit_test(test_wurl_http_request_curl_easy_perform_fail_with_payload),
+        cmocka_unit_test(test_wurl_http_request_curl_easy_setopt_fail),
         cmocka_unit_test(test_wurl_http_request_success),
     };
 

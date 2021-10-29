@@ -30,14 +30,17 @@ runInit()
             type=agent
         fi
         # RHEL 8 services must to be installed in /usr/lib/systemd/system/
-        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" = "8" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" = "8" ]; then
+        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" -ge "7" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" -ge "7" ]; then
             SERVICE_UNIT_PATH=/usr/lib/systemd/system/wazuh-$type.service
+            rm -f /etc/systemd/system/wazuh-$type.service
         else
             SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-$type.service
         fi
         GenerateService wazuh-$type.service > ${SERVICE_UNIT_PATH}
         chown root:wazuh ${SERVICE_UNIT_PATH}
         systemctl daemon-reload
+
+        rm -f /etc/rc.d/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
         then

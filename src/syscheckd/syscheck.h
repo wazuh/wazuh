@@ -52,13 +52,6 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
-typedef enum {
-    FIM_FILE_UPDATED,
-    FIM_FILE_DELETED,
-    FIM_FILE_ADDED_PATHS,
-    FIM_FILE_ERROR
-} fim_sanitize_state_t;
-
 typedef enum fim_state_db {
     FIM_STATE_DB_EMPTY,
     FIM_STATE_DB_NORMAL,
@@ -97,6 +90,7 @@ typedef struct diff_data {
     char *compress_tmp_file;
     char *diff_file;
 } diff_data;
+
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -579,14 +573,6 @@ int audit_health_check(int audit_socket);
  */
 void clean_rules(void);
 
-/**
- * @brief
- *
- * @param buffer
- * @return 0 if no key is found, 1 if AUDIT_KEY is found, 2 if an existing key is found, 3 if AUDIT_HEALTHCHECK_KEY is found
- */
-
-int filterkey_audit_events(char *buffer);
 
 #elif WIN32
 /**

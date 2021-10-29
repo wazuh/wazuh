@@ -380,13 +380,25 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             return -1;
         }
 
-        int sock;
-        if (sock = auth_connect(), sock < 0) {
-            mwarn("Could not connect to authd socket. Is authd running?");
+        if(w_is_worker()) {
+            char response[OS_SIZE_2048] = {'\0'};
+            char *new_id = NULL;
+            char *new_key = NULL;
+            if (0 == w_request_agent_add_clustered(response, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, &new_id, &new_key, data->force_insert, agent_id->valuestring)) {
+                mdebug1("Agent Key Polling response forwarded to the master node for agent '%s'", agent_id->valuestring);
+                os_free(new_id);
+                os_free(new_key);
+            }
         } else {
-            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
-            close(sock);
+            int sock;
+            if (sock = auth_connect(), sock < 0) {
+                mwarn("Could not connect to authd socket. Is authd running?");
+            } else {
+                w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
+                close(sock);
+            }
         }
+
         cJSON_Delete(agent_infoJSON);
     }
 
@@ -505,7 +517,7 @@ void * w_socket_launcher(void * args) {
 
         // Pick stderr
 
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
 
             // Remove newline
 

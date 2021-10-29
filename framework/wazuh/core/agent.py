@@ -10,29 +10,28 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
-from datetime import date, datetime
+from datetime import datetime
 from functools import lru_cache
 from json import dumps, loads
-from os import chown, chmod, makedirs, urandom, stat, remove
+from os import chown, chmod, urandom, stat
 from os import listdir, path
 from platform import platform
-from shutil import rmtree
 from time import time
 
 import api.configuration as aconf
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, date_format
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
+from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
+from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
 
-detect_wrong_lines = re.compile(r'(.+ .+ .+ .+)')
-detect_valid_lines = re.compile(r'^(\d+) (.*) (.*) (.*)', re.MULTILINE)
+detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
+detect_valid_lines = re.compile(r'^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)', re.MULTILINE)
 
 mutex = threading.Lock()
 lock_file = None
@@ -61,7 +60,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
-        self.query = self.query[:-1] + ' AND id != 0'
+        self.query += ' AND id != 0'
 
     def _sort_query(self, field):
         if field == 'os.version':
@@ -77,7 +76,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.fields['id'] = 'id'
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() \
-                else self.search['value']
+                else re.sub(f"[{self.special_characters}]", '_', self.search['value'])
 
     def _format_data_into_dictionary(self):
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
@@ -154,14 +153,20 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
-            field_filter_1, field_filter_2, field_filter_3 = \
-                field_filter + '_1', field_filter + '_2', field_filter + '_3'
-            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(
-                self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
-            self.request[field_filter_1] = '%,' + q_filter['value']
-            self.request[field_filter_2] = q_filter['value'] + ',%'
-            self.request[field_filter_3] = '%,{},%'.format(q_filter['value'])
-            self.request[field_filter] = q_filter['value']
+            valid_group_operators = {'=', '!=', '~'}
+
+            if q_filter['operator'] == '=':
+                self.query += f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
+                self.request[field_filter] = f"%,{q_filter['value']},%"
+            elif q_filter['operator'] == '!=':
+                self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
+                self.request[field_filter] = f"%,{q_filter['value']},%"
+            elif q_filter['operator'] == 'LIKE':
+                self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
+                self.request[field_filter] = f"%{q_filter['value']}%"
+            else:
+                raise WazuhError(1409, f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
+                                       f"Used operator: {q_filter['operator']}")
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
@@ -399,13 +404,13 @@ class Agent:
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
         """
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
-                                      query="id={}".format(self.id), count=False, get_data=True,
-                                      remove_extra_fields=False)
-        try:
-            data = db_query.run()['items'][0]
-        except IndexError:
-            raise WazuhResourceNotFound(1701)
+        with WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
+                                query="id={}".format(self.id), count=False, get_data=True,
+                                remove_extra_fields=False) as db_query:
+            try:
+                data = db_query.run()['items'][0]
+            except IndexError:
+                raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -464,17 +469,20 @@ class Agent:
 
         return ret_msg
 
-
-    def remove(self, backup=False, purge=False, use_only_authd=False):
+    def remove(self, purge: bool = False, use_only_authd: bool = False) -> str:
         """Delete the agent.
-
-        :param backup: Create backup before removing the agent.
-        :param purge: Delete definitely from key store.
-        :param use_only_authd: Force the use of authd when adding and removing agents.
-        :return: Message.
+        Parameters
+        ----------
+        purge : bool
+            Definitely delete agent from key store.
+        use_only_authd : bool
+            Force the use of authd when adding and removing agents.
+        Returns
+        -------
+        data : str
+            Message generated by Wazuh.
         """
-
-        manager_status = get_manager_status(cache=True)
+        manager_status = get_manager_status()
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:
@@ -482,7 +490,7 @@ class Agent:
 
         try:
             if not is_authd_running:
-                data = self._remove_manual(backup, purge)
+                data = self._remove_manual(purge)
             else:
                 data = self._remove_authd(purge)
 
@@ -551,8 +559,6 @@ class Agent:
             if not agent_found:
                 raise WazuhResourceNotFound(1701, extra_message=self.id)
 
-            self.delete_agent_files(self.id, self.name, self.registerIP, backup=backup)
-
             # Write temporary client.keys file
             handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
             with open(handle, 'a') as f_kt:
@@ -571,71 +577,8 @@ class Agent:
 
         return 'Agent was successfully deleted'
 
-    @staticmethod
-    def delete_agent_files(agent_id, agent_name, agent_register_ip, backup=True):
-        # Tell wazuh-db to delete agent database
-        wdb_backend_conn = WazuhDBBackend(agent_id).connect_to_db()
-        wdb_backend_conn.delete_agents_db([agent_id])
-
-        # Remove agent from groups
-        try:
-            wdb_conn = WazuhDBConnection()
-            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {agent_id}')
-        except Exception as e:
-            raise WazuhInternalError(1747, extra_message=str(e))
-
-        # Clean up agent files
-        try:
-            # Remove rid file
-            rids_file = path.join(common.wazuh_path, 'queue/rids', agent_id)
-            if path.exists(rids_file):
-                remove(rids_file)
-
-            if backup:
-                # Create backup directory
-                # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
-                date_part = date.today().strftime('%Y/%b/%d')
-                main_agent_backup_dir = path.join(common.backup_path,
-                                                  f'agents/{date_part}/{agent_id}-{agent_name}-{agent_register_ip}')
-                agent_backup_dir = main_agent_backup_dir
-
-                not_agent_dir = True
-                i = 0
-                while not_agent_dir:
-                    if path.exists(agent_backup_dir):
-                        i += 1
-                        agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
-                    else:
-                        makedirs(agent_backup_dir)
-                        chmod_r(agent_backup_dir, 0o750)
-                        not_agent_dir = False
-            else:
-                agent_backup_dir = ''
-
-            # Move agent file
-            agent_files = [
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.wazuh_path, agent_name, agent_register_ip),
-                 '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.wazuh_path, agent_id),
-                 '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/var/db/agents/{}-{}.db'.format(common.wazuh_path, agent_name, agent_id),
-                 '{}/var_db'.format(agent_backup_dir)),
-                ('{}/queue/diff/{}'.format(common.wazuh_path, agent_name), '{}/diff'.format(agent_backup_dir))
-            ]
-
-            for agent_file, backup_file in agent_files:
-                if path.exists(agent_file):
-                    if not backup:
-                        if path.isdir(agent_file):
-                            rmtree(agent_file)
-                        else:
-                            remove(agent_file)
-                    elif not path.exists(backup_file):
-                        safe_move(agent_file, backup_file, permissions=0o660)
-        except Exception as e:
-            raise WazuhInternalError(1748, extra_message=str(e))
-
-    def _add(self, name, ip, id=None, key=None, force=-1, use_only_authd=False):
+    def _add(self, name: str, ip: str, id: str = None, key: str = None, force: int = -1,
+             use_only_authd: bool = False) -> None:
         """Add an agent to Wazuh.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -664,10 +607,6 @@ class Agent:
             If there was an error registering a new agent.
         WazuhError(1726)
             If authd is not running.
-
-        Returns
-        -------
-        Agent ID.
         """
         ip = ip.lower()
         if ip != 'any':
@@ -866,7 +805,6 @@ class Agent:
                                 # If force is non-negative then we check to remove the agent using value of force as
                                 # the max age in seconds
                                 if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
-                                    self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
                                     # We add a void entry
                                     client_keys_entries[index] = f'{entry_id} !{entry_name} {entry_ip} {entry_key}'
                                 else:
@@ -929,18 +867,31 @@ class Agent:
                             filters=None, q=""):
         """Gets a list of available agents with basic attributes.
 
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines required field filters.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        Parameters
+        ----------
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : str
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        search : str
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+        select : str
+            Select fields to return. Format: {"fields":["field1","field2"]}.
+        filters : dict
+            Defines required field filters.
+        q : str
+            Defines query to filter in DB.
+
+        Returns
+        -------
+        Information gathered from the database query
         """
+        pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
+                                    filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
+                                      query=q, **pfilters)
         data = db_query.run()
 
         return data
@@ -1250,7 +1201,7 @@ def expand_group(group_name):
             try:
                 with open(path.join(common.groups_path, file), 'r') as f:
                     file_content = f.readlines()
-                len(file_content) == 1 and group_name in file_content[0] and agents_ids.add(file)
+                len(file_content) == 1 and group_name in file_content[0].strip().split(',') and agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
                 pass
@@ -1298,27 +1249,6 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
     return {'filters': filters, 'rbac_negate': negate}
 
 
-def agents_padding(result, agent_list):
-    """Remove agent 000 from agent_list and transform the format of the agent ids to the general format
-
-    Parameters
-    ----------
-    result : AffectedItemsWazuhResult
-    agent_list : list
-        List of agent's IDs
-
-    Returns
-    -------
-    Formatted agent list
-    """
-    agent_list = [str(agent).zfill(3) for agent in agent_list]
-    if '000' in agent_list:
-        result.add_failed_item(id_='000', error=WazuhError(code=1703))
-        agent_list.remove('000')
-
-    return agent_list
-
-
 def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
                         force=False, use_http=False, file_path=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
@@ -1348,30 +1278,32 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     -------
     Message received from the socket (Task module or Upgrade module)
     """
-    if not get_result:
-        msg = {'version': 1,
-               'origin': {'module': 'api'},
-               'command': command,
-               'parameters': {
-                   'agents': agents_chunk,
-                   'version': version,
-                   'force_upgrade': force,
-                   'use_http': use_http,
-                   'wpk_repo': wpk_repo,
-                   'file_path': file_path,
-                   'installer': installer
-               }
-               }
-    else:
-        msg = {'version': 1, 'origin': {'module': 'api'}, 'command': command,
-               'module': 'api', 'parameters': {'agents': agents_chunk}}
+    msg = create_wazuh_socket_message(origin={'module': 'api'},
+                                      command=command,
+                                      parameters={
+                                          'agents': agents_chunk,
+                                          'version': version,
+                                          'force_upgrade': force,
+                                          'use_http': use_http,
+                                          'wpk_repo': wpk_repo,
+                                          'file_path': file_path,
+                                          'installer': installer
+                                      } if not get_result else {'agents': agents_chunk})
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 
     # Send upgrading command
     s = WazuhSocket(common.UPGRADE_SOCKET)
     s.send(dumps(msg).encode())
+
+    # Receive upgrade information from socket
     data = loads(s.receive().decode())
     s.close()
+
+    # Update agent information when getting upgrade results
+    # When a task has status "In Queue", update_time has value "0" as the task has not been updated yet
+    [agent_info.update(
+        (k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format)) for k, v in agent_info.items() if
+        k in {"create_time", "update_time"} and v != "0") for agent_info in data["data"]]
 
     return data

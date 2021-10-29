@@ -116,7 +116,7 @@ target_compile_options(test_create_db PRIVATE "-Wall")
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode \
-                          -Wl,--wrap,delete_target_file -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
+                          -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
                           -Wl,--wrap,fim_db_set_all_unscanned -Wl,--wrap,fim_db_set_scanned \
                           -Wl,--wrap,get_group -Wl,--wrap,fim_db_remove_path \
@@ -131,7 +131,8 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                           -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
-                          -Wl,--wrap,fim_db_remove_wildcard_entry ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap,fim_db_remove_wildcard_entry -Wl,--wrap,fim_db_file_update \
+                          -Wl,--wrap,fim_db_is_full -Wl,--wrap,realtime_sanitize_watch_map ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")

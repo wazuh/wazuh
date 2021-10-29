@@ -580,16 +580,30 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
     This function is useful to move files even when target directory is in a different filesystem from the source.
     Write permissions are required on target directory.
 
-    :param source: full path to source file
-    :param target: full path to target file
-    :param ownership: tuple in the form (user, group) to be set up after the file is moved
-    :param time: tuple in the form (addition_timestamp, modified_timestamp)
-    :param permissions: string mask in octal notation. I.e.: '0o640'
+    Parameters
+    ----------
+    source : str
+        Full path to source file.
+    target : str
+        Full path to target file.
+    ownership : tuple
+        Tuple in the form (user, group) to be set up after the file is moved.
+    time : tuple
+        Tuple in the form (addition_timestamp, modified_timestamp).
+    permissions : str
+        String mask in octal notation. I.e.: '0o640'.
     """
     # Create temp file. Move between
     tmp_path, tmp_filename = path.split(target)
     tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
     move(source, tmp_target, copy_function=copyfile)
+
+    # Set up metadata
+    chown(tmp_target, *ownership)
+    if permissions is not None:
+        chmod(tmp_target, permissions)
+    if time is not None:
+        utime(tmp_target, time)
 
     try:
         # Overwrite the file atomically.
@@ -600,13 +614,6 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
         # However, this is not an atomic operation and could lead to race conditions
         # if the file is read/written simultaneously with other processes
         move(tmp_target, target, copy_function=copyfile)
-
-    # Set up metadata
-    chown(target, *ownership)
-    if permissions is not None:
-        chmod(target, permissions)
-    if time is not None:
-        utime(target, time)
 
 
 def mkdir_with_mode(name, mode=0o770):
@@ -743,7 +750,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     non_nested_dict = {f: data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
-    # append both dictonaries
+    # append both dictionaries
     nested_dict.update(non_nested_dict)
 
     return nested_dict
@@ -928,6 +935,28 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+    def check_date_format(element):
+        """Check if a given field is a date. If so, transform the date to the standard API format (ISO 8601).
+        If not, return the field.
+
+        Parameters
+        ----------
+        element : str
+            Item to check.
+
+        Returns
+        -------
+        In case of a date, return the element after its conversion. Otherwise it return the element.
+        """
+        date_patterns = ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
+
+        for pattern in date_patterns:
+            try:
+                return datetime.strptime(element, pattern)
+            except ValueError:
+                pass
+
+        return element
 
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
@@ -953,11 +982,14 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                     return True
             else:
                 # cast value2 to integer if value1 is integer
+                value2 = check_date_format(value2)
+                if type(value2) == datetime:
+                    val = check_date_format(val)
                 value2 = int(value2) if type(val) == int else value2
                 if operators[op](val, value2):
                     return True
-        else:
-            return False
+
+        return False
 
     def get_match_candidates(iterable, key_list: list, candidates: list):
         """Get the match candidates following a list of keys.
@@ -1085,6 +1117,9 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     def connect_to_db(self):
         return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
 
+    def close_connection(self):
+        self.conn.close()
+
     def _substitute_params(self, query, request):
         """
         Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
@@ -1201,6 +1236,12 @@ class WazuhDBQuery(object):
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
         self.rbac_negate = rbac_negate
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        isinstance(self.backend, WazuhDBBackend) and self.backend.close_connection()
 
     def _clean_filter(self, query_filter):
         # Replace special characters with wildcards
@@ -1344,7 +1385,7 @@ class WazuhDBQuery(object):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
-            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
+            # Filter a date, only if it is a string and it can be derived into a date.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
         elif 'rbac' in field_name:
@@ -1402,17 +1443,17 @@ class WazuhDBQuery(object):
         raise NotImplementedError
 
     def _filter_date(self, date_filter, filter_db_name):
-        # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
+        # date_filter['value'] can be either a timeframe or a date in formats %Y-%m-%d, %Y-%m-%d %H:%M:%S or %Y-%m-%dT%H:%M:%SZ
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "({0} IS NOT NULL AND {0} {1}" \
-                          " strftime('%s', 'now') - :{2}) ".format(self.fields[filter_db_name],
+            self.query += "{0} IS NOT NULL AND {0} {1}" \
+                          " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
                                                                    query_operator,
                                                                    date_filter['field'])
-        elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
-            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name],
-                                                                    date_filter['operator'], date_filter['field'])
+        elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):
+            self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
+                self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
             raise WazuhError(1412, date_filter['value'])

@@ -1,0 +1,19 @@
+/*
+ * Wazuh Shared Configuration Manager
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * April 3, 2018.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef SHARED_DOWNLOAD_WRAPPERS_H
+#define SHARED_DOWNLOAD_WRAPPERS_H
+
+#include "../../remoted/shared_download.h"
+
+agent_group * wrap_w_parser_get_agent(const char * name);
+
+#endif /* SHARED_DOWNLOAD_WRAPPERS_H */

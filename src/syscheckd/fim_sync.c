@@ -54,7 +54,7 @@ void * fim_run_integrity(void * args) {
     while (1) {
         bool sync_successful = true;
 
-        mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
+        mdebug2("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
 
         gettime(&start);
         fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
@@ -89,7 +89,7 @@ void * fim_run_integrity(void * args) {
         }
         else {
             // Duplicate for every failure
-            mdebug1("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
+            mdebug2("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
             sync_interval *= 2;
             sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
         }
@@ -227,21 +227,17 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         component = FIM_COMPONENT_FILE;
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_count_range(syscheck.database, type, start, top, &range_size) != FIMDB_OK) {
         merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
         range_size = 0;
     }
-    w_mutex_unlock(&syscheck.fim_entry_mutex)
 
     switch (range_size) {
     case 0:
         return;
 
     case 1:
-        w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, start);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, start);
@@ -258,10 +254,8 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         EVP_DigestInit(ctx_left, EVP_sha1());
         EVP_DigestInit(ctx_right, EVP_sha1());
 
-        w_mutex_lock(&syscheck.fim_entry_mutex);
         result = fim_db_get_checksum_range(syscheck.database, type, start, top, range_size, ctx_left, ctx_right,
                                             &str_pathlh, &str_pathuh);
-        w_mutex_unlock(&syscheck.fim_entry_mutex)
 
         if (result == FIMDB_OK) {
             unsigned char digest[EVP_MAX_MD_SIZE] = {0};
@@ -306,16 +300,13 @@ void fim_sync_send_list(const char *start, const char *top) {
         component = FIM_COMPONENT_FILE;
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_path_range(syscheck.database, type, start, top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
         if (file != NULL) {
             fim_db_clean_file(&file, syscheck.database_store);
         }
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
         return;
     }
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (file == NULL) {
         return;
@@ -329,9 +320,7 @@ void fim_sync_send_list(const char *start, const char *top) {
     for (it = 0; (fim_db_read_line_from_file(file, syscheck.database_store, it, &line) == 0) ; it++) {
         fim_entry *entry;
 
-        w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, line);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, line);

@@ -1,0 +1,31 @@
+<!--
+  - OracleDB rules
+  - Created by Wazuh, Inc.
+  - Copyright (C) 2015-2021, Wazuh Inc.
+  - This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="oracle,oracledb,">
+
+    <!-- RULE ID RANGE: 89100 - 89199 -->
+
+    <!--
+      Alert example:
+      {"timestamp":"2021-07-14T11:21:33.363-0700","rule":{"level":3,"description":"OracleDB transaction","id":"89100","firedtimes":1,"mail":false,"groups":["oracle","oracledb"],"pci_dss":["10.6.2"],"hipaa":["164.312.b"]},"agent":{"id":"000","name":"localhost.localdomain"},"manager":{"name":"localhost.localdomain"},"id":"1626286893.177547","full_log":"Jul 14 11:21:33 localhost.localdomain oracledb: \nFri Jul 09 11:11:00 2021 +05:32\nLENGTH : '563'\nACTION :[412] 'select /*+  no_parallel(t) no_parallel_index(t) dbms_stats cursor_sharing_exact use_weak_name_resl dynamic_sampling(0) no_monitoring xmlindex_sel_idx_tbl no_substrb_pad  */ substrb(dump(\"INSTANCE_NUMBER\",16,0,64),1,240) val, \n                      rowidtochar(rowid) rwid from \"SYS\".\"WWW$_SEC_THAT\" t where rowid in (chartorowid('AAAAO0AADAAASALAAA'),chartorowid('AAAAO0AADAAAAAJAAA')) order by \"INSTANCE_NUMBER\"'\nDATABASE USER:[3] 'SYS'\nPRIVILEGE :[4] 'NONE'\nCLIENT USER:[0] ''\nCLIENT TERMINAL:[7] 'UNKNOWN'\nSTATUS:[1] '0'\nDBID:[10] '1120301032'","predecoder":{"program_name":"oracledb","timestamp":"Jul 14 11:21:33","hostname":"localhost.localdomain"},"decoder":{"name":"oracledb_log"},"data":{"action":"select /*+  no_parallel(t) no_parallel_index(t) dbms_stats cursor_sharing_exact use_weak_name_resl dynamic_sampling(0) no_monitoring xmlindex_sel_idx_tbl no_substrb_pad  */ substrb(dump(\"INSTANCE_NUMBER\",16,0,64),1,240) val, \n                      rowidtochar(rowid) rwid from \"SYS\".\"WWW$_SEC_THAT\" t where rowid in (chartorowid('AAAAO0AADAAASALAAA'),chartorowid('AAAAO0AADAAAAAJAAA')) order by \"INSTANCE_NUMBER\"","status":"0","length":"563","database_user":"SYS","privilege_level":"NONE","client_terminal":"UNKNOWN","database_id":"1120301032"},"location":"/tmp/oracle/CDBTST000_j000_11111_20212020231542600818143795.aud"}
+    -->
+    <rule id="89100" level="3">
+        <decoded_as>oracledb_log</decoded_as>
+        <description>OracleDB transaction</description>
+        <group>pci_dss_10.6.2,hipaa_164.312.b</group>
+    </rule>
+
+    <!--
+      Alert example:
+      {"timestamp":"2021-07-14T11:20:43.107-0700","rule":{"level":7,"description":"Oracle DB alerts","id":"89101","firedtimes":1,"mail":false,"groups":["oracle","oracledb"],"pci_dss":["10.6.1"],"hipaa":["164.312.b"]},"agent":{"id":"000","name":"localhost.localdomain"},"manager":{"name":"localhost.localdomain"},"id":"1626286843.176665","full_log":"Jul 14 11:20:43 localhost.localdomain oracledb_alerts: Tue Feb 23 11:53:46 2021\anyword: mtype: 61 process 70621 failed because of a resource problem in the OS. The OS has most likely run out of buffers (rval: 4)\nErrors in file /opt/oracle/app/oracle/diag/rdbms/cdbtst00/CDBTST000/trace/CDBTST000_m000_10111.trc  (incident=346445):\nORA-00603: ORACLE server session terminated by fatal error\nORA-27504: IPC error creating OSD context\nORA-27300: OS system dependent operation:sendmsg failed with status: 105\nORA-27301: OS failure message: No buffer space available\nORA-27302: failure occurred at: anyword\nopidrv aborting process M000 ospid (70621) as a result of ORA-603\nProcess m000 died, see its trace file","predecoder":{"program_name":"oracledb_alerts","timestamp":"Jul 14 11:20:43","hostname":"localhost.localdomain"},"decoder":{"name":"oracledb_alerts"},"location":"/tmp/oracle/alert_CDBTST931.log"}    
+    -->
+    <rule id="89101" level="7">
+      <decoded_as>oracledb_alerts</decoded_as>
+      <description>Oracle DB alerts</description>
+      <group>pci_dss_10.6.1,hipaa_164.312.b</group>
+  </rule>
+</group>

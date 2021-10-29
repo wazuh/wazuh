@@ -193,6 +193,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->secret_key) cJSON_AddStringToObject(buck,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(buck,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(buck,"iam_role_arn",iter->iam_role_arn);
+            if (iter->iam_role_duration) cJSON_AddStringToObject(buck, "iam_role_duration",iter->iam_role_duration);
             if (iter->aws_account_id) cJSON_AddStringToObject(buck,"aws_account_id",iter->aws_account_id);
             if (iter->aws_account_alias) cJSON_AddStringToObject(buck,"aws_account_alias",iter->aws_account_alias);
             if (iter->trail_prefix) cJSON_AddStringToObject(buck,"path",iter->trail_prefix);
@@ -203,6 +204,8 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
             if (iter->discard_field) cJSON_AddStringToObject(buck,"discard_field",iter->discard_field);
             if (iter->discard_regex) cJSON_AddStringToObject(buck,"discard_regex",iter->discard_regex);
+            if (iter->sts_endpoint) cJSON_AddStringToObject(buck,"sts_endpoint",iter->sts_endpoint);
+            if (iter->service_endpoint) cJSON_AddStringToObject(buck,"service_endpoint",iter->service_endpoint);
             cJSON_AddItemToArray(arr_buckets,buck);
         }
         if (cJSON_GetArraySize(arr_buckets) > 0) {
@@ -221,6 +224,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->secret_key) cJSON_AddStringToObject(service,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(service,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(service,"iam_role_arn",iter->iam_role_arn);
+            if (iter->iam_role_duration) cJSON_AddStringToObject(service, "iam_role_duration",iter->iam_role_duration);
             if (iter->aws_account_id) cJSON_AddStringToObject(service,"aws_account_id",iter->aws_account_id);
             if (iter->aws_account_alias) cJSON_AddStringToObject(service,"aws_account_alias",iter->aws_account_alias);
             if (iter->only_logs_after) cJSON_AddStringToObject(service,"only_logs_after",iter->only_logs_after);
@@ -229,6 +233,8 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->remove_log_streams) cJSON_AddStringToObject(service,"remove_log_streams","yes"); else cJSON_AddStringToObject(service,"remove_log_streams","no");
             if (iter->discard_field) cJSON_AddStringToObject(service,"discard_field",iter->discard_field);
             if (iter->discard_regex) cJSON_AddStringToObject(service,"discard_regex",iter->discard_regex);
+            if (iter->sts_endpoint) cJSON_AddStringToObject(service,"sts_endpoint",iter->sts_endpoint);
+            if (iter->service_endpoint) cJSON_AddStringToObject(service,"service_endpoint",iter->service_endpoint);
             cJSON_AddItemToArray(arr_services,service);
         }
         if (cJSON_GetArraySize(arr_services) > 0) {
@@ -344,6 +350,10 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
         wm_strcat(&command, "--iam_role_arn", ' ');
         wm_strcat(&command, exec_bucket->iam_role_arn, ' ');
     }
+    if (exec_bucket->iam_role_duration){
+        wm_strcat(&command, "--iam_role_duration", ' ');
+        wm_strcat(&command, exec_bucket->iam_role_duration, ' ');
+    }
     if (exec_bucket->aws_organization_id) {
         wm_strcat(&command, "--aws_organization_id", ' ');
         wm_strcat(&command, exec_bucket->aws_organization_id, ' ');
@@ -379,6 +389,14 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     if (exec_bucket->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
         wm_strcat(&command, exec_bucket->discard_regex, ' ');
+    }
+    if (exec_bucket->sts_endpoint) {
+        wm_strcat(&command, "--sts_endpoint", ' ');
+        wm_strcat(&command, exec_bucket->sts_endpoint, ' ');
+    }
+    if (exec_bucket->service_endpoint) {
+        wm_strcat(&command, "--service_endpoint", ' ');
+        wm_strcat(&command, exec_bucket->service_endpoint, ' ');
     }
     if (exec_bucket->type) {
         wm_strcat(&command, "--type", ' ');
@@ -508,6 +526,10 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
         wm_strcat(&command, "--iam_role_arn", ' ');
         wm_strcat(&command, exec_service->iam_role_arn, ' ');
     }
+    if (exec_service->iam_role_duration){
+        wm_strcat(&command, "--iam_role_duration", ' ');
+        wm_strcat(&command, exec_service->iam_role_duration, ' ');
+    }
     if (exec_service->aws_account_id) {
         wm_strcat(&command, "--aws_account_id", ' ');
         wm_strcat(&command, exec_service->aws_account_id, ' ');
@@ -538,6 +560,14 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     if (exec_service->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
         wm_strcat(&command, exec_service->discard_regex, ' ');
+    }
+    if (exec_service->sts_endpoint) {
+        wm_strcat(&command, "--sts_endpoint", ' ');
+        wm_strcat(&command, exec_service->sts_endpoint, ' ');
+    }
+    if (exec_service->service_endpoint) {
+        wm_strcat(&command, "--service_endpoint", ' ');
+        wm_strcat(&command, exec_service->service_endpoint, ' ');
     }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');

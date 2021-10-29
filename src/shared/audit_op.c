@@ -223,7 +223,7 @@ int audit_restart(void) {
     }
 
     // Print stderr
-    while (fgets(buffer, sizeof(buffer), wfd->file)) {
+    while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
         mdebug1("auditd: %s", buffer);
     }
 

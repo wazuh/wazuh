@@ -178,9 +178,9 @@ std::string SysInfo::getSerialNumber() const
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
 }
 
-static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, nlohmann::json& result)
+static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
-    const auto packages {Utils::enumerateDir(pkgDirectory) };
+    const auto packages { Utils::enumerateDir(pkgDirectory) };
 
     for (const auto& package : packages)
     {
@@ -194,7 +194,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
                     // Only return valid content packages
-                    result.push_back(jsPackage);
+                    callback(jsPackage);
                 }
             }
         }
@@ -202,7 +202,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
         {
             if (!Utils::startsWith(package, "."))
             {
-                const auto packageVersions {Utils::enumerateDir(pkgDirectory + "/" + package) };
+                const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
 
                 for (const auto& version : packageVersions)
                 {
@@ -214,7 +214,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                         {
                             // Only return valid content packages
-                            result.push_back(jsPackage);
+                            callback(jsPackage);
                         }
                     }
                 }
@@ -228,17 +228,10 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json jsPackages;
-
-    for (const auto& packageDirectory : s_mapPackagesDirectories)
+    getPackages([&jsPackages](nlohmann::json & package)
     {
-        const auto pkgDirectory { packageDirectory.first };
-
-        if (Utils::existsDir(pkgDirectory))
-        {
-            getPackagesFromPath(pkgDirectory, packageDirectory.second, jsPackages);
-        }
-    }
-
+        jsPackages.push_back(package);
+    });
     return jsPackages;
 }
 
@@ -246,37 +239,11 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    int32_t maxProc{};
-    size_t len { sizeof(maxProc) };
-    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
-
-    if (ret)
+    getProcessesInfo([&jsProcessesList](nlohmann::json & processInfo)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading kernel max processes."
-        };
-    }
-
-    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
-    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
-
-    for (int index = 0; index < processesCount; ++index)
-    {
-        ProcessTaskInfo taskInfo{};
-        const auto pid { spPids.get()[index] };
-        const auto sizeTask
-        {
-            proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
-        };
-
-        if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
-        {
-            jsProcessesList.push_back(getProcessInfo(taskInfo, pid));
-        }
-    }
+        // Append the current json process object to the list of processes
+        jsProcessesList.push_back(processInfo);
+    });
 
     return jsProcessesList;
 }
@@ -369,19 +336,74 @@ nlohmann::json SysInfo::getPorts() const
 
             const auto portFound
             {
-                std::find_if(ports["ports"].begin(), ports["ports"].end(),
+                std::find_if(ports.begin(), ports.end(),
                              [&port](const auto & element)
                 {
                     return 0 == port.dump().compare(element.dump());
                 })
             };
 
-            if (ports["ports"].end() == portFound)
+            if (ports.end() == portFound)
             {
-                ports["ports"].push_back(port);
+                ports.push_back(port);
             }
         }
     }
 
     return ports;
+}
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
+{
+    int32_t maxProc{};
+    size_t len { sizeof(maxProc) };
+    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading kernel max processes."
+        };
+    }
+
+    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
+    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
+
+    for (int index = 0; index < processesCount; ++index)
+    {
+        ProcessTaskInfo taskInfo{};
+        const auto pid { spPids.get()[index] };
+        const auto sizeTask
+        {
+            proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
+        };
+
+        if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
+        {
+            auto processInfo = getProcessInfo(taskInfo, pid);
+            callback(processInfo);
+        }
+    }
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
+{
+    for (const auto& packageDirectory : s_mapPackagesDirectories)
+    {
+        const auto pkgDirectory { packageDirectory.first };
+
+        if (Utils::existsDir(pkgDirectory))
+        {
+            getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+        }
+    }
+}
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    // Currently not supported for this OS.
+    return nlohmann::json();
 }

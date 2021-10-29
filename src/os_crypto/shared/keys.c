@@ -53,7 +53,7 @@ static void save_removed_key(keystore *keys, const char *key) {
 }
 
 /* Create the final key */
-int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
+int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, time_t time_added)
 {
     os_md5 filesum1;
     os_md5 filesum2;
@@ -102,11 +102,16 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->time_added = time_added;
     keys->keyentries[keys->keysize]->updating_time = 0;
     keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
-    if (keys->flags.rehash_keys) {
+    if (keys->flags.key_mode == W_RAW_KEY || keys->flags.key_mode == W_DUAL_KEY) {
+        os_strdup(key, keys->keyentries[keys->keysize]->raw_key);
+    }
+
+    if (keys->flags.key_mode == W_ENCRYPTION_KEY || keys->flags.key_mode == W_DUAL_KEY) {
         /** Generate final symmetric key **/
 
         /* MD5 from name, id and key */
@@ -128,12 +133,11 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum2, filesum1);
 
         /* Final key is 48 * 4 = 192bits */
-        os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
+        os_strdup(_finalstr, keys->keyentries[keys->keysize]->encryption_key);
 
         /* Clean final string from memory */
         memset_secure(_finalstr, '\0', sizeof(_finalstr));
-    } else
-        os_strdup(key, keys->keyentries[keys->keysize]->key);
+    }
 
     /* Ready for next */
     return keys->keysize++;
@@ -166,7 +170,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
+void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 {
     FILE *fp;
 
@@ -212,7 +216,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->flags.rehash_keys = rehash_keys;
+    keys->flags.key_mode = key_mode;
     keys->flags.save_removed = save_removed;
     w_mutex_init(&keys->keytree_sock_mutex, NULL);
 
@@ -303,7 +307,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
             strncpy(key, valid_str, KEYSIZE - 1);
 
             /* Generate the key hash */
-            OS_AddKey(keys, id, name, ip, key);
+            OS_AddKey(keys, id, name, ip, key, 0);
 
             /* Clear the memory */
             __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -340,8 +344,12 @@ void OS_FreeKey(keyentry *key) {
         free(key->id);
     }
 
-    if (key->key) {
-        free(key->key);
+    if (key->raw_key) {
+        free(key->raw_key);
+    }
+
+    if (key->encryption_key) {
+        free(key->encryption_key);
     }
 
     if (key->name) {
@@ -425,7 +433,7 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
+    OS_ReadKeys(keys, keys->flags.key_mode, keys->flags.save_removed);
 
     mdebug2("OS_StartCounter");
     OS_StartCounter(keys);
@@ -512,8 +520,12 @@ void OS_PassEmptyKeyfile() {
 
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id, int purge) {
-    int i = OS_IsAllowedID(keys, id);
+    if (keys->flags.key_mode != W_RAW_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in RAW or DUAL mode");
+        return -1;
+    }
 
+    int i = OS_IsAllowedID(keys, id);
 
     if (i < 0)
         return -1;
@@ -523,7 +535,7 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     if (keys->flags.save_removed && !purge) {
         char buffer[OS_BUFFER_SIZE + 1];
         keyentry *entry = keys->keyentries[i];
-        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->key);
+        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->raw_key);
         save_removed_key(keys, buffer);
     }
 
@@ -552,6 +564,11 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
 
 /* Write keystore on client keys file */
 int OS_WriteKeys(const keystore *keys) {
+    if (keys->flags.key_mode != W_RAW_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in RAW or DUAL mode");
+        return -1;
+    }
+
     unsigned int i;
     File file;
     char cidr[20];
@@ -559,26 +576,42 @@ int OS_WriteKeys(const keystore *keys) {
     if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
 
-    for (i = 0; i < keys->keysize; i++) {
+   for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key);
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
     /* Write saved removed keys */
 
     for (i = 0; i < keys->removed_keys_size; i++) {
-        fprintf(file.fp, "%s\n", keys->removed_keys[i]);
+        if (fprintf(file.fp, "%s\n", keys->removed_keys[i]) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            fclose(file.fp);
+            goto error;
+        }
     }
 
-    fclose(file.fp);
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        goto error;
+    }
 
     if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
-        free(file.name);
-        return -1;
+        goto error;
     }
 
     free(file.name);
     return 0;
+
+error:
+    unlink(file.name);
+    free(file.name);
+    return -1;
 }
 
 /* Duplicate keystore except key hashes and file pointer */
@@ -624,8 +657,11 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     if (key->id)
         copy->id = strdup(key->id);
 
-    if (key->key)
-        copy->key = strdup(key->key);
+    if (key->raw_key)
+        copy->raw_key = strdup(key->raw_key);
+
+    if (key->encryption_key)
+        copy->encryption_key = strdup(key->encryption_key);
 
     if (key->name)
         copy->name = strdup(key->name);
@@ -638,6 +674,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     }
 
     copy->sock = key->sock;
+    copy->time_added = key->time_added;
     w_mutex_init(&copy->mutex, NULL);
     copy->peer_info = key->peer_info;
 
@@ -668,10 +705,13 @@ int OS_DeleteSocket(keystore * keys, int sock) {
     w_mutex_lock(&keys->keytree_sock_mutex);
 
     if (entry = rbtree_get(keys->keytree_sock, strsock), entry) {
+        w_mutex_lock(&entry->mutex);
+
         if (sock == entry->sock) {
             entry->sock = -1;
         }
 
+        w_mutex_unlock(&entry->mutex);
         rbtree_delete(keys->keytree_sock, strsock);
     } else {
         retval = -1;
@@ -686,4 +726,121 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
     const int key_id = OS_IsAllowedID(keys, agent_id);
 
     return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
+}
+
+// Parse the agent timestamps file into the keystore structure
+
+int OS_ReadTimestamps(keystore * keys) {
+    char line[OS_BUFFER_SIZE];
+
+    FILE * fp = fopen(TIMESTAMP_FILE, "r");
+
+    if (fp == NULL) {
+        return errno == ENOENT ? 0 : -1;
+    }
+
+    while (fgets(line, OS_BUFFER_SIZE, fp) != NULL) {
+        char * sep;
+        char * date = line;
+
+        /*
+         * Forward to the next character after the third whitespace
+         * Example:
+         * 001 my-agent any 2021-08-03 10:32:34
+         */
+
+        for (int i = 0; i < 3; i++) {
+            sep = strchr(date, ' ');
+
+            if (sep != NULL) {
+                *sep = '\0';
+                date = sep + 1;
+            } else {
+                break;
+            }
+        }
+
+        if (sep == NULL) {
+            continue;
+        }
+
+        int keyid = OS_IsAllowedID(keys, line);
+
+        if (keyid != -1) {
+            struct tm tm = { .tm_isdst = -1 };
+
+            if (sscanf(date, "%d-%d-%d %d:%d:%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
+                tm.tm_year -= 1900;
+                tm.tm_mon -= 1;
+                keys->keyentries[keyid]->time_added = mktime(&tm);
+            }
+        }
+    }
+
+    fclose(fp);
+    return 0;
+}
+
+// Write the agent timestamp data into the timestamps file
+
+int OS_WriteTimestamps(keystore * keys) {
+    File file;
+    int r = 0;
+
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("Couldn't open timestamp file for writing.");
+        return -1;
+    }
+
+    for (unsigned i = 0; i < keys->keysize; i++) {
+        keyentry *entry = keys->keyentries[i];
+
+        if (entry->time_added == 0) {
+            continue;
+        }
+
+        char timestamp[40];
+        char cidr[20];
+        struct tm tm_result = { .tm_sec = 0 };
+
+        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
+
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp) < 0) {
+            merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+            r = -1;
+            break;
+        }
+    }
+
+    if (fclose(file.fp) != 0) {
+        merror(FCLOSE_ERROR, file.name, errno, strerror(errno));
+        r = -1;
+    }
+
+    if (r == 0) {
+        r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    }
+
+    if (r != 0) {
+        unlink(file.name);
+    }
+
+    free(file.name);
+
+    return r;
+}
+
+int w_get_key_hash(keyentry *key_entry, os_sha1 output) {
+    if (!key_entry || !output) {
+        mdebug2("Unable to hash agent's key due to empty parameters.");
+        return OS_INVALID;
+    }
+
+    if (!key_entry->id || !key_entry->name || !key_entry->raw_key) {
+        mdebug2("Unable to hash agent's key due to empty value.");
+        return OS_INVALID;
+    }
+
+    OS_SHA1_strings(output, key_entry->id, key_entry->name, key_entry->raw_key, NULL);
+    return OS_SUCCESS;
 }

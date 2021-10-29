@@ -144,6 +144,7 @@ COMPILED_LISTS_EXTENSION = '.cdb'
 # Queues
 ARQUEUE = os.path.join(wazuh_path, 'queue', 'alerts', 'ar')
 EXECQ = os.path.join(wazuh_path, 'queue', 'alerts', 'execq')
+ANALYSISD = os.path.join(wazuh_path, 'queue', 'sockets', 'queue')
 
 # Socket
 AUTHD_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'auth')
@@ -181,6 +182,8 @@ agent_info_sleep = 2  # Seconds between retries
 database_limit = 500
 maximum_database_limit = 100000
 limit_seconds = 1800  # 600*3
+date_format = "%Y-%m-%dT%H:%M:%SZ"
+decimals_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 _wazuh_uid = None
 _wazuh_gid = None
@@ -215,6 +218,7 @@ current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 cluster_integrity_mtime: ContextVar[Dict] = ContextVar('cluster_integrity_mtime', default={})
+origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 
 _context_cache = dict()
 
@@ -234,6 +238,10 @@ def context_cached(key: str = '') -> Any:
     -------
     Any
         The result of the first call to the decorated function.
+
+    Notes
+    -----
+    The returned object will be a deep copy of the cached one.
     """
 
     def decorator(func) -> Any:

@@ -152,17 +152,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      json:
-        error: 0
-        data:
-          client:
-            auto_restart: !anystr
-            config-profile: !anystr
-            crypto_method: !anystr
-            notify_time: !anyint
-            remote_conf: !anystr
-            server: !anything
-            time-reconnect: !anyint
 
 ---
 test_name: GET /agents/{agent_id}/group/is_sync
@@ -255,21 +244,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - global:
-               start: !anystr
-               end: !anystr
-               files: !anything
-             interval:
-               start: !anystr
-               end: !anystr
-               files: !anything
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
 
 ---
 test_name: GET /groups
@@ -401,13 +375,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - config: !anything
-             filters: !anything
-         total_affected_items: !anyint
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -472,9 +439,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data: !anything
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/xml
@@ -672,7 +636,7 @@ test_name: GET /agents/upgrade_result
 
 stages:
 
- - name: Try get upgrade result agents 003 and 004 (Denied)
+ - name: Try to get upgrade results from agents 003 and 004 (Denied)
    request:
      verify: False
      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -1620,12 +1584,13 @@ stages:
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "003,004"
+        file_path: "{custom_wpk_path:s}"
     response:
       <<: *permission_denied
 
@@ -1653,6 +1618,9 @@ stages:
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
+
+marks:
+  - xfail  # https://github.com/wazuh/wazuh/issues/10105
 
 stages:
 

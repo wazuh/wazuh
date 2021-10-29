@@ -67,7 +67,7 @@ void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, cha
     }
 
     // We use the JSON created for the alert and embed it in the message.
-    alert_string = Eventinfo_to_jsonstr(lf, false);
+    alert_string = Eventinfo_to_jsonstr(lf, false, NULL);
     json_alert = cJSON_Parse(alert_string);
     os_free(alert_string);
 

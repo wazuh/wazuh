@@ -8,3 +8,4 @@ rules/0470-suricata_rules.xml
 rules/0520-vulnerability-detector.xml
 rules/0565-ms_ipsec_rules_json.xml
 rules/0060-firewall_rules.xml
+rules/0390-fortigate_rules.xml

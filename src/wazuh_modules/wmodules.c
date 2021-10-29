@@ -84,7 +84,7 @@ int wm_config() {
 
 #endif
 
-#if defined (__linux__) || (__MACH__) || defined (sun)
+#if defined (__linux__) || (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);

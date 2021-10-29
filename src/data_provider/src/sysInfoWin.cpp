@@ -173,8 +173,9 @@ class SysInfoProcess final
 
             for (const auto& logicalDrive : logicalDrives)
             {
+                const auto normalizedName { logicalDrive.back() == L'\\' ? logicalDrive.substr(0, logicalDrive.length() - 1) : logicalDrive };
                 const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
-                res = QueryDosDevice(logicalDrive.c_str(), spDosDevice.get(), OS_MAXSTR);
+                res = QueryDosDevice(normalizedName.c_str(), spDosDevice.get(), OS_MAXSTR);
 
                 if (res)
                 {
@@ -354,77 +355,79 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
     return jsProcessInfo;
 }
 
-static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data, const REGSAM access = 0)
+static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::function<void(nlohmann::json&)> returnCallback, const REGSAM access = 0)
 {
     try
     {
-        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-
-        for (const auto& package : packages)
+        const auto callback
         {
-            std::string value;
-            nlohmann::json packageJson;
-            Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
-
-            std::string name;
-            std::string version;
-            std::string vendor;
-            std::string install_time;
-            std::string location;
-            std::string architecture;
-
-            if (packageReg.string("DisplayName", value))
+            [&](const std::string & package)
             {
-                name = value;
-            }
+                std::string value;
+                nlohmann::json packageJson;
+                Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
-            if (packageReg.string("DisplayVersion", value))
-            {
-                version = value;
-            }
+                std::string name;
+                std::string version;
+                std::string vendor;
+                std::string install_time;
+                std::string location;
+                std::string architecture;
 
-            if (packageReg.string("Publisher", value))
-            {
-                vendor = value;
-            }
-
-            if (packageReg.string("InstallDate", value))
-            {
-                install_time = value;
-            }
-
-            if (packageReg.string("InstallLocation", value))
-            {
-                location = value;
-            }
-
-            if (!name.empty())
-            {
-                if (access & KEY_WOW64_32KEY)
+                if (packageReg.string("DisplayName", value))
                 {
-                    architecture = "i686";
-                }
-                else if (access & KEY_WOW64_64KEY)
-                {
-                    architecture = "x86_64";
-                }
-                else
-                {
-                    architecture = UNKNOWN_VALUE;
+                    name = value;
                 }
 
-                packageJson["name"]         = name;
-                packageJson["version"]      = version;
-                packageJson["vendor"]       = vendor;
-                packageJson["install_time"] = install_time;
-                packageJson["location"]     = location;
-                packageJson["architecture"] = architecture;
-                packageJson["format"]       = "win";
+                if (packageReg.string("DisplayVersion", value))
+                {
+                    version = value;
+                }
 
-                data.push_back(packageJson);
+                if (packageReg.string("Publisher", value))
+                {
+                    vendor = value;
+                }
+
+                if (packageReg.string("InstallDate", value))
+                {
+                    install_time = value;
+                }
+
+                if (packageReg.string("InstallLocation", value))
+                {
+                    location = value;
+                }
+
+                if (!name.empty())
+                {
+                    if (access & KEY_WOW64_32KEY)
+                    {
+                        architecture = "i686";
+                    }
+                    else if (access & KEY_WOW64_64KEY)
+                    {
+                        architecture = "x86_64";
+                    }
+                    else
+                    {
+                        architecture = UNKNOWN_VALUE;
+                    }
+
+                    packageJson["name"]         = std::move(name);
+                    packageJson["version"]      = std::move(version);
+                    packageJson["vendor"]       = std::move(vendor);
+                    packageJson["install_time"] = std::move(install_time);
+                    packageJson["location"]     = std::move(location);
+                    packageJson["architecture"] = std::move(architecture);
+                    packageJson["format"]       = "win";
+
+                    returnCallback(packageJson);
+                }
             }
-        }
+        };
+        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        root.enumerate(callback);
     }
     catch (...)
     {
@@ -563,14 +566,10 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
 nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
-    fillProcessesData([&jsProcessesList](const auto & processEntry)
-    {
-        const auto& processInfo { getProcessInfo(processEntry) };
 
-        if (!processInfo.empty())
-        {
-            jsProcessesList.push_back(processInfo);
-        }
+    getProcessesInfo([&jsProcessesList](nlohmann::json & data)
+    {
+        jsProcessesList.push_back(data);
     });
 
     return jsProcessesList;
@@ -579,15 +578,10 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
-    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, ret, KEY_WOW64_64KEY);
-    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, ret, KEY_WOW64_32KEY);
-
-    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    getPackages([&ret](nlohmann::json & data)
     {
-        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
-    }
-    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+        ret.push_back(data);
+    });
     return ret;
 }
 
@@ -695,7 +689,7 @@ void expandPortData(T data, const std::map<pid_t, std::string>& processDataList,
         {
             nlohmann::json port;
             std::make_unique<PortImpl>(std::make_shared<WindowsPortWrapper>(data->table[i], processDataList))->buildPortData(port);
-            result["ports"].push_back(port);
+            result.push_back(port);
         }
     }
 }
@@ -752,4 +746,38 @@ nlohmann::json SysInfo::getPorts() const
     expandPortData(portTable.udp6.get(), processDataList, ports);
 
     return ports;
+}
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
+{
+    fillProcessesData([&callback](const auto & processEntry)
+    {
+        auto processInfo = getProcessInfo(processEntry);
+
+        if (!processInfo.empty())
+        {
+            callback(processInfo);
+        }
+    });
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
+{
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, callback, KEY_WOW64_64KEY);
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, callback, KEY_WOW64_32KEY);
+
+    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    {
+        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, callback);
+    }
+}
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    nlohmann::json ret;
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, ret);
+    return ret;
 }

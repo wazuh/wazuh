@@ -5,7 +5,8 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
-                         -Wl,--wrap,sqlite3_column_text ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,sqlite3_column_text -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,sqlite3_column_text \
+                         ${DEBUG_OP_WRAPPERS}")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -21,7 +22,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,wdb_step \
                         -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid \
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_agents_insert_vuln_cve \
-                        -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cve ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cve -Wl,--wrap,wdb_open_global \
+                        -Wl,--wrap,wdb_global_agent_exists ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \

@@ -215,7 +215,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="35058" level="10" frequency="$SQUID_FREQ" timeframe="240">
@@ -226,7 +226,7 @@
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="35095" level="0" frequency="4" timeframe="360">

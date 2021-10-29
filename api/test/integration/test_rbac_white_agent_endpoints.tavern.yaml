@@ -156,17 +156,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      json:
-        error: 0
-        data:
-          client:
-            auto_restart: !anystr
-            config-profile: !anystr
-            crypto_method: !anystr
-            notify_time: !anyint
-            remote_conf: !anystr
-            server: !anything
-            time-reconnect: !anyint
 
 ---
 test_name: GET /agents/{agent_id}/group/is_sync
@@ -249,21 +238,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - global:
-               start: !anystr
-               end: !anystr
-               files: !anything
-             interval:
-               start: !anystr
-               end: !anystr
-               files: !anything
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
 
  - name: Try to get logcollector stats from agent 003 (Denied)
    request:
@@ -408,13 +382,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - config: !anything
-             filters: !anything
-         total_affected_items: !anyint
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -479,9 +446,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data: !anything
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/xml
@@ -742,8 +706,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      json:
-        message: !anystr
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -1389,8 +1351,6 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-      json:
-        message: !anystr
 
   - name: Try to update group1 configuration (Denied)
     request:
@@ -1765,10 +1725,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        version: v3.9.3
-        force: true
-        wait_for_complete: 'true'
-        agents_list: '001,002'
+        version: 4.0.0
+        agents_list: '005,006'
     response:
       status_code: 200
 
@@ -1789,7 +1747,7 @@ test_name: PUT /agents/upgrade_custom
 
 stages:
 
-  - name: Customly upgrade agents 001 and 002 using default installer (Allowed)
+  - name: Customly upgrade agents 007 and 008 using default installer (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
@@ -1797,21 +1755,21 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "001,002"
+        agents_list: "007,008"
         file_path: "{custom_wpk_path:s}"
-        wait_for_complete: 'true'
     response:
       status_code: 200
 
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom?installer=agent_upgrade.py&file_path=/var/ossec"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: "003,004"
+        file_path: "{custom_wpk_path:s}"
     response:
       <<: *permission_denied
 
@@ -1820,7 +1778,7 @@ test_name: GET /agents/upgrade_result
 
 stages:
 
-  - name: Get upgrade result agents 001 and 002 (Allowed)
+  - name: Get upgrade result from agents list (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -1828,7 +1786,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "001,002"
+        agents_list: "005,006,007,008"
     response:
       status_code: 200
 

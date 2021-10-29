@@ -562,11 +562,11 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
         if (strcmp(item_type + 9, "key") == 0) {
             value_name = NULL;
-            full_path_length = snprintf(NULL, 0, "%s %s:", arch, path_escaped);
+            full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
 
             os_calloc(full_path_length + 1, sizeof(char), full_path);
 
-            snprintf(full_path, full_path_length + 1, "%s %s:", arch, path_escaped);
+            snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
         } else if (strcmp(item_type + 9, "value") == 0) {
             char *value_name_escaped_slashes;
             char *value_name_escaped;

@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for RHEL 7
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -29,6 +29,7 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Better && r:release 7'
     - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 7'
     - 'f:/etc/system-release -> r:^Amazon && r:release 2'
+
 
 variables:
   $sshd_file: /etc/ssh/sshd_config

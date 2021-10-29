@@ -386,7 +386,8 @@ int test_setup_os_valid_msg(void **state)
             \"release\" : \"104\",\
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
-            \"checksum\" : \"107\"\
+            \"os_display_version\" : \"107\",\
+            \"checksum\" : \"108\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -633,7 +634,7 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
     const char *result = "ok";
     int sock = 1;
 

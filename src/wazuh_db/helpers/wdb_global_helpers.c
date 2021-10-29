@@ -900,10 +900,7 @@ int wdb_remove_agent(int id, int *sock) {
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
-                result = wdb_delete_agent_belongs(id, query_sock);
-
-                if ((OS_SUCCESS == result) && name && *name &&
-                     OS_INVALID == wdb_remove_agent_db(id, name)) {
+                if (name && *name && OS_INVALID == wdb_remove_agent_db(id, name)) {
                      mdebug1("Unable to remove agent DB: %d - %s", id, name);
                 }
             }
@@ -1426,7 +1423,7 @@ time_t get_agent_date_added(int agent_id) {
             }
             t.tm_year -= 1900;
             t.tm_mon -= 1;
-            t.tm_isdst = 0;
+            t.tm_isdst = -1;
             t_of_sec = mktime(&t);
 
             free(date);
