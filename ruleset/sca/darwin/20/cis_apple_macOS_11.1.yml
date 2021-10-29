@@ -140,8 +140,8 @@ checks:
 # 2.1.2 Show Bluetooth status in menu bar (Automated)
   - id: 18007
     title: "Show Bluetooth status in menu bar"
-    description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off. "
-    rationale: "Enabling "Show Bluetooth status in menu bar" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active. "
+    description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
+    rationale: "Enabling Show Bluetooth status in menu bar is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active. "
     remediation: "For each user, run the following command to enable Bluetooth status in the menu bar: sudo -u <username> defaults -currentHost write com.apple.controlcenter.plist Bluetooth -int 18"
     compliance:
       - cis: ["2.1.2"]
@@ -254,7 +254,7 @@ checks:
       - cis: ["2.4.3"]
       - cis_level: ["1"]
     condition: all
-    rules:
+    rules: >
       - 'c:sudo launchctl print-disabled system | grep -c '"com.apple.screensharing" => true' -> 1'
 
 # 2.4.4 Disable Printer Sharing (Automated)
@@ -269,7 +269,7 @@ checks:
     references:
       - https://support.apple.com/kb/PH11450
     condition: all
-    rules:
+    rules: >
       - 'c:sudo cupsctl | grep _share_printers | cut -d'=' -f2 -> 0'
 
 # 2.4.5 Disable Remote Login (Automated)
@@ -295,7 +295,7 @@ checks:
       - cis: ["2.4.6"]
       - cis_level: ["1"]
     condition: all
-    rules:
+    rules: >
       - 'c:sudo launchctl print-disabled system  | grep -c '"com.apple.ODSAgent" => true' -> 1'
 
 # 2.4.7 Disable Bluetooth Sharing (Automated)
@@ -321,7 +321,7 @@ checks:
       - cis: ["2.4.8"]
       - cis_level: ["1"]
     condition: none
-    rules:
+    rules: >
       - 'c:sudo launchctl print-disabled system | grep -c '"com.apple.smbd" => true' -> 1'
 
 # 2.4.9 Disable Remote Management (Automated)
@@ -367,20 +367,20 @@ checks:
       - 'c:sudo defaults read com.apple.amp.mediasharingd home-sharing-enabled -> 0'
 
 # 2.4.12 Ensure AirDrop Is Disabled (Automated)
-   - id: 18069
-     title: "Ensure AirDrop Is Disabled"
-     description: "While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards."
-     rationale: "AirDrop can allow malicious files to be downloaded from unknown sources. Contacts Only limits may expose personal information to devices in the same area."
-     remediation: "Run the following commands to disable AirDrop: sudo -u <username> defaults write com.apple.NetworkBrowser DisableAirDrop -bool true"
-     references:
-       - https://www.techrepublic.com/article/apple-airdrop-users-reportedly-vulnerable-to-security-flaw/
-       - https://www.imore.com/how-apple-keeps-your-airdrop-files-private-and-secure
-     compliance:
-       - cis: ["2.4.12"]
-       - cis_level: ["1"]
-     condition: all
-     rules:
-       - 'c:sudo defaults read com.apple.NetworkBrowser DisableAirDrop -> 1'
+  - id: 18069
+    title: "Ensure AirDrop Is Disabled"
+    description: "While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards."
+    rationale: "AirDrop can allow malicious files to be downloaded from unknown sources. Contacts Only limits may expose personal information to devices in the same area."
+    remediation: "Run the following commands to disable AirDrop: sudo -u <username> defaults write com.apple.NetworkBrowser DisableAirDrop -bool true"
+    references:
+      - https://www.techrepublic.com/article/apple-airdrop-users-reportedly-vulnerable-to-security-flaw/
+      - https://www.imore.com/how-apple-keeps-your-airdrop-files-private-and-secure
+    compliance:
+      - cis: ["2.4.12"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'c:sudo defaults read com.apple.NetworkBrowser DisableAirDrop -> 1'
 
 ############################################################
 # 2.5 Security & Privacy
@@ -544,7 +544,7 @@ checks:
       - cis: ["2.9"]
       - cis_level: ["1"]
     condition: all
-    rules:
+    rules: >
       - 'c:sudo pmset -g everything | grep -c 'powernap             1'-> 0'
 
 # 2.10 Enable Secure Keyboard Entry in terminal.app (Automated)
@@ -775,7 +775,7 @@ checks:
       - cis: ["5.3"]
       - cis_level: ["1"]
     condition: all
-    rules:
+    rules: >
       - 'c:sudo grep -E -s '!tty_tickets' /etc/sudoers /etc/sudoers.d/* -> r:^$'
       - 'c:sudo grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
 
@@ -831,7 +831,7 @@ checks:
       - cis: ["5.12"]
       - cis_level: ["1"]
     condition: all
-    rules:
+    rules: >
       - 'c:sudo security authorizationdb read system.login.screensaver 2>&1 | /usr/bin/grep -c 'use-login-window-ui' -> 1'
 
 # 5.13 Create a custom message for the Login Screen (Automated)
@@ -909,7 +909,7 @@ checks:
     title: "Enable Library Validation"
     description: "Library Validation is a security feature introduced in macOS 10.10 Yosemite. Library Validation protects processes from loading arbitrary libraries. This stops root from loading arbitrary libraries into any process (depending on SIP status),and keeps root from becoming more powerful. Security is strengthened, because some user processes can no longer be fooled to run additional code without root's explicit request, which may grant access to daemons that depend on LibraryValidation for secure validation of code identity."
     rationale: "Running without Library Validation on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by Library Validation."
-    remediation: "Run the following command to set Library Validation: sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation DisableLibraryValidation -bool false"ç
+    remediation: "Run the following command to set Library Validation: sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation DisableLibraryValidation -bool false"
     references:
       - https://github.com/Automattic/wp-desktop/issues/790
       - https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/
