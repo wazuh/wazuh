@@ -2507,23 +2507,7 @@
         "path": "api/test/integration/env",
         "files": [
             {
-                "name": "docker-compose_cluster.yml",
-                "tag": "docker-compose",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml",
-                    "test_experimental_endpoints.tavern.yaml",
-                    "test_security_DELETE_endpoints.tavern.yaml",
-                    "test_security_GET_endpoints.tavern.yaml",
-                    "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "docker-compose_standalone.yml",
+                "name": "docker-compose.yml",
                 "tag": "docker-compose",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
