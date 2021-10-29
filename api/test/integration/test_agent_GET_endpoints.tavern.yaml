@@ -785,6 +785,100 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
 
+  - name: Filter agents by query (group - group does not exist)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group=noexists
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - group1)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group=group1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+            - id: '005'
+            - id: '007'
+            - id: '008'
+            - id: '009'
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - get agents that are not in group1)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group!=group1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '002'
+            - id: '003'
+            - id: '004'
+            - id: '006'
+            - id: '010'
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - get agents with group~group)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group~group
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+            - id: '002'
+            - id: '003'
+            - id: '005'
+            - id: '006'
+            - id: '007'
+            - id: '008'
+            - id: '009'
+            - id: '010'
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - invalid operator)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group<whatever
+    response:
+      status_code: 400
+      json:
+        error: 1409
+
   - name: Filter agents by query (datetime)
     request:
       verify: False
