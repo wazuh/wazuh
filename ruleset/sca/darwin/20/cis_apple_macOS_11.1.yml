@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Apple macOS 10.15 Benchmark v1.2.0 - 30-05-2021 and applied to macOS 11.x
+# Center for Internet Security Apple macOS 11 Benchmark v1.2.0 - 30-05-2021 and applied to macOS 11.x
 
 policy:
   id: "cis_apple_macos_11.x"
