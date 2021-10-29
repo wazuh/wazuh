@@ -270,7 +270,7 @@ checks:
       - https://support.apple.com/kb/PH11450
     condition: all
     rules:
-      - 'c:sudo cupsctl | grep _share_printers | cut -d ''=\'' -f2 -> 0'
+      - 'c:sudo cupsctl | grep _share_printers | cut -d ''='' -f2 -> 0'
 
 # 2.4.5 Disable Remote Login (Automated)
   - id: 18016
