@@ -93,10 +93,10 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
     with open(docker_log_path, mode='w') as f_docker:
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
-                current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
-                                                    f"WAZUH_BRANCH={current_branch}", "--build-arg",
-                                                    f"ENV_MODE={env_mode}"],
-                                                   stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+                current_process = subprocess.Popen(
+                    ["docker-compose", "--profile", env_mode,
+                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg", f"ENV_MODE={env_mode}"],
+                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             current_process = subprocess.Popen(
                 ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
@@ -256,7 +256,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     except FileNotFoundError:
         return
 
-    sql_sentences = list()
+    sql_sentences = []
     sql_sentences.append('PRAGMA foreign_keys=OFF;\n')
     sql_sentences.append('BEGIN TRANSACTION;\n')
     sql_sentences.append('DELETE FROM user_roles WHERE user_id=99;\n')  # Current DB status: User 99 - Role 1 (Base)
@@ -444,7 +444,7 @@ def pytest_runtest_makereport(item, call):
     report.test_name = item.spec['test_name']
 
     # Store the test case stages
-    report.stages = list()
+    report.stages = []
     for stage in item.spec['stages']:
         report.stages.extend((stage['name'], html.br()))
 
