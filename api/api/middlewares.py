@@ -24,6 +24,10 @@ logger = getLogger('wazuh-api')
 pool = concurrent.futures.ThreadPoolExecutor()
 
 
+def _cleanup_detail_field(detail):
+    return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
+
+
 @web.middleware
 async def set_user_name(request, handler):
     if 'token_info' in request:
@@ -49,7 +53,7 @@ async def unlock_ip(request, block_time):
     global ip_block, ip_stats
     try:
         if time() - block_time >= ip_stats[request.remote]['timestamp']:
-            ip_stats.pop(request.remote)
+            del ip_stats[request.remote]
             ip_block.remove(request.remote)
     except (KeyError, ValueError):
         pass
@@ -110,7 +114,7 @@ async def security_middleware(request, handler):
     access_conf = api_conf['access']
     if access_conf['max_request_per_minute'] > 0:
         await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
-    await unlock_ip(request=request, block_time=access_conf['block_time'])
+    await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)
 
@@ -122,14 +126,12 @@ async def response_postprocessing(request, handler):
     Additionally, it cleans the output given by connexion's exceptions. If no exception is raised during the
     'await handler(request) it means the output will be a 200 response and no fields needs to be removed."""
 
-    def cleanup_detail_field(detail):
-        return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
-
-    def remove_unwanted_fields(fields_to_remove=['status', 'type']):
+    def remove_unwanted_fields(fields_to_remove=None):
+        fields_to_remove = fields_to_remove or ['status', 'type']
         for field in fields_to_remove:
             if field in problem.body:
                 del problem.body[field]
-        if 'detail' in problem.body and problem.body['detail'] == '':
+        if problem.body.get('detail') == '':
             del problem.body['detail']
         if 'code' in problem.body:
             problem.body['error'] = problem.body.pop('code')
@@ -140,11 +142,12 @@ async def response_postprocessing(request, handler):
         return await handler(request)
 
     except ProblemException as ex:
-        problem = connexion_problem(ex.__dict__['status'],
-                                    ex.__dict__['title'] if 'title' in ex.__dict__ and ex.__dict__['title'] else 'Bad Request',
-                                    type=ex.__dict__['type'] if 'type' in ex.__dict__ else 'about:blank',
-                                    detail=cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
-                                    ext=ex.__dict__['ext'] if 'ext' in ex.__dict__ else None)
+        problem = connexion_problem(status=ex.__dict__['status'],
+                                    title=ex.__dict__['title'] if ex.__dict__.get('title') else 'Bad Request',
+                                    type=ex.__dict__.get('type', 'about:blank'),
+                                    detail=_cleanup_detail_field(ex.__dict__['detail'])
+                                    if 'detail' in ex.__dict__ else '',
+                                    ext=ex.__dict__.get('ext'))
     except HTTPException as ex:
         problem = connexion_problem(ex.status,
                                     ex.reason if ex.reason else '',

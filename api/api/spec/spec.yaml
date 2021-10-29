@@ -2381,10 +2381,14 @@ components:
           type: number
           format: float
           description: "Number of events sent to analysisd during the last five seconds"
-        msg_sent:
+        queued_msgs:
           type: number
           format: float
-          description: "Number of messages sent to the agents during the last five seconds"
+          description: "Number of messages queued to be sent to agents during the last five seconds"
+        sent_bytes:
+          type: number
+          format: float
+          description: "Number of sent bytes to the agents during the last five seconds"
         queue_size:
           type: number
           format: float
@@ -3982,16 +3986,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/AgentID'
-    agents_list_upgrade:
-      in: query
-      name: agents_list
-      description: "List of agent IDs (separated by comma), select a list of agents with size less or equal than 100"
-      required: true
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/AgentID'
-        maxItems: 100
     agents_list_all:
       in: query
       name: agents_list
@@ -5270,10 +5264,11 @@ components:
         default: false
     upgrade_version:
       in: query
-      name: version
+      name: upgrade_version
       description: "Wazuh version to upgrade to"
       schema:
         type: string
+        format: wazuh_version
     force:
       in: query
       name: force
@@ -6170,18 +6165,29 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents"
-      description: "Upgrade agents using a WPK file from online repository"
+      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
       operationId: api.controllers.agent_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_upgrade'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Agents upgraded"
@@ -6199,7 +6205,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "All upgrade tasks have been created"
+                message: "All upgrade tasks were created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6217,16 +6223,27 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents custom"
-      description: "Upgrade the agents using a local WPK file"
+      description: "Upgrade the agents using a local WPK file. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
       operationId: api.controllers.agent_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_upgrade'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Agents upgraded"
@@ -6244,7 +6261,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "All upgrade tasks have been created"
+                message: "All upgrade tasks were created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6270,6 +6287,17 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Get agent upgrade results"
@@ -6292,7 +6320,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "All agents have been updated"
+                message: "All upgrade tasks were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9104,7 +9132,8 @@ paths:
                       evt_count: 9089.0
                       ctrl_msg_count: 2099.0
                       discarded_count: 0
-                      msg_sent: 4210.0
+                      queued_msgs: 4210.0
+                      sent_bytes: 784598.0
                       recv_bytes: 4541779.0
                       dequeued_after_close: 0.0
                   total_affected_items: 1
@@ -10507,7 +10536,8 @@ paths:
                       evt_count: 0
                       ctrl_msg_count: 0
                       discarded_count: 0
-                      msg_sent: 0
+                      queued_msgs: 0
+                      sent_bytes: 0
                       recv_bytes: 0
                   total_affected_items: 0
                   failed_items: []
