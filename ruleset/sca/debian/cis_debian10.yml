@@ -41,13 +41,14 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/freevxfs.conf and add the following line: install freevxfs /bin/true Run the following command to unload the freevxfs module: # rmmod freevxfs"
     compliance:
       - cis: ["1.1.1.1"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v freevxfs -> r:^install /bin/true'
-      - 'not c:lsmod -> r:freevxfs'
+      - 'c:modprobe -n -v freevxfs -> r:^insmod /lib/modules/4.19.0-18-amd64/kernel/fs/freevxfs/freevxfs.ko'
+      - 'c:lsmod | grep freevxfs -> r:^$'
 
   - id: 2501
     title: "Ensure mounting of jffs2 filesystems is disabled"
@@ -56,13 +57,14 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/jffs2.conf and add the following line: install jffs2 /bin/true Run the following command to unload the jffs2 module: # rmmod jffs2"
     compliance:
       - cis: ["1.1.1.2"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v jffs2 -> r:^install /bin/true'
-      - 'not c:lsmod -> r:jffs2'
+      - 'c:modprobe -n -v jffs2 | grep -E ''(jffs2|install)'' -> r:^insmod /lib/modules/4.19.0-18-amd64/kernel/fs/jffs2/jffs2.ko'
+      - 'c:lsmod | grep jffs2 -> r:^$'
 
   - id: 2502
     title: "Ensure mounting of hfs filesystems is disabled"
@@ -71,13 +73,14 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/hfs.conf and add the following line: install hfs /bin/true Run the following command to unload the hfs module: # rmmod hfs"
     compliance:
       - cis: ["1.1.1.3"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v hfs -> r:^install /bin/true'
-      - 'not c:lsmod -> r:hfs'
+      - 'c:modprobe -n -v hfs -> r:^insmod /lib/modules/4.19.0-18-amd64/kernel/fs/hfs/hfs.ko'
+      - 'c:insmod /lib/modules/4.19.0-18-amd64/kernel/fs/hfs/hfs.ko -> r:^$'
 
   - id: 2503
     title: "Ensure mounting of hfsplus filesystems is disabled"
@@ -86,13 +89,14 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .confExample: vi /etc/modprobe.d/hfsplus.conf and add the following line: install hfsplus /bin/true Run the following command to unload the hfsplus module: # rmmod hfsplus"
     compliance:
       - cis: ["1.1.1.4"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v hfsplus -> r:^install /bin/true'
-      - 'not c:lsmod -> r:hfsplus'
+      - 'c:modprobe -n -v hfsplus -> r:^insmod /lib/modules/4.19.0-18-amd64/kernel/fs/hfsplus/hfsplus.ko'
+      - 'c:lsmod | grep hfsplus -> r:^$'
 
   - id: 2504
     title: "Ensure mounting of squashfs filesystems is disabled"
@@ -101,6 +105,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf  Example: vi /etc/modprobe.d/squashfs.confand add the following line: install squashfs /bin/true  Run the following command to unload the squashfsmodule: # rmmod squashfs"
     compliance:
       - cis: ["1.1.1.5"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
@@ -108,8 +113,8 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:modprobe -n -v squashfs -> r:install /bin/true|Module squashfs not found'
-      - 'not c:lsmod -> r:squashfs'
+      - 'c:modprobe -n -v squashfs | grep -E ''(squashfs|install)'' -> r:insmod /lib/modules/4.19.0-18-amd64/kernel/fs/squashfs/squashfs.ko'
+      - 'c:lsmod | grep squashfs -> r:^$'
 
   - id: 2505
     title: "Ensure mounting of udf filesystems is disabled"
@@ -118,13 +123,14 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/udf.conf and add the following line: install udf /bin/true Run the following command to unload the udf module: # rmmod udf"
     compliance:
       - cis: ["1.1.1.6"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v udf -> r:^install /bin/true'
-      - 'not c:lsmod -> r:udf'
+      - 'c:modprobe -n -v udf | grep -E ''(udf|install)'' -> r:^insmod /lib/modules/4.19.0-18-amd64/kernel/fs/udf/udf.ko'
+      - 'not c:lsmod | grep udf -> r:^$'
 
   - id: 2506
     title: "Ensure mounting of FAT filesystems is disabled"
@@ -133,6 +139,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/vfat.conf: install vfat /bin/true. Run the following command to unload the vfat module: rmmod vfat"
     compliance:
       - cis: ["1.1.1.7"]
+      - cis_level: ["2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
@@ -140,8 +147,8 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:modprobe -n -v vfat -> r:install /bin/true|Module vfat not found'
-      - 'not c:lsmod -> r:vfat'
+      - 'c:modprobe -n -v vfat | grep -E ''(vfat|install)'' -> r:^insmod /lib/modules/4.19.0-18-amd64/kernel/fs/fat/vfat.ko'
+      - 'c:lsmod | grep vfat -> r:^$'
 
 # 1.1.x Filesystem Configuration
   - id: 2507
@@ -151,6 +158,7 @@ checks:
     remediation: "Configure /etc/fstab as appropriate. Example: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0 or Run the following commands to enable systemd /tmp mounting: systemctl unmask tmp.mount systemctl enable tmp.mount Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to configure the /tmp mount: [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,noexec,nodev,nosuid"
     compliance:
       - cis: ["1.1.2"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -160,7 +168,7 @@ checks:
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
     condition: all
     rules:
-      - 'c:mount -> r:\s/tmp\s'
+      - 'p:tmp.mount'
 
   - id: 2508
     title: "Ensure nodev option set on /tmp partition"
@@ -169,13 +177,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp     OR      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodevto the /tmp mount options:  [Mount]   Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp:  # mount -o remount,nodev /tmp"
     compliance:
       - cis: ["1.1.3"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/tmp\s && r:nodev'
+      - 'c:mount | grep -E ''\s/tmp\s'' | grep -v nodev -> r:^$'
 
   - id: 2509
     title: "Ensure nosuid option set on /tmp partition"
@@ -184,13 +193,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nosuid /tmp       OR          Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuidto the /tmp mount options:[Mount]  Options=mode=1777,strictatime,noexec,nodev,nosuid  Run the following command to remount /tmp:# mount -o remount,nosuid /tmp"
     compliance:
       - cis: ["1.1.4"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/tmp\s && r:nosuid'
+      - 'c:mount | grep -E '\s/tmp\s' | grep -v nosuid && -> r:^$'
 
   - id: 2510
     title: "Ensure noexec option set on /tmp partition"
@@ -198,14 +208,15 @@ checks:
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create set userid files in /tmp."
     remediation: "Edit the /etc/fstab file and add noexecto the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,noexec /tmp       OR      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexecto the /tmp mount options:  [Mount]  Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp: # mount -o remount,noexec /tmp"
     compliance:
-      - cis: ["1.1.4"]
+      - cis: ["1.1.5"]
+      - cis_level: ["1"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/tmp\s && r:noexec'
+      - 'c:mount | grep -E ''\s/tmp\s'' | grep -v noexec -> r:^$'
 
 
   - id: 2511
@@ -215,6 +226,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.6"]
+      - cis_level: ["2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -223,7 +235,7 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/var\s'
+      - 'c:mount | grep -E ''\s/var\s'' -> r:^/dev/xvdg1 on /var'
 
   - id: 2512
     title: "Ensure separate partition exists for /var/tmp"
@@ -232,6 +244,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.7"]
+      - cis_level: ["2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -240,7 +253,7 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/tmp\s'
+      - 'c:mount | grep -E ''\s/var/tmp\s'' -> r:on /var/tmp'
 
   - id: 2513
     title: "Ensure nodev option set on /var/tmp partition"
@@ -249,13 +262,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nodev /var/tmp"
     compliance:
       - cis: ["1.1.8"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:nodev'
+      - 'c:mount | grep -E ''\s/var/tmp\s'' | grep -v nodev -> r:^$'
 
   - id: 2514
     title: "Ensure nosuid option set on /var/tmp partition"
@@ -264,13 +278,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid /var/tmp"
     compliance:
       - cis: ["1.1.9"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:nosuid'
+      - 'c:mount | grep -E ''\s/var/tmp\s'' | grep -v nosuid -> r:^$'
 
   - id: 2515
     title: "Ensure noexec option set on /var/tmp partition"
@@ -279,13 +294,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,noexec /var/tmp"
     compliance:
       - cis: ["1.1.10"]
+      - cis_level: ["1"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:noexec'
+      - 'c:mount | grep -E ''\s/var/tmp\s'' | grep -v noexec -> r:^$'
 
 
 
@@ -296,6 +312,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.11"]
+      - cis_level: ["2"]
       - cis_csc: ["6.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -304,7 +321,7 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/log\s'
+      - 'c:mount | grep /var/log -> r:\s/var/log\s'
 
   - id: 2517
     title: "Ensure separate partition exists for /var/log/audit"
@@ -313,6 +330,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.12"]
+      - cis_level: ["2"]
       - cis_csc: ["6.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -321,7 +339,7 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/log/audit\s'
+      - 'c:mount | grep /var/log/audit -> r:\s/var/log/audit\s'
 
   - id: 2518
     title: "Ensure separate partition exists for /home"
@@ -330,6 +348,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.13"]
+      - cis_level: ["2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -338,7 +357,7 @@ checks:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:mount -> r:\s/home\s'
+      - 'c:mount | grep /var/log/audit -> r:\s/home\s'
 
 
   - id: 2519
@@ -348,13 +367,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information. # mount -o remount,nodev /home"
     compliance:
       - cis: ["1.1.14"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/home\s && r:nodev'
+      - 'c:mount | grep -E ''\s/home\s'' | grep -v nodev -> r:^$'
 
   - id: 2520
     title: "Ensure nodev option set on /dev/shm partition"
@@ -363,6 +383,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nodev /dev/shm"
     compliance:
       - cis: ["1.1.15"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -371,7 +392,7 @@ checks:
       - https://manpages.debian.org/buster/initscripts/tmpfs.5.en.html
     condition: all
     rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nodev'
+      - 'c:mount | grep -E '\s/dev/shm\s' | grep -v nodev -> r:^$'
 
   - id: 2521
     title: "Ensure nosuid option set on /dev/shm partition"
@@ -380,13 +401,14 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nosuid /dev/shm"
     compliance:
       - cis: ["1.1.16"]
+      - cis_level: ["1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
+      - 'c:mount | grep -E '\s/dev/shm\s' | grep -v nosuid -> r:^$'
 
   - id: 2522
     title: "Ensure noexec option set on /dev/shm partition"
@@ -395,13 +417,27 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec /dev/shm"
     compliance:
       - cis: ["1.1.17"]
+      - cis_level: ["1"]
       - cis_csc: ["2.6", "8"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:noexec'
+      - 'c:mount | grep -E '\s/dev/shm\s' | grep -v noexec -> r:^$'
+
+  - id: 2692
+    title: "Ensure sticky bit is set on all world-writable directories"
+    description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
+    rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp ) that are owned by another user."
+    remediation: "Run the following command to set the sticky bit on all world writable directories: df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \( -perm -0002 -a ! -perm -1000 \) 2>/dev/null | xargs -I '{}' chmod a+t '{}'"
+    compliance:
+      - cis: ["1.1.21"]
+      - cis_level: ["1"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'c:df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \( -perm -0002 -a ! -perm -1000 \) 2>/dev/null -> r:^$'
 
   - id: 2523
     title: "Disable Automounting"
@@ -410,13 +446,14 @@ checks:
     remediation: "Run one of the following commands:  Run the following command to disable autofs: # systemctl --now disable autofs    OR  Run the following command to remove autofs:  # apt purge autofs"
     compliance:
       - cis: ["1.1.22"]
+      - cis_level: ["1"]
       - cis_csc: ["8.4","8.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'c:systemctl is-enabled autofs -> enabled'
+      - 'not p:autofs'
 
 
   - id: 2524
@@ -426,14 +463,15 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/usb_storage.conf and add the following line: # install usb-storage /bin/true . Run the following command to unload the usb-storage module: # rmmod usb-storage"
     compliance:
       - cis: ["1.1.23"]
+      - cis_level: ["1"]
       - cis_csc: ["8.4", "8.5"]
       - pci_dss: ["2.2.5"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v usb-storage -> r:install /bin/true'
-      - 'not c:lsmod -> r:usb-storage'
+      - 'c:modprobe -n -v usb-storage -> r:insmod /lib/modules/4.19.0-18-amd64/kernel/drivers/usb/storage/usb-storage.ko'
+      - 'c:lsmod | grep usb-storage -> r:^$'
 
 # 1.3 Configure Sudo
 
