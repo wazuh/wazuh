@@ -254,8 +254,8 @@ checks:
       - cis: ["2.4.3"]
       - cis_level: ["1"]
     condition: all
-    rules: >
-      - 'c:sudo launchctl print-disabled system | grep -c '"com.apple.screensharing" => true' -> 1'
+    rules: 
+      - 'c:sudo launchctl print-disabled system | grep -c \'"com.apple.screensharing" => true\' -> 1'
 
 # 2.4.4 Disable Printer Sharing (Automated)
   - id: 18015
@@ -269,8 +269,8 @@ checks:
     references:
       - https://support.apple.com/kb/PH11450
     condition: all
-    rules: >
-      - 'c:sudo cupsctl | grep _share_printers | cut -d'=' -f2 -> 0'
+    rules: 
+      - 'c:sudo cupsctl | grep _share_printers | cut -d\'=\' -f2 -> 0'
 
 # 2.4.5 Disable Remote Login (Automated)
   - id: 18016
@@ -295,8 +295,8 @@ checks:
       - cis: ["2.4.6"]
       - cis_level: ["1"]
     condition: all
-    rules: >
-      - 'c:sudo launchctl print-disabled system  | grep -c '"com.apple.ODSAgent" => true' -> 1'
+    rules: 
+      - 'c:sudo launchctl print-disabled system  | grep -c \'"com.apple.ODSAgent" => true\' -> 1'
 
 # 2.4.7 Disable Bluetooth Sharing (Automated)
   - id: 18018
@@ -321,8 +321,8 @@ checks:
       - cis: ["2.4.8"]
       - cis_level: ["1"]
     condition: none
-    rules: >
-      - 'c:sudo launchctl print-disabled system | grep -c '"com.apple.smbd" => true' -> 1'
+    rules:
+      - 'c:sudo launchctl print-disabled system | grep -c \'"com.apple.smbd" => true\' -> 1'
 
 # 2.4.9 Disable Remote Management (Automated)
   - id: 18020
@@ -544,8 +544,8 @@ checks:
       - cis: ["2.9"]
       - cis_level: ["1"]
     condition: all
-    rules: >
-      - 'c:sudo pmset -g everything | grep -c 'powernap             1'-> 0'
+    rules:
+      - 'c:sudo pmset -g everything | grep -c \'powernap             1\'-> 0'
 
 # 2.10 Enable Secure Keyboard Entry in terminal.app (Automated)
   - id: 18033
@@ -775,8 +775,8 @@ checks:
       - cis: ["5.3"]
       - cis_level: ["1"]
     condition: all
-    rules: >
-      - 'c:sudo grep -E -s '!tty_tickets' /etc/sudoers /etc/sudoers.d/* -> r:^$'
+    rules:
+      - 'c:sudo grep -E -s \'!tty_tickets\' /etc/sudoers /etc/sudoers.d/* -> r:^$'
       - 'c:sudo grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
 
 # not implemented - SCA Limit -> 5.6 Ensure login keychain is locked when the computer sleeps (Manual)
@@ -831,8 +831,8 @@ checks:
       - cis: ["5.12"]
       - cis_level: ["1"]
     condition: all
-    rules: >
-      - 'c:sudo security authorizationdb read system.login.screensaver 2>&1 | /usr/bin/grep -c 'use-login-window-ui' -> 1'
+    rules:
+      - 'c:sudo security authorizationdb read system.login.screensaver 2>&1 | /usr/bin/grep -c \'use-login-window-ui\' -> 1'
 
 # 5.13 Create a custom message for the Login Screen (Automated)
   - id: 18058
