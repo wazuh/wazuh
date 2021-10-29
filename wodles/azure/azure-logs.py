@@ -78,7 +78,7 @@ def get_script_arguments():
     parser.add_argument("--la_tenant_domain", metavar="domain", type=str, required=False,
                         help="Tenant domain for Log Analytics.")
     parser.add_argument("--la_query", metavar="query", required=False,
-                        help="Query for Log Analytics.", type=arg_replace_double_quote)
+                        help="Query for Log Analytics.", type=arg_valid_la_query)
     parser.add_argument("--workspace", metavar="workspace", type=str, required=False,
                         help="Workspace for Log Analytics.")
     parser.add_argument("--la_tag", metavar="tag", type=str, required=False,
@@ -95,7 +95,7 @@ def get_script_arguments():
                         help="Path of the file containing the credentials authentication.")
     parser.add_argument("--graph_tenant_domain", metavar="domain", type=str, required=False,
                         help="Tenant domain for Graph.")
-    parser.add_argument("--graph_query", metavar="query", required=False, type=arg_replace_single_quote,
+    parser.add_argument("--graph_query", metavar="query", required=False, type=arg_valid_graph_query,
                         help="Query for Graph.")
     parser.add_argument("--graph_tag", metavar="tag", type=str, required=False,
                         help="Tag that is added to the query result.")
@@ -109,7 +109,7 @@ def get_script_arguments():
                         help="Storage account key for authentication.")
     parser.add_argument("--storage_auth_path", metavar="filepath", type=str, required=False,
                         help="Path of the file containing the credentials authentication.")
-    parser.add_argument("--container", metavar="container", required=False, type=arg_replace_double_quote,
+    parser.add_argument("--container", metavar="container", required=False, type=arg_valid_container_name,
                         help="Name of the container where searches the blobs.")
     parser.add_argument("--blobs", metavar="blobs", required=False, type=arg_valid_blob_extension,
                         help="Extension of blobs. For example: '*.log'")
@@ -131,12 +131,21 @@ def get_script_arguments():
     return parser.parse_args()
 
 
-def arg_replace_single_quote(arg_string):
-    return arg_string.replace("'", "") if arg_string else arg_string
-
-
-def arg_replace_double_quote(arg_string):
+def arg_valid_container_name(arg_string):
     return arg_string.replace('"', '') if arg_string else arg_string
+
+
+def arg_valid_graph_query(arg_string):
+    if arg_string:
+        if arg_string[0] == "'":
+            arg_string = arg_string[1:]
+        if arg_string[-1] == "'":
+            arg_string = arg_string[:-1]
+        return arg_string.replace('\\$', '$')
+
+
+def arg_valid_la_query(arg_string):
+    return arg_string.replace('\\!', '!') if arg_string else arg_string
 
 
 def arg_valid_blob_extension(arg_string):
@@ -506,7 +515,7 @@ def build_graph_url(offset: str, md5_hash: str):
     # If no offset value was provided continue from the previous processed date
     desired_datetime = offset_to_datetime(offset) if offset else max_datetime
     desired_str = desired_datetime.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if offset else max_str
-    filtering_condition = "createdDateTime" if "signinEventsV2" in args.graph_query else "activityDateTime"
+    filtering_condition = "createdDateTime" if "signins" in args.graph_query.lower() else "activityDateTime"
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if args.reparse:
@@ -522,7 +531,7 @@ def build_graph_url(offset: str, md5_hash: str):
             filter_value = f"{filtering_condition}+gt+{max_str}"
 
     logging.info(f"Graph: The search starts for query: '{args.graph_query}' using {filter_value}")
-    return f"{url_graph}/v1.0/{args.graph_query}?$filter={filter_value}"
+    return f"{url_graph}/v1.0/{args.graph_query}{'?' if '?' not in args.graph_query else ''}&$filter={filter_value}"
 
 
 def get_graph_events(url: str, headers: dict, md5_hash: str):
@@ -548,8 +557,12 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
         response_json = response.json()
         values_json = response_json.get('value')
         for value in values_json:
-            update_dates_json(new_min=value["activityDateTime"],
-                              new_max=value["activityDateTime"],
+            try:
+                date = value["activityDateTime"]
+            except KeyError:
+                date = value["createdDateTime"]
+            update_dates_json(new_min=date,
+                              new_max=date,
                               service_name="graph",
                               md5_hash=md5_hash)
             value["azure_tag"] = "azure-ad-graph"
