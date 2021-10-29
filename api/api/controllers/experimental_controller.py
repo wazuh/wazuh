@@ -47,6 +47,7 @@ async def clear_rootcheck_database(request, pretty=False, wait_for_complete=Fals
     -------
     web.Response
     """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
         agents_list = '*'
 
@@ -75,6 +76,7 @@ async def clear_syscheck_database(request, pretty=False, wait_for_complete=False
     :param agents_list: List of agent's IDs.
     :return: AllItemsResponseAgentIDs
     """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
         agents_list = '*'
 

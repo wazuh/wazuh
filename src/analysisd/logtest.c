@@ -8,6 +8,7 @@
  */
 
 #include "logtest.h"
+#include "os_xml/os_xml.h"
 
 
 OSHash *w_logtest_sessions;
@@ -212,11 +213,11 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
     /* Add alert description to the event and check alert level if exist a match */
     if (lf->generated_rule) {
         lf->comment = ParseRuleComment(lf);
-        extra_data->alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level);
+        extra_data->alert_generated = ((check_add_event == 1) && session->logbylevel <= lf->generated_rule->level);
     }
 
     /* Parse the alert */
-    char *output_str = Eventinfo_to_jsonstr(lf, false);
+    char *output_str = Eventinfo_to_jsonstr(lf, false, list_msg);
     output = cJSON_Parse(output_str);
     os_free(output_str);
 
@@ -287,7 +288,7 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session) {
         decodernode = session->decoderlist_nopname;
     }
 
-    DecodeEvent(lf, Config.g_rules_hash, &session->decoder_match, decodernode);
+    DecodeEvent(lf, session->g_rules_hash, &session->decoder_match, decodernode);
 }
 
 
@@ -383,13 +384,13 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
     return added_list_event ? 1 : 0;
 }
 
+w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
-w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
-
-    w_logtest_session_t * session;
+    w_logtest_session_t * session = NULL;
+    _Config ruleset_config = {0};
     bool retval = true;
 
-    char **files;
+    char ** files = NULL;
 
     /*Generate session token*/
     char *token = w_logtest_generate_token();
@@ -411,30 +412,38 @@ w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
     os_calloc(1, sizeof(EventList), session->eventlist);
     OS_CreateEventList(Config.memorysize, session->eventlist);
 
+    /* Get ruleset files */
+    if (!w_logtest_ruleset_load(&ruleset_config, list_msg)) {
+        goto cleanup;
+    }
+
     /* Load decoders */
     session->decoderlist_forpname = NULL;
     session->decoderlist_nopname = NULL;
     session->decoder_store = NULL;
 
-    files = Config.decoders;
+    files = ruleset_config.decoders;
 
-    while (files && *files) {
-        if (!ReadDecodeXML(*files, &session->decoderlist_forpname,
-            &session->decoderlist_nopname, &session->decoder_store, list_msg)) {
+    while (files != NULL && *files != NULL) {
+        if (ReadDecodeXML(*files, &session->decoderlist_forpname,
+            &session->decoderlist_nopname, &session->decoder_store, list_msg) == 0) {
             goto cleanup;
         }
         files++;
     }
 
-    SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, &session->decoderlist_forpname);
+    if (SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, 
+                     &session->decoderlist_forpname) == 0) {
+        goto cleanup;
+    }
 
     /* Load CDB list */
     session->cdblistnode = NULL;
     session->cdblistrule = NULL;
 
-    files = Config.lists;
+    files = ruleset_config.lists;
 
-    while (files && *files) {
+    while (files != NULL && *files != NULL) {
         if (Lists_OP_LoadList(*files, &session->cdblistnode, list_msg) < 0) {
             goto cleanup;
         }
@@ -446,9 +455,9 @@ w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
     /* Load rules */
     session->rule_list = NULL;
 
-    files = Config.includes;
+    files = ruleset_config.includes;
 
-    while (files && *files) {
+    while (files != NULL && *files != NULL) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
                             &session->eventlist, &session->decoder_store, list_msg) < 0) {
             goto cleanup;
@@ -483,6 +492,9 @@ w_logtest_session_t *w_logtest_initialize_session(OSList* list_msg) {
     memset(&session->decoder_match, 0, sizeof(regex_matching));
     memset(&session->rule_match, 0, sizeof(regex_matching));
 
+    /* Set custom level for alerts */
+    session->logbylevel = ruleset_config.logbylevel;
+
     retval = false;
 
 cleanup:
@@ -500,7 +512,9 @@ cleanup:
 
         /* Remove decoder lists */
         os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
-        OSStore_Free(session->decoder_store);
+        if (session->decoder_store != NULL) {
+            OSStore_Free(session->decoder_store);
+        }
 
         /* Remove cdblistnode and cdblistrule */
         os_remove_cdblist(&session->cdblistnode);
@@ -526,11 +540,10 @@ cleanup:
         os_free(token);
         os_free(session);
     }
-
+    w_logtest_ruleset_free_config(&ruleset_config);
 
     return session;
 }
-
 
 void w_logtest_remove_session(char *token) {
 
@@ -1169,4 +1182,112 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
     w_logtest_add_msg_response(json_response, list_msg, &retval);
 
     return retval;
+}
+
+bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
+
+    const char * FILE_CONFIG = OSSECCONF;
+    const char * XML_MAIN_NODE = "ossec_config";
+    bool retval = true;
+
+    OS_XML xml;
+    XML_NODE node;
+
+    /* Load and find the root */
+    if (OS_ReadXML(FILE_CONFIG, &xml) < 0) {
+        smerror(list_msg, XML_ERROR, FILE_CONFIG, xml.err, xml.err_line);
+        return false;
+    } else if (node = OS_GetElementsbyNode(&xml, NULL), node == NULL) {
+        OS_ClearXML(&xml);
+        smerror(list_msg, "There are no configuration blocks inside of '%s'", FILE_CONFIG);
+        return false;
+    }
+
+    /* Find the nodes of ossec_conf */
+    for (int i = 0; node[i]; i++) {
+        /* NULL element */
+        if (node[i]->element == NULL) {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+        /* Main node type (ossec_config) */
+        else if (strcmp(node[i]->element, XML_MAIN_NODE) == 0) {
+
+            XML_NODE conf_section_arr = NULL;
+            conf_section_arr = OS_GetElementsbyNode(&xml, node[i]);
+
+            /* If have configuration sections, iterates them */
+            if (conf_section_arr != NULL) {
+                if (!w_logtest_ruleset_load_config(&xml, conf_section_arr, ruleset_config, list_msg)) {
+                    smerror(list_msg, CONFIG_ERROR, FILE_CONFIG);
+                    OS_ClearNode(conf_section_arr);
+                    retval = false;
+                    break;
+                }
+                OS_ClearNode(conf_section_arr);
+            }
+        }
+    }
+
+    /* Clean up */
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
+
+    return retval;
+}
+
+bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _Config * ruleset_config, OSList * list_msg) {
+
+    const char * XML_RULESET = "ruleset";
+    const char * XML_ALERTS = "alerts";
+    bool retval = true;
+
+    /* Load configuration of the configuration section */
+    for (int i = 0; conf_section_nodes[i]; i++) {
+        XML_NODE options_node = NULL;
+
+        if (!conf_section_nodes[i]->element) {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+        /* Empty configuration sections are not allowed. */
+        else if (options_node = OS_GetElementsbyNode(xml, conf_section_nodes[i]), options_node == NULL) {
+            smerror(list_msg, XML_ELEMNULL);
+            retval = false;
+            break;
+        }
+
+        /* Load ruleset */
+        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 
+            && Read_Rules(options_node, ruleset_config, list_msg) < 0) {
+
+            OS_ClearNode(options_node);
+            retval = false;
+            break;
+
+        }
+
+        /* Load alert by level */
+
+        if (strcmp(conf_section_nodes[i]->element, XML_ALERTS) == 0 && Read_Alerts(options_node, ruleset_config, list_msg) < 0) {
+            OS_ClearNode(options_node);
+            retval = false;
+            break;
+        }
+
+        OS_ClearNode(options_node);
+    }
+
+    return retval;
+}
+
+void w_logtest_ruleset_free_config (_Config * ruleset_config) {
+
+    free_strarray(ruleset_config->decoders);
+    free_strarray(ruleset_config->includes);
+    free_strarray(ruleset_config->lists);
+
+    return;
 }

@@ -32,11 +32,9 @@ void HandleRemote(int uid)
 {
     const int position = logr.position;
     int recv_timeout;    //timeout in seconds waiting for a client reply
-    int send_timeout;
     char * str_protocol = NULL;
 
     recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
-    send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
 
     tcp_keepidle = getDefine_Int("remoted", "tcp_keepidle", 1, 7200);
     tcp_keepintvl = getDefine_Int("remoted", "tcp_keepintvl", 1, 100);
@@ -89,9 +87,6 @@ void HandleRemote(int uid)
 #endif
             if (OS_SetRecvTimeout(logr.tcp_sock, recv_timeout, 0) < 0) {
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
-            }
-            if (OS_SetSendTimeout(logr.tcp_sock, send_timeout) < 0) {
-                merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
             }
         }
     }

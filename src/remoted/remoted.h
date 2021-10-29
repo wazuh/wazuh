@@ -47,7 +47,8 @@ typedef struct remoted_state_t {
     unsigned int tcp_sessions;
     unsigned int evt_count;
     unsigned int ctrl_msg_count;
-    unsigned int msg_sent;
+    unsigned int queued_msgs;
+    unsigned long sent_bytes;
     unsigned long recv_bytes;
     unsigned int dequeued_after_close;
 } remoted_state_t;
@@ -59,6 +60,7 @@ typedef struct sockbuffer_t {
     char * data;
     unsigned long data_size;
     unsigned long data_len;
+    bqueue_t * bqueue;
 } sockbuffer_t;
 
 typedef struct netbuffer_t {
@@ -148,7 +150,8 @@ void rem_inc_tcp();
 void rem_dec_tcp();
 void rem_inc_evt();
 void rem_inc_ctrl_msg();
-void rem_inc_msg_sent();
+void rem_inc_msg_queued();
+void rem_add_send(unsigned long bytes);
 void rem_inc_discarded();
 void rem_add_recv(unsigned long bytes);
 void rem_inc_dequeued();
@@ -162,8 +165,32 @@ cJSON *getRemoteGlobalConfig(void);
 /* Network buffer */
 
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info);
-int nb_close(netbuffer_t * buffer, int sock);
+void nb_close(netbuffer_t * buffer, int sock);
 int nb_recv(netbuffer_t * buffer, int sock);
+
+/**
+ * @brief Send message through TCP protocol.
+ *
+ * @param buffer buffer where messages are stored.
+ * @param socket socket id where send message.
+ *
+ * @return -1 on system call error: send().
+ * @return number of bytes sent on success.
+ */
+int nb_send(netbuffer_t * buffer, int socket);
+
+/**
+ * @brief Queue message through TCP protocol.
+ *
+ * @param buffer buffer where messages will be stored.
+ * @param socket socket id where send message.
+ * @param crypt_msg msg to send.
+ * @param msg_size message size.
+ *
+ * @return -1 on error.
+ * @return 0 on success.
+ */
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size);
 
 /* Network counter */
 
@@ -190,7 +217,10 @@ extern rlim_t nofile;
 extern int guess_agent_group;
 extern int group_data_flush;
 extern unsigned receive_chunk;
+extern unsigned send_chunk;
 extern int buffer_relax;
+extern unsigned send_buffer_size;
+extern int send_timeout_to_retry;
 extern int tcp_keepidle;
 extern int tcp_keepintvl;
 extern int tcp_keepcnt;

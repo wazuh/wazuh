@@ -25,6 +25,13 @@ typedef struct {
     int pending_removal;
 } whodata_directory_t;
 
+typedef enum audit_key_type {
+    FIM_AUDIT_UNKNOWN_KEY = 0,
+    FIM_AUDIT_KEY,
+    FIM_AUDIT_HC_KEY,
+    FIM_AUDIT_CUSTOM_KEY
+} audit_key_type;
+
 /**
  * @brief Checks if the manipulation of the audit rule was done by FIM or by an user
 

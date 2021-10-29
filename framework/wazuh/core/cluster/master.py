@@ -156,7 +156,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.extra_valid_requested = False
 
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        default_date = datetime.fromtimestamp(0).strftime(decimals_date_format)
+        default_date = datetime.fromtimestamp(0)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
         self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
                                       'date_end_master': default_date, 'total_extra_valid': 0,
@@ -605,10 +605,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
         self.integrity_sync_status['date_end_master'] = datetime.now()
         logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                   self.integrity_sync_status['date_start_master']).total_seconds()))
+                                                   self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
+        self.integrity_sync_status['date_start_master'] = \
+            self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
+        self.integrity_sync_status['date_end_master'] = \
+            self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
         self.extra_valid_requested = False
         self.sync_integrity_free = True
 
@@ -714,9 +717,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             except exception.WazuhException as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
-                result = await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' +
-                                                                            json.dumps(e,
-                                                                                       cls=c_common.WazuhJSONEncoder).encode())
+                result = await self.send_request(
+                    command=b'syn_m_c_r', data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
@@ -729,12 +731,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 logger.debug("Finished sending files to worker.")
                 # Log 'Finished in' message only if there are no extra_valid files to sync.
                 if not self.extra_valid_requested:
-                    self.integrity_sync_status['date_start_master'] = self.integrity_sync_status[
-                        'tmp_date_start_master']
                     self.integrity_sync_status['date_end_master'] = datetime.now()
                     logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                               self.integrity_sync_status['date_start_master'])
+                                                               self.integrity_sync_status['tmp_date_start_master'])
                                                               .total_seconds()))
+                    self.integrity_sync_status['date_start_master'] = self.integrity_sync_status[
+                        'tmp_date_start_master'].strftime(decimals_date_format)
+                    self.integrity_sync_status['date_end_master'] = \
+                        self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
 
         return result
 

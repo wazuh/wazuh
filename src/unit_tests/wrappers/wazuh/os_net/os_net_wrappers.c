@@ -112,3 +112,8 @@ int __wrap_OS_CloseSocket(int sock) {
     check_expected(sock);
     return mock();
 }
+
+uint32_t __wrap_wnet_order(uint32_t value) {
+    check_expected(value);
+    return mock();
+}

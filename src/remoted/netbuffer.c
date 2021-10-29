@@ -14,6 +14,8 @@
 #include <os_net/os_net.h>
 #include "remoted.h"
 
+extern wnotify_t * notify;
+
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
@@ -26,20 +28,24 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
 
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
     memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_in));
+
+    buffer->buffers[sock].bqueue = bqueue_init(send_buffer_size, BQUEUE_SHRINK);
+
     w_mutex_unlock(&mutex);
 }
 
-int nb_close(netbuffer_t * buffer, int sock) {
-    int retval = close(sock);
+void nb_close(netbuffer_t * buffer, int sock) {
+
     w_mutex_lock(&mutex);
 
-    if (!retval) {
-        free(buffer->buffers[sock].data);
-        memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
+    if (buffer->buffers[sock].bqueue) {
+        bqueue_destroy(buffer->buffers[sock].bqueue);
     }
 
+    os_free(buffer->buffers[sock].data);
+    memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
+
     w_mutex_unlock(&mutex);
-    return retval;
 }
 
 /*
@@ -50,14 +56,15 @@ int nb_close(netbuffer_t * buffer, int sock) {
  * Returns the number of bytes received on success.
 */
 int nb_recv(netbuffer_t * buffer, int sock) {
-    sockbuffer_t * sockbuf = &buffer->buffers[sock];
-    unsigned long data_ext = sockbuf->data_len + receive_chunk;
     long recv_len;
     unsigned long i;
     unsigned long cur_offset;
     uint32_t cur_len;
 
     w_mutex_lock(&mutex);
+
+    sockbuffer_t * sockbuf = &buffer->buffers[sock];
+    unsigned long data_ext = sockbuf->data_len + receive_chunk;
 
     // Extend data buffer
 
@@ -131,4 +138,93 @@ end:
 
     w_mutex_unlock(&mutex);
     return recv_len;
+}
+
+int nb_send(netbuffer_t * buffer, int socket) {
+    ssize_t sent_bytes = 0;
+
+    char data[send_chunk];
+    memset(data, 0, send_chunk);
+
+    w_mutex_lock(&mutex);
+
+    if (buffer->buffers[socket].bqueue) {
+
+        ssize_t peeked_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG);
+        if (peeked_bytes > 0) {
+            // Asynchronous sending
+            sent_bytes = send(socket, (const void *)data, peeked_bytes, MSG_DONTWAIT);
+        }
+
+        if (sent_bytes > 0) {
+            bqueue_drop(buffer->buffers[socket].bqueue, sent_bytes);
+        } else if (sent_bytes < 0) {
+            switch (errno) {
+            case EAGAIN:
+    #if EAGAIN != EWOULDBLOCK
+            case EWOULDBLOCK:
+    #endif
+                break;
+            default:
+                merror("socket: %d, send fail", socket);
+            }
+        }
+
+        if (!peeked_bytes || bqueue_used(buffer->buffers[socket].bqueue) == 0) {
+            wnotify_modify(notify, socket, WO_READ);
+        }
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return sent_bytes;
+}
+
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
+    int retval = -1;
+    int header_size = sizeof(uint32_t);
+    char data[msg_size + header_size];
+
+    memcpy((data + header_size), crypt_msg, msg_size);
+    // Add header at begining, first 4 bytes, it is message msg_size
+    *(uint32_t *)(data) = wnet_order(msg_size);
+
+    w_mutex_lock(&mutex);
+
+    if (buffer->buffers[socket].bqueue) {
+
+        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
+
+            if (bqueue_used(buffer->buffers[socket].bqueue) == (size_t)(msg_size + header_size)) {
+                wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+            }
+            retval = 0;
+        } else {
+            mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
+                buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
+
+            w_mutex_unlock(&mutex);
+            sleep(send_timeout_to_retry);
+            w_mutex_lock(&mutex);
+
+            if (buffer->buffers[socket].bqueue) {
+
+                if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
+
+                    if (bqueue_used(buffer->buffers[socket].bqueue) == (size_t)(msg_size + header_size)) {
+                        wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+                    }
+                    retval = 0;
+                }
+            }
+        }
+    }
+
+    w_mutex_unlock(&mutex);
+
+    if (retval < 0) {
+        mwarn("Package dropped. Could not append data into buffer.");
+    }
+
+    return retval;
 }

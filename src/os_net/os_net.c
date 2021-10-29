@@ -658,7 +658,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
  * Return recvval on success or OS_SOCKTERR on error.
  */
-int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
+int OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
 
