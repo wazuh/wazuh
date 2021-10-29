@@ -812,6 +812,8 @@ static void test_fim_db_file_update_new_entry(void **state) {
 
     assert_int_equal(res, FIMDB_FULL);
     assert_null(entry);
+    free_entry(entry);
+
 }
 
 static void test_fim_db_file_update_unchanged_entry(void **state) {
@@ -848,6 +850,7 @@ static void test_fim_db_file_update_unchanged_entry(void **state) {
 
     assert_int_equal(res, FIMDB_OK);
     assert_non_null(entry);
+    free_entry(entry);
 }
 
 static void test_fim_db_file_update_updated_entry(void **state) {
@@ -877,6 +880,7 @@ static void test_fim_db_file_update_updated_entry(void **state) {
 
     assert_int_equal(res, FIMDB_OK);
     assert_non_null(entry);
+    free_entry(entry);
 }
 
 /*-----------------------------------------*/

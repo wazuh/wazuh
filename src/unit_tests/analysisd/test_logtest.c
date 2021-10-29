@@ -2752,9 +2752,6 @@ void test_w_logtest_check_input_request_debug_rules(void ** state) {
     const int ret_expect = W_LOGTEST_CODE_SUCCESS;
     OSList * list_msg = (OSList *) 2;
 
-
-    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 8);
-    will_return(__wrap_cJSON_IsString, (cJSON_bool) 0);
     /* location */
     cJSON location = {0};
     location.valuestring = strdup("location str");
@@ -2789,7 +2786,7 @@ void test_w_logtest_check_input_request_debug_rules(void ** state) {
     expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7005): 'options' field must be a JSON object. The parameter will be ignored");
     will_return(__wrap_cJSON_IsObject, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, "(7308): 'location' JSON field is required and must be a string");
+
     retval = w_logtest_check_input_request(&root, &msg, list_msg);
 
     assert_int_equal(retval, ret_expect);

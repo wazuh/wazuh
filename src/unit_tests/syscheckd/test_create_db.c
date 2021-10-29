@@ -389,6 +389,15 @@ static int setup_fim_entry(void **state) {
     return 0;
 }
 
+static int teardown_fim_entry(void **state) {
+    fim_data_t *fim_data = *state;
+    if (fim_data != NULL) {
+        free(fim_data->fentry);
+        free(fim_data->local_data);
+    }
+    return 0;
+}
+
 static int teardown_local_data(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -720,10 +729,6 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     directory_t configuration = { .tag = NULL };
-
-    char **paths = calloc(2, sizeof(char *));
-    paths[0] = strdup("test.file");
-    paths[1] = NULL;
 
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
@@ -4487,9 +4492,9 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_delete_file_event_remove_success, setup_fim_entry),
         cmocka_unit_test_setup(test_fim_delete_file_event_no_conf, setup_fim_entry),
 #endif
-        cmocka_unit_test_setup(test_fim_delete_file_event_different_mode_scheduled, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_delete_file_event_different_mode_abort_realtime, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_delete_file_event_different_mode_abort_whodata, setup_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_delete_file_event_different_mode_scheduled, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_delete_file_event_different_mode_abort_realtime, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_delete_file_event_different_mode_abort_whodata, setup_fim_entry, teardown_fim_entry),
     };
     const struct CMUnitTest root_monitor_tests[] = {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
