@@ -156,21 +156,25 @@ int __wrap_wdbi_check_sync_status(__attribute__((unused)) wdb_t *wdb,
 void __wrap_wdbi_update_attempt(__attribute__((unused))wdb_t * wdb,
                                 wdb_component_t component,
                                 long timestamp,
-                                bool legacy,
-                                os_sha1 last_agent_checksum) {
+                                os_sha1 last_agent_checksum,
+                                os_sha1 manager_checksum,
+                                bool legacy) {
     check_expected(component);
     check_expected(timestamp);
-    check_expected(legacy);
     check_expected(last_agent_checksum);
+    check_expected(manager_checksum);
+    check_expected(legacy);
 }
 
 void __wrap_wdbi_update_completion(__attribute__((unused))wdb_t * wdb,
                                 wdb_component_t component,
                                 long timestamp,
-                                os_sha1 last_agent_checksum) {
+                                os_sha1 last_agent_checksum,
+                                os_sha1 manager_checksum) {
     check_expected(component);
     check_expected(timestamp);
     check_expected(last_agent_checksum);
+    check_expected(manager_checksum);
 }
 
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
