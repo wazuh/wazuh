@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
     last_completion INTEGER DEFAULT 0,
     n_attempts INTEGER DEFAULT 0,
     n_completions INTEGER DEFAULT 0,
-    last_manager_checksum TEXT NOT NULL DEFAULT ''
+    last_manager_checksum TEXT NOT NULL DEFAULT '',
     last_agent_checksum TEXT NOT NULL DEFAULT ''
 );
 

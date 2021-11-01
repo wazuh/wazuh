@@ -1810,6 +1810,7 @@ void test_packages_save_success(void **state) {
     expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
     expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
     expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_attempt, manager_checksum, "");
 
     ret = wdb_parse_packages(data->wdb, query, data->output);
 
@@ -1850,6 +1851,7 @@ void test_packages_save_success_null_items(void **state) {
     expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
     expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
     expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_attempt, manager_checksum, "");
 
     ret = wdb_parse_packages(data->wdb, query, data->output);
 
@@ -1890,6 +1892,7 @@ void test_packages_save_success_empty_items(void **state) {
     expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
     expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
     expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_attempt, manager_checksum, "");
 
     ret = wdb_parse_packages(data->wdb, query, data->output);
 
@@ -1970,6 +1973,7 @@ void test_packages_del_success(void **state) {
     expect_value(__wrap_wdbi_update_completion, component, WDB_SYSCOLLECTOR_PACKAGES);
     expect_value(__wrap_wdbi_update_completion, timestamp, 0);
     expect_string(__wrap_wdbi_update_completion, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_completion, manager_checksum, "");
 
     ret = wdb_parse_packages(data->wdb, query, data->output);
 
@@ -1995,6 +1999,7 @@ void test_packages_del_success_null_items(void **state) {
     expect_value(__wrap_wdbi_update_completion, component, WDB_SYSCOLLECTOR_PACKAGES);
     expect_value(__wrap_wdbi_update_completion, timestamp, 0);
     expect_string(__wrap_wdbi_update_completion, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_completion, manager_checksum, "");
 
     ret = wdb_parse_packages(data->wdb, query, data->output);
 
@@ -2022,6 +2027,7 @@ void test_packages_del_update_err(void **state) {
     expect_value(__wrap_wdbi_update_completion, component, WDB_SYSCOLLECTOR_PACKAGES);
     expect_value(__wrap_wdbi_update_completion, timestamp, 0);
     expect_string(__wrap_wdbi_update_completion, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_completion, manager_checksum, "");
 
     ret = wdb_parse_packages(data->wdb, query, data->output);
 
@@ -2197,6 +2203,7 @@ void test_hotfixes_save_success(void **state) {
     expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
     expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
     expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_attempt, manager_checksum, "");
 
     ret = wdb_parse_hotfixes(data->wdb, query, data->output);
 
@@ -2224,6 +2231,7 @@ void test_hotfixes_save_success_null_items(void **state) {
     expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
     expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
     expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_attempt, manager_checksum, "");
 
     ret = wdb_parse_hotfixes(data->wdb, query, data->output);
 
@@ -2288,6 +2296,7 @@ void test_hotfixes_del_success(void **state) {
     expect_value(__wrap_wdbi_update_completion, component, WDB_SYSCOLLECTOR_HOTFIXES);
     expect_value(__wrap_wdbi_update_completion, timestamp, 0);
     expect_string(__wrap_wdbi_update_completion, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_completion, manager_checksum, "");
 
     ret = wdb_parse_hotfixes(data->wdb, query, data->output);
 
@@ -2310,6 +2319,7 @@ void test_hotfixes_del_success_null_items(void **state) {
     expect_value(__wrap_wdbi_update_completion, component, WDB_SYSCOLLECTOR_HOTFIXES);
     expect_value(__wrap_wdbi_update_completion, timestamp, 0);
     expect_string(__wrap_wdbi_update_completion, last_agent_checksum, "");
+    expect_string(__wrap_wdbi_update_completion, manager_checksum, "");
 
     ret = wdb_parse_hotfixes(data->wdb, query, data->output);
 
