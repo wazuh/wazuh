@@ -624,10 +624,6 @@ void fim_registry_process_unscanned_entries() {
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
-    } else if (file && file->elements) {
-        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_entry_mutex,
-                                               fim_registry_process_value_delete_event, syscheck.database_store,
-                                               &_base_line, &event_mode, NULL);
     }
     */
 }
