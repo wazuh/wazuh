@@ -110,6 +110,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         cJSON *file = cJSON_CreateObject();
 
         if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
+        if (list[i].channel_str != NULL) cJSON_AddStringToObject(file, "channel", list[i].channel_str);
         if (list[i].logformat) cJSON_AddStringToObject(file,"logformat",list[i].logformat);
         if (list[i].command) cJSON_AddStringToObject(file,"command",list[i].command);
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
@@ -119,13 +120,19 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
 
-        if (list[i].future == 1){
-            cJSON_AddStringToObject(file, "only-future-events", "yes");
-        } else {
-            char offset[OFFSET_SIZE] = {0};
-            sprintf(offset, "%ld", list[i].diff_max_size);
-            cJSON_AddStringToObject(file, "only-future-events", "no");
-            cJSON_AddStringToObject(file, "max-size", offset);
+        if (list[i].logformat != NULL &&
+            strcmp(list[i].logformat, EVENTLOG) != 0 &&
+            strcmp(list[i].logformat, "command") != 0 &&
+            strcmp(list[i].logformat, "full_command") != 0) {
+
+            if (list[i].future == 1){
+                cJSON_AddStringToObject(file, "only-future-events", "yes");
+            } else {
+                char offset[OFFSET_SIZE] = {0};
+                sprintf(offset, "%ld", list[i].diff_max_size);
+                cJSON_AddStringToObject(file, "only-future-events", "no");
+                cJSON_AddStringToObject(file, "max-size", offset);
+            }
         }
 
         if (list[i].target && *list[i].target) {
@@ -157,7 +164,6 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddItemToObject(file,"labels",label);
         }
         if (list[i].ign && list[i].logformat != NULL && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
-        if (list[i].future && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
         if (list[i].reconnect_time && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
         if (list[i].multiline) {
             cJSON * multiline = cJSON_CreateObject();
