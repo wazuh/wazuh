@@ -222,13 +222,38 @@ typedef struct _RuleInfo {
     bool internal_saving;      ///< Used to free RuleInfo structure in wazuh-logtest
 } RuleInfo;
 
+typedef struct _rules_tmp_params_t {
+
+    char * regex;
+    char * match;
+    char * url;
+    char * if_matched_regex;
+    char * if_matched_group;
+    char * user;
+    char * id;
+    char * srcport;
+    char * dstport;
+    char * srcgeoip;
+    char * dstgeoip;
+    char * protocol;
+    char * system_name;
+    char * status;
+    char * hostname;
+    char * data;
+    char * extra_data;
+    char * program_name;
+    char * location;
+    char * action;
+
+    XML_NODE rule_arr_opt;
+
+} rules_tmp_params_t;
 
 typedef struct _RuleNode {
     RuleInfo *ruleinfo;
     struct _RuleNode *next;
     struct _RuleNode *child;
 } RuleNode;
-
 
 /**
  * @brief Structure to save all rules read in starting.
