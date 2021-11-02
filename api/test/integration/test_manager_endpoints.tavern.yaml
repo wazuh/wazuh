@@ -3,8 +3,6 @@ test_name: GET /manager/status
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -78,8 +76,6 @@ stages:
 test_name: GET /manager/configuration?{section}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
      key: section
      vals:

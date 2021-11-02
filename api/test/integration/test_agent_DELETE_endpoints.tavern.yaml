@@ -3,8 +3,6 @@ test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 

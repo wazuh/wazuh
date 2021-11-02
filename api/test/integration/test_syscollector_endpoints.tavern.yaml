@@ -3,8 +3,6 @@ test_name: GET /syscollector/{agent_id}/os
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -145,8 +143,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -534,8 +530,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/packages?{select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -999,8 +993,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/processes?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -1273,8 +1265,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/port?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -1668,8 +1658,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -1999,8 +1987,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -2657,8 +2643,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -2764,8 +2748,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -2848,8 +2830,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -3180,8 +3160,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -3512,8 +3490,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -4154,8 +4130,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:

@@ -3,8 +3,6 @@ test_name: DELETE /experimental/rootcheck
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -140,8 +138,6 @@ stages:
 test_name: GET /experimental/syscollector/hardware
 
 marks:
-  - standalone
-  - cluster
   - xfail # https://github.com/wazuh/wazuh-jenkins/issues/2415
 
 stages:

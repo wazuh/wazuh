@@ -3,8 +3,6 @@ test_name: PUT /security/roles
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 

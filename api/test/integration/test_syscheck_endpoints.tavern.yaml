@@ -3,8 +3,6 @@ test_name: GET /syscheck/000
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -409,8 +407,6 @@ stages:
 test_name: GET /syscheck/000
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -904,8 +900,6 @@ stages:
 test_name: GET /syscheck/002
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:

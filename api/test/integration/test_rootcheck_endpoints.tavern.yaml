@@ -3,8 +3,6 @@ test_name: GET /rootcheck/001
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 

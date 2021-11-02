@@ -4,7 +4,6 @@ test_name: GET /decoders
 marks:
   - base_tests
 
-
 stages:
 
     # GET /decoders
@@ -323,6 +322,7 @@ stages:
 ---
 test_name: GET /decoders
 
+marks:
   - parametrize:
       key: field
       vals:
@@ -368,7 +368,6 @@ stages:
 ---
 test_name: GET /decoders/{decoder_name}
 # We use {auditd-selinux_macstatus} as decoder_name for the purpose of this test
-
 
 stages:
 
