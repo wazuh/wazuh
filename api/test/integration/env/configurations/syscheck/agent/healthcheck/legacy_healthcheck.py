@@ -16,4 +16,4 @@ def get_health():
 
 
 if __name__ == "__main__":
-    exit(get_health() or get_agent_health_base())
+    exit(get_health() or get_agent_health_base(legacy=True))
