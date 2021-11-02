@@ -69,4 +69,7 @@
 #define LOGTEST_INFO_LOG_NOLEVEL            "(7205): Rule without alert level"
 #define LOGTEST_INFO_SESSION_REMOVE         "(7206): The session '%s' was closed successfully"
 
+/* Logcollector info messages */
+#define LOGCOLLECTOR_INVALID_HANDLE_VALUE   "(9200): File '%s' can not be handled."
+
 #endif /* INFO_MESSAGES_H */

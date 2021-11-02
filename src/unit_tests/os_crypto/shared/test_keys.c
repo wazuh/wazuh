@@ -330,6 +330,79 @@ void test_OS_WriteTimestamps_file_write(void **state)
     assert_int_equal(r, 0);
 }
 
+void test_OS_WriteTimestamps_write_error(void **state)
+{
+    keystore *keys = *(keystore **)state;
+    char timestamp[40];
+    struct tm tm = { .tm_sec = 0 };
+
+    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+
+    expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
+    expect_value(__wrap_TempFile, copy, 0);
+    will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
+    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, 0);
+    expect_fprintf((FILE *)1, timestamp, -1);
+    expect_fclose((FILE *)1, 0);
+    expect_string(__wrap_unlink, file, "queue/agents-timestamp.bak");
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/agents-timestamp.bak' due to [(28)-(No space left on device)].");
+    errno = ENOSPC;
+
+    int r = OS_WriteTimestamps(keys);
+    assert_int_equal(r, -1);
+}
+
+void test_OS_WriteTimestamps_close_error(void **state)
+{
+    keystore *keys = *(keystore **)state;
+    char timestamp[40];
+    struct tm tm = { .tm_sec = 0 };
+
+    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+
+    expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
+    expect_value(__wrap_TempFile, copy, 0);
+    will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
+    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, 0);
+    expect_fprintf((FILE *)1, timestamp, 0);
+    expect_fclose((FILE *)1, -1);
+    expect_string(__wrap_unlink, file, "queue/agents-timestamp.bak");
+    will_return(__wrap_unlink, 0);
+    expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'queue/agents-timestamp.bak' due to [(28)-(No space left on device)].");
+    errno = ENOSPC;
+
+    int r = OS_WriteTimestamps(keys);
+    assert_int_equal(r, -1);
+}
+
+void test_OS_WriteTimestamps_move_error(void **state)
+{
+    keystore *keys = *(keystore **)state;
+    char timestamp[40];
+    struct tm tm = { .tm_sec = 0 };
+
+    strftime(timestamp, 40, "002 agent2 2.2.2.2 %Y-%m-%d %H:%M:%S\n", localtime_r(&keys->keyentries[1]->time_added, &tm));
+
+    expect_string(__wrap_TempFile, source, TIMESTAMP_FILE);
+    expect_value(__wrap_TempFile, copy, 0);
+    will_return(__wrap_TempFile, strdup(TIMESTAMP_FILE ".bak"));
+    will_return(__wrap_TempFile, (FILE *)1);
+    will_return(__wrap_TempFile, 0);
+    expect_fprintf((FILE *)1, timestamp, 0);
+    expect_fclose((FILE *)1, 0);
+    expect_string(__wrap_OS_MoveFile, src, TIMESTAMP_FILE ".bak");
+    expect_string(__wrap_OS_MoveFile, dst, TIMESTAMP_FILE);
+    will_return(__wrap_OS_MoveFile, -1);
+    expect_string(__wrap_unlink, file, "queue/agents-timestamp.bak");
+    will_return(__wrap_unlink, 0);
+
+    int r = OS_WriteTimestamps(keys);
+    assert_int_equal(r, -1);
+}
+
 // Test w_get_key_hash
 
 void test_w_get_key_hash_empty_parameters(void **state){
@@ -394,6 +467,9 @@ int main(void)
         // Test OS_WriteTimestamps
         cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_file_error, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_file_write, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_write_error, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_close_error, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_move_error, setup_config, teardown_config),
         // Test w_get_key_hash
         cmocka_unit_test(test_w_get_key_hash_empty_parameters),
         cmocka_unit_test(test_w_get_key_hash_empty_value),
