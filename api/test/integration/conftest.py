@@ -33,7 +33,7 @@ def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
 
 
-def pytest_collection_modifyitems(items: list[pytest.Item]):
+def pytest_collection_modifyitems(items: list):
     """Pytest hook used to add standalone and cluster marks to tests having none of them.
 
     Parameters
