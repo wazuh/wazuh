@@ -42,10 +42,12 @@ def pytest_collection_modifyitems(items: list[pytest.Item]):
         List of pytest items collected in the pytest session.
     """
     for item in items:
-        item_marker_names = [m.name for m in item.own_markers]
-        if standalone_env_mode not in item_marker_names and cluster_env_mode not in item_marker_names:
-            item.add_marker(standalone_env_mode)
-            item.add_marker(cluster_env_mode)
+        test_name = item.nodeid.split('::')[0]
+        if 'rbac' not in test_name:
+            item_marker_names = [m.name for m in item.own_markers]
+            if standalone_env_mode not in item_marker_names and cluster_env_mode not in item_marker_names:
+                item.add_marker(standalone_env_mode)
+                item.add_marker(cluster_env_mode)
 
 
 def get_token_login_api():

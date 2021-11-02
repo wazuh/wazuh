@@ -76,7 +76,7 @@ stages:
 test_name: GET /manager/configuration?{section}
 
 marks:
-  - parametrize:
+ - parametrize:
      key: section
      vals:
        - alerts
