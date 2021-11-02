@@ -48,6 +48,7 @@ All notable changes to this project will be documented in this file.
   - Added Rules for Sophos UTM Firewall. ([#10496](https://github.com/wazuh/wazuh/pull/10496))
   - Added SCA policy for Solaris 11.4. ([#10369](https://github.com/wazuh/wazuh/pull/10369))
   - Added Rules for Cloudflare WAF. ([#10658](https://github.com/wazuh/wazuh/pull/10496))
+  - Added Rules and Decoders for FortiAuth. ([#10667](https://github.com/wazuh/wazuh/pull/10667))
   - Added CDB list for malicious IP. ([](https://github.com/wazuh/wazuh/pull/10676))
   - Added CDB list for uncommon CMD opened process. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
   - Added Rules for MITRE public Fin7 assessment. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
@@ -94,8 +95,9 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1 ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-  - Updated Amazon rules to add more granularity. ([10507](https://github.com/wazuh/wazuh/pull/10507))
   - Updated Mitre mappings for rules. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
+  - Updated Amazon rules to add more granularity. ([#10507](https://github.com/wazuh/wazuh/pull/10507))
+  - Updated macOS Big Sur SCA up to 1.2.0 version. ([#10558](https://github.com/wazuh/wazuh/pull/10558))
 
 ### Fixed
 
@@ -143,6 +145,7 @@ All notable changes to this project will be documented in this file.
   - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA ([#10354](https://github.com/wazuh/wazuh/pull/10354))
   - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas) ([#10406](https://github.com/wazuh/wazuh/pull/10406))
   - Fixed regex for prematch in FortiDDoS Decoders. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
+  - Fixed errors and improved detection in Windows Security rules ([#10682](https://github.com/wazuh/wazuh/pull/10682))
 
 ### Removed
 

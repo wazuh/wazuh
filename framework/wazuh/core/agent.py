@@ -153,14 +153,20 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
-            field_filter_1, field_filter_2, field_filter_3 = \
-                field_filter + '_1', field_filter + '_2', field_filter + '_3'
-            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(
-                self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
-            self.request[field_filter_1] = '%,' + q_filter['value']
-            self.request[field_filter_2] = q_filter['value'] + ',%'
-            self.request[field_filter_3] = '%,{},%'.format(q_filter['value'])
-            self.request[field_filter] = q_filter['value']
+            valid_group_operators = {'=', '!=', '~'}
+
+            if q_filter['operator'] == '=':
+                self.query += f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
+                self.request[field_filter] = f"%,{q_filter['value']},%"
+            elif q_filter['operator'] == '!=':
+                self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
+                self.request[field_filter] = f"%,{q_filter['value']},%"
+            elif q_filter['operator'] == 'LIKE':
+                self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
+                self.request[field_filter] = f"%{q_filter['value']}%"
+            else:
+                raise WazuhError(1409, f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
+                                       f"Used operator: {q_filter['operator']}")
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
@@ -462,7 +468,6 @@ class Agent:
         ret_msg = wq.send_msg_to_agent(WazuhQueue.HC_FORCE_RECONNECT, self.id)
 
         return ret_msg
-
 
     def remove(self, purge: bool = False, use_only_authd: bool = False) -> str:
         """Delete the agent.

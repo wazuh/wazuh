@@ -1127,7 +1127,7 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
     f_kwargs = {'agent_list': agent_list}
-    dapi = DistributedAPI(f=agent.restart_agents,
+    dapi = DistributedAPI(f=agent.restart_agents_by_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

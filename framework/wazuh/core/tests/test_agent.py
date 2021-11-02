@@ -225,8 +225,10 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
-    ('group', 'field', {'value': '1', 'operator': 'LIKE'}),
+    ('group', 'field', {'value': '1', 'operator': '='}),
+    ('group', 'test', {'value': '1', 'operator': '!='}),
     ('group', 'test', {'value': '1', 'operator': 'LIKE'}),
+    ('group', 'test', {'value': '1', 'operator': '<'}),
     ('os.name', 'field', {'value': '1', 'operator': 'LIKE', 'field': 'status$0'}),
 ])
 @patch('socket.socket.connect')
@@ -242,13 +244,26 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     q_filter : dict
         Query to filter in database.
     """
+    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
+    not_equal_regex = f"NOT {equal_regex}"
+    like_regex = r"[\w`]+ LIKE :\w+"
+
     query_agent = WazuhDBQueryAgents()
-    query_agent._process_filter(field_name, field_filter, q_filter)
+    try:
+        query_agent._process_filter(field_name, field_filter, q_filter)
+    except WazuhError as e:
+        assert e.code == 1409 and q_filter['operator'] not in {'=', '!=', 'LIKE'}
+        return
 
     if field_name == 'group':
-        assert f'`group` LIKE :{field_filter}_1 OR `group` LIKE ' \
-               f':{field_filter}_2 OR `group` LIKE :{field_filter}_3 OR ' \
-               f'`group` = :{field_filter}' in query_agent.query, 'Query returned does not match the expected one'
+        if q_filter['operator'] == '=':
+            assert re.search(equal_regex, query_agent.query)
+        elif q_filter['operator'] == '!=':
+            assert re.search(not_equal_regex, query_agent.query)
+        elif q_filter['operator'] == 'LIKE':
+            assert re.search(like_regex, query_agent.query)
+        else:
+            pytest.fail('Unexpected operator')
     else:
         assert 'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query, \
             'Query returned does not match the expected one'
