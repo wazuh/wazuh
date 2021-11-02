@@ -75,7 +75,7 @@
         <Property Id="BUILDVERSION" Value="0">
             <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
         </Property>
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" />
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixQuietExec"/>
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
@@ -95,12 +95,12 @@
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
 
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
-        <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
+        <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no" />
+        <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
-        <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
+        <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
 
         <CustomAction Id="ReplaceConfiguration" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript ReplaceConf.vbs &quot;[APPLICATIONFOLDER]&quot;" />
 
