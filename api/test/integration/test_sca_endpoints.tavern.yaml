@@ -410,10 +410,6 @@ stages:
 ---
 test_name: GET /sca/001/checks/{policy}
 
-marks:
-  - standalone
-  - cluster
-
 stages:
   - name: Parameter policy
     request:

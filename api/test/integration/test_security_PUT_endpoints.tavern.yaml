@@ -116,10 +116,6 @@ stages:
 ---
 test_name: PUT /security/policies
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   # PUT /security/policies/{policy_id}
@@ -328,10 +324,6 @@ stages:
 ---
 test_name: PUT /security/rules
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
 # PUT /security/rules/{rule_id}
@@ -481,10 +473,6 @@ stages:
 ---
 test_name: PUT /security/user/revoke
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Revoke all tokens
@@ -510,10 +498,6 @@ stages:
 ---
 test_name: DELETE /security/user/authenticate
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Logout current user
@@ -529,10 +513,6 @@ stages:
 
 ---
 test_name: PUT /security/users/{user_id}
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -624,10 +604,6 @@ stages:
 ---
 test_name: PUT /security/users/{user_id}/run_as
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Update user's allow_run_as flag
@@ -688,10 +664,6 @@ stages:
 ---
 test_name: PUT /security/config
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Update security configuration
@@ -708,10 +680,6 @@ stages:
 
 ---
 test_name: PUT /security/config (Check)
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 

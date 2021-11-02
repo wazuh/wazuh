@@ -3,8 +3,6 @@ test_name: PUT /agents/group
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -218,10 +216,6 @@ stages:
 ---
 test_name: PUT /groups/{group_id}/configuration
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   # PUT /groups/group2/configuration
@@ -338,10 +332,6 @@ stages:
 ---
 test_name: PUT /agents/group/{group_id}/restart
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   # PUT /agents/group/group1/restart (This group has no agents assigned)
@@ -400,10 +390,6 @@ stages:
 
 ---
 test_name: PUT /agents/reconnect
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -522,10 +508,6 @@ stages:
 ---
 test_name: PUT /agents/restart
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   # PUT /agents/restart?agents_list=wrong_id
@@ -643,10 +625,6 @@ stages:
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   # PUT /agents/001/group/group1
@@ -722,10 +700,6 @@ stages:
 
 ---
 test_name: PUT /agents/{agent_id}/restart
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -809,8 +783,6 @@ test_name: PUT /agents/node/{node_id}/restart
 
 marks:
   - xfail # Agents stay with "pending" status for too long - https://github.com/wazuh/wazuh/issues/10162
-  - standalone
-  - cluster
 
 stages:
 
@@ -869,10 +841,6 @@ stages:
 
 ---
 test_name: PUT /agents/upgrade
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -1164,8 +1132,6 @@ test_name: PUT /agents/{agent_id}/upgrade_custom
 
 marks:
   - xfail # Agents stay with "pending" status for too long - https://github.com/wazuh/wazuh/issues/10162
-  - standalone
-  - cluster
 
 stages:
 

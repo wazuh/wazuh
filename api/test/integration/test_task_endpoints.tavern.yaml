@@ -3,8 +3,6 @@ test_name: GET /tasks/status
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -278,10 +276,6 @@ stages:
 
 ---
 test_name: GET /tasks/status (Filters)
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 

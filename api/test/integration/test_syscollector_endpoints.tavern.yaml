@@ -61,8 +61,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -98,10 +96,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -183,10 +177,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/packages
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -579,10 +569,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/processes
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -1081,10 +1067,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/ports
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Ports of an agent
@@ -1344,10 +1326,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -1740,10 +1718,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netproto
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Netprotocol of an agent
@@ -2073,10 +2047,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -2745,10 +2715,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Get the OS of an agent
@@ -2838,10 +2804,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/hardware
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Hardware of an agent
@@ -2918,10 +2880,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3257,10 +3215,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3605,10 +3559,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -4261,10 +4211,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hotfixes
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 

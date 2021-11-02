@@ -3,8 +3,6 @@ test_name: GET /agents
 
 marks:
   - base_tests
-  - standalone
-  - cluster
 
 stages:
 
@@ -1031,10 +1029,6 @@ stages:
 ---
 test_name: GET /agents with single agent id
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   # GET /agents?agents_list=000
@@ -1195,10 +1189,6 @@ stages:
 
 ---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration}
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -1928,10 +1918,6 @@ stages:
 ---
 test_name: GET /agents/{agent_id}/group/is_sync
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Try to get sync of agent 000 (manager)
@@ -2010,10 +1996,6 @@ stages:
 ---
 test_name: GET /agents/{agent_id}/key
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Try get key agent 000 (manager)
@@ -2090,10 +2072,6 @@ stages:
 
 ---
 test_name: GET /agents/{agent_id}/stats/{component}
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -2242,10 +2220,6 @@ stages:
 
 ---
 test_name: GET /groups
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -2466,8 +2440,6 @@ stages:
 test_name: GET /groups filter hash
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: hash
       vals:
@@ -2501,10 +2473,6 @@ stages:
 
 ---
 test_name: GET /groups/{group_id}/agents
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -2868,8 +2836,6 @@ stages:
 test_name: GET /groups/{group_id}/agents {sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -2938,10 +2904,6 @@ stages:
 
 ---
 test_name: GET /groups/{group_id}/configuration
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3071,10 +3033,6 @@ stages:
 
 ---
 test_name: GET /groups/{group_id}/files
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3305,8 +3263,6 @@ stages:
 test_name: GET /groups/{group_id}/files filter hash
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: hash
       vals:
@@ -3345,10 +3301,6 @@ stages:
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/json
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3390,10 +3342,6 @@ stages:
 ---
 test_name: GET /groups/{group_id}/files/{filename}/xml
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Try get one file of a group
@@ -3433,10 +3381,6 @@ stages:
 
 ---
 test_name: GET /agents?name=agent_name
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3535,10 +3479,6 @@ stages:
 
 ---
 test_name: GET /agents/no_group
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3735,8 +3675,6 @@ stages:
 test_name: GET /agents/no_group {sort,select}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -3787,10 +3725,6 @@ stages:
 
 ---
 test_name: GET /agents/outdated
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -3965,10 +3899,6 @@ stages:
 
 ---
 test_name: GET /agents/stats/distinct
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
@@ -4257,8 +4187,6 @@ stages:
 test_name: GET /agents/stats/distinct {fields}
 
 marks:
-  - standalone
-  - cluster
   - parametrize:
       key: field
       vals:
@@ -4306,10 +4234,6 @@ stages:
 ---
 test_name: GET /agents/summary/status
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Get the agents status summary
@@ -4333,10 +4257,6 @@ stages:
 ---
 test_name: GET /agents/summary/os
 
-marks:
-  - standalone
-  - cluster
-
 stages:
 
   - name: Get the summary/os of all agents
@@ -4359,10 +4279,6 @@ stages:
 
 ---
 test_name: GET /agents/upgrade_result
-
-marks:
-  - standalone
-  - cluster
 
 stages:
 
