@@ -438,7 +438,8 @@ class AWSBucket(WazuhIntegration):
                                         WHERE
                                             bucket_path='{bucket_path}' AND
                                             aws_account_id='{aws_account_id}' AND
-                                            aws_region = '{aws_region}'
+                                            aws_region = '{aws_region}' AND
+                                            log_key = '{prefix}%'
                                         ORDER BY
                                             log_key ASC
                                         LIMIT 1;"""
@@ -497,6 +498,51 @@ class AWSBucket(WazuhIntegration):
         self.delete_file = delete_file
         self.bucket_path = self.bucket + '/' + self.prefix
         self.aws_organization_id = aws_organization_id
+        self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
+
+    def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
+        """
+        Returns if the prefix of a file key is the same as the one expected.
+
+        Parameters
+        ----------
+        match_start : int or None
+            The position of the string with the file key where it started matching with a date format.
+        aws_account_id : str
+            The account ID of the AWS account.
+        aws_region : str
+            The region where the bucket is located.
+
+        Returns
+        -------
+        bool
+            True if the prefix is the same, False otherwise.
+        """
+        return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
+
+
+    def _get_last_key_processed(self, aws_account_id: str) -> str or None:
+        """
+        Returns the key of the last file processed by the module.
+
+        Parameters
+        ----------
+        aws_account_id : str
+            The account ID of the AWS account.
+
+        Returns
+        -------
+        str or None
+            A str with the key of the last file processed, None if no file has been processed yet.
+        """
+        query_last_key = self.db_connector.execute(
+            self.sql_find_last_key_processed.format(table_name=self.db_table_name, bucket_path=self.bucket_path,
+                                                    aws_account_id=aws_account_id, prefix=self.prefix))
+        try:
+            return query_last_key.fetchone()[0]
+        except (TypeError, IndexError):
+            # if DB is empty for a region
+            return None
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -639,7 +685,7 @@ class AWSBucket(WazuhIntegration):
                 self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
                                                         table_name=self.db_table_name,
                                                         aws_account_id=aws_account_id,
-                                                        aws_region=aws_region))
+                                                        aws_region=aws_region, prefix= self.prefix))
             try:
                 last_key = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
@@ -793,74 +839,58 @@ class AWSBucket(WazuhIntegration):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
 
-            if 'Contents' not in bucket_files:
-                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
-                return
-
-            for bucket_file in bucket_files['Contents']:
-                if not bucket_file['Key']:
-                    continue
-
-                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                    if self.reparse:
-                        debug("++ File previously processed, but reparse flag set: {file}".format(
-                            file=bucket_file['Key']), 1)
-                    else:
-                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                        continue
-
-                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file)
-            # Optimize DB
-            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-            self.db_connector.commit()
-            # Iterate if there are more logs
-            while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
-                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                bucket_files = self.client.list_objects_v2(**new_s3_args)
-
+            loop = True
+            while loop:
                 if 'Contents' not in bucket_files:
-                    debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                    debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                     return
 
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
+
+                    date_match = self.date_regex.search(bucket_file['Key'])
+                    match_start = date_match.span()[0] if date_match else None
+
+                    if not self._same_prefix(match_start, aws_account_id, aws_region):
+                        debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                        continue
+
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            debug("++ File previously processed, but reparse flag set: {file}".format(
-                                file=bucket_file['Key']), 1)
+                            debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
                         else:
-                            debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                            debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
                             continue
-                    debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
+
+                    debug(f"++ Found new log: {bucket_file['Key']}", 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                     self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                     # Remove file from S3 Bucket
                     if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                        debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
                 # Optimize DB
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
                 self.db_connector.commit()
+
+                if bucket_files['IsTruncated']:
+                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
+                    new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                    bucket_files = self.client.list_objects_v2(**new_s3_args)
+                else:
+                    loop = False
+
         except SystemExit:
             raise
         except Exception as err:
             if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
+                debug(f"+++ Unexpected error: {err.message}", 2)
             else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+                debug(f"+++ Unexpected error: {err}", 2)
+            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}".format(err)
             sys.exit(7)
 
     def check_bucket(self):
@@ -1110,7 +1140,7 @@ class AWSConfigBucket(AWSLogsBucket):
                                                                bucket_path=self.bucket_path,
                                                                aws_account_id=aws_account_id,
                                                                aws_region=aws_region,
-                                                               created_date=created_date))
+                                                               created_date=created_date, prefix=self.prefix))
             try:
                 last_key = query_last_key_of_day.fetchone()[0]
             except (TypeError, IndexError) as e:
@@ -2209,29 +2239,6 @@ class AWSServerAccess(AWSCustomBucket):
         AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
         self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2})')
 
-    def get_last_key_processed(self, aws_account_id: str) -> str or None:
-        """
-        Returns the key of the last file processed by the module.
-
-        Parameters
-        ----------
-        aws_account_id : str
-            The account ID of the AWS account.
-
-        Returns
-        -------
-        str or None
-            A str with the key of the last file processed, None if no file has been processed yet.
-        """
-        query_last_key = self.db_connector.execute(
-            self.sql_find_last_key_processed.format(table_name=self.db_table_name, bucket_path=self.bucket_path,
-                                                    aws_account_id=aws_account_id, prefix=self.prefix))
-        try:
-            return query_last_key.fetchone()[0]
-        except (TypeError, IndexError):
-            # if DB is empty for a region
-            return None
-
     def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
         """
         Tells if the file key provided is too old to process.
@@ -2255,26 +2262,6 @@ class AWSServerAccess(AWSCustomBucket):
 
         return False
 
-    def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
-        """
-        Returns if the prefix of a file key is the same as the one expected.
-
-        Parameters
-        ----------
-        match_start : int or None
-            The position of the string with the file key where it started matching with a date format.
-        aws_account_id : str
-            The account ID of the AWS account.
-        aws_region : str
-            The region where the bucket is located.
-
-        Returns
-        -------
-        bool
-            True if the prefix is the same, False otherwise.
-        """
-        return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
-
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region,
@@ -2283,7 +2270,7 @@ class AWSServerAccess(AWSCustomBucket):
                 debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                 return
 
-            last_key = self.get_last_key_processed(aws_account_id)
+            last_key = self._get_last_key_processed(aws_account_id)
             last_key_date = datetime.strptime(last_key, '%Y-%m-%d') if last_key else None
 
             for bucket_file in bucket_files['Contents']:
