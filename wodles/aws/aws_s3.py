@@ -890,7 +890,7 @@ class AWSBucket(WazuhIntegration):
                 debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}".format(err)
+            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def check_bucket(self):
