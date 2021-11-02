@@ -91,7 +91,8 @@ All notable changes to this project will be documented in this file.
 - **Ruleset**
   - Updated Amazon Linux 2 SCA up to version 2.0.0 ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1 ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-  - Updated Amazon rules to add more granularity. ([10507](https://github.com/wazuh/wazuh/pull/10507))
+  - Updated Amazon rules to add more granularity. ([#10507](https://github.com/wazuh/wazuh/pull/10507))
+  - Updated macOS Big Sur SCA up to 1.2.0 version. ([#10558](https://github.com/wazuh/wazuh/pull/10558))
 
 ### Fixed
 
@@ -138,6 +139,7 @@ All notable changes to this project will be documented in this file.
   - Fixed enabled-like checks for Amazon Linux 2 SCA ([#10315](https://github.com/wazuh/wazuh/pull/10315))
   - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA ([#10354](https://github.com/wazuh/wazuh/pull/10354))
   - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas) ([#10406](https://github.com/wazuh/wazuh/pull/10406))
+  - Fixed errors and improved detection in Windows Security rules ([#10682](https://github.com/wazuh/wazuh/pull/10682))
   - Fixed YML syntax problems in Solaris 11.4 SCA. ([#10707](https://github.com/wazuh/wazuh/pull/10707))
 
 ### Removed

@@ -9,7 +9,7 @@
 list(APPEND tests_names "test_wm_gcp")
 list(APPEND tests_flags "-Wl,--wrap,wm_exec,--wrap,_mtdebug1,--wrap,_mtinfo,--wrap,_mtwarn,--wrap,_mterror \
                          -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_time_until_next_scan,--wrap,cJSON_CreateObject \
-                         -Wl,--wrap,FOREVER,--wrap,_mtdebug2")
+                         -Wl,--wrap,FOREVER,--wrap,_mtdebug2,--wrap,w_get_timestamp,--wrap,w_sleep_until")
 list(APPEND use_shared_libs 0)
 
 list(APPEND tests_names "test_wmodules_gcp")
