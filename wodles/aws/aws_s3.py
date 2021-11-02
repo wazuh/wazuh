@@ -499,6 +499,7 @@ class AWSBucket(WazuhIntegration):
         self.bucket_path = self.bucket + '/' + self.prefix
         self.aws_organization_id = aws_organization_id
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
+        self.check_prefix = False
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -675,8 +676,40 @@ class AWSBucket(WazuhIntegration):
     def get_full_prefix(self, account_id, account_region):
         raise NotImplementedError
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False):
+    def get_base_prefix(self):
+        raise NotImplementedError
+
+    def get_service_prefix(self, account_id):
+        raise NotImplementedError
+
+    def find_account_ids(self):
+        try:
+            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
+                    self.client.list_objects_v2(Bucket=self.bucket,
+                                                Prefix=self.get_base_prefix(),
+                                                Delimiter='/')['CommonPrefixes']
+                    ]
+        except KeyError:
+            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
+            print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
+                  f"type and this bucket does not contain log files from this type. Try with other type: "
+                  f"{bucket_types - {get_script_arguments().type.lower()}}")
+            sys.exit(12)
+
+    def find_regions(self, account_id):
+        regions = self.client.list_objects_v2(Bucket=self.bucket,
+                                              Prefix=self.get_service_prefix(account_id=account_id),
+                                              Delimiter='/')
+
+        if 'CommonPrefixes' in regions:
+            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
+        else:
+            debug(f"+++ No regions found for AWS Account {account_id}", 1)
+            return []
+
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
         filter_marker = ''
+        last_key = None
         if self.reparse:
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
@@ -685,10 +718,10 @@ class AWSBucket(WazuhIntegration):
                 self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
                                                         table_name=self.db_table_name,
                                                         aws_account_id=aws_account_id,
-                                                        aws_region=aws_region, prefix= self.prefix))
+                                                        aws_region=aws_region, prefix=self.prefix))
             try:
                 last_key = query_last_key.fetchone()[0]
-            except (TypeError, IndexError) as e:
+            except (TypeError, IndexError):
                 # if DB is empty for a region
                 last_key = self.marker_only_logs_after(aws_region, aws_account_id)
 
@@ -702,10 +735,15 @@ class AWSBucket(WazuhIntegration):
         if not iterating:
             if filter_marker:
                 filter_args['StartAfter'] = filter_marker
-                debug('+++ Marker: {0}'.format(filter_marker), 2)
             else:
                 filter_args['StartAfter'] = last_key
-                debug('+++ Marker: {0}'.format(last_key), 2)
+
+        if filter_args.get('StartAfter'):
+            if custom_delimiter:
+                prefix_len = len(filter_args.get('Prefix'))
+                filter_args['StartAfter'] = filter_args.get('StartAfter')[:prefix_len] + \
+                                            filter_args.get('StartAfter')[prefix_len:].replace('/', custom_delimiter)
+            debug(f"+++ Marker: {filter_args.get('StartAfter')}", 2)
 
         return filter_args
 
@@ -797,7 +835,21 @@ class AWSBucket(WazuhIntegration):
         self.db_connector.close()
 
     def iter_regions_and_accounts(self, account_id, regions):
-        raise NotImplementedError
+        if not account_id:
+            # No accounts provided, so find which exist in s3 bucket
+            account_id = self.find_account_ids()
+        for aws_account_id in account_id:
+            # No regions provided, so find which exist for this AWS account
+            if not regions:
+                regions = self.find_regions(aws_account_id)
+                if not regions:
+                    continue
+            for aws_region in regions:
+                if self.old_version:
+                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
+                debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                self.iter_files_in_bucket(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def iter_events(self, event_list, log_key, aws_account_id):
         def check_recursive(json_item=None, nested_field: str = '', regex: str = ''):
@@ -849,12 +901,13 @@ class AWSBucket(WazuhIntegration):
                     if not bucket_file['Key']:
                         continue
 
-                    date_match = self.date_regex.search(bucket_file['Key'])
-                    match_start = date_match.span()[0] if date_match else None
+                    if self.check_prefix:
+                        date_match = self.date_regex.search(bucket_file['Key'])
+                        match_start = date_match.span()[0] if date_match else None
 
-                    if not self._same_prefix(match_start, aws_account_id, aws_region):
-                        debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
-                        continue
+                        if not self._same_prefix(match_start, aws_account_id, aws_region):
+                            debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                            continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
@@ -964,46 +1017,6 @@ class AWSLogsBucket(AWSBucket):
         alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
         alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
-
-    def find_account_ids(self):
-        try:
-            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
-                    self.client.list_objects_v2(Bucket=self.bucket,
-                                                Prefix=self.get_base_prefix(),
-                                                Delimiter='/')['CommonPrefixes']
-                    ]
-        except KeyError as err:
-            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
-            print("ERROR: Invalid type of bucket. The bucket was set up as '{}' type and this bucket does not contain log files from this type. Try with other type: {}".format(get_script_arguments().type.lower(), bucket_types - {get_script_arguments().type.lower()}))
-            sys.exit(12)
-
-    def find_regions(self, account_id):
-        regions = self.client.list_objects_v2(Bucket=self.bucket,
-                                              Prefix=self.get_service_prefix(account_id=account_id),
-                                              Delimiter='/')
-
-        if 'CommonPrefixes' in regions:
-            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
-        else:
-            debug("+++ No regions found for AWS Account {}".format(account_id), 1)
-            return []
-
-    def iter_regions_and_accounts(self, account_id, regions):
-        if not account_id:
-            # No accounts provided, so find which exist in s3 bucket
-            account_id = self.find_account_ids()
-        for aws_account_id in account_id:
-            # No regions provided, so find which exist for this AWS account
-            if not regions:
-                regions = self.find_regions(aws_account_id)
-                if regions == []:
-                    continue
-            for aws_region in regions:
-                if self.old_version:
-                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
-                debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
-                self.iter_files_in_bucket(aws_account_id, aws_region)
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -1753,6 +1766,7 @@ class AWSCustomBucket(AWSBucket):
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
         self.macie_location_pattern = re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
+        self.check_prefix = True
         # SQL queries for custom buckets
         self.sql_already_processed = """
                           SELECT
@@ -1996,46 +2010,6 @@ class AWSCustomBucket(AWSBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
-        filter_marker = ''
-        if self.reparse:
-            if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_account_id, aws_region)
-
-        else:
-            query_last_key = self.db_connector.execute(
-                self.sql_find_last_key_processed.format(table_name=self.db_table_name,
-                                                        bucket_path=self.bucket_path,
-                                                        aws_account_id=self.aws_account_id,
-                                                        prefix=self.prefix))
-            try:
-                last_key = query_last_key.fetchone()[0]
-            except (TypeError, IndexError) as e:
-                # if DB is empty for a service
-                last_key = self.marker_only_logs_after(aws_region, aws_account_id)
-
-        filter_args = {
-            'Bucket': self.bucket,
-            'MaxKeys': 1000,
-            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
-        }
-
-        # if nextContinuationToken is not used for processing logs in a bucket
-        if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-            else:
-                filter_args['StartAfter'] = last_key
-
-        if filter_args.get('StartAfter'):
-            if custom_delimiter:
-                prefix_len = len(filter_args.get('Prefix'))
-                filter_args['StartAfter'] = filter_args.get('StartAfter')[:prefix_len] + \
-                                            filter_args.get('StartAfter')[prefix_len:].replace('/', custom_delimiter)
-            debug(f"+++ Marker: {filter_args.get('StartAfter')}", 2)
-
-        return filter_args
-
 
 class AWSGuardDutyBucket(AWSCustomBucket):
 
@@ -2162,11 +2136,31 @@ class AWSWAFBucket(AWSCustomBucket):
         return json.loads(json.dumps(content))
 
 
-class AWSALBBucket(AWSCustomBucket):
+class AWSLBBucket(AWSCustomBucket):
+    """Class that has common methods unique to the load balancers."""
+
+    def __init__(self, *args, **kwargs):
+        self.service = 'elasticloadbalancing'
+        AWSCustomBucket.__init__(self, *args, **kwargs)
+
+    def get_base_prefix(self):
+        return f'{self.prefix}AWSLogs/{self.suffix}'
+
+    def get_service_prefix(self, account_id):
+        return f'{self.get_base_prefix()}{account_id}/{self.service}/'
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+
+    def get_full_prefix(self, account_id, account_region):
+        return f'{self.get_service_prefix(account_id)}{account_region}/'
+
+
+class AWSALBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
         db_table_name = 'alb'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        AWSLBBucket.__init__(self, db_table_name, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a ALB access log file."""
@@ -2183,11 +2177,11 @@ class AWSALBBucket(AWSCustomBucket):
             return [dict(x, source='alb') for x in tsv_file]
 
 
-class AWSCLBBucket(AWSCustomBucket):
+class AWSCLBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
         db_table_name = 'clb'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        AWSLBBucket.__init__(self, db_table_name, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a CLB access log file."""
@@ -2201,11 +2195,11 @@ class AWSCLBBucket(AWSCustomBucket):
             return [dict(x, source='clb') for x in tsv_file]
 
 
-class AWSNLBBucket(AWSCustomBucket):
+class AWSNLBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
         db_table_name = 'nlb'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        AWSLBBucket.__init__(self, db_table_name, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a NLB access log file."""
