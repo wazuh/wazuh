@@ -53,6 +53,8 @@ All notable changes to this project will be documented in this file.
   - Added CDB list for uncommon CMD opened process. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
   - Added Rules for MITRE public Fin7 assessment. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
   - Added IP reputation Rules. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
+  - Added Rules and Decoders for FortiAuth. ([#10667](https://github.com/wazuh/wazuh/pull/10667))
+
 
 ### Changed
 
@@ -98,6 +100,7 @@ All notable changes to this project will be documented in this file.
   - Updated Mitre mappings for rules. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
   - Updated Amazon rules to add more granularity. ([#10507](https://github.com/wazuh/wazuh/pull/10507))
   - Updated macOS Big Sur SCA up to 1.2.0 version. ([#10558](https://github.com/wazuh/wazuh/pull/10558))
+
 
 ### Fixed
 
