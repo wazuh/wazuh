@@ -39,81 +39,83 @@
     <if_sid>18104</if_sid>
     <id>^4960$</id>
     <description>IPsec dropped an inbound packet that failed an integrity check</description>
-    <mitre>
-      <id>T1107</id>
-    </mitre>
     <group>windows,</group>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
   </rule>
 
   <rule id="18656" level="8">
     <if_sid>18104</if_sid>
     <id>^4961$|^4962$</id>
     <description>IPsec dropped an inbound packet that failed a replay check</description>
-    <mitre>
-      <id>T1107</id>
-    </mitre>
     <group>windows,</group>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
   </rule>
 
   <rule id="18657" level="8">
     <if_sid>18104</if_sid>
     <id>^4963$</id>
     <description>IPsec dropped an inbound clear text packet that should have been secured</description>
-    <mitre>
-      <id>T1107</id>
-    </mitre>
     <group>windows,</group>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
   </rule>
 
   <rule id="18658" level="4">
     <if_sid>18104</if_sid>
     <id>^4965$</id>
     <description>IPsec received a packet from a remote computer with an incorrect Security Parameter Index (SPI)</description>
+    <group>windows,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18659" level="7">
     <if_sid>18104</if_sid>
     <id>^4976$</id>
     <description>During Main Mode negotiation, IPsec received an invalid negotiation packet</description>
+    <group>windows,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18660" level="7">
     <if_sid>18104</if_sid>
     <id>^4977$</id>
     <description>During Quick Mode negotiation, IPsec received an invalid negotiation packet</description>
+    <group>windows,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18661" level="7">
     <if_sid>18104</if_sid>
     <id>^4978$</id>
     <description>During Extended Mode negotiation, IPsec received an invalid negotiation packet</description>
+    <group>windows,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18662" level="8">
     <if_sid>18104</if_sid>
     <id>^5453$</id>
     <description>An IPsec negotiation with a remote computer failed because the IKE and AuthIP IPsec Keying Modules (IKEEXT) service is not started</description>
+    <group>windows,</group>
     <mitre>
       <id>T1095</id>
+    </mitre>
+    <mitre>
       <id>T1489</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18663" level="8">
@@ -127,20 +129,20 @@
     <if_sid>18105</if_sid>
     <id>^5483$</id>
     <description>IPsec Services failed to initialize RPC server. IPsec Services could not be started</description>
+    <group>windows,</group>
     <mitre>
       <id>T1489</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18665" level="8">
     <if_sid>18105</if_sid>
     <id>^5484$</id>
     <description>IPsec Services has experienced a critical failure and has been shut down</description>
+    <group>windows,</group>
     <mitre>
       <id>T1529</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18666" level="8">
@@ -154,10 +156,10 @@
     <if_sid>18104</if_sid>
     <id>^4710$</id>
     <description>IPsec Services was disabled</description>
+    <group>windows,</group>
     <mitre>
       <id>T1489</id>
     </mitre>
-    <group>windows,</group>
   </rule>
 
   <rule id="18668" level="8">

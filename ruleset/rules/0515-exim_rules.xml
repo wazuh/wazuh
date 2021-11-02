@@ -31,10 +31,10 @@
       <if_matched_sid>87506</if_matched_sid>
       <same_source_ip />
       <description>Exim brute force attack (multiple auth failures).</description>
-      <mitre>
-        <id>T1110</id>
-      </mitre>
         <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     </rule>
 
     <rule id="87508" level="0">
