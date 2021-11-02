@@ -33,7 +33,7 @@ enum class dbResult
     DB_ERROR
 };
 
-class FIMDB final
+class FIMDB
 {
     public:
         static FIMDB& getInstance()
@@ -48,18 +48,25 @@ class FIMDB final
               unsigned int max_rows_file,
               unsigned int max_rows_registry,
               send_data_callback_t callbackSync,
-              logging_callback_t callbackLog);
+              logging_callback_t callbackLog,
+              std::unique_ptr<DBSync> dbsyncHandler,
+              std::unique_ptr<RemoteSync> rsyncHandler);
 #else
     void init(const std::string& dbPath,
               unsigned int interval_synchronization,
               unsigned int max_rows_file,
               send_data_callback_t callbackSync,
-              logging_callback_t callbackLog);
+              logging_callback_t callbackLog,
+              std::unique_ptr<DBSync> dbsyncHandler,
+              std::unique_ptr<RemoteSync> rsyncHandler);
 #endif
     int insertItem(const nlohmann::json& item);
     int removeItem(const nlohmann::json& item);
     int updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
     int executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
+    void loopRSync(std::unique_lock<std::mutex>& lock);
+    void registerRSync();
+    inline void stopSync(){m_stopping = true;};
 
 private:
 
@@ -68,12 +75,12 @@ private:
     unsigned int                                                            m_interval_synchronization;
     bool                                                                    m_stopping;
     std::condition_variable                                                 m_cv;
-    std::mutex                                                              m_mutex;
     std::unique_ptr<DBSync>                                                 m_dbsyncHandler;
     std::unique_ptr<RemoteSync>                                             m_rsyncHandler;
     std::function<void(const std::string&)>                                 m_syncMessageFunction;
-    std::function<void(modules_log_level_t, const std::string&)>      m_loggingFunction;
+    std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
 
+    void sync();
     std::string createStatement();
 
 protected:
@@ -83,8 +90,6 @@ protected:
     void setFileLimit();
     void setRegistryLimit();
     void setValueLimit();
-    void registerRsync();
-    void sync();
-    void loopRsync(std::unique_lock<std::mutex>& lock);
+    std::mutex                                                              m_mutex;
 };
 #endif //_FIMDB_HPP
