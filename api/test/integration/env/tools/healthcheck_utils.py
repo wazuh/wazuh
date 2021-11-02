@@ -16,7 +16,6 @@ base_url = "{}://{}:{}".format(protocol, host, port)
 login_url = "{}/security/user/authenticate".format(base_url)
 
 HEALTHCHECK_TOKEN_FILE = '/tmp/healthcheck/healthcheck.token'
-OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
 
 
 def get_login_header(user, password):
@@ -50,13 +49,13 @@ def get_response(url, headers):
         return json.loads(request_result.content.decode())
 
 
-def get_agent_health_base(agent_old=False):
+def get_agent_health_base(legacy=False):
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
     # restarted due to shared configuration changes.
     # Using agentd when using grep as the module name can vary between ossec-agentd and wazuh-agentd,
     # depending on the agent version.
 
-    wazuh_log_file = "/var/ossec/logs/wazuh.log" if not agent_old else "/var/ossec/logs/ossec.log"
+    wazuh_log_file = "/var/ossec/logs/wazuh.log" if not legacy else "/var/ossec/logs/ossec.log"
 
     shared_conf_restart = os.system(
         f"grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' {wazuh_log_file}")
