@@ -17,11 +17,10 @@
     <if_sid>12100</if_sid>
     <match>dropping source port zero packet from</match>
     <description>Invalid DNS packet. Possibility of attack.</description>
-    <mitre>
-      <id>T1071</id>
-      <id>T1499</id>
-    </mitre>
     <group>invalid_access,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
   </rule>
 
   <rule id="12102" level="9">
@@ -80,6 +79,9 @@
     <match>exiting (due to fatal error)</match>
     <description>Named fatal error. DNS service going down.</description>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1499.002</id>
+    </mitre>
   </rule>
 
   <rule id="12110" level="8">
@@ -88,12 +90,18 @@
     <description>Serial number from master is lower </description>
     <description>than stored.</description>
     <group>system_error,gpg13_4.3,</group>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
   </rule>
 
   <rule id="12111" level="8">
     <regex>^transfer of \S+ from \S+ failed while receiving \S+ REFUSED</regex>
     <description>Unable to perform zone transfer.</description>
     <group>system_error,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
   </rule>
 
   <rule id="12112" level="4">

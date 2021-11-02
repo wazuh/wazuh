@@ -40,11 +40,11 @@
   <rule id="14120" level="3">
     <if_sid>14110</if_sid>
     <match>ISAKMP-SA established </match>
+    <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>racoon: VPN established.</description>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>racoon: VPN established.</description>
   </rule>
 
   <rule id="14121" level="0">
@@ -69,10 +69,12 @@
     <if_matched_sid>14101</if_matched_sid>
     <same_source_ip />
     <description>racoon: Multiple failed VPN logins.</description>
+    <group>pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
+    </mitre>
+    <mitre>
       <id>T1133</id>
     </mitre>
-    <group>pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group>

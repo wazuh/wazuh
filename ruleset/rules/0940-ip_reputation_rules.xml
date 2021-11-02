@@ -1,0 +1,29 @@
+<!--
+  -  Malicious ip rules
+  -  Author: Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="malicious_ip,">
+
+    <rule id="99901" level="12">
+      <if_group>web|attack|attacks</if_group>
+      <list field="srcip" lookup="address_match_key">etc/lists/ip_reputation</list>
+      <description>Source IP address has been found in the IP reputation database</description>
+      <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    </rule>
+
+    <rule id="99902" level="12">
+      <if_group>authentication_success</if_group>
+      <list field="srcip" lookup="address_match_key">etc/lists/ip_reputation</list>
+      <description>Authentication success from IP found on reputation database</description>
+    </rule>
+
+    <rule id="99903" level="7">
+      <if_group>authentication_failure</if_group>
+      <list field="srcip" lookup="address_match_key">etc/lists/ip_reputation</list>
+      <description>Authentication attempt from IP found on reputation database</description>
+    </rule>
+
+</group>

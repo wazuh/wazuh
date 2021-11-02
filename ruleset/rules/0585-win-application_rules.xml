@@ -44,6 +44,9 @@
     <description>Chrome Remote Desktop attempt - access denied $(win.eventdata.data)</description>
     <options>no_full_log</options>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1176</id>
+    </mitre>
   </rule>
 
   <rule id="60604" level="5">
@@ -53,6 +56,9 @@
     <description>Chrome Remote Desktop attempt - Client connected $(win.eventdata.data)</description>
     <options>no_full_log</options>
     <group>gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1176</id>
+    </mitre>
   </rule>
 
   <rule id="60605" level="5">
@@ -72,6 +78,9 @@
     <description>Chrome Remote Desktop attempt - started connection from $(win.eventdata.data)</description>
     <options>no_full_log</options>
     <group>gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1176</id>
+    </mitre>
   </rule>
 
   <rule id="60607" level="3">
@@ -130,6 +139,9 @@
     <field name="win.system.eventID">^1002$</field>
     <description>Unexpected or missing value in key</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60615" level="5">
@@ -137,6 +149,9 @@
     <field name="win.system.eventID">^1003$</field>
     <description>Unexpected or missing value in subkey</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60616" level="3">
@@ -158,6 +173,9 @@
     <field name="win.system.eventID">^1008$</field>
     <description>Installation not permitted due to an error in software restriction policy processing</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1587.001</id>
+    </mitre>
   </rule>
 
   <rule id="60619" level="5">
@@ -235,6 +253,9 @@
     <field name="win.system.eventID">^1026$|^1027$</field>
     <description>The configuration data registry key, sub key or configuration data cache folder were not secured properly</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60630" level="3">
@@ -263,6 +284,9 @@
     <field name="win.system.eventID">^1032$</field>
     <description>Environment variables updated during installation generated an error</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1587.001</id>
+    </mitre>
   </rule>
 
   <rule id="60634" level="3">
@@ -319,10 +343,10 @@
     <if_sid>60640</if_sid>
     <field name="win.system.eventID">^903$</field>
     <description>Software Protection service stopped</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1489</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60642" level="3">
@@ -366,10 +390,10 @@
     <field name="win.system.providerName">^Application Hang$</field>
     <field name="win.system.eventID">^1002$</field>
     <description>Application stopped responding, program closed</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1489</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60648" level="0">
@@ -384,6 +408,9 @@
     <field name="win.system.eventID">^3007$</field>
     <description>Performance monitoring cannot be initialized</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="60650" level="5">
@@ -405,6 +432,9 @@
     <field name="win.system.eventID">^3025$</field>
     <description>Critical error: System low on resources</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60653" level="7">
@@ -412,6 +442,9 @@
     <field name="win.system.eventID">^3026$</field>
     <description>Advise Status Change failed: System low on resources</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60654" level="5">
@@ -419,6 +452,9 @@
     <field name="win.system.eventID">^3034$</field>
     <description>Registry version does not match with the expected one</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60655" level="3">
@@ -433,6 +469,9 @@
     <field name="win.system.eventID">^3085$</field>
     <description>Application network access account invalid</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
   </rule>
 
   <rule id="60657" level="5">
@@ -440,6 +479,9 @@
     <field name="win.system.eventID">^3087$</field>
     <description>Cannot flush gatherer files</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60658" level="5">
@@ -447,6 +489,9 @@
     <field name="win.system.eventID">^3088$</field>
     <description>Cannot update checkpoint record</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60659" level="5">
@@ -454,6 +499,9 @@
     <field name="win.system.eventID">^3089$</field>
     <description>Cannot save gatherer files</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60660" level="5">
@@ -461,6 +509,9 @@
     <field name="win.system.eventID">^3090$</field>
     <description>Cannot restore gatherer files from the previous checkpoint</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60661" level="5">
@@ -468,6 +519,9 @@
     <field name="win.system.eventID">^3091$</field>
     <description>Cannot read checkpoint record</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60662" level="5">
@@ -509,10 +563,10 @@
     <if_sid>60648</if_sid>
     <field name="win.system.eventID">^7068$</field>
     <description>Cannot read registry, registry keys missing</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1112</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60668" level="3">
@@ -526,10 +580,10 @@
     <if_sid>60648</if_sid>
     <field name="win.system.eventID">^1013$</field>
     <description>The Windows Search Service stopped normally</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1489</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60670" level="3">
@@ -570,6 +624,9 @@
     <description>Created default configuration for user</description>
     <options>no_full_log</options>
     <group>gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
   </rule>
 
   <rule id="60675" level="0">
@@ -591,6 +648,9 @@
     <field name="win.system.eventID">^11$|^13$</field>
     <description>COM server cannot be started</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="60678" level="5">
@@ -605,6 +665,9 @@
     <field name="win.system.eventID">^14$</field>
     <description>Error generated by registry user name definition</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60680" level="5">
@@ -612,6 +675,9 @@
     <field name="win.system.eventID">^15$|^16$|^17$</field>
     <description>Cannot interpret user name specified in registry</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60681" level="3">
@@ -625,20 +691,20 @@
     <if_sid>60675</if_sid>
     <field name="win.system.eventID">^19$</field>
     <description>The EventSystem service is disabled or attempting to start during Safe Mode</description>
-    <mitre>
-      <id>T1031</id>
-    </mitre>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
   </rule>
 
   <rule id="60683" level="7">
     <if_sid>60675</if_sid>
     <field name="win.system.eventID">^20$|^21$</field>
     <description>Volume Shadow Copy Service: COM+ database corrupted, writers will not receive events</description>
-    <mitre>
-      <id>T1031</id>
-    </mitre>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
   </rule>
 
   <rule id="60684" level="3">
@@ -680,10 +746,10 @@
     <if_sid>60675</if_sid>
     <field name="win.system.eventID">^4609$</field>
     <description>Bad return code detected during internal processing of the EventSystem service</description>
-    <mitre>
-      <id>T1031</id>
-    </mitre>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
   </rule>
 
   <rule id="60690" level="4">
@@ -733,6 +799,9 @@
     <field name="win.system.eventID">^7001$</field>
     <description>VssAdmin: Unable to create a shadow copy</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1003.003</id>
+    </mitre>
   </rule>
 
   <rule id="60697" level="5">
@@ -761,6 +830,9 @@
     <field name="win.system.eventID">^8213$</field>
     <description>Volume Shadow Copy Service: Writers do not have enough privileges to create Shadow Copy</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1003.003</id>
+    </mitre>
   </rule>
 
   <rule id="60701" level="5">
@@ -856,6 +928,9 @@
     <field name="win.system.eventID">^12310$</field>
     <description>Could not commit shadow copy</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1003.003</id>
+    </mitre>
   </rule>
 
   <rule id="60714" level="5">
@@ -953,10 +1028,10 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^10$</field>
     <description>Event filter could not be activated</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60728" level="5">
@@ -971,201 +1046,203 @@
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^43$</field>
     <description>WMI ADAP failed to connect to namespace</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60730" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5611$</field>
     <description>Inconsistent system shutdown detected</description>
+    <options>no_full_log</options>
     <mitre>
-      <id>T1529</id>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
   </rule>
 
   <rule id="60731" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5601$</field>
     <description>The WMI service failed to load the repository files</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60732" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5612$</field>
     <description>A quota reached a warning value, WMI stopped WMIPRVSE.EXE</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60733" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^4$</field>
     <description>Error encountered trying to load MOF</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60734" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^21$</field>
     <description>Event provider attempted to register a syntactically invalid query</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60735" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^22$</field>
     <description>Event provider attempted to register an intrinsic event query</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60736" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^23$|^24$|^25$</field>
     <description>Event provider attempted to register query</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60737" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^43$</field>
     <description>WMI ADAP failed to connect to namespace</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60738" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^48$</field>
     <description>WMI ADAP was unable to save object</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60739" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^58$|^59$</field>
     <description>WMI ADAP was unable to create the Win32_Perf base class</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60740" level="3">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^63$</field>
     <description>The provider has been registered in the WMI namespace</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60741" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5600$</field>
     <description>The WMI Service detected an inconsistency with the WMI repository</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60742" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5601$</field>
     <description>The WMI Service failed to load the repository files</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60743" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5605$</field>
     <description>Access to namespace denied</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60744" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5606$</field>
     <description>WMI Service could not deliver results asynchronously for the namespace</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60745" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5612$</field>
     <description>WMI stopped WMIPRVSE.EXE because a quota reached a warning value</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60746" level="5">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5614$</field>
     <description>WMI service was unable to locate the repository files during the service startup</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60747" level="3">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5615$</field>
     <description>WMI Service started successfully</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60748" level="3">
     <if_sid>60726</if_sid>
     <field name="win.system.eventID">^5616$</field>
     <description>WMI Core, Provider SubSystem and Event SubSystem initialized sucessfully</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1047</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60749" level="0">
@@ -1244,6 +1321,9 @@
     <field name="win.system.eventID">^4612$</field>
     <description>The COM+ Event System ran out of memory during its internal processing</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60760" level="5">
@@ -1376,10 +1456,10 @@
     <if_sid>60774</if_sid>
     <field name="win.system.eventID">^1002$</field>
     <description>The shell stopped unexpectedly</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1489</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="60779" level="5">
@@ -1450,6 +1530,9 @@
     <field name="win.system.eventID">^6004$</field>
     <description>The winlogon notification subscriber failed a critical notification event</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="60789" level="5">
@@ -1479,6 +1562,9 @@
     <field name="win.system.eventID">^1508$</field>
     <description>Unable to load registry</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60793" level="5">
@@ -1692,6 +1778,9 @@
     <field name="win.system.eventID">^12290$</field>
     <description>Volume Shadow Copy Service warning: Could not perform a backup</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1003.003</id>
+    </mitre>
   </rule>
 
   <rule id="60823" level="3">
@@ -1847,6 +1936,9 @@
     <field name="win.system.eventID">^4103$</field>
     <description>MS DTC run out of memory</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60845" level="5">
@@ -2223,6 +2315,9 @@
     <field name="win.system.eventID">^4215$</field>
     <description>Failed to connect to the registry on the remote MS DTC Transaction Manager's system</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60898" level="5">
@@ -2230,6 +2325,9 @@
     <field name="win.system.eventID">^4216$</field>
     <description>Failed to open the registry key containing the list of transaction managers</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60899" level="5">
@@ -2237,6 +2335,9 @@
     <field name="win.system.eventID">^4217$</field>
     <description>Failed to read the name of the default transaction manager from the registry</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60900" level="5">
@@ -2244,6 +2345,9 @@
     <field name="win.system.eventID">^4224$</field>
     <description>Failed to open the registry key containing the name of the OLE Transactions Proxy DLL</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60901" level="5">
@@ -2251,6 +2355,9 @@
     <field name="win.system.eventID">^4225$</field>
     <description>Failed to read the name of the OLE Transactions Proxy DLL from the registry</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
   </rule>
 
   <rule id="60902" level="5">
@@ -2293,6 +2400,9 @@
     <field name="win.system.eventID">^4233$</field>
     <description>An MS DTC component was unable to allocate memory for a critical operation</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="60908" level="5">
@@ -2398,6 +2508,9 @@
     <field name="win.system.eventID">^4362$</field>
     <description>Illegal transition caused fatal error</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="60923" level="9">
@@ -2405,6 +2518,9 @@
     <field name="win.system.eventID">^4363$</field>
     <description>Out of memory caused fatal error</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
   </rule>
 
   <rule id="60924" level="5">
@@ -3290,10 +3406,10 @@
     <if_sid>61036</if_sid>
     <field name="win.system.eventID">^27$</field>
     <description>The fault tolerant driver detected the system was shutdown dirty</description>
+    <options>no_full_log</options>
     <mitre>
       <id>T1529</id>
     </mitre>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="61049" level="5">

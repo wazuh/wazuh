@@ -57,10 +57,10 @@
     <if_matched_sid>51003</if_matched_sid>
     <same_source_ip />
     <description>Dropbear: brute force attempt.</description>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="51008" level="1">
@@ -74,20 +74,20 @@
     <if_sid>51000</if_sid>
     <match>password auth succeeded for</match>
     <description>Dropbear: User successfully logged in using a password.</description>
+    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
   </rule>
 
   <rule id="51010" level="0">
     <if_sid>51000</if_sid>
     <match>Pubkey auth succeeded</match>
     <description>Dropbear: User successfully logged in using a public key.</description>
+    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
   </rule>
 
   <rule id="51011" level="10" frequency="8" timeframe="120" ignore="60">
@@ -95,6 +95,9 @@
     <same_source_ip />
     <description>Dropbear: dropbear brute force attempt for nonexistent user.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
   </rule>
 
 </group>

@@ -167,6 +167,9 @@ ID: 91100 - 91449
         <field name="github.action">dependabot_alerts.disable</field>
         <description>GitHub Dependabot alerts disable.</description>
         <options>no_full_log</options>
+        <mitre>
+            <id>T1562.006</id>
+        </mitre>
         <group>git_dependabot_alerts</group>
     </rule>
 
@@ -226,6 +229,9 @@ ID: 91100 - 91449
         <if_sid>91120</if_sid>
         <field name="github.action">dependabot_security_updates.disable</field>
         <description>GitHub Dependabot security updates disable.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_dependabot_security_updates</group>
     </rule>
@@ -256,6 +262,9 @@ ID: 91100 - 91449
         <if_sid>91123</if_sid>
         <field name="github.action">dependabot_security_updates_new_repos.disable</field>
         <description>GitHub Dependabot security updates new repos disable.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_dependabot_security_updates_new_repos</group>
     </rule>
@@ -528,6 +537,9 @@ ID: 91100 - 91449
     <rule id="91152" level="9">
         <if_sid>91149</if_sid>
         <field name="github.action">environment.remove_actions_secret</field>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <description>GitHub Environment Remove actions secret.</description>
         <options>no_full_log</options>
         <group>git_environment</group>
@@ -538,6 +550,9 @@ ID: 91100 - 91449
         <if_sid>91149</if_sid>
         <field name="github.action">environment.update_actions_secret</field>
         <description>GitHub Environment Update actions secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_environment</group>
     </rule>
@@ -961,6 +976,9 @@ ID: 91100 - 91449
         <if_sid>91188</if_sid>
         <field name="github.action">org.advanced_security_policy_selected_member_disabled</field>
         <description>GitHub Organization advanced security policy selected member disabled.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org</group>
     </rule>
@@ -979,6 +997,9 @@ ID: 91100 - 91449
         <if_sid>91188</if_sid>
         <field name="github.action" type="pcre2">^org\.audit_log(?:_git_event)?_export</field>
         <description>GitHub Organization audit log export.</description>
+        <mitre>
+            <id>T1530</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org</group>
     </rule>
@@ -988,6 +1009,9 @@ ID: 91100 - 91449
         <if_sid>91188</if_sid>
         <field name="github.action">org.block_user</field>
         <description>GitHub Organization block user.</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org</group>
     </rule>
@@ -1032,6 +1056,9 @@ ID: 91100 - 91449
     <rule id="91199" level="12">
         <if_sid>91188</if_sid>
         <field name="github.action">org.disable_oauth_app_restrictions</field>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <description>GitHub Organization disable oauth app restrictions.</description>
         <options>no_full_log</options>
         <group>git_org</group>
@@ -1050,6 +1077,9 @@ ID: 91100 - 91449
     <rule id="91201" level="12">
         <if_sid>91188</if_sid>
         <field name="github.action">org.disable_two_factor_requirement</field>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <description>GitHub Organization disable two factor requirement.</description>
         <options>no_full_log</options>
         <group>git_org</group>
@@ -1390,6 +1420,9 @@ ID: 91100 - 91449
         <if_sid>91239</if_sid>
         <field name="github.action">org_credential_authorization.grant</field>
         <description>GitHub Organization credential authorization grant.</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
     </rule>
@@ -1399,6 +1432,9 @@ ID: 91100 - 91449
         <if_sid>91239</if_sid>
         <field name="github.action">org_credential_authorization.deauthorized</field>
         <description>GitHub Organization credential authorization deauthorized.</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
     </rule>
@@ -1407,6 +1443,9 @@ ID: 91100 - 91449
     <rule id="91242" level="9">
         <if_sid>91239</if_sid>
         <field name="github.action">org_credential_authorization.revoke</field>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
         <description>GitHub Organization credential authorization revoke.</description>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
@@ -2569,6 +2608,9 @@ ID: 91100 - 91449
         <if_sid>91358</if_sid>
         <field name="github.action">repository_secret_scanning.disable</field>
         <description>GitHub Repository secret scanning disable.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_repository_secret_scanning</group>
     </rule>
@@ -2649,6 +2691,9 @@ ID: 91100 - 91449
         <if_sid>91365</if_sid>
         <field name="github.action">repository_vulnerability_alerts.disable</field>
         <description>GitHub Repository vulnerability alerts disable.</description>
+        <mitre>
+            <id>T1562.006</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_repository_vulnerability_alerts</group>
     </rule>
@@ -2678,6 +2723,9 @@ ID: 91100 - 91449
     <rule id="91370" level="9">
         <if_sid>91369</if_sid>
         <field name="github.action">secret_scanning.disable</field>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <description>GitHub Secret scanning disable.</description>
         <options>no_full_log</options>
         <group>git_secret_scanning</group>
@@ -3171,6 +3219,9 @@ ID: 91100 - 91449
         <if_sid>91415</if_sid>
         <field name="github.action">codespaces.create_an_org_secret</field>
         <description>GitHub Codespaces create an org secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_codespaces</group>
     </rule>
@@ -3180,6 +3231,9 @@ ID: 91100 - 91449
         <if_sid>91415</if_sid>
         <field name="github.action">codespaces.update_an_org_secret</field>
         <description>GitHub Codespaces update an org secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_codespaces</group>
     </rule>
@@ -3189,6 +3243,9 @@ ID: 91100 - 91449
         <if_sid>91415</if_sid>
         <field name="github.action">codespaces.remove_an_org_secret</field>
         <description>GitHub Codespaces remove an org secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_codespaces</group>
     </rule>
