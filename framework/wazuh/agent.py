@@ -383,7 +383,8 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-def delete_agents(agent_list=None, purge=False, filters=None, q=None):
+def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = None, q: str = None) \
+        -> AffectedItemsWazuhResult:
     """Delete a list of agents.
 
     Parameters
