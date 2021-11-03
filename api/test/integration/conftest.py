@@ -44,8 +44,7 @@ def pytest_collection_modifyitems(items: list):
     for item in items:
         test_name = item.nodeid.split('::')[0]
         if 'rbac' not in test_name:
-            item_marker_names = [m.name for m in item.own_markers]
-            if standalone_env_mode not in item_marker_names and cluster_env_mode not in item_marker_names:
+            if not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
                 item.add_marker(standalone_env_mode)
                 item.add_marker(cluster_env_mode)
 
