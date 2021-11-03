@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
+#include "key_request.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
@@ -82,7 +83,7 @@ static void help_authd(char * home_path)
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", home_path);
+    print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
@@ -163,6 +164,7 @@ int main(int argc, char **argv)
     pthread_t thread_dispatcher = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
+    pthread_t thread_key_request = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -470,7 +472,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Before chroot */
     srandom_init();
     getuname();
 
@@ -479,12 +480,6 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-
-    nowChroot();
     os_free(home_path);
 
     /* Initialize queues */
@@ -495,6 +490,7 @@ int main(int argc, char **argv)
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
+        OS_ReadTimestamps(&keys);
     }
 
     /* Start working threads */
@@ -527,6 +523,13 @@ int main(int argc, char **argv)
         }
     }
 
+    if (config.key_request.enabled) {
+        if (status = pthread_create(&thread_key_request, NULL, (void *)&run_key_request_main, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    }
+
     /* Join threads */
     pthread_join(thread_local_server, NULL);
     if (config.flags.remote_enrollment) {
@@ -539,6 +542,9 @@ int main(int argc, char **argv)
         w_cond_signal(&cond_pending);
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
+    }
+    if (config.key_request.enabled) {
+        pthread_join(thread_key_request, NULL);
     }
 
     queue_free(client_queue);
@@ -559,12 +565,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-
-    if (!config.worker_node) {
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-        OS_ReadTimestamps(&keys);
-    }
 
     mdebug1("Dispatch thread ready.");
 
@@ -823,6 +823,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteKeys(copy_keys) < 0) {
             merror("Couldn't write file client.keys");
+            sleep(1);
         }
 
         gettime(&t1);
@@ -832,6 +833,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteTimestamps(copy_keys) < 0) {
             merror("Couldn't write file agents-timestamp.");
+            sleep(1);
         }
 
         gettime(&t1);
@@ -894,7 +896,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
             gettime(&t0);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
             gettime(&t1);

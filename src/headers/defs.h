@@ -23,6 +23,7 @@
 #define OS_TEXT    1
 
 /* Size limit control */
+#define OS_SIZE_1048576 1048576
 #define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
 #define OS_SIZE_20480   20480
@@ -113,6 +114,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Authd local socket
 #define AUTH_LOCAL_SOCK "queue/sockets/auth"
 
+// Key request socket
+#define KEY_REQUEST_SOCK "queue/sockets/krequest"
+
 // Remote requests socket
 #define REMOTE_REQ_SOCK "queue/sockets/request"
 
@@ -143,8 +147,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_LOCAL_SOCK "queue/db/wdb"
 
 #define WM_DOWNLOAD_SOCK "queue/sockets/download"
-
-#define WM_KEY_REQUEST_SOCK "queue/sockets/krequest"
 
 // Tasks socket
 #define WM_UPGRADE_SOCK "queue/tasks/upgrade"

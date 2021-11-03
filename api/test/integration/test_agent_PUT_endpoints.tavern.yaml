@@ -363,7 +363,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 2
+        error: 0
         data:
           affected_items:
             - "001"
@@ -375,13 +375,6 @@ stages:
             - "007"
             - "008"
           total_affected_items: 8
-          failed_items:
-            - error:
-                code: 1707
-              id:
-                - "009"
-                - "010"
-          total_failed_items: 2
     delay_after: !float "{restart_delay}"
 
   # PUT /groups/not_exists/restart (Group does not exist)
@@ -870,7 +863,7 @@ stages:
           total_failed_items: 1
           failed_items:
             - error:
-                code: 1816
+                code: 1701
                 message: !anystr
                 remediation: !anything
               id:
@@ -886,9 +879,10 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '000'
-    response:
+    response: &agent_000_error_response
       status_code: 200
       json:
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
@@ -902,7 +896,7 @@ stages:
                 - '000'
         message: !anystr
 
-  - name: Try to upgrade an agent using an invalid id
+  - name: Try to upgrade a list of agents with an invalid agents_list
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -910,14 +904,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 'wrong_id'
+        agents_list: 'wrong_list'
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  - name: Upgrade an agent
-    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
+  - name: Upgrade an agent to the latest version (task created but agent cannot be upgraded because the WPK does not exist)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -925,7 +918,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        force: True
         agents_list: '006'
     response:
       status_code: 200
@@ -940,7 +932,6 @@ stages:
         message: !anystr
 
   - name: Try to upgrade an agent that is updated to the latest version
-    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -948,24 +939,24 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '006'
+        agents_list: '001'
     response:
       status_code: 200
       json:
         data:
-          affected_items: []
+          affected_items: [ ]
           total_affected_items: 0
           total_failed_items: 1
           failed_items:
             - error:
-                code: 1819
+                code: 1822
                 message: !anystr
                 remediation: !anything
               id:
-                - '006'
+                - '001'
         message: !anystr
 
-  - name: Downgrade agent to an specific version using force
+  - name: Upgrade an agent using http and wpk repo
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -973,48 +964,22 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        version: v3.9.3
-        force: true
-        wait_for_complete: 'true'
-        agents_list: '003'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - agent: '003'
-              task_id: !anyint
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: [ ]
-        message: !anystr
-
-  - name: Upgrade an agent using http
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '004'
+        agents_list: '007'
         use_http: true
-        force: true
-        wait_for_complete: 'true'
-        version: 4.0.0
+        upgrade_version: 4.0.0
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent: '004'
+            - agent: '007'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: [ ]
         message: !anystr
 
-  - name: Upgrade an agent using wkp repo to a 4.x version
+  - name: Try to upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -1022,15 +987,140 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '005'
-        version: 4.0.0
-        force: true
+        agents_list: '000,009,010,011,012,998,999'
+        upgrade_version: '4.0.0'
+    response: &agents_not_upgraded_response
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 7
+          failed_items:
+            - error:  # Not existing agents
+                code: 1701
+                message: !anystr
+                remediation: !anything
+              id:
+                - '998'
+                - '999'
+            - error:  # Agent 000
+                code: 1703
+                message: !anystr
+                remediation: !anything
+              id:
+                - '000'
+            - error:  # Non active agents
+                code: 1707
+                message: !anystr
+                remediation: !anything
+              id:
+                - '009'
+                - '010'
+                - '011'
+                - '012'
+        message: !anystr
+
+  - name: Try to upgrade a list of agents expecting socket error (agent version greater or equal)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002,003'
+        upgrade_version: '2.0.0'
     response:
       status_code: 200
       json:
+        error: 1
+        data:
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 3
+          failed_items:
+            - error:
+                code: 1822
+                message: !anystr
+                remediation: !anything
+              id:
+                - '001'
+                - '002'
+                - '003'
+        message: !anystr
+
+  - name: Try to upgrade a list of agents with filters not matching them
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002'
+        upgrade_version: '4.0.0'
+        os.platform: 'random_platform'
+    response: &filters_not_matching_response
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1731
+                message: !anystr
+                remediation: !anything
+              id:
+                - '001'
+                - '002'
+        message: !anystr
+
+  - name: Upgrade all agents in group group1 (only 001 is in group1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 'all'
+        upgrade_version: '4.0.0'
+        group: 'group1'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:  # Only agent 001 is in group1, but its version is greater or equal than manager version (code 1822, excluded)
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
+  - name: Upgrade all agents with os version 18.04.5 LTS and query
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 'all'
+        upgrade_version: '4.0.0'
+        os.version: '18.04.5 LTS'
+        q: registerIP=any;id<7;id>5
+    response:
+      status_code: 200
+      json:
+        error: 0
         data:
           affected_items:
-            - agent: '005'
+            - agent: '006'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -1053,7 +1143,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
         agents_list: 999
     response:
@@ -1068,39 +1157,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '000'
-        installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
-      status_code: 200
-      json:
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1703
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '000'
-        message: !anystr
-
-  - name: Try to customly upgrade an agent using an invalid id
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: wrong_id
-        installer: upgrade.sh
-        file_path: "{custom_wpk_path:s}"
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
+      <<: *agent_000_error_response
 
   - name: Try to customly upgrade an agent without parameters
     request:
@@ -1110,13 +1169,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 006
+        agents_list: '006'
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  - name: Customly upgrade agent 007 selecting installer
+  - name: Customly upgrade agent 005 using default installer
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
@@ -1124,85 +1183,81 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '007'
-        installer: upgrade.sh
+        agents_list: '005'
         file_path: "{custom_wpk_path:s}"
-        wait_for_complete: 'true'
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent: '007'
+            - agent: '005'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: [ ]
         message: !anystr
 
-  - name: Customly upgrade agent 008 using default installer
+  - name: Customly upgrade agent 008 selecting installer
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
       method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: 008
-        file_path: "{custom_wpk_path:s}"
-        wait_for_complete: 'true'
-    response:
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - agent: '008'
-              task_id: !anyint
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: [ ]
-        message: !anystr
-    delay_after: !float "{upgrade_delay}"
-
-  - name: Get agent 007 upgrade result
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '007'
-    response: &upgrade_result
-      status_code: 200
-      json:
-        data:
-          affected_items:
-            - message: Success
-              agent: '007'
-              task_id: !anyint
-              module: upgrade_module
-              command: upgrade_custom
-              status: !anystr
-              create_time: !anystr
-              update_time: !anystr
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: []
-        message: !anystr
-
-  - name: Get agent 008 upgrade result
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: '008'
+        installer: upgrade.sh
+        file_path: "{custom_wpk_path:s}"
     response:
-      <<: *upgrade_result
+      status_code: 200
       json:
         data:
           affected_items:
             - agent: '008'
+              task_id: !anyint
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: [ ]
+        message: !anystr
+
+  - name: Try to customly upgrade a list of agents with an invalid agents_list
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 'wrong_list'
+        file_path: "{custom_wpk_path:s}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Try to customly upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '000,009,010,011,012,998,999'
+        file_path: "{custom_wpk_path:s}"
+    response:
+      <<: *agents_not_upgraded_response
+
+  - name: Try to customly upgrade a list of agents with filters not matching them
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002'
+        file_path: "{custom_wpk_path:s}"
+        version: 'Wazuh v999.999.999'
+    response:
+      <<: *filters_not_matching_response

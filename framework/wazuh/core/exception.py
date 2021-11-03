@@ -163,7 +163,7 @@ class WazuhException(Exception):
                },
         1407: 'Query does not match expected format',
         1408: 'Field does not exist.',
-        1409: 'Invalid query operator.',
+        1409: 'Invalid query operator',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
@@ -281,8 +281,8 @@ class WazuhException(Exception):
         1730: {'message': 'Node does not exist',
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
-        1731: {'message': 'Agent is not eligible for removal',
-               'remediation': f"Please, make sure the agent meets the requirements."
+        1731: {'message': 'Agent is not eligible for the action to be performed',
+               'remediation': 'Please, make sure the agent meets the requirements.'
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent to perform the operation.'
@@ -315,8 +315,6 @@ class WazuhException(Exception):
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1746: {'message': "Could not parse current client.keys file"},
-        1747: {'message': "Could not remove agent group assigment from database"},
-        1748: {'message': "Could not remove agent files"},
         1749: {'message': "Downgrading an agent requires the [force] flag.",
                'remediation': "Use force=1 parameter to force the downgrade"
                },

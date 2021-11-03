@@ -173,4 +173,5 @@ void resolve_hostname(char **hostname, int attempts);
  * */
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
+int external_socket_connect(char *socket_path, int repsonse_timeout);
 #endif /* OS_NET_H */

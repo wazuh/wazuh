@@ -30,7 +30,7 @@
 #define SELECT_ERROR  "(1114): Error during select()-call due to [(%d)-(%s)]."
 #define FREAD_ERROR   "(1115): Could not read from file '%s' due to [(%d)-(%s)]."
 #define FSEEK_ERROR   "(1116): Could not set position in file '%s' due to [(%d)-(%s)]."
-#define FILE_ERROR    "(1117): Error handling file '%s' (date)."
+#define FILE_ERROR    "(1117): Error handling file '%s'."
 #define FSTAT_ERROR   "(1118): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
 //#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
@@ -560,6 +560,7 @@
 #define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
 #define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
 #define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
+#define XML_ERROR_EMPTY_OR_
 
 /* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"

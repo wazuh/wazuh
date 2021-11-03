@@ -180,7 +180,7 @@ std::string SysInfo::getSerialNumber() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
-    const auto packages {Utils::enumerateDir(pkgDirectory) };
+    const auto packages { Utils::enumerateDir(pkgDirectory) };
 
     for (const auto& package : packages)
     {
@@ -202,7 +202,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
         {
             if (!Utils::startsWith(package, "."))
             {
-                const auto packageVersions {Utils::enumerateDir(pkgDirectory + "/" + package) };
+                const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
 
                 for (const auto& version : packageVersions)
                 {

@@ -20,7 +20,30 @@
 #include "netbuffer_wrappers.h"
 
 
-int __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
+void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
+    check_expected(sock);
+}
+
+void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
+    check_expected(sock);
+    check_expected_ptr(peer_info);
+}
+
+int __wrap_nb_queue(__attribute__((unused)) netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
+    check_expected(socket);
+    check_expected(crypt_msg);
+    check_expected(msg_size);
+
+    return mock();
+}
+
+int __wrap_nb_recv(__attribute__((unused)) netbuffer_t * buffer, int sock) {
+    check_expected(sock);
+
+    return mock();
+}
+
+int __wrap_nb_send(__attribute__((unused)) netbuffer_t * buffer, int sock) {
     check_expected(sock);
 
     return mock();

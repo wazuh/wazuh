@@ -658,7 +658,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
  * Return recvval on success or OS_SOCKTERR on error.
  */
-int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
+int OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
 
@@ -902,4 +902,28 @@ const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
     tmp_str = strchr(resolved_hostname, '/');
 
     return tmp_str ? ++tmp_str : resolved_hostname;
+}
+
+int external_socket_connect(char *socket_path, int response_timeout) {
+#ifndef WIN32
+    int sock =  OS_ConnectUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return sock;
+    }
+
+    if(OS_SetSendTimeout(sock, 5) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    if(OS_SetRecvTimeout(sock, response_timeout, 0) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    return sock;
+#else
+    return -1;
+#endif
 }

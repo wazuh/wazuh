@@ -785,6 +785,100 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
 
+  - name: Filter agents by query (group - group does not exist)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group=noexists
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - group1)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group=group1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+            - id: '005'
+            - id: '007'
+            - id: '008'
+            - id: '009'
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - get agents that are not in group1)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group!=group1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '002'
+            - id: '003'
+            - id: '004'
+            - id: '006'
+            - id: '010'
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - get agents with group~group)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group~group
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+            - id: '002'
+            - id: '003'
+            - id: '005'
+            - id: '006'
+            - id: '007'
+            - id: '008'
+            - id: '009'
+            - id: '010'
+          failed_items: []
+          total_affected_items: 9
+          total_failed_items: 0
+
+  - name: Filter agents by query (group - invalid operator)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: group<whatever
+    response:
+      status_code: 400
+      json:
+        error: 1409
+
   - name: Filter agents by query (datetime)
     request:
       verify: False
@@ -4188,7 +4282,34 @@ test_name: GET /agents/upgrade_result
 
 stages:
 
-  - name: Try get upgrade result agent 000 (manager)
+  - name: Upgrade all agents (only old agents will appear in affected_items). We use q to leave agent 008 with no tasks in DB
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: all
+        upgrade_version: 4.0.0
+        q: id!=8
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - agent: '005'
+              task_id: !anyint
+            - agent: '006'
+              task_id: !anyint
+            - agent: '007'
+              task_id: !anyint
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Try to get upgrade result from agent 000 (manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -4211,7 +4332,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  - name: Try get upgrade result not existing agent
+  - name: Try to get upgrade result from a not existing agent
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -4231,11 +4352,11 @@ stages:
                 - '999'
                 - '1000'
               error:
-                code: 1813
+                code: 1701
           total_affected_items: 0
           total_failed_items: 2
 
-  - name: Try get upgrade result agent by name
+  - name: Try to get upgrade results with an invalid agents list
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -4243,45 +4364,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: bad_id
+        agents_list: wrong_agents_list
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  - name: Upgrade agents
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        force: True
-        agents_list: 001,002,000
-        version: 4.0.0
-    response:
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - agent: '001'
-              task_id: !anyint
-            - agent: '002'
-              task_id: !anyint
-          total_affected_items: 2
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1703
-                message: !anystr
-                remediation: !anystr
-              id:
-                - '000'
-        message: !anystr
-
-  - name: Get agents upgrade results
+  - name: Try to get upgrade results from a list of agents that cannot be upgraded (000, not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -4289,44 +4378,132 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 000,001,002,009,010,999
+        agents_list: '000,009,010,011,012,998,999'
     response:
       status_code: 200
       json:
-        error: 2
+        error: 1
         data:
-          affected_items:
-            - message: Success
-              agent: '001'
-              task_id: !anyint
-              module: upgrade_module
-              command: upgrade
-              status: !anystr
-              create_time: !anystr
-              update_time: !anystr
-            - message: Success
-              agent: '002'
-              task_id: !anyint
-              module: upgrade_module
-              command: upgrade
-              status: !anystr
-              create_time: !anystr
-              update_time: !anystr
-          total_affected_items: 2
-          total_failed_items: 4
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 7
           failed_items:
-            - error:
+            - error: # Not existing agents
+                code: 1701
+                message: !anystr
+                remediation: !anything
+              id:
+                - '998'
+                - '999'
+            - error: # Agent 000
                 code: 1703
                 message: !anystr
-                remediation: !anystr
+                remediation: !anything
               id:
                 - '000'
-            - error:
-                code: 1813
+            - error: # Non active agents
+                code: 1707
                 message: !anystr
                 remediation: !anything
               id:
                 - '009'
                 - '010'
-                - '999'
+                - '011'
+                - '012'
+        message: !anystr
+
+  - name: Try to get upgrade result from agent with no task in DB
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '008'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error: # No task in DB
+                code: 1813
+                message: !anystr
+                remediation: !anything
+              id:
+                - '008'
+        message: !anystr
+
+  - name: Try to get upgrade results from a list of agents with filters not matching them
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002'
+        version: 'Wazuh v999.999.999'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1731
+                message: !anystr
+                remediation: !anything
+              id:
+                - '001'
+                - '002'
+        message: !anystr
+
+  - name: Get upgrade results from all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - message: Success
+              agent: '005'
+              task_id: !anyint
+              module: upgrade_module
+              command: upgrade
+              status: !anystr
+              create_time: !anystr
+              update_time: !anystr
+            - message: Success
+              agent: '006'
+              task_id: !anyint
+              module: upgrade_module
+              command: upgrade
+              status: !anystr
+              create_time: !anystr
+              update_time: !anystr
+            - message: Success
+              agent: '007'
+              task_id: !anyint
+              module: upgrade_module
+              command: upgrade
+              status: !anystr
+              create_time: !anystr
+              update_time: !anystr
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
         message: !anystr

@@ -3,27 +3,31 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+import argparse
 import asyncio
 import itertools
 import logging
-import argparse
 import operator
 import sys
+from datetime import datetime
 
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 from wazuh.core.cluster import control, local_client
+from wazuh.core.common import decimals_date_format
 
 
 def __print_table(data, headers, show_header=False):
     """
     Pretty print list of lists
     """
+
     def get_max_size_cols(l):
         """
         For each column of the table, return the size of the biggest element
         """
-        return list(map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l))))
+        return list(map(lambda x: max(map(lambda y: len(y) + 2, x)), map(list, zip(*l))))
 
     if show_header:
         table = list(itertools.chain([tuple(map(lambda x: x.upper(), headers))], data))
@@ -32,8 +36,9 @@ def __print_table(data, headers, show_header=False):
 
     sizes = get_max_size_cols(table)
 
-    table_str = '\n'.join([''.join(["{}{}".format(col, " "*(max_size - len(col))) for col, max_size in zip(row, sizes)])
-                           for row in table])
+    table_str = '\n'.join(
+        [''.join(["{}{}".format(col, " " * (max_size - len(col))) for col, max_size in zip(row, sizes)])
+         for row in table])
     print(table_str)
 
 
@@ -55,77 +60,108 @@ async def print_nodes(filter_node):
 
 
 async def print_health(config, more, filter_node):
+    """Print the current status of the cluster as well as additional information.
+
+    Parameters
+    ----------
+    config : dict
+        Cluster current configuration.
+    more : bool
+        Indicate whether additional information is desired or not.
+    filter_node : str, list
+        Node to return.
+    """
+    def calculate_seconds(start_time, end_time):
+        """Calculate the time difference between two dates.
+
+        Parameters
+        ----------
+        start_time : str
+            Start date.
+        end_time : str
+            End date.
+
+        Returns
+        -------
+        str
+            Total seconds between the two dates.
+        """
+        if end_time != 'n/a' and start_time != 'n/a':
+            seconds = \
+                datetime.strptime(end_time, decimals_date_format) - datetime.strptime(start_time, decimals_date_format)
+            total_seconds = f"{round(seconds.total_seconds(), 3) if seconds.total_seconds() >= 0.0005 else 0.001}s"
+        else:
+            total_seconds = 'n/a'
+
+        return total_seconds
+
     lc = local_client.LocalClient()
     result = await control.get_health(lc, filter_node=filter_node)
-    msg1 = ""
     msg2 = ""
 
-    msg1 += "Cluster name: {}\n\n".format(config['name'])
-
-    if not more:
-        msg1 += "Last completed synchronization for connected nodes ({}):\n".format(result["n_connected_nodes"])
-    else:
-        msg1 += "Connected nodes ({}):".format(result["n_connected_nodes"])
+    msg1 = f"Cluster name: {config['name']}\n\n"
+    msg1 += f"Last completed synchronization for connected nodes ({result['n_connected_nodes']}):\n" if not more \
+        else f"Connected nodes ({result['n_connected_nodes']}):"
 
     for node, node_info in sorted(result["nodes"].items()):
-
-        msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
-        msg2 += "        Version: {}\n".format(node_info['info']['version'])
-        msg2 += "        Type: {}\n".format(node_info['info']['type'])
-        msg2 += "        Active agents: {}\n".format(node_info['info']['n_active_agents'])
+        msg2 += f"\n    {node} ({node_info['info']['ip']})\n"
+        msg2 += f"        Version: {node_info['info']['version']}\n"
+        msg2 += f"        Type: {node_info['info']['type']}\n"
+        msg2 += f"        Active agents: {node_info['info']['n_active_agents']}\n"
 
         if node_info['info']['type'] != "master":
-
             if not more:
-                msg1 += "    {} ({}): Integrity check: {} | Integrity sync: {} | Agents-info: {} | Last keep alive: {}.\n".format(
-                    node, node_info['info']['ip'], str(node_info['status']['last_check_integrity']['date_end_master']),
-                    str(node_info['status']['last_sync_integrity']['date_end_master']),
-                    str(node_info['status']['last_sync_agentinfo']['date_end_master']),
-                    str(node_info['status']['last_keep_alive'])
-                )
+                msg1 += f"    {node} ({node_info['info']['ip']}): " \
+                        f"Integrity check: {node_info['status']['last_check_integrity']['date_end_master']} | " \
+                        f"Integrity sync: {node_info['status']['last_sync_integrity']['date_end_master']} | " \
+                        f"Agents-info: {node_info['status']['last_sync_agentinfo']['date_end_master']} | " \
+                        f"Last keep alive: {node_info['status']['last_keep_alive']}.\n"
 
             msg2 += "        Status:\n"
 
             # Last Keep Alive
             msg2 += "            Last keep Alive:\n"
-            msg2 += "                Last received: {0}.\n".format(node_info['status']['last_keep_alive'])
+            msg2 += f"                Last received: {node_info['status']['last_keep_alive']}.\n"
 
             # Integrity check
-            msg2 += "            Integrity check:\n"
-            msg2 += "                Last integrity check: {0} - {1}.\n".format(
-                str(node_info['status']['last_check_integrity']['date_start_master']),
-                str(node_info['status']['last_check_integrity']['date_end_master']))
-            msg2 += "                Permission to check integrity: {}.\n".format(
-                str(node_info['status']['sync_integrity_free']))
+            total = calculate_seconds(node_info['status']['last_check_integrity']['date_start_master'],
+                                      node_info['status']['last_check_integrity']['date_end_master'])
+            msg2 += f"            Integrity check:\n"
+            msg2 += f"                Last integrity check: {total} " \
+                    f"({node_info['status']['last_check_integrity']['date_start_master']} - " \
+                    f"{node_info['status']['last_check_integrity']['date_end_master']}).\n"
+            msg2 += f"                Permission to check integrity: {node_info['status']['sync_integrity_free']}.\n"
 
             # Integrity sync
+            total = calculate_seconds(node_info['status']['last_sync_integrity']['date_start_master'],
+                                      node_info['status']['last_sync_integrity']['date_end_master'])
             msg2 += "            Integrity sync:\n"
-            msg2 += "                Last integrity synchronization: {0} - {1}.\n".format(
-                str(node_info['status']['last_sync_integrity']['date_start_master']),
-                str(node_info['status']['last_sync_integrity']['date_end_master']))
+            msg2 += f"                Last integrity synchronization: {total} " \
+                    f"({node_info['status']['last_sync_integrity']['date_start_master']} - " \
+                    f"{node_info['status']['last_sync_integrity']['date_end_master']}).\n"
 
             n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
             n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
             n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
-            msg2 += "                Synchronized files: Shared: {} | Missing: {} | Extra: {} | Extra valid: {}.\n".format(
-                n_shared, n_missing, n_extra, n_extra_valid)
+            msg2 += f"                Synchronized files: Shared: {n_shared} | Missing: {n_missing} | " \
+                    f"Extra: {n_extra} | Extra valid: {n_extra_valid}.\n"
 
-            msg2 += "                Extra valid files correctly updated in master: {}.\n".format(
-                str(node_info['status']['last_sync_integrity']['total_extra_valid']))
+            msg2 += f"                Extra valid files correctly updated in master: " \
+                    f"{node_info['status']['last_sync_integrity']['total_extra_valid']}.\n"
 
             # Agent info
+            total = calculate_seconds(node_info['status']['last_sync_agentinfo']['date_start_master'],
+                                      node_info['status']['last_sync_agentinfo']['date_end_master'])
             msg2 += "            Agents-info:\n"
-            msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                str(node_info['status']['last_sync_agentinfo']['date_start_master']),
-                str(node_info['status']['last_sync_agentinfo']['date_end_master']))
-            msg2 += "                Number of synchronized chunks: {}.\n".format(
-                str(node_info['status']['last_sync_agentinfo']['n_synced_chunks']))
+            msg2 += f"                Last synchronization: {total} " \
+                    f"({node_info['status']['last_sync_agentinfo']['date_start_master']} - " \
+                    f"{node_info['status']['last_sync_agentinfo']['date_end_master']}).\n"
+            msg2 += f"                Number of synchronized chunks: " \
+                    f"{node_info['status']['last_sync_agentinfo']['n_synced_chunks']}.\n"
 
     print(msg1)
-
-    if more:
-        print(msg2)
+    more and print(msg2)
 
 
 if __name__ == '__main__':
