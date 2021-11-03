@@ -599,8 +599,8 @@ void test_external_socket_connect_success(void **state) {
     will_return(__wrap_setsockopt, 0);
     will_return(__wrap_setsockopt, 0);
 
-    const char *ret = external_socket_connect(data->socket_path, data->timeout);
-    assert_int_equal(ret, 0);
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, 4);
 }
 
 
@@ -614,7 +614,7 @@ void test_external_socket_connect_failed_sent_timeout(void **state) {
     will_return(__wrap_fcntl, 0);
     will_return(__wrap_setsockopt, -1);
 
-    const char *ret = external_socket_connect(data->socket_path, data->timeout);
+    int ret = external_socket_connect(data->socket_path, data->timeout);
     assert_int_equal(ret, -1);
 }
 
@@ -629,7 +629,7 @@ void test_external_socket_connect_failed_receive_timeout(void **state) {
     will_return(__wrap_setsockopt, 0);
     will_return(__wrap_setsockopt, -1);
 
-    const char *ret = external_socket_connect(data->socket_path, data->timeout);
+    int ret = external_socket_connect(data->socket_path, data->timeout);
     assert_int_equal(ret, -1);
 }
 
@@ -728,6 +728,11 @@ int main(void) {
         /* Test for get_ip_from_resolved_hostname */
         cmocka_unit_test(test_get_ip_from_resolved_hostname_ip),
         cmocka_unit_test(test_get_ip_from_resolved_hostname_no_ip),
+
+        /* Test for external_socket_connect */
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_failed_sent_timeout, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_failed_receive_timeout, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

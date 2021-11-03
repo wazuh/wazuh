@@ -37,8 +37,11 @@ list(APPEND os_auth_names "test_auth_key_request")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,fgets \
                            -Wl,--wrap,wm_exec -Wl,--wrap,wpopenv -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,pthread_mutex_lock \
                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,close -Wl,-wrap,send \
-                           -Wl,--wrap,recv -Wl,--wrap,setsockopt -Wl,--wrap,fcntl -Wl,--wrap,getsockopt -Wl,connect -Wl,--wrap,socket \
-                           -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,sleep -Wl,--wrap,_mtdebug2")
+                           -Wl,--wrap,recv -Wl,--wrap,setsockopt -Wl,--wrap,fcntl -Wl,--wrap,connect -Wl,--wrap,socket \
+                           -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,sleep -Wl,--wrap,_mtdebug2 -Wl,--wrap,cJSON_Delete \
+                           -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek \
+                           -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap=fgetc -Wl,--wrap,getpid -Wl,--wrap,OSHash_Add_ex \
+                           -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")
