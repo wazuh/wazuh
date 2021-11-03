@@ -957,6 +957,45 @@ int test_setup_null_field_valid_msg(void **state)
     return 0;
 }
 
+int test_setup_insert_multiple_null_field_valid_msg(void ** state) {
+    Eventinfo * lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup(
+            "{\"data\":{\"checksum\":\"944fb6182222660aeca5b27bcd14a579db60b58c\",\"inode\":30905,\"item_id\":"
+            "\"31ec8d41b06cc6dea02d9f088067d379d761732d\",\"local_ip\":\"192.168.100.90\",\"local_port\":53462,\"pid\":"
+            "null,\"process\":null,\"protocol\":\"tcp\",\"remote_ip\":null,\"remote_port\":10000,\"rx_queue\":null,"
+            "\"scan_time\":\"2021/11/01 "
+            "17:38:40\",\"state\":null,\"tx_queue\":null},\"operation\":\"INSERTED\",\"type\":\"dbsync_ports\"}"),
+        lf->log == NULL) {
+        return -1;
+    }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_deleted_multiple_null_field_valid_msg(void ** state) {
+    Eventinfo * lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup(
+            "{\"data\":{\"inode\":30905,\"local_ip\":\"192.168.100.90\",\"local_port\":53462,\"protocol\":\"tcp\","
+            "\"scan_time\":\"2021/11/01 17:40:48\"},\"operation\":\"DELETED\",\"type\":\"dbsync_ports\"}"),
+        lf->log == NULL) {
+        return -1;
+    }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_null_text_variant_field_valid_msg(void **state)
 {
     Eventinfo *lf;
@@ -1546,6 +1585,129 @@ void test_syscollector_dbsync_null_valid_msg(void **state)
     assert_int_not_equal(ret, 0);
 }
 
+void test_syscollector_dbsync_insert_multiple_null_valid_msg(void ** state) {
+    Eventinfo * lf = *state;
+
+    const char * query = "agent 001 dbsync ports INSERTED 2021/11/01 "
+                         "17:38:40|tcp|192.168.100.90|53462||10000|||30905||||944fb6182222660aeca5b27bcd14a579db60b58c|"
+                         "31ec8d41b06cc6dea02d9f088067d379d761732d|";
+    const char * result = "ok ";
+
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+
+    int index = 0;
+
+    assert_string_equal(lf->fields[index].key, "type");
+    assert_string_equal(lf->fields[index++].value, "dbsync_ports");
+
+    assert_string_equal(lf->fields[index].key, "port.protocol");
+    assert_string_equal(lf->fields[index++].value, "tcp");
+
+    assert_string_equal(lf->fields[index].key, "port.local_ip");
+    assert_string_equal(lf->fields[index++].value, "192.168.100.90");
+
+    assert_string_equal(lf->fields[index].key, "port.local_port");
+    assert_string_equal(lf->fields[index++].value, "53462");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_ip");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_port");
+    assert_string_equal(lf->fields[index++].value, "10000");
+
+    assert_string_equal(lf->fields[index].key, "port.tx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.rx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.inode");
+    assert_string_equal(lf->fields[index++].value, "30905");
+
+    assert_string_equal(lf->fields[index].key, "port.state");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.pid");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.process");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "operation_type");
+    assert_string_equal(lf->fields[index++].value, "INSERTED");
+}
+
+void test_syscollector_dbsync_deleted_multiple_null_valid_msg(void ** state) {
+    Eventinfo * lf = *state;
+
+    const char * query = "agent 001 dbsync ports DELETED 2021/11/01 "
+                         "17:40:48|tcp|192.168.100.90|53462|NULL|NULL|NULL|NULL|30905|NULL|NULL|NULL|NULL|NULL|";
+    const char * result = "ok 2021/11/01 "
+                          "17:40:48|tcp|192.168.100.90|53462||10000|||30905||||"
+                          "944fb6182222660aeca5b27bcd14a579db60b58c|31ec8d41b06cc6dea02d9f088067d379d761732d|";
+
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+
+    int index = 0;
+
+    assert_string_equal(lf->fields[index].key, "type");
+    assert_string_equal(lf->fields[index++].value, "dbsync_ports");
+
+    assert_string_equal(lf->fields[index].key, "port.protocol");
+    assert_string_equal(lf->fields[index++].value, "tcp");
+
+    assert_string_equal(lf->fields[index].key, "port.local_ip");
+    assert_string_equal(lf->fields[index++].value, "192.168.100.90");
+
+    assert_string_equal(lf->fields[index].key, "port.local_port");
+    assert_string_equal(lf->fields[index++].value, "53462");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_ip");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_port");
+    assert_string_equal(lf->fields[index++].value, "10000");
+
+    assert_string_equal(lf->fields[index].key, "port.tx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.rx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.inode");
+    assert_string_equal(lf->fields[index++].value, "30905");
+
+    assert_string_equal(lf->fields[index].key, "port.state");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.pid");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.process");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "operation_type");
+    assert_string_equal(lf->fields[index++].value, "DELETED");
+}
+
 void test_syscollector_dbsync_null_text_variant_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
@@ -1604,6 +1766,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_text_variant_valid_msg, test_setup_null_text_variant_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_text_valid_msg, test_setup_null_text_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_valid_msg, test_setup_null_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_insert_multiple_null_valid_msg, test_setup_insert_multiple_null_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_deleted_multiple_null_valid_msg, test_setup_deleted_multiple_null_field_valid_msg, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }

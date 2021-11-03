@@ -1995,27 +1995,56 @@ void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
     }
 }
 
-void fill_event_alert( Eventinfo * lf, const struct deltas_fields_match_list * field_list, const char * operation, char * response) {
-    char *r = NULL;
-    const bool is_escaped_pipe = strstr(response, FIELD_SEPARATOR_DBSYNC_ESCAPE);
-    char * field_value = strtok_r(response, FIELD_SEPARATOR_DBSYNC, &r);
+void fill_event_alert(Eventinfo * lf, const struct deltas_fields_match_list * field_list, const char * operation,
+                      char * response) {
+    const bool have_a_escaped_pipe = strstr(response, FIELD_SEPARATOR_DBSYNC_ESCAPE);
+
+    const size_t separator_count = sizeof(char *) * (os_strcnt(response, *FIELD_SEPARATOR_DBSYNC));
+
+    char ** field_values = NULL;
+    os_calloc(1, separator_count + 1, field_values);
+
+    char ** field_values_iterator = field_values;
+
+    // Create a copy of the string to make it null-separated and reference each part in field_value
+    char * null_separated_str = NULL;
+    os_strdup(response, null_separated_str);
+    char * null_separated_str_iterator = null_separated_str;
+
+    // In case the response does not have a separator
+    *field_values = null_separated_str;
+    char * separator_location = strchr(null_separated_str, *FIELD_SEPARATOR_DBSYNC);
+
+    // Iterate through and point each chunk between separators
+    while (NULL != separator_location) {
+        *field_values_iterator = null_separated_str_iterator;
+        *separator_location++ = '\0';
+
+        null_separated_str_iterator = separator_location;
+        separator_location = strchr(null_separated_str_iterator, *FIELD_SEPARATOR_DBSYNC);
+        ++field_values_iterator;
+    }
+
+    field_values_iterator = field_values;
     struct deltas_fields_match_list const * head = field_list;
-    while (NULL != head) {
-        if (field_value) {
-            if (strlen(head->current.value) != 0) {
-                if (is_escaped_pipe) {
-                    char *value = wstr_replace(field_value, FIELD_SEPARATOR_DBSYNC_ESCAPE, FIELD_SEPARATOR_DBSYNC);
-                    fillData(lf, head->current.value, value);
-                    os_free(value);
-                } else {
-                    fillData(lf, head->current.value, field_value);
-                }
+    while (NULL != head && NULL != *field_values_iterator) {
+        if (strlen(head->current.value) != 0) {
+            if (have_a_escaped_pipe) {
+                char * value =
+                    wstr_replace(*field_values_iterator, FIELD_SEPARATOR_DBSYNC_ESCAPE, FIELD_SEPARATOR_DBSYNC);
+                fillData(lf, head->current.value, value);
+                os_free(value);
+            } else {
+                fillData(lf, head->current.value, *field_values_iterator);
             }
-            field_value = strtok_r(NULL, FIELD_SEPARATOR_DBSYNC, &r);
         }
+        ++field_values_iterator;
         head = head->next;
     }
     fillData(lf, "operation_type", operation);
+
+    os_free(field_values);
+    os_free(null_separated_str);
 }
 
 int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) {
