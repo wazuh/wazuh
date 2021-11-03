@@ -62,10 +62,10 @@
     <if_sid>4806</if_sid>
     <id>^236$</id>
     <description>SonicWall: Firewall administrator login.</description>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="4811" level="9">
@@ -79,14 +79,17 @@
     <if_matched_sid>4804</if_matched_sid>
     <description>SonicWall: Multiple firewall warning messages.</description>
     <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1499.002</id>
+    </mitre>
   </rule>
 
   <rule id="4851" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>4803</if_matched_sid>
     <description>SonicWall: Multiple firewall error messages.</description>
-    <mitre>
-      <id>T1499</id>
-    </mitre>
     <group>service_availability,pci_dss_10.6.1,gpg13_3.5,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1499.002</id>
+    </mitre>
   </rule>
 </group>

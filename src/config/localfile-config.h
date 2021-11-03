@@ -121,6 +121,7 @@ typedef struct _logreader {
     w_multiline_config_t * multiline;
     long linecount;
     char *djb_program_name;
+    char * channel_str;
     char *command;
     char *alias;
     int reconnect_time;

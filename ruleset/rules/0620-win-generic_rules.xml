@@ -35,10 +35,10 @@
     <field name="win.system.eventID">^20158$</field>
     <description>Remote access login success</description>
     <options>no_full_log</options>
+    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,</group>
   </rule>
 
   <rule id="64103" level="8">
@@ -61,10 +61,10 @@
     <field name="win.system.eventID">^200$|^300$|^302$</field>
     <description>TS Gateway login success</description>
     <options>no_full_log</options>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="64106" level="0">
@@ -92,21 +92,21 @@
   <rule id="64109" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>64101</if_matched_sid>
     <description>Multiple remote access login failures</description>
+    <options>no_full_log</options>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <options>no_full_log</options>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,nist_800_53_AC.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="64110" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>64107</if_matched_sid>
     <description>Multiple TS Gateway login failures</description>
+    <options>no_full_log</options>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <options>no_full_log</options>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>

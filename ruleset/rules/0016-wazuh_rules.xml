@@ -31,6 +31,9 @@
     <field name="level">full</field>
     <description>Agent event queue is full. Events may be lost.</description>
     <group>agent_flooding,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="204" level="12">
@@ -38,6 +41,9 @@
     <field name="level">flooded</field>
     <description>Agent event queue is flooded. Check the agent configuration.</description>
     <group>agent_flooding,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1499.001</id>
+    </mitre>
   </rule>
 
   <rule id="205" level="3">

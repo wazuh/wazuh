@@ -1043,6 +1043,11 @@ int os_snprintf(char *str, size_t size, const char *format, ...) {
 
 char * w_remove_substr(char *str, const char *sub) {
     char *p, *q, *r;
+
+    if (!str || !sub) {
+        return NULL;
+    }
+
     if ((q = r = strstr(str, sub)) != NULL) {
         size_t len = strlen(sub);
         while ((r = strstr(p = r + len, sub)) != NULL) {

@@ -247,6 +247,7 @@ void LogCollectorStart()
 #ifdef WIN32
 
             minfo(READING_EVTLOG, current->file);
+            os_strdup(current->file, current->channel_str);
             win_startel(current->file);
 
             /* Mutexes are not previously initialized under Windows*/
@@ -262,6 +263,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
+            os_strdup(current->file, current->channel_str);
             win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");

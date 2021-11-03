@@ -28,9 +28,9 @@
     <if_matched_sid>87701</if_matched_sid>
     <same_source_ip />
     <description>Multiple pfSense firewall blocks events from same source.</description>
+    <group>multiple_blocks,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>multiple_blocks,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group>
