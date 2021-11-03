@@ -197,6 +197,7 @@ All notable changes to this project will be documented in this file.
   - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas) ([#10406](https://github.com/wazuh/wazuh/pull/10406))
   - Fixed regex for prematch in FortiDDoS Decoders. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
   - Fixed errors and improved detection in Windows Security rules ([#10682](https://github.com/wazuh/wazuh/pull/10682))
+  - Fixed YML syntax problems in Solaris 11.4 SCA. ([#10707](https://github.com/wazuh/wazuh/pull/10707))
 
 ### Removed
 
