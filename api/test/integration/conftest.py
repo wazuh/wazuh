@@ -43,10 +43,9 @@ def pytest_collection_modifyitems(items: list):
     """
     for item in items:
         test_name = item.nodeid.split('::')[0]
-        if 'rbac' not in test_name:
-            if not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
-                item.add_marker(standalone_env_mode)
-                item.add_marker(cluster_env_mode)
+        if 'rbac' not in test_name and not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
+            item.add_marker(standalone_env_mode)
+            item.add_marker(cluster_env_mode)
 
 
 def get_token_login_api():
