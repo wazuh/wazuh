@@ -89,16 +89,16 @@ static int test_teardown(void **state) {
 
 // Test get_agent_info_from_json()
 
-
 void test_get_agent_info_from_json_error_malformed(void **state) {
-    cJSON *input_raw_json = cJSON_CreateObject();
-    char *error_msg = NULL;
+    cJSON   *input_raw_json = cJSON_CreateObject();
+    char    *error_msg      = NULL;
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'error' field found");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_message_malformed(void **state) {
@@ -116,6 +116,7 @@ void test_get_agent_info_from_json_message_malformed(void **state) {
     assert_null(ret);
 
     __real_cJSON_Delete(field);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_error_valuestring(void **state) {
@@ -136,6 +137,7 @@ void test_get_agent_info_from_json_error_valuestring(void **state) {
 
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(message);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_data_not_found(void **state) {
@@ -154,10 +156,11 @@ void test_get_agent_info_from_json_agent_data_not_found(void **state) {
     assert_null(ret);
 
     __real_cJSON_Delete(field);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_id_not_found(void **state) {
-    cJSON    *input_raw_json = cJSON_CreateObject();
+    cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     cJSON   *data           = cJSON_CreateNumber(2);
     char    *error_msg      = NULL;
@@ -175,10 +178,11 @@ void test_get_agent_info_from_json_agent_id_not_found(void **state) {
 
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(data);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_name_not_found(void **state) {
-    cJSON    *input_raw_json = cJSON_CreateObject();
+    cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     cJSON   *data           = cJSON_CreateNumber(2);
     cJSON   *id             = cJSON_CreateNumber(3);
@@ -200,10 +204,11 @@ void test_get_agent_info_from_json_agent_name_not_found(void **state) {
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(data);
     __real_cJSON_Delete(id);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_ip_not_found(void **state) {
-    cJSON    *input_raw_json = cJSON_CreateObject();
+    cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     cJSON   *data           = cJSON_CreateNumber(2);
     cJSON   *id             = cJSON_CreateNumber(3);
@@ -229,15 +234,16 @@ void test_get_agent_info_from_json_agent_ip_not_found(void **state) {
     __real_cJSON_Delete(data);
     __real_cJSON_Delete(id);
     __real_cJSON_Delete(name);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_key_not_found(void **state) {
-    cJSON    *input_raw_json = cJSON_CreateObject();
+    cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     cJSON   *data           = cJSON_CreateNumber(1);
     cJSON   *id             = cJSON_CreateNumber(1);
     cJSON   *name           = cJSON_CreateNumber(1);
-    cJSON   *ip            = cJSON_CreateNumber(1);
+    cJSON   *ip             = cJSON_CreateNumber(1);
     char    *error_msg      = NULL;
 
     field->valueint = 0;
@@ -262,10 +268,11 @@ void test_get_agent_info_from_json_agent_key_not_found(void **state) {
     __real_cJSON_Delete(id);
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
+    __real_cJSON_Delete(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_success(void **state) {
-    cJSON    *input_raw_json = cJSON_CreateObject();
+    cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     cJSON   *data           = cJSON_CreateNumber(1);
     cJSON   *id             = cJSON_CreateNumber(1);
@@ -299,6 +306,7 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
+    __real_cJSON_Delete(input_raw_json);
     free(ret);
 }
 
@@ -329,8 +337,10 @@ void test_keyrequest_socket_output_not_connect(void **state) {
 }
 
 void test_keyrequest_socket_output_long_request(void **state) {
-    char buffer_request[OS_SIZE_128 + 1];
-    memset(buffer_request, 'a', OS_SIZE_128 + 1);
+    char buffer_request[127];
+
+    memset(buffer_request, 'a', 126);
+    buffer_request[126] = '\0';
  
     will_return(__wrap_external_socket_connect, 4);
     expect_string(__wrap__mdebug1, formatted_msg, "Request is too long for socket.");
@@ -376,6 +386,7 @@ void test_keyrequest_socket_output_success(void **state) {
 
     char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
     assert_string_equal(ret, "Hello World!");
+    os_free(ret);
 }
 
 // Test w_key_request_dispatch()
@@ -394,7 +405,7 @@ void test_w_key_request_dispatch_long_id(void **state) {
 
 
 void test_w_key_request_dispatch_long_ip(void **state) {
-    char                *buffer = "ip:00000000000000000000";
+    char    *buffer = "ip:00000000000000000000";
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent IP is too long");
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
@@ -406,7 +417,7 @@ void test_w_key_request_dispatch_long_ip(void **state) {
 }
 
 void test_w_key_request_dispatch_wrong_request(void **state) {
-    char                *buffer = "test";
+    char    *buffer = "test";
 
     expect_string(__wrap__mdebug1, formatted_msg, "Wrong type of request");
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
@@ -438,17 +449,14 @@ void test_w_key_request_dispatch_bad_socket_output(void **state) {
 }
 
 void test_w_key_request_dispatch_error_parsing_json(void **state) {
-    authd_key_request_t *data   = (authd_key_request_t *)*state;
-    char                *buffer = "id:001";
-
-    data->exec_path = NULL;
+    char    *buffer = "id:001";
 
     will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, 12);
 
     will_return(__wrap_cJSON_ParseWithOpts, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event. Hello World!");
+    expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event. ");
 
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
