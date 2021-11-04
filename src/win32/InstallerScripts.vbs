@@ -200,15 +200,15 @@ If GetVersion() >= 6 Then
 	' Remove last backslash from home_dir
 	install_dir = Left(home_dir, Len(home_dir) - 1)
 
-	setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d"
-	WshShell.run setPermsInherit
+	setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d /q"
+	WshShell.run setPermsInherit, 0, True
 
-	remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545"
-	WshShell.run remUserPerm
+	remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
+	WshShell.run remUserPerm, 0, True
 
 	' Remove Everyone group for ossec.conf
-	remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0"
-	WshShell.run remEveryonePerms
+	remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
+	WshShell.run remEveryonePerms, 0, True
 End If
 
 config = 0
