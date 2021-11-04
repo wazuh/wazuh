@@ -135,14 +135,14 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
         Can be agent or manager.
     agents : list
         List of active agents for the current test
-        (only needed if the agents needs a custom healthcheck).
+        (only needed if the agents need a custom healthcheck).
     only_check_master_health : bool
         Indicates whether the only node which health needs to be checked is master or not.
 
     Returns
     -------
     bool
-        True if all healthchecks passed, False if not.
+        True if all healthchecks passed, False otherwise.
     """
     time.sleep(interval)
     if node_type == 'manager':
