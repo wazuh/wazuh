@@ -18,6 +18,15 @@ double __wrap_OS_AgentAntiquity(__attribute__((unused)) const char *name,
     return mock();
 }
 
+int __wrap_OS_AddNewAgent(__attribute__((unused)) void *keys, const char *id, 
+                    const char *name, const char *ip, const char *key) {
+    check_expected(id);
+    check_expected(name);
+    check_expected(ip);
+    check_expected(key);
+    return mock();
+}
+
 void __wrap_OS_RemoveAgentGroup(__attribute__((unused)) const char *id) {
     // Empty wrapper
 }

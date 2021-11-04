@@ -23,24 +23,15 @@ int __wrap_auth_connect() {
     return mock();
 }
 
-int __wrap_w_request_agent_add_clustered(char *err_response,
-                                        const char *name,
-                                        const char *ip,
-                                        const char *groups,
-                                        const char *key_hash,
-                                        char **id,
-                                        char **key,
-                                        const int force,
-                                        const char *agent_id) {
-    check_expected(err_response);
-    check_expected(name);
-    check_expected(ip);
-    check_expected(groups);
-    check_expected(key_hash);
-    check_expected(id);
-    check_expected(key);
-    check_expected(force);
-    check_expected(agent_id);
+int __wrap_w_request_agent_add_clustered(__attribute__((unused)) char *err_response,
+                                         __attribute__((unused)) const char *name,
+                                         __attribute__((unused)) const char *ip,
+                                         __attribute__((unused)) const char *groups,
+                                         __attribute__((unused)) const char *key_hash,
+                                         __attribute__((unused)) char **id,
+                                         __attribute__((unused)) char **key,
+                                         __attribute__((unused)) const int force,
+                                         __attribute__((unused)) const char *agent_id) {
     return mock();
 }
 

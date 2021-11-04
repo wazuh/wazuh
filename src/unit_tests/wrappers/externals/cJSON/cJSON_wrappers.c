@@ -13,7 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {
     function_called();
@@ -148,5 +147,13 @@ cJSON* __wrap_cJSON_Duplicate(__attribute__ ((__unused__)) const cJSON *item, __
 cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const object, 
                                     __attribute__ ((__unused__))const char * const name, 
                                     __attribute__ ((__unused__))const cJSON_bool boolean) {
+    return mock_type(cJSON *);
+}
+
+cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value, __attribute__ ((__unused__)) const char **return_parse_end,
+                                   __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
+    if (return_parse_end) {
+        *return_parse_end = value;
+    }
     return mock_type(cJSON *);
 }

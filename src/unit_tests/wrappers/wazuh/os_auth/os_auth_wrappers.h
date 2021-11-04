@@ -20,6 +20,10 @@ SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphe
 
 int __wrap_check_x509_cert(const SSL *ssl, const char *manager);
 
+w_err_t __wrap_w_auth_validate_data(char *response, const char *ip, const char *agentname, const char *groups, const char *hash_key);
+
+void __wrap_add_insert(const keyentry *entry,const char *group);
+
 void __wrap_add_remove(const keyentry *entry);
 
 #endif

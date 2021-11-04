@@ -31,6 +31,18 @@ int __wrap_check_x509_cert(const SSL *ssl, const char *manager) {
     return mock_type(int);
 }
 
+w_err_t __wrap_w_auth_validate_data(__attribute__((unused)) char *response, const char *ip, const char *agentname,
+                                    __attribute__((unused)) const char *groups, const char *hash_key) {
+    check_expected(ip);
+    check_expected(agentname);
+    check_expected(hash_key);
+    return mock_type(w_err_t);
+}
+
+void __wrap_add_insert(__attribute__((unused)) const keyentry *entry, __attribute__((unused)) const char *group) {
+    // Empty wrapper
+}
+
 void __wrap_add_remove(__attribute__((unused)) const keyentry *entry) {
     // Empty wrapper
 }

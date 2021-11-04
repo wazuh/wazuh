@@ -117,3 +117,9 @@ uint32_t __wrap_wnet_order(uint32_t value) {
     check_expected(value);
     return mock();
 }
+
+int __wrap_external_socket_connect(__attribute__((unused)) char *socket_path,
+                                   __attribute__((unused)) int response_timeout) {
+
+    return (int)mock();
+}
