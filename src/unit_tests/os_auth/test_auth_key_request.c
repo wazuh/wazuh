@@ -703,127 +703,117 @@ void test_w_request_thread(void **state) {
 // Test keyrequest_exec_output()
 
 void test_keyrequest_exec_output_too_long_request(void **state) {
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
+    request_type_t type = W_TYPE_ID;
+    char *request = "000";
+    char exec_path[OS_MAXSTR];
 
-    char debug_msg[BUFFERSIZE];
-    snprintf(debug_msg, BUFFERSIZE, "Request is too long.");
-    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+    memset(exec_path, 'a', OS_MAXSTR);
+    exec_path[OS_MAXSTR - 1] = '\0';
+    config.key_request.exec_path = exec_path;
 
-    void *ret = keyrequest_exec_output(type,request);
+    expect_string(__wrap__mdebug1, formatted_msg, "Request is too long.");
+
+    char *ret = keyrequest_exec_output(type,request);
     assert_null(ret);
 }
 
-void test_keyrequest_exec_output_error_flag_to_one(void **state) {
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
-    int error_flag = 0;
-
-    will_return(__wrap_error_flag,error_flag);
-
-    void *ret = keyrequest_exec_output(type,request);
-    assert_null(ret)
-}
-
 void test_keyrequest_exec_output_result_code_no_zero(void **state) {
-    char *exec_path = config.key_request.exec_path;
-    config.key_request.exec_path = "python3 /tmp/test.py";
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
-    int error_flag = 0;
-    int result_code = 0;
+    char *exec_path = "python3 /tmp/test.py";
+    config.key_request.exec_path = exec_path;
+    request_type_t type = W_TYPE_ID;
+    char *request = "000";
 
-    will_return(__wrap_error_flag,error_flag);
-    will_return(__wrap_result_code,result_code);
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
-    char debug_msg[BUFFERSIZE];
-    snprintf(debug_msg, BUFFERSIZE, "Key request integration (%s) returned code %d.", config.key_request.exec_path, result_code);
-    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
+    expect_string(__wrap__mwarn, formatted_msg, "Key request integration (python3 /tmp/test.py) returned code 1.");
 
-    config.key_request.exec_path = exec_path;
-
-    void *ret = keyrequest_exec_output(type,request);
-    assert_null(ret)
+    char *ret = keyrequest_exec_output(type,request);
+    assert_null(ret);
 }
 
 void test_keyrequest_exec_output_timeout_error(void **state) {
-    char *exec_path = config.key_request.exec_path;
-    config.key_request.exec_path = "python3 /tmp/test.py";
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
-    int error_flag = 0;
-    int result_code = 0;
-
-    will_return(__wrap_error_flag,error_flag);
-    will_return(__wrap_result_code,result_code);
-    will_return(__wrap_wm_exec, KR_ERROR_TIMEOUT);
-
-    char debug_msg[BUFFERSIZE];
-    snprintf(debug_msg, BUFFERSIZE, "Timeout received while running key request integration (%s)", config.key_request.exec_path);
-    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
-
+    char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
+    request_type_t type = W_TYPE_ID;
+    char *request = "000";
 
-    void *ret = keyrequest_exec_output(type,request);
-    assert_null(ret)
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Timeout received while running key request integration (python3 /tmp/test.py)");
+
+    char *ret = keyrequest_exec_output(type,request);
+    assert_null(ret);
 }
 
 void test_keyrequest_exec_output_path_invalid(void **state) {
-    char *exec_path = config.key_request.exec_path;
-    config.key_request.exec_path = "python3 /tmp/test.py";
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
-    int error_flag = 1;
-    int result_code = EXECVE_ERROR;
-
-    will_return(__wrap_error_flag,error_flag);
-    will_return(__wrap_result_code,result_code);
-    will_return(__wrap_wm_exec, 1);
-
-    char debug_msg[BUFFERSIZE];
-    snprintf(debug_msg, BUFFERSIZE, "Cannot run key request integration (%s): path is invalid or file has insufficient permissions.", config.key_request.exec_path);
-    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
-
+    char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
+    request_type_t type = W_TYPE_ID;
+    char *request = "000";
 
-    void *ret = keyrequest_exec_output(type,request);
-    assert_null(ret)
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, EXECVE_ERROR);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Cannot run key request integration (python3 /tmp/test.py): path is invalid or file has insufficient permissions.");
+
+    char *ret = keyrequest_exec_output(type,request);
+    assert_null(ret);
 }
 
 void test_keyrequest_exec_output_error_executing(void **state) {
-    char *exec_path = config.key_request.exec_path;
-    config.key_request.exec_path = "python3 /tmp/test.py";
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
-    int error_flag = 1;
-
-    will_return(__wrap_error_flag,error_flag);
-    will_return(__wrap_wm_exec, 1);
-
-    char debug_msg[BUFFERSIZE];
-    snprintf(debug_msg, BUFFERSIZE, "Error executing [%s]", config.key_request.exec_path);
-    expect_string(__wrap__mwarn, formatted_msg, debug_msg);
-
+    char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
+    request_type_t type = W_TYPE_ID;
+    char *request = "000";
 
-    void *ret = keyrequest_exec_output(type,request);
-    assert_null(ret)
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Error executing [python3 /tmp/test.py]");
+
+    char *ret = keyrequest_exec_output(type,request);
+    assert_null(ret);
 }
 
-void test_keyrequest_exec_output_chroot_error(void **state) {
-    _request_type_t type = (_request_type_t*)*state;
-    char *request = "";
-    int error_flag = 1;
+void test_keyrequest_exec_output_success(void **state) {
+    char *exec_path = "python3 /tmp/test.py";
+    config.key_request.exec_path = exec_path;
+    request_type_t type = W_TYPE_ID;
+    char *request = "000";
 
-    will_return(__wrap_error_flag,error_flag);
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
 
-    char debug_msg[BUFFERSIZE];
-    snprintf(debug_msg, BUFFERSIZE, CHROOT_ERROR, "/var/ossec", errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, debug_msg);
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
 
-    void *ret = keyrequest_exec_output(type,request);
-    assert_null(ret)
+    char *ret = keyrequest_exec_output(type,request);
+    assert_string_equal(ret, "Output command");
+    os_free(ret);
 }
 
 // main
@@ -841,10 +831,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_not_connect, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_long_request, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_send_fail, test_setup, test_teardown), 
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_no_data_received, test_setup, test_teardown), 
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_empty_string_received, test_setup, test_teardown), 
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_success, test_setup, test_teardown), 
+        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_send_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_no_data_received, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_empty_string_received, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_long_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_long_ip, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_wrong_request, test_setup, test_teardown),
@@ -856,12 +846,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_exec_output_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_success_exec_output, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_too_long_request, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_error_flag_to_one, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_result_code_no_zero, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_timeout_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_path_invalid, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_error_executing, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_chroot_error, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
