@@ -136,7 +136,9 @@ void FIMDB::init(const std::string& dbPath,
                  unsigned int max_rows_file,
                  unsigned int max_rows_registry,
                  send_data_callback_t callbackSync,
-                 logging_callback_t callbackLog)
+                 logging_callback_t callbackLog,
+                 std::unique_ptr<DBSync> dbsyncHandler,
+                 std::unique_ptr<RemoteSync> rsyncHanlder)
 #else
 void FIMDB::init(const std::string& dbPath,
                  unsigned int interval_synchronization,
