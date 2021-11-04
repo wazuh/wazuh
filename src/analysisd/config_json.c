@@ -477,7 +477,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
             }
         }
 
-        if (different = node->ruleinfo->same_field, different) {
+        if (different = node->ruleinfo->different_field, different) {
             for (i = 0; different != 0; i++) {
                 if ((different & 1) == 1) {
                     cJSON_AddStringToObject(rule, different_fields[i], "");
