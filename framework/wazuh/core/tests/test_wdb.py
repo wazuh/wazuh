@@ -54,13 +54,13 @@ def test_null_values_are_removed(send_mock, connect_mock):
     Tests '(null)' values are removed from the resulting dictionary
     """
     def recv_mock(size_to_receive):
-        nulls_string = b' {"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}'
+        nulls_string = b' [{"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}]'
         return format_msg(nulls_string) if size_to_receive == 4 else nulls_string
 
     with patch('socket.socket.recv', side_effect=recv_mock):
         mywdb = WazuhDBConnection()
         received = mywdb._send("test")
-        assert received == {"a": "a", "c": [1, 2, 3], "d": {}}
+        assert received == [{"a": "a", "c": [1, 2, 3], "d": {}}]
 
 
 @patch("socket.socket.connect")
@@ -199,3 +199,14 @@ def test_failed_execute(send_mock, connect_mock, error_query, error_type, expect
             with patch("wazuh.core.wdb.min", side_effect=error_type):
                 with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
                     mywdb.execute(error_query, delete=delete, update=update)
+
+
+@pytest.mark.parametrize('string', [
+    '[{"key1": "value1"}]',
+    '[{"key1": "value1"}, {"invalid": "(null)"}]',
+])
+def test_WazuhDBConnection_loads(string):
+    """Test that the `loads` method from the class `WazuhDBConnection` cleans empty objects from the result."""
+    result = WazuhDBConnection.loads(string)
+    assert len(result) == 1
+    assert result[0] == {"key1": "value1"}
