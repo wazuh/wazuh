@@ -30,6 +30,7 @@
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
 #define BUFFERSIZE 1024
 #define RELAUNCH_TIME 300
@@ -66,6 +67,7 @@ static int test_setup(void **state) {
 
     os_strdup("/tmp/tmp_file-XXXXXX", init_data->socket);
 
+    test_mode = 1;
     *state = init_data;
 
     return OS_SUCCESS;
@@ -80,13 +82,15 @@ static int test_teardown(void **state) {
     config.key_request.timeout = 0;
     config.key_request.socket = "";
 
+    test_mode = 0;
+
     return OS_SUCCESS;
 }
 
 // Test get_agent_info_from_json()
 
 
-void test_get_agent_info_from_json_malformed(void **state) {
+void test_get_agent_info_from_json_error_malformed(void **state) {
     cJSON *input_raw_json = cJSON_CreateObject();
     char *error_msg = NULL;
 
@@ -95,11 +99,9 @@ void test_get_agent_info_from_json_malformed(void **state) {
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
-
-    free(input_raw_json);
 }
 
-void test_get_agent_info_from_json_error_malformed(void **state) {
+void test_get_agent_info_from_json_message_malformed(void **state) {
     cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     char    *error_msg      = NULL;
@@ -107,40 +109,41 @@ void test_get_agent_info_from_json_error_malformed(void **state) {
     field->valueint = 1;
 
     will_return(__wrap_cJSON_GetObjectItem, field);
-    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'error' field found");
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'message' field found");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
 
     __real_cJSON_Delete(field);
-    free(input_raw_json);
 }
 
-void test_get_agent_info_from_json_error(void **state) {
+void test_get_agent_info_from_json_error_valuestring(void **state) {
     cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
-    cJSON   *message        = cJSON_CreateNumber(1);
+    cJSON   *message        = cJSON_CreateNumber(2);
     char    *error_msg      = NULL;
 
     field->valueint = 1;
-    message->valuestring = "Test";
+    message->valuestring = strdup("test");
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, message);
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
-    assert_string_equal(message->valuestring, *error_msg);
+    assert_string_equal(message->valuestring, error_msg);
     assert_null(ret);
 
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(message);
-    free(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_data_not_found(void **state) {
-    cJSON    *input_raw_json = cJSON_CreateObject();
+    cJSON   *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
     char    *error_msg      = NULL;
+
+    field->valueint = 0;
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
@@ -151,14 +154,15 @@ void test_get_agent_info_from_json_agent_data_not_found(void **state) {
     assert_null(ret);
 
     __real_cJSON_Delete(field);
-    free(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_id_not_found(void **state) {
     cJSON    *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
-    cJSON   *data           = cJSON_CreateNumber(1);
+    cJSON   *data           = cJSON_CreateNumber(2);
     char    *error_msg      = NULL;
+
+    field->valueint = 0;
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -171,24 +175,24 @@ void test_get_agent_info_from_json_agent_id_not_found(void **state) {
 
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(data);
-    free(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_name_not_found(void **state) {
     cJSON    *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
-    cJSON   *data           = cJSON_CreateNumber(1);
-    cJSON   *id             = cJSON_CreateNumber(1);
+    cJSON   *data           = cJSON_CreateNumber(2);
+    cJSON   *id             = cJSON_CreateNumber(3);
     char    *error_msg      = NULL;
 
-    id->valuestring = "001";
+    field->valueint = 0;
+    id->valuestring = strdup("001");
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
     will_return(__wrap_cJSON_GetObjectItem, id);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Agent ID not found.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent name not found.");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
@@ -196,19 +200,19 @@ void test_get_agent_info_from_json_agent_name_not_found(void **state) {
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(data);
     __real_cJSON_Delete(id);
-    free(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_ip_not_found(void **state) {
     cJSON    *input_raw_json = cJSON_CreateObject();
     cJSON   *field          = cJSON_CreateNumber(1);
-    cJSON   *data           = cJSON_CreateNumber(1);
-    cJSON   *id             = cJSON_CreateNumber(1);
-    cJSON   *name           = cJSON_CreateNumber(1);
+    cJSON   *data           = cJSON_CreateNumber(2);
+    cJSON   *id             = cJSON_CreateNumber(3);
+    cJSON   *name           = cJSON_CreateNumber(4);
     char    *error_msg      = NULL;
 
-    id->valuestring = "001";
-    name->valuestring = "test";
+    field->valueint = 0;
+    id->valuestring = strdup("001");
+    name->valuestring = strdup("test");
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -216,7 +220,7 @@ void test_get_agent_info_from_json_agent_ip_not_found(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, name);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Agent ID not found.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent address not found.");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
@@ -225,7 +229,6 @@ void test_get_agent_info_from_json_agent_ip_not_found(void **state) {
     __real_cJSON_Delete(data);
     __real_cJSON_Delete(id);
     __real_cJSON_Delete(name);
-    free(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_key_not_found(void **state) {
@@ -237,9 +240,10 @@ void test_get_agent_info_from_json_agent_key_not_found(void **state) {
     cJSON   *ip            = cJSON_CreateNumber(1);
     char    *error_msg      = NULL;
 
-    id->valuestring = "001";
-    name->valuestring = "test";
-    ip->valuestring = "127.0.0.1";
+    field->valueint = 0;
+    id->valuestring = strdup("001");
+    name->valuestring = strdup("test");
+    ip->valuestring = strdup("127.0.0.1");
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -248,7 +252,7 @@ void test_get_agent_info_from_json_agent_key_not_found(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, ip);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Agent ID not found.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent key not found.");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
@@ -258,7 +262,6 @@ void test_get_agent_info_from_json_agent_key_not_found(void **state) {
     __real_cJSON_Delete(id);
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
-    free(input_raw_json);
 }
 
 void test_get_agent_info_from_json_agent_success(void **state) {
@@ -271,10 +274,11 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     cJSON   *key            = cJSON_CreateNumber(1);
     char    *error_msg      = NULL;
 
-    id->valuestring = "001";
-    name->valuestring = "test";
-    ip->valuestring = "127.0.0.1";
-    key->valuestring = "key";
+    field->valueint = 0;
+    id->valuestring = strdup("001");
+    name->valuestring = strdup("test");
+    ip->valuestring = strdup("127.0.0.1");
+    key->valuestring = strdup("key");
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -295,50 +299,30 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
-    free(input_raw_json);
     free(ret);
 }
 
 // Test keyrequest_socket_output()
 
 void test_keyrequest_socket_output_not_connect(void **state) {
-    char error_msg[128];
+    char debug_msg[128];
+    char warn_msg[128];
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, -1);
-
-    snprintf(error_msg, OS_SIZE_128, "Could not connect to external socket: %s (%d)", strerror(errno), errno);
-    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
-   
+    will_return(__wrap_external_socket_connect, -1);
+    snprintf(debug_msg, OS_SIZE_128, "Could not connect to external socket: %s (%d)", strerror(errno), errno);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
     expect_value(__wrap_sleep, seconds, 1);
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, -1);
-
-    snprintf(error_msg, OS_SIZE_128, "Could not connect to external socket: %s (%d)", strerror(errno), errno);
-    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
-    
+    will_return(__wrap_external_socket_connect, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
     expect_value(__wrap_sleep, seconds, 2);
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, -1);
-
-    snprintf(error_msg, OS_SIZE_128, "Could not connect to external socket: %s (%d)", strerror(errno), errno);
-    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
-
+    will_return(__wrap_external_socket_connect, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
     expect_value(__wrap_sleep, seconds, 3);
 
-    snprintf(error_msg, OS_SIZE_128, "Could not connect to external integration: %s (%d). Discarding request.", strerror(errno), errno);
-    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+    snprintf(warn_msg, OS_SIZE_128, "Could not connect to external integration: %s (%d). Discarding request.", strerror(errno), errno);
+    expect_string(__wrap__mwarn, formatted_msg, warn_msg);
 
     char *ret = keyrequest_socket_output(W_TYPE_ID, "001");
     assert_null(ret);
@@ -348,94 +332,61 @@ void test_keyrequest_socket_output_long_request(void **state) {
     char buffer_request[OS_SIZE_128 + 1];
     memset(buffer_request, 'a', OS_SIZE_128 + 1);
  
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_external_socket_connect, 4);
+    expect_string(__wrap__mdebug1, formatted_msg, "Request is too long for socket.");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Request too long for socket.");
-    expect_value(__wrap_close, fd, 0);
-
-    char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
+    char *ret = keyrequest_socket_output(W_TYPE_ID, buffer_request);
     assert_null(ret);
 }
 
 void test_keyrequest_socket_output_send_fail(void **state) { 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
-
+    will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, -1);
-    expect_value(__wrap_close, fd, 0);
 
     char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
     assert_null(ret);
 }
 
 void test_keyrequest_socket_output_no_data_received(void **state) { 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "No data received from external socket");
-    expect_value(__wrap_close, fd, 0);
 
     char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
     assert_null(ret);
 }
 
 void test_keyrequest_socket_output_empty_string_received(void **state) { 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, 0);
-    expect_value(__wrap_close, fd, 0);
 
     char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
     assert_null(ret);
 }
 
 void test_keyrequest_socket_output_success(void **state) { 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
-    will_return(__wrap_recv, 4);
-    will_return(__wrap_recv, "test");
-    expect_value(__wrap_close, fd, 0);
+    will_return(__wrap_recv, 12);
 
     char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
-    assert_string_equal(ret, "test");
+    assert_string_equal(ret, "Hello World!");
 }
 
 // Test w_key_request_dispatch()
 
 void test_w_key_request_dispatch_long_id(void **state) {
-    authd_key_request_t *data = (authd_key_request_t *)(*state);
-    char                *buffer = "id:000000001";
+    char    *buffer = "id:000000001";
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent ID is too long");
-    expect_value(__wrap_OSHash_Delete_ex, key, "test");
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
@@ -443,24 +394,24 @@ void test_w_key_request_dispatch_long_id(void **state) {
 
 
 void test_w_key_request_dispatch_long_ip(void **state) {
-    authd_key_request_t *data = (authd_key_request_t *)(*state);
-    char                *buffer = "id:0.0.0.0.0.0.0.0.0.0";
+    char                *buffer = "ip:00000000000000000000";
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent IP is too long");
-    expect_value(__wrap_OSHash_Delete_ex, key, "test");
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 }
 
 void test_w_key_request_dispatch_wrong_request(void **state) {
-    authd_key_request_t *data = (authd_key_request_t *)(*state);
     char                *buffer = "test";
 
     expect_string(__wrap__mdebug1, formatted_msg, "Wrong type of request");
-    expect_value(__wrap_OSHash_Delete_ex, key, "test");
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
@@ -471,20 +422,14 @@ void test_w_key_request_dispatch_bad_socket_output(void **state) {
     char                *buffer = "id:001";
     cJSON               *error  = cJSON_CreateNumber(1);
 
-    error->valuestring = "";
+    data->exec_path = NULL;
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
-
+    will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, -1);
-    expect_value(__wrap_close, fd, 0);
 
-    assert_string_equal(error->valuestring, "");
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
@@ -496,20 +441,18 @@ void test_w_key_request_dispatch_error_parsing_json(void **state) {
     authd_key_request_t *data   = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
+    data->exec_path = NULL;
 
+    will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, 0);
-    will_return(__wrap_recv, 4);
-    will_return(__wrap_recv, "test");
-    expect_value(__wrap_close, fd, 0);
+    will_return(__wrap_recv, 12);
 
-    will_return(__wrap_cJSON_ParseWithOpts, (char *)1);
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event. Hello World!");
+
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
@@ -519,29 +462,24 @@ void test_w_key_request_dispatch_error_parsing_agent_json(void **state) {
     authd_key_request_t *data   = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
     cJSON               *field  = cJSON_CreateNumber(1);
-    cJSON               *msg    = cJSON_CreateNumber(1);
+    cJSON               *msg    = cJSON_CreateNumber(2);
 
     field->valueint = 1;
-    msg->valuestring = "Test";
+    msg->valuestring = strdup("Test");
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
-
+    will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, 0);
-    will_return(__wrap_recv, 4);
-    will_return(__wrap_recv, "test");
-    expect_value(__wrap_close, fd, 0);
+    will_return(__wrap_recv, 12);
 
+    will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, msg);
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not get a key from ID 001. Error: 'Test'.");
     expect_function_call(__wrap_cJSON_Delete);
-    will_return(__wrap_OSHash_Delete_ex, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not get a key from ID 001. Error: 'test'.");
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
@@ -554,30 +492,23 @@ void test_w_key_request_dispatch_success(void **state) {
     authd_key_request_t *data_state  = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
     cJSON               *field  = cJSON_CreateNumber(1);
-    cJSON               *data   = cJSON_CreateNumber(1);
-    cJSON               *id     = cJSON_CreateNumber(1);
-    cJSON               *name   = cJSON_CreateNumber(1);
-    cJSON               *ip     = cJSON_CreateNumber(1);
-    cJSON               *key    = cJSON_CreateNumber(1);
+    cJSON               *data   = cJSON_CreateNumber(2);
+    cJSON               *id     = cJSON_CreateNumber(3);
+    cJSON               *name   = cJSON_CreateNumber(4);
+    cJSON               *ip     = cJSON_CreateNumber(5);
+    cJSON               *key    = cJSON_CreateNumber(6);
 
     config.worker_node = 1;
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
-
+    will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, 0);
-    will_return(__wrap_recv, 4);
-    will_return(__wrap_recv, "test");
-    expect_value(__wrap_close, fd, 0);
+    will_return(__wrap_recv, 12);
 
-    id->valuestring = "001";
-    name->valuestring = "test";
-    ip->valuestring = "127.0.0.1";
-    key->valuestring = "key";
+    field->valueint = 0;
+    id->valuestring = strdup("001");
+    name->valuestring = strdup("test");
+    ip->valuestring = strdup("127.0.0.1");
+    key->valuestring = strdup("key");
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -586,9 +517,14 @@ void test_w_key_request_dispatch_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, ip);
     will_return(__wrap_cJSON_GetObjectItem, key);
 
+    will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
     will_return(__wrap_w_request_agent_add_clustered, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, "Agent Key Polling response forwarded to the master node for agent '001'");
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent key request response forwarded to the master node for agent '001'");
+    expect_function_call(__wrap_cJSON_Delete);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
@@ -607,30 +543,27 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
     authd_key_request_t *data_state   = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
     cJSON               *field  = cJSON_CreateNumber(1);
-    cJSON               *data   = cJSON_CreateNumber(1);
-    cJSON               *id     = cJSON_CreateNumber(1);
-    cJSON               *name   = cJSON_CreateNumber(1);
-    cJSON               *ip     = cJSON_CreateNumber(1);
-    cJSON               *key    = cJSON_CreateNumber(1);
+    cJSON               *data   = cJSON_CreateNumber(2);
+    cJSON               *id     = cJSON_CreateNumber(3);
+    cJSON               *name   = cJSON_CreateNumber(4);
+    cJSON               *ip     = cJSON_CreateNumber(5);
+    cJSON               *key    = cJSON_CreateNumber(6);
 
-    config.worker_node = 0;
+    (&keys)->keysize = 1;
+    os_calloc(1, sizeof(keyentry*), (&keys)->keyentries);
+    os_calloc(1, sizeof(keyentry), (&keys)->keyentries[(&keys)->keysize - 1]);
 
-    will_return(__wrap_socket, 4);
-    will_return(__wrap_connect, 0);
-    will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_fcntl, 0);
-    will_return(__wrap_setsockopt, 0);
-    will_return(__wrap_setsockopt, 0);
+    config.worker_node  = 0;
+    field->valueint     = 0;
+    id->valuestring     = strdup("001");
+    name->valuestring   = strdup("test");
+    ip->valuestring     = strdup("127.0.0.1");
+    key->valuestring    = strdup("key");
 
+    will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, 0);
-    will_return(__wrap_recv, 4);
-    will_return(__wrap_recv, "test");
-    expect_value(__wrap_close, fd, 0);
-
-    id->valuestring = "001";
-    name->valuestring = "test";
-    ip->valuestring = "127.0.0.1";
-    key->valuestring = "key";
+    will_return(__wrap_recv, 12);
+    will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -640,11 +573,24 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_w_auth_validate_data, agentname, name->valuestring);
+    expect_value(__wrap_w_auth_validate_data, ip, ip->valuestring);
+    expect_value(__wrap_w_auth_validate_data, hash_key, key->valuestring);
+    will_return(__wrap_w_auth_validate_data, OS_SUCCESS);
+
+    expect_value(__wrap_OS_AddNewAgent, id, id->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, name, name->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, ip, ip->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, key, key->valuestring);
+    will_return(__wrap_OS_AddNewAgent, 0);
+
     expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_cJSON_Delete);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
-    will_return(__wrap_OSHash_Delete_ex, NULL);
-
-    int ret = w_key_request_dispatch(buffer);
+    int ret = w_key_request_dispatch(buffer); 
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(field);
@@ -653,6 +599,10 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
+    
+    os_free((&keys)->keyentries[(&keys)->keysize - 1]);
+    os_free((&keys)->keyentries);
+    (&keys)->keysize = 0;
 }
 
 void test_w_key_request_dispatch_exec_output_error(void **state) {
@@ -880,9 +830,9 @@ void test_keyrequest_exec_output_chroot_error(void **state) {
 
 int main(void) {
     struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_malformed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_error_malformed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_message_malformed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_error_valuestring, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_data_not_found, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_id_not_found, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_name_not_found, test_setup, test_teardown),
