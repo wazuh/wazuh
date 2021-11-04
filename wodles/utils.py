@@ -11,7 +11,7 @@ from sys import exit
 @lru_cache(maxsize=None)
 def find_wazuh_path() -> str:
     """
-    Dynamically gets the Wazuh installation path.
+    Get the Wazuh installation path.
 
     Returns
     -------
@@ -44,7 +44,7 @@ def find_wazuh_path() -> str:
 
 def call_wazuh_control(option: str) -> str:
     """
-    Executes the wazuh-control script with the parameters specified.
+    Execute the wazuh-control script with the parameters specified.
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ def call_wazuh_control(option: str) -> str:
 
 def get_wazuh_info(field: str) -> str:
     """
-    Executes the wazuh-control script with the 'info' argument, filtering by field if specified.
+    Execute the wazuh-control script with the 'info' argument, filtering by field if specified.
 
     Parameters
     ----------
@@ -101,7 +101,7 @@ def get_wazuh_info(field: str) -> str:
 @lru_cache(maxsize=None)
 def get_wazuh_version() -> str:
     """
-    Returns the version of Wazuh installed.
+    Return the version of Wazuh installed.
 
     Returns
     -------
@@ -114,7 +114,7 @@ def get_wazuh_version() -> str:
 @lru_cache(maxsize=None)
 def get_wazuh_revision() -> str:
     """
-    Returns the revision of the Wazuh instance installed.
+    Return the revision of the Wazuh instance installed.
 
     Returns
     -------
@@ -127,7 +127,7 @@ def get_wazuh_revision() -> str:
 @lru_cache(maxsize=None)
 def get_wazuh_type() -> str:
     """
-    Returns the type of Wazuh instance installed.
+    Return the type of Wazuh instance installed.
 
     Returns
     -------

@@ -29,7 +29,7 @@ except (FileNotFoundError, PermissionError):
 @lru_cache(maxsize=None)
 def find_wazuh_path() -> str:
     """
-    Dynamically gets the Wazuh installation path.
+    Get the Wazuh installation path.
 
     Returns
     -------
