@@ -145,8 +145,3 @@ static void linked_queue_pop_node(w_linked_queue_t *queue) {
     queue->elements--;
     os_free(tmp);
 }
-
-void linked_queue_set_free_function(w_linked_queue_t *queue, w_linked_queue_free_fn fn)
-{
-    queue->data_free_function = fn;
-}
