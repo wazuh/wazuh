@@ -42,7 +42,7 @@ void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info
 /* Setup/teardown */
 
 static int setup_config(void **state) {
-    w_linked_queue_t *queue = linked_queue_init();
+    w_linked_queue_t *queue = linked_queue_init(OS_FreeKey);
     keys.opened_fp_queue = queue;
     test_mode = 1;
     return 0;
@@ -126,7 +126,7 @@ void test_close_fp_main_first_node_no_close_first(void **state)
 
     // Queue with one element
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
-    keys.opened_fp_queue->first = node1;
+    keys.opened_fp_queue->first = node1; // ??
 
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
@@ -147,9 +147,6 @@ void test_close_fp_main_first_node_no_close_first(void **state)
 
     close_fp_main(&keys);
     assert_int_equal(keys.opened_fp_queue->elements, 1);
-    os_free(node1);
-    os_free(first_node_key->id);
-    os_free(first_node_key);
 }
 
 void test_close_fp_main_close_first(void **state)

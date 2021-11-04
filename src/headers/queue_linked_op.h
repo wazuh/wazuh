@@ -21,6 +21,8 @@
 
 #include <pthread.h>
 
+typedef void (*w_linked_queue_free_fn)(void *data);
+
 typedef struct linked_queue_node_t {
     void *data;                       ///< pointer to the node data
     struct linked_queue_node_t *next; ///< pointer to next node
@@ -33,14 +35,18 @@ typedef struct linked_queue_t {
     unsigned int elements;        ///< counts the number of elements stored in the queue
     w_linked_queue_node_t *first; ///< points to the first node that would go out the queue
     w_linked_queue_node_t *last;  ///< pointer to the last node in the queue
+    w_linked_queue_free_fn data_free_function; ///< function to free nodes' "data" field.
 } w_linked_queue_t;
 
 /**
  * @brief Initializes a new queue structure
  * 
+ * @param free_function free function to be used when freeing the data in each element.
+ * if NULL, the data will be freed by calling the regular free() function.
+ *
  * @return initialize queue structure
  * */
-w_linked_queue_t *linked_queue_init();
+w_linked_queue_t *linked_queue_init(w_linked_queue_free_fn free_function);
 
 /**
  * @brief Frees an existent queue

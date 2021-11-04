@@ -24,12 +24,13 @@ static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_nod
  * */
 static void linked_queue_pop_node(w_linked_queue_t *queue);
 
-w_linked_queue_t *linked_queue_init() {
+w_linked_queue_t *linked_queue_init(w_linked_queue_free_fn free_function) {
     w_linked_queue_t *queue;
     os_calloc(1, sizeof(w_linked_queue_t), queue);
     queue->elements = 0;
     queue->first = NULL;
     queue->last = NULL;
+    queue->data_free_function = free_function;
     w_mutex_init(&queue->mutex, NULL);
     w_cond_init(&queue->available, NULL);
     return queue;
@@ -39,6 +40,13 @@ void linked_queue_free(w_linked_queue_t *queue) {
     if (queue) {
         w_mutex_destroy(&queue->mutex);
         w_cond_destroy(&queue->available);
+        w_linked_queue_node_t *walk = queue->first;
+        while (walk) {
+            if (queue->data_free_function && walk->data)
+                    queue->data_free_function(walk->data);
+            walk = walk->next;
+            os_free(walk);
+        }
         os_free(queue);
     }
 }
@@ -136,4 +144,9 @@ static void linked_queue_pop_node(w_linked_queue_t *queue) {
     }
     queue->elements--;
     os_free(tmp);
+}
+
+void linked_queue_set_free_function(w_linked_queue_t *queue, w_linked_queue_free_fn fn)
+{
+    queue->data_free_function = fn;
 }
