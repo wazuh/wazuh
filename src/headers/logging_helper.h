@@ -20,7 +20,21 @@ typedef enum modules_log_level_t {
     LOG_DEBUG_VERBOSE
 } modules_log_level_t;
 
+/**
+ * @brief Global function to send a log message
+ *
+ * @param level Represent the log mode: ERROR, INFO, DEBUG and DEBUG_VERBOSE
+ * @param log Message to send into the log
+ * @param tag Tag representing the module sending the log
+ */
 void taggedLogFunction(modules_log_level_t level, const char* log, const char* tag);
+
+/**
+ * @brief Global function to send a log message
+ *
+ * @param level Represent the log mode: ERROR, INFO, DEBUG and DEBUG_VERBOSE
+ * @param log Message to send into the log
+ */
 void loggingFunction(modules_log_level_t level, const char* log);
 
 
