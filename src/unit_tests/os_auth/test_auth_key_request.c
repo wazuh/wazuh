@@ -540,14 +540,13 @@ void test_w_key_request_dispatch_success(void **state) {
 }
 
 void test_w_key_request_dispatch_success_add_agent(void **state) {
-    authd_key_request_t *data_state   = (authd_key_request_t *)*state;
-    char                *buffer = "id:001";
-    cJSON               *field  = cJSON_CreateNumber(1);
-    cJSON               *data   = cJSON_CreateNumber(2);
-    cJSON               *id     = cJSON_CreateNumber(3);
-    cJSON               *name   = cJSON_CreateNumber(4);
-    cJSON               *ip     = cJSON_CreateNumber(5);
-    cJSON               *key    = cJSON_CreateNumber(6);
+    char            *buffer = "id:001";
+    cJSON           *field  = cJSON_CreateNumber(1);
+    cJSON           *data   = cJSON_CreateNumber(2);
+    cJSON           *id     = cJSON_CreateNumber(3);
+    cJSON           *name   = cJSON_CreateNumber(4);
+    cJSON           *ip     = cJSON_CreateNumber(5);
+    cJSON           *key    = cJSON_CreateNumber(6);
 
     (&keys)->keysize = 1;
     os_calloc(1, sizeof(keyentry*), (&keys)->keyentries);
@@ -606,54 +605,61 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
 }
 
 void test_w_key_request_dispatch_exec_output_error(void **state) {
-    authd_key_request_t *data_state   = (authd_key_request_t *)*state;
-    char                *buffer = "id:001";
-    cJSON               *id     = cJSON_CreateNumber(1);
-    cJSON               *name   = cJSON_CreateNumber(1);
-    cJSON               *ip     = cJSON_CreateNumber(1);
-    cJSON               *key    = cJSON_CreateNumber(1);
-
+    char    *buffer = "id:001";
 
     config.key_request.socket = 0;
+    config.key_request.exec_path = "python3 /tmp/test.py";
 
-   /* Exec output */
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 001");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_send, -1);
-    expect_value(__wrap_close, fd, 0);
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 1);
 
-    id->valuestring = "001";
-    name->valuestring = "test";
-    ip->valuestring = "127.0.0.1";
-    key->valuestring = "key";
+    expect_string(__wrap__mwarn, formatted_msg, "Timeout received while running key request integration (python3 /tmp/test.py)");
 
-    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
     int ret = w_key_request_dispatch(buffer);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, -1);
 }
 
 void test_w_key_request_dispatch_success_exec_output(void **state) {
-    authd_key_request_t *data_state   = (authd_key_request_t *)*state;
-    char                *buffer = "id:001";
-    cJSON               *field  = cJSON_CreateNumber(1);
-    cJSON               *data   = cJSON_CreateNumber(1);
-    cJSON               *id     = cJSON_CreateNumber(1);
-    cJSON               *name   = cJSON_CreateNumber(1);
-    cJSON               *ip     = cJSON_CreateNumber(1);
-    cJSON               *key    = cJSON_CreateNumber(1);
+    char            *buffer = "id:001";
+    cJSON           *field  = cJSON_CreateNumber(1);
+    cJSON           *data   = cJSON_CreateNumber(2);
+    cJSON           *id     = cJSON_CreateNumber(3);
+    cJSON           *name   = cJSON_CreateNumber(4);
+    cJSON           *ip     = cJSON_CreateNumber(5);
+    cJSON           *key    = cJSON_CreateNumber(6);
 
-    config.worker_node = 0;
+    (&keys)->keysize = 1;
+    os_calloc(1, sizeof(keyentry*), (&keys)->keyentries);
+    os_calloc(1, sizeof(keyentry), (&keys)->keyentries[(&keys)->keysize - 1]);
+
+    config.worker_node  = 0;
+    field->valueint     = 0;
+    id->valuestring     = strdup("001");
+    name->valuestring   = strdup("test");
+    ip->valuestring     = strdup("127.0.0.1");
+    key->valuestring    = strdup("key");
+
     config.key_request.socket = 0;
+    config.key_request.exec_path = "python3 /tmp/test.py";
 
-   /* Exec output */
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 001");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
 
-    expect_value(__wrap__mtdebug2, formatted_msg, "Socket output: ");
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
 
-    id->valuestring = "001";
-    name->valuestring = "test";
-    ip->valuestring = "127.0.0.1";
-    key->valuestring = "key";
-
+    will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
     will_return(__wrap_cJSON_GetObjectItem, id);
@@ -662,11 +668,24 @@ void test_w_key_request_dispatch_success_exec_output(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_w_auth_validate_data, agentname, name->valuestring);
+    expect_value(__wrap_w_auth_validate_data, ip, ip->valuestring);
+    expect_value(__wrap_w_auth_validate_data, hash_key, key->valuestring);
+    will_return(__wrap_w_auth_validate_data, OS_SUCCESS);
+
+    expect_value(__wrap_OS_AddNewAgent, id, id->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, name, name->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, ip, ip->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, key, key->valuestring);
+    will_return(__wrap_OS_AddNewAgent, 0);
+
     expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_cJSON_Delete);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
 
-    will_return(__wrap_OSHash_Delete_ex, NULL);
-
-    int ret = w_key_request_dispatch(buffer);
+    int ret = w_key_request_dispatch(buffer); 
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(field);
@@ -675,29 +694,93 @@ void test_w_key_request_dispatch_success_exec_output(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
+    
+    os_free((&keys)->keyentries[(&keys)->keysize - 1]);
+    os_free((&keys)->keyentries);
+    (&keys)->keysize = 0;
+
+    config.worker_node = 0;
+    config.key_request.socket = 0;
 }
 
-// Test w_request_thread()
+void test_w_key_request_dispatch_error_socket_success_exec_output(void **state) {
+    char            *buffer = "id:001";
+    cJSON           *field  = cJSON_CreateNumber(1);
+    cJSON           *data   = cJSON_CreateNumber(2);
+    cJSON           *id     = cJSON_CreateNumber(3);
+    cJSON           *name   = cJSON_CreateNumber(4);
+    cJSON           *ip     = cJSON_CreateNumber(5);
+    cJSON           *key    = cJSON_CreateNumber(6);
 
-void test_w_request_thread(void **state) {
-    int i;
-    w_queue_t *queue = queue_init(QUEUE_SIZE);
-    int *ptr = NULL;
-    for (i=0; i < QUEUE_SIZE - 1; i++){
-        ptr = malloc(sizeof(int));
-        *ptr = i;
-        queue_push(queue, ptr);
-    }
-    // Pop items from full queue
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
-        ptr = queue_pop(queue);
-        assert_int_equal(*ptr, i);
-        os_free(ptr);
-    }
-    // Should be empty now
-    ptr = queue_pop(queue);
-    assert_ptr_equal(ptr, NULL);
-    os_free(ptr);
+    (&keys)->keysize = 1;
+    os_calloc(1, sizeof(keyentry*), (&keys)->keyentries);
+    os_calloc(1, sizeof(keyentry), (&keys)->keyentries[(&keys)->keysize - 1]);
+
+    config.worker_node  = 0;
+    field->valueint     = 0;
+    id->valuestring     = strdup("001");
+    name->valuestring   = strdup("test");
+    ip->valuestring     = strdup("127.0.0.1");
+    key->valuestring    = strdup("key");
+
+    config.key_request.exec_path = "python3 /tmp/test.py";
+
+    will_return(__wrap_external_socket_connect, 4);
+    will_return(__wrap_send, 0);
+    will_return(__wrap_recv, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Socket connect fail. Trying to run exec_path.");
+
+    expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 001");
+    expect_value(__wrap_wm_exec, secs, 1);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, "Output command");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
+    will_return(__wrap_cJSON_GetObjectItem, field);
+    will_return(__wrap_cJSON_GetObjectItem, data);
+    will_return(__wrap_cJSON_GetObjectItem, id);
+    will_return(__wrap_cJSON_GetObjectItem, name);
+    will_return(__wrap_cJSON_GetObjectItem, ip);
+    will_return(__wrap_cJSON_GetObjectItem, key);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_w_auth_validate_data, agentname, name->valuestring);
+    expect_value(__wrap_w_auth_validate_data, ip, ip->valuestring);
+    expect_value(__wrap_w_auth_validate_data, hash_key, key->valuestring);
+    will_return(__wrap_w_auth_validate_data, OS_SUCCESS);
+
+    expect_value(__wrap_OS_AddNewAgent, id, id->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, name, name->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, ip, ip->valuestring);
+    expect_value(__wrap_OS_AddNewAgent, key, key->valuestring);
+    will_return(__wrap_OS_AddNewAgent, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to add agent: test (internal error)");
+    
+    expect_function_call(__wrap_cJSON_Delete);
+    expect_value(__wrap_OSHash_Delete_ex, self, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, buffer);
+    will_return(__wrap_OSHash_Delete_ex, 0);
+
+    int ret = w_key_request_dispatch(buffer); 
+    assert_int_equal(ret, -1);
+
+    __real_cJSON_Delete(field);
+    __real_cJSON_Delete(data);
+    __real_cJSON_Delete(id);
+    __real_cJSON_Delete(name);
+    __real_cJSON_Delete(ip);
+    __real_cJSON_Delete(key);
+    
+    os_free((&keys)->keyentries[(&keys)->keysize - 1]);
+    os_free((&keys)->keyentries);
+    (&keys)->keysize = 0;
+
+    config.worker_node = 0;
+    config.key_request.socket = 0;
 }
 
 // Test keyrequest_exec_output()
@@ -845,6 +928,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_success_add_agent, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_exec_output_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_success_exec_output, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_error_socket_success_exec_output, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_too_long_request, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_result_code_no_zero, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_timeout_error, test_setup, test_teardown),
