@@ -126,7 +126,6 @@ void test_close_fp_main_first_node_no_close_first(void **state)
 
     // Queue with one element
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
-    keys.opened_fp_queue->first = node1; // ??
 
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
