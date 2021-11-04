@@ -50,6 +50,12 @@
     <match>UKC> quit</match>
     <description>UKC was used, possibly modifying a kernel at boot time.</description>
     <group>pci_dss_10.2.7,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1398</id>
+    </mitre>
+    <mitre>
+      <id>T1398</id>
+    </mitre>
   </rule>
 
   <rule id="51507" level="1">
@@ -210,10 +216,10 @@
     <decoded_as>open-userdel</decoded_as>
     <match>user removed: name=</match>
     <description>User account deleted.</description>
+    <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1531</id>
     </mitre>
-    <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.2,nist_800_53_IA.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="51532" level="0">

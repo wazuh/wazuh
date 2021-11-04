@@ -65,10 +65,10 @@
     <if_sid>64005</if_sid>
     <id>^6-605005</id>
     <description>ASA: Successful login.</description>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="64010" level="9">
@@ -83,10 +83,10 @@
     <if_sid>64004</if_sid>
     <id>^4-405001</id>
     <description>ASA: ARP collision detected.</description>
+    <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="64012" level="8">
@@ -94,6 +94,9 @@
     <id>^4-401004</id>
     <description>ASA: Attempt to connect from a blocked (shunned) IP.</description>
     <group>access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
   </rule>
 
   <rule id="64013" level="8">
@@ -101,6 +104,9 @@
     <id>^7-710004</id>
     <description>ASA: Connection limit exceeded.</description>
     <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
   </rule>
 
   <rule id="64014" level="8">
@@ -144,20 +150,20 @@
     <if_sid>64005</if_sid>
     <id>^6-113004</id>
     <description>ASA: AAA (VPN) authentication successful.</description>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="64020" level="8">
     <if_sid>64005</if_sid>
     <id>^6-113006</id>
     <description>ASA: AAA (VPN) user locked out.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1133</id>
     </mitre>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="64021" level="8">
@@ -180,16 +186,19 @@
     <id>^5-111003</id>
     <description>ASA: Firewall configuration deleted.</description>
     <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
   </rule>
 
   <rule id="64024" level="8">
     <if_sid>64005</if_sid>
     <id>^5-111005|^5-111004|^5-111002|^5-111007</id>
     <description>ASA: Firewall configuration changed.</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
   </rule>
 
   <rule id="64025" level="3">
@@ -208,10 +217,10 @@
     <if_sid>64005</if_sid>
     <id>^5-502101|^5-502102</id>
     <description>ASA: User created or modified on the Firewall.</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
   </rule>
 
   <rule id="64028" level="10" frequency="8" timeframe="360">
@@ -248,12 +257,14 @@
   <rule id="64033" level="10" frequency="10" timeframe="240">
     <if_matched_sid>64018</if_matched_sid>
     <description>ASA: Multiple AAA (VPN) authentication failures.</description>
-    <mitre>
-      <id>T1110</id>
-      <id>T1133</id>
-    </mitre>
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <same_source_ip />
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
   </rule>
 </group>
 

@@ -21,10 +21,10 @@
         <if_sid>81800</if_sid>
         <match>Peer Connection Initiated with</match>
         <description>OpenVPN: User logged in</description>
-        <mitre>
-            <id>T1078</id>
-        </mitre>
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     </rule>
 
     <rule id="81802" level="3" frequency="3" timeframe="60">
@@ -42,19 +42,19 @@
         <if_sid>81800</if_sid>
         <match>TLS Error|TLS Auth Error</match>
         <description>OpenVPN: Connection Certificate Failed</description>
-        <mitre>
-            <id>T1133</id>
-        </mitre>
         <group>openvpn-error,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
     </rule>
 
     <rule id="81804" level="4" frequency="3" timeframe="60">
         <if_matched_sid>81803</if_matched_sid>
         <description>OpenVPN: Certificate failed - Possible revoked user</description>
-        <mitre>
-            <id>T1133</id>
-        </mitre>
         <group>openvpn-error,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
     </rule>
 
 <!--

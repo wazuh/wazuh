@@ -7,7 +7,6 @@
 
 <group name="sysmon_eid13_detections,">
 
-    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\system32\\\\msi.exe","targetObject":"HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run\\\\Java-Update","processGuid":"{4dc16835-4977-60ef-dac9-5b0000000000}","processId":"4692","utcTime":"2021-07-14 20:30:47.841","ruleName":"technique_id=T1547.001,technique_name=Registry Run Keys / Start Folder","details":"C:\\\\Users\\\\Public\\\\Java-Update","eventType":"SetValue"},"system":{"eventID":"13","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Registry value set:\r\nRuleName: technique_id=T1547.001,technique_name=Registry Run Keys / Start Folder\r\nEventType: SetValue\r\nUtcTime: 2021-07-14 20:30:47.841\r\nProcessGuid: {4dc16835-4977-60ef-dac9-5b0000000000}\r\nProcessId: 4692\r\nImage: C:\\Windows\\system32\\reg.exe\r\nTargetObject: HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\Java-Update\r\nDetails: C:\\Users\\Public\\\"","version":"2","systemTime":"2021-07-14T20:30:47.8486552Z","eventRecordID":"28692","threadID":"1272","computer":"cfo.ExchangeTest.com","task":"13","processID":"5364","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
     <rule id="92300" level="0">
         <if_group>sysmon_event_13</if_group>
         <field name="win.eventdata.targetObject" type="pcre2">(?i)SOFTWARE\\\\(WOW6432NODE\\\\M|M)ICROSOFT\\\\WINDOW(S|S NT)\\\\CURRENTVERSION\\\\(RUN|TERMINAL SERVER\\\\INSTALL\\\\SOFTWARE\\\\MICROSOFT\\\\WINDOWS\\\\CURRENTVERSION\\\\RUN)</field>
@@ -36,4 +35,34 @@
             <id>T1547.001</id>
         </mitre>
     </rule>
+
+    <rule id="92303" level="12">
+        <if_sid>92300</if_sid>
+        <field name="win.eventdata.details" type="pcre2">(?i)(VNC|tvnserver\.exe)</field>
+        <description>Registry entry to be executed on next logon points to a remote access tool</description>
+        <mitre>
+            <id>T1547.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92310" level="6">
+        <if_group>sysmon_event_13</if_group>
+        <field name="win.eventdata.targetObject" type="pcre2">(?i)CLASSES\\\\(FOLDER|MS-SETTINGS)\\\\SHELL\\\\OPEN\\\\COMMAND</field>
+        <description>Modified registry key associated to UAC bypass by auto-elevated processes</description>
+        <mitre>
+            <id>T1548.002</id>
+            <id>T1112</id>
+        </mitre>
+    </rule>
+
+    <rule id="92311" level="12">
+        <if_sid>92310</if_sid>
+        <field name="win.eventdata.details" type="pcre2">(?i)(cmd|powershell)\.exe</field>
+        <description>Command interpreter added to registry key associated to UAC bypass by auto-elevated processes</description>
+        <mitre>
+            <id>T1548.002</id>
+            <id>T1112</id>
+        </mitre>
+    </rule>
+
 </group>

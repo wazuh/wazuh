@@ -7,8 +7,6 @@
 
 <!-- Group of parent rules for the Windows eventchannel -->
 
-<var name="MS_FREQ">8</var>
-<var name="CRITICAL_FREQ">4</var>
 
 <group name="windows,">
 
@@ -132,19 +130,19 @@
 
   <!-- Rules about multiple events -->
 
-  <rule id="60013" level="8" frequency="$MS_FREQ" timeframe="120">
+  <rule id="60013" level="8" frequency="8" timeframe="120">
     <if_matched_sid>60010</if_matched_sid>
     <description>Multiple Windows warning events</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="60014" level="10" frequency="$MS_FREQ" timeframe="240">
+  <rule id="60014" level="10" frequency="8" timeframe="240">
     <if_matched_sid>60011</if_matched_sid>
     <description>Multiple Windows error events</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="60015" level="12" frequency="$CRITICAL_FREQ" timeframe="240">
+  <rule id="60015" level="12" frequency="4" timeframe="240">
     <if_matched_sid>60012</if_matched_sid>
     <description>Multiple Windows critical events</description>
     <options>no_full_log</options>

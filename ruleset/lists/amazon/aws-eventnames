@@ -22,6 +22,7 @@ RunInstances:EC2
 StartInstances:EC2
 StopInstances:EC2
 TerminateInstances:EC2
+DeleteFlowLogs:EC2
 AbortEnvironmentUpdate:Elastic Beanstalk
 CreateApplication:Elastic Beanstalk
 CreateApplicationVersion:Elastic Beanstalk
@@ -345,3 +346,5 @@ RebootInstances:Legacy Wazuh CDB
 RegisterImage:Legacy Wazuh CDB
 UnmonitorInstances:Legacy Wazuh CDB
 UpdateInstanceAlias:Legacy Wazuh CDB
+DeleteDetector:AWS GuardDuty
+GetSecretValue:AWS Secrets Manager

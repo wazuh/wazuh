@@ -44,10 +44,10 @@
     <if_sid>11200</if_sid>
     <match>Login successful</match>
     <description>proftpd: FTP Authentication success.</description>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11206" level="5">
@@ -61,10 +61,10 @@
     <if_sid>11200</if_sid>
     <match>refused connect from</match>
     <description>proftpd: Connection refused by TCP Wrappers.</description>
+    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11208" level="4">
@@ -81,20 +81,20 @@
     <description> keep state of FTP traffic.</description>
     <info type="link">http://www.kb.cert.org/vuls/id/328867</info>
     <info type="text">US-Cert Note VU#328867: Multiple vendors' firewalls do not adequately keep state of FTP traffic</info>
-    <mitre>
-      <id>T1071</id>
-    </mitre>
     <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <id>T1571</id>
+    </mitre>
   </rule>
 
   <rule id="11210" level="10">
     <if_sid>11200</if_sid>
     <match>Maximum login attempts </match>
     <description>proftpd: Multiple failed login attempts.</description>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11211" level="4">
@@ -147,20 +147,20 @@
     <if_sid>11200</if_sid>
     <match>ProFTPD terminating (signal 11)</match>
     <description>proftpd: FTP process crashed.</description>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1210</id>
     </mitre>
-    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11219" level="12">
     <if_sid>11200</if_sid>
     <match>Reallocating sreaddir buffer</match>
     <description>proftpd: FTP server Buffer overflow attempt.</description>
+    <group>pci_dss_6.5.2,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>pci_dss_6.5.2,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11220" level="4">
@@ -188,30 +188,30 @@
     <if_matched_sid>11204</if_matched_sid>
     <same_source_ip />
     <description>proftpd: FTP brute force (multiple failed logins).</description>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11252" level="10" frequency="12" timeframe="60">
     <if_matched_sid>11201</if_matched_sid>
     <same_source_ip />
     <description>proftpd: Multiple connection attempts from same source.</description>
+    <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="11253" level="10" frequency="12" timeframe="120">
     <if_matched_sid>11215</if_matched_sid>
     <same_source_ip />
     <description>proftpd: Multiple timed out logins from same source.</description>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>

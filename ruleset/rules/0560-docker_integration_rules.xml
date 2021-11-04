@@ -30,11 +30,11 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^destroy$</field>
         <description>Docker: Container $(docker.Actor.Attributes.name) destroyed</description>
-        <mitre>
-            <id>T1488</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1561.001</id>
+    </mitre>
     </rule>
 
     <rule id="87903" level="3">
@@ -79,6 +79,9 @@ ID: 87900 - 87999
         <description>Docker: Started shell session in container $(docker.Actor.Attributes.name)</description>
         <group>pci_dss_10.2.7,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
     </rule>
 
     <rule id="87909" level="3">
@@ -123,12 +126,14 @@ ID: 87900 - 87999
         <if_sid>87912</if_sid>
         <field name="docker.Action">^destroy$</field>
         <description>Docker: Volume destroyed in $(docker.Actor.Attributes.driver)</description>
-        <mitre>
-            <id>T1107</id>
-            <id>T1488</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <mitre>
+      <id>T1561.001</id>
+    </mitre>
     </rule>
 
     <rule id="87915" level="3">
@@ -181,12 +186,14 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^delete$</field>
         <description>Docker: Container $(docker.Actor.Attributes.name) deleted</description>
-        <mitre>
-            <id>T1107</id>
-            <id>T1488</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <mitre>
+      <id>T1561.001</id>
+    </mitre>
     </rule>
 
     <rule id="87922" level="3">
@@ -202,6 +209,9 @@ ID: 87900 - 87999
         <description>Docker: Filesystem of container $(docker.Actor.Attributes.name) exported</description>
         <group>pci_dss_10.2.7,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1083</id>
+    </mitre>
     </rule>
 
     <rule id="87924" level="7">
@@ -225,6 +235,9 @@ ID: 87900 - 87999
         <field name="docker.status">^top$</field>
         <description>Docker: Running processes of container $(docker.Actor.Attributes.name) displayed</description>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1057</id>
+    </mitre>
     </rule>
 
     <rule id="87927" level="0">
@@ -260,12 +273,14 @@ ID: 87900 - 87999
         <if_sid>87927</if_sid>
         <field name="docker.Action">^destroy$</field>
         <description>Docker: Network $(docker.Actor.Attributes.name) deleted</description>
-        <mitre>
-            <id>T1107</id>
-            <id>T1485</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
     </rule>
 
     <rule id="87932" level="3">
@@ -319,6 +334,9 @@ ID: 87900 - 87999
         <description>Docker: $(docker.Actor.Attributes.name) config deleted</description>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
     </rule>
 
     <rule id="87939" level="0">
@@ -340,12 +358,14 @@ ID: 87900 - 87999
         <if_sid>87939</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: Secret '$(docker.Actor.Attributes.name)' removed</description>
-        <mitre>
-            <id>T1107</id>
-            <id>T1485</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
     </rule>
 
     <rule id="87942" level="0">
@@ -381,12 +401,14 @@ ID: 87900 - 87999
         <if_sid>87942</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: Plugin $(docker.Actor.Attributes.name) removed</description>
-        <mitre>
-            <id>T1107</id>
-            <id>T1485</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
     </rule>
 
     <rule id="87947" level="3">
@@ -471,12 +493,14 @@ ID: 87900 - 87999
         <if_sid>87954</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: Service $(docker.Actor.Attributes.name) deleted</description>
-        <mitre>
-            <id>T1107</id>
-            <id>T1485</id>
-        </mitre>
         <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.14,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
     </rule>
 
     <rule id="87958" level="3">
