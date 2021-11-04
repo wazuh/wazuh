@@ -194,7 +194,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
         if (!_AddtoRule(0, 0, 0, NULL, *r_node, read_rule)) {
             // TODO: It should never reach this point as the CATEGORY is checked in rules.c (look for "xml_category" )
             // TODO: Why is it asumed that if _AddtoRule fails is it because the category?
-            smwarn(log_msg, ANALYSISD_CATEGORY_NOT_FOUND, read_rule->category, read_rule->sigid);
+            smwarn(log_msg, ANALYSISD_CATEGORY_NOT_FOUND, read_rule->sigid);
             return -1;
         }
     }

@@ -84,13 +84,13 @@
 
 
 /* Ruleset reading warnings */
-#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
+#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d."
 #define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
-                                                        "(decoder `%s`). Default value will be used"
+                                                        "(decoder `%s`). Default value will be used."
 #define ANALYSISD_INV_OPT_VALUE_DEFAULT         "(7602): Invalid value '%s' in '%s' option " \
-                                                        "(decoder `%s`). Default value will be used"
+                                                        "(decoder `%s`). Default value will be used."
 #define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
-                                                        "(decoder `%s`). Default value will be used"
+                                                        "(decoder `%s`). Default value will be used."
 #define ANALYSISD_IGNORE_RULE                   "(7604): Rule '%d' will be ignored."
 #define ANALYSISD_INV_OVERWRITE                 "(7605): Invalid use of overwrite option. " \
                                                         "Could not overwrite parent rule at rule '%d'."
@@ -105,6 +105,10 @@
                                                         "Rule '%d' will be ignored."
 #define ANALYSISD_CATEGORY_NOT_FOUND            "(7611): Category was not found. Invalid 'category'. " \
                                                         "Rule '%d' will be ignored."
+#define ANALYSISD_DUPLICATED_SIG_ID             "(7612): Rule ID '%d' is duplicated. Only the first occurrence will be "\
+                                                        "considered."
+#define ANALYSISD_OVERWRITE_MISSING_RULE        "(7613): Rule ID '%d' does not exist but 'overwrite' is set to 'yes'. "\
+                                                        "Still, the rule will be loaded."
 
 
 /* Logcollector */

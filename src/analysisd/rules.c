@@ -370,13 +370,22 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 if ((id == -1) || (level == -1)) {
+                    // TODO: Skip rule?
                     smerror(log_msg, "No rule id or level specified for rule '%d'.", j);
                     goto cleanup;
                 }
 
-                if (overwrite != 1 && doesRuleExist(id, *r_node)) {
-                    smerror(log_msg, "Duplicate rule ID:%d", id);
-                    goto cleanup;
+                if (doesRuleExist(id, *r_node)) {
+                    // If rule exists but 'overwrite' was not set to 'yes', then the rule is skipped.
+                    if (overwrite != 1) {
+                        smwarn(log_msg, ANALYSISD_DUPLICATED_SIG_ID, id);
+                        j++;
+                        continue;
+                    }
+                } else if (overwrite == 1) {
+                    // As the rule does not exists, it will be handled as if the 'overwrite' parameter were set to 'no'
+                    smwarn(log_msg, ANALYSISD_OVERWRITE_MISSING_RULE, id);
+                    overwrite = 0;
                 }
 
                 /* Allocate memory and initialize structure */
@@ -945,13 +954,15 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_level) == 0) {
                         if (!OS_StrIsNum(rule_tmp_params.rule_arr_opt[k]->content)) {
+                            // TODO: Skip rule?
                             smerror(log_msg, INVALID_CONFIG, "if_level", rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
 
                         config_ruleinfo->if_level =
                             loadmemory(config_ruleinfo->if_level,
-                                       rule_tmp_params.rule_arr_opt[k]->content, log_msg);
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       log_msg);
 
                     } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_if_group) == 0) {
                         config_ruleinfo->if_group =
@@ -1592,6 +1603,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                 /* Check for a valid description */
                 if (!config_ruleinfo->comment) {
+                    // TODO: Skip rule?
                     smerror(log_msg, "No such description at rule '%d'.", config_ruleinfo->sigid);
                     goto cleanup;
                 }
@@ -1599,6 +1611,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 /* Check for valid overwrite */
                 if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
                     && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                    // TODO: Skip rule?
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, config_ruleinfo->sigid);
                     goto cleanup;
                 }
@@ -1607,6 +1620,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 if ((config_ruleinfo->context_opts || config_ruleinfo->same_field
                     || config_ruleinfo->different_field || config_ruleinfo->frequency)
                     && !config_ruleinfo->context) {
+                    // TODO: Skip rule?
                     smerror(log_msg, "Invalid use of frequency/context options. "
                            "Missing if_matched on rule '%d'.", config_ruleinfo->sigid);
                     goto cleanup;
@@ -1904,12 +1918,15 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 OS_AddRule(config_ruleinfo, r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
                 if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid)) {
+                    /* TODO: It should never reach this point, but if it happens,
+                            should the rule be skiped? Add it anyway as on the
+                            following else? */
                     smerror(log_msg, "Overwrite rule '%d' not found.", config_ruleinfo->sigid);
                     goto cleanup;
                 }
             } else {
                 if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
-                    // Skip rule's logic, without having to abort analysisd execution
+                    // Skip rule, without having to abort analysisd execution
                     os_remove_ruleinfo(config_ruleinfo);
                     config_ruleinfo = NULL;
                     continue;
