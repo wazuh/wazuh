@@ -35,40 +35,6 @@ int fim_db_remove_registry_value_data(fim_registry_value_data* entry)
 }
 
 // Registry functions
-int fim_db_set_all_registry_data_unscanned()
-{
-    int retval;
-    /* TODO: Add c++ code to set all registry data like unscanned
-    */
-
-    return retval;
-}
-
-int fim_db_set_all_registry_key_unscanned()
-{
-    int retval;
-    /* TODO: Add c++ code to set all registry key like unscanned
-    */
-
-    return retval;
-}
-
-int fim_db_set_registry_key_scanned(const char* path, unsigned int arch)
-{
-     /* TODO: Add c++ code to set like scanned in registry key from path and arch
-    */
-
-    return FIMDB_OK;
-}
-
-int fim_db_set_registry_data_scanned(const char* name, unsigned int key_id)
-{
-    /* TODO: Add c++ code to set like scanned in registry data from name and key_id
-    */
-
-    return FIMDB_OK;
-}
-
 int fim_db_get_registry_key_rowid(const char* path, unsigned int arch, unsigned int* rowid)
 {
     /* TODO: Add c++ code to get a registry key from path, arch and rowid
