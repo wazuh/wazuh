@@ -59,7 +59,11 @@ SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SYSINFO=data_provider/
 FIMDB=syscheckd/db/
+ifeq (${TARGET},winagent)
+FIMDB_LIB=${FIMDB}build/lib/libfimdb.a
+else
 FIMDB_LIB=${FIMDB}build/lib/libfimdb.so
+endif
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
