@@ -1462,7 +1462,7 @@ void test_syscollector_dbsync_valid_msg_query_error(void **state)
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
 
-    expect_string(__wrap__merror, formatted_msg, A_QUERY_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, A_QUERY_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, UNABLE_TO_SEND_INFORMATION_TO_WDB);
 
     int ret = DecodeSyscollector(lf, &sock);

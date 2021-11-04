@@ -2073,7 +2073,7 @@ int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) 
                     if (msg->status) {
                         ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
                         if (ret_val != 0 || strncmp(response, "err", 3) == 0) {
-                            merror(A_QUERY_ERROR);
+                            mdebug1(A_QUERY_ERROR);
                         } else {
                             if (strcmp(operation, "INSERTED") == 0) {
                                 fill_event_alert(lf, field_list, operation, msg->data);
