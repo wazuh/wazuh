@@ -94,7 +94,17 @@
 #define ANALYSISD_IGNORE_RULE                   "(7604): Rule '%d' will be ignored."
 #define ANALYSISD_INV_OVERWRITE                 "(7605): Invalid use of overwrite option. " \
                                                         "Could not overwrite parent rule at rule '%d'."
-
+#define ANALYSISD_SIG_ID_NOT_FOUND              "(7606): Signature ID '%d' was not found. Invalid '%s'. " \
+                                                        "Rule '%d' will be ignored."
+#define ANALYSISD_INV_SIG_ID                    "(7607): Invalid '%s'. Signature ID must be an integer. " \
+                                                        "Rule '%d' will be ignored."
+#define ANALYSISD_LEVEL_NOT_FOUND               "(7608): Level ID '%d' was not found. Invalid 'if_level'. " \
+                                                        "Rule '%d' will be ignored."
+#define ANALYSISD_INV_LEVEL                     "(7609): Invalid 'if_level' value: '%s'. Rule '%d' will be ignored."
+#define ANALYSISD_GROUP_NOT_FOUND               "(7610): Group '%s' was not found. Invalid 'if_group'. " \
+                                                        "Rule '%d' will be ignored."
+#define ANALYSISD_CATEGORY_NOT_FOUND            "(7611): Category was not found. Invalid 'category'. " \
+                                                        "Rule '%d' will be ignored."
 
 
 /* Logcollector */
