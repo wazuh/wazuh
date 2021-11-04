@@ -33,7 +33,7 @@ enum class dbResult
     DB_ERROR
 };
 
-class FIMDB final
+class FIMDB
 {
     public:
         static FIMDB& getInstance()
@@ -58,13 +58,17 @@ class FIMDB final
               unsigned int max_rows_file,
               unsigned int max_rows_registry,
               send_data_callback_t callbackSync,
-              logging_callback_t callbackLog);
+              logging_callback_t callbackLog
+              std::unique_ptr<DBSync> dbsyncHandler,
+              std::unique_ptr<RemoteSync> rsyncHandler);
 #else
     void init(const std::string& dbPath,
               unsigned int interval_synchronization,
               unsigned int max_rows_file,
               send_data_callback_t callbackSync,
-              logging_callback_t callbackLog);
+              logging_callback_t callbackLog,
+              std::unique_ptr<DBSync> dbsyncHandler,
+              std::unique_ptr<RemoteSync> rsyncHandler);
 #endif
 /**
  * @brief Insert a given item into the database
@@ -101,6 +105,19 @@ class FIMDB final
  */
     int executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
+/**
+* @brief Create the loop with the configured interval to do the periodical synchronization
+*/
+    void loopRSync(std::unique_lock<std::mutex>& lock);
+
+/**
+ * @brief Its the function in charge of starting the flow of synchronization
+ */
+    void registerRSync();
+
+    inline void stopSync(){m_stopping = true;};
+
+
 private:
 
     unsigned int                                                            m_max_rows_file;
@@ -114,6 +131,11 @@ private:
     std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
 
     std::string createStatement();
+
+    /**
+    * @brief Function that executes the synchronization of the databases with the manager
+    */
+    void sync();
 
 protected:
     FIMDB() = default;
@@ -134,21 +156,6 @@ protected:
  * @brief Set the entry limits for the table registry_data
  */
     void setValueLimit();
-
-/**
- * @brief Its the function in charge of starting the flow of synchronization
- */
-    void registerRsync();
-
-/**
- * @brief Function that executes the synchronization of the databases with the manager
- */
-    void sync();
-
-/**
- * @brief Create the loop with the configured interval to do the periodical synchronization
- */
-    void loopRsync(std::unique_lock<std::mutex>& lock);
 
     std::mutex                                                              m_mutex;
 };

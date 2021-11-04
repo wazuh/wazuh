@@ -57,8 +57,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ws2_32
         ssl
         crypt32
-        libwazuh.a
-        wazuhext
         -static-libgcc -static-libstdc++
     )
 else()
@@ -76,8 +74,6 @@ else()
         cjson
         crypto
         dl
-        libwazuh.a
-        wazuhext
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

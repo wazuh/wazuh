@@ -2,7 +2,6 @@
 #define _FIMDB_CPP_UNIT_TEST
 
 #include "fimDBImpTests.hpp"
-#include "../../../../shared_modules/dbsync/src/sqlite/sqlite_dbengine.h"
 #include <thread>
 
 constexpr auto MOCK_DB_PATH {"temp_fimdb_ut.db"};
@@ -83,12 +82,12 @@ TEST_F(FimDBFixture, setFileLimitSuccess) {
 
 TEST_F(FimDBFixture, setFileLimitNoTableData) {
     EXPECT_CALL(*mockDBSync, setTableMaxRow("file_entry", mockMaxRowsFile)).
-    WillOnce(testing::Throw(dbengine_error { EMPTY_TABLE_METADATA }));
+    WillOnce(testing::Throw(DbSync::dbsync_error(6, "dbEngine: Empty table metadata."))); // EMPTY_TABLE_METADATA
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "dbEngine: Empty table metadata."));
     try{
         fimDBMock.setFileLimit();
-    }catch(dbengine_error& exception){
-        ASSERT_EQ((std::string)(exception.what()), "dbEngine: Empty table metadata.");
+    }catch(DbSync::dbsync_error& err){
+        ASSERT_EQ((std::string)(err.what()), "dbEngine: Empty table metadata.");
     }
 }
 
@@ -101,12 +100,12 @@ TEST_F(FimDBFixture, setValueLimitSuccess) {
 
 TEST_F(FimDBFixture, setValueLimitNoTableData) {
     EXPECT_CALL(*mockDBSync, setTableMaxRow("registry_data", mockMaxRowsReg)).Times(1).
-    WillOnce(testing::Throw(dbengine_error { EMPTY_TABLE_METADATA }));
+    WillOnce(testing::Throw(DbSync::dbsync_error(6, "dbEngine: Empty table metadata.")));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "dbEngine: Empty table metadata."));
     try{
         fimDBMock.setValueLimit();
-    }catch(dbengine_error& exception){
-        ASSERT_EQ((std::string)(exception.what()), "dbEngine: Empty table metadata.");
+    }catch(DbSync::dbsync_error& err){
+        ASSERT_EQ((std::string)(err.what()), "dbEngine: Empty table metadata.");
     }
 }
 
@@ -118,12 +117,12 @@ TEST_F(FimDBFixture, setRegistryLimitSuccess) {
 TEST_F(FimDBFixture, setRegistryLimitNoTableData) {
 
     EXPECT_CALL(*mockDBSync, setTableMaxRow("registry_key", mockMaxRowsReg)).
-    WillOnce(testing::Throw(dbengine_error { EMPTY_TABLE_METADATA }));
+    WillOnce(testing::Throw(DbSync::dbsync_error(6, "dbEngine: Empty table metadata.")));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "dbEngine: Empty table metadata."));
     try{
         fimDBMock.setRegistryLimit();
-    }catch(dbengine_error& exception){
-        ASSERT_EQ((std::string)(exception.what()), "dbEngine: Empty table metadata.");
+    }catch(DbSync::dbsync_error& err){
+        ASSERT_EQ((std::string)(err.what()), "dbEngine: Empty table metadata.");
     }
 }
 
