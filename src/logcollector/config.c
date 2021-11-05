@@ -35,6 +35,7 @@ int LogCollectorConfig(const char *cfgfile)
     log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
+    log_config.macos_blocks_count = 0;
     accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
     log_config.accept_remote = accept_remote;
 
@@ -110,22 +111,51 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         cJSON *file = cJSON_CreateObject();
 
         if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
+        if (list[i].channel_str != NULL) cJSON_AddStringToObject(file, "channel", list[i].channel_str);
         if (list[i].logformat) cJSON_AddStringToObject(file,"logformat",list[i].logformat);
         if (list[i].command) cJSON_AddStringToObject(file,"command",list[i].command);
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
-        if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
+        if (list[i].query != NULL) {
+            cJSON * query = cJSON_CreateObject();
+            if (*list[i].query != '\0') {
+                cJSON_AddStringToObject(query, "value", list[i].query);
+            }
+            if (list[i].query_level != NULL) {
+                cJSON_AddStringToObject(query, "level", list[i].query_level);
+            }
+            if (list[i].query_type > 0) {
+                cJSON *type = cJSON_CreateArray();
+                if (list[i].query_type & MACOS_LOG_TYPE_LOG) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_LOG_STR));
+                }
+                if (list[i].query_type & MACOS_LOG_TYPE_ACTIVITY) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_ACTIVITY_STR));
+                }
+                if (list[i].query_type & MACOS_LOG_TYPE_TRACE) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_TRACE_STR));
+                }
+                cJSON_AddItemToObject(query, "type", type);
+            }
+            cJSON_AddItemToObject(file, "query", query);
+        }
         cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
 
-        if (list[i].future == 1){
-            cJSON_AddStringToObject(file, "only-future-events", "yes");
-        } else {
-            char offset[OFFSET_SIZE] = {0};
-            sprintf(offset, "%ld", list[i].diff_max_size);
-            cJSON_AddStringToObject(file, "only-future-events", "no");
-            cJSON_AddStringToObject(file, "max-size", offset);
+        if (list[i].logformat != NULL &&
+            strcmp(list[i].logformat, EVENTLOG) != 0 &&
+            strcmp(list[i].logformat, "command") != 0 &&
+            strcmp(list[i].logformat, "full_command") != 0) {
+
+            if (list[i].future == 1){
+                cJSON_AddStringToObject(file, "only-future-events", "yes");
+            } else {
+                char offset[OFFSET_SIZE] = {0};
+                sprintf(offset, "%ld", list[i].diff_max_size);
+                cJSON_AddStringToObject(file, "only-future-events", "no");
+                cJSON_AddStringToObject(file, "max-size", offset);
+            }
         }
 
         if (list[i].target && *list[i].target) {
@@ -157,7 +187,6 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddItemToObject(file,"labels",label);
         }
         if (list[i].ign && list[i].logformat != NULL && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
-        if (list[i].future && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
         if (list[i].reconnect_time && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
         if (list[i].multiline) {
             cJSON * multiline = cJSON_CreateObject();

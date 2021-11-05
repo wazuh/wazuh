@@ -88,7 +88,7 @@ void __wrap_cJSON_Delete(__attribute__ ((__unused__)) cJSON *item) {
     return;
 }
 
-cJSON * __wrap_cJSON_GetObjectItem(__attribute__ ((__unused__)) const cJSON * const object,
+cJSON * WSTD_CALL __wrap_cJSON_GetObjectItem(__attribute__ ((__unused__)) const cJSON * const object,
                                    __attribute__ ((__unused__)) const char * const string) {
     return mock_type(cJSON *);
 }
@@ -97,7 +97,7 @@ void expect_cJSON_GetObjectItem_call(cJSON *object) {
     will_return(__wrap_cJSON_GetObjectItem, object);
 }
 
-char* __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON * item) {
+char* WSTD_CALL __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(char*);
 }
 

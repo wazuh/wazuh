@@ -13,7 +13,6 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include "external/libpcre2/include/pcre2.h"
-#include "shared.h"
 #include "os_regex/os_regex.h"
 #include "validate_op.h"
 

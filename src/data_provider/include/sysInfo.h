@@ -15,6 +15,9 @@
 
 // Define EXPORTED for any platform
 #include "commonDefs.h"
+#ifdef WAZUH_UNIT_TESTING
+#define EXPORTED
+#else
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -26,6 +29,8 @@
 #else
 #define EXPORTED
 #endif
+#endif
+
 
 #include "cJSON.h"
 #ifdef __cplusplus
@@ -122,6 +127,8 @@ EXPORTED int sysinfo_hotfixes(cJSON** js_result);
 
 
 typedef int(*sysinfo_networks_func)(cJSON** jsresult);
+typedef int(*sysinfo_os_func)(cJSON** jsresult);
+typedef int(*sysinfo_processes_func)(cJSON** jsresult);
 typedef void(*sysinfo_free_result_func)(cJSON** jsresult);
 
 #ifdef __cplusplus

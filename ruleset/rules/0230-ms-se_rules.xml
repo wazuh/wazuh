@@ -44,6 +44,9 @@
     <id>^1118$|^1119$</id>
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>Microsoft Security Essentials - Virus detected, but unable to remove.</description>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
   </rule>
 
   <rule id="7706" level="7">
@@ -51,6 +54,9 @@
     <id>^1107$</id>
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>Microsoft Security Essentials - Virus detected and properly removed.</description>
+    <mitre>
+      <id>T1588.002</id>
+    </mitre>
   </rule>
 
   <rule id="7707" level="7">
@@ -58,6 +64,9 @@
     <id>^1119$|^1118$|^1117$|^1116$</id>
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>Microsoft Security Essentials - Virus detected.</description>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
   </rule>
 
    <rule id="7708" level="7">
@@ -98,6 +107,9 @@
     <if_sid>7704</if_sid>
     <id>^2012$</id>
     <description>Microsoft Security Essentials - Cannot use Dynamic Signature Service.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="7713" level="8">
@@ -105,6 +117,9 @@
     <id>^2004$</id>
     <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Loading definitions failed. Using last good set.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="7714" level="8">
@@ -112,6 +127,9 @@
     <id>^2003$</id>
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Engine update failed.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="7715" level="8">
@@ -119,6 +137,9 @@
     <id>^2001$</id>
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Definitions update failed.</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="7716" level="7">
