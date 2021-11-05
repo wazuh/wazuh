@@ -185,6 +185,31 @@ static std::string getName()
     if (currentVersion.string("ProductName", name))
     {
         name = Utils::startsWith(name, MSFT_PREFIX) ? name : MSFT_PREFIX + " " + name;
+
+        const auto build { getBuild() };
+        std::string errorMessage;
+
+        try
+        {
+            size_t valueSize = 0;
+            const auto value { std::stoi(build, &valueSize) };
+
+            if (build.size() == valueSize)
+            {
+                constexpr int FIRST_BUILD_WINDOWS11{ 22000 };
+
+                if (value >= FIRST_BUILD_WINDOWS11)
+                {
+                    constexpr auto MSFT_VERSION {"Microsoft Windows 10"};
+                    constexpr auto MSFT_VERSION_REPLACED {"Microsoft Windows 11"};
+                    Utils::replaceAll(name, MSFT_VERSION, MSFT_VERSION_REPLACED);
+                }
+            }
+        }
+        catch (...)
+        {
+
+        }
     }
     else if (IsWindowsVistaOrGreater())
     {

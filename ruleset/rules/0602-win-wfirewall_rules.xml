@@ -60,6 +60,9 @@
     <description>Windows Firewall With Advanced Security: Windows Defender Firewall disabled.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <!--  {"win":{"system":{"providerName":"Microsoft-Windows-Windows Firewall With Advanced Security","providerGuid":"{d1bc9aff-2abf-4d71-9146-ecb2a986eb85}","eventID":"2004","version":"0","level":"4","task":"0","opcode":"0","keywords":"0x8000020000000000","systemTime":"2019-11-23T00:25:36.602076300Z","eventRecordID":"3342","processID":"3708","threadID":"6636","channel":"Microsoft-Windows-Windows Firewall With Advanced Security/Firewall","computer":"DESKTOP-COGHUOH","severityValue":"INFORMATION","message":"A rule has been added to the Windows Defender Firewall exception list."},"eventdata":{"ruleId":"{BB4003C6-303B-40D9-B199-EF31729FCB5C}","ruleName":"test","origin":"1","direction":"2","protocol":"256","action":"3","profiles":"2147483647","localAddresses":"*","remoteAddresses":"*","flags":"1","active":"1","edgeTraversal":"0","looseSourceMapped":"0","securityOptions":"0","modifyingUser":"S-1-5-21-1176116133-684496316-159144361-1001","modifyingApplication":"C:WindowsSystem32mmc.exe","schemaVersion":"542","ruleStatus":"65536","localOnlyMapped":"0"}}} -->
@@ -70,6 +73,9 @@
     <description>Windows Firewall With Advanced Security: $(win.eventdata.ruleId) rule has been added to the Windows Defender Firewall exception list.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <!-- {"win":{"system":{"providerName":"Microsoft-Windows-Windows Firewall With Advanced Security","providerGuid":"{d1bc9aff-2abf-4d71-9146-ecb2a986eb85}","eventID":"2005","version":"0","level":"4","task":"0","opcode":"0","keywords":"0x8000020000000000","systemTime":"2019-11-22T21:58:45.526726400Z","eventRecordID":"3336","processID":"3708","threadID":"8552","channel":"Microsoft-Windows-Windows Firewall With Advanced Security/Firewall","computer":"DESKTOP-COGHUOH","severityValue":"INFORMATION","message":"A rule has been modified in the Windows Defender Firewall exception list."},"eventdata":{"ruleId":"{AC4D5FEE-B730-487C-9D02-288E5EEE0AD5}","ruleName":"@{Microsoft.Windows.CloudExperienceHost_10.0.17763.1_neutral_neutral_cw5n1h2txyewy?ms-resource://Microsoft.Windows.CloudExperienceHost/resources/appDescription}","origin":"1","direction":"2","protocol":"256","action":"3","profiles":"2147483647","localAddresses":"*","remoteAddresses":"*","embeddedContext":"@{Microsoft.Windows.CloudExperienceHost_10.0.17763.1_neutral_neutral_cw5n1h2txyewy?ms-resource://Microsoft.Windows.CloudExperienceHost/resources/appDescription}","flags":"0","active":"0","edgeTraversal":"0","looseSourceMapped":"0","securityOptions":"0","modifyingUser":"S-1-5-21-1176116133-684496316-159144361-1001","modifyingApplication":"C:WindowsSystem32mmc.exe","schemaVersion":"541","ruleStatus":"65536","localOnlyMapped":"0"}}} -->
@@ -80,6 +86,9 @@
     <description>Windows Firewall With Advanced Security: $(win.eventdata.ruleId) rule has been modified in the Windows Defender Firewall exception list.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <!-- {"win":{"system":{"providerName":"Microsoft-Windows-Windows Firewall With Advanced Security","providerGuid":"{d1bc9aff-2abf-4d71-9146-ecb2a986eb85}","eventID":"2006","version":"0","level":"4","task":"0","opcode":"0","keywords":"0x8000020000000000","systemTime":"2019-11-23T00:15:06.598777600Z","eventRecordID":"3339","processID":"3708","threadID":"1276","channel":"Microsoft-Windows-Windows Firewall With Advanced Security/Firewall","computer":"DESKTOP-COGHUOH","severityValue":"INFORMATION","message":"A rule has been deleted in the Windows Defender Firewall exception list."},"eventdata":{"ruleId":"{B86E05D6-FC64-45C3-8AA5-1DBE14CAD67A}","ruleName":"test","modifyingUser":"S-1-5-21-1176116133-684496316-159144361-1001","modifyingApplication":"C:WindowsSystem32mmc.exe"}}} -->
@@ -90,6 +99,9 @@
     <description>Windows Firewall With Advanced Security: $(win.eventdata.ruleId) rule has been deleted in the Windows Defender Firewall exception list.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="67009" level="10" frequency="$MS_FREQ" timeframe="120">

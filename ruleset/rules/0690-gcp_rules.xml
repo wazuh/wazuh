@@ -281,6 +281,9 @@ ID: 65000 - 65499
         <field name="gcp.jsonPayload.responseCode">^BADCOOKIE$</field>
         <description>Bad/missing Server Cookie with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1539</id>
+    </mitre>
     </rule>
 
     <!-- Mitre detection rules  -->
