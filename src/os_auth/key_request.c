@@ -17,7 +17,7 @@ static w_queue_t * request_queue;
 
 const char *exec_params[2] = { "id", "ip" };
 
-key_request_agent_info * w_key_request_agent_info_init() {
+key_request_agent_info * key_request_agent_info_init() {
     key_request_agent_info *agent;
     os_malloc(sizeof(key_request_agent_info), agent);
     agent->id = NULL;
@@ -27,7 +27,7 @@ key_request_agent_info * w_key_request_agent_info_init() {
     return agent;
 }
 
-void w_key_request_agent_info_destroy(key_request_agent_info *agent) {
+void key_request_agent_info_destroy(key_request_agent_info *agent) {
     os_free(agent->id);
     os_free(agent->name);
     os_free(agent->key);
@@ -36,7 +36,7 @@ void w_key_request_agent_info_destroy(key_request_agent_info *agent) {
 }
 
 key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **error_msg) {
-    key_request_agent_info *agent = w_key_request_agent_info_init();
+    key_request_agent_info *agent = key_request_agent_info_init();
     int error = 0;
     cJSON *error_message = NULL;
     cJSON *data_json = NULL;
@@ -48,9 +48,8 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     cJSON *json_field;
 
     if (json_field = cJSON_GetObjectItem(agent_infoJSON, "error"), !json_field) {
-        mdebug1("Malformed JSON output received. No 'error' field found");
-        os_free(agent);
-        return NULL;
+        mdebug1("Malformed JSON output received. No 'error' field found.");
+        goto error;
     }
 
     error = json_field->valueint;
@@ -58,26 +57,23 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     if (error) {
         error_message = cJSON_GetObjectItem(agent_infoJSON, "message");
         if (!error_message) {
-            mdebug1("Malformed JSON output received. No 'message' field found");
+            mdebug1("Malformed JSON output received. No 'message' field found.");
         } else {
             *error_msg = error_message->valuestring;
         }
-        os_free(agent);
-        return NULL;
+        goto error;
     }
 
     data_json = cJSON_GetObjectItem(agent_infoJSON, "data");
     if (!data_json) {
         mdebug1("Agent data not found.");
-        os_free(agent);
-        return NULL;
+        goto error;
     }
 
     agent_id = cJSON_GetObjectItem(data_json, "id");
     if (!agent_id) {
         mdebug1("Agent ID not found.");
-        os_free(agent);
-        return NULL;
+        goto error;
     } else {
         agent->id = agent_id->valuestring;
     }
@@ -85,8 +81,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     agent_name = cJSON_GetObjectItem(data_json, "name");
     if (!agent_name) {
         mdebug1("Agent name not found.");
-        os_free(agent);
-        return NULL;
+        goto error;
     } else {
         agent->name = agent_name->valuestring;
     }
@@ -94,8 +89,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     agent_address = cJSON_GetObjectItem(data_json, "ip");
     if (!agent_address) {
         mdebug1("Agent address not found.");
-        os_free(agent);
-        return NULL;
+        goto error;
     } else {
         agent->ip = agent_address->valuestring;
     }
@@ -103,16 +97,19 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
     agent_key = cJSON_GetObjectItem(data_json, "key");
     if (!agent_key) {
         mdebug1("Agent key not found.");
-        os_free(agent);
-        return NULL;
+        goto error;
     } else {
         agent->key = agent_key->valuestring;
     }
 
     return agent;
+
+error:
+    key_request_agent_info_destroy(agent);
+    return NULL;
 }
 
-char * keyrequest_socket_output(request_type_t type, char *request) {
+char * key_request_socket_output(request_type_t type, char *request) {
     int sock;
     int i;
     char msg[OS_SIZE_128] = {0};
@@ -136,7 +133,7 @@ char * keyrequest_socket_output(request_type_t type, char *request) {
         return NULL;
     }
 
-    msg_len = snprintf(msg, OS_SIZE_128,"%s:%s", exec_params[type], request);
+    msg_len = snprintf(msg, OS_SIZE_128, "%s:%s", exec_params[type], request);
 
     if (msg_len > OS_SIZE_128) {
         mdebug1("Request is too long for socket.");
@@ -152,7 +149,7 @@ char * keyrequest_socket_output(request_type_t type, char *request) {
     os_calloc(OS_MAXSTR + 1, sizeof(char), output);
 
     if (length = recv(sock, output, OS_MAXSTR, 0), length < 0) {
-        mdebug1("No data received from external socket");
+        mdebug1("No data received from external socket.");
         os_free(output);
         close(sock);
         return NULL;
@@ -169,7 +166,7 @@ char * keyrequest_socket_output(request_type_t type, char *request) {
     return output;
 }
 
-char * keyrequest_exec_output(request_type_t type, char *request) {
+char * key_request_exec_output(request_type_t type, char *request) {
     char *command = NULL;
     os_calloc(OS_MAXSTR + 1, sizeof(char), command);
     int result_code = 0;
@@ -221,13 +218,7 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
 
     authd_sigblock();
 
-    // If module is disabled, exit
-    if (config.key_request.enabled) {
-        minfo("Module started");
-    } else {
-        minfo("Module disabled. Exiting.");
-        pthread_exit(NULL);
-    }
+    minfo("Key Request module started.");
 
     /* Init the request hash table */
     request_hash = OSHash_Create();
@@ -245,8 +236,8 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
         pthread_exit(NULL);
     }
 
-    for(i = 0; i < config.key_request.threads;i++){
-        w_create_thread(w_request_thread, NULL);
+    for(i = 0; i < config.key_request.threads; i++){
+        w_create_thread(key_request_dispatch_thread, NULL);
     }
 
     while (running) {
@@ -262,29 +253,29 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
             }
         }
 
-        if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer),recv) {
-            if(OSHash_Get_ex(request_hash,buffer)){
-                mdebug2("Request '%s' already being processed. Discarding...",buffer);
+        if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer), recv) {
+            if(OSHash_Get_ex(request_hash, buffer)){
+                mdebug2("Request '%s' already being processed. Discarding request.", buffer);
                 continue;
             }
 
-            OSHash_Add_ex(request_hash,buffer,(void *)1);
+            OSHash_Add_ex(request_hash, buffer, (void *)1);
 
             os_strdup(buffer, copy);
 
             if(queue_full(request_queue)){
-                mdebug1("Request queue is full. Discarding...");
+                mdebug1("Request queue is full. Discarding request.");
                 os_free(copy);
-                OSHash_Delete_ex(request_hash,buffer);
+                OSHash_Delete_ex(request_hash, buffer);
                 continue;
             }
 
-            int result = queue_push_ex(request_queue,copy);
+            int result = queue_push_ex(request_queue, copy);
 
             if(result < 0){
-                mdebug1("Request queue is full. Discarding...");
+                mdebug1("Request queue is full. Discarding request.");
                 os_free(copy);
-                OSHash_Delete_ex(request_hash,buffer);
+                OSHash_Delete_ex(request_hash, buffer);
                 continue;
             }
         }
@@ -294,7 +285,7 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
 }
 
 /* Thread for key request connection pool */
-int w_key_request_dispatch(char * buffer) {
+int key_request_dispatch(char * buffer) {
     char * request;
     char * tmp_buffer;
     char *output = NULL;
@@ -305,72 +296,72 @@ int w_key_request_dispatch(char * buffer) {
     tmp_buffer = buffer;
 
     // Get the type of request
-    if(strncmp("ip:", tmp_buffer,header_length) == 0) {
-        type = W_TYPE_IP;
-    } else if(strncmp("id:", tmp_buffer,header_length) == 0) {
-        type = W_TYPE_ID;
+    if(strncmp("ip:", tmp_buffer, header_length) == 0) {
+        type = K_TYPE_IP;
+    } else if(strncmp("id:", tmp_buffer, header_length) == 0) {
+        type = K_TYPE_ID;
     } else {
-        mdebug1("Wrong type of request");
-        OSHash_Delete_ex(request_hash,buffer);
+        mdebug1("Wrong type of request.");
+        OSHash_Delete_ex(request_hash, buffer);
         return OS_INVALID;
     }
 
     switch (type) {
-        case W_TYPE_ID:
+        case K_TYPE_ID:
             tmp_buffer += header_length;
             request = tmp_buffer;
 
             if(strlen(request) > 8) {
-                mdebug1("Agent ID is too long");
-                OSHash_Delete_ex(request_hash,buffer);
+                mdebug1("Agent ID is too long.");
+                OSHash_Delete_ex(request_hash, buffer);
                 return OS_INVALID;
             }
             break;
 
-        case W_TYPE_IP:
+        case K_TYPE_IP:
             tmp_buffer += header_length;
             request = tmp_buffer;
 
             if (strlen(request) > 19) {
-                mdebug1("Agent IP is too long");
-                OSHash_Delete_ex(request_hash,buffer);
+                mdebug1("Agent IP is too long.");
+                OSHash_Delete_ex(request_hash, buffer);
                 return OS_INVALID;
             }
             break;
 
         default:
-            mdebug1("Invalid request");
-            OSHash_Delete_ex(request_hash,buffer);
+            mdebug1("Invalid request.");
+            OSHash_Delete_ex(request_hash, buffer);
             return OS_INVALID;
     }
 
     /* Send request to external executable by socket */
     if (config.key_request.socket) {
 
-        output = keyrequest_socket_output(type, request);
+        output = key_request_socket_output(type, request);
 
         if (output) {
             mdebug2("Socket output: %s", output);
         } else {
             if (config.key_request.exec_path) {
-                minfo("Socket connect fail. Trying to run exec_path.");
-                output = keyrequest_exec_output(type, request);
+                minfo("Socket connect fail. Trying to run 'exec_path'");
+                output = key_request_exec_output(type, request);
             }
             if (output) {
                 mdebug2("Exec output: %s", output);
             } else {
-                OSHash_Delete_ex(request_hash,buffer);
+                OSHash_Delete_ex(request_hash, buffer);
                 return OS_INVALID;
             }
         }
     } else {
 
-        output = keyrequest_exec_output(type, request);
+        output = key_request_exec_output(type, request);
 
         if (output) {
             mdebug2("Exec output: %s", output);
         } else {
-            OSHash_Delete_ex(request_hash,buffer);
+            OSHash_Delete_ex(request_hash, buffer);
             return OS_INVALID;
         }
     }
@@ -380,18 +371,18 @@ int w_key_request_dispatch(char * buffer) {
     os_free(output);
 
     if (!agent_infoJSON) {
-        mdebug1("Error parsing JSON event. %s", jsonErrPtr ? jsonErrPtr : "");
+        mdebug1("Error parsing JSON event (%s)", jsonErrPtr ? jsonErrPtr : "");
     } else {
         char *error_msg = NULL;
         key_request_agent_info *agent = get_agent_info_from_json(agent_infoJSON, &error_msg);
 
         if (!agent) {
             if (error_msg) {
-                mdebug1("Could not get a key from %s %s. Error: '%s'.", type == W_TYPE_ID ? "ID" : "IP",
+                mdebug1("Could not get a key from %s %s. Error: '%s'", type == K_TYPE_ID ? "ID" : "IP",
                         request, error_msg && *error_msg != '\0' ? error_msg : "unknown");
             }
-            cJSON_Delete (agent_infoJSON);
-            OSHash_Delete_ex(request_hash,buffer);
+            cJSON_Delete(agent_infoJSON);
+            OSHash_Delete_ex(request_hash, buffer);
             return OS_INVALID;
         }
 
@@ -413,11 +404,11 @@ int w_key_request_dispatch(char * buffer) {
                 int index;
                 if (index = OS_AddNewAgent(&keys, agent->id, agent->name, agent->ip, agent->key), index < 0) {
                     merror("Unable to add agent: %s (internal error)", agent->name);
-                    snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s", agent->name);
                     OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-                    cJSON_Delete (agent_infoJSON);
-                    OSHash_Delete_ex(request_hash,buffer);
-                    os_free(agent);
+                    cJSON_Delete(agent_infoJSON);
+                    OSHash_Delete_ex(request_hash, buffer);
+                    key_request_agent_info_destroy(agent);
+                    w_mutex_unlock(&mutex_keys);
                     return OS_INVALID;
                 } else {
                     add_insert(keys.keyentries[keys.keysize - 1], NULL);
@@ -430,14 +421,14 @@ int w_key_request_dispatch(char * buffer) {
         }
 
         cJSON_Delete(agent_infoJSON);
-        os_free(agent);
+        key_request_agent_info_destroy(agent);
     }
 
-    OSHash_Delete_ex(request_hash,buffer);
+    OSHash_Delete_ex(request_hash, buffer);
     return 0;
 } 
 
-void * w_request_thread(__attribute__((unused)) void *arg) {
+void * key_request_dispatch_thread(__attribute__((unused)) void *arg) {
     char *msg = NULL;
 
     authd_sigblock();
@@ -446,14 +437,11 @@ void * w_request_thread(__attribute__((unused)) void *arg) {
 
         /* Receive request from queue */
         if (msg = queue_pop_ex(request_queue), msg) {
-            if (w_key_request_dispatch(msg) < 0) {
-                mdebug1("At w_request_thread(): Error getting external key");
+            if (key_request_dispatch(msg) < 0) {
+                mdebug1("Error getting external key.");
             }
             os_free(msg);
         }
     }
     return NULL;
 }
-
-
-

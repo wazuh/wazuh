@@ -56,7 +56,7 @@ static char key_request_available = 0;
 static w_queue_t * key_request_queue;
 
 /* Remote key request thread */
-void * w_key_request_thread(__attribute__((unused)) void * args);
+void * key_request_thread(__attribute__((unused)) void * args);
 
 /* Push key request */
 static void _push_request(const char *request,const char *type);
@@ -111,7 +111,7 @@ void HandleSecure()
     key_request_queue = queue_init(1024);
 
     // Create key request thread
-    w_create_thread(w_key_request_thread, NULL);
+    w_create_thread(key_request_thread, NULL);
 
     /* Create wait_for_msgs threads */
     {
@@ -483,7 +483,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
             // Send key request by id
-            push_request(buffer + 1,"id");
+            push_request(buffer + 1, "id");
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
             }
@@ -516,7 +516,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
-            push_request(srcip,"ip");
+            push_request(srcip, "ip");
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
             }
@@ -546,7 +546,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if (r == KS_ENCKEY) {
             if (ip_found) {
-                push_request(srcip,"ip");
+                push_request(srcip, "ip");
             } else {
                 push_request(buffer + 1, "id");
             }
@@ -662,8 +662,8 @@ static int send_key_request(int socket,const char *msg) {
 static void _push_request(const char *request,const char *type) {
     char *msg = NULL;
 
-    os_calloc(OS_MAXSTR,sizeof(char),msg);
-    snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    snprintf(msg, OS_MAXSTR, "%s:%s", type, request);
 
     if(queue_push_ex(key_request_queue, msg) < 0) {
         os_free(msg);
@@ -693,7 +693,7 @@ int key_request_reconnect() {
     }
 }
 
-void * w_key_request_thread(__attribute__((unused)) void * args) {
+void * key_request_thread(__attribute__((unused)) void * args) {
     char * msg = NULL;
     int socket = -1;
 
