@@ -14,20 +14,20 @@
  *
  * This feature receives a key request configuration and registers to the manager
  * through a socket or a DB integration, or failing that, it shows various failure messages
- * For details on key request process @see https://documentation.wazuh.com/4.4/user-manual/capabilities/agent-key-request.html
+ * For details on key request process @see https://documentation.wazuh.com/current/user-manual/capabilities/agent-key-request.html
  */
 #ifndef KEY_REQUEST_H
 #define KEY_REQUEST_H
 
 #define EXECVE_ERROR 0x7F
-#define RELAUNCH_TIME 300
 #define KR_ERROR_TIMEOUT 1  // Error code for timeout.
 
 /**
  * @brief Enum that define the request type
  * */
 typedef enum _request_type {
-    W_TYPE_ID,W_TYPE_IP
+    K_TYPE_ID,
+    K_TYPE_IP
 } request_type_t;
 
 /**
@@ -41,44 +41,62 @@ typedef struct _key_request_agent_info {
 } key_request_agent_info;
 
 /**
- * Module main function. It won't return
+ * @brief Default key_request_agent_info structure initializer
+ * @return Pointer to an inizialized key_request_agent_info structure
  * */
-void* run_key_request_main(void *arg);
+key_request_agent_info * key_request_agent_info_init();
 
 /**
- * Thread for key request connection pool
+ * @brief Free key_request_agent_info structure
+ * @param agent A key_request_agent_info structure to be freed
  * */
-void * w_request_thread(void *arg);
+void key_request_agent_info_destroy(key_request_agent_info *agent);
 
 /**
- * Dispatch request. Write the output into the same input buffer.
- * */
-int w_key_request_dispatch(char * buffer);
-
-/**
- * Default key_request_agent_info structure initializer
- * */
-key_request_agent_info * w_key_request_agent_info_init();
-
-/**
- * Free key_request_agent_info structure
- * */
-void w_key_request_agent_info_destroy(key_request_agent_info *agent);
-
-/**
- * Get the neccesary agent info from a json message
+ * @brief Read the neccesary agent info from a JSON message
+ * @param agent_infoJSON JSON message with the agent information
+ * @param error_msg String to print the error if failure
+ * @return key_request_agent_info structure with the parsed agent data
+ * @return NULL on error
  * */
 key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **error_msg);
 
 /**
- * Run the integration DB script to get the output
+ * @brief Module main function. It won't return
+ * @param arg NULL
  * */
-char * keyrequest_exec_output(request_type_t type, char *request);
+void* run_key_request_main(void *arg);
 
 /**
- * Connect with a socket to get the output
+ * @brief Thread for key request connection pool
+ * @param arg NULL
  * */
-char * keyrequest_socket_output(request_type_t type, char *request);
+void * key_request_dispatch_thread(void *arg);
+
+/**
+ * @brief Dispatch request. Write the output into the same input buffer.
+ * @param buffer Request for an agent key
+ * @return 0 on success. -1 on error.
+ * */
+int key_request_dispatch(char * buffer);
+
+/**
+ * @brief Run the integration DB script to get the agent data
+ * @param type Type of agent request [ip/id]
+ * @param request Request with the agent information (IP or ID values)
+ * @return Request response with the agent key on success
+ * @return NULL on error or missing data
+ * */
+char * key_request_exec_output(request_type_t type, char *request);
+
+/**
+ * @brief Request to an external socket the agent data
+ * @param type Type of agent request [ip/id]
+ * @param request Request with the agent information (IP or ID values)
+ * @return Request response with the agent key on success
+ * @return NULL on error or missing data
+ * */
+char * key_request_socket_output(request_type_t type, char *request);
 
 extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
