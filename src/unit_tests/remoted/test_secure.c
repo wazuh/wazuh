@@ -42,7 +42,7 @@ void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info
 /* Setup/teardown */
 
 static int setup_config(void **state) {
-    w_linked_queue_t *queue = linked_queue_init(OS_FreeKey);
+    w_linked_queue_t *queue = linked_queue_init((w_linked_queue_free_fn) OS_FreeKey);
     keys.opened_fp_queue = queue;
     test_mode = 1;
     return 0;

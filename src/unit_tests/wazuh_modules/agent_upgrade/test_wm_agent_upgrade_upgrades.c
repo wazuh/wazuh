@@ -58,7 +58,7 @@ static int setup_config(void **state) {
     wm_manager_configs *config = NULL;
     os_calloc(1, sizeof(wm_manager_configs), config);
     *state = config;
-    upgrade_queue = linked_queue_init(wm_agent_upgrade_free_agent_task);
+    upgrade_queue = linked_queue_init((w_linked_queue_free_fn) wm_agent_upgrade_free_agent_task);
     return 0;
 }
 
@@ -82,7 +82,7 @@ static int setup_upgrade_args(void **state) {
     args->config = config;
     state[0] = (void *)args;
     state[1] = (void *)config;
-    upgrade_queue = linked_queue_init(wm_agent_upgrade_free_agent_task);
+    upgrade_queue = linked_queue_init((w_linked_queue_free_fn) wm_agent_upgrade_free_agent_task);
     sem_init(&upgrade_semaphore, 0, 5);
     return 0;
 }
@@ -109,7 +109,7 @@ static int setup_nodes(void **state) {
     node_next->data = agent_task_next;
     node->next = node_next;
     *state = (void *)node;
-    upgrade_queue = linked_queue_init(wm_agent_upgrade_free_agent_task);
+    upgrade_queue = linked_queue_init((w_linked_queue_free_fn) wm_agent_upgrade_free_agent_task);
     return 0;
 }
 
@@ -125,11 +125,6 @@ static int teardown_nodes(void **state) {
     os_free(node_next);
     os_free(node->key);
     os_free(node);
-    while(upgrade_queue->first) {
-        w_linked_queue_node_t *tmp = upgrade_queue->first;
-        upgrade_queue->first = upgrade_queue->first->next;
-        os_free(tmp);
-    }
     linked_queue_free(upgrade_queue);
     return 0;
 }

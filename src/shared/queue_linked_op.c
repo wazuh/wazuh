@@ -44,8 +44,9 @@ void linked_queue_free(w_linked_queue_t *queue) {
         while (walk) {
             if (queue->data_free_function && walk->data)
                     queue->data_free_function(walk->data);
-            walk = walk->next;
+            w_linked_queue_node_t *next = walk->next;
             os_free(walk);
+            walk = next;
         }
         os_free(queue);
     }

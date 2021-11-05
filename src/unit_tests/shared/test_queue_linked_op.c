@@ -32,11 +32,6 @@ int setup_queue(void **state) {
 
 int teardown_queue(void **state) {
     w_linked_queue_t *queue = *state;
-    int *data = linked_queue_pop(queue);
-    while(data) {
-        os_free(data);
-        data = linked_queue_pop(queue);
-    }
     linked_queue_free(queue);
     queue_ptr = NULL;
     return 0;
