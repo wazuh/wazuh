@@ -9,7 +9,6 @@ import typing
 import six
 from connexion import ProblemException
 
-from api.api_exception import APIError
 from wazuh.core.common import wazuh_path as WAZUH_PATH
 from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
     WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
@@ -294,3 +293,33 @@ def raise_if_exc(obj):
         _create_problem(obj)
     else:
         return obj
+
+
+def get_invalid_keys(original_dict, des_dict):
+    """Return a set with the keys from `original_dict` that are not present in `des_dict`.
+
+    Parameters
+    ----------
+    original_dict : dict
+        Original dictionary.
+    des_dict : dict
+        Deserialized dictionary with the model keys.
+
+    Returns
+    -------
+    set
+        Set with the invalid keys.
+    """
+    invalid_keys = set()
+
+    for key in original_dict:
+        if isinstance(original_dict[key], dict):
+            try:
+                invalid_keys.update(get_invalid_keys(original_dict[key], des_dict[key]))
+            except KeyError:
+                invalid_keys.add(key)
+        else:
+            if key not in set(des_dict):
+                invalid_keys.add(key)
+
+    return invalid_keys

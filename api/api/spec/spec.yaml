@@ -1556,6 +1556,32 @@ components:
           type: object
           description: "Group configuration. The fields on this object depend on the actual group configuration"
 
+    AgentInsertForce:
+      type: object
+      description: "Remove the old agent with the same name, ID or IP if the configuration is matched"
+      properties:
+        enabled:
+          type: boolean
+          default: True
+          description: "Enable force option"
+        disconnected_time:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: True
+              description: "Enable force disconnected_time option"
+            value:
+              type: string
+              default: "1h"
+              description: "Time the agent must has been disconnected to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
+              format: timeframe
+        after_registration_time:
+          type: string
+          default: "1h"
+          description: "Time the agent must has been registered to force the insertion. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
+          format: timeframe
+
     ## CisCat models
     CiscatResults:
       type: object
@@ -2656,10 +2682,6 @@ components:
               description: "Browsers will only expose the response to frontend JavaScript code if this is enabled"
               type: boolean
               default: false
-        use_only_authd:
-          description: "Force the use of authd when adding and removing agents"
-          type: boolean
-          default: false
         experimental_features:
           description: "Enable features under development"
           type: boolean
@@ -5686,12 +5708,6 @@ paths:
                     IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force_time:
-                    description: "Remove the old agent with the same name or IP if disconnected for <force_time>
-                    seconds"
-                    type: integer
-                    format: int32
-                    minimum: 0
                 required:
                 - name
               example:
@@ -7084,7 +7100,7 @@ paths:
         - Agents
       summary: "Add agent full"
       description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using `force_time` parameter"
+      same IP already exists, replace it using the `force` parameter"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -7115,12 +7131,8 @@ paths:
                     IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force_time:
-                    description: "Remove the old agent with the same name, ID or IP if disconnected for <force_time>
-                    seconds"
-                    type: integer
-                    format: int32
-                    minimum: 0
+                  force:
+                    $ref: '#/components/schemas/AgentInsertForce'
                 required:
                   - name
               example:
@@ -7128,6 +7140,13 @@ paths:
                 ip: 10.0.10.11
                 id: "123"
                 key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
+                force:
+                  enabled: True
+                  disconnected_time:
+                    enabled: True
+                    value: "30m"
+                  after_registration_time: "2h"
+
       responses:
         '200':
           description: "Insert new agent"
@@ -8082,7 +8101,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
@@ -8121,7 +8139,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
@@ -8159,7 +8176,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
@@ -8537,8 +8553,13 @@ paths:
                         disabled: no
                         port: "1515"
                         use_source_ip: "no"
-                        force_insert: "yes"
-                        force_time: "0"
+                        force:
+                          enabled: "yes"
+                          key_mismatch: "yes"
+                          disconnected_time:
+                            enabled: "yes"
+                            value: "1h"
+                          after_registration_time: "1h"
                         purge: "yes"
                         use_password: "no"
                         ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
@@ -10728,7 +10749,6 @@ paths:
                         cache:
                           enabled: true
                           time: 0.75
-                        use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760

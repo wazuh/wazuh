@@ -53,7 +53,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
                                 -Wl,--wrap=pthread_cond_signal")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid -Wl,--wrap,_mwarn")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_set_agent_group")

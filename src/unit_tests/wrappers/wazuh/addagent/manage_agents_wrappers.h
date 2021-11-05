@@ -11,7 +11,6 @@
 #ifndef MANAGE_AGENTS_WRAPPERS_H
 #define MANAGE_AGENTS_WRAPPERS_H
 
-double __wrap_OS_AgentAntiquity(const char *name, const char *ip);
 void __wrap_OS_RemoveAgentGroup(const char *id);
 
 #endif
