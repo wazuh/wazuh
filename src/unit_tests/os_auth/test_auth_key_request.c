@@ -33,7 +33,6 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
 #define BUFFERSIZE 1024
-#define RELAUNCH_TIME 300
 #define QUEUE_SIZE 5
 
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;

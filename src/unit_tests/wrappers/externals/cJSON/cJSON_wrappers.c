@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <string.h>
+
 
 cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {
