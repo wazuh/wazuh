@@ -75,7 +75,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
         mdebug1("Agent ID not found.");
         goto error;
     } else {
-        agent->id = agent_id->valuestring;
+        os_strdup(agent_id->valuestring, agent->id);
     }
 
     agent_name = cJSON_GetObjectItem(data_json, "name");
@@ -83,7 +83,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
         mdebug1("Agent name not found.");
         goto error;
     } else {
-        agent->name = agent_name->valuestring;
+        os_strdup(agent_name->valuestring, agent->name);
     }
 
     agent_address = cJSON_GetObjectItem(data_json, "ip");
@@ -91,7 +91,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
         mdebug1("Agent address not found.");
         goto error;
     } else {
-        agent->ip = agent_address->valuestring;
+        os_strdup(agent_address->valuestring, agent->ip);
     }
 
     agent_key = cJSON_GetObjectItem(data_json, "key");
@@ -99,7 +99,7 @@ key_request_agent_info * get_agent_info_from_json(cJSON *agent_infoJSON, char **
         mdebug1("Agent key not found.");
         goto error;
     } else {
-        agent->key = agent_key->valuestring;
+        os_strdup(agent_key->valuestring, agent->key);
     }
 
     return agent;
