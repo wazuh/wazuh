@@ -144,6 +144,7 @@
 #define INVALID_RESPONSE        "(1285): Response without content, the event cannot be raised."
 #define A_QUERY_ERROR           "(1286): Wazuh-db query error, check wdb logs."
 #define INVALID_TYPE            "(1287): Incorrect/unknown type value %s."
+#define INVALID_RULE_ELEMENT    "(1279): Invalid rule element."
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."

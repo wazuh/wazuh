@@ -123,14 +123,13 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
 /* Add a child */
 int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 {
-    if (!read_rule) {
-        // TODO: shouldn't it return -1? Leak?
-        smerror(log_msg, "rules_list: Passing a NULL rule. Inconsistent state");
-        return (1);
+    if (read_rule == NULL) {
+        smwarn(log_msg, ANALYSISD_NULL_RULE);
+        return -1;
     }
 
     /* Adding for if_sid */
-    if (read_rule->if_sid) {
+    if (read_rule->if_sid != NULL) {
         int val = 0;
         const char * sid_ptr = read_rule->if_sid;
 
@@ -140,11 +139,15 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
                 val = 0;
                 continue;
             } else if ((isdigit((int)*sid_ptr)) || (*sid_ptr == '\0')) {
+
                 if (val == 0) {
+
                     int if_sid_rule_id = atoi(sid_ptr);
-                    if (!_AddtoRule(if_sid_rule_id, 0, 0, NULL, *r_node, read_rule)) {
+
+                    if (_AddtoRule(if_sid_rule_id, 0, 0, NULL, *r_node, read_rule) == 0) {
+
                         smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND,
-                               if_sid_rule_id, read_rule->if_matched_sid != 0 ? 
+                               if_sid_rule_id, read_rule->if_matched_sid != 0 ?
                                                     "if_matched_sid" : "if_sid",
                                read_rule->sigid);
                         return -1;
@@ -152,8 +155,9 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
                     val = 1;
                 }
             } else {
+
                 smwarn(log_msg, ANALYSISD_INV_SIG_ID,
-                        read_rule->if_matched_sid != 0 ? "if_matched_sid" 
+                        read_rule->if_matched_sid != 0 ? "if_matched_sid"
                                                        : "if_sid",
                         read_rule->sigid);
                 return -1;
@@ -162,28 +166,27 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
     }
 
     /* Adding for if_level */
-    else if (read_rule->if_level) {
+    else if (read_rule->if_level != NULL) {
 
         int ilevel = atoi(read_rule->if_level);
 
         if (ilevel == 0) {
-            // TODO: shouldn't it return -1? Leak?
-            smerror(log_msg, "Invalid level (atoi)");
-            return (1);
+            smwarn(log_msg, ANALYSISD_INV_IF_LEVEL, read_rule->if_level, read_rule->sigid);
+            return -1;
         }
 
         // TODO: why does it multiply the ilevel?
         ilevel *= 100;
 
-        if (!_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule)) {
+        if (_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule) == 0) {
             smwarn(log_msg, ANALYSISD_LEVEL_NOT_FOUND, ilevel, read_rule->sigid);
             return -1;
         }
     }
 
     /* Adding for if_group */
-    else if (read_rule->if_group) {
-        if (!_AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule)) {
+    else if (read_rule->if_group != NULL) {
+        if (_AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule) == 0) {
             smwarn(log_msg, ANALYSISD_GROUP_NOT_FOUND, read_rule->if_group, read_rule->sigid);
             return -1;
         }
@@ -191,9 +194,7 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 
     /* Just add based on the category */
     else {
-        if (!_AddtoRule(0, 0, 0, NULL, *r_node, read_rule)) {
-            // TODO: It should never reach this point as the CATEGORY is checked in rules.c (look for "xml_category" )
-            // TODO: Why is it asumed that if _AddtoRule fails is it because the category?
+        if (_AddtoRule(0, 0, 0, NULL, *r_node, read_rule) == 0) {
             smwarn(log_msg, ANALYSISD_CATEGORY_NOT_FOUND, read_rule->sigid);
             return -1;
         }

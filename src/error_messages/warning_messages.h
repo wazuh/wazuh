@@ -100,7 +100,7 @@
                                                         "Rule '%d' will be ignored."
 #define ANALYSISD_LEVEL_NOT_FOUND               "(7608): Level ID '%d' was not found. Invalid 'if_level'. " \
                                                         "Rule '%d' will be ignored."
-#define ANALYSISD_INV_LEVEL                     "(7609): Invalid 'if_level' value: '%s'. Rule '%d' will be ignored."
+#define ANALYSISD_INV_IF_LEVEL                  "(7609): Invalid 'if_level' value: '%s'. Rule '%d' will be ignored."
 #define ANALYSISD_GROUP_NOT_FOUND               "(7610): Group '%s' was not found. Invalid 'if_group'. " \
                                                         "Rule '%d' will be ignored."
 #define ANALYSISD_CATEGORY_NOT_FOUND            "(7611): Category was not found. Invalid 'category'. " \
@@ -109,7 +109,7 @@
                                                         "considered."
 #define ANALYSISD_OVERWRITE_MISSING_RULE        "(7613): Rule ID '%d' does not exist but 'overwrite' is set to 'yes'. "\
                                                         "Still, the rule will be loaded."
-
+#define ANALYSISD_NULL_RULE                     "(7614): Rule pointer is NULL. Skipping."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
