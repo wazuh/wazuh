@@ -49,13 +49,10 @@ EventList *os_analysisd_last_events;
 
 /* Prototypes */
 // TODO Docu
-STATIC int getattributes(char **attributes,
-                  char **values,
-                  int *id, int *level,
-                  int *maxsize, int *timeframe,
-                  int *frequency, int *accuracy,
-                  int *noalert, int *ignore_time, int *overwrite,
-                  OSList* log_msg);
+STATIC int getattributes(char **attributes, char **values, int *id, int *level,
+                         int *maxsize, int *timeframe, int *frequency,
+                         int *accuracy, int *noalert, int *ignore_time,
+                         int *overwrite, OSList* log_msg);
 STATIC int doesRuleExist(int sid, RuleNode *r_node);
 STATIC void Rule_AddAR(RuleInfo *config_rule);
 STATIC char *loadmemory(char *at, const char *str, OSList* log_msg);
@@ -338,6 +335,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
             /* Check if the rule element is correct */
             if (!rule[j]->element) {
+                smerror(log_msg, INVALID_RULE_ELEMENT);
                 goto cleanup;
             }
 
@@ -389,9 +387,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 /* Allocate memory and initialize structure */
-                config_ruleinfo = zerorulemember(id, level, maxsize,
-                                                 frequency, timeframe,
-                                                 noalert, ignore_time, overwrite, last_event_list);
+                config_ruleinfo = zerorulemember(id, level, maxsize, frequency,
+                                                 timeframe, noalert, ignore_time,
+                                                 overwrite, last_event_list);
 
                 /* If rule is 0, set it to level 99 to have high priority.
                  * Set it to 0 again later.
@@ -480,6 +478,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                 rule_tmp_params.rule_arr_opt =  OS_GetElementsbyNode(&xml, rule[j]);
                 if (rule_tmp_params.rule_arr_opt == NULL) {
+                    // TODO: Skip rule?
                     smerror(log_msg, "Rule '%d' without any option. It may lead to false positives and some "
                            "other problems for the system. Exiting.", config_ruleinfo->sigid);
                     goto cleanup;
@@ -506,6 +505,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                         config_ruleinfo->decoded_as = getDecoderfromlist(rule_tmp_params.rule_arr_opt[k]->content, decoder_list);
                         if (config_ruleinfo->decoded_as == 0) {
+                            // TODO: Skip rule?
                             smerror(log_msg, "Invalid decoder name: '%s'.", rule_tmp_params.rule_arr_opt[k]->content);
                             goto cleanup;
                         }
@@ -581,8 +581,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_comment) == 0) {
 
-                        char *newline;
-                        newline = strchr(rule_tmp_params.rule_arr_opt[k]->content, '\n');
+                        char * newline = strchr(rule_tmp_params.rule_arr_opt[k]->content, '\n');
                         if (newline) {
                             *newline = ' ';
                         }
@@ -1651,8 +1650,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_regex, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.regex);
                 }
 
                 /* Add in match */
@@ -1664,8 +1661,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_match, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.match);
                 }
 
                 /* Add in id */
@@ -1677,8 +1672,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_id, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.id);
                 }
 
                 /* Add srcport */
@@ -1690,8 +1683,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_srcport, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.srcport);
                 }
 
                 /* Add dstport */
@@ -1704,8 +1695,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         goto cleanup;
                     }
 
-                    os_free(rule_tmp_params.dstport);
-
                 }
 
                 /* Add in status */
@@ -1717,8 +1706,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_status, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.status);
                 }
 
                 /* Add in hostname */
@@ -1730,8 +1717,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_hostname, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.hostname);
                 }
 
                 /* Add data */
@@ -1743,8 +1728,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_data, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.data);
                 }
 
                 /* Add extra data */
@@ -1756,8 +1739,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_extra_data, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.extra_data);
                 }
 
                 /* Add in program name */
@@ -1769,8 +1750,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_program_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.program_name);
                 }
 
                 /* Add in user */
@@ -1782,8 +1761,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_user, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.user);
                 }
 
                 /* Adding in srcgeoip */
@@ -1795,8 +1772,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_srcgeoip, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.srcgeoip);
                 }
 
                 /* Adding in dstgeoip */
@@ -1808,8 +1783,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_dstgeoip, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.dstgeoip);
                 }
 
                 /* Add in URL */
@@ -1821,8 +1794,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_url, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.url);
                 }
 
                 /* Add location */
@@ -1834,8 +1805,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_location, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.location);
                 }
 
                 /* Add location */
@@ -1847,8 +1816,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_action, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.action);
                 }
 
                 /* Add matched_group */
@@ -1858,8 +1825,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, REGEX_COMPILE, rule_tmp_params.if_matched_group, config_ruleinfo->if_matched_group->error);
                         goto cleanup;
                     }
-                    os_free(rule_tmp_params.if_matched_group);
-                    rule_tmp_params.if_matched_group = NULL;
                 }
 
                 /* Add matched_regex */
@@ -1869,8 +1834,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, REGEX_COMPILE, rule_tmp_params.if_matched_regex, config_ruleinfo->if_matched_regex->error);
                         goto cleanup;
                     }
-                    os_free(rule_tmp_params.if_matched_regex);
-                    rule_tmp_params.if_matched_regex = NULL;
                 }
 
                 /* Add protocol */
@@ -1882,8 +1845,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, rule_tmp_params.protocol, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.protocol);
                 }
 
                 /* Add system_name */
@@ -1895,8 +1856,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                         smerror(log_msg, RL_REGEX_SYNTAX, xml_system_name, config_ruleinfo->sigid);
                         goto cleanup;
                     }
-
-                    os_free(rule_tmp_params.system_name);
                 }
 
                 w_free_rules_tmp_params(&rule_tmp_params);
@@ -1917,14 +1876,19 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             if (config_ruleinfo->sigid < 10) {
                 OS_AddRule(config_ruleinfo, r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
+
                 if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid)) {
-                    /* TODO: It should never reach this point, but if it happens,
-                            should the rule be skiped? Add it anyway as on the
-                            following else? */
-                    smerror(log_msg, "Overwrite rule '%d' not found.", config_ruleinfo->sigid);
-                    goto cleanup;
+
+                    // If there is no rule to overwrite, then the rule is added as any other rule
+                    if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
+                        // Skip rule, without having to abort analysisd execution
+                        os_remove_ruleinfo(config_ruleinfo);
+                        config_ruleinfo = NULL;
+                        continue;
+                    }
                 }
             } else {
+
                 if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
                     // Skip rule, without having to abort analysisd execution
                     os_remove_ruleinfo(config_ruleinfo);
@@ -2230,12 +2194,10 @@ int get_info_attributes(char **attributes, char **values, OSList* log_msg)
 }
 
 /* Get the attributes */
-STATIC int getattributes(char **attributes, char **values,
-                  int *id, int *level,
-                  int *maxsize, int *timeframe,
-                  int *frequency, int *accuracy,
-                  int *noalert, int *ignore_time, int *overwrite,
-                  OSList* log_msg)
+STATIC int getattributes(char **attributes, char **values, int *id, int *level,
+                         int *maxsize, int *timeframe, int *frequency,
+                         int *accuracy, int *noalert, int *ignore_time,
+                         int *overwrite, OSList* log_msg)
 {
     int k = 0;
 
