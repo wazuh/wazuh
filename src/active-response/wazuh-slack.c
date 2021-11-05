@@ -69,20 +69,26 @@ int main (int argc, char **argv) {
     output_json = format_output(alert_json);
     output_str = cJSON_PrintUnformatted(output_json);
 
+    // Remove single quotes to avoid code injection
+    char *secure_str = wstr_replace(output_str, "'", "");
+
+    // Try with curl
     memset(system_command, '\0', OS_MAXSTR);
-    snprintf(system_command, OS_MAXSTR -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+    snprintf(system_command, OS_MAXSTR -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", secure_str, site_url);
+
     if (system(system_command) != 0) {
         write_debug_file(argv[0], "Unable to run curl");
 
         // Try with wget
-        char *new_output_str = wstr_replace(output_str, "\"", "'");
         memset(system_command, '\0', OS_MAXSTR);
-        snprintf(system_command, OS_MAXSTR -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
+        snprintf(system_command, OS_MAXSTR -1, "wget --keep-session-cookies --post-data='%s' %s", secure_str, site_url);
+
         if (system(system_command) != 0) {
             write_debug_file(argv[0], "Unable to run wget");
         }
-        os_free(new_output_str);
     }
+
+    os_free(secure_str);
 
     write_debug_file(argv[0], "Ended");
 
