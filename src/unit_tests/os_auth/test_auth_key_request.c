@@ -93,7 +93,7 @@ void test_get_agent_info_from_json_error_malformed(void **state) {
     char    *error_msg      = NULL;
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'error' field found");
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'error' field found.");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
@@ -109,7 +109,7 @@ void test_get_agent_info_from_json_message_malformed(void **state) {
 
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'message' field found");
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON output received. No 'message' field found.");
 
     void *ret = get_agent_info_from_json(input_raw_json, &error_msg);
     assert_null(ret);
@@ -294,6 +294,7 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     key_request_agent_info *ret = get_agent_info_from_json(input_raw_json, &error_msg);
+    
     assert_string_equal(ret->id, id->valuestring);
     assert_string_equal(ret->name, name->valuestring);
     assert_string_equal(ret->ip, ip->valuestring);
@@ -306,12 +307,13 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
     __real_cJSON_Delete(input_raw_json);
-    free(ret);
+    
+    key_request_agent_info_destroy(ret);
 }
 
-// Test keyrequest_socket_output()
+// Test key_request_socket_output()
 
-void test_keyrequest_socket_output_not_connect(void **state) {
+void test_key_request_socket_output_not_connect(void **state) {
     char debug_msg[128];
     char warn_msg[128];
 
@@ -331,11 +333,11 @@ void test_keyrequest_socket_output_not_connect(void **state) {
     snprintf(warn_msg, OS_SIZE_128, "Could not connect to external integration: %s (%d). Discarding request.", strerror(errno), errno);
     expect_string(__wrap__mwarn, formatted_msg, warn_msg);
 
-    char *ret = keyrequest_socket_output(W_TYPE_ID, "001");
+    char *ret = key_request_socket_output(K_TYPE_ID, "001");
     assert_null(ret);
 }
 
-void test_keyrequest_socket_output_long_request(void **state) {
+void test_key_request_socket_output_long_request(void **state) {
     char buffer_request[127];
 
     memset(buffer_request, 'a', 126);
@@ -344,90 +346,90 @@ void test_keyrequest_socket_output_long_request(void **state) {
     will_return(__wrap_external_socket_connect, 4);
     expect_string(__wrap__mdebug1, formatted_msg, "Request is too long for socket.");
 
-    char *ret = keyrequest_socket_output(W_TYPE_ID, buffer_request);
+    char *ret = key_request_socket_output(K_TYPE_ID, buffer_request);
     assert_null(ret);
 }
 
-void test_keyrequest_socket_output_send_fail(void **state) { 
+void test_key_request_socket_output_send_fail(void **state) { 
     will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, -1);
 
-    char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
+    char *ret = key_request_socket_output(K_TYPE_ID, NULL);
     assert_null(ret);
 }
 
-void test_keyrequest_socket_output_no_data_received(void **state) { 
+void test_key_request_socket_output_no_data_received(void **state) { 
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "No data received from external socket");
+    expect_string(__wrap__mdebug1, formatted_msg, "No data received from external socket.");
 
-    char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
+    char *ret = key_request_socket_output(K_TYPE_ID, NULL);
     assert_null(ret);
 }
 
-void test_keyrequest_socket_output_empty_string_received(void **state) { 
+void test_key_request_socket_output_empty_string_received(void **state) { 
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, 0);
 
-    char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
+    char *ret = key_request_socket_output(K_TYPE_ID, NULL);
     assert_null(ret);
 }
 
-void test_keyrequest_socket_output_success(void **state) { 
+void test_key_request_socket_output_success(void **state) { 
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, 12);
 
-    char *ret = keyrequest_socket_output(W_TYPE_ID, NULL);
+    char *ret = key_request_socket_output(K_TYPE_ID, NULL);
     assert_string_equal(ret, "Hello World!");
     os_free(ret);
 }
 
-// Test w_key_request_dispatch()
+// Test key_request_dispatch()
 
-void test_w_key_request_dispatch_long_id(void **state) {
+void test_key_request_dispatch_long_id(void **state) {
     char    *buffer = "id:000000001";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Agent ID is too long");
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent ID is too long.");
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 }
 
 
-void test_w_key_request_dispatch_long_ip(void **state) {
+void test_key_request_dispatch_long_ip(void **state) {
     char    *buffer = "ip:00000000000000000000";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Agent IP is too long");
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent IP is too long.");
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 }
 
-void test_w_key_request_dispatch_wrong_request(void **state) {
+void test_key_request_dispatch_wrong_request(void **state) {
     char    *buffer = "test";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Wrong type of request");
+    expect_string(__wrap__mdebug1, formatted_msg, "Wrong type of request.");
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 }
 
-void test_w_key_request_dispatch_bad_socket_output(void **state) {
+void test_key_request_dispatch_bad_socket_output(void **state) {
     authd_key_request_t *data   = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
     cJSON               *error  = cJSON_CreateNumber(1);
@@ -441,13 +443,13 @@ void test_w_key_request_dispatch_bad_socket_output(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 
     __real_cJSON_Delete(error);
 }
 
-void test_w_key_request_dispatch_error_parsing_json(void **state) {
+void test_key_request_dispatch_error_parsing_json(void **state) {
     char    *buffer = "id:001";
 
     will_return(__wrap_external_socket_connect, 4);
@@ -455,17 +457,17 @@ void test_w_key_request_dispatch_error_parsing_json(void **state) {
     will_return(__wrap_recv, 12);
 
     will_return(__wrap_cJSON_ParseWithOpts, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event. ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event ()");
 
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 }
 
-void test_w_key_request_dispatch_error_parsing_agent_json(void **state) {
+void test_key_request_dispatch_error_parsing_agent_json(void **state) {
     authd_key_request_t *data   = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
     cJSON               *field  = cJSON_CreateNumber(1);
@@ -482,20 +484,20 @@ void test_w_key_request_dispatch_error_parsing_agent_json(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, msg);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not get a key from ID 001. Error: 'Test'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not get a key from ID 001. Error: 'Test'");
     expect_function_call(__wrap_cJSON_Delete);
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(msg);
 }
 
-void test_w_key_request_dispatch_success(void **state) {
+void test_key_request_dispatch_success(void **state) {
     authd_key_request_t *data_state  = (authd_key_request_t *)*state;
     char                *buffer = "id:001";
     cJSON               *field  = cJSON_CreateNumber(1);
@@ -533,7 +535,7 @@ void test_w_key_request_dispatch_success(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(field);
@@ -542,11 +544,10 @@ void test_w_key_request_dispatch_success(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
-
     config.worker_node = 0;
 }
 
-void test_w_key_request_dispatch_success_add_agent(void **state) {
+void test_key_request_dispatch_success_add_agent(void **state) {
     char            *buffer = "id:001";
     cJSON           *field  = cJSON_CreateNumber(1);
     cJSON           *data   = cJSON_CreateNumber(2);
@@ -579,15 +580,15 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_w_auth_validate_data, agentname, name->valuestring);
-    expect_value(__wrap_w_auth_validate_data, ip, ip->valuestring);
-    expect_value(__wrap_w_auth_validate_data, hash_key, key->valuestring);
+    expect_string(__wrap_w_auth_validate_data, agentname, name->valuestring);
+    expect_string(__wrap_w_auth_validate_data, ip, ip->valuestring);
+    expect_string(__wrap_w_auth_validate_data, hash_key, key->valuestring);
     will_return(__wrap_w_auth_validate_data, OS_SUCCESS);
 
-    expect_value(__wrap_OS_AddNewAgent, id, id->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, name, name->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, ip, ip->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, key, key->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, id, id->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, name, name->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, ip, ip->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, key, key->valuestring);
     will_return(__wrap_OS_AddNewAgent, 0);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -596,7 +597,7 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer); 
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(field);
@@ -605,13 +606,13 @@ void test_w_key_request_dispatch_success_add_agent(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
-    
+
     os_free((&keys)->keyentries[(&keys)->keysize - 1]);
     os_free((&keys)->keyentries);
     (&keys)->keysize = 0;
 }
 
-void test_w_key_request_dispatch_exec_output_error(void **state) {
+void test_key_request_dispatch_exec_output_error(void **state) {
     char    *buffer = "id:001";
 
     config.key_request.socket = 0;
@@ -631,11 +632,11 @@ void test_w_key_request_dispatch_exec_output_error(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer);
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, -1);
 }
 
-void test_w_key_request_dispatch_success_exec_output(void **state) {
+void test_key_request_dispatch_success_exec_output(void **state) {
     char            *buffer = "id:001";
     cJSON           *field  = cJSON_CreateNumber(1);
     cJSON           *data   = cJSON_CreateNumber(2);
@@ -675,15 +676,15 @@ void test_w_key_request_dispatch_success_exec_output(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_w_auth_validate_data, agentname, name->valuestring);
-    expect_value(__wrap_w_auth_validate_data, ip, ip->valuestring);
-    expect_value(__wrap_w_auth_validate_data, hash_key, key->valuestring);
+    expect_string(__wrap_w_auth_validate_data, agentname, name->valuestring);
+    expect_string(__wrap_w_auth_validate_data, ip, ip->valuestring);
+    expect_string(__wrap_w_auth_validate_data, hash_key, key->valuestring);
     will_return(__wrap_w_auth_validate_data, OS_SUCCESS);
 
-    expect_value(__wrap_OS_AddNewAgent, id, id->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, name, name->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, ip, ip->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, key, key->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, id, id->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, name, name->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, ip, ip->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, key, key->valuestring);
     will_return(__wrap_OS_AddNewAgent, 0);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -692,7 +693,7 @@ void test_w_key_request_dispatch_success_exec_output(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = w_key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer); 
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(field);
@@ -701,7 +702,7 @@ void test_w_key_request_dispatch_success_exec_output(void **state) {
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
-    
+
     os_free((&keys)->keyentries[(&keys)->keysize - 1]);
     os_free((&keys)->keyentries);
     (&keys)->keysize = 0;
@@ -710,7 +711,7 @@ void test_w_key_request_dispatch_success_exec_output(void **state) {
     config.key_request.socket = 0;
 }
 
-void test_w_key_request_dispatch_error_socket_success_exec_output(void **state) {
+void test_key_request_dispatch_error_socket_success_exec_output(void **state) {
     char            *buffer = "id:001";
     cJSON           *field  = cJSON_CreateNumber(1);
     cJSON           *data   = cJSON_CreateNumber(2);
@@ -735,7 +736,7 @@ void test_w_key_request_dispatch_error_socket_success_exec_output(void **state) 
     will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, 0);
-    expect_string(__wrap__minfo, formatted_msg, "Socket connect fail. Trying to run exec_path.");
+    expect_string(__wrap__minfo, formatted_msg, "Socket connect fail. Trying to run 'exec_path'");
 
     expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 001");
     expect_value(__wrap_wm_exec, secs, 1);
@@ -754,26 +755,31 @@ void test_w_key_request_dispatch_error_socket_success_exec_output(void **state) 
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_w_auth_validate_data, agentname, name->valuestring);
-    expect_value(__wrap_w_auth_validate_data, ip, ip->valuestring);
-    expect_value(__wrap_w_auth_validate_data, hash_key, key->valuestring);
+    expect_string(__wrap_w_auth_validate_data, agentname, name->valuestring);
+    expect_string(__wrap_w_auth_validate_data, ip, ip->valuestring);
+    expect_string(__wrap_w_auth_validate_data, hash_key, key->valuestring);
     will_return(__wrap_w_auth_validate_data, OS_SUCCESS);
 
-    expect_value(__wrap_OS_AddNewAgent, id, id->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, name, name->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, ip, ip->valuestring);
-    expect_value(__wrap_OS_AddNewAgent, key, key->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, id, id->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, name, name->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, ip, ip->valuestring);
+    expect_string(__wrap_OS_AddNewAgent, key, key->valuestring);
     will_return(__wrap_OS_AddNewAgent, -1);
 
     expect_string(__wrap__merror, formatted_msg, "Unable to add agent: test (internal error)");
-    
+
     expect_function_call(__wrap_cJSON_Delete);
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
-    int ret = w_key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer); 
     assert_int_equal(ret, -1);
+
+    os_free((&keys)->keyentries[(&keys)->keysize - 1]);
+    os_free((&keys)->keyentries);
+    (&keys)->keysize = 0;
 
     __real_cJSON_Delete(field);
     __real_cJSON_Delete(data);
@@ -781,19 +787,15 @@ void test_w_key_request_dispatch_error_socket_success_exec_output(void **state) 
     __real_cJSON_Delete(name);
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
-    
-    os_free((&keys)->keyentries[(&keys)->keysize - 1]);
-    os_free((&keys)->keyentries);
-    (&keys)->keysize = 0;
 
     config.worker_node = 0;
     config.key_request.socket = 0;
 }
 
-// Test keyrequest_exec_output()
+// Test key_request_exec_output()
 
-void test_keyrequest_exec_output_too_long_request(void **state) {
-    request_type_t type = W_TYPE_ID;
+void test_key_request_exec_output_too_long_request(void **state) {
+    request_type_t type = K_TYPE_ID;
     char *request = "000";
     char exec_path[OS_MAXSTR];
 
@@ -803,14 +805,14 @@ void test_keyrequest_exec_output_too_long_request(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Request is too long.");
 
-    char *ret = keyrequest_exec_output(type,request);
+    char *ret = key_request_exec_output(type,request);
     assert_null(ret);
 }
 
-void test_keyrequest_exec_output_result_code_no_zero(void **state) {
+void test_key_request_exec_output_result_code_no_zero(void **state) {
     char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
-    request_type_t type = W_TYPE_ID;
+    request_type_t type = K_TYPE_ID;
     char *request = "000";
 
     expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
@@ -823,14 +825,14 @@ void test_keyrequest_exec_output_result_code_no_zero(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "Key request integration (python3 /tmp/test.py) returned code 1.");
 
-    char *ret = keyrequest_exec_output(type,request);
+    char *ret = key_request_exec_output(type,request);
     assert_null(ret);
 }
 
-void test_keyrequest_exec_output_timeout_error(void **state) {
+void test_key_request_exec_output_timeout_error(void **state) {
     char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
-    request_type_t type = W_TYPE_ID;
+    request_type_t type = K_TYPE_ID;
     char *request = "000";
 
     expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
@@ -843,14 +845,14 @@ void test_keyrequest_exec_output_timeout_error(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "Timeout received while running key request integration (python3 /tmp/test.py)");
 
-    char *ret = keyrequest_exec_output(type,request);
+    char *ret = key_request_exec_output(type,request);
     assert_null(ret);
 }
 
-void test_keyrequest_exec_output_path_invalid(void **state) {
+void test_key_request_exec_output_path_invalid(void **state) {
     char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
-    request_type_t type = W_TYPE_ID;
+    request_type_t type = K_TYPE_ID;
     char *request = "000";
 
     expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
@@ -863,14 +865,14 @@ void test_keyrequest_exec_output_path_invalid(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "Cannot run key request integration (python3 /tmp/test.py): path is invalid or file has insufficient permissions.");
 
-    char *ret = keyrequest_exec_output(type,request);
+    char *ret = key_request_exec_output(type,request);
     assert_null(ret);
 }
 
-void test_keyrequest_exec_output_error_executing(void **state) {
+void test_key_request_exec_output_error_executing(void **state) {
     char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
-    request_type_t type = W_TYPE_ID;
+    request_type_t type = K_TYPE_ID;
     char *request = "000";
 
     expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
@@ -883,14 +885,14 @@ void test_keyrequest_exec_output_error_executing(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "Error executing [python3 /tmp/test.py]");
 
-    char *ret = keyrequest_exec_output(type,request);
+    char *ret = key_request_exec_output(type,request);
     assert_null(ret);
 }
 
-void test_keyrequest_exec_output_success(void **state) {
+void test_key_request_exec_output_success(void **state) {
     char *exec_path = "python3 /tmp/test.py";
     config.key_request.exec_path = exec_path;
-    request_type_t type = W_TYPE_ID;
+    request_type_t type = K_TYPE_ID;
     char *request = "000";
 
     expect_string(__wrap_wm_exec, command, "python3 /tmp/test.py id 000");
@@ -901,7 +903,7 @@ void test_keyrequest_exec_output_success(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    char *ret = keyrequest_exec_output(type,request);
+    char *ret = key_request_exec_output(type,request);
     assert_string_equal(ret, "Output command");
     os_free(ret);
 }
@@ -919,29 +921,29 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_ip_not_found, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_key_not_found, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_agent_info_from_json_agent_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_not_connect, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_long_request, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_send_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_no_data_received, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_empty_string_received, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_socket_output_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_long_id, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_long_ip, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_wrong_request, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_bad_socket_output, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_error_parsing_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_error_parsing_agent_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_success_add_agent, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_exec_output_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_success_exec_output, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_w_key_request_dispatch_error_socket_success_exec_output, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_too_long_request, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_result_code_no_zero, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_timeout_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_path_invalid, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_error_executing, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_keyrequest_exec_output_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_socket_output_not_connect, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_socket_output_long_request, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_socket_output_send_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_socket_output_no_data_received, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_socket_output_empty_string_received, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_socket_output_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_long_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_long_ip, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_wrong_request, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_bad_socket_output, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_error_parsing_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_error_parsing_agent_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_success_add_agent, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_exec_output_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_success_exec_output, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_error_socket_success_exec_output, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_exec_output_too_long_request, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_exec_output_result_code_no_zero, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_exec_output_timeout_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_exec_output_path_invalid, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_exec_output_error_executing, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_exec_output_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
