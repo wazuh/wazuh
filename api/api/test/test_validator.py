@@ -8,11 +8,13 @@ import os
 import jsonschema as js
 import pytest
 
-from api.validator import check_exp, check_xml, _alphanumeric_param, \
-    _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes, \
-    _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param, \
-    _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path, \
-    allowed_fields, is_safe_path, _wazuh_version
+from api.validator import (check_exp, check_xml, _alphanumeric_param,
+                           _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,
+                           _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,
+                           _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
+                           allowed_fields, is_safe_path, _wazuh_version, _symbols_alphanumeric_param, _base64,
+                           _group_names, _group_names_or_all, _iso8601_date, _iso8601_date_time, _numbers_or_all,
+                           _cdb_filename_path, _xml_filename_path, _xml_filename)
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -23,16 +25,25 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('20190226', _dates),
     ('54355', _numbers),
     (100, _alphanumeric_param),
+    (1234567890, _numbers_or_all),
+    ('all', _numbers_or_all),
     # names
     ('alphanumeric1_param2', _alphanumeric_param),
     ('file_%1,file_2,file-3', _array_names),
     ('file%1-test_name1', _names),
+    ('[(Random_symbols-string123)],<>!.+:"\'|=~#', _symbols_alphanumeric_param),
+    ('Group_name-2', _group_names),
+    ('Group_name-2', _group_names_or_all),
+    ('all', _group_names_or_all),
     # IPs
     ('192.168.122.255', _ips),
     ('any', _ips),
     # hashes
     ('e4d909c290d0fb1ca068ffaddf22cbd0', _hashes),
     ('449e3b6ffd9b484c5c645321edd4d610', _wazuh_key),
+    # date
+    ('2021-04-28', _iso8601_date),
+    ('2021-11-04T18:14:04Z', _iso8601_date_time),
     # time
     ('1d', _timeframe_type),
     ('12h', _timeframe_type),
@@ -58,11 +69,16 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     # paths
     ('/var/ossec/etc/internal_options', _paths),
     ('/var/ossec/etc/rules/local_rules.xml', _paths),
+    ('security-eventchannel', _cdb_filename_path),
+    ('local_rules.xml', _xml_filename_path),
+    ('local_rules1.xml,local_rules2.xml', _xml_filename),
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
     # version
     ('v4.3.0', _wazuh_version),
     ('4.3.0', _wazuh_version),
+    # miscellaneous
+    ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64)
 ])
 def test_validation_check_exp_ok(exp, regex_name):
     """Verify that check_exp() returns True with correct params"""
@@ -74,10 +90,13 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('43a,21,34', _array_numbers),
     ('2019-02-26', _dates),
     ('543a', _numbers),
+    ('number', _numbers_or_all),
+    ('2380234all', _numbers_or_all),
     # names
     ('alphanumeric1_$param2', _alphanumeric_param),
-    ('file-$', 'names'),
+    ('file-$', _array_names),
     ('file_1$,file_2#,file-3', _array_names),
+    ('all', _group_names),
     # IPs
     ('192.168.122.256', _ips),
     ('192.266.1.1', _ips),
@@ -87,6 +106,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     # hashes
     ('$$d909c290d0fb1ca068ffaddf22cbd0', _hashes),
     ('449e3b6ffd9b484c5c645321edd4d61$', _wazuh_key),
+    # date
+    ('2021-13-28', _iso8601_date),
+    ('2021-10-35', _iso8601_date),
+    ('2021-11-04Z18:14:04T', _iso8601_date_time),
     # time
     ('1j', _timeframe_type),
     ('12x', _timeframe_type),
@@ -117,6 +140,8 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('v4.3', _wazuh_version),
     ('Wazuh 4.3.0', _wazuh_version),
     ('Wazuh v4.3.0', _wazuh_version),
+    # miscellaneous
+    ('aDhjasdh3=', _base64)
 ])
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
@@ -200,9 +225,9 @@ def test_is_safe_path():
 ])
 def test_validation_json_ok(value, format):
     """Verify that each value is of the indicated format."""
-    assert(js.validate({"key": value},
-                       schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
-                       format_checker=js.draft4_format_checker) is None)
+    assert (js.validate({"key": value},
+                        schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
+                        format_checker=js.draft4_format_checker) is None)
 
 
 @pytest.mark.parametrize('value, format', [
