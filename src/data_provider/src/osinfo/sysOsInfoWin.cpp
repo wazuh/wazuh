@@ -104,6 +104,25 @@ static std::string getBuild()
     return build;
 }
 
+static std::string getBuildRevision()
+{
+    std::string buildRevision;
+
+    if (IsWindows8OrGreater())
+    {
+        DWORD ubr {};
+
+        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+
+        if (currentVersion.dword("UBR", ubr))
+        {
+            buildRevision = std::to_string(ubr);
+        }
+    }
+
+    return buildRevision;
+}
+
 static std::string getRelease(const std::string& build)
 {
     static const std::string SERVICE_PACK_PREFIX{"Service Pack"};
@@ -299,6 +318,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
     : m_majorVersion{getVersion()}
     , m_minorVersion{getVersion(true)}
     , m_build{getBuild()}
+    , m_buildRevision{getBuildRevision()}
     , m_version{m_majorVersion + "." + m_minorVersion + "." + m_build}
     , m_release{getRelease(m_build)}
     , m_displayVersion{getDisplayVersion()}
@@ -313,7 +333,18 @@ std::string SysOsInfoProviderWindows::name() const
 }
 std::string SysOsInfoProviderWindows::version() const
 {
-    return m_version;
+    std::string version;
+
+    if (m_buildRevision.empty())
+    {
+        version = m_version;
+    }
+    else
+    {
+        version = m_version + "." + m_buildRevision;
+    }
+
+    return version;
 }
 std::string SysOsInfoProviderWindows::majorVersion() const
 {
@@ -325,7 +356,18 @@ std::string SysOsInfoProviderWindows::minorVersion() const
 }
 std::string SysOsInfoProviderWindows::build() const
 {
-    return m_build;
+    std::string build;
+
+    if (m_buildRevision.empty())
+    {
+        build = m_build;
+    }
+    else
+    {
+        build = m_build + "." + m_buildRevision;
+    }
+
+    return build;
 }
 std::string SysOsInfoProviderWindows::release() const
 {
