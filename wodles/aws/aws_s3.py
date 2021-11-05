@@ -503,7 +503,7 @@ class AWSBucket(WazuhIntegration):
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
-        Returns if the prefix of a file key is the same as the one expected.
+        Check if the prefix of a file key is the same as the one expected.
 
         Parameters
         ----------
@@ -524,7 +524,7 @@ class AWSBucket(WazuhIntegration):
 
     def _get_last_key_processed(self, aws_account_id: str) -> str or None:
         """
-        Returns the key of the last file processed by the module.
+        Get the key of the last file processed by the module.
 
         Parameters
         ----------
@@ -740,10 +740,10 @@ class AWSBucket(WazuhIntegration):
 
         if filter_args.get('StartAfter'):
             if custom_delimiter:
-                prefix_len = len(filter_args.get('Prefix'))
-                filter_args['StartAfter'] = filter_args.get('StartAfter')[:prefix_len] + \
-                                            filter_args.get('StartAfter')[prefix_len:].replace('/', custom_delimiter)
-            debug(f"+++ Marker: {filter_args.get('StartAfter')}", 2)
+                prefix_len = len(filter_args['Prefix'])
+                filter_args['StartAfter'] = filter_args['StartAfter'][:prefix_len] + \
+                                            filter_args['StartAfter'][prefix_len:].replace('/', custom_delimiter)
+            debug(f"+++ Marker: {filter_args['StartAfter']}", 2)
 
         return filter_args
 
