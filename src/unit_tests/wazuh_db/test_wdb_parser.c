@@ -1195,22 +1195,22 @@ void test_dbsync_modify_type_exists_data_real_value(void **state) {
     will_return(__wrap_sqlite3_column_text, "data2");
     expect_value(__wrap_sqlite3_column_text, iCol, 2);
     will_return(__wrap_sqlite3_column_text, "data3");
-    expect_value(__wrap_sqlite3_column_int, iCol, 3);
-    will_return(__wrap_sqlite3_column_int, 4);
-    expect_value(__wrap_sqlite3_column_double, iCol, 4);
-    will_return(__wrap_sqlite3_column_double, 5.0);
-    expect_value(__wrap_sqlite3_column_int, iCol, 5);
-    will_return(__wrap_sqlite3_column_int, 6);
-    expect_value(__wrap_sqlite3_column_int, iCol, 6);
-    will_return(__wrap_sqlite3_column_int, 7);
-    expect_value(__wrap_sqlite3_column_int, iCol, 7);
-    will_return(__wrap_sqlite3_column_int, 8);
+    expect_value(__wrap_sqlite3_column_text, iCol, 3);
+    will_return(__wrap_sqlite3_column_text, "4");
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "5.0");
+    expect_value(__wrap_sqlite3_column_text, iCol, 5);
+    will_return(__wrap_sqlite3_column_text, "6");
+    expect_value(__wrap_sqlite3_column_text, iCol, 6);
+    will_return(__wrap_sqlite3_column_text, "7");
+    expect_value(__wrap_sqlite3_column_text, iCol, 7);
+    will_return(__wrap_sqlite3_column_text, "8");
     expect_value(__wrap_sqlite3_column_text, iCol, 8);
     will_return(__wrap_sqlite3_column_text, "data9");
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok data1|data2|data3|4|5.000000|6|7|8|data9|");
+    assert_string_equal(data->output, "ok data1|data2|data3|4|5.0|6|7|8|data9|");
     assert_int_equal(ret, OS_SUCCESS);
 
     os_free(query);
@@ -1253,8 +1253,8 @@ void test_dbsync_modify_type_exists_data_compound_pk(void **state) {
     will_return(__wrap_sqlite3_column_text, "data3");
     expect_value(__wrap_sqlite3_column_text, iCol, 3);
     will_return(__wrap_sqlite3_column_text, "data4");
-    expect_value(__wrap_sqlite3_column_int, iCol, 4);
-    will_return(__wrap_sqlite3_column_int, 5);
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "5");
     expect_value(__wrap_sqlite3_column_text, iCol, 5);
     will_return(__wrap_sqlite3_column_text, "data6");
     expect_value(__wrap_sqlite3_column_text, iCol, 6);
@@ -1543,8 +1543,8 @@ void test_dbsync_delete_type_exists_data_compound_pk_select_data(void **state) {
     will_return(__wrap_sqlite3_column_text, "data3");
     expect_value(__wrap_sqlite3_column_text, iCol, 3);
     will_return(__wrap_sqlite3_column_text, "data4");
-    expect_value(__wrap_sqlite3_column_int, iCol, 4);
-    will_return(__wrap_sqlite3_column_int, 5);
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "5");
     expect_value(__wrap_sqlite3_column_text, iCol, 5);
     will_return(__wrap_sqlite3_column_text, "data6");
     expect_value(__wrap_sqlite3_column_text, iCol, 6);
