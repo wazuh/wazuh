@@ -128,9 +128,11 @@ The cmocka unit tests framework is required in order to compile and run the Wazu
 git clone https://git.cryptomilk.org/projects/cmocka.git
 ```
 
-2. Modify `DefineOptions.cmake` file and set `BUILD_SHARED_LIBS` to `OFF`
+2. Checkout the `stable-1.1` branch
 
-3. Build CMocka by running the following commands inside the repository directory:
+3. Modify `DefineOptions.cmake` file and set `BUILD_SHARED_LIBS` to `OFF`
+
+4. Build CMocka by running the following commands inside the repository directory:
 ```
 mkdir build
 cd build

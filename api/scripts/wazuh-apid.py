@@ -67,6 +67,11 @@ def start(foreground, root, config_file):
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
 
+    # `use_only_authd` deprecated on v4.3.0. To be removed
+    if "use_only_authd" in api_conf:
+        del api_conf["use_only_authd"]
+        logger.warning("'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
+
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.wazuh_path, log_path)):
         os.chown(os.path.join(common.wazuh_path, log_path), common.wazuh_uid(), common.wazuh_gid())

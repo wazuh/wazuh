@@ -1904,10 +1904,10 @@ const char *getuname()
                             dwCount = size;
                             dwRet = RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&buildRevision, &dwCount);
                             if (dwRet != ERROR_SUCCESS) {
-                                snprintf(__wp, 63, " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
+                                snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
                             }
                             else {
-                                snprintf(__wp, 63, " [Ver: %d.%d.%s.%d]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp, buildRevision);
+                                snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s.%d]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp, buildRevision);
                             }
 
                             char *endptr = NULL, *osVersion = NULL;
@@ -1937,10 +1937,17 @@ const char *getuname()
                             snprintf(__wp, 63, " [Ver: 6.2]");
                         }
                         else {
-                            snprintf(__wp, 63, " [Ver: %s.%s]", winver,wincomp);
+                            dwCount = size;
+                            dwRet = RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&buildRevision, &dwCount);
+                            if (dwRet != ERROR_SUCCESS) {
+                                snprintf(__wp, sizeof(__wp), " [Ver: %s.%s]", winver,wincomp);
+                            }
+                            else {
+                                snprintf(__wp, sizeof(__wp), " [Ver: %s.%s.%d]", winver, wincomp, buildRevision);
+                            }
                         }
-                        RegCloseKey(RegistryKey);
                     }
+                    RegCloseKey(RegistryKey);
                 }
 
                 strncat(ret, __wp, ret_size - 1);

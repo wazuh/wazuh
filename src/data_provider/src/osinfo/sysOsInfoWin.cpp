@@ -112,7 +112,7 @@ static std::string getBuildRevision()
     {
         DWORD ubr {};
 
-        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
         if (currentVersion.dword("UBR", ubr))
         {
@@ -333,18 +333,7 @@ std::string SysOsInfoProviderWindows::name() const
 }
 std::string SysOsInfoProviderWindows::version() const
 {
-    std::string version;
-
-    if (m_buildRevision.empty())
-    {
-        version = m_version;
-    }
-    else
-    {
-        version = m_version + "." + m_buildRevision;
-    }
-
-    return version;
+    return m_buildRevision.empty() ? m_version : m_version + "." + m_buildRevision;
 }
 std::string SysOsInfoProviderWindows::majorVersion() const
 {
@@ -356,18 +345,7 @@ std::string SysOsInfoProviderWindows::minorVersion() const
 }
 std::string SysOsInfoProviderWindows::build() const
 {
-    std::string build;
-
-    if (m_buildRevision.empty())
-    {
-        build = m_build;
-    }
-    else
-    {
-        build = m_build + "." + m_buildRevision;
-    }
-
-    return build;
+    return m_buildRevision.empty() ? m_build : m_build + "." + m_buildRevision;
 }
 std::string SysOsInfoProviderWindows::release() const
 {

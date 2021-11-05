@@ -59,7 +59,12 @@ stages:
       json:
         name: "IhavetoolongofanamebecauseireallywantthisframeworktostopmeireallyhopeitdoesstopmeotherwiseiwillcauserealpainintheAPIandidontwantto"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 400
       json:
@@ -153,7 +158,12 @@ stages:
       json:
         name: "NewAgentPost3"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 200
       json:
@@ -432,18 +442,60 @@ stages:
         error: 1706
 
     # POST /agents/insert
-  - name: Create an agent using force time
+  - name: Create an agent using force
     request:
       verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 200
       json:
         <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Create an agent using force (requirements are not met)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+    response:
+      status_code: 400
+      json:
+        error: 1705
+
+    # POST /agents/insert
+  - name: Create an agent using force (invalid parameters)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+            invalid: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
 
 ---
 test_name: POST /agents/insert/quick
