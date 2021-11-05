@@ -37,11 +37,11 @@ logcollector must be configured with the following labels
       <field name="audit_record.name">^Connect$</field>
       <field name="audit_record.status">^0$</field>
       <description>Percona audit: authentication success.</description>
-      <mitre>
-        <id>T1078</id>
-      </mitre>
       <group>authentication_success,pci_dss_10.2.5,pci_dss_8.7,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.d,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SC.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_PI1.4,tsc_PI1.5,</group>
       <options>no_full_log</options>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     </rule>
 
     <rule id="88002" level="3">

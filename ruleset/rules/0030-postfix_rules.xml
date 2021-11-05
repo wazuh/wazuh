@@ -21,10 +21,10 @@
     <id>^554$</id>
     <description>Postfix: Attempt to use mail server as relay </description>
     <description>(client host rejected).</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3302" level="6">
@@ -32,10 +32,10 @@
     <id>^550$</id>
     <description>Postfix: Rejected by access list </description>
     <description>(Requested action not taken).</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3303" level="5">
@@ -43,10 +43,10 @@
     <id>^450$</id>
     <description>Postfix: Sender domain is not found </description>
     <description>(450: Requested mail action not taken).</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3304" level="5">
@@ -54,10 +54,10 @@
     <id>^503$</id>
     <description>Postfix: Improper use of SMTP command pipelining </description>
     <description>(503: Bad sequence of commands).</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3305" level="5">
@@ -65,20 +65,20 @@
     <id>^504$</id>
     <description>Postfix: Recipient address must contain FQDN </description>
     <description>(504: Command parameter not implemented).</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3306" level="6">
     <if_sid>3301, 3302</if_sid>
     <match> blocked using </match>
     <description>Postfix: IP Address black-listed by anti-spam (blocked).</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3320" level="0">
@@ -91,10 +91,10 @@
     <match>defer service failure|Resource temporarily unavailable|</match>
     <match>^fatal: the Postfix mail system is not running</match>
     <description>Postfix process error.</description>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="3332" level="5">
@@ -139,11 +139,13 @@
     <if_matched_sid>3301</if_matched_sid>
     <same_source_ip />
     <description>Postfix: Multiple relaying attempts of spam.</description>
+    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
+    </mitre>
+    <mitre>
       <id>T1499</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3352" level="6" frequency="$POSTFIX_FREQ" timeframe="120">
@@ -151,11 +153,13 @@
     <same_source_ip />
     <description>Postfix: Multiple attempts to send e-mail from a </description>
     <description>rejected sender IP (access).</description>
+    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
+    </mitre>
+    <mitre>
       <id>T1499</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3353" level="10" frequency="$POSTFIX_FREQ" timeframe="120">
@@ -163,11 +167,13 @@
     <same_source_ip />
     <description>Postfix: Multiple attempts to send e-mail from </description>
     <description>invalid/unknown sender domain.</description>
+    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
+    </mitre>
+    <mitre>
       <id>T1499</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3354" level="12" frequency="$POSTFIX_FREQ" timeframe="120">
@@ -175,10 +181,10 @@
     <same_source_ip />
     <description>Postfix: Multiple misuse of SMTP service </description>
     <description>(bad sequence of commands).</description>
+    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3355" level="10" frequency="$POSTFIX_FREQ" timeframe="120">
@@ -186,11 +192,13 @@
     <same_source_ip />
     <description>Postfix: Multiple attempts to send e-mail to </description>
     <description>invalid recipient or from unknown sender domain.</description>
+    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
+    </mitre>
+    <mitre>
       <id>T1499</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3356" level="10" frequency="$POSTFIX_FREQ" timeframe="120" ignore="30">
@@ -198,20 +206,20 @@
     <same_source_ip />
     <description>Postfix: Multiple attempts to send e-mail from </description>
     <description>black-listed IP address (blocked).</description>
+    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3357" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>3332</if_matched_sid>
     <same_source_ip />
     <description>Postfix: Multiple SASL authentication failures.</description>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="3390" level="0">
@@ -228,30 +236,30 @@
     <if_sid>3395</if_sid>
     <match>verification</match>
     <description>Postfix: hostname verification failed</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3397" level="6">
     <if_sid>3395</if_sid>
     <match>RBL</match>
     <description>Postfix: RBL lookup error: Host or domain name not found</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="3398" level="6">
     <if_sid>3395</if_sid>
     <match>MAIL|does not resolve to address</match>
     <description>Postfix: Illegal address from unknown sender</description>
+    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1114</id>
     </mitre>
-    <group>spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <!--

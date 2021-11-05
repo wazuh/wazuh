@@ -22,10 +22,10 @@
         <if_sid>87000</if_sid>
         <field name="cylance_events.eventstatus">unsafe</field>
         <description>Cylance: File $(cylance_events.filepath) is unsafe.</description>
-        <mitre>
-            <id>T1203</id>
-        </mitre>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
     </rule>
 
     <!--
@@ -37,9 +37,9 @@
         <if_sid>87000</if_sid>
         <field name="cylance_events.eventstatus">abnormal</field>
         <description>Cylance: File $(cylance_events.filepath) is abnormal.</description>
-        <mitre>
-            <id>T1203</id>
-        </mitre>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
     </rule>
 
     <!--
@@ -52,9 +52,9 @@
         <field name="cylance_events.eventstatus">quarantined</field>
         <description>Cylance: File $(cylance_events.filepath) is quarantined.</description>
         <group>gdpr_IV_35.7.d,</group>
-        <mitre>
-            <id>T1203</id>
-        </mitre>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
     </rule>
 
     <!--
@@ -103,9 +103,9 @@
     	<if_sid>87050</if_sid>
     	<field name="cylance_threats.file_status">abnormal</field>
     	<description>Cylance Threat: File $(cylance_threats.file_path) is abnormal</description>
-    	<mitre>
-    	  <id>T1203</id>
-    	</mitre>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
     </rule>
 
     <!--

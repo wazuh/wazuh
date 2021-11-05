@@ -71,6 +71,9 @@
     <if_sid>64270</if_sid>
     <field name="msg">SCANNER_DIED_KILLED</field>
     <description>SCANNER_DIED_KILLED alert</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="64274" level="0">
