@@ -53,17 +53,15 @@ class FIMDB
          * @param callbackLog Pointer to the callback used to send log messages
          */
 #ifdef WIN32
-        void init(const std::string& dbPath,
-                  unsigned int interval_synchronization,
+        void init(unsigned int interval_synchronization,
                   unsigned int max_rows_file,
                   unsigned int max_rows_registry,
                   send_data_callback_t callbackSync,
-                  logging_callback_t callbackLog
+                  logging_callback_t callbackLog,
                   std::unique_ptr<DBSync> dbsyncHandler,
                   std::unique_ptr<RemoteSync> rsyncHandler);
 #else
-        void init(const std::string& dbPath,
-                  unsigned int interval_synchronization,
+        void init(unsigned int interval_synchronization,
                   unsigned int max_rows_file,
                   send_data_callback_t callbackSync,
                   logging_callback_t callbackLog,
@@ -132,8 +130,6 @@ class FIMDB
         std::unique_ptr<RemoteSync>                                             m_rsyncHandler;
         std::function<void(const std::string&)>                                 m_syncMessageFunction;
         std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
-
-        std::string createStatement();
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager

@@ -54,16 +54,14 @@ class FimDBFixture : public ::testing::Test
             EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_key", mockMaxRowsReg));
             EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_data", mockMaxRowsReg));
 
-            fimDBMock.init(MOCK_DB_PATH,
-                           mockIntervalSync, mockMaxRowsFile, mockMaxRowsReg,
+            fimDBMock.init(mockIntervalSync, mockMaxRowsFile, mockMaxRowsReg,
                            mockSyncMessage,
                            mockLoggingFunction,
                            std::move(dbsyncHandler),
                            std::move(rsyncHandler));
 #else
 
-            fimDBMock.init(MOCK_DB_PATH,
-                           mockIntervalSync, mockMaxRowsFile,
+            fimDBMock.init(mockIntervalSync, mockMaxRowsFile,
                            mockSyncMessage,
                            mockLoggingFunction,
                            std::move(dbsyncHandler),
