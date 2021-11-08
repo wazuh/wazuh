@@ -175,7 +175,6 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
             return -1;
         }
 
-        // TODO: why does it multiply the ilevel?
         ilevel *= 100;
 
         if (_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule) == 0) {
