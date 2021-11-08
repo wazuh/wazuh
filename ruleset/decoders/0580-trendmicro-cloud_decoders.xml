@@ -1,0 +1,11 @@
+<!--PARENT-->
+<decoder name="trendmicroCEF">
+   <program_name type="pcre2">(?i)CEF</program_name>
+</decoder>
+
+<!--ORDERS-->
+<decoder name="trendmicroCEF-version">
+  <parent>trendmicroCEF</parent>
+  <regex>(\d)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|(\.*)\|</regex>
+  <order>version,device_vendor,device_product,device_version,signature_id,name,severity,extension</order>
+</decoder>

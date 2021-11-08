@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <string.h>
 
 int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
     check_expected(usec);
@@ -31,6 +32,9 @@ int __wrap_wm_state_io(const char * tag,
     check_expected(op);
     check_expected_ptr(state);
     check_expected(size);
-
-    return mock();
+    int ret = mock();
+    if (!ret) {
+        memcpy(state, mock_type(void *), sizeof(*state));
+    }
+    return ret;
 }

@@ -84,6 +84,13 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         int storage,
                                         event_data_t *evt_data);
 
+int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                        fim_tmp_file *file,
+                                        pthread_mutex_t *mutex,
+                                        int storage,
+                                        event_data_t *evt_data,
+                                        directory_t *configuration);
+
 int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
 
 int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql);
@@ -169,5 +176,12 @@ int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
                                           unsigned long int dev,
                                           OSList *list,
                                           rb_tree *tree);
+
+int __wrap_fim_db_file_update(fdb_t *fim_sql,
+                              const char *path,
+                              const __attribute__((unused)) fim_file_data *data,
+                              fim_entry **saved);
+
+int __wrap_fim_db_is_full(fdb_t *fim_sql);
 
 #endif

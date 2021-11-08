@@ -6,9 +6,9 @@
 
 import argparse
 import sys
+from atexit import register
 
-from api import alogging, configuration
-from wazuh.core import common
+from wazuh.core import common, utils
 
 
 def start(foreground, root, config_file):
@@ -34,6 +34,7 @@ def start(foreground, root, config_file):
     import connexion
     import uvloop
     from aiohttp_cache import setup_cache
+    from api import alogging, configuration
 
     import wazuh.security
     from api import __path__ as api_path
@@ -43,11 +44,21 @@ def start(foreground, root, config_file):
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
         set_secure_headers
+    from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
 
-    configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
+    def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
+        for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
+            api_logger = alogging.APILogger(
+                log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
+                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
+            )
+            api_logger.setup_logger()
+
+    if config_file is not None:
+        configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
     log_path = api_conf['logs']['path']
@@ -55,6 +66,11 @@ def start(foreground, root, config_file):
     # Set up logger
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
+
+    # `use_only_authd` deprecated on v4.3.0. To be removed
+    if "use_only_authd" in api_conf:
+        del api_conf["use_only_authd"]
+        logger.warning("'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
 
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.wazuh_path, log_path)):
@@ -75,26 +91,31 @@ def start(foreground, root, config_file):
                 logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
 
             # Load SSL context
-            allowed_ssl_ciphers = {
+            allowed_ssl_protocols = {
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
                 'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
                 'tlsv1.2': ssl.PROTOCOL_TLSv1_2
             }
-            try:
-                ssl_cipher = allowed_ssl_ciphers[api_conf['https']['ssl_cipher'].lower()]
-            except (KeyError, AttributeError):
-                # KeyError: invalid string value
-                # AttributeError: invalid boolean value
-                logger.error(str(APIError(2003, details='SSL cipher is not valid. Allowed values: '
-                                                        'TLS, TLSv1, TLSv1.1, TLSv1.2')))
-                sys.exit(1)
-            ssl_context = ssl.SSLContext(protocol=ssl_cipher)
+
+            ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
+            ssl_context = ssl.SSLContext(protocol=ssl_protocol)
+
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(api_conf['https']['ca'])
-            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
-                                        keyfile=api_conf['https']['key'])
+
+            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'], keyfile=api_conf['https']['key'])
+
+            # Load SSL ciphers if any has been specified
+            if api_conf['https']['ssl_ciphers']:
+                ssl_ciphers = api_conf['https']['ssl_ciphers'].upper()
+                try:
+                    ssl_context.set_ciphers(ssl_ciphers)
+                except ssl.SSLError:
+                    logger.error(str(APIError(2003, details='SSL ciphers cannot be selected')))
+                    sys.exit(1)
+
         except ssl.SSLError:
             logger.error(str(APIError(2003, details='Private key does not match with the certificate')))
             sys.exit(1)
@@ -117,11 +138,13 @@ def start(foreground, root, config_file):
         print(f"Starting API as root")
 
     # Foreground/Daemon
+    utils.check_pid('wazuh-apid')
     if not foreground:
         pyDaemonModule.pyDaemon()
-        pyDaemonModule.create_pid('wazuh-apid', os.getpid())
-    else:
-        print(f"Starting API in foreground")
+    pid = os.getpid()
+    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    if foreground:
+        print(f"Starting API in foreground (pid: {pid})")
 
     # Load the SPEC file into memory to use as a reference for future calls
     wazuh.security.load_spec()
@@ -146,6 +169,9 @@ def start(foreground, root, config_file):
                 options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
                                          set_secure_headers]})
 
+    # Maximum body size that the API can accept (bytes)
+    app.app._client_max_size = configuration.api_conf['max_upload_size']
+
     # Enable CORS
     if api_conf['cors']['enabled']:
         import aiohttp_cors
@@ -164,6 +190,9 @@ def start(foreground, root, config_file):
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
 
+    # Add application signals
+    app.app.on_response_prepare.append(modify_response_headers)
+
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
     logger.debug(f'Loaded security API configuration: {security_conf}')
@@ -175,15 +204,6 @@ def start(foreground, root, config_file):
             access_log_class=alogging.AccessLogger,
             use_default_access_log=True
             )
-
-
-def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
-    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
-        api_logger = alogging.APILogger(log_path=log_path, foreground_mode=foreground_mode,
-                                        debug_level='info' if logger_name != 'wazuh-api'
-                                        and debug_mode != 'debug2' else debug_mode,
-                                        logger_name=logger_name)
-        api_logger.setup_logger()
 
 
 def print_version():
@@ -199,8 +219,9 @@ def test_config(config_file):
     config_file : str
         Path of the file
     """
+    from api.configuration import read_yaml_config
     try:
-        configuration.read_yaml_config(config_file=config_file)
+        read_yaml_config(config_file=config_file)
     except Exception as e:
         print(f"Configuration not valid: {e}")
         sys.exit(1)
@@ -221,8 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
-    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=common.api_config_path)
+    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file')
     parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
                         dest='debug_level')
     args = parser.parse_args()

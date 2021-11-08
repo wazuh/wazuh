@@ -10,6 +10,10 @@
 import argparse
 from ci import utils
 
+module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync', 'shared_modules/rsync', 'shared_modules/utils',
+               'data_provider']
+
+
 class CommandLineParser:
 
     def _argIsValid(self, arg):
@@ -19,11 +23,19 @@ class CommandLineParser:
         :param arg: Argument being selected in the command line.
         :return True is 'arg' is a correct one, False otherwise.
         """
-        ret = False
-        if arg == 'wazuh_modules/syscollector' or arg == 'shared_modules/dbsync' or arg == 'shared_modules/rsync' or arg == 'shared_modules/utils' or arg == 'data_provider':
-            # Available modules so far
-            ret = True
-        return ret
+        return arg in module_list
+
+    def _targetIsValid(self, arg):
+        """
+        Checks if the argument being selected is a correct one.
+
+        :param arg: Argument being selected in the command line.
+        :return True is 'arg' is a correct one, False otherwise.
+        """
+        validArguments = ['agent',
+                          'server',
+                          'winagent']
+        return arg in validArguments
 
     def processArgs(self):
         """
@@ -41,9 +53,9 @@ class CommandLineParser:
         parser.add_argument("--asan", help="Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
         parser.add_argument("--scheck", help="Run AStyle on the code for checking purposes. Example: python3 build.py --scheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
         parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
+        parser.add_argument("--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
 
         args = parser.parse_args()
-
         if self._argIsValid(args.readytoreview):
             utils.runReadyToReview(args.readytoreview)
             action = True
@@ -75,8 +87,12 @@ class CommandLineParser:
             if self._argIsValid(args.sformat):
                 utils.runAStyleFormat(args.sformat)
                 action = True
+            if self._targetIsValid(args.scanbuild):
+                utils.runScanBuild(args.scanbuild)
+                action = True
             if not action:
                 parser.print_help()
+
 
 if __name__ == "__main__":
     cmdLineParser = CommandLineParser()

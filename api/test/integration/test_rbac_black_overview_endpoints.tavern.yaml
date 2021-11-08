@@ -84,6 +84,6 @@ stages:
                uname: !anystr
                version: !anystr
              registerIP: any
-             status: active
+             status: disconnected
              version: !anystr
          nodes: !anything

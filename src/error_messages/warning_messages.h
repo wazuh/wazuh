@@ -74,6 +74,9 @@
 #define LOGTEST_INV_NUM_TIMEOUT                 "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
 #define LOGTEST_WARN_TOKEN_EXPIRED              "(7003): '%s' token expires"
 #define LOGTEST_WARN_SESSION_NOT_FOUND          "(7004): No session found for token '%s'"
+#define LOGTEST_WARN_FIELD_NOT_OBJECT_IGNORE    "(7005): '%s' field must be a JSON object. The parameter will be ignored"
+#define LOGTEST_WARN_FIELD_NOT_BOOLEAN_IGNORE   "(7006): '%s' field must be a boolean. The parameter will be ignored"
+
 
 /* Ruleset reading warnings */
 #define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
@@ -91,6 +94,14 @@
                                                 " Will be ignored."
 #define LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT      "(8002): 'age' cannot be less than 'timeout' in multiline_regex option."\
                                                 " 'age' will be ignored."
+#define LOGCOLLECTOR_INV_VALUE_IGNORE           "(8003): Invalid value '%s' for attribute '%s' in '%s' option. " \
+                                                "Attribute will be ignored."
+#define LOGCOLLECTOR_OPTION_IGNORED             "(8004): log_format '%s' does not support '%s' option." \
+                                                " Option will be ignored."
+#define LOGCOLLECTOR_INV_MACOS                  "(8005): Invalid location value '%s' when using 'macos' as " \
+                                                "'log_format'. Default value will be used."
+#define LOGCOLLECTOR_MISSING_LOCATION_MACOS     "(8006): Missing 'location' element when using 'macos' as " \
+                                                "'log_format'. Default value will be used."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."

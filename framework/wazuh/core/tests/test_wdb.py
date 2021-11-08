@@ -151,10 +151,13 @@ def test_run_wdb_command_ko(connect_mock):
 @patch("socket.socket.send")
 @patch("wazuh.core.wdb.WazuhDBConnection._send")
 def test_execute(send_mock, socket_send_mock, connect_mock):
+    def send_mock(obj, msg, raw=False):
+        return ['ok', '{"total": 5}'] if raw else [{"total": 5}]
+
     mywdb = WazuhDBConnection()
     mywdb.execute('agent 000 sql delete from test', delete=True)
     mywdb.execute("agent 000 sql update test set value = 'test' where key = 'test'", update=True)
-    with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
+    with patch("wazuh.core.wdb.WazuhDBConnection._send", new=send_mock):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
         mywdb.execute("agent 000 sql select test from test offset 1 count")
@@ -167,7 +170,8 @@ def test_execute_pagination(socket_send_mock, connect_mock):
 
     # Test pagination
     with patch("wazuh.core.wdb.WazuhDBConnection._send",
-               side_effect=[[{'total': 5}], exception.WazuhInternalError(2009), [{'total': 5}], [{'total': 5}]]):
+               side_effect=[[{'total': 5}], exception.WazuhInternalError(2009), ['ok', '{"total": 5}'],
+                            ['ok', '{"total": 5}']]):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 500")
 
     # Test pagination error
@@ -192,6 +196,6 @@ def test_failed_execute(send_mock, connect_mock, error_query, error_type, expect
             mywdb.execute(error_query, delete=delete, update=update)
     else:
         with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
-            with patch("wazuh.core.wdb.range", side_effect=error_type):
+            with patch("wazuh.core.wdb.min", side_effect=error_type):
                 with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
                     mywdb.execute(error_query, delete=delete, update=update)

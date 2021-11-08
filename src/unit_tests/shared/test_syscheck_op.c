@@ -1523,7 +1523,7 @@ static void test_sk_fill_event_full_event(void **state) {
 
     sk_fill_event(data->lf, data->f_name, data->sum);
 
-    assert_string_equal(data->lf->filename, "f_name");
+    assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
     assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
     assert_string_equal(data->lf->fields[FIM_SIZE].value, "size");
     assert_string_equal(data->lf->fields[FIM_PERM].value, "361100");
@@ -1533,50 +1533,24 @@ static void test_sk_fill_event_full_event(void **state) {
     assert_string_equal(data->lf->fields[FIM_SHA1].value, "sha1");
     assert_string_equal(data->lf->fields[FIM_UNAME].value, "uname");
     assert_string_equal(data->lf->fields[FIM_GNAME].value, "gname");
-    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
     assert_string_equal(data->lf->fields[FIM_MTIME].value, "2345678");
-    assert_int_equal(data->lf->inode_after, data->sum->inode);
     assert_string_equal(data->lf->fields[FIM_INODE].value, "3456789");
     assert_string_equal(data->lf->fields[FIM_SHA256].value, "sha256");
     assert_string_equal(data->lf->fields[FIM_ATTRS].value, "attributes");
-
-    assert_string_equal(data->lf->user_id, "user_id");
     assert_string_equal(data->lf->fields[FIM_USER_ID].value, "user_id");
-
-    assert_string_equal(data->lf->user_name, "user_name");
     assert_string_equal(data->lf->fields[FIM_USER_NAME].value, "user_name");
-
-    assert_string_equal(data->lf->group_id, "group_id");
     assert_string_equal(data->lf->fields[FIM_GROUP_ID].value, "group_id");
-
-    assert_string_equal(data->lf->group_name, "group_name");
     assert_string_equal(data->lf->fields[FIM_GROUP_NAME].value, "group_name");
-
-    assert_string_equal(data->lf->process_name, "process_name");
     assert_string_equal(data->lf->fields[FIM_PROC_NAME].value, "process_name");
-
-    assert_string_equal(data->lf->audit_uid, "audit_uid");
     assert_string_equal(data->lf->fields[FIM_AUDIT_ID].value, "audit_uid");
-
-    assert_string_equal(data->lf->audit_name, "audit_name");
     assert_string_equal(data->lf->fields[FIM_AUDIT_NAME].value, "audit_name");
-
-    assert_string_equal(data->lf->effective_uid, "effective_uid");
     assert_string_equal(data->lf->fields[FIM_EFFECTIVE_UID].value, "effective_uid");
-
-    assert_string_equal(data->lf->effective_name, "effective_name");
     assert_string_equal(data->lf->fields[FIM_EFFECTIVE_NAME].value, "effective_name");
-
-    assert_string_equal(data->lf->ppid, "ppid");
     assert_string_equal(data->lf->fields[FIM_PPID].value, "ppid");
-
-    assert_string_equal(data->lf->process_id, "process_id");
     assert_string_equal(data->lf->fields[FIM_PROC_ID].value, "process_id");
 
-    assert_string_equal(data->lf->sk_tag, "tag");
     assert_string_equal(data->lf->fields[FIM_TAG].value, "tag");
 
-    assert_string_equal(data->lf->sym_path, "symbolic_path");
     assert_string_equal(data->lf->fields[FIM_SYM_PATH].value, "symbolic_path");
 }
 
@@ -1587,7 +1561,6 @@ static void test_sk_fill_event_empty_event(void **state) {
 
     sk_fill_event(data->lf, data->f_name, data->sum);
 
-    assert_string_equal(data->lf->filename, "f_name");
     assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
     assert_null(data->lf->fields[FIM_SIZE].value);
     assert_null(data->lf->fields[FIM_PERM].value);
@@ -1597,50 +1570,24 @@ static void test_sk_fill_event_empty_event(void **state) {
     assert_null(data->lf->fields[FIM_SHA1].value);
     assert_null(data->lf->fields[FIM_UNAME].value);
     assert_null(data->lf->fields[FIM_GNAME].value);
-    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
     assert_null(data->lf->fields[FIM_MTIME].value);
-    assert_int_equal(data->lf->inode_after, data->sum->inode);
     assert_null(data->lf->fields[FIM_INODE].value);
     assert_null(data->lf->fields[FIM_SHA256].value);
     assert_null(data->lf->fields[FIM_ATTRS].value);
-
-    assert_null(data->lf->user_id);
     assert_null(data->lf->fields[FIM_USER_ID].value);
-
-    assert_null(data->lf->user_name);
     assert_null(data->lf->fields[FIM_USER_NAME].value);
-
-    assert_null(data->lf->group_id);
     assert_null(data->lf->fields[FIM_GROUP_ID].value);
-
-    assert_null(data->lf->group_name);
     assert_null(data->lf->fields[FIM_GROUP_NAME].value);
-
-    assert_null(data->lf->process_name);
     assert_null(data->lf->fields[FIM_PROC_NAME].value);
-
-    assert_null(data->lf->audit_uid);
     assert_null(data->lf->fields[FIM_AUDIT_ID].value);
-
-    assert_null(data->lf->audit_name);
     assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
-
-    assert_null(data->lf->effective_uid);
     assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
-
-    assert_null(data->lf->effective_name);
     assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
-
-    assert_null(data->lf->ppid);
     assert_null(data->lf->fields[FIM_PPID].value);
-
-    assert_null(data->lf->process_id);
     assert_null(data->lf->fields[FIM_PROC_ID].value);
 
-    assert_null(data->lf->sk_tag);
     assert_null(data->lf->fields[FIM_TAG].value);
 
-    assert_null(data->lf->sym_path);
     assert_null(data->lf->fields[FIM_SYM_PATH].value);
 }
 
@@ -1653,7 +1600,6 @@ static void test_sk_fill_event_win_perm(void **state) {
 
     sk_fill_event(data->lf, data->f_name, data->sum);
 
-    assert_string_equal(data->lf->filename, "f_name");
     assert_string_equal(data->lf->fields[FIM_FILE].value, "f_name");
     assert_null(data->lf->fields[FIM_SIZE].value);
     assert_string_equal(data->lf->fields[FIM_PERM].value, "win_perm");
@@ -1663,50 +1609,24 @@ static void test_sk_fill_event_win_perm(void **state) {
     assert_null(data->lf->fields[FIM_SHA1].value);
     assert_null(data->lf->fields[FIM_UNAME].value);
     assert_null(data->lf->fields[FIM_GNAME].value);
-    assert_int_equal(data->lf->mtime_after, data->sum->mtime);
     assert_null(data->lf->fields[FIM_MTIME].value);
-    assert_int_equal(data->lf->inode_after, data->sum->inode);
     assert_null(data->lf->fields[FIM_INODE].value);
     assert_null(data->lf->fields[FIM_SHA256].value);
     assert_null(data->lf->fields[FIM_ATTRS].value);
-
-    assert_null(data->lf->user_id);
     assert_null(data->lf->fields[FIM_USER_ID].value);
-
-    assert_null(data->lf->user_name);
     assert_null(data->lf->fields[FIM_USER_NAME].value);
-
-    assert_null(data->lf->group_id);
     assert_null(data->lf->fields[FIM_GROUP_ID].value);
-
-    assert_null(data->lf->group_name);
     assert_null(data->lf->fields[FIM_GROUP_NAME].value);
-
-    assert_null(data->lf->process_name);
     assert_null(data->lf->fields[FIM_PROC_NAME].value);
-
-    assert_null(data->lf->audit_uid);
     assert_null(data->lf->fields[FIM_AUDIT_ID].value);
-
-    assert_null(data->lf->audit_name);
     assert_null(data->lf->fields[FIM_AUDIT_NAME].value);
-
-    assert_null(data->lf->effective_uid);
     assert_null(data->lf->fields[FIM_EFFECTIVE_UID].value);
-
-    assert_null(data->lf->effective_name);
     assert_null(data->lf->fields[FIM_EFFECTIVE_NAME].value);
-
-    assert_null(data->lf->ppid);
     assert_null(data->lf->fields[FIM_PPID].value);
-
-    assert_null(data->lf->process_id);
     assert_null(data->lf->fields[FIM_PROC_ID].value);
 
-    assert_null(data->lf->sk_tag);
     assert_null(data->lf->fields[FIM_TAG].value);
 
-    assert_null(data->lf->sym_path);
     assert_null(data->lf->fields[FIM_SYM_PATH].value);
 }
 

@@ -2,10 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import json
 import logging
 import os
 import sys
 from asyncio import TimeoutError
+from typing import Iterator
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -57,6 +59,12 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
             assert e.ext['code'] == expected_error
         else:
             assert False, f'Unexpected exception: {e.ext}'
+
+
+@pytest.fixture(scope="session", autouse=True)
+def default_session_fixture() -> Iterator[None]:
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+        yield
 
 
 @pytest.mark.parametrize('kwargs', [
@@ -182,6 +190,12 @@ def test_DistributedAPI_local_request_errors():
         except KeyError as e:
             assert 'KeyError' in repr(e)
 
+    # Test execute_local_request when the dapi function (dapi.f) raises a JSONDecodeError
+    with patch('wazuh.cluster.get_nodes_info', side_effect=json.decoder.JSONDecodeError('test', 'test', 1)):
+        with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status'):
+            dapi_kwargs = {'f': cluster.get_nodes_info, 'logger': logger, 'is_async': True}
+            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
+
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
 @patch('asyncio.wait_for', new=AsyncMock(return_value='Testing'))
@@ -232,11 +246,33 @@ def test_DistributedAPI_local_request(mock_local_request):
             assert type(e) == KeyError
 
 
+@patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'worker'})
+@patch('wazuh.core.cluster.dapi.dapi.check_cluster_status', return_value=True)
+@patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
+def test_DistributedAPI_remote_request_errors(mock_client_execute, mock_check_cluster_status, mock_get_node):
+    """Check the behaviour when the execute_remote_request function raised an error"""
+    # Test execute_remote_request when it raises a JSONDecodeError
+    dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'local_master'}
+    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
+
+
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', new=AsyncMock(return_value='{"Testing": 1}'))
 def test_DistributedAPI_remote_request():
     """Test `execute_remote_request` method from class DistributedAPI."""
     dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'remote'}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+
+
+@patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'master-node'})
+@patch('wazuh.core.cluster.dapi.dapi.check_cluster_status', return_value=True)
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node', return_value={'worker1': ['001', '002']})
+@patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
+def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_solver_node, mock_check_cluster_status,
+                                               mock_get_node):
+    """Check the behaviour when the forward_request function raised an error"""
+    # Test forward_request when it raises a JSONDecodeError
+    dapi_kwargs = {'f': agent.reconnect_agents, 'logger': logger, 'request_type': 'distributed_master'}
+    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',

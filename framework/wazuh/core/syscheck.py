@@ -3,8 +3,8 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 from datetime import datetime
-
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict
+from wazuh.core.wdb import WazuhDBConnection
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
@@ -18,16 +18,6 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
                          min_select_fields=min_select_fields, count=True, get_data=True, date_fields={'mtime', 'date'},
                          *args, **kwargs)
         self.nested = nested
-
-    def _filter_date(self, date_filter, filter_db_name):
-        # dates are stored as timestamps
-        try:
-            date_filter['value'] = int(datetime.timestamp(datetime.strptime(date_filter['value'], "%Y-%m-%d %H:%M:%S")))
-        except ValueError:
-            date_filter['value'] = int(datetime.timestamp(datetime.strptime(date_filter['value'], "%Y-%m-%d")))
-        self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'],
-                                                                date_filter['field'])
-        self.request[date_filter['field']] = date_filter['value']
 
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
@@ -46,3 +36,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
                           self._data]
 
         return super()._format_data_into_dictionary()
+
+
+def syscheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
+    wdb_conn.execute(f"agent {agent} sql delete from fim_entry", delete=True)

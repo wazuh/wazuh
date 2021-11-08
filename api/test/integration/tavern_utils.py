@@ -75,8 +75,7 @@ def test_select_key_affected_items(response, select_key):
 
         # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
         # mandatory (id, agent_id, etc).
-        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file', 'task_id', 'agent_id', 'status',
-                                                            'command', 'create_time'} | main_keys)), \
+        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file', 'task_id'} | main_keys)), \
             f'Select keys are {main_keys}, but the response contains these keys: {set1}'
 
         for nested_key in nested_keys.items():
@@ -142,6 +141,10 @@ def test_sort_response(response, key=None, reverse=False):
                 dictionary = dictionary[key]
         except KeyError:
             return ''
+
+        if isinstance(dictionary, str) and not dictionary.startswith('/') and not dictionary.startswith('\\'):
+            return dictionary.lower()
+
         return dictionary
 
     affected_items = response.json()['data']['affected_items']
@@ -251,14 +254,11 @@ def test_validate_mitre(response, data, index=0):
 def test_validate_restart_by_node(response, data):
     data = json.loads(data.replace("'", '"'))
     affected_items = list()
-    failed_items = list()
     for item in data['affected_items']:
         if item['status'] == 'active':
             affected_items.append(item['id'])
-        else:
-            failed_items.append(item['id'])
     assert response.json()['data']['affected_items'] == affected_items
-    assert response.json()['data']['failed_items'] == failed_items
+    assert not response.json()['data']['failed_items']
 
 
 def test_validate_restart_by_node_rbac(response, permitted_agents):
@@ -324,3 +324,7 @@ def test_validate_search(response, search_param):
         values = get_values(item)
         if not any(filter(lambda x: search_param in x, values)):
             raise ValueError(f'{search_param} not present in {values}')
+
+
+def test_validate_key_not_in_response(response, key):
+    assert all(key not in item for item in response.json()["data"]["affected_items"])

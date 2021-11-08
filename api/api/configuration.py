@@ -29,16 +29,20 @@ default_security_configuration = {
 default_api_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
-    "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "max_upload_size": 10485760,
+    "intervals": {
+        "request_timeout": 10
+    },
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.2"
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
@@ -213,6 +217,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     :return: API configuration
     """
+
     def replace_bools(conf):
         """Replace 'yes' and 'no' strings in configuration for actual booleans.
 
@@ -234,7 +239,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
     if default_conf is None:
         default_conf = default_api_configuration
 
-    if os.path.exists(config_file):
+    if config_file and os.path.exists(config_file):
         try:
             with open(config_file) as f:
                 configuration = yaml.safe_load(f)
@@ -268,5 +273,5 @@ except ValidationError as e:
     raise APIError(2000, details=e.message)
 
 # Configuration - global object
-api_conf = dict()
+api_conf = read_yaml_config()
 security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)

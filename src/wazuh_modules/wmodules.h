@@ -33,11 +33,13 @@
 #define AZ_WM_NAME "azure-logs"
 #define KEY_WM_NAME "agent-key-polling"
 #define SCA_WM_NAME "sca"
-#define GCP_WM_NAME "gcp-pubsub"
+#define GCP_PUBSUB_WM_NAME "gcp-pubsub"
+#define GCP_BUCKET_WM_NAME "gcp-bucket"
 #define FLUENT_WM_NAME "fluent-forward"
 #define AGENT_UPGRADE_WM_NAME "agent-upgrade"
 #define TASK_MANAGER_WM_NAME "task-manager"
 #define GITHUB_WM_NAME "github"
+#define OFFICE365_WM_NAME "office365"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -79,6 +81,7 @@ typedef enum crypto_type {
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
 #include "wm_github.h"
+#include "wm_office365.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -138,6 +141,9 @@ void wm_kill_children();
 
 // Reads an HTTP header and extracts the size of the response
 long int wm_read_http_size(char *header);
+
+// Reads an HTTP header and extracts an element from a regex
+char* wm_read_http_header_element(char *header, char *regex);
 
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE

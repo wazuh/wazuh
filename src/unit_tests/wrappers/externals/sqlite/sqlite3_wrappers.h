@@ -23,6 +23,9 @@ int __wrap_sqlite3_bind_int64(sqlite3_stmt *stmt,
                               int index,
                               sqlite3_int64 value);
 
+int __wrap_sqlite3_bind_null(__attribute__((unused)) sqlite3_stmt *stmt,
+                              int index);
+
 void expect_sqlite3_bind_int64_call(int idx, double val, int ret);
 
 int __wrap_sqlite3_bind_text(sqlite3_stmt* pStmt,
@@ -53,6 +56,8 @@ const unsigned char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt,
                                                 int iCol);
 
 const char *__wrap_sqlite3_errmsg(sqlite3* db);
+
+int __wrap_sqlite3_extended_errcode(__attribute__((unused)) sqlite3* db);
 
 int __wrap_sqlite3_exec(sqlite3* db,                                 /* An open database */
                         const char *sql,                             /* SQL to be evaluated */
@@ -89,5 +94,7 @@ int __wrap_sqlite3_column_count(sqlite3_stmt *pStmt);
 int __wrap_sqlite3_column_type(sqlite3_stmt *pStmt, int i);
 
 const char* __wrap_sqlite3_column_name(sqlite3_stmt *pStmt, int N);
+
+int __wrap_sqlite3_get_autocommit(__attribute__((unused)) sqlite3 * db);
 
 #endif

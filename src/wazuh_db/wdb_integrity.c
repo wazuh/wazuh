@@ -189,18 +189,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     return 0;
 }
 
-/**
- * @brief Update sync attempt timestamp
- *
- * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id");
- */
-
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum) {
 
     assert(wdb != NULL);
 
@@ -211,25 +200,15 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
     sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
+    sqlite3_bind_text(stmt, 2, manager_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
-/**
- * @brief Update sync completion timestamp
- *
- * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
- * Increase "n_attempts" and "n_completions" one unit.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id");
- */
-
-static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum) {
 
     assert(wdb != NULL);
 
@@ -241,7 +220,8 @@ static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long 
 
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_int64(stmt, 2, timestamp);
-    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
+    sqlite3_bind_text(stmt, 3, manager_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -249,90 +229,93 @@ static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long 
 }
 
 // Query the checksum of a data range
-int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * command, const char * payload) {
-    int retval = -1;
-    cJSON * data = cJSON_Parse(payload);
+integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, dbsync_msg action, const char * payload) {
+    integrity_sync_status_t status = INTEGRITY_SYNC_ERR;
 
+    // Parse payload
+    cJSON * data = cJSON_Parse(payload);
     if (data == NULL) {
         mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->id, payload);
         return -1;
     }
-
     cJSON * item = cJSON_GetObjectItem(data, "begin");
     char * begin = cJSON_GetStringValue(item);
-
     if (begin == NULL) {
         mdebug1("No such string 'begin' in JSON payload.");
         goto end;
     }
-
     item = cJSON_GetObjectItem(data, "end");
     char * end = cJSON_GetStringValue(item);
-
     if (end == NULL) {
         mdebug1("No such string 'end' in JSON payload.");
         goto end;
     }
-
     item = cJSON_GetObjectItem(data, "checksum");
     char * checksum = cJSON_GetStringValue(item);
-
     if (checksum == NULL) {
         mdebug1("No such string 'checksum' in JSON payload.");
         goto end;
     }
-
     item = cJSON_GetObjectItem(data, "id");
-
     if (!cJSON_IsNumber(item)) {
         mdebug1("No such string 'id' in JSON payload.");
         goto end;
     }
-
     long timestamp = item->valuedouble;
-    os_sha1 hexdigest;
-    struct timespec ts_start, ts_end;
-    gettime(&ts_start);
 
-    switch (wdbi_checksum_range(wdb, component, begin, end, hexdigest)) {
-    case -1:
-        goto end;
-
-    case 0:
-        retval = 0;
-        break;
-
-    case 1:
-        gettime(&ts_end);
-        mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
-        retval = strcmp(hexdigest, checksum) ? 1 : 2;
+    os_sha1 manager_checksum = {0};
+    // Get the previously computed manager checksum
+    if (INTEGRITY_CHECK_GLOBAL == action) {
+        if (OS_SUCCESS == wdbi_get_last_manager_checksum(wdb, component, manager_checksum) && 0 == strcmp(manager_checksum, checksum)) {
+            mdebug2("Agent '%s' %s range checksum avoided.", wdb->id, COMPONENT_NAMES[component]);
+            status = INTEGRITY_SYNC_CKS_OK;
+        }
     }
 
-    // Remove old elements
+    // Get the actual manager checksum
+    if (status != INTEGRITY_SYNC_CKS_OK) {
+        struct timespec ts_start, ts_end;
+        gettime(&ts_start);
+        switch (wdbi_checksum_range(wdb, component, begin, end, manager_checksum)) {
+        case -1:
+            goto end;
 
-    if (strcmp(command, "integrity_check_global") == 0) {
-        wdbi_delete(wdb, component, begin, end, NULL);
-
-        // Update synchronization timestamp
-
-        switch (retval) {
-        case 0: // No data
-        case 1: // Checksum failure
-            wdbi_update_attempt(wdb, component, timestamp);
+        case 0:
+            status = INTEGRITY_SYNC_NO_DATA;
             break;
 
-        case 2: // Data is synchronized
-            wdbi_update_completion(wdb, component, timestamp);
+        case 1:
+            gettime(&ts_end);
+            mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
+            status = strcmp(manager_checksum, checksum) ? INTEGRITY_SYNC_CKS_FAIL : INTEGRITY_SYNC_CKS_OK;
+        }
+    }
+
+    // Update sync status
+    if (INTEGRITY_CHECK_GLOBAL == action) {
+        wdbi_delete(wdb, component, begin, end, NULL);
+        switch (status) {
+        case INTEGRITY_SYNC_NO_DATA:
+        case INTEGRITY_SYNC_CKS_FAIL:
+            wdbi_update_attempt(wdb, component, timestamp, "");
+            break;
+
+        case INTEGRITY_SYNC_CKS_OK:
+            wdbi_update_completion(wdb, component, timestamp, manager_checksum);
+
+        default:
+            break;
         }
 
-    } else if (strcmp(command, "integrity_check_left") == 0) {
+    }
+    else if (INTEGRITY_CHECK_LEFT == action) {
         item = cJSON_GetObjectItem(data, "tail");
         wdbi_delete(wdb, component, begin, end, cJSON_GetStringValue(item));
     }
 
 end:
     cJSON_Delete(data);
-    return retval;
+    return status;
 }
 
 // Query a complete table clear
@@ -380,10 +363,37 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
         goto end;
     }
 
-    wdbi_update_completion(wdb, component, timestamp);
+    wdbi_update_completion(wdb, component, timestamp, "");
     retval = 0;
 
 end:
     cJSON_Delete(data);
     return retval;
+}
+
+int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum) {
+    int result = OS_INVALID;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
+        mdebug1("Cannot cache statement");
+        return result;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_GET_INFO];
+    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
+
+    cJSON* j_sync_info = wdb_exec_stmt(stmt);
+    if (!j_sync_info) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+        return result;
+    }
+
+    cJSON* j_last_checksum = cJSON_GetObjectItem(j_sync_info->child, "last_manager_checksum");
+    if (cJSON_IsString(j_last_checksum)) {
+        strncpy(manager_checksum, cJSON_GetStringValue(j_last_checksum), sizeof(os_sha1));
+        result = OS_SUCCESS;
+    }
+
+    cJSON_Delete(j_sync_info);
+    return result;
 }

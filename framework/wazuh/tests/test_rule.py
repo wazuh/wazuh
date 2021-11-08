@@ -55,7 +55,7 @@ rule_contents = '''
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <list field="user" lookup="match_key">etc/lists/list-user</list>
     <field name="netinfo.iface.name">ens33</field>
-    <regex>$(\\d+.\\d+.\\d+.\\d+)</regex>
+    <regex>$(\\d{2,3}.\\d{2,3}.\\d{2,3}.\\d{2,3})</regex>
   </rule>
 </group>
     '''

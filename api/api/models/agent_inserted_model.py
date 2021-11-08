@@ -2,12 +2,15 @@
 
 from __future__ import absolute_import
 
+from typing import Dict
+
+from api.models.agent_added_model import AgentForce
 from api.models.base_model_ import Body
 
 
 class AgentInsertedModel(Body):
 
-    def __init__(self, id=None, name=None, ip=None, agent_id=None, key=None, force_time=None):
+    def __init__(self, id=None, name=None, ip=None, agent_id=None, key=None, force=None):
         """AgentAddedModel body model
         :param id: Agent id.
         :type id: str
@@ -19,8 +22,8 @@ class AgentInsertedModel(Body):
         :type agent_id: str
         :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
         :type key: str
-        :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
-        :type force_time: int
+        :param force: Remove the old agent with the same name or IP if conditions are met.
+        :type force: dict
         """
         self.swagger_types = {
             'id': str,
@@ -28,7 +31,7 @@ class AgentInsertedModel(Body):
             'ip': str,
             'agent_id': str,
             'key': str,
-            'force_time': int
+            'force': AgentForce
         }
 
         self.attribute_map = {
@@ -37,7 +40,7 @@ class AgentInsertedModel(Body):
             'ip': 'ip',
             'agent_id': 'id',
             'key': 'key',
-            'force_time': 'force_time'
+            'force': 'force'
         }
 
         self._id = id
@@ -45,7 +48,7 @@ class AgentInsertedModel(Body):
         self._ip = ip
         self._agent_id = agent_id
         self._key = key
-        self._force_time = force_time
+        self._force = AgentForce(**force or {}).to_dict()
 
     @property
     def id(self) -> str:
@@ -123,16 +126,16 @@ class AgentInsertedModel(Body):
         self._key = key
 
     @property
-    def force_time(self) -> int:
+    def force(self) -> Dict:
         """
         :return: Limit time to disconnect an agent with the same IP.
-        :rtype: int
+        :rtype: dict
         """
-        return self._force_time
+        return self._force
 
-    @force_time.setter
-    def force_time(self, force_time):
+    @force.setter
+    def force(self, force):
         """Limit time to disconnect an agent with the same IP.
-        :param force_time: Agents limit disconnection time. 
+        :param force: Remove the old agent with the same name or IP if conditions are met.
         """
-        self._force_time = force_time
+        self._force = force

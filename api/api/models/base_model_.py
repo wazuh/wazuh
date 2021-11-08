@@ -7,7 +7,7 @@ import six
 from connexion import ProblemException
 
 from api import util
-from api.util import raise_if_exc
+from api.util import raise_if_exc, get_invalid_keys
 from wazuh.core.exception import WazuhError, WazuhNotAcceptable
 
 T = typing.TypeVar('T')
@@ -199,7 +199,7 @@ class Body(Model):
         except JSONDecodeError:
             raise_if_exc(WazuhError(1018))
 
-        invalid = {key for key in dikt.keys() if key not in list(f_kwargs.keys())}
+        invalid = get_invalid_keys(dikt, f_kwargs)
 
         if invalid:
             raise ProblemException(status=400, title='Bad Request', detail='Invalid field found {}'.format(invalid))
@@ -221,14 +221,14 @@ class Body(Model):
         return util.deserialize_model(dikt, cls)
 
     @classmethod
-    def decode_body(cls, dikt, unicode_error=None, attribute_error=None):
+    def decode_body(cls, body, unicode_error=None, attribute_error=None):
         try:
-            body = dikt.decode('utf-8')
+            decoded_body = body.decode('utf-8')
         except UnicodeDecodeError:
             raise_if_exc(WazuhError(unicode_error))
         except AttributeError:
             raise_if_exc(WazuhError(attribute_error))
-        return body
+        return decoded_body
 
     @classmethod
     def validate_content_type(cls, request, expected_content_type):

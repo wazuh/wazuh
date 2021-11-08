@@ -41,11 +41,11 @@ namespace Utils
 
             void push(const T& value)
             {
+                std::lock_guard<std::mutex> lock{ m_mutex };
+
                 if (!m_canceled)
                 {
-                    Lock lock{ m_mutex };
                     m_queue.push(value);
-                    lock.unlock();
                     m_cv.notify_one();
                 }
             }
@@ -66,7 +66,7 @@ namespace Utils
 
                 if (ret)
                 {
-                    value = m_queue.front();
+                    value = std::move(m_queue.front());
                     m_queue.pop();
                 }
 
@@ -111,21 +111,22 @@ namespace Utils
 
             void cancel()
             {
-                Lock lock{ m_mutex };
+                std::lock_guard<std::mutex> lock{ m_mutex };
                 m_canceled = true;
-                lock.unlock();
                 m_cv.notify_all();
             }
 
             bool cancelled() const
             {
+                std::lock_guard<std::mutex> lock{ m_mutex };
                 return m_canceled;
             }
+
         private:
             using Lock = std::unique_lock<std::mutex>;
             mutable std::mutex m_mutex;
             std::condition_variable m_cv;
-            std::atomic_bool m_canceled;
+            bool m_canceled;
             std::queue<T> m_queue;
     };
 }//namespace Utils

@@ -200,21 +200,21 @@ void SysInfo::getMemory(nlohmann::json& info) const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
 
-    auto memTotal{ 1l };
-    auto memFree{ 0l };
+    auto memTotal{ 1ull };
+    auto memFree{ 0ull };
 
     const auto& itTotal { systemInfo.find("MemTotal") };
 
     if (itTotal != systemInfo.end())
     {
-        memTotal = std::stol(itTotal->second);
+        memTotal = std::stoull(itTotal->second);
     }
 
     const auto& itFree { systemInfo.find("MemFree") };
 
     if (itFree != systemInfo.end())
     {
-        memFree = std::stol(itFree->second);
+        memFree = std::stoull(itFree->second);
     }
 
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
@@ -223,11 +223,13 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100 * memFree / ramTotal);
 }
 
-
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    FactoryPackagesCreator<LINUX_TYPE>::getPackages(packages);
+    getPackages([&packages](nlohmann::json & data)
+    {
+        packages.push_back(data);
+    });
     return packages;
 }
 
@@ -316,19 +318,11 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    const SysInfoProcessesTable spProcTable
-    {
-        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
-    };
-
-    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
-
-    while (nullptr != spProcInfo)
+    getProcessesInfo([&jsProcessesList](nlohmann::json & processInfo)
     {
         // Append the current json process object to the list of processes
-        jsProcessesList.push_back(getProcessInfo(spProcInfo));
-        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
-    }
+        jsProcessesList.push_back(processInfo);
+    });
 
     return jsProcessesList;
 }
@@ -381,7 +375,7 @@ nlohmann::json SysInfo::getPorts() const
                 Utils::replaceAll(row, "\t", " ");
                 Utils::replaceAll(row, "  ", " ");
                 std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
-                ports["ports"].push_back(port);
+                ports.push_back(port);
             }
 
             fileBody = true;
@@ -389,4 +383,34 @@ nlohmann::json SysInfo::getPorts() const
     }
 
     return ports;
+}
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
+{
+
+    const SysInfoProcessesTable spProcTable
+    {
+        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
+    };
+
+    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
+
+    while (nullptr != spProcInfo)
+    {
+        // Get process information object and push it to the caller
+        auto processInfo = getProcessInfo(spProcInfo);
+        callback(processInfo);
+        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
+    }
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
+{
+    FactoryPackagesCreator<LINUX_TYPE>::getPackages(callback);
+}
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    // Currently not supported for this OS.
+    return nlohmann::json();
 }

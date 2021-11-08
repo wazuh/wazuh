@@ -163,10 +163,10 @@ class WazuhException(Exception):
                },
         1407: 'Query does not match expected format',
         1408: 'Field does not exist.',
-        1409: 'Invalid query operator.',
+        1409: 'Invalid query operator',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
-        1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
+        1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
                'remediation': 'Please, make sure you have read permissions over the file'
@@ -199,18 +199,11 @@ class WazuhException(Exception):
                               f'https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html'
                               ' to obtain more information on upgrading wazuh'
                },
-        1601: {'message': 'Impossible to run FIM scan, agent is not active',
-               'remediation': 'Please, ensure selected agent is active and connected to the manager. Visit '
-                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
-                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
-                              'to obtain more information on registering and connecting agents'
-               },
+
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Command not specified',
-        1651: {'message': 'Cannot send Active Response message to non-active agent, agent status is',
-               'remediation': f'Check non-active agents connection and try again. Please, visit the official '
-                              f'documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html)'},
+
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent ID not specified',
         1655: 'Active response - Command not available',
@@ -234,8 +227,11 @@ class WazuhException(Exception):
         1706: {'message': 'There is an agent with the same IP or the IP is invalid',
                'remediation': 'Please choose another IP'
                },
-        1707: {'message': 'Impossible to restart non-active agent',
-               'remediation': 'Please, make sure agent is active before attempting to restart'
+        1707: {'message': 'Cannot send request, agent is not active',
+               'remediation': 'Please, check non-active agents connection and try again. Visit '
+               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
+               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
+               ' to obtain more information on registering and connecting agents'
                },
         1708: {'message': 'There is an agent with the same ID',
                'remediation': 'Please choose another ID'
@@ -269,8 +265,8 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1726: {'message': 'Ossec authd is not running and API use_only_authd is enabled',
-               'remediation': f'Please enable authd or change the API use_only_authd configuration'
+        1726: {'message': 'Wazuh authd is not running',
+               'remediation': 'Please enable authd or check if there is any error'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
@@ -285,8 +281,8 @@ class WazuhException(Exception):
         1730: {'message': 'Node does not exist',
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
-        1731: {'message': 'Agent is not eligible for removal',
-               'remediation': f"Please, make sure the agent meets the requirements."
+        1731: {'message': 'Agent is not eligible for the action to be performed',
+               'remediation': 'Please, make sure the agent meets the requirements.'
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent to perform the operation.'
@@ -319,8 +315,6 @@ class WazuhException(Exception):
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1746: {'message': "Could not parse current client.keys file"},
-        1747: {'message': "Could not remove agent group assigment from database"},
-        1748: {'message': "Could not remove agent files"},
         1749: {'message': "Downgrading an agent requires the [force] flag.",
                'remediation': "Use force=1 parameter to force the downgrade"
                },
@@ -342,6 +336,8 @@ class WazuhException(Exception):
         1758: {'message': 'Tried to release an already unlocked client.keys thread lock',
                },
         1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
+               },
+        1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
         # CDB List: 1800 - 1899
@@ -413,7 +409,6 @@ class WazuhException(Exception):
         3000: 'Cluster',
         3001: 'Error creating zip file',
         3002: {'message': 'Error creating PID file'},
-        3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
@@ -465,7 +460,6 @@ class WazuhException(Exception):
                'remediation': f"[Update](https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
-        3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
@@ -548,8 +542,8 @@ class WazuhException(Exception):
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
-        6001: {'message': 'Maximum number of request per minute reached',
-               'remediation': f'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+        6001: {'message': 'Maximum number of requests per minute reached',
+               'remediation': f'This limit can be changed in api.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},

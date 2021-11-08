@@ -27,7 +27,7 @@ default_orm_engine = create_engine("sqlite:///:memory:")
 os.chdir(test_data_path)
 
 for file in glob.glob('*.yml'):
-    with open(os.path.join(test_data_path + file)) as f:
+    with open(os.path.join(test_data_path, file)) as f:
         tests_cases = safe_load(f)
 
     for function_, test_cases in tests_cases.items():
@@ -36,6 +36,9 @@ for file in glob.glob('*.yml'):
                 security_cases.append((function_, test_case['params'], test_case['result']))
             else:
                 rbac_cases.append((function_, test_case['params'], test_case['result']))
+
+with open(os.path.join(test_data_path, 'sanitize_policies.yaml')) as f:
+    sanitize_policies = safe_load(f)
 
 
 def create_memory_db(sql_file, session):
@@ -166,79 +169,6 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
     assert result['result']['data'] == expected_result
 
 
-def test_revoke_tokens(db_setup):
-    """Checks that the return value of revoke_tokens is a WazuhResult."""
-    with patch('wazuh.core.security.change_secret', side_effect=None):
-        security, WazuhResult, _ = db_setup
-        mock_current_user = ContextVar('current_user', default='wazuh')
-        with patch("wazuh.sca.common.current_user", new=mock_current_user):
-            result = security.revoke_current_user_tokens()
-            assert isinstance(result, WazuhResult)
-
-
-@pytest.mark.parametrize('role_list, expected_users', [
-    ([100, 101], {100, 103, 102}),
-    ([102], {104}),
-    ([102, 103, 104], {101, 104, 102})
-])
-def test_check_relationships(db_setup, role_list, expected_users):
-    """Check that the relationship between role and user is correct according to
-    `schema_security_test.sql`.
-
-    Parameters
-    ----------
-    role_list : list
-        List of role IDs.
-    expected_users : set
-        Expected users.
-    """
-    _, _, core_security = db_setup
-    assert core_security.check_relationships(roles=[role_id for role_id in role_list]) == expected_users
-
-
-@pytest.mark.parametrize('user_list, expected_users', [
-    ([104], {104}),
-    ([102, 103], {102, 103}),
-    ([], set())
-])
-def test_invalid_users_tokens(db_setup, user_list, expected_users):
-    """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `users` is correct.
-
-    Parameters
-    ----------
-    user_list : list
-        List of users.
-    expected_users : set
-        Expected users.
-    """
-    with patch('wazuh.core.security.TokenManager.add_user_roles_rules') as TM_mock:
-        _, _, core_security = db_setup
-        core_security.invalid_users_tokens(users=[user_id for user_id in user_list])
-        related_users = TM_mock.call_args.kwargs['users']
-        assert set(related_users) == expected_users
-
-
-@pytest.mark.parametrize('role_list, expected_roles', [
-    ([104], {104}),
-    ([102, 103], {102, 103}),
-    ([], set())
-])
-def test_invalid_roles_tokens(db_setup, role_list, expected_roles):
-    """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `roles` is correct.
-
-    Parameters
-    ----------
-    role_list : list
-        List of roles.
-    expected_roles : set
-        Expected roles.
-    """
-    with patch('wazuh.core.security.TokenManager.add_user_roles_rules') as TM_mock:
-        _, _, core_security = db_setup
-        core_security.invalid_roles_tokens(roles=[role_id for role_id in role_list])
-        assert set(TM_mock.call_args.kwargs['roles']) == expected_roles
-
-
 def test_add_new_default_policies(new_default_resources):
     """Check that new default policies are set in the correct range and that the migration proccess moves any possible
     default policy in the user range to the default range."""
@@ -337,3 +267,16 @@ def test_migrate_default_policies(new_default_resources):
 
     assert role1_policies.index(user_policy_id) == new_role1_policies.index(user_policy_id)
     assert role2_policies.index(user_policy_id) == new_role2_policies.index(user_policy_id)
+
+
+@pytest.mark.parametrize('policy_case', sanitize_policies['policies'])
+def test_sanitize_rbac_policy(db_setup, policy_case):
+    _, _, core_security = db_setup
+    policy = policy_case['policy']
+    core_security.sanitize_rbac_policy(policy)
+    for element in ('actions', 'resources', 'effect'):
+        if element in policy:
+            if element != 'resources':
+                assert all(p.islower() for p in policy[element])
+            else:
+                assert all(':'.join(p.split(':')[:-1]) for p in policy[element])

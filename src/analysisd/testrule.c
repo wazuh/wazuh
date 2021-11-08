@@ -649,7 +649,7 @@ void OS_ReadMSG(char *ut_str)
 
                 /* Check each rule */
                 else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
-                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, false), !currently_rule) {
+                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, false, NULL), !currently_rule) {
                     continue;
                 }
 
@@ -706,7 +706,8 @@ void OS_ReadMSG(char *ut_str)
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
                     if (alert_only) {
-                        OS_Log(lf);
+                        OS_Log(lf, stdout);
+                        fflush(stdout);
                         __crt_ftell++;
                     } else {
                         print_out("**Alert to be generated.\n\n");

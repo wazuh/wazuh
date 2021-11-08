@@ -9,23 +9,39 @@
  * Foundation.
  */
 
+#ifndef AUTH_CONFIG_H
+#define AUTH_CONFIG_H
+
 #define AD_CONF_UNPARSED 3
 #define AD_CONF_UNDEFINED 2
+
+#include <time.h>
+
+/**
+ * @brief Structure that defines the force options for agent replacement.
+ **/
+typedef struct authd_force_options_t {
+    bool enabled;
+    bool key_mismatch;
+    bool disconnected_time_enabled;
+    time_t disconnected_time;
+    time_t after_registration_time;
+} authd_force_options_t;
 
 typedef struct authd_flags_t {
     unsigned short disabled:3;
     unsigned short use_source_ip:1;
-    unsigned short force_insert:1;
     unsigned short clear_removed:1;
     unsigned short use_password:1;
     unsigned short verify_host:1;
     unsigned short auto_negotiate:1;
+    unsigned short remote_enrollment:1;
 } authd_flags_t;
 
 typedef struct authd_config_t {
     unsigned short port;
     authd_flags_t flags;
-    int force_time;
+    authd_force_options_t force_options;
     char *ciphers;
     char *agent_ca;
     char *manager_cert;
@@ -34,3 +50,7 @@ typedef struct authd_config_t {
     long timeout_usec;
     bool worker_node;
 } authd_config_t;
+
+int get_time_interval(char *source, time_t *interval);
+
+#endif

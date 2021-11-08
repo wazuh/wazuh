@@ -760,6 +760,46 @@ long w_parse_time(const char * string) {
     return seconds >= 0 ? seconds : -1;
 }
 
+// Parse positive size string into bytes
+
+ssize_t w_parse_size(const char * string) {
+    char c;
+    ssize_t size;
+
+    switch (sscanf(string, "%zd%c", &size, &c)) {
+    case 1:
+        break;
+
+    case 2:
+        switch (c) {
+        case 'G':
+        case 'g':
+            size *= 1073741824;
+            break;
+        case 'M':
+        case 'm':
+            size *= 1048576;
+            break;
+        case 'K':
+        case 'k':
+            size *= 1024;
+            break;
+        case 'B':
+        case 'b':
+            break;
+        default:
+            return -1;
+        }
+
+        break;
+
+    default:
+        return -1;
+    }
+
+    return size >= 0 ? size : -1;
+}
+
 // Get time unit from seconds
 
 char*  w_seconds_to_time_unit(long seconds, bool long_format) {
@@ -787,7 +827,7 @@ char*  w_seconds_to_time_unit(long seconds, bool long_format) {
 // Get time value from seconds
 
 long w_seconds_to_time_value(long seconds) {
-    
+
     if(seconds < 0) {
         return -1;
     }
@@ -821,7 +861,7 @@ char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const 
 
     const size_t decoded_len = buffer_size / 2;
     char *decoded_buffer;
-    os_calloc(decoded_len, sizeof(char), decoded_buffer);
+    os_calloc(decoded_len + 1, sizeof(char), decoded_buffer);
 
     size_t i;
     for(i = 0; i < decoded_len; ++i) {
@@ -1003,6 +1043,11 @@ int os_snprintf(char *str, size_t size, const char *format, ...) {
 
 char * w_remove_substr(char *str, const char *sub) {
     char *p, *q, *r;
+
+    if (!str || !sub) {
+        return NULL;
+    }
+
     if ((q = r = strstr(str, sub)) != NULL) {
         size_t len = strlen(sub);
         while ((r = strstr(p = r + len, sub)) != NULL) {
@@ -1151,4 +1196,23 @@ char** w_strtok(const char *string) {
     }
 
     return output;
+}
+
+char* w_strcat_list(char ** list, char sep_char) {
+
+    char * concatenation = NULL;
+    char sep[] = {sep_char, '\0'};
+
+    if (list != NULL) {
+        char ** FIRST_ELEMENT = list;
+        while (*list != NULL) {
+            if (list != FIRST_ELEMENT) {
+                concatenation = w_strcat(concatenation, sep, 1);
+            }
+            concatenation = w_strcat(concatenation, *list, w_strlen(*list));
+            list++;
+        }
+    }
+
+    return concatenation;
 }

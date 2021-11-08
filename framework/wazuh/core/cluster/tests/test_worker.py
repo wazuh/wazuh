@@ -66,72 +66,6 @@ def AsyncMock(*args, **kwargs):
     return mock_coro
 
 
-@pytest.mark.parametrize('old_ck, new_ck, agents_to_remove', [
-    (old_basic_ck, new_ck_purge, {'001'}),
-    (old_basic_ck, new_ck_purge2, {'001', '002'}),
-    (old_basic_ck, new_ck_no_purge, {'001'}),
-    (old_basic_ck, new_ck_no_purge2, {'001', '002'}),
-    (old_basic_ck, '\n', {'001', '002', '003'}),
-    ('\n', old_basic_ck, set()),
-    (old_basic_ck, new_ck_more_agents, set()),
-    (old_basic_ck, new_ck_more_agents_purge, {'001'}),
-    (old_basic_ck, new_ck_more_agents_no_purge, {'001'})
-])
-@patch('wazuh.core.cluster.worker.WorkerHandler.remove_bulk_agents')
-def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_remove):
-    """
-    Tests WorkerHandler._check_removed_agents function.
-    """
-    # Custom mock_open object to be able to read multiple files contents (old and new client keys)
-    mock_files = [mock_open(read_data=content).return_value for content in [old_ck, new_ck]]
-    mock_opener = mock_open()
-    mock_opener.side_effect = mock_files
-
-    root_logger = logging.getLogger()
-
-    with patch('builtins.open', mock_opener):
-        worker.WorkerHandler._check_removed_agents('/random/path/client.keys', root_logger)
-
-        remove_agents_patch.assert_called_once_with(agents_to_remove, root_logger)
-
-
-@pytest.mark.parametrize('agents_to_remove', [
-    {'001'},
-    [str(x).zfill(3) for x in range(1, 15)]
-])
-@patch('wazuh.core.cluster.worker.WazuhDBConnection')
-@patch('shutil.rmtree')
-@patch('os.remove')
-@patch('glob.iglob')
-@patch('wazuh.core.agent.Agent.get_agents_overview')
-@patch('os.path.isdir')
-def test_remove_bulk_agents(isdir_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock,
-                            agents_to_remove):
-    """
-    Tests WorkerHandler.remove_bulk_agents function.
-    """
-    agents_mock.return_value = {'totalItems': len(agents_to_remove),
-                                'items': [{'id': a_id, 'ip': '0.0.0.0', 'name': 'test'} for a_id in agents_to_remove]}
-    files_to_remove = [common.wazuh_path + '/queue/rootcheck/({name}) {ip}->rootcheck',
-                       common.wazuh_path + '/queue/diff/{name}', common.wazuh_path + '/queue/agent-groups/{id}',
-                       common.wazuh_path + '/queue/rids/{id}', common.wazuh_path + '/var/db/agents/{name}-{id}.db',
-                       'global.db']
-    glob_mock.side_effect = [[f.format(id=a, ip='0.0.0.0', name='test') for a in agents_to_remove] for f in
-                             files_to_remove]
-    root_logger = logging.getLogger()
-    root_logger.debug2 = root_logger.debug
-    isdir_mock.side_effect = lambda x: x == 'queue/diff/test'
-
-    worker.WorkerHandler.remove_bulk_agents(agents_to_remove, root_logger)
-
-    for f in files_to_remove:
-        if f == 'global.db':
-            continue
-        for a in agents_to_remove:
-            file_name = f.format(id=a, ip='0.0.0.0', name='test')
-            (rmtree_mock if f == 'queue/diff/{name}' else remove_mock).assert_any_call(file_name)
-
-
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
 logger = None
@@ -171,71 +105,71 @@ def test_ReceiveIntegrityTask():
 
 
 @pytest.mark.asyncio
-async def test_SyncWorker(create_log, caplog):
-    async def check_message(mock, expected_message):
+async def test_SyncTask(create_log, caplog):
+    async def check_message(mock, expected_message, method, *args, **kwargs):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
             with caplog.at_level(logging.DEBUG):
-                await sync_worker.sync()
+                await method(*args, **kwargs)
                 assert expected_message in caplog.records[-1].message
 
     worker_handler = get_worker_handler()
+    sync_task = worker.SyncTask(cmd=b'testing', logger=logger, worker=worker_handler)
 
-    sync_worker = worker.SyncWorker(cmd=b'testing', files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'},
-                                    logger=logger, worker=worker_handler)
+    await check_message(mock=KeyError(1), expected_message=f"Error asking for permission: 1",
+                        method=sync_task.request_permission)
+    await check_message(mock=b'False', expected_message="Master didn't grant permission to start",
+                        method=sync_task.request_permission)
+    await check_message(mock=b'True', expected_message="Permission to synchronize granted.",
+                        method=sync_task.request_permission)
 
-    send_request_mock = KeyError(1)
-    await check_message(mock=send_request_mock, expected_message=f"Error asking for permission: 1")
-    await check_message(mock=b'False', expected_message="Master didn't grant permission to synchronize.")
-    await check_message(mock=b'True', expected_message="Zip file sent to master.")
+
+@pytest.mark.asyncio
+async def test_SyncWorker(create_log, caplog):
+    worker_handler = get_worker_handler()
+    sync_worker = worker.SyncFiles(cmd=b'testing', logger=logger, worker=worker_handler)
 
     error = WazuhException(1001)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
-            await sync_worker.sync()
+            await sync_worker.sync(files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'})
             assert 'Error sending zip file' in caplog.records[-1].message
 
     error = KeyError(1)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
-            await sync_worker.sync()
+            await sync_worker.sync(files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'})
             assert 'Error sending zip file' in caplog.records[-1].message
+
 
 @pytest.mark.asyncio
 async def test_SyncWazuhdb(create_log, caplog):
-    async def check_message(mock, expected_messages):
+    async def check_message(mock, expected_messages, *args, **kwargs):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
             with caplog.at_level(logging.DEBUG):
-                await sync_worker.sync()
+                await sync_worker.sync(*args, **kwargs)
                 for i, expected_message in enumerate(expected_messages):
                     assert expected_message in caplog.records[-(i + 1)].message
-                # assert expected_message in caplog.records[-1].message
 
     worker_handler = get_worker_handler()
-
-    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'sync_a_w_m', data_retriever=MagicMock(),
+    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=MagicMock(),
                                      get_data_command='test-get', set_data_command='test-set')
-    await check_message(mock=KeyError(1), expected_messages=["Error asking for permission: 1"])
-    await check_message(mock=b'False', expected_messages=["Master didn't grant permission to synchronize."])
 
-    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'sync_a_w_m',
+    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: [])
     await check_message(mock=b'True', expected_messages=["(0 chunks sent)",
-                                                         "Obtained 0 chunks of data in",
-                                                         "Permission to synchronize granted."])
+                                                         "Obtained 0 chunks of data in"], start_time=123.456)
 
-    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'sync_a_w_m',
+    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: ['test0', 'test1'])
     await check_message(mock=b'True', expected_messages=["All chunks sent.",
-                                                         "Obtained 2 chunks of data in",
-                                                         "Permission to synchronize granted."])
+                                                         "Obtained 2 chunks of data in"], start_time=123.456)
 
-    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'sync_a_w_m',
+    sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: exec('raise(WazuhException(1000))'))
-    await check_message(mock=b'True', expected_messages=["Error obtaining data from wazuh-db",
-                                                         "Permission to synchronize granted."])
+    await check_message(mock=b'True', expected_messages=["Error obtaining data from wazuh-db"], start_time=123.456)
 
 
 @pytest.mark.asyncio
@@ -286,17 +220,17 @@ async def test_RetrieveAndSendToMaster(caplog):
     # Test unsuccessful workflow for 1 chunks
     sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
                                                  expected_res='test_res', n_retries=1, data_retriever=lambda: ['test1'],
-                                                 cmd=b'sync_a_m_w')
+                                                 cmd=b'syn_a_m_w')
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='ok') as mock_lc:
         with patch('wazuh.core.cluster.common.Handler.send_request', return_value='ok'):
             await check_message(expected_messages=["Finished sending information to test in",
-                                                   "Master response for b'sync_a_m_w_e' command: ok",
+                                                   "Master response for b'syn_a_m_w_e' command: ok",
                                                    "Master's test response: ok.",
                                                    "Error sending chunk to master's test. Response does not start with"
                                                    " test_res (Response: ok). Retrying... 0",
                                                    "Master's test response: ok.",
                                                    "Starting to send information to test.",
-                                                   "Master response for b'sync_a_m_w_s' command: ok",
+                                                   "Master response for b'syn_a_m_w_s' command: ok",
                                                    "Obtained 1 chunks of data to be sent.",
                                                    "Obtaining data to be sent to master's test."])
             calls = [
@@ -314,18 +248,18 @@ def test_WorkerHandler():
                 worker_handler.connected = True
                 worker_handler.connection_result(future_result=None)
 
-    assert worker_handler.process_request(command=b'sync_m_c_ok', data=b'Testing') == (b'ok', b'Thanks')
+    assert worker_handler.process_request(command=b'syn_m_c_ok', data=b'Testing') == (b'ok', b'Thanks')
 
     with patch('wazuh.core.cluster.common.WazuhCommon.setup_receive_file', side_effect=(b'ok', b'Thanks')):
-        assert worker_handler.process_request(command=b'sync_m_c', data=b'Testing') == b'ok'
+        assert worker_handler.process_request(command=b'syn_m_c', data=b'Testing') == b'ok'
 
     with patch('wazuh.core.cluster.common.WazuhCommon.end_receiving_file',
                side_effect=(b'ok', b'File correctly received')):
-        assert worker_handler.process_request(command=b'sync_m_c_e', data=b'Testing First') == b'ok'
+        assert worker_handler.process_request(command=b'syn_m_c_e', data=b'Testing First') == b'ok'
 
     with patch('wazuh.core.cluster.common.WazuhCommon.error_receiving_file',
                side_effect=(b'ok', b'File correctly received')):
-        assert worker_handler.process_request(command=b'sync_m_c_r', data=b'Testing') == b'ok'
+        assert worker_handler.process_request(command=b'syn_m_c_r', data=b'Testing') == b'ok'
 
     with patch('asyncio.create_task', side_effect=None):
         assert worker_handler.process_request(command=b'dapi_res', data=b'Testing') == \

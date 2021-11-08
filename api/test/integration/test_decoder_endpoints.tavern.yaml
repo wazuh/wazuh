@@ -343,14 +343,11 @@ stages:
         limit: 1
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: !anyint
 
     # GET /decoders?limit=1&sort=-{field}
   - name: Try to get decoders using an descendent sorted field answer
@@ -361,14 +358,12 @@ stages:
         limit: 1
         sort: "-{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: !anyint
 
 ---
 test_name: GET /decoders/{decoder_name}
@@ -520,17 +515,11 @@ stages:
       params:
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: !anyint
-      save:
-        json:
-          total_items: data.total_affected_items
 
     # GET /decoders/auditd-selinux_macstatus?sort=-{field}
   - name: Try to get all decoders with specified decoder_name using an descendent sorted field answer
@@ -540,14 +529,12 @@ stages:
       params:
         sort: "-{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !int "{total_items}"
-          total_failed_items: !anyint
 
 ---
 test_name: GET /decoders/files
@@ -768,14 +755,12 @@ stages:
         limit: 1
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array_files
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: !anyint
 
     # GET /decoders/files?limit=1&sort=-{field}
   - name: Try to get information about all decoders files using a descendent sorted field answer
@@ -786,14 +771,12 @@ stages:
         limit: 1
         sort: "-{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array_files
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: !anyint
 
 ---
 test_name: GET /decoders/parents
@@ -951,12 +934,11 @@ stages:
         limit: 1
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array_parents
-          total_affected_items: !anyint
 
   # GET /decoders/parents?limit=1&sort=-{field}
   - name: Try to get information about all decoders parents using a descendent sorted field answer
@@ -967,12 +949,12 @@ stages:
         limit: 1
         sort: "-{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array_parents
-          total_affected_items: !anyint
 
 ---
 test_name: GET /decoders/files/{file}

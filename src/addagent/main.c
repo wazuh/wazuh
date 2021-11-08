@@ -44,7 +44,8 @@ __attribute__((noreturn)) static void helpmsg()
     print_out("    -e <id>     Extracts key for an agent (Manager only).");
     print_out("    -r <id>     Remove an agent (Manager only).");
     print_out("    -i <key>    Import authentication key (Agent only).");
-    print_out("    -F <sec>    Remove agents with duplicated IP if disconnected since <sec> seconds.");
+    print_out("    -R <sec>    Replace agents that were registered at least <sec> seconds.");
+    print_out("    -D <sec>    Replace agents that were disconnected at least <sec> seconds.");
     print_out("    -f <file>   Bulk generate client keys from file (Manager only).");
     print_out("                <file> contains lines in IP,NAME format.");
     exit(1);
@@ -80,7 +81,8 @@ char shost[512];
 int main(int argc, char **argv)
 {
     int c = 0, cmdlist = 0, json_output = 0;
-    int force_antiquity;
+    int disconnected_time;
+    int after_registration_time;
     char *user_msg;
     char *end;
     const char *cmdexport = NULL;
@@ -105,7 +107,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:F:L")) != -1) {
+    while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:R:D:L")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -176,16 +178,27 @@ int main(int argc, char **argv)
                     merror_exit("-n needs an argument.");
                 setenv("OSSEC_AGENT_NAME", optarg, 1);
                 break;
-            case 'F':
+            case 'D':
                 if (!optarg)
-                    merror_exit("-F needs an argument.");
+                    merror_exit("-D needs an argument.");
 
-                force_antiquity = strtol(optarg, &end, 10);
+                disconnected_time = strtol(optarg, &end, 10);
 
-                if (optarg == end || force_antiquity < 0)
-                    merror_exit("Invalid number for -F");
+                if (optarg == end || disconnected_time < 0)
+                    merror_exit("Invalid number for -D");
 
-                setenv("OSSEC_REMOVE_DUPLICATED", optarg, 1);
+                setenv("DISCONNECTED_TIME", optarg, 1);
+                break;
+            case 'R':
+                if (!optarg)
+                    merror_exit("-R needs an argument.");
+
+                after_registration_time = strtol(optarg, &end, 10);
+
+                if (optarg == end || after_registration_time < 0)
+                    merror_exit("Invalid number for -R");
+
+                setenv("AFTER_REGISTRATION_TIME", optarg, 1);
                 break;
             case 'L':
 #ifndef CLIENT

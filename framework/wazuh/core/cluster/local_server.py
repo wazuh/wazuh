@@ -244,7 +244,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
         if command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b' ' + data)
             return b'ok', b'Added request to API requests queue'
-        elif command == b'dapi_forward':
+        elif command == b'dapi_fwd':
             node_name, request = data.split(b' ', 1)
             node_name = node_name.decode()
             if node_name in self.server.node.clients:

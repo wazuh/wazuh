@@ -84,7 +84,7 @@ int wm_config() {
 
 #endif
 
-#if defined (__linux__) || (__MACH__) || defined (sun)
+#if defined (__linux__) || (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);
@@ -214,6 +214,38 @@ long int wm_read_http_size(char *header) {
     size = strtol(header, NULL, 10);
     *found = c_aux;
     return size;
+}
+
+char* wm_read_http_header_element(char *header, char *regex) {
+    char *element = NULL;
+    OSRegex os_regex;
+
+    if (!header || !regex) {
+        merror("Missing parameters.");
+        return NULL;
+    }
+
+    if (!OSRegex_Compile(regex, &os_regex, OS_RETURN_SUBSTRING)) {
+        mwarn("Cannot compile regex.");
+        return NULL;
+    }
+
+    if (!OSRegex_Execute(header, &os_regex)) {
+        mdebug1("No match regex.");
+        OSRegex_FreePattern(&os_regex);
+        return NULL;
+    }
+
+    if (!os_regex.d_sub_strings[0]) {
+        mdebug1("No element was captured.");
+        OSRegex_FreePattern(&os_regex);
+        return NULL;
+    }
+
+    os_strdup(os_regex.d_sub_strings[0], element);
+
+    OSRegex_FreePattern(&os_regex);
+    return element;
 }
 
 void wm_free(wmodule * config) {

@@ -1,0 +1,79 @@
+<!--
+  -  Sysmon Event ID 7 rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="sysmon_eid7_detections,">
+
+    <rule id="92031" level="12">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)System\.Management\.Automation\.dll</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]\:\\\\Windows\\\\Microsoft.NET\\.+\\csc\\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(devenv|node|SSMS|VSLauncher)\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(sdiagnhost|SmartAudio3)\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(pwsh\.dll|powershell(_ise)?\.exe)$</field>
+        <description>Binary loaded PowerShell automation library - Possible unmanaged Powershell execution by suspicious process</description>
+        <mitre>
+            <id>T1059.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92140" level="6">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers</field>
+        <field name="win.eventdata.image" type="pcre2">spoolsv\.exe$</field>
+        <description>Printer spooler service loaded a dll file. Possible PrintNightmare exploit: CVE-2021-34527</description>
+        <mitre>
+            <id>T1210</id>
+        </mitre>
+    </rule>
+
+    <rule id="92150" level="10">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)vaultcli.dll</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)VaultCmd\.exe$</field>
+        <description>Suspicious process loaded VaultCli.dll module. Possible use to dump stored passwords.</description>
+        <mitre>
+            <id>T1555</id>
+        </mitre>
+    </rule>
+
+    <rule id="92160" level="4">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)taskschd.dll</field>
+        <description>Process loaded taskschd.dll module. May be used to create delayed malware execution</description>
+        <mitre>
+            <id>T1053.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92165" level="12">
+        <if_sid>92160</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)mshta\.exe$</field>
+        <description>Mshta loaded taskschd.dll module. May be used to create delayed malware execution</description>
+        <mitre>
+            <id>T1053.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92600" level="12">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt)\.EXE</field>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)VBEUI.DLL</field>
+        <description>Office application loaded vbeui.dll module. May be used to execute scripting code</description>
+        <mitre>
+            <id>T1059.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92620" level="6">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)[c-z]:\\\\Windows\\\\Temp\\\\.+\.dll</field>
+        <description>An executable - $(win.eventdata.image) - loaded $(win.eventdata.imageLoaded) from the Temp directory.</description>
+        <mitre>
+            <id>T1546.011</id>
+        </mitre>
+    </rule>
+</group>

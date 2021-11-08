@@ -15,9 +15,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 406
-      json:
-        error: 6002
+      status_code: 400
+      json: &error_spec
+        detail: !anystr
+        title: !anystr
 
     # POST /agents
   - name: Create a new agent
@@ -58,7 +59,12 @@ stages:
       json:
         name: "IhavetoolongofanamebecauseireallywantthisframeworktostopmeireallyhopeitdoesstopmeotherwiseiwillcauserealpainintheAPIandidontwantto"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 400
       json:
@@ -73,9 +79,8 @@ stages:
         ip: "any"
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        title: !anystr
+      json:
+        <<: *error_spec
 
     # POST /agents
   - name: Create agent without assigning an specific IP
@@ -153,7 +158,12 @@ stages:
       json:
         name: "NewAgentPost3"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 200
       json:
@@ -200,9 +210,22 @@ stages:
               ip: 'any'
 
 ---
-test_name: POST /groups/{group_id}
+test_name: POST /groups
 
 stages:
+
+    # POST /groups
+  - name: Try to create a group without body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
 
     # POST /groups
   - name: Create a group called group4
@@ -263,9 +286,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 406
-      json:
-        error: 6002
+      status_code: 400
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name
@@ -421,18 +442,60 @@ stages:
         error: 1706
 
     # POST /agents/insert
-  - name: Create an agent using force time
+  - name: Create an agent using force
     request:
       verify: False
       <<: *agent_insert_request
       json:
         name: "NewAgentPostInsert"
         ip: "any"
-        force_time: 1
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
     response:
       status_code: 200
       json:
         <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Create an agent using force (requirements are not met)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+    response:
+      status_code: 400
+      json:
+        error: 1705
+
+    # POST /agents/insert
+  - name: Create an agent using force (invalid parameters)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+            invalid: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
 
 ---
 test_name: POST /agents/insert/quick

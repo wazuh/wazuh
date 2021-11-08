@@ -51,6 +51,7 @@ const wm_context WM_OSQUERYMONITOR_CONTEXT = {
     (wm_routine)wm_osquery_monitor_main,
     (wm_routine)(void *)wm_osquery_monitor_destroy,
     (cJSON * (*)(const void *))wm_osquery_dump,
+    NULL,
     NULL
 };
 
@@ -260,8 +261,14 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     // Windows agent needs the complete path to osqueryd
 #ifndef WIN32
     if (!(osquery->bin_path && *osquery->bin_path)) {
-        strncpy(osqueryd_path, OSQUERYD_BIN, sizeof(osqueryd_path));
-        osqueryd_path[sizeof(osqueryd_path) - 1] = '\0';
+        /* Osquery installation path was moved from /usr/local to /opt/osquery in Osquery v5.0.1,
+        so we check both paths by default to support older and newer versions */
+        if (w_is_file("/opt/osquery/bin/" OSQUERYD_BIN)) {
+            snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/" OSQUERYD_BIN, "/opt/osquery/bin");
+        } else {
+            strncpy(osqueryd_path, OSQUERYD_BIN, sizeof(osqueryd_path));
+            osqueryd_path[sizeof(osqueryd_path) - 1] = '\0';
+        }
     } else
 #endif
     {
@@ -296,17 +303,25 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         // Run osquery
 
-        if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR | W_APPEND_POOL, osqueryd_path, config_path, NULL), !wfd) {
+        if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR, osqueryd_path, config_path, NULL), !wfd) {
             mwarn("Couldn't execute osquery (%s). Sleeping for 10 minutes.", osqueryd_path);
             sleep(600);
             continue;
         }
 
+#ifdef WIN32
+        wm_append_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_append_sid(wfd->pid);
+        }
+#endif
+
         time_started = time(NULL);
 
         // Get stderr
 
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
             // Filter Bash colors: \e[*m
             text = buffer[0] == '\e' && buffer[1] == '[' && (end = strchr(buffer + 2, 'm'), end) ? end + 1 : buffer;
 
@@ -350,6 +365,14 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                 }
             }
         }
+
+#ifdef WIN32
+        wm_remove_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_remove_sid(wfd->pid);
+        }
+#endif
 
         // If this point is reached, osquery exited
         int wp_closefd = wpclose(wfd);

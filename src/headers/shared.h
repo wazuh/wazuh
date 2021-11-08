@@ -201,7 +201,7 @@ extern const char *__local_name;
 
 #define w_strlen(x) ({ size_t ret = 0; if (x) ret = strlen(x); ret;})
 
-// Calculate the number of elements within an array. 
+// Calculate the number of elements within an array.
 // Only static arrays allowed.
 #define array_size(array) (sizeof(array)/sizeof(array[0]))
 
@@ -234,6 +234,7 @@ extern const char *__local_name;
 #include "rbtree_op.h"
 #include "queue_op.h"
 #include "queue_linked_op.h"
+#include "bqueue_op.h"
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"
@@ -272,5 +273,6 @@ extern const char *__local_name;
 #include "bzip2_op.h"
 #include "enrollment_op.h"
 #include "buffer_op.h"
+#include "atomic.h"
 
 #endif /* SHARED_H */

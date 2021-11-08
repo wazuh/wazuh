@@ -24,11 +24,12 @@ static std::string getVersion(const bool isMinor = false)
 
     if (IsWindowsVistaOrGreater())
     {
+        DWORD versionNumber {};
         Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
 
-        if (IsWindows8OrGreater())
+        if (IsWindows8OrGreater()
+                && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
         {
-            const auto versionNumber{currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber")};
             version = std::to_string(versionNumber);
         }
         else
@@ -161,6 +162,19 @@ static std::string getRelease(const std::string& build)
     return release;
 }
 
+static std::string getDisplayVersion()
+{
+    std::string display_version;
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+
+    if (!currentVersion.string("DisplayVersion", display_version))
+    {
+        display_version = UNKNOWN_VALUE;
+    }
+
+    return display_version;
+}
+
 static std::string getName()
 {
     std::string name;
@@ -171,6 +185,31 @@ static std::string getName()
     if (currentVersion.string("ProductName", name))
     {
         name = Utils::startsWith(name, MSFT_PREFIX) ? name : MSFT_PREFIX + " " + name;
+
+        const auto build { getBuild() };
+        std::string errorMessage;
+
+        try
+        {
+            size_t valueSize = 0;
+            const auto value { std::stoi(build, &valueSize) };
+
+            if (build.size() == valueSize)
+            {
+                constexpr int FIRST_BUILD_WINDOWS11{ 22000 };
+
+                if (value >= FIRST_BUILD_WINDOWS11)
+                {
+                    constexpr auto MSFT_VERSION {"Microsoft Windows 10"};
+                    constexpr auto MSFT_VERSION_REPLACED {"Microsoft Windows 11"};
+                    Utils::replaceAll(name, MSFT_VERSION, MSFT_VERSION_REPLACED);
+                }
+            }
+        }
+        catch (...)
+        {
+
+        }
     }
     else if (IsWindowsVistaOrGreater())
     {
@@ -262,6 +301,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
     , m_build{getBuild()}
     , m_version{m_majorVersion + "." + m_minorVersion + "." + m_build}
     , m_release{getRelease(m_build)}
+    , m_displayVersion{getDisplayVersion()}
     , m_name{getName()}
     , m_machine{getMachine()}
     , m_nodeName{getNodeName()}
@@ -290,6 +330,10 @@ std::string SysOsInfoProviderWindows::build() const
 std::string SysOsInfoProviderWindows::release() const
 {
     return m_release;
+}
+std::string SysOsInfoProviderWindows::displayVersion() const
+{
+    return m_displayVersion;
 }
 std::string SysOsInfoProviderWindows::machine() const
 {

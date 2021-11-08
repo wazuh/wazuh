@@ -102,12 +102,11 @@ void OS_Store_Flush(){
     fflush(_eflog);
 }
 
-void OS_Log(Eventinfo *lf)
+void OS_Log(Eventinfo *lf, FILE * fp)
 {
     int i;
     char labels[OS_MAXSTR] = {0};
     char * saveptr;
-    char buf_ptr[26];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -126,7 +125,7 @@ void OS_Log(Eventinfo *lf)
     }
 
     /* Writing to the alert log file */
-    fprintf(_aflog,
+    fprintf(fp,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
@@ -184,113 +183,106 @@ void OS_Log(Eventinfo *lf)
 
     /* FIM events */
 
-    if (lf->filename) {
-        fprintf(_aflog, "Attributes:\n");
+    if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) == 0) {
+        fwrite("Attributes:\n", sizeof(char), 12, fp);
 
-        if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
-            fprintf(_aflog, " - Size: %s\n", lf->fields[FIM_SIZE].value);
-        }
-
-        if (lf->fields[FIM_PERM].value) {
-            fprintf(_aflog, " - Permissions: %s\n", lf->fields[FIM_PERM].value);
+        if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value != '\0') {
+            fprintf(fp, " - Size: %s\n", lf->fields[FIM_SIZE].value);
         }
 
-        if (lf->mtime_after) {
-            fprintf(_aflog, " - Date: %s", ctime_r(&lf->mtime_after, buf_ptr));
-        }
-        if (lf->inode_after) {
-            fprintf(_aflog, " - Inode: %ld\n", lf->inode_after);
-        }
-        if (lf->fields[FIM_UID].value && lf->fields[FIM_UNAME].value) {
-            if (*lf->fields[FIM_UNAME].value) {
-                fprintf(_aflog, " - User: %s (%s)\n", lf->fields[FIM_UNAME].value, lf->fields[FIM_UID].value);
-            }
-        }
-        if (lf->fields[FIM_GID].value && lf->fields[FIM_GNAME].value) {
-            if (*lf->fields[FIM_GNAME].value) {
-                fprintf(_aflog, " - Group: %s (%s)\n", lf->fields[FIM_GNAME].value, lf->fields[FIM_GID].value);
-            }
-        }
-        if (lf->fields[FIM_MD5].value) {
-            if (strcmp(lf->fields[FIM_MD5].value, "xxx") && *lf->fields[FIM_MD5].value) {
-                fprintf(_aflog, " - MD5: %s\n", lf->fields[FIM_MD5].value);
-            }
+        if (lf->fields[FIM_PERM].value && *lf->fields[FIM_PERM].value != '\0') {
+            fprintf(fp, " - Permissions: %s\n", lf->fields[FIM_PERM].value);
         }
 
-        if (lf->fields[FIM_SHA1].value) {
-            if (strcmp(lf->fields[FIM_SHA1].value, "xxx") && *lf->fields[FIM_SHA1].value) {
-                fprintf(_aflog, " - SHA1: %s\n", lf->fields[FIM_SHA1].value);
-            }
+        if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value != '\0') {
+            long aux_time = atol(lf->fields[FIM_MTIME].value);
+            char buf_ptr[26];
+            fprintf(fp, " - Date: %s", ctime_r(&aux_time, buf_ptr) != NULL ? buf_ptr : lf->fields[FIM_MTIME].value);
         }
 
-        if (lf->fields[FIM_SHA256].value) {
-            if (strcmp(lf->fields[FIM_SHA256].value, "xxx") && *lf->fields[FIM_SHA256].value) {
-                fprintf(_aflog, " - SHA256: %s\n", lf->fields[FIM_SHA256].value);
-            }
+        if (lf->fields[FIM_INODE].value && *lf->fields[FIM_INODE].value != '\0') {
+            fprintf(fp, " - Inode: %s\n", lf->fields[FIM_INODE].value);
         }
 
-        if (lf->fields[FIM_ATTRS].value) {
-            if (lf->fields[FIM_ATTRS].value && *lf->fields[FIM_ATTRS].value) {
-                fprintf(_aflog, " - File attributes: %s\n", lf->fields[FIM_ATTRS].value);
-            }
+        if (lf->fields[FIM_UID].value && lf->fields[FIM_UNAME].value && *lf->fields[FIM_UNAME].value != '\0') {
+            fprintf(fp, " - User: %s (%s)\n", lf->fields[FIM_UNAME].value, lf->fields[FIM_UID].value);
         }
 
-        if (lf->fields[FIM_USER_NAME].value && strcmp(lf->fields[FIM_USER_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "User name", lf->fields[FIM_USER_NAME].value);
+        if (lf->fields[FIM_GID].value && lf->fields[FIM_GNAME].value && *lf->fields[FIM_GNAME].value != '\0') {
+            fprintf(fp, " - Group: %s (%s)\n", lf->fields[FIM_GNAME].value, lf->fields[FIM_GID].value);
         }
-        if (lf->fields[FIM_AUDIT_NAME].value && strcmp(lf->fields[FIM_AUDIT_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Audit name", lf->fields[FIM_AUDIT_NAME].value);
+
+        if (lf->fields[FIM_MD5].value && strcmp(lf->fields[FIM_MD5].value, "xxx") && *lf->fields[FIM_MD5].value != '\0') {
+            fprintf(fp, " - MD5: %s\n", lf->fields[FIM_MD5].value);
         }
-        if (lf->fields[FIM_EFFECTIVE_NAME].value && strcmp(lf->fields[FIM_EFFECTIVE_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Effective name", lf->fields[FIM_EFFECTIVE_NAME].value);
+
+        if (lf->fields[FIM_SHA1].value && strcmp(lf->fields[FIM_SHA1].value, "xxx") && *lf->fields[FIM_SHA1].value != '\0') {
+            fprintf(fp, " - SHA1: %s\n", lf->fields[FIM_SHA1].value);
         }
-        if (lf->fields[FIM_GROUP_NAME].value && strcmp(lf->fields[FIM_GROUP_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Group name", lf->fields[FIM_GROUP_NAME].value);
+
+        if (lf->fields[FIM_SHA256].value && strcmp(lf->fields[FIM_SHA256].value, "xxx") && *lf->fields[FIM_SHA256].value != '\0') {
+            fprintf(fp, " - SHA256: %s\n", lf->fields[FIM_SHA256].value);
         }
-        if (lf->fields[FIM_PROC_ID].value && strcmp(lf->fields[FIM_PROC_ID].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Process id", lf->fields[FIM_PROC_ID].value);
+
+        if (lf->fields[FIM_ATTRS].value && *lf->fields[FIM_ATTRS].value != '\0') {
+            fprintf(fp, " - File attributes: %s\n", lf->fields[FIM_ATTRS].value);
         }
-        if (lf->fields[FIM_PROC_NAME].value && strcmp(lf->fields[FIM_PROC_NAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
+
+        if (lf->fields[FIM_USER_NAME].value && *lf->fields[FIM_USER_NAME].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "User name", lf->fields[FIM_USER_NAME].value);
         }
-        if (lf->fields[FIM_AUDIT_CWD].value && strcmp(lf->fields[FIM_AUDIT_CWD].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
+        if (lf->fields[FIM_AUDIT_NAME].value && *lf->fields[FIM_AUDIT_NAME].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Audit name", lf->fields[FIM_AUDIT_NAME].value);
         }
-        if (lf->fields[FIM_PROC_PNAME].value && strcmp(lf->fields[FIM_PROC_PNAME].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Parent process name", lf->fields[FIM_PROC_PNAME].value);
+        if (lf->fields[FIM_EFFECTIVE_NAME].value && *lf->fields[FIM_EFFECTIVE_NAME].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Effective name", lf->fields[FIM_EFFECTIVE_NAME].value);
         }
-        if (lf->fields[FIM_PPID].value && strcmp(lf->fields[FIM_PPID].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Parent process id", lf->fields[FIM_PPID].value);
+        if (lf->fields[FIM_GROUP_NAME].value && *lf->fields[FIM_GROUP_NAME].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Group name", lf->fields[FIM_GROUP_NAME].value);
         }
-        if (lf->fields[FIM_AUDIT_PCWD].value && strcmp(lf->fields[FIM_AUDIT_PCWD].value, "") != 0) {
-            fprintf(_aflog, " - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
+        if (lf->fields[FIM_PROC_ID].value && *lf->fields[FIM_PROC_ID].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Process id", lf->fields[FIM_PROC_ID].value);
+        }
+        if (lf->fields[FIM_PROC_NAME].value && *lf->fields[FIM_PROC_NAME].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
+        }
+        if (lf->fields[FIM_AUDIT_CWD].value && *lf->fields[FIM_AUDIT_CWD].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
+        }
+        if (lf->fields[FIM_PROC_PNAME].value && *lf->fields[FIM_PROC_PNAME].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Parent process name", lf->fields[FIM_PROC_PNAME].value);
+        }
+        if (lf->fields[FIM_PPID].value && *lf->fields[FIM_PPID].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Parent process id", lf->fields[FIM_PPID].value);
+        }
+        if (lf->fields[FIM_AUDIT_PCWD].value && *lf->fields[FIM_AUDIT_PCWD].value != '\0') {
+            fprintf(fp, " - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
         }
 
         if (lf->fields[FIM_DIFF].value) {
-            fprintf(_aflog, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
+            fprintf(fp, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
         }
 
-        if (lf->sk_tag) {
-            if (strcmp(lf->sk_tag, "") != 0) {
-                char * tags;
-                os_strdup(lf->sk_tag, tags);
-                fprintf(_aflog, "\nTags:\n");
-                char * tag;
-                tag = strtok_r(tags, ",", &saveptr);
-                while (tag != NULL) {
-                    fprintf(_aflog, " - %s\n", tag);
-                    tag = strtok_r(NULL, ",", &saveptr);
-                }
-                free(tags);
+        if (lf->fields[FIM_TAG].value && *lf->fields[FIM_TAG].value != '\0') {
+            char * tags;
+            os_strdup(lf->fields[FIM_TAG].value, tags);
+            fwrite("\nTags:\n", sizeof(char), 7, fp);
+            char * tag;
+            tag = strtok_r(tags, ",", &saveptr);
+            while (tag != NULL) {
+                fprintf(fp, " - %s\n", tag);
+                tag = strtok_r(NULL, ",", &saveptr);
             }
+            free(tags);
         }
     }
 
     // Dynamic fields, except for syscheck events
-    if (lf->fields && !lf->filename) {
+
+    if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) != 0) {
         for (i = 0; i < lf->nfields; i++) {
             if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
-                fprintf(_aflog, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
+                fprintf(fp, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
             }
         }
     }
@@ -299,12 +291,12 @@ void OS_Log(Eventinfo *lf)
     if (lf->last_events) {
         char **lasts = lf->last_events;
         while (*lasts) {
-            fprintf(_aflog, "%s\n", *lasts);
+            fprintf(fp, "%s\n", *lasts);
             lasts++;
         }
     }
 
-    fprintf(_aflog, "\n");
+    fputc('\n', fp);
 
     return;
 }

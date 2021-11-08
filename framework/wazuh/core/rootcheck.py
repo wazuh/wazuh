@@ -3,8 +3,8 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from datetime import datetime
-
 from wazuh.core.agent import Agent
+from wazuh.core.common import date_format
 from wazuh.core.exception import WazuhException
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 from wazuh.core.wdb import WazuhDBConnection
@@ -56,7 +56,8 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
                      "'Starting syscheck scan.', 'Ending syscheck scan.'"
 
         if filter_status['value'] == 'all':
-            self.query += partial.format("'outstanding'", '>') + " UNION " + partial.format("'solved'", '<=') + log_not_in
+            self.query += partial.format("'outstanding'", '>') + " UNION " + partial.format("'solved'",
+                                                                                            '<=') + log_not_in
         elif filter_status['value'] == 'outstanding':
             self.query += partial.format("'outstanding'", '>') + log_not_in
         elif filter_status['value'] == 'solved':
@@ -66,10 +67,8 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
-            if field_name in ['date_first', 'date_last']:
-                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                return value
+            return datetime.utcfromtimestamp(value).strftime(date_format) \
+                if field_name in ['date_first', 'date_last'] else value
 
         return {'items': [{field: format_fields(field, db_tuple[field]) for field in self.select |
                            self.min_select_fields if field in db_tuple and db_tuple[field] is not None}
@@ -99,12 +98,16 @@ def last_scan(agent_id):
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event WHERE "
                               "log = 'Ending rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    end = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
+    end = datetime.utcfromtimestamp(time).strftime(date_format) if time is not None else None
 
     # start time
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event "
                               "WHERE log = 'Starting rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    start = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
+    start = datetime.utcfromtimestamp(time).strftime(date_format) if time is not None else None
 
     return {'start': start, 'end': None if start is None else None if end is None or end < start else end}
+
+
+def rootcheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
+    wdb_conn.execute(f"agent {agent} rootcheck delete", delete=True)

@@ -8,9 +8,13 @@
  * Foundation
  */
 
+#include "cJSON.h"
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "os_err.h"
+#include "wazuh_db/wdb.h"
+#include <time.h>
 #ifndef CLIENT
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
@@ -63,7 +67,7 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
         key = buffer;
     }
 
-    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key, time(NULL));
 }
 
 #ifndef CLIENT
@@ -171,7 +175,7 @@ int OS_RemoveAgent(const char *u_id) {
     // Remove DB from wazuh-db
     int sock = -1;
     int error;
-    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", u_id);
     os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
     if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
         mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
@@ -486,45 +490,6 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
-#ifndef CLIENT
-
-double OS_AgentAntiquity_ID(const char *id) {
-    char *name = getFullnameById(id);
-    char *ip;
-    double ret = -1;
-
-    if (!name) {
-        return -1;
-    }
-
-    if ((ip = strchr(name, '-'))) {
-        *(ip++) = 0;
-        ret = OS_AgentAntiquity(name, ip);
-    }
-
-    free(name);
-    return ret;
-}
-
-/**
- * @brief Returns the number of seconds since last agent connection
- *
- * @param name The name of the agent
- * @param ip The IP address of the agent (unused). Kept only for compatibility
- * @retval On success, it returns the difference between the current time and the last keepalive
- * @retval -1 On error: invalid DB query syntax or result
- */
-double OS_AgentAntiquity(const char *name, const char *ip){
-    time_t output = 0;
-
-    output = wdb_get_agent_keepalive(name, ip, NULL);
-
-    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
-}
-
- /* !CLIENT */
- #endif
-
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
 {
@@ -680,10 +645,7 @@ void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
     File file;
-    char *buffer;
     char line[OS_BUFFER_SIZE];
-    int pos = 0;
-    struct stat fp_stat;
     char * sep;
 
     fp = fopen(TIMESTAMP_FILE, "r");
@@ -692,12 +654,11 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    if (fstat(fileno(fp), &fp_stat) < 0) {
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("Couldn't open timestamp file.");
         fclose(fp);
         return;
     }
-
-    os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (sep = strchr(line, ' '), sep) {
@@ -706,24 +667,14 @@ void OS_RemoveAgentTimestamp(const char *id)
             continue;
         }
 
-        if (strcmp(id, line)) {
+        if (strcmp(id, line) != 0) {
             *sep = ' ';
-            strncpy(&buffer[pos], line, fp_stat.st_size - pos);
-            pos += strlen(line);
+            fputs(line, file.fp);
         }
     }
 
     fclose(fp);
-
-    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
-        merror("Couldn't open timestamp file.");
-        free(buffer);
-        return;
-    }
-
-    fprintf(file.fp, "%s", buffer);
     fclose(file.fp);
-    free(buffer);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
 }

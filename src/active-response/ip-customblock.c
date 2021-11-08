@@ -13,68 +13,57 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char input[BUFFERSIZE];
-    char log_msg[LOGSIZE];
-    char *action;
-    char *srcip;
+    char log_msg[OS_MAXSTR];
+    int action = OS_INVALID;
     cJSON *input_json = NULL;
-    char *home_path = w_homedir(argv[0]);
 
-    /* Trim absolute path to get Wazuh's installation directory */
-    home_path = w_strtok_r_str_delim("/active-response", &home_path);
-
-    /* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    os_free(home_path);
-
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
-        return OS_INVALID;
-    }
-
-    action = get_command(input_json);
-    if (!action) {
-        write_debug_file(argv[0], "Cannot read 'command' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(argv[0], "Invalid value of 'command'");
-        cJSON_Delete(input_json);
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    char srcip_path[BUFFERSIZE];
-    strcpy(srcip_path, IPBLOCK);
-    strncat(srcip_path, srcip, (BUFFERSIZE - strlen(IPBLOCK)) - 1);
+    if (action == ADD_COMMAND) {
+        char **keys = NULL;
+        int action2 = OS_INVALID;
 
-    if (!strcmp("add", action)) {
+        os_calloc(2, sizeof(char *), keys);
+        os_strdup(srcip, keys[0]);
+        keys[1] = NULL;
+
+        action2 = send_keys_and_check_message(argv, keys);
+
+        os_free(keys);
+
+        // If necessary, abort execution
+        if (action2 != CONTINUE_COMMAND) {
+            cJSON_Delete(input_json);
+
+            if (action2 == ABORT_COMMAND) {
+                write_debug_file(argv[0], "Aborted");
+                return OS_SUCCESS;
+            } else {
+                return OS_INVALID;
+            }
+        }
+    }
+
+    char srcip_path[COMMANDSIZE_4096];
+    strcpy(srcip_path, IPBLOCK);
+    strncat(srcip_path, srcip, (COMMANDSIZE_4096 - strlen(IPBLOCK)) - 1);
+
+    if (action == ADD_COMMAND) {
         // Create directory
         if (mkdir_ex(IPBLOCK)) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -82,8 +71,8 @@ int main (int argc, char **argv) {
 
         FILE *fp = fopen(srcip_path, "a");
         if(fp == NULL) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error creating %s file", srcip_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error creating %s file", srcip_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -92,8 +81,8 @@ int main (int argc, char **argv) {
 
     } else {
         if(remove(srcip_path) != 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error deleting %s file", srcip_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error deleting %s file", srcip_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;

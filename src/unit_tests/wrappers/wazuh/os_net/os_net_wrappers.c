@@ -107,3 +107,13 @@ int __wrap_wnet_select(__attribute__((unused)) int sock,
                        __attribute__((unused)) int timeout) {
     return (int)mock();
 }
+
+int __wrap_OS_CloseSocket(int sock) {
+    check_expected(sock);
+    return mock();
+}
+
+uint32_t __wrap_wnet_order(uint32_t value) {
+    check_expected(value);
+    return mock();
+}

@@ -13,16 +13,17 @@ from wazuh.core import common
 custom_api_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
-    "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "max_upload_size": 10485760,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.2"
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
@@ -59,8 +60,7 @@ custom_api_configuration = {
 custom_incomplete_configuration = {
     "logs": {
         "level": "DEBUG"
-    },
-    "use_only_authd": True
+    }
 }
 
 
@@ -100,9 +100,9 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'invalid_key': 'value'},
     {'host': 1234},
     {'port': 'invalid_type'},
-    {'use_only_authd': 'invalid_type'},
     {'drop_privileges': 'invalid_type'},
     {'experimental_features': 'invalid_type'},
+    {'max_upload_size': 'invalid_type'},
     {'https': {'enabled': 'invalid_type'}},
     {'https': {'key': 12345}},
     {'https': {'cert': 12345}},

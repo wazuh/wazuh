@@ -32,9 +32,12 @@ static const char *XML_LOG_GROUP = "aws_log_groups";
 static const char *XML_REMOVE_LOG_STREAMS = "remove_log_streams";
 static const char *XML_DISCARD_FIELD = "field";
 static const char *XML_DISCARD_REGEX = "discard_regex";
+static const char *XML_STS_ENDPOINT = "sts_endpoint";
+static const char *XML_SERVICE_ENDPOINT = "service_endpoint";
 static const char *XML_BUCKET_TYPE = "type";
 static const char *XML_SERVICE_TYPE = "type";
 static const char *XML_BUCKET_NAME = "name";
+static const char *XML_IAM_ROLE_DURATION = "iam_role_duration";
 
 static const char *LEGACY_AWS_ACCOUNT_ALIAS = "LEGACY";
 
@@ -47,6 +50,7 @@ static const char *VPCFLOW_BUCKET_TYPE = "vpcflow";
 static const char *CUSTOM_BUCKET_TYPE = "custom";
 static const char *GUARDDUTY_BUCKET_TYPE = "guardduty";
 static const char *WAF_BUCKET_TYPE = "waf";
+static const char *SERVER_ACCESS_BUCKET_TYPE = "server_access";
 static const char *INSPECTOR_SERVICE_TYPE = "inspector";
 static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
@@ -166,13 +170,15 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, GUARDDUTY_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CISCO_UMBRELLA_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE) || !strcmp(*nodes[i]->values, ALB_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, CLB_BUCKET_TYPE) || !strcmp(*nodes[i]->values, NLB_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, CLB_BUCKET_TYPE) || !strcmp(*nodes[i]->values, NLB_BUCKET_TYPE)
+                        || !strcmp(*nodes[i]->values, SERVER_ACCESS_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
                         mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', "
-                                               "'%s', %s', %s', %s' or '%s'",
+                                               "'%s', %s', %s', %s', %s' or '%s'",
                             *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
-                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, ALB_BUCKET_TYPE, CLB_BUCKET_TYPE, NLB_BUCKET_TYPE);
+                            WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, ALB_BUCKET_TYPE, CLB_BUCKET_TYPE, NLB_BUCKET_TYPE,
+                            SERVER_ACCESS_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -253,6 +259,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_bucket->iam_role_arn);
                             os_strdup(children[j]->content, cur_bucket->iam_role_arn);
                         }
+                    } else if (!strcmp(children[j]->element, XML_IAM_ROLE_DURATION)){
+                        if (strlen(children[j]->content) != 0){
+                            free(cur_bucket->iam_role_duration);
+                            os_strdup(children[j]->content, cur_bucket->iam_role_duration);
+                        }
                     } else if (!strcmp(children[j]->element, XML_TRAIL_PREFIX)) {
                         if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_prefix);
@@ -287,6 +298,16 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             }
                         } else {
                             mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->sts_endpoint);
+                            os_strdup(children[j]->content, cur_bucket->sts_endpoint);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_SERVICE_ENDPOINT)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->service_endpoint);
+                            os_strdup(children[j]->content, cur_bucket->service_endpoint);
                         }
                     } else {
                         merror("No such child tag '%s' of bucket at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
@@ -384,6 +405,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         free(cur_service->iam_role_arn);
                         os_strdup(children[j]->content, cur_service->iam_role_arn);
                     }
+                } else if (!strcmp(children[j]->element, XML_IAM_ROLE_DURATION)){
+                        if (strlen(children[j]->content) != 0){
+                            free(cur_service->iam_role_duration);
+                            os_strdup(children[j]->content, cur_service->iam_role_duration);
+                        }
                 } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_service->only_logs_after);
@@ -423,6 +449,16 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         }
                     } else {
                         mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
+                    }
+                } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_service->sts_endpoint);
+                        os_strdup(children[j]->content, cur_service->sts_endpoint);
+                    }
+                } else if (!strcmp(children[j]->element, XML_SERVICE_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_service->service_endpoint);
+                        os_strdup(children[j]->content, cur_service->service_endpoint);
                     }
                 } else {
                     merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);

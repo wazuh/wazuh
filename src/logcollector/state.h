@@ -18,8 +18,7 @@
 #define LOGCOLLECTOR_STATE      "var/run/wazuh-logcollector.state"
 #endif
 
-// Double of max value of logcollector.queue_size
-#define LOGCOLLECTOR_STATE_FILES_MAX   200200               ///< max amount of localfiles location for states
+#define LOGCOLLECTOR_STATE_FILES_MAX   40                   ///< Size of the statistics hash table
 #define LOGCOLLECTOR_STATE_DESCRIPTION "logcollector_state" ///< String identifier for errors
 
 // Macros to add files/targets node to states
@@ -98,6 +97,13 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
  * @param bytes amount of bytes. If bigger than zero, event counter will increment.
  */
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
+
+/**
+ * @brief Removes the `fpath` file from statistics
+ * 
+ * @param fpath file path or locafile location value
+ */
+void w_logcollector_state_delete_file(char * fpath);
 
 /**
  * @brief Get current state in JSON format

@@ -93,10 +93,6 @@ Install()
         fi
     fi
 
-    if [ "X${OS_VERSION_FOR_SYSC}" = "XAIX" ]; then
-        SYSC_FLAG="DISABLE_SYSC=yes"
-    fi
-
     # Makefile
     echo " - ${runningmake}"
     echo ""

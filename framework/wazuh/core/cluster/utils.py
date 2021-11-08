@@ -18,6 +18,7 @@ from wazuh.core import common
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.results import WazuhResult
+from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
@@ -92,7 +93,8 @@ def read_cluster_config(config_file=common.ossec_conf, from_import=False) -> typ
     return config_cluster
 
 
-def get_manager_status() -> typing.Dict:
+@temporary_cache()
+def get_manager_status(cache=False) -> typing.Dict:
     """Get the current status of each process of the manager.
 
     Returns
@@ -166,7 +168,7 @@ def manager_restart() -> WazuhResult:
         # execq socket path
         socket_path = common.EXECQ
         # json msg for restarting Wazuh manager
-        msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
+        msg = json.dumps(create_wazuh_socket_message(origin={'module': common.origin_module.get()},
                                                      command=common.RESTART_WAZUH_COMMAND,
                                                      parameters={'extra_args': [], 'alert': {}}))
         # initialize socket

@@ -12,6 +12,7 @@ import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
+from xml.etree.ElementTree import tostring
 
 from defusedxml.minidom import parseString
 
@@ -203,11 +204,15 @@ def _read_option(section_name, opt):
             opt_value[a] = opt.attrib[a]
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
-        opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+        regex = rf'<{opt_name}>(.*)</{opt_name}>'
+        opt_value = re.match(regex,
+                             re.sub('(?:(\n) +)', '',
+                                    tostring(opt, encoding='unicode').replace('\\<', '<').replace('\\>', '>')
+                                    ).strip()).group(1)
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
-        if opt.attrib:
+        if opt.attrib or list(opt):
             opt_value = {}
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]
@@ -396,7 +401,7 @@ def _rootkit_files2json(filepath):
 
     # file_name ! Name ::Link to it
     regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
+    regex_check = re.compile(r"^(.+)!(.+)::(.+)")
 
     try:
         with open(filepath) as f:
@@ -404,8 +409,7 @@ def _rootkit_files2json(filepath):
                 if re.search(regex_comment, line):
                     continue
 
-                match_check = re.search(regex_check, line)
-                if match_check:
+                if match_check := re.search(regex_check, line):
                     new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(),
                                  'link': match_check.group(3).strip()}
                     data.append(new_check)
@@ -427,8 +431,8 @@ def _rootkit_trojans2json(filepath):
 
     # file_name !string_to_search!Description
     regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
-    regex_binary_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!")
+    regex_check = re.compile(r"^(.+)!(.+)!(.+)")
+    regex_binary_check = re.compile(r"^(.+)!(.+)!")
 
     try:
         with open(filepath) as f:

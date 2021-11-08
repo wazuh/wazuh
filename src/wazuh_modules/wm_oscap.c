@@ -22,6 +22,7 @@ const wm_context WM_OSCAP_CONTEXT = {
     (wm_routine)wm_oscap_main,
     (wm_routine)(void *)wm_oscap_destroy,
     (cJSON * (*)(const void *))wm_oscap_dump,
+    NULL,
     NULL
 };
 

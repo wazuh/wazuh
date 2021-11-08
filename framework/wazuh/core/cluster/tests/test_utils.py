@@ -126,7 +126,7 @@ def test_get_cluster_items():
     assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
                                          'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
                                          'extra_valid': False, 'description': 'client keys file database'},
-                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
+                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
                                                 'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
                                                 'extra_valid': False, 'description': 'shared configuration files'},
                                'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
@@ -153,9 +153,9 @@ def test_get_cluster_items():
                                               'max_failed_keepalive_attempts': 2},
                                    'master': {'recalculate_integrity': 8, 'check_worker_lastkeepalive': 60,
                                               'max_allowed_time_without_keepalive': 120},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_api_request': 200,
-                                                     'timeout_api_exe': 10, 'timeout_receiving_file': 120}},
-                     'sync_options': {'get_agentinfo_newer_than': 1800}, 'distributed_api': {'enabled': True}}
+                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
+                                                     'timeout_receiving_file': 120}},
+                     'distributed_api': {'enabled': True}}
 
 
 def test_ClusterFilter():

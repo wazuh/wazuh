@@ -68,11 +68,27 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
-int Read_GCP(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for Google Cloud Pub/Sub
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 Pub/Sub configuration structure
+ */
+int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for a Google Cloud bucket
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 Bucket configuration structure
+ */
+int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
+
 #ifndef WIN32
 int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
-int Read_Authd(XML_NODE node, void *d1, void *d2);
+int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
@@ -80,8 +96,23 @@ int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
+/**
+ * @brief Read the configuration for GitHub module
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 github configuration structure
+ */
 int Read_Github(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for Office365 module
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 office365 configuration structure
+ */
+int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
 #endif
 
 /**

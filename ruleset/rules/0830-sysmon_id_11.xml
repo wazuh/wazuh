@@ -1,0 +1,184 @@
+<!--
+  -  Sysmon Event ID 11 rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="sysmon_eid11_detections,">
+
+    <rule id="92000" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
+        <description>Scripting file created under system or User folder</description>
+        <mitre>
+            <id>T1059</id>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92001" level="9">
+        <if_sid>92000</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\((c|w)script|powershell)\.exe</field>
+        <description>$(win.eventdata.image) created a new scripting file under User data folder</description>
+        <mitre>
+            <id>T1105</id>
+            <id>T1059</id>
+        </mitre>
+    </rule>
+
+    <rule id="92250" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)PAExec.</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
+        <description>Binary dropped in Windows root folder by $(win.eventdata.image) process. Possible abuse of Windows admin shares</description>
+        <mitre>
+            <id>T1570</id>
+        </mitre>
+    </rule>
+
+    <rule id="92041" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|bat|dll|bin)</field>
+        <description>Executable file created by powershell: $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92042" level="9">
+        <if_sid>92041</if_sid>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\\\(Roaming|local)</field>
+        <description>Powershell process created executable file in AppData temp folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92200" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">\\spoolsv.exe$</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers.+\.dll</field>
+        <description>DLL file created by printer spool service, possible malware binary drop from PrintNightmare exploit</description>
+        <mitre>
+            <id>T1574.010</id>
+        </mitre>
+    </rule>
+
+    <rule id="92080" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js|msi)</field>
+        <description>Binary file dropped in Users\Public folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92081" level="15">
+        <if_sid>92080</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)(scp|pscp|FZSFTP|sftp)\.exe</field>
+        <description>Binary file dropped in Users\Public folder by SSH enabled copy software</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92082" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.reg</field>
+        <description>Suspicious registry modification file created in Users\Public folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92083" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(7z|zip|rar)</field>
+        <description>Suspicious file compression activity in Users\Public folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+    
+    <rule id="92084" level="14">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)rundll32.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">\.(exe|bin|dll|vbs|bat|js|msi)</field>
+        <description>Suspicious executable file creation by rundll32: $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","processGuid":"{4dc16835-8df4-60f5-367c-340000000000}","processId":"5016","utcTime":"2021-07-19 14:39:32.595","targetFilename":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Local\\\\Temp\\\\DefenderUpgradeExec.exe","creationUtcTime":"2021-07-19 14:39:32.595"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-07-19 14:39:32.595\r\nProcessGuid: {4dc16835-8df4-60f5-367c-340000000000}\r\nProcessId: 5016\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nTargetFilename: C:\\Users\\AtomicRed\\AppData\\Local\\Temp\\DefenderUpgradeExec.exe\r\nCreationUtcTime: 2021-07-19 14:39:32.595\"","version":"2","systemTime":"2021-07-19T14:39:32.6032653Z","eventRecordID":"274778","threadID":"3736","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2420","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
+    <rule id="92090" level="15">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\.+\\\\AppData\\\\Local\\\\Temp\\\\.+\.(exe|bin|dll|vbs|bat|js)</field>
+        <description>Executable file dropped in folder commonly used by malware</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92210" level="15">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt)\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)appdata\\\\.+\.lnk</field>
+        <description>Suspicious file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1027</id>
+        </mitre>
+    </rule>
+
+    <rule id="92220" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)mshta\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|bat|dll)</field>
+        <description>Executable file created by mshta: $(win.eventdata.targetFilename)</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92240" level="0">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.tmp</field>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
+        <description>$(win.eventdata.image) created a new temporary file $(win.eventdata.targetFilename) under system folder</description>
+        <mitre>
+            <id>T1105</id>
+            <id>T1059.001</id>
+        </mitre>
+    </rule>
+    <rule id="92230" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
+        <description>Binary dropped in Windows root folder.</description>
+        <mitre>
+            <id>T1570</id>
+        </mitre>
+    </rule>
+
+    <rule id="92231" level="6">
+        <if_sid>92230</if_sid>
+        <field name="win.eventdata.image" type="pcre2">^System$</field>
+        <description>Possible abuse of Windows admin shares by binary dropped in Windows root folder by system process.</description>
+        <mitre>
+            <id>T1570</id>
+        </mitre>
+    </rule>
+
+    <rule id="92232" level="6">
+        <if_sid>92230</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)svchost.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(\.dll)$</field>
+        <description>Possible DLL search order hijack by $(win.eventdata.targetFilename) created in Windows root folder.</description>
+        <mitre>
+            <id>T1574.001</id>
+            <id>T1574.002</id>
+        </mitre>
+    </rule>
+
+</group>

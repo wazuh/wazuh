@@ -14,7 +14,7 @@
         "etc/shared/": {
             "permissions": "0o660",
             "source": "master",
-            "files": ["merged.mg"],
+            "files": ["all"],
             "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": true,
@@ -108,14 +108,9 @@
 
         "communication":{
             "timeout_cluster_request": 20,
-            "timeout_api_request": 200,
-            "timeout_api_exe": 10,
+            "timeout_dapi_request": 200,
             "timeout_receiving_file": 120
         }
-    },
-
-    "sync_options": {
-        "get_agentinfo_newer_than": 1800
     },
 
     "distributed_api": {
