@@ -92,8 +92,9 @@
 #define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
                                                         "(decoder `%s`). Default value will be used."
 #define ANALYSISD_IGNORE_RULE                   "(7604): Rule '%d' will be ignored."
-#define ANALYSISD_INV_OVERWRITE                 "(7605): Invalid use of overwrite option. " \
-                                                        "Could not overwrite parent rule at rule '%d'."
+#define ANALYSISD_INV_OVERWRITE                 "(7605): Invalid use of overwrite option, 'overwrite' " \
+                                                        "is not compatible with 'if_sid', 'if_group' nor 'if_level'. " \
+                                                        "Could not overwrite rule '%d'."
 #define ANALYSISD_SIG_ID_NOT_FOUND              "(7606): Signature ID '%d' was not found. Invalid '%s'. " \
                                                         "Rule '%d' will be ignored."
 #define ANALYSISD_INV_SIG_ID                    "(7607): Invalid '%s'. Signature ID must be an integer. " \
@@ -110,6 +111,7 @@
 #define ANALYSISD_OVERWRITE_MISSING_RULE        "(7613): Rule ID '%d' does not exist but 'overwrite' is set to 'yes'. "\
                                                         "Still, the rule will be loaded."
 #define ANALYSISD_NULL_RULE                     "(7614): Rule pointer is NULL. Skipping."
+#define ANALYSISD_INV_IF_MATCHED_SID            "(7615): Invalid 'if_matched_sid' value: '%s'. Rule '%d' will be ignored."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
