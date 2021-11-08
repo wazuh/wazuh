@@ -115,7 +115,13 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                                             blob_name;"""
 
     def _get_last_processed_files(self):
-        """Get the names of the blobs processed during the last execution."""
+        """Get the names of the blobs processed during the last execution.
+
+        Returns
+        -------
+        List of str
+            List with the filenames of all the previously processed blobs.
+        """
         processed_files = self.db_connector.execute(
             self.sql_find_processed_files.format(table_name=self.db_table_name,
                                                  project_id=self.project_id,
@@ -127,7 +133,13 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             return list()
 
     def _update_last_processed_files(self, processed_files: list[storage.blob]):
-        """Remove the records for the previous execution and store the new values from the current one."""
+        """Remove the records for the previous execution and store the new values from the current one.
+
+        Parameters
+        ----------
+        processed_files : List of storage.blob
+            List with all the blobs successfully processed by the module.
+        """
         if processed_files:
             self.logger.info('Updating previously processed files.')
             try:
