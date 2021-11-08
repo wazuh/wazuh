@@ -33,8 +33,18 @@ def print_version():
 
 
 def terminate_child_processes(parent_pid):
+    """Stop the execution of all cluster child processes.
+
+    Parameters
+    ----------
+    parent_pid : int
+        Parent process ID.
+    """
     for child in Process(parent_pid).children(recursive=True):
-        child.kill()
+        try:
+            child.kill()
+        except Exception:
+            pass
 
 
 def exit_handler(signum, frame):

@@ -952,6 +952,7 @@ class Master(server.AbstractServer):
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     async def start(self):
+        """Starts all cluster child processes."""
         for process in self.processes:
             process.start()
 
