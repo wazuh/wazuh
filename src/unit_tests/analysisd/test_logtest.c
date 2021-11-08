@@ -1275,6 +1275,7 @@ void test_w_logtest_initialize_session_error_decoders(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1299,6 +1300,7 @@ void test_w_logtest_initialize_session_error_decoders(void ** state) {
     will_return(__wrap_Read_Rules, 0);
 
     will_return(__wrap_ReadDecodeXML, 0);
+
 
     will_return(__wrap_pthread_mutex_destroy, 0);
 
@@ -1325,6 +1327,7 @@ void test_w_logtest_initialize_session_error_set_decoders(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1379,6 +1382,7 @@ void test_w_logtest_initialize_session_error_cbd_list(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1434,6 +1438,7 @@ void test_w_logtest_initialize_session_error_rules(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1489,6 +1494,7 @@ void test_w_logtest_initialize_session_error_hash_rules(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1547,6 +1553,7 @@ void test_w_logtest_initialize_session_error_fts_init(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1614,6 +1621,7 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1696,6 +1704,7 @@ void test_w_logtest_initialize_session_success(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -1776,6 +1785,7 @@ void test_w_logtest_initialize_session_success_duplicate_key(void ** state) {
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -3102,6 +3112,7 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     /* Initialize session*/
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
 
@@ -4715,6 +4726,7 @@ void test_w_logtest_process_request_log_processing_fail_session(void ** state)
     will_return(__wrap_pthread_mutex_init, 0);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -5104,6 +5116,7 @@ void test_w_logtest_process_request_log_processing_ok_session_expired(void ** st
     will_return(__wrap_time, 1212);
 
     /* w_logtest_ruleset_load */
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -6219,6 +6232,7 @@ void test_w_logtest_ruleset_load_config_fail_read_rules(void ** state) {
     os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
 
     /* xml ruleset */
+    expect_function_call_any(__wrap_OS_ClearNode);
     os_strdup("ruleset", conf_section_nodes[0]->element);
 
     will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
@@ -6246,6 +6260,7 @@ void test_w_logtest_ruleset_load_config_fail_read_alerts(void ** state) {
     os_calloc(1, sizeof(xml_node), conf_section_nodes[0]);
 
     /* xml ruleset */
+    expect_function_call_any(__wrap_OS_ClearNode);
     os_strdup("alerts", conf_section_nodes[0]->element);
 
     will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
@@ -6277,6 +6292,7 @@ void test_w_logtest_ruleset_load_config_ok(void ** state) {
     os_calloc(1, sizeof(xml_node), conf_section_nodes[1]);
 
     /* xml ruleset */
+    expect_function_call_any(__wrap_OS_ClearNode);
     os_strdup("alerts", conf_section_nodes[0]->element);
     os_strdup("ruleset", conf_section_nodes[1]->element);
 
@@ -6357,6 +6373,7 @@ void test_w_logtest_ruleset_load_null_element(void ** state) {
     _Config ruleset_config = {0};
     OSList list_msg = {0};
 
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -6381,6 +6398,7 @@ void test_w_logtest_ruleset_load_empty_ossec_label(void ** state) {
     _Config ruleset_config = {0};
     OSList list_msg = {0};
 
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -6403,6 +6421,7 @@ void test_w_logtest_ruleset_load_fail_load_ruleset_config(void ** state) {
     _Config ruleset_config = {0};
     OSList list_msg = {0};
 
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);
@@ -6438,6 +6457,7 @@ void test_w_logtest_ruleset_load_ok(void ** state) {
     _Config ruleset_config = {0};
     OSList list_msg = {0};
 
+    expect_function_call_any(__wrap_OS_ClearNode);
     will_return(__wrap_OS_ReadXML, 0);
     XML_NODE node;
     os_calloc(2, sizeof(xml_node *), node);

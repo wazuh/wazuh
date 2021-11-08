@@ -32,6 +32,8 @@ xml_node ** __wrap_OS_GetElementsbyNode(const OS_XML * _lxml, const xml_node * n
 }
 
 void __wrap_OS_ClearNode(xml_node ** node) {
+
+    function_called();
     if (node != NULL) {
         for (int i = 0; node[i]; i++) {
             if (node[i]->element) {
