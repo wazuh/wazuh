@@ -1931,7 +1931,7 @@ end:
     return retval;
 }
 
-const struct deltas_fields_match_list * get_field_list(const char *type) {
+static const struct deltas_fields_match_list * get_field_list(const char *type) {
     const struct deltas_fields_match_list * ret_val = NULL;
     // 'type' will not be NULL because this function is being called after checking the type value
     if (strcmp(type, "hotfixes") == 0) {
@@ -1958,7 +1958,7 @@ const struct deltas_fields_match_list * get_field_list(const char *type) {
     return ret_val;
 }
 
-void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field_list, buffer_t * const msg) {
+static void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field_list, buffer_t * const msg, bool force_dbsync_filling) {
     static const int NULL_TEXT_LENGTH = 4;
     static const int SEPARATOR_LENGTH = 1;
     struct deltas_fields_match_list const * head = field_list;
@@ -1984,7 +1984,7 @@ void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
             } else if (!cJSON_IsNull(key)) {
                 buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
             }
-        } else {
+        } else if (force_dbsync_filling) {
             buffer_push(msg, "NULL", NULL_TEXT_LENGTH);
         }
         // Message separated by \0, includes the values to be processed in the wazuhdb
@@ -1995,7 +1995,7 @@ void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list * field
     }
 }
 
-void fill_event_alert(Eventinfo * lf, const struct deltas_fields_match_list * field_list, const char * operation,
+static void fill_event_alert(Eventinfo * lf, const struct deltas_fields_match_list * field_list, const char * operation,
                       char * response) {
     const bool have_a_escaped_pipe = strstr(response, FIELD_SEPARATOR_DBSYNC_ESCAPE);
 
@@ -2047,7 +2047,7 @@ void fill_event_alert(Eventinfo * lf, const struct deltas_fields_match_list * fi
     os_free(null_separated_str);
 }
 
-int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) {
+static int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) {
     int ret_val = OS_INVALID;
     if (NULL != lf->agent_id) {
         char * type = NULL;
@@ -2068,14 +2068,16 @@ int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *socket) 
 
                     buffer_t *msg = buffer_initialize(OS_SIZE_6144);
                     buffer_push(msg, header, header_size);
-                    fill_data_dbsync(data, field_list, msg);
+
+                    const bool is_inserted_operation = strcmp(operation, "INSERTED") == 0;
+                    fill_data_dbsync(data, field_list, msg, !is_inserted_operation);
 
                     if (msg->status) {
                         ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
                         if (ret_val != 0 || strncmp(response, "err", 3) == 0) {
                             mdebug1(A_QUERY_ERROR);
                         } else {
-                            if (strcmp(operation, "INSERTED") == 0) {
+                            if (is_inserted_operation) {
                                 fill_event_alert(lf, field_list, operation, msg->data);
                             } else {
                                 char *response_data = NULL;
