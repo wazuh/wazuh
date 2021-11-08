@@ -38,7 +38,7 @@ https://community.sophos.com/kb/en-us/43391
 <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SAVSCAN-DETAILS %s %s %s %s %s %s</msg><time>1558570140</time><arg>0</arg><arg>0</arg><arg>108267</arg><arg>131</arg><arg>0</arg><arg>0</arg></log>
 <log><category>update.check</category><level>INFO</level><domain>savupdate</domain><msg>NO_UPDATED_FROM %s</msg><time>1558572421</time><arg>http://10.11.12.13/SophosUpdate/CIDs/S000/EESAVUNIX/SUNOS_9_SPARC</arg></log>
 <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>NOTIFY_ONDEMANDTHREAT_INFECTED %s</msg><time>1558572421</time><arg>path_file</arg></log>
-<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>  
+<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>
 -->
 <decoder name="sophos-win">
     <prematch>\<log>\.+\</log></prematch>

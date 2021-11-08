@@ -90,4 +90,3 @@ Jan 28 14:25:49 VPN-SERVER-05892 openvpn: Incorrect password supplied for LDAP D
   <regex offset="after_prematch">^"CN=(\.+),OU=(\.+),(\.+)"</regex>
   <order>ldap_data.Username,ldap_data.Department,ldap_data.SecurityGroup</order>
 </decoder>
-
