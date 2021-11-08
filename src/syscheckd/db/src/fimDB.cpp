@@ -30,7 +30,7 @@ void FIMDB::setFileLimit()
     {
         m_dbsyncHandler->setTableMaxRow("file_entry", m_max_rows_file);
     }
-    catch(DbSync::dbsync_error& err)
+    catch (DbSync::dbsync_error& err)
     {
         m_loggingFunction(LOG_ERROR, err.what());
     }
@@ -43,7 +43,7 @@ void FIMDB::setRegistryLimit()
     {
         m_dbsyncHandler->setTableMaxRow("registry_key", m_max_rows_registry);
     }
-    catch(DbSync::dbsync_error& err)
+    catch (DbSync::dbsync_error& err)
     {
         m_loggingFunction(LOG_ERROR, err.what());
     }
@@ -55,7 +55,7 @@ void FIMDB::setValueLimit()
     {
         m_dbsyncHandler->setTableMaxRow("registry_data", m_max_rows_registry);
     }
-    catch(DbSync::dbsync_error& err)
+    catch (DbSync::dbsync_error& err)
     {
         m_loggingFunction(LOG_ERROR, err.what());
     }
@@ -76,23 +76,23 @@ void FIMDB::registerRSync()
     try
     {
         m_rsyncHandler->registerSyncID("fim_file_sync",
-                                    m_dbsyncHandler->handle(),
-                                    nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                    reportFimSyncWrapper);
+                                       m_dbsyncHandler->handle(),
+                                       nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                       reportFimSyncWrapper);
 #ifdef WIN32
         m_rsyncHandler->registerSyncID("fim_registry_sync",
-                                    m_dbsyncHandler->handle(),
-                                    nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                    reportFimSyncWrapper);
+                                       m_dbsyncHandler->handle(),
+                                       nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
+                                       reportFimSyncWrapper);
 
         m_rsyncHandler->registerSyncID("fim_value_sync",
-                                    m_dbsyncHandler->handle(),
-                                    nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT),
-                                    reportFimSyncWrapper);
+                                       m_dbsyncHandler->handle(),
+                                       nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT),
+                                       reportFimSyncWrapper);
 
 #endif
     }
-    catch(std::exception& ex)
+    catch (std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());
     }
@@ -110,7 +110,7 @@ void FIMDB::sync()
 #endif
         m_loggingFunction(LOG_INFO, "Finished FIM sync.");
     }
-    catch(const std::exception &ex)
+    catch (const std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());
     }
@@ -120,6 +120,7 @@ void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
 {
     m_loggingFunction(LOG_INFO, "FIM sync module started.");
     sync();
+
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_interval_synchronization}, [&]()
 {
     return m_stopping;
@@ -190,12 +191,12 @@ int FIMDB::insertItem(const nlohmann::json& item)
     {
         m_dbsyncHandler->insertData(item);
     }
-    catch(const DbSync::max_rows_error &ex)
+    catch (const DbSync::max_rows_error& ex)
     {
         m_loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
-    catch(const std::exception &ex)
+    catch (const std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());
         return 2;
@@ -210,12 +211,12 @@ int FIMDB::removeItem(const nlohmann::json& item)
     {
         m_dbsyncHandler->deleteRows(item);
     }
-    catch(const DbSync::max_rows_error &ex)
+    catch (const DbSync::max_rows_error& ex)
     {
         m_loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
-    catch(const std::exception &ex)
+    catch (const std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());
         return 2;
@@ -230,12 +231,12 @@ int FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackDat
     {
         m_dbsyncHandler->syncRow(item, callbackData);
     }
-    catch(const DbSync::max_rows_error &ex)
+    catch (const DbSync::max_rows_error& ex)
     {
         m_loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
-    catch(const std::exception &ex)
+    catch (const std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());
         return 2;
@@ -250,12 +251,12 @@ int FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackD
     {
         m_dbsyncHandler->selectRows(item, callbackData);
     }
-    catch(const DbSync::max_rows_error &ex)
+    catch (const DbSync::max_rows_error& ex)
     {
         m_loggingFunction(LOG_INFO, ex.what());
         return 1;
     }
-    catch(const std::exception &ex)
+    catch (const std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());
         return 2;

@@ -7,14 +7,15 @@
 #include "dbItem.hpp"
 #include "syscheck-config.h"
 
-class MockDBSyncHandler: public DBSync {
+class MockDBSyncHandler: public DBSync
+{
 
     public:
         MockDBSyncHandler(const HostType hostType,
                           const DbEngineType dbType,
                           const std::string& path,
-                          const std::string& sqlStatement): DBSync(hostType, dbType, path, sqlStatement){};
-        ~MockDBSyncHandler(){};
+                          const std::string& sqlStatement): DBSync(hostType, dbType, path, sqlStatement) {};
+        ~MockDBSyncHandler() {};
         MOCK_METHOD(void, setTableMaxRow, (const std::string&, const unsigned long long), (override));
         MOCK_METHOD(void, insertData, (const nlohmann::json&), (override));
         MOCK_METHOD(void, deleteRows, (const nlohmann::json&), (override));
@@ -22,37 +23,44 @@ class MockDBSyncHandler: public DBSync {
         MOCK_METHOD(void, selectRows, (const nlohmann::json&, ResultCallbackData), (override));
 };
 
-class MockRSyncHandler: public RemoteSync {
+class MockRSyncHandler: public RemoteSync
+{
 
     public:
-        MockRSyncHandler(){};
-        ~MockRSyncHandler(){};
+        MockRSyncHandler() {};
+        ~MockRSyncHandler() {};
         MOCK_METHOD(void, registerSyncID, (const std::string&, const DBSYNC_HANDLE, const nlohmann::json&, SyncCallbackData), (override));
         MOCK_METHOD(void, startSync, (const DBSYNC_HANDLE, const nlohmann::json&, SyncCallbackData), (override));
 };
 
-class MockFIMDB: public FIMDB {
+class MockFIMDB: public FIMDB
+{
     public:
-        MockFIMDB(){};
-        ~MockFIMDB(){};
+        MockFIMDB() {};
+        ~MockFIMDB() {};
 
-        void setFileLimit(){
+        void setFileLimit()
+        {
             FIMDB::setFileLimit();
         }
 
-        void setRegistryLimit(){
-             FIMDB::setRegistryLimit();
+        void setRegistryLimit()
+        {
+            FIMDB::setRegistryLimit();
         }
 
-        void setValueLimit(){
+        void setValueLimit()
+        {
             FIMDB::setValueLimit();
         }
 
-        void stopSync(){
+        void stopSync()
+        {
             FIMDB::stopSync();
         }
 
-        std::mutex* getMutex(){
+        std::mutex* getMutex()
+        {
             return &m_mutex;
         }
 };
