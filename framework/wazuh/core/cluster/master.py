@@ -9,7 +9,8 @@ import os
 import shutil
 from calendar import timegm
 from datetime import datetime
-from time import time
+from multiprocessing import Process, Manager
+from time import time, sleep
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -605,9 +606,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_end_master'] = datetime.now()
-        logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                   self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
+        self.integrity_sync_status['date_end_master'] = datetime.utcnow()
+        logger.info("Finished in {:.3f}s.".format(
+            (self.integrity_sync_status['date_end_master'] -
+             self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
         self.integrity_sync_status['date_start_master'] = \
             self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
         self.integrity_sync_status['date_end_master'] = \
@@ -928,8 +930,9 @@ class Master(server.AbstractServer):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Master")
-        self.integrity_control = {}
-        self.tasks.append(self.file_status_update)
+        self.integrity_control = Manager().dict()
+        self.processes = []
+        self.processes.append(Process(target=self.file_status_update))
         self.handler_class = MasterHandler
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
@@ -948,8 +951,14 @@ class Master(server.AbstractServer):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
-    async def file_status_update(self):
-        """Asynchronous task that obtain files status periodically.
+    async def start(self):
+        for process in self.processes:
+            process.start()
+
+        await super().start()
+
+    def file_status_update(self):
+        """Task that obtain files status periodically.
 
         It updates the local files information every self.cluster_items['intervals']['worker']['sync_integrity']
         seconds.
@@ -962,13 +971,14 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                self.integrity_control = wazuh.core.cluster.cluster.get_files_status()
+                self.integrity_control.clear()
+                self.integrity_control.update(wazuh.core.cluster.cluster.get_files_status())
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
                                        f"metadata of {len(self.integrity_control)} files.")
 
-            await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
+            sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
 
     def get_health(self, filter_node) -> Dict:
         """Get nodes and synchronization information.
@@ -992,7 +1002,7 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"] = \
-            Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
+                Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
