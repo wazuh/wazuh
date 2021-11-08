@@ -324,3 +324,7 @@ def test_validate_search(response, search_param):
         values = get_values(item)
         if not any(filter(lambda x: search_param in x, values)):
             raise ValueError(f'{search_param} not present in {values}')
+
+
+def test_validate_key_not_in_response(response, key):
+    assert all(key not in item for item in response.json()["data"]["affected_items"])

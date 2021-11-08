@@ -870,7 +870,6 @@ stages:
                   max_login_attempts: !anyint
                   block_time: !anyint
                   max_request_per_minute: !anyint
-                use_only_authd: !anybool
                 drop_privileges: !anybool
                 experimental_features: !anybool
             - node_name: "worker1"
@@ -1018,8 +1017,7 @@ stages:
             - auth:
                 ciphers: !anystr
                 disabled: !anystr
-                force_insert: !anystr
-                force_time: !anystr
+                force: !anything
                 port: !anyint
                 purge: !anystr
                 ssl_auto_negotiate: !anystr

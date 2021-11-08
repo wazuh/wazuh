@@ -1,10 +1,12 @@
 /*
  * SQL Schema for global database
  * Copyright (C) 2015-2021, Wazuh Inc.
+ *
  * June 30, 2016.
+ *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
- */
+*/
 
 PRAGMA foreign_keys=ON;
 
@@ -32,7 +34,8 @@ CREATE TABLE IF NOT EXISTS agent (
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
-    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected'
+    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
+    disconnection_time INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);

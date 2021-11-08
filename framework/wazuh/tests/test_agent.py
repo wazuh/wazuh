@@ -384,6 +384,7 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
             ['002', '005']),
     (['000'], {'status': 'all', 'older_than': '1s'}, None, 1703, []),
     (['001', '500'], {'status': 'all', 'older_than': '1s'}, None, 1701, ['001']),
+    (['001', '002'], {'status': 'all', 'older_than': '1s'}, None, WazuhError(1726), None),
 ])
 @patch('wazuh.agent.Agent.remove')
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
@@ -405,31 +406,26 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
     expected_items : List of str
         List of expected agent ID's returned by
     """
-    result = delete_agents(agent_list, filters=filters, q=q)
-    assert result.affected_items == sorted(expected_items), \
-        f'"Affected_items" does not match. Should be "{result.affected_items}".'
-    if result.failed_items:
-        assert next(iter(result.failed_items)).code == error_code
+    if not isinstance(error_code, WazuhException):
+        result = delete_agents(agent_list, filters=filters, q=q)
+        assert result.affected_items == sorted(expected_items), \
+            f'"Affected_items" does not match. Should be "{result.affected_items}".'
+        if result.failed_items:
+            assert next(iter(result.failed_items)).code == error_code
+    else:
+        with pytest.raises(error_code.__class__, match=f'.* {error_code.code} .*'):
+            mock_remove.side_effect = error_code
+            delete_agents(agent_list, filters=filters, q=q)
 
 
-@pytest.mark.parametrize('name, agent_id, key', [
-    ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
-    ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
+@pytest.mark.parametrize('name, agent_id, key, force', [
+    ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', None),
+    ('agent-1', '012', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', {'enabled': True}),
+    ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d', None)
 ])
-@patch('wazuh.core.agent.fcntl.lockf')
-@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.core.agent.Agent._acquire_client_keys_lock')
-@patch('wazuh.core.agent.Agent._release_client_keys_lock')
-@patch('wazuh.core.agent.chown')
-@patch('wazuh.core.agent.chmod')
-@patch('wazuh.core.agent.common.wazuh_uid')
-@patch('wazuh.core.agent.common.wazuh_gid')
-@patch('wazuh.core.agent.tempfile.mkstemp', return_value=['handle', 'output'])
-@patch('wazuh.core.agent.safe_move')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, common_gid_mock, common_uid_mock,
-                         chmod_mock, chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
+@patch('wazuh.core.agent.WazuhSocketJSON')
+@patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'})
+def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, force):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -440,22 +436,17 @@ def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, 
         ID of the agent whose name is the specified one.
     key : str
         The agent key.
+    force : dict
+        Force parameters.
     """
+    try:
+        socket_mock.return_value.receive.return_value = {"id": agent_id, "key": key}
+        add_result = add_agent(name=name, agent_id=agent_id, key=key, force=force)
 
-    def mock_open(*args):
-        """Mock open only if .write() is used"""
-        if len(args) == 2 and args[1] in ['a', 'w']:
-            return patch('wazuh.core.agent.open')
-        else:
-            return open(*args)
-
-    with patch('wazuh.core.agent.open', new=mock_open):
-        try:
-            add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
-            assert add_result.dikt['data']['id'] == agent_id
-            assert add_result.dikt['data']['key']
-        except WazuhError as e:
-            assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
+        assert add_result.dikt['data']['id'] == agent_id
+        assert add_result.dikt['data']['key']
+    except WazuhError as e:
+        assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list, expected_result', [
