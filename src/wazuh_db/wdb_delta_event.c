@@ -383,18 +383,26 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
             }
             break;
         case FIELD_INTEGER: {
-            char * endptr;
-            const int integer_number = (int) strtol(replaced_value_escape_pipe, &endptr, 10);
-            if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_int(stmt, index, integer_number)) {
-                ret_val = true;
+            if ('\0' == *replaced_value_escape_pipe) {
+                ret_val = sqlite3_bind_null(stmt, index) == SQLITE_OK ? true : false;
+            } else {
+                char * endptr;
+                const int integer_number = (int) strtol(replaced_value_escape_pipe, &endptr, 10);
+                if (NULL != endptr && '\0' == *endptr && SQLITE_OK == sqlite3_bind_int(stmt, index, integer_number)) {
+                    ret_val = true;
+                }
             }
             break;
         }
         case FIELD_REAL: {
-            char * endptr;
-            const double real_value = strtod(replaced_value_escape_pipe, &endptr);
-            if ('\0' == *endptr && SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
-                ret_val = true;
+            if ('\0' == *replaced_value_escape_pipe) {
+                ret_val = sqlite3_bind_null(stmt, index) == SQLITE_OK ? true : false;
+            } else {
+                char * endptr;
+                const double real_value = strtod(replaced_value_escape_pipe, &endptr);
+                if (NULL != endptr && '\0' == *endptr && SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
+                    ret_val = true;
+                }
             }
             break;
         }
