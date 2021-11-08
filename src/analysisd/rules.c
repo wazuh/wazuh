@@ -24,8 +24,6 @@
 #endif
 
 /* Global definition */
-// TODO removeme
-//RuleInfo *currently_rule;
 int default_timeframe;
 
 /* Used for statistics */
@@ -3201,6 +3199,10 @@ w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int r
 }
 
 STATIC INLINE void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params) {
+
+    if (rule_tmp_params == NULL) {
+        return;
+    }
 
     os_free(rule_tmp_params->regex);
     os_free(rule_tmp_params->match);

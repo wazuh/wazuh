@@ -18,6 +18,7 @@
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/analysisd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/os_xml/os_xml_wrappers.h"
 
 char *loadmemory(char *at, const char *str, OSList* log_msg);
 int get_info_attributes(char **attributes, char **values, OSList* log_msg);
@@ -476,7 +477,7 @@ void w_check_attr_negate_attr_unknow_val(void **state)
 
     OSList log_msg = {0};
     char expected_msg[OS_SIZE_2048];
-    snprintf(expected_msg, OS_SIZE_2048, "(7600): Invalid value 'hello' for attribute 'negate' in rule 1234");
+    snprintf(expected_msg, OS_SIZE_2048, "(7600): Invalid value 'hello' for attribute 'negate' in rule 1234.");
 
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
@@ -747,7 +748,7 @@ void w_check_attr_type_attr_unknow_val(void **state)
     os_strdup("hello", node.values[0]);
 
     OSList log_msg = {0};
-    char excpect_msg[70] = "(7600): Invalid value 'hello' for attribute 'type' in rule 1234";
+    char excpect_msg[70] = "(7600): Invalid value 'hello' for attribute 'type' in rule 1234.";
 
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &log_msg);
@@ -761,6 +762,98 @@ void w_check_attr_type_attr_unknow_val(void **state)
     os_free(node.values);
 
     assert_int_equal(ret_val, EXP_TYPE_OSMATCH);
+}
+
+// Test w_free_rules_tmp_params
+
+void w_free_rules_tmp_params_all(void ** state){
+
+    rules_tmp_params_t rule_tmp_params = {0};
+
+    rule_tmp_params.regex = strdup("test 123");
+    rule_tmp_params.match = strdup("test 123");
+    rule_tmp_params.url = strdup("test 123");
+    rule_tmp_params.if_matched_regex = strdup("test 123");
+    rule_tmp_params.if_matched_group = strdup("test 123");
+    rule_tmp_params.user = strdup("test 123");
+    rule_tmp_params.id = strdup("test 123");
+    rule_tmp_params.srcport = strdup("test 123");
+    rule_tmp_params.dstport = strdup("test 123");
+    rule_tmp_params.srcgeoip = strdup("test 123");
+    rule_tmp_params.dstgeoip = strdup("test 123");
+    rule_tmp_params.protocol = strdup("test 123");
+    rule_tmp_params.system_name = strdup("test 123");
+    rule_tmp_params.status = strdup("test 123");
+    rule_tmp_params.hostname = strdup("test 123");
+    rule_tmp_params.data = strdup("test 123");
+    rule_tmp_params.extra_data = strdup("test 123");
+    rule_tmp_params.program_name = strdup("test 123");
+    rule_tmp_params.location = strdup("test 123");
+    rule_tmp_params.action = strdup("test 123");
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    /* <ossec_config></> */
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("ossec_config", node[0]->element);
+
+    rule_tmp_params.rule_arr_opt = node;
+
+    expect_function_call(__wrap_OS_ClearNode);
+
+    w_free_rules_tmp_params(&rule_tmp_params);
+}
+
+void w_free_rules_tmp_params_only_rule_arr(void ** state){
+
+    rules_tmp_params_t rule_tmp_params = {0};
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    /* <ossec_config></> */
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("ossec_config", node[0]->element);
+
+    rule_tmp_params.rule_arr_opt = node;
+
+    expect_function_call(__wrap_OS_ClearNode);
+
+    w_free_rules_tmp_params(&rule_tmp_params);
+}
+
+void w_free_rules_tmp_params_only_params(void ** state){
+
+    rules_tmp_params_t rule_tmp_params = {0};
+
+    rule_tmp_params.regex = strdup("test 123");
+    rule_tmp_params.match = strdup("test 123");
+    rule_tmp_params.url = strdup("test 123");
+    rule_tmp_params.if_matched_regex = strdup("test 123");
+    rule_tmp_params.if_matched_group = strdup("test 123");
+    rule_tmp_params.user = strdup("test 123");
+    rule_tmp_params.id = strdup("test 123");
+    rule_tmp_params.srcport = strdup("test 123");
+    rule_tmp_params.dstport = strdup("test 123");
+    rule_tmp_params.srcgeoip = strdup("test 123");
+    rule_tmp_params.dstgeoip = strdup("test 123");
+    rule_tmp_params.protocol = strdup("test 123");
+    rule_tmp_params.system_name = strdup("test 123");
+    rule_tmp_params.status = strdup("test 123");
+    rule_tmp_params.hostname = strdup("test 123");
+    rule_tmp_params.data = strdup("test 123");
+    rule_tmp_params.extra_data = strdup("test 123");
+    rule_tmp_params.program_name = strdup("test 123");
+    rule_tmp_params.location = strdup("test 123");
+    rule_tmp_params.action = strdup("test 123");
+    rule_tmp_params.rule_arr_opt = NULL;
+
+
+    w_free_rules_tmp_params(&rule_tmp_params);
+}
+
+
+void w_free_rules_tmp_params_null(void ** state){
+
+    w_free_rules_tmp_params(NULL);
 }
 
 int main(void)
@@ -799,6 +892,11 @@ int main(void)
         cmocka_unit_test(w_check_attr_type_attr_to_osregex),
         cmocka_unit_test(w_check_attr_type_attr_to_pcre2),
         cmocka_unit_test(w_check_attr_type_attr_unknow_val),
+        // Test w_free_rules_tmp_params
+        cmocka_unit_test(w_free_rules_tmp_params_all),
+        cmocka_unit_test(w_free_rules_tmp_params_only_rule_arr),
+        cmocka_unit_test(w_free_rules_tmp_params_only_params),
+        cmocka_unit_test(w_free_rules_tmp_params_null),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
