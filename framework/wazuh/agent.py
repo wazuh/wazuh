@@ -21,6 +21,9 @@ from wazuh.rbac.decorators import expose_resources
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
+import time
+import logging
+logger = logging.getLogger('wazuh-api')
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
@@ -71,6 +74,7 @@ def get_agents_summary_status(agent_list=None):
     -------
     WazuhResult
     """
+    start = time.time()
     summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
@@ -83,6 +87,7 @@ def get_agents_summary_status(agent_list=None):
             summary[agent['status']] += 1
             summary['total'] += 1
 
+    logger.info(f'{time.time() - start}')
     return WazuhResult({'data': summary})
 
 
@@ -183,6 +188,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
+    start = time.time()
     result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
                                       some_msg='Some agents information was not returned',
                                       none_msg='No agent information was returned'
@@ -205,6 +211,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
 
+    logger.info(f'{time.time()-start}')
     return result
 
 
