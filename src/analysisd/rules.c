@@ -869,17 +869,31 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             }
 
                             /* Wow it's all ready - this seems too complex to get to this point */
-                            config_ruleinfo->lists = OS_AddListRule(config_ruleinfo->lists,
-                                                                    lookup_type,
-                                                                    rule_type,
-                                                                    rule_dfield,
-                                                                    rule_tmp_params.rule_arr_opt[k]->content,
-                                                                    matcher,
-                                                                    l_node);
-                            if (config_ruleinfo->lists == NULL) {
-                                smerror(log_msg, "List error: Could not load %s", rule_tmp_params.rule_arr_opt[k]->content);
-                                goto cleanup;
+                            ListRule * list_head
+                                = OS_AddListRule(config_ruleinfo->lists,
+                                                 lookup_type,
+                                                 rule_type,
+                                                 rule_dfield,
+                                                 rule_tmp_params.rule_arr_opt[k]->content,
+                                                 matcher,
+                                                 l_node);
+
+                            if (list_head == NULL) {
+
+                                smwarn(log_msg, ANALYSISD_LIST_NOT_LOADED,
+                                       rule_tmp_params.rule_arr_opt[k]->content,
+                                       config_ruleinfo->sigid);
+
+                                if (matcher != NULL) {
+                                    OSMatch_FreePattern(matcher);
+                                }
+                                os_free(matcher);
+                                do_skip_rule =  true;
+                                break;
                             }
+
+                            config_ruleinfo->lists = list_head;
+
                         } else {
                             smerror(log_msg, "List must have a correctly formatted field attribute");
                             smerror(log_msg, INVALID_CONFIG, rule_tmp_params.rule_arr_opt[k]->element, rule_tmp_params.rule_arr_opt[k]->content);
