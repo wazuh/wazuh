@@ -8,9 +8,13 @@
  * Foundation
  */
 
+#include "cJSON.h"
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "os_err.h"
+#include "wazuh_db/wdb.h"
+#include <time.h>
 #ifndef CLIENT
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
@@ -485,45 +489,6 @@ char *IPExist(const char *u_ip)
     fclose(fp);
     return NULL;
 }
-
-#ifndef CLIENT
-
-double OS_AgentAntiquity_ID(const char *id) {
-    char *name = getFullnameById(id);
-    char *ip;
-    double ret = -1;
-
-    if (!name) {
-        return -1;
-    }
-
-    if ((ip = strchr(name, '-'))) {
-        *(ip++) = 0;
-        ret = OS_AgentAntiquity(name, ip);
-    }
-
-    free(name);
-    return ret;
-}
-
-/**
- * @brief Returns the number of seconds since last agent connection
- *
- * @param name The name of the agent
- * @param ip The IP address of the agent (unused). Kept only for compatibility
- * @retval On success, it returns the difference between the current time and the last keepalive
- * @retval -1 On error: invalid DB query syntax or result
- */
-double OS_AgentAntiquity(const char *name, const char *ip){
-    time_t output = 0;
-
-    output = wdb_get_agent_keepalive(name, ip, NULL);
-
-    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
-}
-
- /* !CLIENT */
- #endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)

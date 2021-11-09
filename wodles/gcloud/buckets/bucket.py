@@ -114,6 +114,51 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                                         ORDER BY
                                             blob_name;"""
 
+    def _get_last_processed_files(self):
+        """Get the names of the blobs processed during the last execution.
+
+        Returns
+        -------
+        List of str
+            List with the filenames of all the previously processed blobs.
+        """
+        processed_files = self.db_connector.execute(
+            self.sql_find_processed_files.format(table_name=self.db_table_name,
+                                                 project_id=self.project_id,
+                                                 bucket_name=self.bucket_name,
+                                                 prefix=self.prefix))
+        try:
+            return [p[0] for p in processed_files.fetchall()]
+        except (TypeError, IndexError):
+            return list()
+
+    def _update_last_processed_files(self, processed_files: list[storage.blob]):
+        """Remove the records for the previous execution and store the new values from the current one.
+
+        Parameters
+        ----------
+        processed_files : List of storage.blob
+            List with all the blobs successfully processed by the module.
+        """
+        if processed_files:
+            self.logger.info('Updating previously processed files.')
+            try:
+                self.db_connector.execute(self.sql_delete_processed_files.format(table_name=self.db_table_name,
+                                                                                 project_id=self.project_id,
+                                                                                 bucket_name=self.bucket_name,
+                                                                                 prefix=self.prefix))
+            except sqlite3.IntegrityError:
+                pass
+
+            for blob in processed_files:
+                self.db_connector.execute(self.sql_insert_processed_file.format(table_name=self.db_table_name,
+                                                                                project_id=self.project_id,
+                                                                                bucket_name=self.bucket_name,
+                                                                                prefix=self.prefix,
+                                                                                blob_name=blob.name,
+                                                                                creation_time=blob.time_created))
+    processed_files = list()
+
     def check_permissions(self):
         """Check if the Service Account has access to the bucket."""
         try:
@@ -164,39 +209,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                 pass
             return creation_time
 
-        def get_last_processed_files():
-            """Get the names of the blobs processed during the last execution."""
-            processed_files = self.db_connector.execute(
-                self.sql_find_processed_files.format(table_name=self.db_table_name,
-                                                     project_id=self.project_id,
-                                                     bucket_name=self.bucket_name,
-                                                     prefix=self.prefix))
-            try:
-                return [p[0] for p in processed_files.fetchall()]
-            except (TypeError, IndexError):
-                return list()
-
-        def update_last_processed_files():
-            """Remove the records for the previous execution and store the new values from the current one."""
-            if processed_files:
-                self.logger.info('Updating previously processed files.')
-                try:
-                    self.db_connector.execute(self.sql_delete_processed_files.format(table_name=self.db_table_name,
-                                                                                     project_id=self.project_id,
-                                                                                     bucket_name=self.bucket_name,
-                                                                                     prefix=self.prefix))
-                except sqlite3.IntegrityError:
-                    pass
-
-                for blob_name in processed_files:
-                    self.db_connector.execute(self.sql_insert_processed_file.format(table_name=self.db_table_name,
-                                                                                    project_id=self.project_id,
-                                                                                    bucket_name=self.bucket_name,
-                                                                                    prefix=self.prefix,
-                                                                                    blob_name=blob_name,
-                                                                                    creation_time=new_creation_time))
-
-        processed_files = list()
+        processed_files = []
         try:
             bucket_contents = self.bucket.list_blobs(prefix=self.prefix)
 
@@ -205,7 +218,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
             self.init_db()
             last_creation_time = get_last_creation_time()
-            previous_processed_files = get_last_processed_files()
+            previous_processed_files = self._get_last_processed_files()
 
             for blob in bucket_contents:
                 # Skip folders
@@ -224,7 +237,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                             processed_files.clear()
                             new_creation_time = current_creation_time
 
-                        processed_files.append(blob.name)
+                        processed_files.append(blob)
                     else:
                         self.logger.info(f'Skipping previously processed file: {blob.name}')
                 else:
@@ -233,7 +246,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         finally:
             # Ensure the changes are committed to the database even if an exception was raised
             if self.db_connector:
-                update_last_processed_files()
+                self._update_last_processed_files(processed_files)
                 self.db_connector.commit()
                 self.db_connector.close()
         return processed_messages

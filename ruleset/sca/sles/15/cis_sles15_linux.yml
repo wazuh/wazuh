@@ -3685,17 +3685,3 @@ checks:
     condition: none
     rules:
       - 'c:grep -E ^[^:]+:: /etc/shadow -> r:::'
-
-#  - id:
-#    title:
-#    description:
-#    rationale:
-#    remediation:
-#    compliance:
-#      - cis: [""]
-#      - cis_csc: [""]
-#    references:
-#      -
-#    condition:
-#    rules:
-#      - ''

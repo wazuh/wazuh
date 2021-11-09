@@ -5,35 +5,102 @@ from __future__ import absolute_import
 from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
-from api.models.base_model_ import Body
+from api.models.base_model_ import Body, Model
+
+
+class DisconnectedTime(Model):
+    def __init__(self, enabled=True, value="1h"):
+        self.swagger_types = {
+            'enabled': bool,
+            'value': str
+        }
+
+        self.attribute_map = {
+            'enabled': 'enabled',
+            'value': 'value'
+        }
+
+        self._enabled = enabled
+        self._value = value
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+
+
+class AgentForce(Model):
+    def __init__(self, enabled=True, disconnected_time=None, after_registration_time="1h"):
+        self.swagger_types = {
+            'enabled': bool,
+            'disconnected_time': DisconnectedTime,
+            'after_registration_time': str
+        }
+
+        self.attribute_map = {
+            'enabled': 'enabled',
+            'disconnected_time': 'disconnected_time',
+            'after_registration_time': 'after_registration_time'
+        }
+
+        self._enabled = enabled
+        self._disconnected_time = DisconnectedTime(**disconnected_time or {}).to_dict()
+        self._after_registration_time = after_registration_time
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
+
+    @property
+    def disconnected_time(self):
+        return self._disconnected_time
+
+    @disconnected_time.setter
+    def disconnected_time(self, disconnected_time):
+        self._disconnected_time = disconnected_time
+
+    @property
+    def after_registration_time(self):
+        return self._after_registration_time
+
+    @after_registration_time.setter
+    def after_registration_time(self, after_registration_time):
+        self._after_registration_time = after_registration_time
 
 
 class AgentAddedModel(Body):
 
-    def __init__(self, name: str = None, ip: str = None, force_time: int = None):
-        """AgentAddedModel body model
-        :param name: Agent name.
-        :type name: str
-        :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
-        :type ip: str
-        :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
-        :type force_time: int
-        """
+    def __init__(self, name: str = None, ip: str = None):
         self.swagger_types = {
             'name': str,
             'ip': str,
-            'force_time': int
+            'force': AgentForce
         }
 
         self.attribute_map = {
             'name': 'name',
             'ip': 'ip',
-            'force_time': 'force_time'
+            'force': 'force'
         }
 
         self._name = name
         self._ip = ip
-        self._force_time = force_time
+        self._force = AgentForce(enabled=False)
 
     @property
     def name(self) -> str:
@@ -66,16 +133,9 @@ class AgentAddedModel(Body):
         self._ip = ip
 
     @property
-    def force_time(self) -> int:
-        """
-        :return: Limit time to disconnect an agent with the same IP.
-        :rtype: int
-        """
-        return self._force_time
+    def force(self):
+        return self._force
 
-    @force_time.setter
-    def force_time(self, force_time):
-        """Limit time to disconnect an agent with the same IP.
-        :param force_time: Agents limit disconnection time. 
-        """
-        self._force_time = force_time
+    @force.setter
+    def force(self, force):
+        self._force = force
