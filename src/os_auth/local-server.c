@@ -13,6 +13,8 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include "os_err.h"
+#include <config/authd-config.h>
 
 typedef enum auth_local_err {
     EINTERNAL = 0,
@@ -56,15 +58,6 @@ static const struct {
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
-
-// Add a new agent
-static cJSON* local_add(const char *id,
-                        const char *name,
-                        const char *ip,
-                        const char *groups,
-                        const char *key,
-                        const char *key_hash,
-                        authd_force_options_t *force_options);
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
@@ -182,6 +175,7 @@ char* local_dispatch(const char *input) {
     cJSON *response = NULL;
     char *output = NULL;
     int ierror;
+    char *groups = NULL;
 
     if (input[0] == '{') {
         if (config.worker_node) {
@@ -202,10 +196,11 @@ char* local_dispatch(const char *input) {
 
         if (!strcmp(function->valuestring, "add")) {
             cJSON *item = NULL;
+            cJSON *force = NULL;
+            cJSON *disconnected_time = NULL;
             char *id = NULL;
             char *name = NULL;
             char *ip = NULL;
-            char *groups = NULL;
             char *key_hash = NULL;
             char *key = NULL;
             authd_force_options_t force_options = {0};
@@ -240,18 +235,50 @@ char* local_dispatch(const char *input) {
             key_hash = (item = cJSON_GetObjectItem(arguments, "key_hash"), item) ? item->valuestring : NULL;
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
 
-            if (item = cJSON_GetObjectItem(arguments, "force"), item) {
-                if (item->valueint == -1) {
-                    force_options.enabled = false;
-                } else {
-                    force_options.enabled = true;
-                    force_options.connection_time = item->valueint;
+            if (force = cJSON_GetObjectItem(arguments, "force"), force) {
+                if (item = cJSON_GetObjectItem(force, "enabled"), !item) {
+                    ierror = EJSON;
+                    goto fail;
                 }
-            } else {
-                force_options.enabled = false;
+                force_options.enabled = (bool)item->valueint;
+
+                if (item = cJSON_GetObjectItem(force, "key_mismatch"), !item) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+                force_options.key_mismatch = (bool)item->valueint;
+
+                if (disconnected_time = cJSON_GetObjectItem(force, "disconnected_time"), !disconnected_time) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+
+                if (item = cJSON_GetObjectItem(disconnected_time, "enabled"), !item) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+                force_options.disconnected_time_enabled = (bool)item->valueint;
+
+                item = cJSON_GetObjectItem(disconnected_time, "value");
+                if(cJSON_IsNumber(item)) {
+                    force_options.disconnected_time = item->valueint;
+                }
+                else if (!cJSON_IsString(item) || get_time_interval(item->valuestring, &force_options.disconnected_time)) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+
+                item = cJSON_GetObjectItem(force, "after_registration_time");
+                if(cJSON_IsNumber(item)) {
+                    force_options.after_registration_time = item->valueint;
+                }
+                else if (!cJSON_IsString(item) || get_time_interval(item->valuestring, &force_options.after_registration_time)) {
+                    ierror = EJSON;
+                    goto fail;
+                }
             }
 
-            response = local_add(id, name, ip, groups, key, key_hash, &force_options);
+            response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
 
             os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
@@ -312,6 +339,7 @@ fail:
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
     cJSON_Delete(request);
+    os_free(groups);
     return output;
 }
 
@@ -325,6 +353,7 @@ cJSON* local_add(const char *id,
     int index;
     cJSON *response = NULL;
     int ierror;
+    char* str_result = NULL;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
@@ -339,8 +368,10 @@ cJSON* local_add(const char *id,
 
     // Check for duplicate ID
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        minfo("Duplicate ID '%s'.", keys.keyentries[index]->id);
-        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate ID. %s", str_result);
+        } else {
+            mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
             ierror = EDUPID;
             goto fail;
         }
@@ -349,10 +380,13 @@ cJSON* local_add(const char *id,
     /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
-                ierror = EDUPIP;
-                goto fail;
-            }
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate IP '%s'. %s", ip, str_result);
+        } else {
+            mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+            ierror = EDUPIP;
+            goto fail;
+        }
         }
     }
 
@@ -364,10 +398,13 @@ cJSON* local_add(const char *id,
 
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
-                ierror = EDUPNAME;
-                goto fail;
-            }
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate name. %s", str_result);
+        } else {
+            mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+            ierror = EDUPNAME;
+            goto fail;
+        }
     }
 
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
@@ -393,12 +430,13 @@ cJSON* local_add(const char *id,
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
+    os_free(str_result);
     return response;
 
 fail:
     w_mutex_unlock(&mutex_keys);
-    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
+    os_free(str_result);
     return response;
 }
 

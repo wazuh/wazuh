@@ -13,11 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-double __wrap_OS_AgentAntiquity(__attribute__((unused)) const char *name,
-                             __attribute__((unused)) const char *ip) {
-    return mock();
-}
-
 int __wrap_OS_AddNewAgent(__attribute__((unused)) void *keys, const char *id, 
                     const char *name, const char *ip, const char *key) {
     check_expected(id);

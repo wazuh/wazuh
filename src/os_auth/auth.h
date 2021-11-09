@@ -148,10 +148,12 @@ w_err_t w_auth_validate_data(char *response,
  * @param key Key structure of the agent to be removed
  * @param hash_key Hash of the key on the agent
  * @param force_options Force configuration structure to define how the agent replacement must be handled.
+ * @param str_result A message related to the result of the agent replacement. Must be freed by the caller.
  * */
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
-                             authd_force_options_t *force_options);
+                             authd_force_options_t *force_options,
+                             char** str_result);
 
 /**
  * @brief Adds new agent with provided enrollment data.
@@ -169,6 +171,23 @@ w_err_t w_auth_add_agent(char *response,
                          char **id,
                          char **key);
 
+/**
+ * @brief Adds new agent from a local request
+ * @param id Agent ID of the agent to be registered
+ * @param ip Agent IP of the agent to be registered
+ * @param groups Groups to which the agent belongs
+ * @param key Agent key if was already registered
+ * @param key_hash Hash of the agent key
+ * @param force_options Options to decide if forcing the insertion
+ * @return JSON object with the response
+ * */
+cJSON* local_add(const char *id,
+                        const char *name,
+                        const char *ip,
+                        const char *groups,
+                        const char *key,
+                        const char *key_hash,
+                        authd_force_options_t *force_options);
 
 extern char shost[512];
 extern keystore keys;

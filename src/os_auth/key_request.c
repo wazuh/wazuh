@@ -392,32 +392,22 @@ int key_request_dispatch(char * buffer) {
             char *new_id = NULL;
             char *new_key = NULL;
 
-            if (0 == w_request_agent_add_clustered(response, agent->name, agent->ip, NULL, agent->key, &new_id, &new_key, config.force_options.enabled, agent->id)) {
+            mdebug1("Forwarding agent key request response to the master node for agent '%s'", agent->id);
+            if (0 == w_request_agent_add_clustered(response, agent->name, agent->ip, NULL, agent->key, &new_id, &new_key, &config.force_options, agent->id)) {
                 mdebug1("Agent key request response forwarded to the master node for agent '%s'", agent->id);
                 os_free(new_id);
                 os_free(new_key);
             }
         } else {
-            w_mutex_lock(&mutex_keys);
-
-            if (OS_SUCCESS == w_auth_validate_data(response, agent->ip, agent->name, NULL, agent->key)) {
-                int index;
-                if (index = OS_AddNewAgent(&keys, agent->id, agent->name, agent->ip, agent->key), index < 0) {
-                    merror("Unable to add agent: %s (internal error)", agent->name);
-                    OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
-                    cJSON_Delete(agent_infoJSON);
-                    OSHash_Delete_ex(request_hash, buffer);
-                    key_request_agent_info_destroy(agent);
-                    w_mutex_unlock(&mutex_keys);
-                    return OS_INVALID;
-                } else {
-                    add_insert(keys.keyentries[keys.keysize - 1], NULL);
-                    write_pending = 1;
-                    w_cond_signal(&cond_pending);
-                }
+            cJSON * json_response = NULL;
+            mdebug1("Requesting local addition for agent '%s' from the agent key request.", agent->id);
+            json_response = local_add(agent->id, agent->name, agent->ip, NULL, agent->key, NULL, &config.force_options);
+            if (json_response) {
+                output = cJSON_PrintUnformatted(json_response);
+                cJSON_Delete(json_response);
+                mdebug2("Agent key request addition response: '%s'", output);
+                os_free(output);
             }
-
-            w_mutex_unlock(&mutex_keys);
         }
 
         cJSON_Delete(agent_infoJSON);
