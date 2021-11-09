@@ -136,7 +136,7 @@ int test_setup_hotfixes_valid_msg_with_separator_character(void **state)
     os_calloc(1, sizeof(Eventinfo), lf);
     os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
     Zero_Eventinfo(lf);
-    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"hotfix\":\"KB12|3456\",\"checksum\":\"abcdef|0123456789\"}}"), lf->log == NULL)
+    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"scan_time\":\"2021/10/29 14:26:24\", \"hotfix\":\"KB12|3456\",\"checksum\":\"abcdef|0123456789\"}}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
     os_strdup("001", lf->agent_id);
@@ -169,7 +169,9 @@ int test_setup_hotfixes_valid_msg(void **state)
     os_calloc(1, sizeof(Eventinfo), lf);
     os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
     Zero_Eventinfo(lf);
-    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"hotfix\":\"KB123456\",\"checksum\":\"abcdef0123456789\"}}"), lf->log == NULL)
+    if (lf->log = strdup(
+            "{\"type\":\"dbsync_hotfixes\", \"operation\":\"MODIFIED\", \"data\":{\"scan_time\":\"2021/10/29 14:26:24\", \"hotfix\":\"KB123456\",\"checksum\":\"abcdef0123456789\"}}"),
+        lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
     os_strdup("001", lf->agent_id);
@@ -187,6 +189,7 @@ int test_setup_packages_valid_msg(void **state)
         \"type\":\"dbsync_packages\", \
         \"operation\":\"MODIFIED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"format\" : \"1\",\
             \"name\" : \"2\",\
             \"priority\" : \"3\",\
@@ -225,6 +228,7 @@ int test_setup_processes_valid_msg(void **state)
         \"type\":\"dbsync_processes\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{ \
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"pid\" : \"18\",\
             \"name\" : \"19\",\
             \"state\" : \"20\",\
@@ -273,6 +277,7 @@ int test_setup_ports_valid_msg(void **state)
         \"type\":\"dbsync_ports\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{ \
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"protocol\" : \"47\",\
             \"local_ip\" : \"48\",\
             \"local_port\" : \"49\",\
@@ -305,6 +310,7 @@ int test_setup_network_iface_valid_msg(void **state)
         \"type\":\"dbsync_network_iface\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{ \
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"name\" : \"59\",\
             \"adapter\" : \"60\",\
             \"type\" : \"61\",\
@@ -392,6 +398,7 @@ int test_setup_hardware_valid_msg(void **state)
         \"type\":\"dbsync_hwinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"board_serial\" : \"86\",\
             \"cpu_name\" : \"87\",\
             \"cpu_cores\" : \"88\",\
@@ -419,6 +426,7 @@ int test_setup_os_valid_msg(void **state)
         \"type\":\"dbsync_osinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"hostname\" : \"93\",\
             \"architecture\" : \"94\",\
             \"os_name\" : \"95\",\
@@ -450,7 +458,7 @@ int test_setup_hotfixes_valid_msg_inserted(void **state)
     os_calloc(1, sizeof(Eventinfo), lf);
     os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
     Zero_Eventinfo(lf);
-    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"INSERTED\", \"data\":{\"hotfix\":\"KB123456\",\"checksum\":\"abcdef0123456789\"}}"), lf->log == NULL)
+    if (lf->log = strdup("{\"type\":\"dbsync_hotfixes\", \"operation\":\"INSERTED\", \"data\":{\"scan_time\":\"2021/10/29 14:26:24\", \"hotfix\":\"KB123456\",\"checksum\":\"abcdef0123456789\"}}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
     os_strdup("001", lf->agent_id);
@@ -469,6 +477,7 @@ int test_setup_packages_valid_msg_inserted(void **state)
         \"type\":\"dbsync_packages\", \
         \"operation\":\"INSERTED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"format\" : \"1\",\
             \"name\" : \"2\",\
             \"priority\" : \"3\",\
@@ -507,6 +516,7 @@ int test_setup_processes_valid_msg_inserted(void **state)
         \"type\":\"dbsync_processes\",\
         \"operation\":\"INSERTED\",\
         \"data\":{ \
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"pid\" : \"18\",\
             \"name\" : \"19\",\
             \"state\" : \"20\",\
@@ -555,6 +565,7 @@ int test_setup_ports_valid_msg_inserted(void **state)
         \"type\":\"dbsync_ports\",\
         \"operation\":\"INSERTED\",\
         \"data\":{ \
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"protocol\" : \"47\",\
             \"local_ip\" : \"48\",\
             \"local_port\" : \"49\",\
@@ -587,6 +598,7 @@ int test_setup_network_iface_valid_msg_inserted(void **state)
         \"type\":\"dbsync_network_iface\",\
         \"operation\":\"INSERTED\",\
         \"data\":{ \
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"name\" : \"59\",\
             \"adapter\" : \"60\",\
             \"type\" : \"61\",\
@@ -674,6 +686,7 @@ int test_setup_hardware_valid_msg_inserted(void **state)
         \"type\":\"dbsync_hwinfo\",\
         \"operation\":\"INSERTED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"board_serial\" : \"86\",\
             \"cpu_name\" : \"87\",\
             \"cpu_cores\" : \"88\",\
@@ -701,6 +714,7 @@ int test_setup_os_valid_msg_inserted(void **state)
         \"type\":\"dbsync_osinfo\",\
         \"operation\":\"INSERTED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"hostname\" : \"93\",\
             \"architecture\" : \"94\",\
             \"os_name\" : \"95\",\
@@ -737,6 +751,7 @@ int test_setup_os_valid_msg_with_number_pk(void **state)
         \"type\":\"dbsync_osinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"hostname\" : \"93\",\
             \"architecture\" : 94,\
             \"os_name\" : \"95\",\
@@ -802,6 +817,7 @@ int test_setup_valid_msg_empty_string(void **state)
         \"type\":\"dbsync_hwinfo\",\
         \"operation\":\"INSERTED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"board_serial\" : \"86\",\
             \"cpu_name\" : \"\",\
             \"cpu_cores\" : \"88\",\
@@ -829,11 +845,37 @@ int test_setup_valid_msg_object_as_value(void **state)
         \"type\":\"dbsync_hwinfo\",\
         \"operation\":\"INSERTED\",\
         \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
             \"board_serial\" : \"86\",\
             \"cpu_name\" : { \"object\":\"\" },\
             \"cpu_cores\" : \"88\",\
             \"cpu_MHz\" : \"89\",\
             \"ram_total\" : \"90\",\
+            \"ram_free\" : \"91\",\
+            \"ram_usage\" : \"92\",\
+            \"checksum\" : \"93\"\
+    }}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_valid_msg_missing_values(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("{\
+        \"type\":\"dbsync_hwinfo\",\
+        \"operation\":\"INSERTED\",\
+        \"data\":{\
+            \"scan_time\":\"2021/10/29 14:26:24\",\
+            \"board_serial\" : \"86\",\
+            \"cpu_cores\" : \"88\",\
             \"ram_free\" : \"91\",\
             \"ram_usage\" : \"92\",\
             \"checksum\" : \"93\"\
@@ -957,6 +999,45 @@ int test_setup_null_field_valid_msg(void **state)
     return 0;
 }
 
+int test_setup_insert_multiple_null_field_valid_msg(void ** state) {
+    Eventinfo * lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup(
+            "{\"data\":{\"checksum\":\"944fb6182222660aeca5b27bcd14a579db60b58c\",\"inode\":30905,\"item_id\":"
+            "\"31ec8d41b06cc6dea02d9f088067d379d761732d\",\"local_ip\":\"192.168.100.90\",\"local_port\":53462,\"pid\":"
+            "null,\"process\":null,\"protocol\":\"tcp\",\"remote_ip\":null,\"remote_port\":10000,\"rx_queue\":null,"
+            "\"scan_time\":\"2021/11/01 "
+            "17:38:40\",\"state\":null,\"tx_queue\":null},\"operation\":\"INSERTED\",\"type\":\"dbsync_ports\"}"),
+        lf->log == NULL) {
+        return -1;
+    }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_deleted_multiple_null_field_valid_msg(void ** state) {
+    Eventinfo * lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup(
+            "{\"data\":{\"inode\":30905,\"local_ip\":\"192.168.100.90\",\"local_port\":53462,\"protocol\":\"tcp\","
+            "\"scan_time\":\"2021/11/01 17:40:48\"},\"operation\":\"DELETED\",\"type\":\"dbsync_ports\"}"),
+        lf->log == NULL) {
+        return -1;
+    }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_null_text_variant_field_valid_msg(void **state)
 {
     Eventinfo *lf;
@@ -1040,8 +1121,8 @@ void test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character(void *
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB12\uffff3456|abcdef\uffff0123456789|";
-    const char *result = "ok NULL|KB12\uffff3456|abcdef\uffff0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED 2021/10/29 14:26:24|KB12\uffff3456|abcdef\uffff0123456789|";
+    const char *result = "ok 2021/10/29 14:26:24|KB12\uffff3456|abcdef\uffff0123456789|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1057,8 +1138,8 @@ void test_syscollector_dbsync_hotfixes_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB123456|abcdef0123456789|";
-    const char *result = "ok NULL|KB123456|abcdef0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED 2021/10/29 14:26:24|KB123456|abcdef0123456789|";
+    const char *result = "ok 2021/10/29 14:26:24|KB123456|abcdef0123456789|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1074,8 +1155,8 @@ void test_syscollector_dbsync_packages_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync packages MODIFIED NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
-    const char *result = "ok NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
+    const char *query = "agent 001 dbsync packages MODIFIED 2021/10/29 14:26:24|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
+    const char *result = "ok 2021/10/29 14:26:24|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1092,8 +1173,8 @@ void test_syscollector_dbsync_processes_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync processes MODIFIED NULL|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
-    const char *result = "ok NULL|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
+    const char *query = "agent 001 dbsync processes MODIFIED 2021/10/29 14:26:24|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
+    const char *result = "ok 2021/10/29 14:26:24|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1110,8 +1191,8 @@ void test_syscollector_dbsync_ports_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync ports MODIFIED NULL|47|48|49|50|51|52|53|54|55|56|57|58|59|";
-    const char *result = "ok NULL|47|48|49|50|51|52|53|54|55|56|57|58|59|";
+    const char *query = "agent 001 dbsync ports MODIFIED 2021/10/29 14:26:24|47|48|49|50|51|52|53|54|55|56|57|58|59|";
+    const char *result = "ok 2021/10/29 14:26:24|47|48|49|50|51|52|53|54|55|56|57|58|59|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1128,8 +1209,8 @@ void test_syscollector_dbsync_network_iface_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync network_iface MODIFIED NULL|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
-    const char *result = "ok NULL|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
+    const char *query = "agent 001 dbsync network_iface MODIFIED 2021/10/29 14:26:24|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
+    const char *result = "ok 2021/10/29 14:26:24|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1182,8 +1263,8 @@ void test_syscollector_dbsync_hardware_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hwinfo MODIFIED NULL|86|87|88|89|90|91|92|93|";
-    const char *result = "ok NULL|86|87|88|89|90|91|92|93|";
+    const char *query = "agent 001 dbsync hwinfo MODIFIED 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
+    const char *result = "ok 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1200,8 +1281,8 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
-    const char *result = "ok NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1218,8 +1299,8 @@ void test_syscollector_dbsync_hotfixes_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes INSERTED NULL|KB123456|abcdef0123456789|";
-    const char *result = "ok NULL|KB123456|abcdef0123456789|";
+    const char *query = "agent 001 dbsync hotfixes INSERTED 2021/10/29 14:26:24|KB123456|abcdef0123456789|";
+    const char *result = "ok 2021/10/29 14:26:24|KB123456|abcdef0123456789|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1235,8 +1316,8 @@ void test_syscollector_dbsync_packages_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync packages INSERTED NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
-    const char *result = "ok NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
+    const char *query = "agent 001 dbsync packages INSERTED 2021/10/29 14:26:24|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
+    const char *result = "ok 2021/10/29 14:26:24|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1253,8 +1334,8 @@ void test_syscollector_dbsync_processes_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync processes INSERTED NULL|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
-    const char *result = "ok NULL|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
+    const char *query = "agent 001 dbsync processes INSERTED 2021/10/29 14:26:24|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
+    const char *result = "ok 2021/10/29 14:26:24|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1271,8 +1352,8 @@ void test_syscollector_dbsync_ports_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync ports INSERTED NULL|47|48|49|50|51|52|53|54|55|56|57|58|59|";
-    const char *result = "ok NULL|47|48|49|50|51|52|53|54|55|56|57|58|59|";
+    const char *query = "agent 001 dbsync ports INSERTED 2021/10/29 14:26:24|47|48|49|50|51|52|53|54|55|56|57|58|59|";
+    const char *result = "ok 2021/10/29 14:26:24|47|48|49|50|51|52|53|54|55|56|57|58|59|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1289,8 +1370,8 @@ void test_syscollector_dbsync_network_iface_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync network_iface INSERTED NULL|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
-    const char *result = "ok NULL|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
+    const char *query = "agent 001 dbsync network_iface INSERTED 2021/10/29 14:26:24|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
+    const char *result = "ok 2021/10/29 14:26:24|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1343,8 +1424,8 @@ void test_syscollector_dbsync_hardware_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hwinfo INSERTED NULL|86|87|88|89|90|91|92|93|";
-    const char *result = "ok NULL|86|87|88|89|90|91|92|93|";
+    const char *query = "agent 001 dbsync hwinfo INSERTED 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
+    const char *result = "ok 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1361,8 +1442,8 @@ void test_syscollector_dbsync_os_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo INSERTED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
-    const char *result = "ok NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo INSERTED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1380,8 +1461,8 @@ void test_syscollector_dbsync_os_valid_msg_with_number_pk(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
-    const char *result = "ok NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1423,7 +1504,7 @@ void test_syscollector_dbsync_valid_msg_query_error(void **state)
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, -1);
 
-    expect_string(__wrap__merror, formatted_msg, A_QUERY_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, A_QUERY_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, UNABLE_TO_SEND_INFORMATION_TO_WDB);
 
     int ret = DecodeSyscollector(lf, &sock);
@@ -1435,7 +1516,7 @@ void test_syscollector_dbsync_os_valid_msg_no_result_payload(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
     const char *result = "ok";
     int sock = 1;
 
@@ -1471,8 +1552,27 @@ void test_syscollector_dbsync_empty_string_or_object(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hwinfo INSERTED NULL|86|NULL|88|89|90|91|92|93|";
-    const char *result = "ok NULL|86|NULL|88|89|90|91|92|93|";
+    const char *query = "agent 001 dbsync hwinfo INSERTED 2021/10/29 14:26:24|86|NULL|88|89|90|91|92|93|";
+    const char *result = "ok 2021/10/29 14:26:24|86||88|89|90|91|92|93|";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_missing_values(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync hwinfo INSERTED 2021/10/29 14:26:24|86||88|||91|92|93|";
+    const char *result = "ok 2021/10/29 14:26:24|86||88|||91|92|93|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1546,6 +1646,129 @@ void test_syscollector_dbsync_null_valid_msg(void **state)
     assert_int_not_equal(ret, 0);
 }
 
+void test_syscollector_dbsync_insert_multiple_null_valid_msg(void ** state) {
+    Eventinfo * lf = *state;
+
+    const char * query = "agent 001 dbsync ports INSERTED 2021/11/01 "
+                         "17:38:40|tcp|192.168.100.90|53462||10000|||30905||||944fb6182222660aeca5b27bcd14a579db60b58c|"
+                         "31ec8d41b06cc6dea02d9f088067d379d761732d|";
+    const char * result = "ok ";
+
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+
+    int index = 0;
+
+    assert_string_equal(lf->fields[index].key, "type");
+    assert_string_equal(lf->fields[index++].value, "dbsync_ports");
+
+    assert_string_equal(lf->fields[index].key, "port.protocol");
+    assert_string_equal(lf->fields[index++].value, "tcp");
+
+    assert_string_equal(lf->fields[index].key, "port.local_ip");
+    assert_string_equal(lf->fields[index++].value, "192.168.100.90");
+
+    assert_string_equal(lf->fields[index].key, "port.local_port");
+    assert_string_equal(lf->fields[index++].value, "53462");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_ip");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_port");
+    assert_string_equal(lf->fields[index++].value, "10000");
+
+    assert_string_equal(lf->fields[index].key, "port.tx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.rx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.inode");
+    assert_string_equal(lf->fields[index++].value, "30905");
+
+    assert_string_equal(lf->fields[index].key, "port.state");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.pid");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.process");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "operation_type");
+    assert_string_equal(lf->fields[index++].value, "INSERTED");
+}
+
+void test_syscollector_dbsync_deleted_multiple_null_valid_msg(void ** state) {
+    Eventinfo * lf = *state;
+
+    const char * query = "agent 001 dbsync ports DELETED 2021/11/01 "
+                         "17:40:48|tcp|192.168.100.90|53462|NULL|NULL|NULL|NULL|30905|NULL|NULL|NULL|NULL|NULL|";
+    const char * result = "ok 2021/11/01 "
+                          "17:40:48|tcp|192.168.100.90|53462||10000|||30905||||"
+                          "944fb6182222660aeca5b27bcd14a579db60b58c|31ec8d41b06cc6dea02d9f088067d379d761732d|";
+
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+
+    int index = 0;
+
+    assert_string_equal(lf->fields[index].key, "type");
+    assert_string_equal(lf->fields[index++].value, "dbsync_ports");
+
+    assert_string_equal(lf->fields[index].key, "port.protocol");
+    assert_string_equal(lf->fields[index++].value, "tcp");
+
+    assert_string_equal(lf->fields[index].key, "port.local_ip");
+    assert_string_equal(lf->fields[index++].value, "192.168.100.90");
+
+    assert_string_equal(lf->fields[index].key, "port.local_port");
+    assert_string_equal(lf->fields[index++].value, "53462");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_ip");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.remote_port");
+    assert_string_equal(lf->fields[index++].value, "10000");
+
+    assert_string_equal(lf->fields[index].key, "port.tx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.rx_queue");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.inode");
+    assert_string_equal(lf->fields[index++].value, "30905");
+
+    assert_string_equal(lf->fields[index].key, "port.state");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.pid");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "port.process");
+    assert_string_equal(lf->fields[index++].value, "");
+
+    assert_string_equal(lf->fields[index].key, "operation_type");
+    assert_string_equal(lf->fields[index++].value, "DELETED");
+}
+
 void test_syscollector_dbsync_null_text_variant_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
@@ -1598,12 +1821,15 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_no_operation, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_empty_string_or_object, test_setup_valid_msg_empty_string, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_empty_string_or_object, test_setup_valid_msg_object_as_value, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_missing_values, test_setup_valid_msg_missing_values, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_null_agentid, test_setup_valid_msg_null_agentid, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_no_operation_or_data_no_object, test_setup_valid_msg_data_as_value, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_valid_msg_big_size, test_setup_hotfixes_valid_msg_big_size, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_text_variant_valid_msg, test_setup_null_text_variant_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_text_valid_msg, test_setup_null_text_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_null_valid_msg, test_setup_null_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_insert_multiple_null_valid_msg, test_setup_insert_multiple_null_field_valid_msg, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_deleted_multiple_null_valid_msg, test_setup_deleted_multiple_null_field_valid_msg, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }
