@@ -31,7 +31,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdb_hotfix_delete -Wl,--wrap,time -Wl,--wrap,wdbi_update_attempt  -Wl,--wrap,wdbi_update_completion \
                         -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_prepare_v2 \
                         -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,sqlite3_column_text \
-                        -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double \
+                        -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double -Wl,--wrap,sqlite3_bind_null \
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
