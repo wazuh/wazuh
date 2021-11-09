@@ -2078,7 +2078,7 @@ static int decode_dbsync( Eventinfo * lf, char *msg_type, cJSON *logJSON, int *s
                             mdebug1(A_QUERY_ERROR);
                         } else {
                             if (is_inserted_operation) {
-                                fill_event_alert(lf, field_list, operation, msg->data);
+                                fill_event_alert(lf, field_list, operation, msg->data + header_size);
                             } else {
                                 char *response_data = NULL;
                                 strtok_r(response, " ", &response_data);
