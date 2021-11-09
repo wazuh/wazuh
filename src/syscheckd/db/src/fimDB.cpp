@@ -53,6 +53,7 @@ void FIMDB::setValueLimit()
 
 void FIMDB::registerRSync()
 {
+    // LCOV_EXCL_START
     const auto reportFimSyncWrapper
     {
         [this](const std::string & dataString)
@@ -61,6 +62,7 @@ void FIMDB::registerRSync()
             m_loggingFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
         }
     };
+    // LCOV_EXCL_STOP
 
     try
     {
@@ -137,6 +139,7 @@ void FIMDB::init(unsigned int interval_synchronization,
                  std::unique_ptr<RemoteSync> rsyncHanlder)
 #endif
 {
+    // LCOV_EXCL_START
     std::function<void(const std::string&)> callbackSyncWrapper
     {
         [callbackSync](const std::string & msg)
@@ -144,6 +147,7 @@ void FIMDB::init(unsigned int interval_synchronization,
             callbackSync(FIM_LOCATION, msg.c_str());
         }
     };
+    // LCOV_EXCL_STOP
 
     std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper
     {
