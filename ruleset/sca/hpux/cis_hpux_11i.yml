@@ -1,0 +1,26 @@
+# Security Configuration Assessment
+# CIS Checks for HPUX 11i
+# Copyright (C) 2015-2021, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Benchmark for HP-UX 11i from 09-17-2009
+
+policy:
+  id: "cis_hpux"
+  file: "cis_hpux_11i.yml"
+  name: "CIS HP-UX 11i Benchmark"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for HPUX version 11i. This guide was tested against HPUX"
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check HPUX version"
+  description: "Requirements for running the SCA scan against HPUX family."
+  condition: any
+  rules:
+    - 'c: swlist HPUX*OE* -> r:^HPUX11i
