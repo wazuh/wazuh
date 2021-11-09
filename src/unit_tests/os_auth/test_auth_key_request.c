@@ -417,10 +417,10 @@ void test_key_request_dispatch_long_ip(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_key_request_dispatch_wrong_request(void **state) {
-    char    *buffer = "test";
+void test_key_request_dispatch_invalid_request(void **state) {
+    char    *buffer = "bad:000000001";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Wrong type of request.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid request 'bad:000000001' received in Agent key request.");
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
@@ -929,7 +929,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_key_request_socket_output_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_key_request_dispatch_long_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_key_request_dispatch_long_ip, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_key_request_dispatch_wrong_request, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_key_request_dispatch_invalid_request, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_key_request_dispatch_bad_socket_output, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_key_request_dispatch_error_parsing_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_key_request_dispatch_error_parsing_agent_json, test_setup, test_teardown),
