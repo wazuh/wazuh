@@ -437,7 +437,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if sync_type == b'syn_i_w_m_p' and self.name not in self.server.integrity_already_executed:
             # Add the variable self.name to keep track of the number of integrity_checks per cycle
             self.server.integrity_already_executed.append(self.name)
-
             permission = self.sync_integrity_free
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
