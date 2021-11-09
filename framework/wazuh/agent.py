@@ -383,8 +383,8 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-def delete_agents(agent_list: list = None, purge: bool = False, use_only_authd: bool = False, filters: dict = None,
-                  q: str = None) -> AffectedItemsWazuhResult:
+def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = None, q: str = None) \
+        -> AffectedItemsWazuhResult:
     """Delete a list of agents.
 
     Parameters
@@ -393,12 +393,15 @@ def delete_agents(agent_list: list = None, purge: bool = False, use_only_authd: 
         List of agents ID's to be deleted.
     purge : bool
         Delete definitely from key store.
-    use_only_authd : bool
-        Force the use of authd when adding and removing agents.
     filters : dict
         Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     q : str
         Define query to filter in DB.
+
+    Raises
+    ------
+    WazuhError(1726)
+        Authd is not running.
 
     Returns
     -------
@@ -443,9 +446,12 @@ def delete_agents(agent_list: list = None, purge: bool = False, use_only_authd: 
         for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
             try:
                 my_agent = Agent(agent_id)
-                my_agent.remove(purge=purge, use_only_authd=use_only_authd)
+                my_agent.remove(purge=purge)
                 result.affected_items.append(agent_id)
-            except WazuhException as e:
+            except WazuhError as e:
+                if e.code == 1726:
+                    raise e
+
                 result.add_failed_item(id_=agent_id, error=e)
 
         # Clear temporary cache
@@ -458,22 +464,37 @@ def delete_agents(agent_list: list = None, purge: bool = False, use_only_authd: 
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name=None, agent_id=None, key=None, ip='any', force_time=-1, use_only_authd=False):
-    """Adds a new Wazuh agent.
+def add_agent(name=None, agent_id=None, key=None, ip='any', force=None):
+    """Add a new Wazuh agent.
 
-    :param name: name of the new agent.
-    :param agent_id: id of the new agent.
-    :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-    :param key: key of the new agent.
-    :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
-    :param use_only_authd: Force the use of authd when adding and removing agents.
-    :return: Agent ID and Agent key.
+    Parameters
+    ----------
+    name : str
+        Name of the new agent.
+    agent_id : str
+        ID of the new agent.
+    key : str
+        Key of the new agent.
+    ip : str
+        IP of the new agent. It can be an IP, IP/NET or "any".
+    force : dict
+        Remove old agent with the same name or IP if conditions are met.
+
+    Raises
+    ------
+    WazuhError(1738)
+        Name length is greater than 128 characters.
+
+    Returns
+    -------
+    WazuhResult
+        Added agent information.
     """
     # Check length of agent name
     if len(name) > 128:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force_time, use_only_authd=use_only_authd)
+    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
 
     return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 

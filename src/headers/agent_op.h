@@ -12,6 +12,7 @@
 #define AGENT_OP_H
 
 #include "external/cJSON/cJSON.h"
+#include "config/authd-config.h"
 
 /**
  * @brief Check if syscheck is to be executed/restarted
@@ -104,7 +105,7 @@ int w_request_agent_add_local(int sock,
                               const char *ip,
                               const char * groups,
                               const char *key,
-                              const int force,
+                              authd_force_options_t *force_options,
                               const int json_format,
                               const char *agent_id,
                               int exit_on_error);
@@ -131,7 +132,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *key_hash,
                                   char **id,
                                   char **key,
-                                  const int force,
+                                  authd_force_options_t *force_options,
                                   const char *agent_id);
 
 // Send a clustered agent remove request.
@@ -147,6 +148,13 @@ cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
 // Get the agent id
 char * get_agent_id_from_name(const char *agent_name);
+
+/**
+* @brief Returns an authd force options structure translated into a cJSON object
+* @param force_options The structure to be converted
+* @returns A cJSON object with all the parameters of the structure
+**/
+cJSON* w_force_options_to_json(authd_force_options_t *force_options);
 
 /* Check control module availability */
 #if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)

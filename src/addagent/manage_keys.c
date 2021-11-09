@@ -12,6 +12,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
+#include "config/authd-config.h"
+
 #ifdef WIN32
   #include <wincrypt.h>
 #endif
@@ -469,7 +471,8 @@ int k_bulkload(const char *cmdbulk)
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
         } else {
-            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, -1, 0,NULL,1) < 0) {
+            authd_force_options_t force_options = {0};
+            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, &force_options, 0, NULL, 1) < 0) {
                 goto cleanup;
             }
         }

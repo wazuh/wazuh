@@ -39,6 +39,10 @@
 #define UNKNOWN_GROUP   "UnknownGroup"
 #define AGENT1_ID       "001"
 
+double __wrap_difftime (time_t __time1, time_t __time0) {
+    return mock();
+}
+
 void keys_init(keystore *keys, key_mode_t key_mode, int save_removed) {
     /* Initialize hashes */
     keys->keytree_id = rbtree_init();
@@ -131,12 +135,12 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-int setup_validate_force_insert_0(void **state) {
+int setup_validate_force_disabled(void **state) {
     config.force_options.enabled = 0;
     return 0;
 }
 
-int setup_validate_force_insert_1(void **state) {
+int setup_validate_force_enabled(void **state) {
     config.force_options.enabled = 1;
     return 0;
 }
@@ -160,16 +164,16 @@ static void test_w_auth_validate_data(void **state) {
 
     /* Existent IP */
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"' (001).");
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
+    expect_string(__wrap__mwarn, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
+                                                "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
 
     /* Existent Agent Name */
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"' (001).");
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
+    expect_string(__wrap__mwarn, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
+                                                "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
@@ -198,24 +202,47 @@ static void test_w_auth_validate_data(void **state) {
     assert_true(index >= 0);
 }
 
-static void test_w_auth_validate_data_force_insert(void **state) {
+static void test_w_auth_validate_data_replace_agent(void **state) {
     char response[2048] = {0};
     w_err_t err;
+    char *connection_status = "active";
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 0;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
 
     /* Duplicate IP*/
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"' (001).");
-    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
-    will_return(__wrap_OS_AgentAntiquity, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"'. "
+                                                "Removing old agent '"EXISTENT_AGENT1"' (id '001').");
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
-     /* Duplicate Name*/
+    /* Duplicate Name*/
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 2);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT2"' (002).");
-    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '002'.");
-    will_return(__wrap_OS_AgentAntiquity, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name. "
+                                                "Removing old agent '"EXISTENT_AGENT2"' (id '002').");
     err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
@@ -270,29 +297,144 @@ static void test_w_auth_replace_agent_force_disabled(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char* str_result = NULL;
 
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
-    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
 
     assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Agent '001' won't be removed because the force option is disabled.");
     free_keyentry(&key);
+    os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_not_comply_antiquity(void **state) {
+static void test_w_auth_replace_agent_agent_info_failed(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char* str_result = NULL;
 
-    // Mocking antiquity
-    will_return(__wrap_OS_AgentAntiquity, 10);
-    config.force_options.connection_time = 100;
+    config.force_options.enabled = 1;
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, NULL);
 
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn't comply with the antiquity to be removed.");
-    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+
+    config.force_options.enabled = 0;
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Failed to get agent-info for agent '001'");
+    free_keyentry(&key);
+    os_free(str_result);
+}
+
+static void test_w_auth_replace_agent_not_disconnected(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "active";
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 0;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    // time since disconnected
+    will_return(__wrap_difftime, 10);
+
+    config.force_options.disconnected_time_enabled = true;
+    config.force_options.disconnected_time = 100;
+
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
 
     assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Agent '001' can't be replaced since it is not disconnected.");
     free_keyentry(&key);
-    config.force_options.connection_time = 0;
+    os_free(str_result);
+}
+
+static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "disconnected";
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 1632258049;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    // time since disconnected
+    will_return(__wrap_difftime, 10);
+
+    config.force_options.disconnected_time_enabled = true;
+    config.force_options.disconnected_time = 100;
+
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.disconnected_time = 0;
+
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Agent '001' has not been disconnected long enough to be replaced.");
+    free_keyentry(&key);
+    os_free(str_result);
+}
+
+static void test_w_auth_replace_agent_not_old_enough(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "active";
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 0;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    config.force_options.disconnected_time_enabled = false;
+
+    // time since registration
+    will_return(__wrap_difftime, 10);
+
+    config.force_options.after_registration_time = 100;
+
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+
+    config.force_options.after_registration_time = 0;
+
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Agent '001' doesn't comply with the registration time to be removed.");
+    free_keyentry(&key);
+    os_free(str_result);
 }
 
 static void test_w_auth_replace_agent_existent_key_hash(void **state) {
@@ -301,37 +443,85 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, "1234");
     // This is the SHA1 hash of the string: IdNameKey
     char *key_hash = "15153d246b71789195b48778875af94f9378ecf9";
+    char *connection_status = "never_connected";
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 0;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
 
-    will_return(__wrap_OS_AgentAntiquity, 0);
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' key already exists on the manager.");
-    err = w_auth_replace_agent(&key, key_hash, &config.force_options);
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+    config.force_options.key_mismatch = true;
+
+    err = w_auth_replace_agent(&key, key_hash, &config.force_options, &str_result);
+
+    config.force_options.key_mismatch = false;
 
     assert_int_equal(err, OS_INVALID);
+    assert_string_equal(str_result, "Agent '001' key already exists on the manager.");
     free_keyentry(&key);
+    os_free(str_result);
 }
 
 static void test_w_auth_replace_agent_success(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "disconnected";
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 1632258049;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
 
-    will_return(__wrap_OS_AgentAntiquity, 0);
-    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
-    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    will_return(__wrap_difftime, 10);
+
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 1;
+
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+
+    config.force_options.after_registration_time = 0;
 
     assert_int_equal(err, OS_SUCCESS);
+    assert_string_equal(str_result, "Removing old agent '"NEW_AGENT1"' (id '001').");
     free_keyentry(&key);
+    os_free(str_result);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
-        cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
-        cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_not_comply_antiquity, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_validate_data_replace_agent, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_agent_info_failed, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_old_enough, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_enabled),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
