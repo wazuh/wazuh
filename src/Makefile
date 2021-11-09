@@ -61,6 +61,8 @@ SYSINFO=data_provider/
 FIMDB=syscheckd/db/
 ifeq (${TARGET},winagent)
 FIMDB_LIB=${FIMDB}build/lib/libfimdb.a
+else ifeq (${uname_S},Darwin)
+FIMDB_LIB=${FIMDB}build/lib/libfimdb.a
 else
 FIMDB_LIB=${FIMDB}build/lib/libfimdb.so
 endif
