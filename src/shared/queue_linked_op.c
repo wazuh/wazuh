@@ -11,6 +11,21 @@
 
 #include <shared.h>
 
+typedef struct w_linked_queue_node_t {
+    void *data;                  ///< pointer to the node data
+    struct w_linked_queue_node_t *next; ///< pointer to next node
+    struct w_linked_queue_node_t *prev; ///< pointer to prev node
+} w_linked_queue_node_t;
+
+typedef struct w_linked_queue_t {
+    pthread_mutex_t mutex;        ///< mutex for mutual exclusion
+    pthread_cond_t available;     ///< condition variable when queue is empty
+    unsigned int elements;        ///< counts the number of elements stored in the queue
+    w_linked_queue_node_t *first; ///< points to the first node that would go out the queue
+    w_linked_queue_node_t *last;  ///< pointer to the last node in the queue
+    w_linked_queue_free_fn data_free_function; ///< function to free nodes' "data" field.
+} w_linked_queue_t;
+
 /**
  * Appends a node to the end of the queue
  * @param queue Queue where the node will be appended
@@ -36,6 +51,10 @@ w_linked_queue_t *linked_queue_init(w_linked_queue_free_fn free_function) {
     return queue;
 }
 
+size_t linked_queue_size(w_linked_queue_t *queue) {
+    return queue->elements;
+}
+
 void linked_queue_free(w_linked_queue_t *queue) {
     if (queue) {
         w_mutex_destroy(&queue->mutex);
@@ -52,16 +71,16 @@ void linked_queue_free(w_linked_queue_t *queue) {
     }
 }
 
-w_linked_queue_node_t *linked_queue_push(w_linked_queue_t * queue, void * data) {
+w_linked_queue_iterator linked_queue_push(w_linked_queue_t * queue, void * data) {
     w_linked_queue_node_t *node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
     node->next = NULL;
     linked_queue_append_node(queue, node);
-    return node;
+    return (w_linked_queue_iterator) node;
 }
 
-w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
+w_linked_queue_iterator linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     w_linked_queue_node_t *node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
@@ -70,10 +89,11 @@ w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * dat
     linked_queue_append_node(queue, node);
     w_cond_signal(&queue->available);
     w_mutex_unlock(&queue->mutex);
-    return node;
+    return (w_linked_queue_iterator) node;
 }
 
-void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node) {
+void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_iterator it) {
+    w_linked_queue_node_t *node = (w_linked_queue_node_t*) it;
     w_mutex_lock(&queue->mutex);
     if (node->next) {
         node->next->prev = node->prev;

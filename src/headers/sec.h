@@ -56,7 +56,7 @@ typedef struct _keyentry {
     FILE *fp;
     crypt_method crypto_method;
 
-    w_linked_queue_node_t *rids_node;
+    w_linked_queue_iterator *rids_node;
 } keyentry;
 
 /* Key storage */
@@ -85,6 +85,7 @@ typedef struct _keystore {
     char **removed_keys;
     size_t removed_keys_size;
 
+    /* Queue of type keyentry */
     w_linked_queue_t *opened_fp_queue;
 
     /* Mutexes */

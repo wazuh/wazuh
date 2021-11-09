@@ -71,7 +71,7 @@ void test_StoreCounter_updating_rids(void **state)
     key->id = strdup("001");
     key->updating_time = now;
     key->fp = (FILE *)1234;
-    w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, keys.keyentries[0]);
+    w_linked_queue_iterator *node1 = linked_queue_push(keys.opened_fp_queue, keys.keyentries[0]);
     key->rids_node = node1;
     keys.keyentries[0] = key;
 
@@ -88,7 +88,7 @@ void test_StoreCounter_updating_rids(void **state)
 
     StoreCounter(&keys, id, global, local);
 
-    assert_int_equal(keys.opened_fp_queue->elements, 1);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 1);
     linked_queue_free(keys.opened_fp_queue);
 }
 
@@ -131,11 +131,11 @@ void test_StoreCounter_pushing_rids(void **state)
     expect_memory(__wrap_linked_queue_push_ex, queue, keys.opened_fp_queue, sizeof(keys.opened_fp_queue));
     expect_memory(__wrap_linked_queue_push_ex, data, keys.keyentries[0], sizeof(keys.keyentries[0]));
 
-    assert_int_equal(keys.opened_fp_queue->elements, 0);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 0);
 
     StoreCounter(&keys, id, global, local);
 
-    assert_int_equal(keys.opened_fp_queue->elements, 1);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 1);
     assert_int_equal(keys.keyentries[0]->updating_time, now);
 
     expect_value(__wrap_fclose, _File, key->fp);
@@ -188,13 +188,12 @@ void test_StoreCounter_pushing_rids_fp_null(void **state)
     expect_memory(__wrap_linked_queue_push_ex, queue, keys.opened_fp_queue, sizeof(keys.opened_fp_queue));
     expect_memory(__wrap_linked_queue_push_ex, data, keys.keyentries[0], sizeof(keys.keyentries[0]));
 
-    assert_int_equal(keys.opened_fp_queue->elements, 0);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 0);
 
     StoreCounter(&keys, id, global, local);
 
-    assert_int_equal(keys.opened_fp_queue->elements, 1);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 1);
     assert_int_equal(keys.keyentries[0]->updating_time, now);
-    assert_null(keys.opened_fp_queue->first->next);
 
     expect_value(__wrap_fclose, _File, key->fp);
     will_return(__wrap_fclose, 0);
@@ -249,11 +248,11 @@ void test_StoreCounter_fail_first_open(void **state)
     expect_memory(__wrap_linked_queue_push_ex, queue, keys.opened_fp_queue, sizeof(keys.opened_fp_queue));
     expect_memory(__wrap_linked_queue_push_ex, data, keys.keyentries[0], sizeof(keys.keyentries[0]));
 
-    assert_int_equal(keys.opened_fp_queue->elements, 0);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 0);
 
     StoreCounter(&keys, id, global, local);
 
-    assert_int_equal(keys.opened_fp_queue->elements, 1);
+    assert_int_equal(linked_queue_size(keys.opened_fp_queue), 1);
 
     expect_value(__wrap_fclose, _File, key->fp);
     will_return(__wrap_fclose, 0);

@@ -21,22 +21,12 @@
 
 #include <pthread.h>
 
+typedef struct w_linked_queue_t w_linked_queue_t;
+
 typedef void (*w_linked_queue_free_fn)(void *data);
 
-typedef struct linked_queue_node_t {
-    void *data;                       ///< pointer to the node data
-    struct linked_queue_node_t *next; ///< pointer to next node
-    struct linked_queue_node_t *prev; ///< pointer to prev node
-} w_linked_queue_node_t;
-
-typedef struct linked_queue_t {
-    pthread_mutex_t mutex;        ///< mutex for mutual exclusion
-    pthread_cond_t available;     ///< condition variable when queue is empty
-    unsigned int elements;        ///< counts the number of elements stored in the queue
-    w_linked_queue_node_t *first; ///< points to the first node that would go out the queue
-    w_linked_queue_node_t *last;  ///< pointer to the last node in the queue
-    w_linked_queue_free_fn data_free_function; ///< function to free nodes' "data" field.
-} w_linked_queue_t;
+// Opaque iterator type.
+typedef void* w_linked_queue_iterator;
 
 /**
  * @brief Initializes a new queue structure
@@ -62,7 +52,7 @@ void linked_queue_free(w_linked_queue_t *queue);
  * @param data data to be inserted
  * @return node structure pushed to the queue
  * */
-w_linked_queue_node_t * linked_queue_push(w_linked_queue_t * queue, void * data);
+w_linked_queue_iterator linked_queue_push(w_linked_queue_t * queue, void * data);
 
 /** 
  * @brief Same as queue_push but with mutual exclusion 
@@ -72,7 +62,7 @@ w_linked_queue_node_t * linked_queue_push(w_linked_queue_t * queue, void * data)
  * @param data data to be inserted
  * @return node structure pushed to the queue
  * */
-w_linked_queue_node_t * linked_queue_push_ex(w_linked_queue_t * queue, void * data);
+w_linked_queue_iterator linked_queue_push_ex(w_linked_queue_t * queue, void * data);
 
 /**
  * @brief Retrieves next item in the queue
@@ -93,11 +83,27 @@ void * linked_queue_pop(w_linked_queue_t * queue);
 void * linked_queue_pop_ex(w_linked_queue_t * queue);
 
 /**
+ * @brief Returns the count of elements in queue.
+ *
+ * @param queue the queue
+ * @return count of elements
+ * */
+size_t linked_queue_size(w_linked_queue_t * queue);
+
+/**
+ * @brief Remove element by its iterator.
+ *
+ * @param queue the queue
+ * @return count of elements
+ * */
+size_t linked_queue_remove(w_linked_queue_t *queue, w_linked_queue_iterator it);
+
+/**
  * @brief Unlinks an existent node from the queue and pushes it again to the end
- * 
+ *
  * @param queue the queue
  * @param node node to be unlinked from the queue
  * */
-void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node);
+void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, const w_linked_queue_iterator node);
 
 #endif

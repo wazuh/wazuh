@@ -361,10 +361,6 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
-    if (key->rids_node) {
-        free(key->rids_node);
-    }
-
     w_mutex_destroy(&key->mutex);
     free(key);
 }
@@ -382,6 +378,7 @@ void OS_FreeKeys(keystore *keys)
 
     for (i = 0; i <= keys->keysize; i++) {
         if (keys->keyentries[i]) {
+            linked_queue_remove(keys->opened_fp_queue, keys->keyentries[i]->rids_node);
             OS_FreeKey(keys->keyentries[i]);
             keys->keyentries[i] = NULL;
         }
@@ -550,6 +547,7 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
         w_mutex_unlock(&keys->keytree_sock_mutex);
     }
 
+    // TODO(ramiro) delete from queue.
     OS_FreeKey(keys->keyentries[i]);
     keys->keysize--;
 
