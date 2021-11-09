@@ -665,8 +665,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info(f"Starting. Received metadata of {len(files_metadata)} files.")
 
         # Classify files in shared, missing, extra and extra valid.
+        self.server.local_integrity_lock.acquire()
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
                                                                            files_metadata, self.name)
+        self.server.local_integrity_lock.release()
 
         total_time = (datetime.now() - date_start_master).total_seconds()
         self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
@@ -930,7 +932,9 @@ class Master(server.AbstractServer):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Master")
-        self.integrity_control = Manager().dict()
+        self.manager = Manager()
+        self.integrity_control = self.manager.dict()
+        self.local_integrity_lock = self.manager.Lock()
         self.processes = []
         self.processes.append(Process(target=self.file_status_update))
         self.handler_class = MasterHandler
@@ -972,8 +976,11 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
+                get_files_status = wazuh.core.cluster.cluster.get_files_status()
+                self.local_integrity_lock.acquire()
                 self.integrity_control.clear()
-                self.integrity_control.update(wazuh.core.cluster.cluster.get_files_status())
+                self.integrity_control.update(get_files_status)
+                self.local_integrity_lock.release()
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
