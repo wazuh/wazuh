@@ -9,7 +9,7 @@ import os
 import shutil
 from calendar import timegm
 from datetime import datetime
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Queue
 from time import time, sleep
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -172,6 +172,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
+
+        self.task_queue = self.server.manager.Queue()
+        self.result_queue = self.server.manager.Queue()
 
     def to_dict(self):
         """Get worker healthcheck information.
@@ -504,6 +507,30 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return super().end_receiving_file(task_and_file_names)
 
+    def update_chunks_wazuh_db(self):
+        # Update chunks in local wazuh-db
+        logger = self.task_loggers['Agent-info sync']
+        wdb_conn = WazuhDBConnection()
+        while True:
+            data, result_queue = self.task_queue.get()
+            result = {'updated_chunks': 0, 'error_messages': list()}
+
+            before = time()
+            for i, chunk in enumerate(data['chunks']):
+                try:
+                    logger.debug2(f"Sending chunk {i + 1}/{len(data['chunks'])} to wazuh-db: {chunk}")
+                    response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+                    if response[0] != 'ok':
+                        result['error_messages'].append(response)
+                        logger.error(f"Response for chunk {i}/{len(data['chunks'])} was not 'ok': {response}")
+                    else:
+                        result['updated_chunks'] += 1
+                except Exception as e:
+                    result['error_messages'].append(str(e))
+
+            self.result_queue.put(result)
+            logger.debug(f"All chunks updated in wazuh-db in {(time() - before):3f}s.")
+
     async def sync_wazuh_db_info(self, task_id: bytes):
         """Iterate and update in the local wazuh-db the chunks of data received from a worker.
 
@@ -520,8 +547,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = self.task_loggers['Agent-info sync']
         logger.info(f"Starting")
         date_start_master = datetime.now()
-        wdb_conn = WazuhDBConnection()
-        result = {'updated_chunks': 0, 'error_messages': list()}
 
         try:
             # Chunks were stored under 'task_id' as an string.
@@ -537,21 +562,23 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         # Update chunks in local wazuh-db
-        before = time()
-        for i, chunk in enumerate(data['chunks']):
-            try:
-                logger.debug2(f"Sending chunk {i + 1}/{len(data['chunks'])} to wazuh-db: {chunk}")
-                response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
-                if response[0] != 'ok':
-                    result['error_messages'].append(response)
-                    logger.error(f"Response for chunk {i}/{len(data['chunks'])} was not 'ok': {response}")
-                else:
-                    result['updated_chunks'] += 1
-            except Exception as e:
-                result['error_messages'].append(str(e))
-        logger.debug(f"All chunks updated in wazuh-db in {(time() - before):3f}s.")
+        self.task_queue.put(data)
+        # before = time()
+        # for i, chunk in enumerate(data['chunks']):
+        #     try:
+        #         logger.debug2(f"Sending chunk {i + 1}/{len(data['chunks'])} to wazuh-db: {chunk}")
+        #         response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+        #         if response[0] != 'ok':
+        #             result['error_messages'].append(response)
+        #             logger.error(f"Response for chunk {i}/{len(data['chunks'])} was not 'ok': {response}")
+        #         else:
+        #             result['updated_chunks'] += 1
+        #     except Exception as e:
+        #         result['error_messages'].append(str(e))
+        # logger.debug(f"All chunks updated in wazuh-db in {(time() - before):3f}s.")
 
         # Send result to worker
+        result = self.result_queue.get()
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
         date_end_master = datetime.now()
         self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
@@ -930,9 +957,11 @@ class Master(server.AbstractServer):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Master")
-        self.integrity_control = Manager().dict()
+        self.manager = Manager()
+        self.integrity_control = self.manager.dict()
         self.processes = []
         self.processes.append(Process(target=self.file_status_update))
+        self.processes.append(Process(target=MasterHandler.update_chunks_wazuh_db))
         self.handler_class = MasterHandler
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
