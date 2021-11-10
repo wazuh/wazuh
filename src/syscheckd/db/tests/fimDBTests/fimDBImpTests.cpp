@@ -153,9 +153,8 @@ TEST_F(FimDBFixture, insertItemSuccess)
 {
     nlohmann::json itemJson;
     EXPECT_CALL(*mockDBSync, insertData(itemJson));
-
-    int expected_return = 0;
-    int return_code = fimDBMock.insertItem(itemJson);
+    dbQueryResult expected_return = dbQueryResult::SUCCESS;
+    dbQueryResult return_code =  fimDBMock.insertItem(itemJson);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -164,10 +163,8 @@ TEST_F(FimDBFixture, insertItemFailMaxRows)
     nlohmann::json itemJson;
     EXPECT_CALL(*mockDBSync, insertData(itemJson)).WillOnce(testing::Throw(DbSync::max_rows_error("Too many rows.")));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Too many rows."));
-    int expected_return = 1;
-    int return_code = -1;
-
-    return_code =  fimDBMock.insertItem(itemJson);
+    dbQueryResult expected_return = dbQueryResult::MAX_ROWS_ERROR;
+    dbQueryResult return_code =  fimDBMock.insertItem(itemJson);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -176,22 +173,17 @@ TEST_F(FimDBFixture, insertItemFailException)
     nlohmann::json itemJson;
     EXPECT_CALL(*mockDBSync, insertData(itemJson)).WillOnce(testing::Throw(std::exception()));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
-
-    int expected_return = 2;
-    int return_code = -1;
-
-    return_code =  fimDBMock.insertItem(itemJson);
+    dbQueryResult expected_return = dbQueryResult::DBSYNC_ERROR;
+    dbQueryResult return_code =  fimDBMock.insertItem(itemJson);
     ASSERT_EQ(return_code, expected_return);
-
 }
 
 TEST_F(FimDBFixture, removeItemSuccess)
 {
     nlohmann::json itemJson;
     EXPECT_CALL(*mockDBSync, deleteRows(itemJson));
-
-    int expected_return = 0;
-    int return_code = fimDBMock.removeItem(itemJson);
+    dbQueryResult expected_return = dbQueryResult::SUCCESS;
+    dbQueryResult return_code =  fimDBMock.removeItem(itemJson);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -200,10 +192,8 @@ TEST_F(FimDBFixture, removeItemFailMaxRows)
     nlohmann::json itemJson;
     EXPECT_CALL(*mockDBSync, deleteRows(itemJson)).WillOnce(testing::Throw(DbSync::max_rows_error("Too many rows.")));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Too many rows."));
-    int expected_return = 1;
-    int return_code = -1;
-
-    return_code =  fimDBMock.removeItem(itemJson);
+    dbQueryResult expected_return = dbQueryResult::MAX_ROWS_ERROR;
+    dbQueryResult return_code =  fimDBMock.removeItem(itemJson);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -212,11 +202,8 @@ TEST_F(FimDBFixture, removeItemFailException)
     nlohmann::json itemJson;
     EXPECT_CALL(*mockDBSync, deleteRows(itemJson)).WillOnce(testing::Throw(std::exception()));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
-
-    int expected_return = 2;
-    int return_code = -1;
-
-    return_code =  fimDBMock.removeItem(itemJson);
+    dbQueryResult expected_return = dbQueryResult::DBSYNC_ERROR;
+    dbQueryResult return_code =  fimDBMock.removeItem(itemJson);
     ASSERT_EQ(return_code, expected_return);
 
 }
@@ -226,9 +213,8 @@ TEST_F(FimDBFixture, updateItemSuccess)
     nlohmann::json itemJson;
     ResultCallbackData callback;
     EXPECT_CALL(*mockDBSync, syncRow(itemJson, testing::_));
-
-    int expected_return = 0;
-    int return_code = fimDBMock.updateItem(itemJson, callback);
+    dbQueryResult expected_return = dbQueryResult::SUCCESS;
+    dbQueryResult return_code =  fimDBMock.updateItem(itemJson, callback);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -238,10 +224,8 @@ TEST_F(FimDBFixture, updateItemFailMaxRows)
     ResultCallbackData callback;
     EXPECT_CALL(*mockDBSync, syncRow(itemJson, testing::_)).WillOnce(testing::Throw(DbSync::max_rows_error("Too many rows.")));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Too many rows."));
-    int expected_return = 1;
-    int return_code = -1;
-
-    return_code =  fimDBMock.updateItem(itemJson, callback);
+    dbQueryResult expected_return = dbQueryResult::MAX_ROWS_ERROR;
+    dbQueryResult return_code =  fimDBMock.updateItem(itemJson, callback);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -251,11 +235,8 @@ TEST_F(FimDBFixture, updateItemFailException)
     ResultCallbackData callback;
     EXPECT_CALL(*mockDBSync, syncRow(itemJson, testing::_)).WillOnce(testing::Throw(std::exception()));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
-
-    int expected_return = 2;
-    int return_code = -1;
-
-    return_code =  fimDBMock.updateItem(itemJson, callback);
+    dbQueryResult expected_return = dbQueryResult::DBSYNC_ERROR;
+    dbQueryResult return_code =  fimDBMock.updateItem(itemJson, callback);
     ASSERT_EQ(return_code, expected_return);
 
 }
@@ -327,9 +308,8 @@ TEST_F(FimDBFixture, executeQuerySuccess)
     nlohmann::json itemJson;
     ResultCallbackData callback;
     EXPECT_CALL(*mockDBSync, selectRows(itemJson, testing::_));
-
-    int expected_return = 0;
-    int return_code = fimDBMock.executeQuery(itemJson, callback);
+    dbQueryResult expected_return = dbQueryResult::SUCCESS;
+    dbQueryResult return_code =  fimDBMock.executeQuery(itemJson, callback);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -339,10 +319,8 @@ TEST_F(FimDBFixture, executeQueryFailMaxRows)
     ResultCallbackData callback;
     EXPECT_CALL(*mockDBSync, selectRows(itemJson, testing::_)).WillOnce(testing::Throw(DbSync::max_rows_error("Too many rows.")));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Too many rows."));
-    int expected_return = 1;
-    int return_code = -1;
-
-    return_code =  fimDBMock.executeQuery(itemJson, callback);
+    dbQueryResult expected_return = dbQueryResult::MAX_ROWS_ERROR;
+    dbQueryResult return_code =  fimDBMock.executeQuery(itemJson, callback);
     ASSERT_EQ(return_code, expected_return);
 }
 
@@ -352,11 +330,8 @@ TEST_F(FimDBFixture, executeQueryFailException)
     ResultCallbackData callback;
     EXPECT_CALL(*mockDBSync, selectRows(itemJson, testing::_)).WillOnce(testing::Throw(std::exception()));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
-
-    int expected_return = 2;
-    int return_code = -1;
-
-    return_code =  fimDBMock.executeQuery(itemJson, callback);
+    dbQueryResult expected_return = dbQueryResult::DBSYNC_ERROR;
+    dbQueryResult return_code =  fimDBMock.executeQuery(itemJson, callback);
     ASSERT_EQ(return_code, expected_return);
 
 }

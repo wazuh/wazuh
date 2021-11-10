@@ -27,10 +27,11 @@ extern "C"
 typedef void((*send_data_callback_t)(const char* log, const char* tag));
 typedef void((*logging_callback_t)(modules_log_level_t level, const char* tag));
 
-enum class dbResult
+enum class dbQueryResult
 {
-    DB_SUCCESS,
-    DB_ERROR
+    SUCCESS,
+    MAX_ROWS_ERROR,
+    DBSYNC_ERROR
 };
 
 class FIMDB
@@ -74,7 +75,7 @@ class FIMDB
          * @param item json item that represent the fim_entry data
          * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        int insertItem(const nlohmann::json& item);
+        dbQueryResult insertItem(const nlohmann::json& item);
 
         /**
          * @brief Remove a given item from the database
@@ -82,7 +83,7 @@ class FIMDB
          * @param item json item that represent the fim_entry data
          * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        int removeItem(const nlohmann::json& item);
+        dbQueryResult removeItem(const nlohmann::json& item);
 
         /**
          * @brief Update a given item in the database, or insert a new one if not exists,
@@ -92,7 +93,7 @@ class FIMDB
          * @param callbackData Pointer to the callback used after update rows
          * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        int updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
+        dbQueryResult updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
          * @brief Execute a query given and uses the callbackData in these rows
@@ -101,7 +102,7 @@ class FIMDB
          * @param callbackData Pointer to the callback used after execute query
          * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        int executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
+        dbQueryResult executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
         * @brief Create the loop with the configured interval to do the periodical synchronization
