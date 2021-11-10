@@ -8,9 +8,9 @@ import operator
 import os
 import shutil
 from calendar import timegm
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from multiprocessing import Process, Manager
-from time import time, sleep
+from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -665,10 +665,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info(f"Starting. Received metadata of {len(files_metadata)} files.")
 
         # Classify files in shared, missing, extra and extra valid.
-        self.server.local_integrity_lock.acquire()
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
                                                                            files_metadata, self.name)
-        self.server.local_integrity_lock.release()
 
         total_time = (datetime.now() - date_start_master).total_seconds()
         self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
@@ -932,15 +930,12 @@ class Master(server.AbstractServer):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Master")
-        self.manager = Manager()
-        self.integrity_control = self.manager.dict()
-        self.local_integrity_lock = self.manager.Lock()
-        self.processes = []
-        self.processes.append(Process(target=self.file_status_update))
+        self.integrity_control = {}
         self.handler_class = MasterHandler
+        self.task_pool = ProcessPoolExecutor(max_workers=2)
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run])
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
@@ -955,16 +950,8 @@ class Master(server.AbstractServer):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
-    async def start(self):
-        """Starts all cluster child processes."""
-        for process in self.processes:
-            process.start()
-
-        await super().start()
-
-    def file_status_update(self):
-        """Task that obtain files status periodically.
-
+    async def file_status_update(self):
+        """Asynchronous task that obtain files status periodically.
         It updates the local files information every self.cluster_items['intervals']['worker']['sync_integrity']
         seconds.
 
@@ -976,17 +963,14 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                get_files_status = wazuh.core.cluster.cluster.get_files_status()
-                self.local_integrity_lock.acquire()
-                self.integrity_control.clear()
-                self.integrity_control.update(get_files_status)
-                self.local_integrity_lock.release()
+                task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
+                self.integrity_control = await asyncio.wait_for(task, timeout=None)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
                                        f"metadata of {len(self.integrity_control)} files.")
 
-            sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
+            await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
 
     def get_health(self, filter_node) -> Dict:
         """Get nodes and synchronization information.
