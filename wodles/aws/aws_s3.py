@@ -23,6 +23,7 @@
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
 #   15 - Invalid endpoint URL
+#   16 - Throttling error
 
 import argparse
 import signal
@@ -63,6 +64,8 @@ if sys.version_info[0] == 3:
 # Enable/disable debug mode
 debug_level = 0
 
+# Number of attempts when a CloudWatch throttling issue is detected.
+MAX_ATTEMPTS_ALLOWED = 10
 
 ################################################################################
 # Classes
@@ -2901,14 +2904,42 @@ class AWSCloudWatchLogs(AWSService):
                           'endTime': end_time,
                           'startFromHead': True}
 
-            response = self.client.get_log_events(
-                **{param: value for param, value in parameters.items() if value is not None})
+            attempt_counter = 0
+            response = None
+            # Try to get the log events while handling possible CloudWatch throttling issues
+            while not response:
+                try:
+                    response = self.client.get_log_events(
+                        **{param: value for param, value in parameters.items() if value is not None})
+                except botocore.exceptions.EndpointConnectionError as err:
+                    if attempt_counter < THROTTLING_ATTEMPTS:
+                        attempt_counter += 1
+                        debug(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
+                              f'available. Attempting again.', 1)
+                    else:
+                        debug(f'ERROR: The "get_log_events" request was denied because the endpoint URL was not '
+                              f'available. No more attempts allowed.', 1)
+                        debug(f'Error details: {err}', 1)
+                        sys.exit(16)
+                except botocore.exceptions.ClientError as err:
+                    if err.response['Error']['Code'] == 'ThrottlingException':
+                        if attempt_counter < MAX_ATTEMPTS_ALLOWED:
+                            attempt_counter += 1
+                            debug(f'WARNING: The "get_log_events" request was denied due to request throttling. '
+                                  f'Attempting again.', 1)
+                        else:
+                            debug(f'ERROR: The "get_log_events" request was denied due to request throttling. '
+                                  f'No more attempts allowed.', 1)
+                            sys.exit(16)
+                    else:
+                        debug(f'ERROR: The "get_log_events" request failed. Error details: {err}', 1)
+                        sys.exit(1)
 
             token = response['nextForwardToken']
 
             # Send events to Analysisd
             for event in response['events']:
-                debug('+++ Sending events to Analysd...', 1)
+                debug('+++ Sending events to Analysisd...', 1)
                 debug('The message is "{}"'.format(event['message']), 2)
                 debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
                 self.send_msg(event['message'], dump_json=False)
