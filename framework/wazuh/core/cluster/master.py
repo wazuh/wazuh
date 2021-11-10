@@ -669,8 +669,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info(f"Starting. Received metadata of {len(files_metadata)} files.")
 
         # Classify files in shared, missing, extra and extra valid.
+        self.server.local_integrity_lock.acquire()
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
                                                                            files_metadata, self.name)
+        self.server.local_integrity_lock.release()
 
         total_time = (datetime.now() - date_start_master).total_seconds()
         self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
