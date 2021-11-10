@@ -19,7 +19,6 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
-from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -68,7 +67,6 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, agents_l
         agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'purge': purge,
-                'use_only_authd': configuration.api_conf['use_only_authd'],
                 'filters': {
                     'status': status,
                     'older_than': older_than,
@@ -166,16 +164,21 @@ async def get_agents(request, pretty=False, wait_for_complete=False, agents_list
 
 async def add_agent(request, pretty=False, wait_for_complete=False):
     """Add a new Wazuh agent.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: AgentIdKey
+    Returns
+    -------
+    Response
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentAddedModel.get_kwargs(request)
-
-    f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -470,8 +473,11 @@ async def restart_agent(request, agent_id, pretty=False, wait_for_complete=False
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_complete=False, wpk_repo=None,
-                             version=None, use_http=False, force=False):
+async def put_upgrade_agents(request, agents_list: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                             wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
+                             force: bool = False, q: str = None, manager: str = None, version: str = None,
+                             group: str = None, node_name: str = None, name: str = None,
+                             ip: str = None) -> web.Response:
     """Upgrade agents using a WPK file from online repository.
 
     Parameters
@@ -484,23 +490,57 @@ async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_c
         List of agent IDs. All possible values from 000 onwards.
     wpk_repo : str
         WPK repository.
-    version : str
+    upgrade_version : str
         Wazuh version to upgrade to.
     use_http : bool
         Use protocol http. If it's false use https. By default the value is set to false.
     force : bool
         Force upgrade.
+    q : str
+        Query to filter agents by.
+    manager : str
+        Filter by manager hostname to which agents are connected.
+    version : str
+        Filter by agents version.
+    group : str
+        Filter by group of agents.
+    node_name : str
+        Filter by node name.
+    name : str
+        Filter by agent name.
+    ip : str
+        Filter by agent IP.
 
     Returns
     -------
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
+    if 'all' in agents_list:
+        agents_list = '*'
+
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
-                'version': version,
+                'version': upgrade_version,
                 'use_http': use_http,
-                'force': force}
+                'force': force,
+                'filters': {
+                    'manager': manager,
+                    'version': version,
+                    'group': group,
+                    'node_name': node_name,
+                    'name': name,
+                    'ip': ip,
+                    'registerIP': request.query.get('registerIP', None)
+                },
+                'q': q
+                }
+
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = request.query.get(field, None)
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -508,15 +548,18 @@ async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_c
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*'
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wait_for_complete=False,
-                                    file_path=None, installer=None):
+async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: bool = False,
+                                    wait_for_complete: bool = False, file_path: str = None, installer: str = None,
+                                    q: str = None, manager: str = None, version: str = None, group: str = None,
+                                    node_name: str = None, name: str = None, ip: str = None) -> web.Response:
     """Upgrade agents using a local WPK file.
 
     Parameters
@@ -531,19 +574,118 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
         Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
     installer : str
         Installation file.
+    q : str
+        Query to filter agents by.
+    manager : str
+        Filter by manager hostname to which agents are connected.
+    version : str
+        Filter by agents version.
+    group : str
+        Filter by group of agents.
+    node_name : str
+        Filter by node name.
+    name : str
+        Filter by agent name.
+    ip : str
+        Filter by agent IP.
 
     Returns
     -------
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
+    if 'all' in agents_list:
+        agents_list = '*'
+
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
-                'installer': installer}
+                'installer': installer,
+                'filters': {
+                    'manager': manager,
+                    'version': version,
+                    'group': group,
+                    'node_name': node_name,
+                    'name': name,
+                    'ip': ip,
+                    'registerIP': request.query.get('registerIP', None)
+                },
+                'q': q
+                }
+
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = request.query.get(field, None)
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*'
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_agent_upgrade(request, agents_list: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                            q: str = None, manager: str = None, version: str = None, group: str = None,
+                            node_name: str = None, name: str = None, ip: str = None) -> web.Response:
+    """Get upgrade results from agents.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent IDs. All possible values from 000 onwards.
+    q : str
+        Query to filter agents by.
+    manager : str
+        Filter by manager hostname to which agents are connected.
+    version : str
+        Filter by agents version.
+    group : str
+        Filter by group of agents.
+    node_name : str
+        Filter by node name.
+    name : str
+        Filter by agent name.
+    ip : str
+        Filter by agent IP.
+
+    Returns
+    -------
+    ApiResponse
+        Upgrade message after having upgraded the agents.
+    """
+    f_kwargs = {'agent_list': agents_list,
+                'filters': {
+                    'manager': manager,
+                    'version': version,
+                    'group': group,
+                    'node_name': node_name,
+                    'name': name,
+                    'ip': ip,
+                    'registerIP': request.query.get('registerIP', None)
+                },
+                'q': q
+                }
+
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = request.query.get(field, None)
+
+    dapi = DistributedAPI(f=agent.get_upgrade_result,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
@@ -587,49 +729,23 @@ async def get_component_stats(request, pretty=False, wait_for_complete=False, ag
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_complete=False):
-    """Get upgrade results from agents.
-
+async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=False):
+    """Add agent (quick method)
+    
     Parameters
     ----------
+    agent_name : str
+        Name used to register the agent.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_list : list
-        List of agent IDs. All possible values from 000 onwards.
 
     Returns
     -------
-    ApiResponse
-        Upgrade message after having upgraded the agents.
+    Response
     """
-    f_kwargs = {'agent_list': agents_list}
-
-    dapi = DistributedAPI(f=agent.get_upgrade_result,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def post_new_agent(request, agent_name, pretty=False, wait_for_complete=False):
-    """Add agent (quick method)
-
-    Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agent_name: Agent name used when the agent was registered.
-    :return: AgentIdKeyData
-    """
-    f_kwargs = {'name': agent_name, 'use_only_authd': configuration.api_conf['use_only_authd']}
+    f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name})
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1020,7 +1136,7 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
     f_kwargs = {'agent_list': agent_list}
-    dapi = DistributedAPI(f=agent.restart_agents,
+    dapi = DistributedAPI(f=agent.restart_agents_by_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -1035,17 +1151,22 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
 
 
 async def insert_agent(request, pretty=False, wait_for_complete=False):
-    """Insert a new agent
+    """Insert a new agent.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: AgentIdKey
+    Returns
+    -------
+    Response
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
-
-    f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

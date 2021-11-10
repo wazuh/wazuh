@@ -900,10 +900,7 @@ int wdb_remove_agent(int id, int *sock) {
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
-                result = wdb_delete_agent_belongs(id, query_sock);
-
-                if ((OS_SUCCESS == result) && name && *name &&
-                     OS_INVALID == wdb_remove_agent_db(id, name)) {
+                if (name && *name && OS_INVALID == wdb_remove_agent_db(id, name)) {
                      mdebug1("Unable to remove agent DB: %d - %s", id, name);
                 }
             }

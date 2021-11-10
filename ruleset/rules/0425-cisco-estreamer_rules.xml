@@ -28,6 +28,9 @@
         <match>login attempt from unauthorized location</match>
         <description>Cisco eStreamer: SERVER-MYSQL login attempt from unauthorized location</description>
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     </rule>
 
 	<rule id="82403" level="5">
@@ -36,6 +39,9 @@
         <match>client authentication bypass attempt</match>
         <description>Cisco eStreamer: SERVER-MYSQL client authentication bypass attempt</description>
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1005</id>
+    </mitre>
     </rule>
 
 	<rule id="82404" level="5">
@@ -44,17 +50,20 @@
         <match>show databases attempt</match>
         <description>Cisco eStreamer: SERVER-MYSQL show databases attempt</description>
         <group>gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1005</id>
+    </mitre>
     </rule>
 
 	<rule id="82405" level="9">
         <if_sid>82400</if_sid>
         <id>APP-DETECT</id>
         <match>DNS request for potential malware</match>
-        <mitre>
-          <id>T1071.004</id>
-        </mitre>
         <description>Cisco eStreamer: APP-DETECT DNS request for potential malware</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
     </rule>
 
 </group>

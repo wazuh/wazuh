@@ -6,10 +6,10 @@
 -->
 
 <group name="sysmon_eid7_detections,">
-    <!-- Sample: {"win":{"eventdata":{"originalFileName":"System.Management.Automation.dll","image":"C:\\\\Windows\\\\tiny.exe","product":"Microsoft (R) Windows (R) Operating System","imageLoaded":"C:\\\\Windows\\\\assembly\\\\NativeImages_v4.0.30319_64\\\\System.Manaa57fc8cc#\\\\b9fb242f469332d0a2e43fbb5bed25bd\\\\System.Management.Automation.ni.dll","description":"System.Management.Automation","signed":"false","signatureStatus":"Unavailable","processGuid":"{86107A5D-D195-60DC-0B08-B60000000000}","processId":"8436","utcTime":"2021-06-30 20:19:04.450","hashes":"SHA1=6B7D60621FB17C0DE264109E1404AC9D1FD52AB3,MD5=67CFC833A98E43C452388F918FB7E4C1,SHA256=71DACD5ECFFE84A09F38C927F5C7561594391E3DD7DD9DF962BEC7F120F34186,IMPHASH=00000000000000000000000000000000","ruleName":"technique_id=T1059.001,technique_name=PowerShell","company":"Microsoft Corporation","fileVersion":"10.0.14393.693"},"system":{"eventID":"7","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Image loaded:\r\nRuleName: technique_id=T1059.001,technique_name=PowerShell\r\nUtcTime: 2021-06-30 20:19:04.450\r\nProcessGuid: {86107A5D-D195-60DC-0B08-B60000000000}\r\nProcessId: 8436\r\nImage: C:\\Windows\\tiny.exe\r\nImageLoaded: C:\\Windows\\assembly\\NativeImages_v4.0.30319_64\\System.Manaa57fc8cc#\\b9fb242f469332d0a2e43fbb5bed25bd\\System.Management.Automation.ni.dll\r\nFileVersion: 10.0.14393.693\r\nDescription: System.Management.Automation\r\nProduct: Microsoft (R) Windows (R) Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: System.Management.Automation.dll\r\nHashes: SHA1=6B7D60621FB17C0DE264109E1404AC9D1FD52AB3,MD5=67CFC833A98E43C452388F918FB7E4C1,SHA256=71DACD5ECFFE84A09F38C927F5C7561594391E3DD7DD9DF962BEC7F120F34186,IMPHASH=00000000000000000000000000000000\r\nSigned: false\r\nSignature: -\r\nSignatureStatus: Unavailable\"","version":"3","systemTime":"2021-06-30T20:19:05.025071300Z","eventRecordID":"829139","threadID":"3700","computer":"bankdc.ExchangeTest.com","task":"7","processID":"2508","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
+
     <rule id="92031" level="12">
         <if_group>sysmon_event7</if_group>
-        <field name="win.eventdata.originalFileName" type="pcre2">(?i)System.Management.Automation.dll</field>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)System\.Management\.Automation\.dll</field>
         <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]\:\\\\Windows\\\\Microsoft.NET\\.+\\csc\\.exe$</field>
         <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(devenv|node|SSMS|VSLauncher)\.exe$</field>
         <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(sdiagnhost|SmartAudio3)\.exe$</field>
@@ -20,7 +20,6 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"originalFileName":"mimispool.dll","image":"C:\\\\Windows\\\\System32\\\\spoolsv.exe","product":"mimispool (mimikatz)","signature":"Open Source Developer, Benjamin Delpy","imageLoaded":"C:\\\\Windows\\\\System32\\\\spool\\\\drivers\\\\x64\\\\3\\\\mimispoolbis.dll","description":"mimispool for Windows (mimikatz)","signed":"true","signatureStatus":"Valid","processGuid":"{4dc16835-6534-60ec-92a4-010000000000}","processId":"1912","utcTime":"2021-07-12 15:58:13.023","hashes":"SHA1=BE9CB098C3331CC153E5E1BEA14B8D3B4D8CFD47,MD5=BB3DA838233101941460B5A8A85D326E,SHA256=C5CB049D25FAB0401C450F94A536898884681EE07C56B485BA4C6066B1DAE710,IMPHASH=D2007D8F257A5C5861BAB65684E7C6A3","ruleName":"technique_id=1210,technique_name=Exploitation of Remote Services","company":"gentilkiwi (Benjamin DELPY)","fileVersion":"0.3.0.0"},"system":{"eventID":"7","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Image loaded:\r\nRuleName: technique_id=1210,technique_name=Exploitation of Remote Services\r\nUtcTime: 2021-07-12 15:58:13.023\r\nProcessGuid: {4dc16835-6534-60ec-92a4-010000000000}\r\nProcessId: 1912\r\nImage: C:\\Windows\\System32\\spoolsv.exe\r\nImageLoaded: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\mimispoolbis.dll\r\nFileVersion: 0.3.0.0\r\nDescription: mimispool for Windows (mimikatz)\r\nProduct: mimispool (mimikatz)\r\nCompany: gentilkiwi (Benjamin DELPY)\r\nOriginalFileName: mimispool.dll\r\nHashes: SHA1=BE9CB098C3331CC153E5E1BEA14B8D3B4D8CFD47,MD5=BB3DA838233101941460B5A8A85D326E,SHA256=C5CB049D25FAB0401C450F94A536898884681EE07C56B485BA4C6066B1DAE710,IMPHASH=D2007D8F257A5C5861BAB65684E7C6A3\r\nSigned: true\r\nSignature: Open Source Developer, Benjamin Delpy\r\nSignatureStatus: Valid\"","version":"3","systemTime":"2021-07-12T15:58:13.0304995Z","eventRecordID":"267563","threadID":"3552","computer":"hrmanager.ExchangeTest.com","task":"7","processID":"2092","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
     <rule id="92140" level="6">
         <if_group>sysmon_event7</if_group>
         <field name="win.eventdata.imageLoaded" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers</field>
@@ -31,7 +30,6 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"originalFileName":"vaultcli.dll","image":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Local\\\\Temp\\\\infosMin48.exe","product":"Microsoft® Windows® Operating System","signature":"Microsoft Windows","imageLoaded":"C:\\\\Windows\\\\System32\\\\vaultcli.dll","description":"Credential Vault Client Library","signed":"true","signatureStatus":"Valid","processGuid":"{4dc16835-24d1-60f7-4001-000000005000}","processId":"5700","utcTime":"2021-07-20 19:32:33.428","hashes":"SHA1=0EA18B2789A85C20803DA84831B53A6236728FFF,MD5=C1D3933110B46BED9F4977BC5FADF607,SHA256=523EB270522AB2EC59CBE57B097A95FAB097E309FCE05B6F74A237BCC2463278,IMPHASH=D74C340A21D3A0792E913BA12F081859","ruleName":"technique_id=T1555,technique_name=Credentials from Password Stores","company":"Microsoft Corporation","fileVersion":"10.0.19041.746 (WinBuild.160101.0800)"},"system":{"eventID":"7","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Image loaded:\r\nRuleName: technique_id=T1555,technique_name=Credentials from Password Stores\r\nUtcTime: 2021-07-20 19:32:33.428\r\nProcessGuid: {4dc16835-24d1-60f7-4001-000000005000}\r\nProcessId: 5700\r\nImage: C:\\Users\\AtomicRed\\AppData\\Local\\Temp\\infosMin48.exe\r\nImageLoaded: C:\\Windows\\System32\\vaultcli.dll\r\nFileVersion: 10.0.19041.746 (WinBuild.160101.0800)\r\nDescription: Credential Vault Client Library\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: vaultcli.dll\r\nHashes: SHA1=0EA18B2789A85C20803DA84831B53A6236728FFF,MD5=C1D3933110B46BED9F4977BC5FADF607,SHA256=523EB270522AB2EC59CBE57B097A95FAB097E309FCE05B6F74A237BCC2463278,IMPHASH=D74C340A21D3A0792E913BA12F081859\r\nSigned: true\r\nSignature: Microsoft Windows\r\nSignatureStatus: Valid\"","version":"3","systemTime":"2021-07-20T19:32:33.4755381Z","eventRecordID":"279054","threadID":"3248","computer":"hrmanager.ExchangeTest.com","task":"7","processID":"2392","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
     <rule id="92150" level="10">
         <if_group>sysmon_event7</if_group>
         <field name="win.eventdata.imageLoaded" type="pcre2">(?i)vaultcli.dll</field>
@@ -39,6 +37,43 @@
         <description>Suspicious process loaded VaultCli.dll module. Possible use to dump stored passwords.</description>
         <mitre>
             <id>T1555</id>
+        </mitre>
+    </rule>
+
+    <rule id="92160" level="4">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)taskschd.dll</field>
+        <description>Process loaded taskschd.dll module. May be used to create delayed malware execution</description>
+        <mitre>
+            <id>T1053.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92165" level="12">
+        <if_sid>92160</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)mshta\.exe$</field>
+        <description>Mshta loaded taskschd.dll module. May be used to create delayed malware execution</description>
+        <mitre>
+            <id>T1053.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92600" level="12">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt)\.EXE</field>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)VBEUI.DLL</field>
+        <description>Office application loaded vbeui.dll module. May be used to execute scripting code</description>
+        <mitre>
+            <id>T1059.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92620" level="6">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)[c-z]:\\\\Windows\\\\Temp\\\\.+\.dll</field>
+        <description>An executable - $(win.eventdata.image) - loaded $(win.eventdata.imageLoaded) from the Temp directory.</description>
+        <mitre>
+            <id>T1546.011</id>
         </mitre>
     </rule>
 </group>

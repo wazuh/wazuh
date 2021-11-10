@@ -300,6 +300,16 @@ int main(int argc, char **argv)
             merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
         }
 
+        /* Set the Debug level */
+        if (debug_level == 0 && test_config == 0) {
+            /* Get debug level */
+            debug_level = getDefine_Int("authd", "debug", 0, 2);
+            while (debug_level != 0) {
+                nowDebug();
+                debug_level--;
+            }
+        }
+
         // Return -1 if not configured
         if (authd_read_config(OSSECCONF) < 0) {
             merror_exit(CONFIG_ERROR, OSSECCONF);
@@ -359,15 +369,6 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("authd", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     switch(w_is_worker()) {
@@ -425,6 +426,18 @@ int main(int argc, char **argv)
     fclose(fp);
 
     if (config.flags.remote_enrollment) {
+        /* Start SSL */
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
+            merror("SSL error. Exiting.");
+            exit(1);
+        }
+
+        /* Connect via TCP */
+        if (remote_sock = OS_Bindporttcp(config.port, NULL, 0), remote_sock <= 0) {
+            merror(BIND_ERROR, config.port, errno, strerror(errno));
+            exit(1);
+        }
+
         /* Check if password is enabled */
         if (config.flags.use_password) {
             fp = fopen(AUTHD_PASS, "r");
@@ -456,18 +469,6 @@ int main(int argc, char **argv)
         } else {
             minfo("Accepting connections on port %hu. No password required.", config.port);
         }
-
-        /* Start SSL */
-        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
-            merror("SSL error. Exiting.");
-            exit(1);
-        }
-
-        /* Connect via TCP */
-        if (remote_sock = OS_Bindporttcp(config.port, NULL, 0), remote_sock <= 0) {
-            merror(BIND_ERROR, config.port, errno, strerror(errno));
-            exit(1);
-        }
     }
 
     /* Before chroot */
@@ -495,6 +496,7 @@ int main(int argc, char **argv)
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
+        OS_ReadTimestamps(&keys);
     }
 
     /* Start working threads */
@@ -559,12 +561,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-
-    if (!config.worker_node) {
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-        OS_ReadTimestamps(&keys);
-    }
 
     mdebug1("Dispatch thread ready.");
 
@@ -633,7 +629,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         if (OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group, &key_hash)) {
             if (config.worker_node) {
                 minfo("Dispatching request to master node");
-                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, config.force_options.enabled?config.force_options.connection_time:-1, NULL)) {
+                // The force registration settings are ignored for workers. The master decides.
+                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, NULL, NULL)) {
                     enrollment_ok = TRUE;
                 }
             }
@@ -823,6 +820,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteKeys(copy_keys) < 0) {
             merror("Couldn't write file client.keys");
+            sleep(1);
         }
 
         gettime(&t1);
@@ -832,6 +830,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteTimestamps(copy_keys) < 0) {
             merror("Couldn't write file agents-timestamp.");
+            sleep(1);
         }
 
         gettime(&t1);
@@ -894,7 +893,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
             gettime(&t0);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
             gettime(&t1);

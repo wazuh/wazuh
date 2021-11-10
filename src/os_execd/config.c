@@ -238,7 +238,7 @@ cJSON *getClusterConfig(void) {
         free(buffer);
         close(sock);
         return NULL;
-                           
+
     case -1:
         merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
         free(buffer);

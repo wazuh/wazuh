@@ -25,11 +25,14 @@ requirements:
   rules:
     - 'f:/etc/system-release -> r:^CentOS && r:release 7'
 
-
 variables:
   $sshd_file: /etc/ssh/sshd_config
 
 checks:
+
+###############################################
+# 1.1 Filesystem Configuration
+###############################################
 
 # 1.1.1.1 cramfs: filesystem
   - id: 6000
@@ -42,6 +45,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
+      - cis_level: ["1"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -60,6 +64,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
+      - cis_level: ["2"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -78,6 +83,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
+      - cis_level: ["1"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -96,6 +102,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
+      - cis_level: ["2"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -107,8 +114,7 @@ checks:
       - 'c:modprobe -n -v msdos -> r:install /bin/true|Module msdos not found'
       - 'not c:lsmod -> r:msdos'
 
-
-  # 1.1.2 /tmp: partition
+# 1.1.2 /tmp: partition
   - id: 6004
     title: "Ensure /tmp is configured"
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
@@ -120,6 +126,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: any
@@ -140,6 +147,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:noexec'
@@ -156,6 +164,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nodev'
@@ -172,10 +181,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nosuid'
-
 
 # 1.1.6 /dev/shm:
   - id: 6008
@@ -189,13 +198,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s'
       - 'f:/etc/fstab -> r:\s/dev/shm\s'
-
-
-
 
 # 1.1.7 /dev/shm: noexec
   - id: 6009
@@ -209,6 +216,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:noexec'
@@ -225,10 +233,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nodev'
-
 
 # 1.1.9 /dev/shm: nosuid
   - id: 6011
@@ -242,11 +250,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
-
-
 
 # 1.1.10 Build considerations - Partition scheme.
   - id: 6012
@@ -260,6 +267,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -278,6 +286,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s'
@@ -294,6 +303,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:noexec'
@@ -310,6 +320,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:nodev'
@@ -326,10 +337,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:nosuid'
-
 
 # 1.1.15 /var/log: partition
   - id: 6017
@@ -343,6 +354,7 @@ checks:
       - pci_dss: ["2.2.4","10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -361,6 +373,7 @@ checks:
       - pci_dss: ["2.2.4","10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -379,14 +392,12 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     references:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s'
-
-
-
 
 # 1.1.18 /home: nodev
   - id: 6020
@@ -400,13 +411,18 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s && r:nodev'
 
+# 1.1.19 Ensure noexec option set on removable media partitions (Manual)
 
+# 1.1.20 Ensure nodev option set on removable media partitions (Manual)
 
+# 1.1.21 Ensure nosuid option set on removable media partition (Manual)
 
+# 1.1.22 Ensure sticky bit is set on all world-writable directories (Automated)
 
 # 1.1.23 Disable Automounting
   - id: 6021
@@ -420,6 +436,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:systemctl is-enabled autofs -> r:enabled'
@@ -431,11 +448,12 @@ checks:
     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/usb_storage.conf  Add the following line: install usb-storage /bin/true    Run the following command to unload the usb-storage module:  rmmod usb-storage"
     compliance:
-      - cis: ["1.1.22"]
+      - cis: ["1.1.24"]
       - cis_csc: ["8.4","8.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:modprobe -n -v usb-storage -> r:install /bin/true'
@@ -445,6 +463,10 @@ checks:
 ###############################################
 # 1.2 Configure Software Updates
 ###############################################
+
+# 1.2.1 Ensure GPG keys are configured (Manual)
+
+# 1.2.2 Ensure package manager repositories are configured (Manual)
 
 # 1.2.3 Activate gpgcheck
   - id: 6023
@@ -461,10 +483,12 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["A1.2","CC6.8"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/yum.conf -> r:gpgcheck=1'
       - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck=0'
+
 
 ###############################################
 # 1.3 Configure sudo
@@ -482,11 +506,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     references: "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
     condition: all
     rules:
       - 'c:rpm -q sudo -> r:sudo-\S*'
-
 
 # 1.3.2 Configure sudo
   - id: 6025
@@ -500,6 +524,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     references: "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
     condition: any
     rules:
@@ -518,7 +543,8 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+      - cis_level: ["1"]
+    condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*Defaults\s+logfile\s*=\s*"/var/log/sudo.log"'
       - 'd:/etc/sudoers.d/ -> r:\. -> r:^\s*Defaults\s+logfile\s*=\s*"/var/log/sudo.log"'
@@ -539,6 +565,7 @@ checks:
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
       - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     references: "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
     condition: all
     rules:
@@ -555,6 +582,7 @@ checks:
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
       - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:crontab -u root -l -> r:aide'
@@ -563,10 +591,10 @@ checks:
       - 'c:systemctl is-enabled aidecheck.timer -> r:enabled'
       - 'c:systemctl status aidecheck.timer -> r:enabled'
 
+
 ###############################################
 # 1.5 Secure Boot Settings
 ###############################################
-
 # 1.5.1 Set Boot Loader Password (Scored)
   - id: 6029
     title: "Ensure bootloader password is set"
@@ -579,12 +607,12 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/boot/grub2/user.cfg -> r:^GRUB2_PASSWORD\s*=\.+'
-      - 'f:/boot/grub2/grub.cfg -> r:^set superusers\s*=\.+'
-      - 'f:/boot/grub2/grub.cfg -> r:^password_pbkdf2 \.+'
-
+      - 'f:/boot/grub2/grub.cfg -> !r:^# && r:set superusers\s*=\.+'
+      - 'f:/boot/grub2/grub.cfg -> !r:^# && r:password_pbkdf2 \.+'
 
 # 1.5.2 Configure bootloader
   - id: 6030
@@ -598,10 +626,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat -L /boot/grub2/user.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|cannot stat'
+      - 'c:stat /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub2/user.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|cannot stat'
 
 # 1.5.3 Single user authentication
   - id: 6031
@@ -615,10 +644,12 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/usr/lib/systemd/system/rescue.service -> r:ExecStart=-/bin/sh -c "/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"|ExecStart=-/bin/sh -c "/usr/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"'
       - 'f:/usr/lib/systemd/system/emergency.service -> r:ExecStart=-/bin/sh -c "/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"|ExecStart=-/bin/sh -c "/usr/sbin/sulogin; /usr/bin/systemctl --fail --no-block default"'
+
 
 ###############################################
 # 1.6 Additional Process Hardening
@@ -635,6 +666,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:hard\s*\t*core\s*\t*0$'
@@ -653,6 +685,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:kernel:\s+NX \(Execute Disable\) protection: active'
@@ -670,6 +703,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
@@ -687,9 +721,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q prelink -> r:package prelink is not installed'
+
 
 ###############################################
 # 1.7 Configure SELinux
@@ -707,10 +743,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q libselinux -> r:libselinux-\S+'
-
 
 # 1.7.1.2 SELinux not disabled
   - id: 6037
@@ -724,11 +760,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*linux\.+selinux=0|linux\.+enforcing=0'
-
-
 
 # 1.7.1.3 Set selinux policy
   - id: 6038
@@ -742,13 +777,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sestatus -> r:^Loaded policy name:\s*\t*targeted$|^Loaded policy name:\s*\t*mls'
       - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
-
-
-
 
 # 1.7.1.4 Set selinux mode
   - id: 6039
@@ -762,11 +795,13 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:getenforce -> r:^Enforcing|^Permissive'
       - 'f:/etc/selinux/config -> r:^SELINUX=enforcing|^SELINUX=permissive'
 
+# 1.7.1.5 Ensure the SELinux mode is enforcing (Automated)
 
 # 1.7.1.6 Ensure no unconfined services exist
   - id: 6040
@@ -780,10 +815,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:ps -eZ -> r:unconfined_service_t'
-
 
 # 1.7.1.7 Remove SETroubleshoot
   - id: 6041
@@ -797,10 +832,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q setroubleshoot -> r:package setroubleshoot is not installed'
-
 
 # 1.7.1.8 Disable MCS Translation service mcstrans
   - id: 6042
@@ -814,10 +849,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q mcstrans -> r:package mcstrans is not installed'
-
 
 
 ###############################################
@@ -834,6 +869,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s'
@@ -849,6 +885,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s'
@@ -864,6 +901,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
@@ -883,9 +921,10 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 1.8.1.5 Configure /etc/issue permissions (Scored)
   - id: 6047
@@ -902,9 +941,11 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
 # 1.8.1.6 Configure /etc/issue.net permissions (Not Scored)
   - id: 6048
     title: "Ensure permissions on /etc/issue.net are configured"
@@ -920,10 +961,10 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 1.9 Ensure updates, patches, and additional security software are installed
   - id: 6049
@@ -940,22 +981,23 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["A1.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:yum check-update -> r:No packages needed for security'
-
+      - 'c:yum check-update --security -> r:No packages needed for security'
 
 # 1.10 Ensure GDM login banner is configured (Scored)
   - id: 6050
     title: "Ensure GDM login banner is configured"
     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
     rationale: "If a graphical login is not required, it should be removed to reduce the attack surface of the system. If a graphical login is required, last logged in user display should be disabled, and a warning banner should be configured. Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-    remediation: "Run the following command to remove gdm: # yum remove gdm       OR     If GDM is required: Edit or create the file /etc/dconf/profile/gdm and add the following:      user-db:user      system-db:gdm         file-db:/usr/share/gdm/greeter-dconf-defaults          Edit or create the file /etc/dconf/db/gdm.d/  and add the following: (This is typically /etc/dconf/db/gdm.d/01-banner-message)          [org/gnome/login-screen]        banner-message-enable=true      banner-message-text='<banner message>'          Example Banner Text:  'Authorized uses only. All activity may be monitored and reported. 'Edit or create the file /etc/dconf/db/gdm.d/and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)     [org/gnome/login-screen]     # Do not show the user list     disable-user-list=true  Run the following command to update the system databases:  # dconf update"
+    remediation: "Run the following command to remove gdm: # yum remove gdm OR If GDM is required: Edit or create the file /etc/dconf/profile/gdm and add the following:      user-db:user      system-db:gdm         file-db:/usr/share/gdm/greeter-dconf-defaults          Edit or create the file /etc/dconf/db/gdm.d/  and add the following: (This is typically /etc/dconf/db/gdm.d/01-banner-message)          [org/gnome/login-screen]        banner-message-enable=true      banner-message-text='<banner message>'          Example Banner Text:  'Authorized uses only. All activity may be monitored and reported. 'Edit or create the file /etc/dconf/db/gdm.d/and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)     [org/gnome/login-screen]     # Do not show the user list     disable-user-list=true  Run the following command to update the system databases:  # dconf update"
     compliance:
       - cis: ["1.10"]
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/dconf/profile/gdm -> r:user-db:user'
@@ -966,16 +1008,12 @@ checks:
       - 'd:/etc/dconf/db/gdm.d/ -> r:\. -> r:disable-user-list=true'
 
 
-
-
-
 ###############################################
 # 2 OS Services
 ###############################################
 ###############################################
 # 2.1 inetd Services
 ###############################################
-
 
 # 2.1.1 Ensure xinetd is not installed (Automated)
   - id: 6051
@@ -992,6 +1030,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q xinetd -> r:package xinetd is not installed'
@@ -1000,7 +1039,6 @@ checks:
 ###############################################
 # 2.2 Remove Legacy Services
 ###############################################
-
 
 # 2.2.1.1 Ensure time synchronization is in use (Manual)
   - id: 6052
@@ -1014,6 +1052,7 @@ checks:
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'not c:rpm -q ntp -> r:^package ntp is not installed'
@@ -1026,11 +1065,12 @@ checks:
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly. Note: This recommendation only applies if chrony is in use on the system."
     remediation: "1) Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server>. 2) Add or edit the OPTIONS in /etc/sysconfig/chronyd to include '-u chrony':OPTIONS=\"-u chrony\""
     compliance:
-      - cis: ["2.2.1.3"]
+      - cis: ["2.2.1.2"]
       - cis_csc: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/chrony.conf -> r:^server\.+$|^pool\.+$'
@@ -1043,11 +1083,12 @@ checks:
     rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
     remediation: "1) Add or edit restrict lines in /etc/ntp.conf to match the following: - restrict -4 default kod nomodify notrap nopeer noquery and - restrict -4 default kod nomodify notrap nopeer noquery. 2) Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>. 3) Add or edit the OPTIONS in /etc/sysconfig/ntpd to include ' -u ntp:ntp ': - OPTIONS='-u ntp:ntp'"
     compliance:
-      - cis: ["2.2.1.2"]
+      - cis: ["2.2.1.3"]
       - cis_csc: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
@@ -1068,6 +1109,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:rpm -qa xorg-x11-server* -> r:^xorg-x11-server'
@@ -1084,10 +1126,11 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed'
-      - 'c:rpm -q avahi -> r:pacakge avahi is not installed'
+      - 'c:rpm -q avahi -> r:package avahi is not installed'
 
 # 2.2.4 Ensure CUPS is not installed (Automated)
   - id: 6057
@@ -1101,6 +1144,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q cups -> r:package cups is not installed'
@@ -1117,6 +1161,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     references:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
     condition: all
@@ -1135,13 +1180,12 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     references:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
     condition: all
     rules:
       - 'c:rpm -q openldap-servers -> r:package openldap-servers is not installed'
-
-
 
 # 2.2.7 Ensure nfs-utils is not installed or the nfs-server service is masked (Automated)
   - id: 6060
@@ -1155,6 +1199,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q nfs-utils -> r:package nfs-utils is not installed'
@@ -1162,7 +1207,7 @@ checks:
 
 # 2.2.8 Ensure rpcbind is not installed or the rpcbind services are masked (Automated)
   - id: 6061
-    title: "Ensure nfs-utils is not installed or the nfs-server service is masked"
+    title: "Ensure rpcbind is not installed or the rpcbind services are masked"
     description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening"
     rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # yum remove nfs-utils; OR if the nfs-package is required as a dependency: run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server"
@@ -1172,12 +1217,11 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q rpcbind -> r:package rpcbind is not installed'
       - 'not c:systemctl is-enabled rpcbind rpcbind.socket -> r:enabled'
-
-
 
 # 2.2.9 Ensure DNS Server is not installed (Automate)
   - id: 6062
@@ -1191,6 +1235,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q bind -> r:package bind is not installed'
@@ -1207,6 +1252,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q vsftpd -> r:package vsftpd is not installed'
@@ -1223,6 +1269,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q httpd -> r:package httpd is not installed'
@@ -1239,6 +1286,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q dovecot -> r:package dovecot is not installed'
@@ -1255,6 +1303,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q samba -> r:package samba is not installed'
@@ -1271,6 +1320,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q squid -> r:package squid is not installed'
@@ -1283,10 +1333,11 @@ checks:
     remediation: "Run the following command to disable snmpd: # # yum remove net-snmp"
     compliance:
       - cis: ["2.2.15"]
-      - cis_csc: ["2.6",9.2"]
+      - cis_csc: ["2.6","9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q net-snmp -> r:package net-snmp is not installed'
@@ -1303,11 +1354,12 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1","AC.4","SC.7"]
       - tsc: ["CC5.2","CC6.4","CC6.6","CC6.7"]
+      - cis_level: ["1"]
     condition: none
     rules:
-      - 'c:ss -lntu -> r:\.*:25\s* && !r:127.0.0.1:25\.*|::1:25\.*'
+      - 'c:ss -lntu -> r:LISTEN\.*:25\s* && !r:127.0.0.1:25\.*|\s*\.*::1'
 
-# 2.2.17 Ensure rsync is not installed or the  ervice is masked (Automated)
+# 2.2.17 Ensure rsync is not installed or the service is masked (Automated)
   - id: 6070
     title: "Ensure rsync is not installed or the rsyncd service is masked"
     description: "The rsyncd service can be used to synchronize files between systems over network links."
@@ -1319,6 +1371,7 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1","AC.4","SC.7"]
       - tsc: ["CC5.2","CC6.4","CC6.6","CC6.7"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q rsync -> r:package rsync is not installed'
@@ -1339,10 +1392,10 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
     - 'c:rpm -q ypserv -> r:package ypserv is not installed'
-
 
 # 2.2.19 Ensure telnet-server is not installed (Automated)
   - id: 6072
@@ -1358,10 +1411,10 @@ checks:
       - gpg_13: ["4.3"]
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q telnet-server -> r:package telnet-server is not installed'
-
 
 
 ###############################################
@@ -1383,6 +1436,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q ypbind -> r:package ypbind is not installed'
@@ -1402,6 +1456,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q rsh -> r:^package rsh is not installed'
@@ -1421,6 +1476,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q talk -> r:^package talk is not installed'
@@ -1440,6 +1496,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q telnet -> r:^package telnet is not installed'
@@ -1459,18 +1516,19 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:rpm -q openldap-clients -> r:^package openldap-clients is not installed'
 
-# 2.5 Ensure nonessential services are removed or masked (Manual)
+# 2.4 Ensure nonessential services are removed or masked (Manual)
   - id: 6078
     title: "Ensure nonessential services are removed or masked"
     description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP.A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations"
     rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
     remediation: "Review the output of: # lsof -i -P -n | grep -v '(ESTABLISHED)'; to ensure that all services listed are required on the system. If a listed service is not required, remove the package containing the service. If the package containing the service is required, stop and mask the service. Run the following command to remove the package containing the service:# yum remove <package_name> OR if required packages have a dependency: run the following command to stop and mask the service:# systemctl --now mask <service_name>"
     compliance:
-      - cis: ["2.5"]
+      - cis: ["2.4"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1478,9 +1536,11 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:lsof -i -P -n -> r:(ESTABLISHED)'
+
 
 ###############################################
 # 3 Network Configuration and Firewalls
@@ -1501,12 +1561,12 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: none
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && !r:ipv6.disable=1'
       - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6\s*=\s*0'
       - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6\s*=\s*0'
-
 
 # 3.1.2 Ensure wireless interfaces are disabled (Manual)
   - id: 6080
@@ -1520,14 +1580,15 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:iw list -> r:Interface'
 
+
 ##################################################
 # 3.2 Network Parameters (Host Only)
 ##################################################
-
 
 # 3.2.1 Ensure IP forwarding is disabled (Automated)
   - id: 6081
@@ -1541,13 +1602,13 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
       - 'not c:grep -RhEs "^\s*net\.ipv4\.ip_forward\s*=\s*1" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:ip_forward'
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
       - 'not c:grep -RhEs "^\s*net\.ipv6\.conf\.all\.forwarding\s*=\s*1" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:forwarding'
-
 
 # 3.2.2 Ensure packet redirect sending is disabled (Automated)
   - id: 6082
@@ -1561,12 +1622,14 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0'
+
 
 ##################################################
 # 3.3 Network Parameters (Host and Router)
@@ -1584,6 +1647,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
@@ -1594,7 +1658,6 @@ checks:
       - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0'
-
 
 # 3.3.2 Ensure ICMP redirects are not accepted (Automated)
   - id: 6084
@@ -1608,6 +1671,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
@@ -1615,7 +1679,6 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0'
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-
 
 # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated)
   - id: 6085
@@ -1629,6 +1692,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
@@ -1648,6 +1712,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
@@ -1667,6 +1732,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
@@ -1684,6 +1750,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
@@ -1701,6 +1768,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
@@ -1720,6 +1788,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
@@ -1740,6 +1809,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
@@ -1748,10 +1818,10 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0'
 
 
-
 ###############################################
 # 3.4 Uncommon Network Protocols
 ###############################################
+
 # 3.4.1 Ensure DCCP is disabled (Automated)
   - id: 6092
     title: "Ensure DCCP is disabled"
@@ -1767,12 +1837,11 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:modprobe -n -v dccp -> r:install /bin/true'
       - 'not c:lsmod -> r:dccp'
-
-
 
 # 3.4.2 Ensure SCTP is disabled (Automated)
   - id: 6093
@@ -1789,6 +1858,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:modprobe -n -v sctp -> r:install /bin/true'
@@ -1816,6 +1886,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'not c:rpm -q iptables firewalld -> r:is not installed'
@@ -1835,12 +1906,11 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q iptables-services firewalld -> r:is not installed'
       - 'c:systemctl is-enabled firewalld -> r:masked'
-
-
 
 # 3.5.1.3 Ensure nftables is not installed or stopped and masked (Automated)
 # 3.5.2.2 Ensure firewalld is not installed or stopped and masked (Automated)
@@ -1851,10 +1921,11 @@ checks:
     rationale: "Running both firewalld and nftables may lead to conflict."
     remediation: "Run the following command to remove nftables:# yum remove nftables; OR run the following command to stop and mask nftables: # systemctl --now mask nftables. OR Run the following command to remove firewalld: # yum remove firewalld OR Run the following command to stop and mask firewalld: # systemctl --now mask firewalld"
     compliance:
-      - cis: ["3.5.1.3","3.5.3.1.3"]
+      - cis: ["3.5.1.3","3.5.2.2"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q iptables-services nftables -> r:is not installed'
@@ -1862,24 +1933,22 @@ checks:
 # 3.5.2.3 Ensure iptables-services package is not installed (Automated)
 # 3.5.3.1.2 Ensure nftables is not installed (Automated)
 # Both of the rules are here
-
   - id: 6097
     title: "Ensure nftables and iptables-services are not installed at the same time or ensure one of them is stopped and masked"
     description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables.Note: Support for using nftables as the back-end for firewalld was added in release v0.6.0. In Fedora 19 Linux derivatives, firewalld utilizes iptables as its back-end by default."
     rationale: "Running both nftables and nftables may lead to conflict."
     remediation: "Run the following command to remove nftables:# yum remove nftables; OR run the following command to stop and mask nftables: # systemctl --now mask nftables. OR Run the following command to remove iptables# # systemctl stop iptables; # systemctl stop ip6tables; # yum remove iptables-services"
     compliance:
-      - cis: ["3.5.1.3","3.5.3.1.3"]
+      - cis: ["3.5.2.3","3.5.3.1.2"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q firewalld nftables -> r:is not installed'
       - 'c:systemctl is-enabled nftables -> r:masked'
       - 'c:systemctl is-enabled firewalld -> r:masked'
-
-
 
 # 3.5.1.4 Ensure firewalld service is enabled and running (Automated)
   - id: 6098
@@ -1892,15 +1961,24 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:systemctl is-enabled firewalld -> r:enabled'
       - 'c:firewall-cmd --state -> r:running'
 
+# 3.5.1.5 Ensure default zone is set (Automated)
+
+# 3.5.1.6 Ensure network interfaces are assigned to appropriate zone (Manual)
+
+# 3.5.1.7 Ensure unnecessary services and ports are not accepted (Manual)
+
 
 ###############################################
-# 3.5.2 Configure nftables ####################
+# 3.5.2 Configure nftables
 ###############################################
+
+# 3.5.2.4 Ensure iptables are flushed (Manual)
 
 # 3.5.2.5 Ensure a table exists (Automated)
   - id: 6099
@@ -1913,6 +1991,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:nft list tables -> r:table'
@@ -1928,6 +2007,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:nft list ruleset -> r:type filter hook input priority 0'
@@ -1945,6 +2025,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:nft list ruleset -> r:iif "lo" accept'
@@ -1961,6 +2042,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:nft list ruleset -> r:ip protocol tcp ct state established accept'
@@ -1969,7 +2051,6 @@ checks:
       - 'c:nft list ruleset -> r:ip protocol tcp ct state established,related,new accept'
       - 'c:nft list ruleset -> r:ip protocol tcp udp state established,related,new accept'
       - 'c:nft list ruleset -> r:ip protocol tcp icmp state established,related,new accept'
-
 
 # 3.5.2.9 Ensure default deny firewall policy (Automated)
   - id: 6103
@@ -1982,6 +2063,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:nft list ruleset -> r:type filter hook input priority 0; policy drop;'
@@ -1999,11 +2081,11 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
-    condition: all
+      - cis_level: ["1"]
+    condition: any
     rules:
+      - 'c:nft list tables -> r:table'
       - 'c:systemctl is-enabled nftables -> r:enabled'
-      - 'c:nft list ruleset -> r:type filter hook forward priority 0; policy drop;'
-      - 'c:nft list ruleset -> r:type filter hook output priority 0; policy drop;'
 
 # 3.5.2.11 Ensure nftables rules are permanent (Automated)
   - id: 6105
@@ -2016,6 +2098,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/sysconfig/nftables.conf -> r:^include "/etc/nftables/nftables.rules"'
@@ -2023,10 +2106,10 @@ checks:
 
 
 ###############################################
-# 3.5.3 Configure iptables ####################
+# 3.5.3 Configure iptables
 ###############################################
 ###############################################
-#3.5.3.2 Configure IPv4 iptabl
+#3.5.3.2 Configure IPv4 iptables
 ###############################################
 
 # 3.5.3.2.1 Ensure default deny firewall policy (Automated)
@@ -2040,12 +2123,12 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:iptables -L -> r:Chain INPUT \(policy DROP\)'
       - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)'
       - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)'
-
 
 # 3.5.3.2.2 Ensure loopback traffic is configured (Automated)
   - id: 6107
@@ -2058,11 +2141,18 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
       - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+
+# 3.5.3.2.3 Ensure outbound and established connections are configured (Manual)
+
+# 3.5.3.2.4 Ensure firewall rules exist for all open ports (Manual)
+
+# 3.5.3.2.5 Ensure iptables rules are saved (Automated)
 
 # 3.5.3.2.6 Ensure iptables is enabled and running (Automated)
   - id: 6108
@@ -2075,10 +2165,12 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:systemctl is-enabled iptables -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
       - 'c:systemctl status iptables -> r:Active: active (running) since \w+ \d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d'
+
 
 ###############################################
 # 3.5.3.3 Configure IPv6 ip6tables
@@ -2095,12 +2187,12 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:ip6tables -L -> r:Chain INPUT (policy DROP)'
       - 'c:ip6tables -L -> r:Chain FORWARD (policy DROP)'
       - 'c:ip6tables -L -> r:Chain OUTPUT (policy DROP)'
-
 
 # 3.5.3.3.2 Ensure IPv6 loopback traffic is configured (Automated)
   - id: 6110
@@ -2113,6 +2205,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT'
@@ -2130,11 +2223,15 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:ip6tables -L OUTPUT -v -n -> r:state NEW,ESTABLISHED'
       - 'c:ip6tables -L INPUT -v -n -> r:state ESTABLISHED'
 
+# 3.5.3.3.4 Ensure IPv6 firewall rules exist for all open ports (Manual)
+
+# 3.5.3.3.5 Ensure ip6tables rules are saved (Automated)
 
 # 3.5.3.3.6 Ensure ip6tables is enabled and running (Automated)
   - id: 6112
@@ -2143,15 +2240,15 @@ checks:
     rationale: "ip6tables.service will load the iptables rules saved in the file /etc/sysconfig/ip6tables at boot, otherwise the ip6tables rules will be cleared during a re-boot of the system."
     remediation: "Run the following command to enable and start ip6tables: # systemctl --now start ip6tables"
     compliance:
-      - cis: ["3.5.3.3.3"]
+      - cis: ["3.5.3.3.6"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:systemctl is-enabled ip6tables -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
       - 'c:systemctl status ip6tables -> r:Active: active (running) since \w+ \d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d'
-
 
 
 ###############################################
@@ -2172,6 +2269,7 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.1","10.7"]
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:rpm -q audit -> r:^audit-\S+'
@@ -2188,11 +2286,11 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.1","10.7"]
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'c:systemctl is-enabled auditd -> r:^enabled'
       - 'c:systemctl status auditd -> r:Active: active \(running\)'
-
 
 # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled (Scored)
   - id: 6115
@@ -2207,6 +2305,7 @@ checks:
       - gpg_13: ["7.9"]
       - gdpr_IV: ["35.7.d","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: none
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
@@ -2221,6 +2320,7 @@ checks:
       - cis: ["4.1.2.1"]
       - cis_csc: ["6.4"]
       - pci_dss: ["10.7"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^max_log_file = \d+'
@@ -2235,6 +2335,7 @@ checks:
       - cis: ["4.1.2.2"]
       - cis_csc: ["6.2","6.4"]
       - pci_dss: ["10.7"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
@@ -2249,6 +2350,7 @@ checks:
       - cis: ["4.1.2.3"]
       - cis_csc: ["6.2","6.4"]
       - pci_dss: ["10.7"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*space_left_action\s*=\s*email'
@@ -2265,11 +2367,10 @@ checks:
       - cis: ["4.1.2.4"]
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.7"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:audit_backlog_limit='
-
-
 
 # 4.1.3 Ensure events that modify date and time information are collected (Scored)
   - id: 6120
@@ -2286,6 +2387,7 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
@@ -2307,6 +2409,7 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/group && r:-p wa && r:-k identity'
@@ -2330,6 +2433,7 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
@@ -2354,6 +2458,7 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/selinux/ && r:-p wa && r:-k MAC-policy'
@@ -2374,6 +2479,7 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /var/log/lastlog && r:-p wa && r:-k logins'
@@ -2389,6 +2495,7 @@ checks:
       - cis: ["4.1.8"]
       - cis_csc: ["4.9","16.11","16.13"]
       - pci_dss: ["10.3"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /var/run/utmp && r:-p wa && r:-k session'
@@ -2410,6 +2517,7 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
@@ -2431,10 +2539,13 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
+
+# 4.1.11 Ensure use of privileged commands is collected (Automated)
 
 # 4.1.12 Ensure successful file system mounts are collected (Scored)
   - id: 6128
@@ -2443,7 +2554,7 @@ checks:
     rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open, creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules. Example: vi /etc/audit/rules.d/mount.rules and add the following lines:   -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts   For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules. Example: vi /etc/audit/rules.d/mounts.rules and add the following lines:   -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts   -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts . Notes: This tracks successful and unsuccessful mount commands. File system mounts do not have to come from external media and this action still does not verify write (e.g. CD ROMS). Reloading the auditd config to set active settings may require a system reboot."
     compliance:
-      - cis: ["4.1.13"]
+      - cis: ["4.1.12"]
       - cis_csc: ["6.2"]
       - pci_dss: ["10.2.7"]
       - nist_800_53: ["AU.14","AU.6"]
@@ -2451,10 +2562,10 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
-
 
 # 4.1.13 Ensure file deletion events by users are collected (Scored)
   - id: 6129
@@ -2467,6 +2578,7 @@ checks:
       - cis_csc: ["6.2","13"]
       - pci_dss: ["10.5.5"]
       - tsc: ["PI1.4","PI1.5","CC7.1","CC7.2","CC7.3","CC8.1"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
@@ -2486,6 +2598,7 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope'
@@ -2506,6 +2619,7 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /var/log/sudo.log && r:-p wa && r:-k actions'
@@ -2525,6 +2639,7 @@ checks:
       - gdpr_IV: ["32.2","35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /sbin/insmod && r:-p x && r:-k modules'
@@ -2543,6 +2658,7 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d/ -> r:\.*.rules -> r:^-e 2'
@@ -2551,7 +2667,6 @@ checks:
 ###############################################
 # 4.2 Configure Logging
 ###############################################
-
 
 # 4.2.1.1 Ensure rsyslog is installed (Scored)
   - id: 6134
@@ -2564,10 +2679,10 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'c:rpm -q rsyslog -> r:^rsyslog-\S+'
-
 
 # 4.2.1.2 Ensure rsyslog Service is enabled (Scored)
   - id: 6135
@@ -2576,10 +2691,11 @@ checks:
     rationale: "If the rsyslog service is not activated the system may default to the syslogd service or lackblogging instead."
     remediation: "Run the following command to enable rsyslog:   # systemctl --now enable rsyslog"
     compliance:
-      - cis: ["4.2.1.1"]
+      - cis: ["4.2.1.2"]
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:systemctl is-enabled rsyslog -> enabled'
@@ -2596,10 +2712,13 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
       - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+
+# 4.2.1.4 Ensure logging is configured (Manual)
 
 # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host (Scored)
   - id: 6137
@@ -2612,15 +2731,17 @@ checks:
       - cis_csc: ["6.6","6.8"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:*.* @@\.+'
+
+# 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual)
 
 
 ###############################################
 # 4.2 Configure journald
 ###############################################
-
 
 # 4.2.2.1 Ensure journald is configured to send logs to rsyslog
   - id: 6138
@@ -2633,6 +2754,7 @@ checks:
       - cis_csc: ["6.5"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*ForwardToSyslog\s*=\s*yes'
@@ -2648,13 +2770,14 @@ checks:
       - cis_csc: ["6.4"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Compress\s*=\s*yes'
 
 # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk
   - id: 6140
-    title: "Ensure journald is configured to compress large log files"
+    title: "Ensure journald is configured to write logfiles to persistent disk"
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent"
@@ -2663,11 +2786,10 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Storage\s*=\s*persistent'
-
-
 
   # 4.2.3 Ensure permissions on all logfiles are configured (Scored)
   - id: 6141
@@ -2680,9 +2802,13 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
+
+# 4.2.4 Ensure logrotate is configured (Manual)
+
 
 ####################################################
 # 5 Access, Authentication and Authorization
@@ -2690,6 +2816,7 @@ checks:
 ####################################################
 # 5.1 Configure time-based job schedulers
 ####################################################
+
 # 5.1.1 Ensure cron daemon is enabled and running (Automated)
   - id: 6142
     title: "Ensure cron daemon is enabled"
@@ -2702,11 +2829,11 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:systemctl is-enabled crond -> enabled'
       - 'c:systemctl status crond -> r:Active: active \(running\) since \w+ \d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d'
-
 
 # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 6143
@@ -2720,10 +2847,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:^Access: \(0\w00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:stat /etc/crontab -> r:^Access: \(0\w00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 6144
@@ -2737,9 +2864,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 6145
@@ -2753,9 +2881,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 6146
@@ -2769,10 +2898,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 6147
@@ -2786,9 +2915,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 6148
@@ -2802,9 +2932,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.8 Ensure cron is restricted to authorized users (Scored)
   - id: 6149
@@ -2818,11 +2949,12 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.deny -> r:No such file or directory$'
-      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.deny -> r:No such file or directory$'
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 6150
@@ -2836,16 +2968,17 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/at.deny -> r:No such file or directory$'
-      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:stat /etc/at.deny -> r:No such file or directory$'
+      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 ###############################################
 # 5.2 Configure SSH Server
 ###############################################
+
 # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Automated)
   - id: 6151
     title: "Ensure permissions on /etc/ssh/sshd_config are configured"
@@ -2858,11 +2991,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
-
+      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.2.2 Ensure permissions on SSH private host key files are configured (Automated)
   - id: 6152
@@ -2876,16 +3008,16 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat -L {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat -L {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat -L {} \; -> r:^Access: \(0\d400/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(  997/ssh_keys\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(  997/ssh_keys\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(  997/ssh_keys\)$'
 
 # 5.2.3 Ensure permissions on SSH public host key files are configured  (Automated)
   - id: 6153
-    title: "Ensure permissions on SSH private host key files are configured"
+    title: "Ensure permissions on SSH public host key files are configured"
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
     remediation: "Run the following commands to set permissions and ownership on the SSH host public key: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\;    #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
@@ -2895,12 +3027,12 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat -L {} \; -> r:^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat -L {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat -L {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w\w\w\w\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w\w\w\w\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w\w\w\w\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.2.4 Ensure SSH access is limited (Scored)
   - id: 6154
@@ -2913,6 +3045,7 @@ checks:
       - cis_csc: ["4.3"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'f:$sshd_file -> r:^\s*AllowUsers'
@@ -2927,17 +3060,17 @@ checks:
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel INFO"
     compliance:
-      - cis: ["5.2.3"]
+      - cis: ["5.2.5"]
       - cis_csc: ["16"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'f:$sshd_file -> r:^# && r:LogLevel\s*\t*INFO'
       - 'f:$sshd_file -> r:^# && r:LogLevel\s*\t*VERBOSE'
-
 
 # 5.2.6 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 6156
@@ -2953,6 +3086,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s*\t*no'
@@ -2969,11 +3103,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: any
     rules:
       - 'f:$sshd_file -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
-
-
 
 # 5.2.8 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 6158
@@ -2988,6 +3121,7 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:IgnoreRhosts\s*\t*yes'
@@ -3005,6 +3139,7 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:HostbasedAuthentication\s*\t*no'
@@ -3022,6 +3157,7 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:PermitRootLogin\s*\t*no'
@@ -3039,6 +3175,7 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
@@ -3056,6 +3193,7 @@ checks:
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*PermitUserEnvironment\s*\t*no'
@@ -3070,6 +3208,7 @@ checks:
       - cis: ["5.2.13"]
       - cis_csc: ["14.4"]
       - pci_dss: ["12.3.8"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:sshd -T -> r:ciphers && r:3des-cbc|aes192-cbc|aes256-cbc|arcfour|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
@@ -3084,10 +3223,10 @@ checks:
       - cis: ["5.2.14"]
       - cis_csc: ["14.4", "16.5"]
       - pci_dss: ["12.3.8"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:sshd -T -> r:macs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
-
 
 # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 6165
@@ -3099,11 +3238,10 @@ checks:
       - cis: ["5.2.15"]
       - cis_csc: ["14.4"]
       - pci_dss: ["12.3.8"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
-
-
 
 # 5.2.16 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 6166
@@ -3115,6 +3253,7 @@ checks:
       - cis: ["5.2.16"]
       - cis_csc: ["16.11"]
       - pci_dss: ["12.3.8"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 300'
@@ -3133,6 +3272,7 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["4.1"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
@@ -3149,10 +3289,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*Banner\s*\t*/etc/issue.net'
-
 
 # 5.2.19 Ensure SSH PAM is enabled (Automated)
   - id: 6169
@@ -3166,10 +3306,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*UsePAM\s*yes'
-
 
 # 5.2.20 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 6170
@@ -3183,10 +3323,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["2"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*AllowTcpForwarding\s*no'
-
 
 # 5.2.21 Ensure SSH MaxStartups is configured (Automated)
   - id: 6171
@@ -3200,10 +3340,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*maxstartups\s*10:30:60'
-
 
 # 5.2.22 Ensure SSH MaxSessions is limited (Automated)
   - id: 6172
@@ -3217,15 +3357,16 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:$sshd_file -> r:^\s*MaxSessions\s*10'
 
 
+# ###############################################
+# # 5.3 Configure PAM
+# ###############################################
 
-###############################################
-# 5.3 Configure PAM
-###############################################
 # 5.3.1 Ensure password creation requirements are configured (Automated)
   - id: 6173
     title: "Ensure password creation requirements are configured"
@@ -3237,12 +3378,15 @@ checks:
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2.3"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
       - 'f:/etc/security/pwquality.conf -> n:^\s*minclass\s+\t*=\s+\t*(\d+) compare >= 4'
       - 'f:/etc/pam.d/password-auth -> n:try_first_pass retry=(\d+) compare <=3'
       - 'f:/etc/pam.d/system-auth -> n:try_first_pass retry=(\d+) compare <=3'
+
+# 5.3.2 Ensure lockout for failed password attempts is configured
 
 # 5.3.3 Ensure password hashing algorithm is SHA-512 (Automated)
   - id: 6174
@@ -3255,6 +3399,7 @@ checks:
       - cis_csc: ["16.4"]
       - pci_dss: ["3.6.1","8.2.1"]
       - tsc: ["CC6.1","CC6.7"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/pam.d/password-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512'
@@ -3267,10 +3412,11 @@ checks:
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note that these changes only apply to accounts configured on the local system."
     remediation: "Edit the /etc/pam.d/password-auth and /etc/pam.d/system-auth files to include the remember option and conform to site policy as shown: password sufficient pam_unix.so remember=5   or    password required pam_pwhistory.so remember=5"
     compliance:
-      - cis: ["5.3.3"]
+      - cis: ["5.3.4"]
       - cis_csc: ["16"]
       - pci_dss: ["8.2.5"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/pam.d/password-auth -> n:^password\s+sufficient\s+pam_unix.so\.+remember=(\d+)|^password\s+required\s+pam_pwhistory.so\.+remember=(\d+) compare >= 5'
@@ -3283,6 +3429,7 @@ checks:
 ###############################################
 # 5.4.1 Set Shadow Password Suite Parameters
 ###############################################
+
 # 5.4.1.1 Ensure password expiration is 365 days or less (Automated)
   - id: 6176
     title: "Ensure password expiration is 365 days or less"
@@ -3294,10 +3441,10 @@ checks:
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2.4"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-
 
 # 5.4.1.2 Ensure minimum days between password changes is configured (Automated)
   - id: 6177
@@ -3310,6 +3457,7 @@ checks:
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
@@ -3325,10 +3473,10 @@ checks:
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-
 
 # 5.4.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 6179
@@ -3341,10 +3489,14 @@ checks:
       - cis_csc: ["16"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*(\d+) compare <= 30'
 
+# 5.4.1.5 Ensure all users last password change date is in the past
+
+# 5.4.2 Ensure system accounts are secured (Automated)
 
 # 5.4.3 Ensure default group for the root account is GID 0 (Automated)
   - id: 6180
@@ -3357,10 +3509,10 @@ checks:
       - cis_csc: ["5.1"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/passwd -> r:^root:\w:\w:0'
-
 
 # 5.4.4 Ensure default user shell timeout is configured (Automated)
   - id: 6181
@@ -3372,6 +3524,7 @@ checks:
       - cis: ["5.4.4"]
       - cis_csc: ["16.11"]
       - pci_dss: ["12.3.8"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'not f:/etc/bashrc -> n:^\s*\t*TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
@@ -3390,17 +3543,17 @@ checks:
       - cis_csc: ["13"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: none
     rules:
-      - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
+      - 'f:/etc/bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
+      - 'f:/etc/bashrc -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
       - 'f:/etc/profile -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
       - 'f:/etc/profile -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
 
-
-
+# 5.5 Ensure root login is restricted to system console (Manual)
 
 # 5.6 Ensure access to the su command is restricted (Automated)
   - id: 6183
@@ -3417,6 +3570,7 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
@@ -3429,6 +3583,7 @@ checks:
 # 6.1 System File Permissions
 ###############################################
 
+# 6.1.1 Audit system file permissions (Manual) (is level 2)
 
 # 6.1.2 Configure /etc/passwd permissions (Automated)
   - id: 6184
@@ -3442,9 +3597,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.3 Ensure permissions on /etc/shadow are configured (Automated)
   - id: 6185
@@ -3457,9 +3613,10 @@ checks:
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.4 Ensure permissions on /etc/group are configured (Automated)
   - id: 6186
@@ -3473,9 +3630,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.5 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 6187
@@ -3489,9 +3647,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.6 Ensure permissions on /etc/passwd-are configured (Automated)
   - id: 6188
@@ -3505,9 +3664,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.7 Ensure permissions on /etc/shadow-are configured (Automated)
   - id: 6189
@@ -3521,9 +3681,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.8 Ensure permissions on /etc/group-are configured (Automated)
   - id: 6190
@@ -3537,9 +3698,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.9 Ensure permissions on /etc/gshadow-are configured (Automated)
   - id: 6191
@@ -3553,32 +3715,41 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
+# 6.1.10 Ensure no world writable files exist (Automated)
+
+# 6.1.11 Ensure no unowned files or directories exist (Automated)
+
+# 6.1.12 Ensure no ungrouped files or directories exist (Automated)
+
+# 6.1.13 Audit SUID executables (Manual)
+
+# 6.1.14 Audit SGID executables (Manual)
 
 
 ###############################################
 # 6.2 Review User and Group Settings
 ###############################################
 
-
 # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated)
   - id: 6192
     title: "Ensure accounts in /etc/passwd use shadowed passwords"
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an xin the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack."
-    remediation: "f any accounts in the /etc/passwdfile do not have a single x in the password field, run the following command to set these accounts to use shadowed passwords:# sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwdInvestigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off."
+    remediation: "If any accounts in the /etc/passwd file do not have a single x in the password field, run the following command to set these accounts to use shadowed passwords:# sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwdInvestigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off."
     compliance:
       - cis: ["6.2.1"]
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
-      - 'not f:/etc/shadow -> !r:^# && r:\w\w:'
-
+      - 'not f:/etc/passwd -> !r:^# && !r:^\w+:x:'
 
 # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
   - id: 6193
@@ -3591,9 +3762,10 @@ checks:
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
-    condition: none
+      - cis_level: ["1"]
+    condition: all
     rules:
-      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
+      - 'not f:/etc/shadow -> !r:^# && r:^\w+::'
 
 # 6.2.3 Ensure root is the only UID 0 account (Automated)
   - id: 6194
@@ -3610,10 +3782,38 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7","32.2"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+      - cis_level: ["1"]
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
+# 6.2.4 Ensure root PATH Integrity (Automated)
+
+# 6.2.5 Ensure all users' home directories exist (Automated)
+
+# 6.2.6 Ensure users' home directories permissions are 750 or more restrictive (Automated)
+
+# 6.2.7 Ensure users own their home directories (Automated)
+
+# 6.2.8 Ensure users' dot files are not group or world writable Automated)
+
+# 6.2.9 Ensure no users have .forward files (Automated)
+
+# 6.2.10 Ensure no users have .netrc files (Automated)
+
+# 6.2.11 Ensure users' .netrc Files are not group or world accessible (Automated)
+
+# 6.2.12 Ensure no users have .rhosts files (Automated)
+
+# 6.2.13 Ensure all groups in /etc/passwd exist in /etc/group (Automated)
+
+# 6.2.14 Ensure no duplicate UIDs exist (Automated)
+
+# 6.2.15 Ensure no duplicate GIDs exist (Automated)
+
+# 6.2.16 Ensure no duplicate user names exist (Automated)
+
+# 6.2.17 Ensure no duplicate group names exist (Automated)
 
 # 6.2.18 Ensure shadow group is empty (Automated)
   - id: 6195
@@ -3630,6 +3830,7 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["CC5.2"]
-    condition: none
+      - cis_level: ["1"]
+    condition: all
     rules:
-      - 'not f:/etc/shadow -> !r:^# && r:^shadow:\.+:\.+:\.+:\.+'
+      - 'not c:grep -E ^shadow:[^:]*:[^:]*:[^:]+ /etc/group -> r:^shadow'

@@ -53,7 +53,16 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
                                 -Wl,--wrap=pthread_cond_signal")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid -Wl,--wrap,_mwarn")
+
+if(${TARGET} STREQUAL "server")
+list(APPEND shared_tests_names "test_set_agent_group")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid \
+                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets \
+                                -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
+                                -Wl,--wrap,fchmod,--wrap,stat,--wrap,fileno,--wrap,umask -Wl,--wrap,unlink")
+endif()
 
 list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
@@ -149,6 +158,10 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wra
                                 -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                                 -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
                                 -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+
+list(APPEND shared_tests_names "test_bqueue")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
+
 endif()
 
 list(APPEND shared_tests_names "test_atomic")
@@ -159,6 +172,22 @@ list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_e
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,_mdebug1 -Wl,--wrap,curl_easy_setopt \
                                 -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
                                 -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize")
+
+list(APPEND shared_tests_names "test_sysinfo_utils")
+
+if(${TARGET} STREQUAL "winagent")
+    # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
+    # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
+    list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
+                                -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
+                                -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4")
+else()
+    list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
+                                -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
+                                -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
+endif()
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

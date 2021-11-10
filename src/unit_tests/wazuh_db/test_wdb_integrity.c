@@ -24,8 +24,6 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
-void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
-
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
     wdb_t *data = calloc(1, sizeof(wdb_t));
@@ -266,7 +264,7 @@ static void test_wdbi_delete_success(void **state)
 
 static void test_wdbi_update_attempt_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1));
+    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, ""));
 }
 
 static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
@@ -276,7 +274,7 @@ static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, "");
 }
 
 static void test_wdbi_update_attempt_no_sql_done(void **state)
@@ -291,7 +289,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, "");
 }
 
 static void test_wdbi_update_attempt_success(void **state)
@@ -303,12 +301,12 @@ static void test_wdbi_update_attempt_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, "");
 }
 
 static void test_wdbi_update_completion_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_update_completion(NULL, 0, 0));
+    expect_assert_failure(wdbi_update_completion(NULL, 0, 0, ""));
 }
 
 static void test_wdbi_update_completion_stmt_cache_fail(void **state)
@@ -318,7 +316,7 @@ static void test_wdbi_update_completion_stmt_cache_fail(void **state)
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_completion(data, 0, 0);
+    wdbi_update_completion(data, 0, 0, "");
 }
 
 static void test_wdbi_update_completion_no_sql_done(void **state)
@@ -333,7 +331,7 @@ static void test_wdbi_update_completion_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_completion(data, 0, 0);
+    wdbi_update_completion(data, 0, 0, "");
 }
 
 static void test_wdbi_update_completion_success(void **state)
@@ -345,7 +343,7 @@ static void test_wdbi_update_completion_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_completion(data, 0, 0);
+    wdbi_update_completion(data, 0, 0, "");
 }
 
 void test_wdbi_query_clear_null_payload(void **state)
@@ -452,9 +450,9 @@ void test_wdbi_query_checksum_null_payload(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse checksum range payload: '(null)'");
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
 void test_wdbi_query_checksum_no_begin(void **state)
@@ -466,9 +464,9 @@ void test_wdbi_query_checksum_no_begin(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'begin' in JSON payload.");
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
 void test_wdbi_query_checksum_no_end(void **state)
@@ -480,9 +478,9 @@ void test_wdbi_query_checksum_no_end(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'end' in JSON payload.");
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
 void test_wdbi_query_checksum_no_checksum(void **state)
@@ -494,9 +492,9 @@ void test_wdbi_query_checksum_no_checksum(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'checksum' in JSON payload.");
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
 void test_wdbi_query_checksum_no_id(void **state)
@@ -508,9 +506,9 @@ void test_wdbi_query_checksum_no_id(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "No such string 'id' in JSON payload.");
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
 void test_wdbi_query_checksum_range_fail(void **state)
@@ -520,11 +518,15 @@ void test_wdbi_query_checksum_range_fail(void **state)
     os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
 
+    // wdbi_get_last_manager_checksum
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, INTEGRITY_SYNC_ERR);
 }
 
 void test_wdbi_query_checksum_range_no_data(void **state)
@@ -533,6 +535,10 @@ void test_wdbi_query_checksum_range_no_data(void **state)
     int ret;
     os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
+
+    // wdbi_get_last_manager_checksum
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -544,9 +550,9 @@ void test_wdbi_query_checksum_range_no_data(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, INTEGRITY_SYNC_NO_DATA);
 }
 
 void test_wdbi_query_checksum_diff_hexdigest(void **state)
@@ -555,6 +561,10 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
     int ret;
     os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"something\",\"id\":1234}";
+
+    // wdbi_get_last_manager_checksum
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -569,9 +579,9 @@ void test_wdbi_query_checksum_diff_hexdigest(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
     expect_any(__wrap__mdebug2, formatted_msg);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
 void test_wdbi_query_checksum_equal_hexdigest(void **state)
@@ -580,6 +590,10 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
     int ret;
     os_strdup("000", data->id);
     const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"id\":1234}";
+
+    // wdbi_get_last_manager_checksum
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -596,12 +610,12 @@ void test_wdbi_query_checksum_equal_hexdigest(void **state)
 
     expect_any(__wrap__mdebug2, formatted_msg);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_global", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
-    assert_int_equal(ret, 2);
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_OK);
 }
 
-void test_wdbi_query_checksum_bad_command(void **state)
+void test_wdbi_query_checksum_bad_action(void **state)
 {
     wdb_t *data = *state;
     int ret;
@@ -619,9 +633,9 @@ void test_wdbi_query_checksum_bad_command(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL fim checksum.");
     expect_any(__wrap__mdebug2, formatted_msg);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "bad_command", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CLEAR, payload);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
 void test_wdbi_query_checksum_check_left_no_tail(void **state)
@@ -645,9 +659,9 @@ void test_wdbi_query_checksum_check_left_no_tail(void **state)
 
     expect_any(__wrap__mdebug2, formatted_msg);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_left", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_LEFT, payload);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
 void test_wdbi_query_checksum_check_left_ok(void **state)
@@ -671,11 +685,116 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
 
     expect_any(__wrap__mdebug2, formatted_msg);
 
-    ret = wdbi_query_checksum(data, WDB_FIM, "integrity_check_left", payload);
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_LEFT, payload);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_FAIL);
 }
 
+void test_wdbi_query_checksum_last_manager_success(void **state)
+{
+    wdb_t *data = *state;
+    int ret;
+    os_strdup("000", data->id);
+    const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"id\":1234}";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "last_manager_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '000' fim range checksum avoided.");
+
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
+
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_OK);
+}
+
+void test_wdbi_query_checksum_last_manager_diff(void **state)
+{
+    wdb_t *data = *state;
+    int ret;
+    os_strdup("000", data->id);
+    const char * payload = "{\"begin\":\"something\",\"end\":\"something\",\"checksum\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"id\":1234}";
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "last_manager_checksum", "");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 100);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_string(__wrap_EVP_DigestUpdate, data, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, 101);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
+
+    assert_int_equal(ret, INTEGRITY_SYNC_CKS_OK);
+}
+
+// Test wdbi_get_last_manager_checksum
+
+void test_wdbi_get_last_manager_checksum_success(void **state)
+{
+    wdb_t *data = *state;
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(j_object, "last_manager_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    os_sha1 manager_checksum = {0};
+    int ret_val = wdbi_get_last_manager_checksum(data, WDB_FIM_FILE, manager_checksum);
+
+    assert_int_equal (ret_val, OS_SUCCESS);
+    assert_string_equal(manager_checksum, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+}
+
+void test_wdbi_get_last_manager_stmt_cache_fail(void **state)
+{
+    wdb_t *data = *state;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    os_sha1 manager_checksum = {0};
+    int ret_val = wdbi_get_last_manager_checksum(data, WDB_FIM_FILE, manager_checksum);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_get_last_manager_exec_stmt_fail(void **state)
+{
+    wdb_t *data = *state;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "test_err");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): test_err");
+
+    os_sha1 manager_checksum = {0};
+    int ret_val = wdbi_get_last_manager_checksum(data, WDB_FIM_FILE, manager_checksum);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -727,10 +846,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_range_no_data, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_diff_hexdigest, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_equal_hexdigest, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_bad_command, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_bad_action, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_no_tail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_ok, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_last_manager_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_last_manager_diff, setup_wdb_t, teardown_wdb_t),
 
+        // Test wdbi_get_last_manager_checksum
+        cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_checksum_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_exec_stmt_fail, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -24,7 +24,7 @@ variables:
   global_db_delay: 30
   cluster_sync_delay: 20
 
-  custom_wpk_path: "/var/ossec/test_custom_upgrade_3.12.2.wpk"
+  custom_wpk_path: "/var/ossec/test.wpk"
 
   new_rules:
     "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"

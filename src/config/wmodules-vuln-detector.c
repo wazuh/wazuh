@@ -240,6 +240,30 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_REDHAT;
+    } else if (strcasestr(feed, vu_feed_tag[FEED_ALAS])) {
+        if (!version) {
+            retval = OS_INVALID;
+            goto end;
+        }
+        // Amazon Linux 1
+        else if (!strcmp(version, "1") || strcasestr(vu_feed_tag[FEED_ALAS1], version)) {
+            os_index = CVE_ALAS1;
+            upd->dist_tag_ref = FEED_ALAS1;
+            os_strdup(vu_feed_tag[FEED_ALAS1], upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALAS1];
+        // Amazon Linux 2
+        } else if (!strcmp(version, "2") || strcasestr(vu_feed_tag[FEED_ALAS2], version)) {
+            os_index = CVE_ALAS2;
+            upd->dist_tag_ref = FEED_ALAS2;
+            os_strdup(vu_feed_tag[FEED_ALAS2], upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALAS2];
+        } else {
+            merror("Invalid Amazon Linux version '%s'", version);
+            retval = OS_INVALID;
+            goto end;
+        }
+        upd->dist_ref = FEED_ALAS;
+        upd->json_format = 1;
     } else if (strcasestr(feed, vu_feed_tag[FEED_ARCH])) {
         os_index = CVE_ARCH;
         upd->dist_tag_ref = FEED_ARCH;
@@ -521,7 +545,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     /**
-     *  single_provider = Ubuntu, Debian and RedHat.
+     *  single_provider = Ubuntu, Debian, Amazon and RedHat.
      *  Those which use the <os> tag.
      **/
     if (!multi_provider) {
@@ -959,6 +983,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
 char wm_vuldet_provider_type(char *pr_name) {
     if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_ALAS]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||

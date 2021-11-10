@@ -7,9 +7,18 @@
 
 <group name="sysmon_eid3_detections,">
 
-    <!-- Sample: {"win":{"eventdata":{"destinationPort":"135","image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","sourcePort":"49815","initiated":"true","destinationIp":"192.168.0.57","protocol":"tcp","processGuid":"{4dc16835-60aa-6094-3701-000000003800}","sourceIp":"192.168.0.121","processId":"1852","utcTime":"2021-05-06 21:35:16.032","ruleName":"technique_id=T1059.001,technique_name=PowerShell","destinationIsIpv6":"false","user":"EXCHANGETEST\\\\Administrator","sourceIsIpv6":"false"},"system":{"eventID":"3","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Network connection detected:\r\nRuleName: technique_id=T1059.001,technique_name=PowerShell\r\nUtcTime: 2021-05-06 21:35:16.032\r\nProcessGuid: {4dc16835-60aa-6094-3701-000000003800}\r\nProcessId: 1852\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nUser: EXCHANGETEST\\Administrator\r\nProtocol: tcp\r\nInitiated: true\r\nSourceIsIpv6: false\r\nSourceIp: 192.168.0.121\r\nSourceHostname: -\r\nSourcePort: 49815\r\nSourcePortName: -\r\nDestinationIsIpv6: false\r\nDestinationIp: 192.168.0.57\r\nDestinationHostname: -\r\nDestinationPort: 135\r\nDestinationPortName: -\"","version":"5","systemTime":"2021-05-06T21:35:17.0534150Z","eventRecordID":"185918","threadID":"2944","computer":"hrmanager.ExchangeTest.com","task":"3","processID":"2140","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
-    <rule id="92070" level="6">
+    <rule id="92070" level="0">
         <if_group>sysmon_event3</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
+        <field name="win.eventdata.protocol">^tcp$</field>
+        <description>Powershell process communicating over TCP</description>
+        <mitre>
+            <id>T1095</id>
+        </mitre>
+    </rule>
+
+    <rule id="92071" level="6">
+        <if_sid>92070</if_sid>
         <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
         <field name="win.eventdata.destinationPort">^135$</field>
         <description>Suspicious DCOM/RPC activity from Powershell process</description>
@@ -18,9 +27,8 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"destinationPort":"389","image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","sourcePort":"56704","initiated":"true","destinationIp":"192.168.0.57","protocol":"tcp","processGuid":"{4dc16835-5bcf-6091-b801-000000003500}","sourceIp":"192.168.0.121","processId":"5912","utcTime":"2021-05-04 15:04:59.139","ruleName":"technique_id=T1059.001,technique_name=PowerShell","destinationIsIpv6":"false","user":"EXCHANGETEST\\\\AtomicRed","sourceIsIpv6":"false"},"system":{"eventID":"3","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Network connection detected:\r\nRuleName: technique_id=T1059.001,technique_name=PowerShell\r\nUtcTime: 2021-05-04 15:04:59.139\r\nProcessGuid: {4dc16835-5bcf-6091-b801-000000003500}\r\nProcessId: 5912\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nUser: EXCHANGETEST\\AtomicRed\r\nProtocol: tcp\r\nInitiated: true\r\nSourceIsIpv6: false\r\nSourceIp: 192.168.0.121\r\nSourceHostname: -\r\nSourcePort: 56704\r\nSourcePortName: -\r\nDestinationIsIpv6: false\r\nDestinationIp: 192.168.0.57\r\nDestinationHostname: -\r\nDestinationPort: 389\r\nDestinationPortName: -\"","version":"5","systemTime":"2021-05-04T15:05:00.3201980Z","eventRecordID":"169292","threadID":"3052","computer":"hrmanager.ExchangeTest.com","task":"3","processID":"2432","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
-    <rule id="92160" level="6">
-        <if_group>sysmon_event3</if_group>
+    <rule id="92072" level="6">
+        <if_sid>92070</if_sid>
         <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
         <field name="win.eventdata.destinationPort">^389$</field>
         <description>LDAP activity from Powershell process, possible remote system discovery</description>
@@ -29,18 +37,24 @@
         </mitre>
     </rule>
 
-    <!-- {"win":{"eventdata":{"destinationPort":"445","image":"System","sourcePort":"51970","initiated":"false","destinationIp":"192.168.0.57","protocol":"tcp","processGuid":"{86107A5D-0B6A-60D6-EB03-000000000000}","sourceIp":"192.168.0.218","processId":"4","utcTime":"2021-06-25 18:34:36.226","destinationPortName":"microsoft-ds","ruleName":"technique_id=T1021.002,technique_name=Remote Services: SMB/Windows Admin Shares","destinationIsIpv6":"false","user":"NT AUTHORITY\\\\SYSTEM","sourceIsIpv6":"false"},"system":{"eventID":"3","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Network connection detected:\r\nRuleName: technique_id=T1021.002,technique_name=Remote Services: SMB/Windows Admin Shares\r\nUtcTime: 2021-06-25 18:34:36.226\r\nProcessGuid: {86107A5D-0B6A-60D6-EB03-000000000000}\r\nProcessId: 4\r\nImage: System\r\nUser: NT AUTHORITY\\SYSTEM\r\nProtocol: tcp\r\nInitiated: false\r\nSourceIsIpv6: false\r\nSourceIp: 192.168.0.218\r\nSourceHostname: -\r\nSourcePort: 51970\r\nSourcePortName: -\r\nDestinationIsIpv6: false\r\nDestinationIp: 192.168.0.57\r\nDestinationHostname: -\r\nDestinationPort: 445\r\nDestinationPortName: microsoft-ds\"","version":"5","systemTime":"2021-06-25T18:34:37.376008800Z","eventRecordID":"658731","threadID":"3792","computer":"bankdc.ExchangeTest.com","task":"3","processID":"2620","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
     <rule id="92103" level="3">
         <if_group>sysmon_event3</if_group>
+        <field name="win.eventdata.destinationPort" type="pcre2">^(135|445)$</field>
+        <description>Possible suspicious access to Windows admin shares</description>
+        <mitre>
+            <id>T1021.002</id>
+        </mitre>
+    </rule>
+
+    <rule id="92109" level="3">
+        <if_sid>92103</if_sid>
         <field name="win.eventdata.image" type="pcre2">^System$</field>
-        <field name="win.eventdata.destinationPort" type="pcre2">^445$</field>
         <description>Windows System process activity over SMB port - Possible suspicious access to Windows admin shares</description>
         <mitre>
             <id>T1021.002</id>
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","eventID":"3","version":"5","level":"4","task":"3","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-04-28T20:12:51.1096098Z","eventRecordID":"144535","processID":"2204","threadID":"2944","channel":"Microsoft-Windows-Sysmon/Operational","computer":"DESKTOP-2QKFOBA","severityValue":"INFORMATION","message":"\"Network connection detected:\r\nRuleName: technique_id=T1202,technique_name=Indirect Command Execution\r\nUtcTime: 2021-04-28 20:12:52.061\r\nProcessGuid: {4dc16835-c18b-6089-a503-000000002e00}\r\nProcessId: 2488\r\nImage: C:\\Windows\\System32\\wscript.exe\r\nUser: DESKTOP-2QKFOBA\\AtomicRedTeamTest\r\nProtocol: tcp\r\nInitiated: true\r\nSourceIsIpv6: false\r\nSourceIp: 192.168.0.121\r\nSourceHostname: -\r\nSourcePort: 52094\r\nSourcePortName: -\r\nDestinationIsIpv6: false\r\nDestinationIp: 192.168.0.4\r\nDestinationHostname: -\r\nDestinationPort: 443\r\nDestinationPortName: -\""},"eventdata":{"ruleName":"technique_id=T1202,technique_name=Indirect Command Execution","utcTime":"2021-04-28 20:12:52.061","processGuid":"{4dc16835-c18b-6089-a503-000000002e00}","processId":"2488","image":"C:\\\\Windows\\\\System32\\\\wscript.exe","user":"DESKTOP-2QKFOBA\\\\AtomicRedTeamTest","protocol":"tcp","initiated":"true","sourceIsIpv6":"false","sourceIp":"192.168.0.121","sourcePort":"52094","destinationIsIpv6":"false","destinationIp":"192.168.0.4","destinationPort":"443"}}}-->
     <rule id="92040" level="4">
         <if_group>sysmon_event3</if_group>
         <field name="win.eventdata.image" type="pcre2">\\(c|w)script\.exe</field>
@@ -51,7 +65,6 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"destinationPort":"3389","image":"C:\\\\Windows\\\\System32\\\\svchost.exe","sourcePort":"54642","initiated":"false","destinationIp":"192.168.0.121","protocol":"tcp","processGuid":"{4dc16835-fe80-60ee-d322-300000000000}","sourceIp":"192.168.0.57","processId":"5836","utcTime":"2021-07-14 15:44:40.699","ruleName":"technique_id=T1021,technique_name=Remote Services","destinationIsIpv6":"false","user":"NT AUTHORITY\\\\NETWORK SERVICE","sourceIsIpv6":"false"},"system":{"eventID":"3","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Network connection detected:\r\nRuleName: technique_id=T1021,technique_name=Remote Services\r\nUtcTime: 2021-07-14 15:44:40.699\r\nProcessGuid: {4dc16835-fe80-60ee-d322-300000000000}\r\nProcessId: 5836\r\nImage: C:\\Windows\\System32\\svchost.exe\r\nUser: NT AUTHORITY\\NETWORK SERVICE\r\nProtocol: tcp\r\nInitiated: false\r\nSourceIsIpv6: false\r\nSourceIp: 192.168.0.57\r\nSourceHostname: -\r\nSourcePort: 54642\r\nSourcePortName: -\r\nDestinationIsIpv6: false\r\nDestinationIp: 192.168.0.121\r\nDestinationHostname: -\r\nDestinationPort: 3389\r\nDestinationPortName: -\"","version":"5","systemTime":"2021-07-14T15:44:42.0974780Z","eventRecordID":"271706","threadID":"3068","computer":"hrmanager.ExchangeTest.com","task":"3","processID":"2112","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
     <rule id="92107" level="0">
         <if_group>sysmon_event3</if_group>
         <field name="win.eventdata.destinationPort" type="pcre2">3389</field>
@@ -61,7 +74,6 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"destinationPort":"3389","image":"C:\\\\Windows\\\\System32\\\\svchost.exe","sourcePort":"25387","initiated":"false","destinationIp":"0:0:0:0:0:0:0:1","protocol":"tcp","processGuid":"{86107A5D-6C0C-60DF-04DD-600100000000}","sourceIp":"0:0:0:0:0:0:0:1","processId":"7728","sourceHostname":"bankdc.ExchangeTest.com","utcTime":"2021-07-02 20:19:28.870","destinationPortName":"ms-wbt-server","ruleName":"technique_id=T1021,technique_name=Remote Services","destinationIsIpv6":"true","user":"NT AUTHORITY\\\\NETWORK SERVICE","destinationHostname":"bankdc.ExchangeTest.com","sourceIsIpv6":"true"},"system":{"eventID":"3","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Network connection detected:\r\nRuleName: technique_id=T1021,technique_name=Remote Services\r\nUtcTime: 2021-07-02 20:19:28.870\r\nProcessGuid: {86107A5D-6C0C-60DF-04DD-600100000000}\r\nProcessId: 7728\r\nImage: C:\\Windows\\System32\\svchost.exe\r\nUser: NT AUTHORITY\\NETWORK SERVICE\r\nProtocol: tcp\r\nInitiated: false\r\nSourceIsIpv6: true\r\nSourceIp: 0:0:0:0:0:0:0:1\r\nSourceHostname: bankdc.ExchangeTest.com\r\nSourcePort: 25387\r\nSourcePortName: -\r\nDestinationIsIpv6: true\r\nDestinationIp: 0:0:0:0:0:0:0:1\r\nDestinationHostname: bankdc.ExchangeTest.com\r\nDestinationPort: 3389\r\nDestinationPortName: ms-wbt-server\"","version":"5","systemTime":"2021-07-02T20:19:29.969938200Z","eventRecordID":"1122514","threadID":"3504","computer":"bankdc.ExchangeTest.com","task":"3","processID":"2528","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
     <rule id="92108" level="15">
         <if_sid>92107</if_sid>
         <field name="win.eventdata.destinationIp" type="pcre2">0:0:0:0:0:0:0:1|127\.0\.0\.1</field>

@@ -472,7 +472,8 @@ stages:
                 evt_count: !anyfloat
                 ctrl_msg_count: !anyfloat
                 discarded_count: !anyfloat
-                msg_sent: !anyfloat
+                queued_msgs: !anyfloat
+                sent_bytes: !anyfloat
                 recv_bytes: !anyfloat
             total_affected_items: 1
             failed_items: []
@@ -776,7 +777,6 @@ stages:
                   max_login_attempts: !anyint
                   block_time: !anyint
                   max_request_per_minute: !anyint
-                use_only_authd: !anybool
                 drop_privileges: !anybool
                 experimental_features: !anybool
           total_affected_items: 1

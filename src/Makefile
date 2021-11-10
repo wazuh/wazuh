@@ -854,6 +854,13 @@ endif
 
 OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
 
+ifeq (${uname_M}, i386)
+ifeq ($(findstring BSD,${uname_S}), BSD)
+	OPENSSL_FLAGS += no-asm
+endif
+endif
+
+
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
@@ -1319,6 +1326,12 @@ wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
 wrappers_wazuh_config_c := $(wildcard unit_tests/wrappers/wazuh/config/*.c)
 wrappers_wazuh_config_o := $(wrappers_wazuh_config_c:.c=.o)
 
+wrappers_data_provider_c := $(wildcard unit_tests/wrappers/wazuh/data_provider/*.c)
+wrappers_data_provider_o := $(wrappers_data_provider_c:.c=.o)
+
+wrappers_logcollector_c := $(wildcard unit_tests/wrappers/wazuh/logcollector/*.c)
+wrappers_logcollector_o := $(wrappers_logcollector_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -1363,6 +1376,8 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
@@ -1527,6 +1542,9 @@ crypto_signature_o := $(crypto_signature_c:.c=.o)
 os_crypto/signature/%.o: os_crypto/signature/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
+analysisd/logmsg.o: analysisd/logmsg.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
 
 crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
@@ -1542,7 +1560,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents}
+libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents} analysisd/logmsg.o
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1986,9 +2004,7 @@ all_analysisd_o += ${output_o}
 analysisd/output/%.o: analysisd/output/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
-
-
-analysisd_c := ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}
+analysisd_c := ${filter-out analysisd/logmsg.c, ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}}
 analysisd_o := ${analysisd_c:.c=.o}
 all_analysisd_o += ${analysisd_o}
 
@@ -2005,7 +2021,7 @@ analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 wazuh-logtest-legacy: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a
+wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a analysisd/logmsg.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
@@ -2318,7 +2334,7 @@ clean-internals: clean-unit-tests
 	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
-	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
+	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h analysisd/logmsg.o
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
@@ -2370,6 +2386,9 @@ clean-unit-tests:
 	rm -f ${wrappers_windows_posix_o}
 	rm -f ${wrappers_client_agent_o}
 	rm -f ${wrappers_wazuh_remoted_o}
+	rm -f ${wrappers_logcollector_o}
+	rm -f ${wrappers_macos_o}
+	rm -f ${wrappers_data_provider_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

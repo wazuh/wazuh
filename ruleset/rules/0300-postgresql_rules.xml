@@ -54,10 +54,10 @@
     <if_sid>50501</if_sid>
     <match>connection authorized</match>
     <description>PostgreSQL: Database authentication success.</description>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="50512" level="9">
@@ -71,38 +71,38 @@
     <if_sid>50504</if_sid>
     <match>terminating connection due</match>
     <description>PostgreSQL: Database shutdown message.</description>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1529</id>
     </mitre>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="50521" level="12">
     <if_sid>50501</if_sid>
     <match>aborting any active transactions|shutting down</match>
     <description>PostgreSQL: Database shutdown message.</description>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1529</id>
     </mitre>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="50580" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>50504</if_matched_sid>
     <description>PostgreSQL: Multiple database errors.</description>
+    <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="50581" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>50503</if_matched_sid>
     <description>PostgreSQL: Multiple database errors.</description>
+    <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <mitre>
       <id>T1499</id>
     </mitre>
-    <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
 </group>

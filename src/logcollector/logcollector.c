@@ -13,6 +13,7 @@
 #include "state.h"
 #include <math.h>
 #include <pthread.h>
+#include "sysinfo_utils.h"
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -103,7 +104,6 @@ OSHash * msg_queues_table;
 OSHash * files_status;
 ///< Use for log messages
 char *files_status_name = "file_status";
-
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
@@ -127,6 +127,12 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+
+STATIC w_macos_log_procceses_t * macos_processes = NULL;
+
+#endif
+
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -137,6 +143,12 @@ void LogCollectorStart()
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
     logreader *current;
+
+    w_sysinfo_helpers_t * sysinfo = NULL;
+    os_calloc(1, sizeof(w_sysinfo_helpers_t), sysinfo);
+    if (!w_sysinfo_init(sysinfo)) {
+        merror(SYSINFO_DYNAMIC_INIT_ERROR);
+    }
 
     /* Create store data */
     excluded_files = OSHash_Create();
@@ -247,6 +259,7 @@ void LogCollectorStart()
 #ifdef WIN32
 
             minfo(READING_EVTLOG, current->file);
+            os_strdup(current->file, current->channel_str);
             win_startel(current->file);
 
             /* Mutexes are not previously initialized under Windows*/
@@ -262,6 +275,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
+            os_strdup(current->file, current->channel_str);
             win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
@@ -331,7 +345,25 @@ void LogCollectorStart()
                 merror("Missing command argument. Ignoring it.");
             }
         }
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+        else if (strcmp(current->logformat, MACOS) == 0) {
+            /* Get macOS version */
+            w_macos_create_log_env(current, sysinfo);
+            current->read = read_macos;
+            if (current->macos_log->state != LOG_NOT_RUNNING) {
+                if (atexit(w_macos_release_log_execution)) {
+                    merror(ATEXIT_ERROR);
+                }
+                /* macOS log's resources need to be globally reachable to be released */
+                macos_processes = &current->macos_log->processes;
 
+                for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+                    mdebug1("Socket target for '%s' -> %s", MACOS_LOG_NAME, current->target[tg_idx]);
+                    w_logcollector_state_add_target(MACOS_LOG_NAME, current->target[tg_idx]);
+                }
+            }
+        }
+#endif
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
@@ -614,13 +646,13 @@ void LogCollectorStart()
                         fclose(current->fp);
                         CloseHandle(current->h);
                         current->fp = NULL;
-                        merror(FILE_ERROR, current->file);
+                        minfo(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                     } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                         fclose(current->fp);
                         CloseHandle(current->h);
                         CloseHandle(h1);
                         current->fp = NULL;
-                        merror(FILE_ERROR, current->file);
+                        minfo(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                     }
 
                     if (!current->fp) {
@@ -742,14 +774,14 @@ void LogCollectorStart()
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
-                            mdebug1(FILE_ERROR, current->file);
+                            mdebug1(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                             file_exists = 0;
                             w_logcollector_state_delete_file(current->file);
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
-                            mdebug1(FILE_ERROR, current->file);
+                            mdebug1(LOGCOLLECTOR_INVALID_HANDLE_VALUE, current->file);
                             file_exists = 0;
                             w_logcollector_state_delete_file(current->file);
                         }
@@ -2134,6 +2166,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             current->read(current, &r, 0);
                         }
                     }
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+                    /* Read the macOS `log` process output */
+                    else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
+                        current->read(current, &r, 0);
+                    }
+#endif
                     w_mutex_unlock(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
@@ -2342,6 +2380,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 }
 
 void w_create_input_threads(){
+
     int i;
 
     N_INPUT_THREADS = getDefine_Int("logcollector", "input_threads", N_MIN_INPUT_THREADS, 128);
@@ -2383,6 +2422,7 @@ void files_lock_init()
 }
 
 static void check_text_only() {
+
     int i, j;
 
     IT_control f_control = 0;
@@ -2452,6 +2492,7 @@ static void check_text_only() {
 
 #ifdef WIN32
 static void check_pattern_expand_excluded() {
+
     int found;
     int j;
 
@@ -2580,12 +2621,14 @@ static void check_pattern_expand_excluded() {
 
 
 static void set_can_read(int value){
+
     w_rwlock_wrlock(&can_read_rwlock);
     _can_read = value;
     w_rwlock_unlock(&can_read_rwlock);
 }
 
 int can_read() {
+
     int ret;
     w_rwlock_rdlock(&can_read_rwlock);
     ret = _can_read;
@@ -2651,6 +2694,7 @@ STATIC void w_initialize_file_status() {
 }
 
 STATIC void w_save_file_status() {
+
     char * str = w_save_files_status_to_cJSON();
 
     if (str == NULL) {
@@ -2752,41 +2796,67 @@ STATIC void w_load_files_status(cJSON * global_json) {
             }
         }
     }
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+   
+   w_macos_set_status_from_JSON(global_json);
+
+#endif
+
 }
 
 STATIC char * w_save_files_status_to_cJSON() {
-    OSHashNode * hash_node;
+
     unsigned int index = 0;
+    cJSON * global_json = NULL;
+    char * global_json_str = NULL;
+    OSHashNode * hash_node = NULL;
 
     w_rwlock_rdlock(&files_status->mutex);
-    if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
-        w_rwlock_unlock(&files_status->mutex);
-        return NULL;
-    }
-
-    cJSON * global_json = cJSON_CreateObject();
-    cJSON * array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
-
-    while (hash_node) {
-        os_file_status_t * data = hash_node->data;
-        char * path = hash_node->key;
+    if (hash_node = OSHash_Begin(files_status, &index), hash_node != NULL) {
+        os_file_status_t * data = NULL;
+        cJSON * array = NULL;
+        cJSON * item = NULL;
+        char * path = NULL;
         char offset[OFFSET_SIZE] = {0};
 
-        snprintf(offset, OFFSET_SIZE, "%" PRIi64, data->offset);
+        global_json = cJSON_CreateObject();
+        array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
 
-        cJSON * item = cJSON_CreateObject();
+        while (hash_node != NULL) {
+            data = hash_node->data;
+            path = hash_node->key;
+            memset(offset, 0, OFFSET_SIZE);
 
-        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
-        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
-        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_OFFSET, offset);
-        cJSON_AddItemToArray(array, item);
+            snprintf(offset, OFFSET_SIZE, "%" PRIi64, data->offset);
 
-        hash_node = OSHash_Next(files_status, &index, hash_node);
+            item = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
+            cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
+            cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_OFFSET, offset);
+            cJSON_AddItemToArray(array, item);
+
+            hash_node = OSHash_Next(files_status, &index, hash_node);
+        }
     }
     w_rwlock_unlock(&files_status->mutex);
 
-    char * global_json_str = cJSON_PrintUnformatted(global_json);
-    cJSON_Delete(global_json);
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+
+    cJSON * macos_status = w_macos_get_status_as_JSON();
+    if (macos_status != NULL && macos_processes != NULL) {
+        if (global_json == NULL) {
+            global_json = cJSON_CreateObject();
+        }
+        cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_status);
+    }
+
+#endif
+
+    if (global_json != NULL) {
+        global_json_str = cJSON_PrintUnformatted(global_json);
+        cJSON_Delete(global_json);
+    }
 
     return global_json_str;
 }
@@ -2842,6 +2912,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 }
 
 STATIC int w_update_hash_node(char * path, int64_t pos) {
+
     os_file_status_t * data;
 
     if (path == NULL) {
@@ -2903,3 +2974,44 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
     }
     return true;
 }
+
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+void w_macos_release_log_show(void) {
+
+    if (macos_processes != NULL && macos_processes->show.wfd != NULL) {
+        mdebug1("macOS ULS: Releasing macOS `log show` resources.");
+        if (macos_processes->show.wfd->pid > 0) {
+            kill(macos_processes->show.wfd->pid, SIGTERM);
+        }
+        if (macos_processes->show.child > 0) {
+            kill(macos_processes->show.child, SIGTERM);
+        }
+        wpclose(macos_processes->show.wfd);
+        macos_processes->show.wfd = NULL;
+        macos_processes->show.child = 0;
+    }
+}
+
+void w_macos_release_log_stream(void) {
+
+    if (macos_processes != NULL && macos_processes->stream.wfd != NULL) {
+        mdebug1("macOS ULS: Releasing macOS `log stream` resources.");
+        if (macos_processes->stream.wfd->pid > 0) {
+            kill(macos_processes->stream.wfd->pid, SIGTERM);
+        }
+        if (macos_processes->stream.child > 0) {
+            kill(macos_processes->stream.child, SIGTERM);
+        }
+        wpclose(macos_processes->stream.wfd);
+        macos_processes->stream.wfd = NULL;
+        macos_processes->stream.child = 0;
+    }
+}
+
+void w_macos_release_log_execution(void) {
+    
+    w_macos_release_log_show();
+    w_macos_release_log_stream();
+}
+
+#endif
