@@ -112,7 +112,7 @@ def collect_non_excluded_tests() -> list:
     return collected_tests
 
 
-def run_tests(collected_tests: list, n_iterations: int = 1):
+def run_tests(collected_tests: list, n_iterations: int = 1, mode: str = 'both'):
     """Run a certain number of iterations of API integration tests.
 
     Parameters
@@ -121,6 +121,9 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
         Collected API integration tests that are going to be run.
     n_iterations : int
         Number of iterations for the API integration tests to be run.
+    mode : str
+        Indicates the environment where the tests are going to be passed. The possible values are `both`, `standalone`,
+        and `cluster`.
     """
 
     def run_test(test: str, iteration: int, pytest_mark: str = None):
@@ -152,12 +155,20 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
         for i in range(1, n_iterations + 1):
             iteration_info = f'[{i}/{n_iterations}]' if n_iterations > 1 else ''
             if 'rbac' not in test:
-                # Run test with a standalone environment
-                print(f'{test} - Standalone environment {iteration_info}')
-                run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_STANDALONE)
-                # Run test with a cluster environment
-                print(f'{test} - Cluster environment {iteration_info}')
-                run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_CLUSTER)
+                if mode == 'standalone':
+                    # Run test with a standalone environment
+                    print(f'{test} - Standalone environment {iteration_info}')
+                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_STANDALONE)
+                elif mode == 'cluster':
+                    # Run test with a cluster environment
+                    print(f'{test} - Cluster environment {iteration_info}')
+                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_CLUSTER)
+                else:  # mode == 'both'
+                    # Run test with both environments
+                    print(f'{test} - Standalone environment {iteration_info}')
+                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_STANDALONE)
+                    print(f'{test} - Cluster environment {iteration_info}')
+                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_CLUSTER)
             else:
                 # Run test with the default environment
                 print(f'{test} {iteration_info}')
@@ -190,6 +201,7 @@ def get_results(filename: str = None):
 def get_script_arguments():
     """Get command line arguments given to the script."""
     rbac_choices = ['both', 'yes', 'no']
+    mode_choices = ['both', 'standalone', 'cluster']
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
                                      description="API integration tests",
                                      formatter_class=argparse.RawTextHelpFormatter)
@@ -205,6 +217,9 @@ def get_script_arguments():
     parser.add_argument('-rbac', dest='rbac', default='both', choices=rbac_choices,
                         help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default '
                              '"both".', action='store')
+    parser.add_argument('-mode', dest='mode', default='both', choices=mode_choices,
+                        help='Specify where to pass API integration tests. Run tests in both environments, standalone '
+                             'environment or Wazuh cluster environment. Default "both".', action='store')
     parser.add_argument('-i', '--iterations', dest='iterations', default=1, type=int,
                         help='Specify how many times will every test be run. Default 1.', action='store')
 
@@ -220,10 +235,11 @@ if __name__ == '__main__':
     exclude = options.exclude
     results = options.results
     rbac_arg = options.rbac
+    mode_arg = options.mode
     iterations = options.iterations
 
     if results:
         get_results()
     else:
         tests = collect_non_excluded_tests() if exclude else collect_tests(test_list=tl, keyword=key, rbac=rbac_arg)
-        run_tests(collected_tests=tests, n_iterations=iterations)
+        run_tests(collected_tests=tests, n_iterations=iterations, mode=mode_arg)
