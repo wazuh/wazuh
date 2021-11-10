@@ -193,184 +193,170 @@ checks:
     rules:
       -
 
+#################################################################
+# 1.3 Minimize boot services
+#################################################################
+
   - id: 21013
-    title: 
-    description:
-    rationale:
-    remediation:
+    title: "Disable login: prompts on serial ports"
+    description: "Disable the login: prompt on the system serial devices to make it more difficult for unauthorized users to attach modems, terminals, and other remote access devices to these ports."
+    rationale: "If there is not a mission-critical need to provide login capability from any serial ports (such as for a modem) then disabling the login: prompt on the system serial devices reduces the risk of unauthorized access via these ports."
+    remediation: "Perform the following to disable the login: prompt on the system serial devices:  1. Open /etc/inittab. 2. Disable each getty instance associated with a tty device by adding a comment character (#) to the beginning of the line. 3. Save /etc/inittab.*"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.1"]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21014
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable NIS/NIS+ related processes, if possible"
+    description: "Disable NIS/NIS+ related processes. Network Information Service (NIS) is a distributed database providing centralized control of names, addresses, services, and key configuration files throughout a network of servers and clients.  NIS was formerly known as Yellow Pages (YP).  NIS+ is a replacement for NIS services, and is more scalable, flexible, and secure.  It adds a security system with authentication and authorization services to validate users on the network and todetermine if they allowed to access or modify the information requested.  However, both systems have known security vulnerabilities, and have been an entry point for security attacks."
+    rationale: "Eliminate exposure to NIS/NIS+ vulnerabilities by not running related daemons on hosts that are not NIS/NIS+ servers or clients."
+    remediation: "Perform the following to disable the startup of NIS/NIS+ related processes: ch_rc -a -p NIS_MASTER_SERVER=0 -p NIS_SLAVE_SERVER=0 \   -p NIS_CLIENT=0 -p NISPLUS_SERVER=0 \   -p NISPLUS_CLIENT=0 /etc/rc.config.d/namesvrs"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.2"]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21015
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable printer daemons, if possible"
+    description: "Disable printer daemons. The Technical Print Service (TPS) is a printer service used in the X-Windows and/or CDE environment.  It is recommended that this service be disabled if the hosting system does not participate in print services The administrator may wish to consider converting to the LPRng print system (see http://www.lprng.org/) which was designed with security in mind and is widely portable across many different Unix platforms.  Note, however, that LPRng is notsupported by Hewlett-Packard."
+    rationale: "Disabling unused services, such as TPS, will reduce the remote and local attack surfaces of the hosting system."
+    remediation: "Perform the following to disable printer daemons: 1. Set the LP parameter to zero in the lp system configuration file /etc/rc.config.d/lp 2. Set the XPRINTSERVERS parameter to an empty string in the tps system configuration file /etc/rc.config.d/tps"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.3"]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21016
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable the CDE GUI login, if possible"
+    description: "CDE stands for "Common Desktop Environment," and is an environment for logging on to and interacting with your system via an X-windows type GUI interface from the console. Intended for use with workstation or desktop systems, this service is not commonly used with the server-class systems or in large enterprise environments.  The X Windows-based CDE GUI services were developed with a different set of security expecations from those expected in many enterprise deployments, and have had a history of security issues.  Unless there is a mission-critical need for a CDE GUI login to the system, this service should not be run to further reduce opportunities for security attacks."
+    rationale: "The X Windows-based CDE GUI on HP-UX systems has had a history of security issues, and should be disabled if unused."
+    remediation: "Perform the following to disable the GUI login: ch_rc -a -p DESKTOP="" /etc/rc.config.d/desktop"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.4"]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21017
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable email server, if possible"
+    description: "Disable the sendmail daemon to avoid processing incoming email.  It is possible to run a Unix system with the Sendmail daemon disabled and still allow users on that system to send email out from that machine.  Running Sendmail in daemon mode (with the -bd command-line option) is only required on machines that act as mail servers, receiving and processing email from other hosts on the network.  The remediation below will result in a machine that can send email but not receiveit.  Note that after disabling the –bd option on the local mail server on systems running Sendmail v8.12 or later (8.13 is currently shipped as part of HP-UX 11iv3), it is also necessary to modify the /etc/mail/submit.cf file.  Find the line that reads 'D{MTAHost}localhost' and change localhost to the name of some other local mail server for the organization.  This will cause email generated on the local system to be relayed to that mail server for further processing and delivery.  Note that if the system is an email server, the administrator is encouraged to search the Web for additional documentation on Sendmail security issues."
+    rationale: "Avoid potential vulnerabilities in the sendmail server if incoming email service is not used."
+    remediation: "Perform the following to disable the sendmail server: 1. Set the SENDMAIL_SERVER parameter to zero in the mailservs system configuration file. 2. Setup a cron job to run sendmail at regular intervals (e.g. every hour) in order to process queued, outgoing mail. "
     compliance:
-      -
+      - cis: ["1.3.5"]
+      - cis_level: ["1"]
     references:
-      -
+      - http://www.deer-run.com/~hal/dns-sendmail/DNSandSendmail.pdf
+      - http://www.sendmail.org/
     condition: all
     rules:
       -
 
   - id: 21018
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
+    description: "Disable SNMP and OpenView agents if they are not needed. Note: If SNMP is used, it is recommended to change the default SNMP community string by modifying the get-community and set-community parameters in the SNMP configuration file /etc/SnmpAgent.d/snmpd.conf"
+    rationale: "If SNMP and OpenView agents are not needed, avoid potential security vulnerabilities in these programs by disabling them."
+    remediation: "Perform the following to disable the SNMP and OpenView Agents:  cd /sbin/rc2.d mv -f S570SnmpFddi .NOS570SnmpFddi      ch_rc -a -p SNMP_HPUNIX_START=0 \   /etc/rc.config.d/SnmpHpunix ch_rc -a -p SNMP_MASTER_START=0 \   /etc/rc.config.d/SnmpMaster ch_rc -a -p SNMP_MIB2_START=0 \  /etc/rc.config.d/SnmpMib2 ch_rc -a -p SNMP_TRAPDEST_START=0 \   /etc/rc.config.d/SnmpTrpDst ch_rc –a –p OSPFMIB=0 \   /etc/rc.config.d/netdaemons ch_rc –a –p OPCAGT=0 \   /etc/rc.config.d/opcagt"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.6"]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21019
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable rarely used standard boot services"
+    description: "Setting these variables in the /etc/rc.config.d configuration files will effectively disable a wide variety of infrequently used subsystems.  Variables are merely set (rather than renaming or removing startup scripts) so that the local administrator can easily 'restore' any of these services if they discover a mission-critical need to have it.  Additionally, HP-UX patches tend to supply fresh copies of the startup scripts, so they may get inadvertently re-enabled, whereassetting configuration variables usually survives patch installs.  Finally, setting configuration variables is the method recommended and supported by HP. Note that not all of the configuration files listed above will exist on all systems (some are only valid for certain releases, others only exist if certain OEM vendor software is installed). The rest of the actions in this section give the administrator the option of re-enabling certain services – in particular, the services thataredisabled in the second block of the remediation section below.  Rather than disabling and then re-enabling these services, experienced administrators may wish to simply disable only those services that they know are unnecessary for their systems."
+    rationale: "Avoid potential security vulnerabilities in infrequently used subsystems by disabling them."
+    remediation: "Perform the following:   ch_rc -a -p START_SNAPLUS=0 -p START_SNANODE=0 \   -p START_SNAINETD=0 /etc/rc.config.d/snaplus2 ch_rc -a -p MROUTED=0 -p RWHOD=0 -p DDFA=0 \   -p START_RBOOTD=0 /etc/rc.config.d/netdaemons ch_rc -a -p RARPD=0 -p RDPD=0 /etc/rc.config.d/netconf ch_rc -a -p PTYDAEMON_START=0 /etc/rc.config.d/ptydaemon ch_rc -a -p VTDAEMON_START=0 /etc/rc.config.d/vt ch_rc -a -p NAMED=0 /etc/rc.config.d/namesvrs ch_rc -a -p START_I4LMD=0 /etc/rc.config.d/i4lmd ch_rc -a p RUN_X_FONT_SERVER=0 /etc/rc.config.d/xfs ch_rc -a -p AUDIO_SERVER=0 /etc/rc.config.d/audio ch_rc -a -p SLSD_DAEMON=0 /etc/rc.config.d/slsd ch_rc -a -p RUN_SAMBA=0 /etc/rc.config.d/samba ch_rc -a -p RUN_CIFSCLIENT=0 \   /etc/rc.config.d/cifsclient ch_rc -a -p NFS_SERVER=0 \   -p NFS_CLIENT=0 /etc/rc.config.d/nfsconf ch_rc -a -p HPWS_APACHE_START=0 /etc/rc.config.d/hpws_apacheconf ch_rc –a –p NFS_CORE=0 /etc/rc.config.d/nfsconf"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.7"]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21020
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable Windows-compatibility server processes if absolutely necessary"
+    description: "HP-UX 11i includes the popular Open Source Samba server (HP-UX CIFS Server) for providing file and print services to Windows-based systems.  This allows an HP-UX system to act as a file or print server on a Windows network, and even act as a Domain Controller (authentication server) to older Windows operating systems.  However, if this functionality is not required by the site, this service should be disabled."
+    rationale: "This machine provides authentication, file sharing, or printer sharing services to systems running Microsoft Windows operating systems."
+    remediation: "Perform the following to re-enable CIFS Server: ch_rc -a -p RUN_SAMBA=1 /etc/rc.config.d/samba"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.8"]
     condition: all
     rules:
       -
 
   - id: 21021
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable Windows-compatibility client processes if absolutely necessary"
+    description: "Re-enable the HP CIFS Client service."
+    rationale: "This system requires access to file systems from remote servers via the Windows (SMB) file services."
+    remediation: "Perform the following: ch_rc -a -p RUN_CIFSCLIENT=1 /etc/rc.config.d/cifsclient"
     compliance:
-      -
-    references:
-      -
+      - cis: ["1.3.9"]
     condition: all
     rules:
       -
 
   - id: 21022
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable NFS server processes if absolutely necessary"
+    description: "NFS is frequently exploited to gain unauthorized access to files and systems.  Clearly there is no need to run the NFS server-related daemons on hosts that are not NFS servers. If the system is an NFS server, the admin should take reasonable precautions when exporting file systems, including restricting NFS access to a specific range of local IP addresses and exporting file systems "read-only" and "nosuid" where appropriate.  For more information consult the exportfs(1M) manual page.  Much higher levels of security can be achieved by combining NFS with secure RPC or Kerberos, although there is significant administrative overhead involved in this transition."
+    rationale: "This machine is a NFS file server."
+    remediation: "Perform the following: ch_rc -a -p NFS_SERVER=1 /etc/rc.config.d/nfsconf"
     compliance:
-      -
-    references:
-      -
+      - ["1.3.10"]
     condition: all
     rules:
       -
 
   - id: 21023
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable NFS client processes if absolutely necessary"
+    description: "Again, unless there is a significant need for this system to acquire data via NFS, administrators should disable NFS-related services.  Note that other file transfer schemes (such as rdist via SSH) can often be more secure than NFS for certain applications, although again the use of secure RPC or Kerberos can significantly improve NFS security. Also note that if the machine will be an NFS client, then the rpcbind process must be running (see Item 3.12 below)."
+    rationale: "This system must access file systems from remote servers via NFS."
+    remediation: "Perform the following: ch_rc -a -p NFS_CLIENT=1 /etc/rc.config.d/nfsconf"
     compliance:
-      -
-    references:
-      -
+      - ["1.3.11"]
     condition: all
     rules:
       -
 
   - id: 21024
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable RPC-based services if absolutely necessary"
+    description: "RPC-based services typically use very weak or non-existent authentication and yet may share very sensitive information.  Unless one of the services listed above is required on this machine, it is best to disable RPC-based tools completely.  If you are unsure whether or not a particular third-party application requires RPC services, consult with the application vendor. Note that disabling this service by renaming the startup file may not survive the install of RPC-related patches."
+    rationale: "RPC-based services are used such as: This machine is an NFS client or server  This machine is an NIS (YP) or NIS+ client or server  This machine runs a GUI or GUI-based administration tool  The machine runs a third-party software application which is dependent on RPC support (example: FlexLM License managers)"
+    remediation: "Perform the following for 11.31 and later: ch_rc -a -p NFS_CORE=1 /etc/rc.config.d/nfsconf     For 11.23 and prior: mv -f /sbin/rc2.d/.NOS400nfs.core /sbin/rc2.d/400nfs.core"
     compliance:
-      -
-    references:
-      -
+      - ["1.3.12"]
     condition: all
     rules:
       -
 
   - id: 21025
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable Web server if absolutely necessary"
+    description: "Even if this machine is a Web server, the local site may choose not to use the Web server provided with HP-UX in favor of a locally developed and supported Web environment. If the machine is a Web server, the administrator is encouraged to search the Web for additional documentation on Web server security.  A good starting point is http://httpd.apache.org/docs-2.0/misc/security_tips.html."
+    rationale: "There is a mission-critical reason why this system must run a Web server. "
+    remediation: "Perform the following: ch_rc -a -p NS_FTRACK=1           /etc/rc.config.d/ns-ftrack   ch_rc -a -p APACHE_START=1        /etc/rc.config.d/apacheconf    ch_rc -a -p HPWS_APACHE32_START=1 /etc/rc.config.d/hpws_apache32conf   ch_rc -a -p HPWS_TOMCAT_START=1   /etc/rc.config.d/hpws_tomcatconf   ch_rc -a -p NS_FTRACK=1           /etc/rc.config.d/ns-ftrack   ch_rc -a -p HPWS_WEBMIN_START=1   /etc/rc.config.d/hpws_webminconf "
     compliance:
-      -
-    references:
-      -
+      - ["1.3.13"]
     condition: all
     rules:
       -
 
   - id: 21026
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable BIND DNS server if absolutely necessary"
+    description: "The BIND DNS server, or named, maps IP addresses to hostnames across the Internet and supplies these services to other hosts on the local local network. Though it has been widely implemented, BIND has a long history of security flaws, especially in the BIND 8.x release tree generally shipped with HP-UX 11.x systems. Therefore, if you are going to run BIND, you should strongly consider moving to the BIND 9.x release-tree. HP has supported BIND 9 packages available from http://software.hp.com/portal/swdepot/displayProductInfo.do?productNumber=BIND9.2. Or it is available directly from the Internet Software Consortium (the developers of BIND), whose website is at http://www.isc.org."
+    rationale: "There exists a mission-critical reason why this system must run a DNS server."
+    remediation: "Perform the following: 11.23 and prior: ch_rc -a -p NAMED=1 /etc/rc.config.d/namesvrs 11.31 and later: ch_rc -a -p NAMED=1 /etc/rc.config.d/namesvrs_dns"
     compliance:
-      -
-    references:
-      -
+      - ["1.3.14"]
     condition: all
     rules:
       -
