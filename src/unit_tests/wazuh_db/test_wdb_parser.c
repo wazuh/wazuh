@@ -25,7 +25,7 @@ static int test_setup(void **state) {
     init_data->wdb = malloc(sizeof(wdb_t));
     init_data->wdb_global = malloc(sizeof(wdb_t));
     init_data->wdb->id = strdup("000");
-    init_data->output = malloc(256*sizeof(char));
+    init_data->output = calloc(256, sizeof(char));
 
     *state = init_data;
 
