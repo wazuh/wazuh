@@ -2238,7 +2238,7 @@ static void test_decode_win_acl_json_null_json(void **state) {
 }
 
 static void test_decode_win_acl_fail_creating_object(void **state) {
-    int full_perms, i;
+    int full_perms = 0, i = 0;
     const char * it;
     cJSON *acl = __real_cJSON_CreateObject();
     cJSON *ace = __real_cJSON_CreateObject();
@@ -2273,7 +2273,7 @@ static void test_decode_win_acl_fail_creating_object(void **state) {
 }
 
 static void test_decode_win_acl_json_allowed_ace_only(void **state) {
-    int full_perms, i;
+    int full_perms = 0, i = 0;
     const char * it;
     cJSON *acl = __real_cJSON_CreateObject();
     cJSON *ace = __real_cJSON_CreateObject();
@@ -2305,7 +2305,7 @@ static void test_decode_win_acl_json_allowed_ace_only(void **state) {
 }
 
 static void test_decode_win_acl_json_denied_ace_only(void **state) {
-    int full_perms, i;
+    int full_perms = 0, i = 0;
     const char * it;
     cJSON *acl = __real_cJSON_CreateObject();
     cJSON *ace = __real_cJSON_CreateObject();
@@ -2337,7 +2337,7 @@ static void test_decode_win_acl_json_denied_ace_only(void **state) {
 }
 
 static void test_decode_win_acl_json_both_ace_types(void **state) {
-    int full_perms, i;
+    int full_perms = 0, i = 0;
     const char * it;
     cJSON *acl = __real_cJSON_CreateObject();
     cJSON *ace = __real_cJSON_CreateObject();
@@ -2378,6 +2378,7 @@ static void test_decode_win_acl_json_both_ace_types(void **state) {
 
 static void test_decode_win_acl_json_empty_acl(void **state) {
     cJSON *acl = __real_cJSON_CreateObject();
+    *state = acl;
 
     if (acl == NULL) {
         fail_msg("Failed to create cJSON object");
@@ -2389,7 +2390,7 @@ static void test_decode_win_acl_json_empty_acl(void **state) {
 }
 
 static void test_decode_win_acl_json_empty_ace(void **state) {
-    int full_perms, i;
+    int full_perms = 0, i = 0;
     const char * it;
     cJSON *acl = __real_cJSON_CreateObject();
     cJSON *ace = __real_cJSON_CreateObject();
@@ -2424,14 +2425,14 @@ static void test_decode_win_acl_json_multiple_aces(void **state) {
         [2] = "anon",
         [3] = NULL
     };
-    int full_perms, i;
+    int full_perms = 0, i = 0;
     const char * it;
     cJSON *acl = __real_cJSON_CreateObject();
-    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *ace = NULL;
     cJSON *element;
 
-    if (acl == NULL || ace == NULL) {
-        fail_msg("Failed to create cJSON object");
+    if (acl == NULL) {
+        fail_msg("Failed to create ACL cJSON object");
     }
 
     *state = acl;
@@ -2440,7 +2441,7 @@ static void test_decode_win_acl_json_multiple_aces(void **state) {
     for (i = 0, it = SIDS[0]; it; it = SIDS[++i]) {
         ace = __real_cJSON_CreateObject();
         if (ace == NULL) {
-            fail_msg("Failed to create cJSON object");
+            fail_msg("Failed to create ACE cJSON object");
         }
 
         cJSON_AddItemToObject(acl, it, ace);
