@@ -296,6 +296,12 @@ static int teardown_hash(void **state) {
     return 0;
 }
 #endif
+
+static int teardown_dbsync_msg(void **state) {
+    char *ret_msg = *state;
+    free(ret_msg);
+    return 0;
+}
 /* tests */
 
 void test_fim_whodata_initialize(void **state)
@@ -381,10 +387,7 @@ void test_fim_send_msg_retry_error(void **state) {
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
 
-    // This code shouldn't run
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-
-    fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
+    expect_assert_failure(fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test"));
 }
 
 #ifndef TEST_WINAGENT
@@ -836,40 +839,6 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif  // WIN_WHODATA
 #endif
 
-void test_fim_send_sync_msg_10_eps(void ** state) {
-    (void) state;
-    syscheck.sync_max_eps = 10;
-    char location[10] = "fim_file";
-
-    // We must not sleep the first 9 times
-
-    for (int i = 1; i < syscheck.sync_max_eps; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-        expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
-        fim_send_sync_msg( location, "");
-    }
-
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_sleep, seconds, 1);
-#else
-    expect_value(wrap_Sleep, dwMilliseconds, 1000);
-#endif
-
-    // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-    expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
-    fim_send_sync_msg( location, "");
-}
-
-void test_fim_send_sync_msg_0_eps(void ** state) {
-    (void) state;
-    syscheck.sync_max_eps = 0;
-    char location[10] = "fim_file";
-    // We must not sleep
-    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-    expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
-    fim_send_sync_msg(location, "");
-}
 
 void test_send_syscheck_msg_10_eps(void ** state) {
     syscheck.max_eps = 10;
@@ -916,6 +885,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
     expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
     send_syscheck_msg(event);
+    cJSON_Delete(event);
 }
 
 void test_fim_send_scan_info(void **state) {
@@ -1160,6 +1130,37 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
+void test_send_sync_control(void **state) {
+    char debug_msg[OS_SIZE_256] = {0};
+    char *ret_msg = dbsync_check_msg("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
+    *state = ret_msg;
+
+    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+
+    fim_send_sync_control("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
+}
+
+void test_send_sync_state(void **state) {
+    char debug_msg[OS_SIZE_256] = {0};
+    cJSON *event = cJSON_CreateObject(); // to be freed in dbsync_state_msg
+
+    if (event == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+    cJSON_AddStringToObject(event, "data", "random_string");
+    char *ret_msg = "{\"component\":\"fim_file\",\"type\":\"state\",\"data\":{\"data\":\"random_string\"}}";
+
+    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+
+    fim_send_sync_state("fim_file", event);
+}
+
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1177,8 +1178,6 @@ int main(void) {
         cmocka_unit_test(test_fim_send_msg),
         cmocka_unit_test(test_fim_send_msg_retry),
         cmocka_unit_test(test_fim_send_msg_retry_error),
-        cmocka_unit_test(test_fim_send_sync_msg_10_eps),
-        cmocka_unit_test(test_fim_send_sync_msg_0_eps),
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
@@ -1206,6 +1205,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
+        cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
+        cmocka_unit_test(test_send_sync_state),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

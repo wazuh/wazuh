@@ -741,7 +741,7 @@ static void test_wm_gcp_pubsub_read_credentials_file_tag_too_long(void **state) 
     int ret;
 
     memset(buffer, 'a', OS_MAXSTR);
-    buffer[OS_MAXSTR] = '\0';
+    buffer[OS_MAXSTR - 1] = '\0';
 
     if(replace_configuration_value(data->nodes, XML_CREDENTIALS_FILE, buffer) != 0)
         fail();
@@ -1171,6 +1171,9 @@ static void test_wm_gcp_pubsub_read_invalid_nodes(void **state) {
 /* tests */
 /* wm_gcp_pubsub_read */
 static void test_wm_gcp_bucket_read_full_configuration(void **state) {
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
+
     group_data_t *data = *state;
     wm_gcp_bucket_base *gcp;
 
@@ -1185,6 +1188,8 @@ static void test_wm_gcp_bucket_read_full_configuration(void **state) {
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
+
+
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1207,6 +1212,8 @@ static void test_wm_gcp_bucket_read_full_configuration(void **state) {
 }
 
 static void test_wm_gcp_bucket_read_sched_read_invalid(void **state) {
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
     group_data_t *data = *state;
     wm_gcp_bucket_base *gcp;
 
@@ -1260,6 +1267,8 @@ static void test_wm_gcp_bucket_read_no_bucket_type(void **state) {
     group_data_t *data = *state;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
     expect_string(__wrap__merror, formatted_msg, "No bucket type was specified. The valid one is 'access_logs'.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
@@ -1271,6 +1280,9 @@ static void test_wm_gcp_bucket_read_no_bucket_type(void **state) {
 static void test_wm_gcp_bucket_read_bucket_type_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_bucket_configuration_attribute(data, XML_BUCKET_TYPE, "") != 0)
         fail();
@@ -1285,6 +1297,8 @@ static void test_wm_gcp_bucket_read_bucket_type_invalid(void **state) {
 static void test_wm_gcp_bucket_read_bucket_element_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     expect_string(__wrap__merror, formatted_msg, "No such child tag 'invalid' of bucket at module 'gcp-bucket'.");
 
@@ -1297,6 +1311,8 @@ static void test_wm_gcp_bucket_read_bucket_attribute_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
     expect_string(__wrap__merror, formatted_msg, "Attribute name 'invalid' is not valid. The valid one is 'type'.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
@@ -1307,6 +1323,9 @@ static void test_wm_gcp_bucket_read_bucket_attribute_invalid(void **state) {
 static void test_wm_gcp_bucket_read_bucket_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_bucket_configuration_value(data, XML_BUCKET_NAME, "") != 0)
         fail();
@@ -1321,6 +1340,9 @@ static void test_wm_gcp_bucket_read_bucket_tag_invalid(void **state) {
 static void test_wm_gcp_bucket_read_no_bucket_tag(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
@@ -1338,6 +1360,9 @@ static void test_wm_gcp_bucket_read_no_bucket_tag(void **state) {
 static void test_wm_gcp_bucket_read_remove_from_bucket_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_bucket_configuration_value(data, XML_REMOVE_FROM_BUCKET, "") != 0)
         fail();
@@ -1359,6 +1384,9 @@ static void test_wm_gcp_bucket_read_path_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
+
     if(replace_bucket_configuration_value(data, XML_PREFIX, "") != 0)
         fail();
 
@@ -1378,6 +1406,9 @@ static void test_wm_gcp_bucket_read_path_tag_invalid(void **state) {
 static void test_wm_gcp_bucket_read_only_logs_after_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_bucket_configuration_value(data, XML_ONLY_LOGS_AFTER, "") != 0)
         fail();
@@ -1399,6 +1430,9 @@ static void test_wm_gcp_bucket_read_credentials_file_full_path(void **state) {
     group_data_t *data = *state;
     wm_gcp_bucket_base *gcp;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_bucket_configuration_value(data, XML_CREDENTIALS_FILE, "/some/path/credentials.json") != 0)
         fail();
@@ -1440,6 +1474,9 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_empty(void **state) {
     group_data_t *data = *state;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
+
     if(replace_bucket_configuration_value(data, XML_CREDENTIALS_FILE, "") != 0)
         fail();
 
@@ -1452,11 +1489,13 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_empty(void **state) {
 
 static void test_wm_gcp_bucket_read_credentials_file_tag_too_long(void **state) {
     group_data_t *data = *state;
-    char buffer[OS_MAXSTR];
+    char buffer[OS_MAXSTR + 1] = {0};
     int ret;
 
     memset(buffer, 'a', OS_MAXSTR);
-    buffer[OS_MAXSTR] = '\0';
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_bucket_configuration_value(data, XML_CREDENTIALS_FILE, buffer) != 0)
         fail();
@@ -1473,6 +1512,9 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_realpath_error(void **s
     group_data_t *data = *state;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
+
     expect_string(__wrap_realpath, path, "credentials.json");
 
     will_return(__wrap_realpath, (char *) NULL);   //  realpath failed
@@ -1487,6 +1529,9 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_realpath_error(void **s
 static void test_wm_gcp_bucket_read_credentials_file_tag_file_not_found(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
@@ -1504,6 +1549,9 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_file_not_found(void **s
 static void test_wm_gcp_bucket_read_no_credentials_file_tag(void **state) {
     group_data_t *data = *state;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
@@ -1537,6 +1585,9 @@ static void test_wm_gcp_bucket_read_logging_tag_debug(void **state) {
     group_data_t *data = *state;
     wm_gcp_bucket_base *gcp;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "debug") != 0)
         fail();
@@ -1576,6 +1627,9 @@ static void test_wm_gcp_bucket_read_logging_tag_info(void **state) {
     wm_gcp_bucket_base *gcp;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
+
     if(replace_configuration_value(data->nodes, XML_LOGGING, "info") != 0)
         fail();
 
@@ -1613,6 +1667,9 @@ static void test_wm_gcp_bucket_read_logging_tag_warning(void **state) {
     group_data_t *data = *state;
     wm_gcp_bucket_base *gcp;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "warning") != 0)
         fail();
@@ -1652,6 +1709,9 @@ static void test_wm_gcp_bucket_read_logging_tag_error(void **state) {
     wm_gcp_bucket_base *gcp;
     int ret;
 
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
+
     if(replace_configuration_value(data->nodes, XML_LOGGING, "error") != 0)
         fail();
 
@@ -1689,6 +1749,9 @@ static void test_wm_gcp_bucket_read_logging_tag_critical(void **state) {
     group_data_t *data = *state;
     wm_gcp_bucket_base *gcp;
     int ret;
+
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     if(replace_configuration_value(data->nodes, XML_LOGGING, "critical") != 0)
         fail();

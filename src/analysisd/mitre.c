@@ -9,6 +9,11 @@
 
 #include "mitre.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define static
+#endif
+
 #define SQL_GET_ALL_TECHNIQUES "mitre sql SELECT technique.id, technique.name, reference.external_id FROM technique LEFT JOIN reference ON technique.id = reference.id WHERE technique.revoked_by IS NULL AND NOT technique.deprecated AND reference.source = 'mitre-attack' LIMIT %i OFFSET %i;"
 #define SQL_GET_ALL_TECHNIQUE_PHASES "mitre sql SELECT tactic_id FROM phase WHERE tech_id = '%s';"
 #define SQL_GET_TACTIC_INFORMATION "mitre sql SELECT tactic.name, reference.external_id FROM tactic LEFT JOIN reference ON tactic.id = reference.id WHERE reference.source = 'mitre-attack' AND tactic.id = '%s';"

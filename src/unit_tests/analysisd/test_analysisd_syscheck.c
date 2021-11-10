@@ -381,6 +381,8 @@ static int setup_registry_key_data(void **state) {
     return 0;
 }
 
+extern OSHash *fim_agentinfo;
+
 static int setup_registry_value_data(void **state) {
     fim_data_t *data;
     const char *plain_event = "{\"type\":\"event\","
@@ -456,6 +458,8 @@ static int teardown_fim_data(void **state) {
     Free_Eventinfo(data->lf);
 
     free(data);
+
+    OSHash_Free(fim_agentinfo);
 
     return 0;
 }

@@ -2093,8 +2093,14 @@ install_mitre: install_python
 ####################
 #### test ##########
 ####################
-
 CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
+# Use sanitizers only on linux
+ifneq (${TARGET},winagent)
+ifeq (${uname_S},Linux)
+CFLAGS_TEST+= -fsanitize=address -fsanitize=undefined
+endif
+endif
+
 LIBS_TEST=-lcmocka
 
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
