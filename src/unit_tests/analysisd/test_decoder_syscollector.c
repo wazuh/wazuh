@@ -1606,6 +1606,7 @@ void test_syscollector_dbsync_valid_msg_big_size(void **state)
     int sock = 1;
 
     expect_string(__wrap__mdebug1, formatted_msg, UNABLE_TO_SEND_INFORMATION_TO_WDB);
+    expect_string(__wrap__mdebug2, formatted_msg, MESSAGE_TOO_LONG);
 
     int ret = DecodeSyscollector(lf, &sock);
 
