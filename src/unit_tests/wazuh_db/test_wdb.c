@@ -28,6 +28,8 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 
+OSHash * open_dbs;
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -37,6 +39,10 @@ typedef struct test_struct {
 
 int setup_wdb(void **state) {
     test_mode = 1;
+    open_dbs = __real_OSHash_Create();
+    if (open_dbs == NULL) {
+        return -1;
+    }
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
@@ -50,6 +56,10 @@ int setup_wdb(void **state) {
 
 int teardown_wdb(void **state) {
     test_mode = 0;
+    if (open_dbs) {
+        OSHash_Free(open_dbs);
+        open_dbs = NULL;
+    }
     test_struct_t *data  = (test_struct_t *)*state;
     os_free(data->output);
     os_free(data->wdb->id);
@@ -67,7 +77,7 @@ void test_wdb_open_tasks_pool_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
     will_return(__wrap_OSHash_Get, data->wdb);
 
@@ -84,7 +94,7 @@ void test_wdb_open_tasks_create_error(void **state)
     wdb_t *ret = NULL;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
     will_return(__wrap_OSHash_Get, NULL);
 
@@ -119,7 +129,7 @@ void test_wdb_open_global_pool_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
     will_return(__wrap_OSHash_Get, data->wdb);
 
@@ -136,7 +146,7 @@ void test_wdb_open_global_create_fail(void **state)
     wdb_t *ret = NULL;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
     will_return(__wrap_OSHash_Get, NULL);
 
