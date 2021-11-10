@@ -53,7 +53,7 @@ checks:
     rationale: "Common login and file transfer services such as telnet, FTP, rsh, rlogin, and rcp use insecure, clear-text protocols that are vulnerable to attack.  OpenSSH provides a secure, encrypted replacement for these services.   Security is improved by further constraining services in the default configuration. "
     remediation: "Perform the following to install and securely configure Secure Shell (SSH) 1. Download and install HP-UX Secure Shell if not already installed on the system.  2. Perform the following post-installation actions to secure the SSH service: a. Change to the /opt/ssh/etc directory b. Open sshd_config c. Set the Protocol token to 2.  If it is absent, add and set it. d. Set the X11Forwarding token to yes.  If it is absent, add and set it. e. Set the IgnoreRhosts token to yes.  If itis absent, add and set it. f. Set the RhostsAuthentication token to no.  If it is absent, add and set it. g. Set the RhostsRSAAuthentication token to no. If it is absent, add and set it. h. Set the PermitRootLogin token to no. If it is absent, add and set it. i. Set the PermitEmptyPasswords token to no. If it is absent, add and set it. j. Set the Banner token to /etc/issue. If it is absent, add and set it. k. Set root as the owner of sshd_config and ssh_config. l. Set sys as the groupowner of sshd_config and ssh_config. m.  Restrict write access to sshd_config and ssh_config to the file owner."
     compliance:
-      - cis: ["1.1.1"]
+      - cis: ["1.1.2"]
       - cis_level: ["1"]
     references:
       - http://www.openssh.org/
@@ -62,120 +62,313 @@ checks:
     rules:
       -
 
-#################################################################
-# 1.2 Minimize inetd network services
-#################################################################
-
   - id: 21002
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Use Bastille to report security configuration state"
+    description: "Bastille is a security hardening, lockdown tool supplied with HP-UX to assist administrators in securing their systems.  Included is an assessment function that covers a wide range of lockdown items including most all items in this Benchmark.   Bastille can serve as a reporting and audit tool.   Appendix D provides a mapping of Benchmark items to related Bastille configuration items."
+    rationale: "An automated, tested, and vendor supported reporting tool such as Bastille is more efficient and less error-prone than most manual or custom scripted methods."
+    remediation: "Run Bastille to create an assessment report as shown: /opt/sec_mgmt/bastille/bin/bastille --assessnobrowser"
     compliance:
-      - cis:
+      - cis: ["1.1.3"]
     references:
-      -
+      - https://www.hp.com/go/bastille
     condition: all
     rules:
       -
 
+#################################################################
+# 1.2 Minimize inetd network services
+#################################################################
+
+
+
   - id: 21003
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Disable Standard Services"
+    description: "The stock /etc/inetd.conf file shipped with HP-UX contains many services which are rarely used, or which have more secure alternatives. Indeed, after enabling SSH (see item 1.1.2) it may be possible to completely do away with all inetd-based services, since SSH provides both a secure login mechanism and a means of transferring files to and from the system.  The steps articulated in the Remediation section will disable all services normally enabled in the HP-UX inetd.conf file."
+    rationale: "The stock /etc/inetd.conf file shipped with HP-UX contains services that are rarely used or have more secure alternatives.  Removing these from inetd will avoid exposure to possible security vulnerability in those services."
+    remediation: "Perform the following to disable standard inetd-based services: 1. Change to the /etc directory 2. Open inetd.conf 3. Disable the following services by adding a comment character (#) to the beginning of its definition:   a.  echo b.  discard c.  daytime d.  chargen e.  dtspc f.  exec g.  ntalk q.  rpc.rwalld r.  rpc.sprayd s.  rpc.cmsd t.  kcms_server u.  printer v.  shell w.  login h.  finger i.  uucp j.  ident k.  auth l.  instl_boots m.  registrar n.  recserv o.  rpc.rstatd p.  rpc.rusersd  x.  telnet y.  ftp z.  tftp aa.  bootps bb.  kshell cc.  klogin dd.  rpc.rquotad ee.  rpc.ttdbserver 4. Save inetd.conf.  5. Set root as the owner of inetd.conf. 6. Set sys as the group owner of inetd.conf. 7. Restrict write access to inetd.conf to the file owner. 8. Remove the executable and sticky bit from inetd.conf. 9. Invoke inetd to reread it’s config file: inetd -c "
     compliance:
-      - cis:
+      - cis: ["1.2.1"]
+      - cis_level: ["1"]
     references:
-      -
+      - http://docs.hp.com/en/B2355-60130/inetd.conf.4.html
     condition: all
     rules:
       -
 
   - id: 21004
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable telnet if absolutely necessary"
+    description: "Re-enable telnet. Telnet uses an unencrypted network protocol, which means data from the login session (such as passwords and all other data transmitted during the session) can be stolen by eavesdroppers on the network, and also that the session can be hijacked by outsiders to gain access to the remote system.  HP-UX Secure Shell (OpenSSH) provides an encrypted alternative to telnet (and other utilities) and should be used instead."
+    rationale: "There is a mission-critical reason that requires users to access the system via telnet instead of the more secure SSH protocol."
+    remediation: "Perform the following to re-enable telnet: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the telnet service definition. 3. Add –b /etc/issue to the end of the telnet service definition. This will cause telnet to display the contents of /etc/issue to users attempting to access the system via telnet. 4. Save /etc/inetd.conf."
     compliance:
-      - cis:
-    references:
-      -
+      - cis: ["1.2.2"]
     condition: all
     rules:
       -
 
   - id: 21005
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable FTP if absolutely necessary"
+    description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP.  Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users onthe system to transfer files via SSH-based protocols.  For further information on restricting FTP access to the system, see item 1.6.2.  Sites may also consider augmenting the “ftpd -l” below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file – see the ftpd(1M) man page on your systems for details."
+    rationale: "This machine serves as an (anonymous) FTP server or other mission-critical role where data must be transferred via FTP instead of the more secure alternatives."
+    remediation: "Perform the following to re-enable FTP:  1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the ftp service definition. 3. Save /etc/inetd.conf."
     compliance:
-      - cis:
-    references:
-      -
+      - cis: ["1.2.3"]
     condition: all
     rules:
       -
 
   - id: 21006
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable rlogin/remsh/rcp if absolutely necessary"
+    description: "SSH was designed to be a drop-in replacement for these protocols.  Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH (again, see item 1.2.1 – Install SSH)."
+    rationale: "There is a mission-critical reason to use rlogin/remsh/rcp instead of the more secure ssh/scp."
+    remediation: "Perform the following to re-enable rlogin/remsh/rcp: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the shell and login service definitions. 3. Save /etc/inetd.conf."
     compliance:
-      - cis:
-    references:
-      -
+      - cis: ["1.2.4"]
     condition: all
     rules:
       -
 
   - id: 21007
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable TFTP if absolutely necessary"
+    description: "TFTP is typically used for network booting of diskless workstations, X-terminals, and other similar devices.  TFTP is also used during network installs of systems via the HP-UX Ignite facility.  Routers and other network devices may copy configuration data to remote systems via TFTP for backup"
+    rationale: "This system serves as a boot server or has other mission-critical roles where data must be transferred to and from this system via TFTP."
+    remediation: "Perform the following to re-enable TFTP: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the tftp service definition. 3. Save /etc/inetd.conf."
     compliance:
-      - cis:
-    references:
-      -
+      - cis: ["1.2.5"]
     condition: all
     rules:
       -
   - id: 21008
-    title:
-    description:
-    rationale:
-    remediation:
+    title: "Only enable printer service if absolutely necessary"
+    description: "rlpdaemon provides a BSD-compatible print server interface.  Even machines that are print servers may wish to leave this service disabled if they do not need to support BSD-style printing."
+    rationale: "This machine a print server for your network."
+    remediation: "Perform the following to re-enable the rlpdaemon based printer service:  1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the printer definition. 3. Save /etc/inetd.conf."
     compliance:
-      - cis:
-    references:
-      -
+      - cis: ["1.2.6"]
     condition: all
     rules:
       -
 
   - id: 21009
-    title:
+    title: "Only enable rquotad if absolutely necessary"
+    description: "rquotad allows NFS clients to enforce disk quotas on file systems that are mounted from the local system.  If your site does not use disk quotas, then you may leave the rquotad service disabled."
+    rationale: "This system an NFS file server that requires the use of disk quotas"
+    remediation: "Perform the following to re-enable rquotad: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the rquotad definition. 3. Save /etc/inetd.conf."
+    compliance:
+      - cis: ["1.2.7"]
+    condition: all
+    rules:
+      -
+
+  - id: 21010
+    title: "Only enable CDE-related daemons if absolutely necessary"
+    description: "The rpc.ttdbserver service supports HP's CDE windowing environment.  This service has a history of security problems.  Not only is it vital to keep up to date on vendor patches, but also never enable this service on any system which is not well protected by a complete network security infrastructure (including network and host-based firewalls, packet filters, and intrusion detection infrastructure).  Note that since this service uses ONC RPC mechanisms, it is important that the system's RPC portmapper (rpcbind) also be enabled when this service is turned on."
+    rationale: "There a mission-critical reason to run a CDE GUI on this system."
+    remediation: "Perform the following to re-enable CDE-related daemons: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the rpc.ttdbserver definition. 3. Save /etc/inetd.conf."
+    compliance:
+      - cis: ["1.2.8"]
+    condition: all
+    rules:
+      -
+
+  - id: 21011
+    title: "Only enable Kerberos-related daemons if absolutely necessary"
+    description: "Kerberized rlogin/remsh offers a higher degree of security than traditional rlogin, remsh, or telnet by eliminating many clear-text password exchanges from the network.  However it is still not as secure as SSH, which encrypts all traffic.  Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH."
+    rationale: "The Kerberos security system is in use at this site and there is a mission-critical reason that requires users to access this system via Kerberized rlogin/remsh, rather than the more secure SSH protocol"
+    remediation: "Perform the following to re-enable Kerberos-related daemons:  1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the klogin definition. 3. Save /etc/inetd.conf."
+    compliance:
+      - cis: ["1.2.9"]
+    condition: all
+    rules:
+      -
+
+  - id: 21012
+    title: "Only enable BOOTP/DHCP daemon if absolutely necessary"
+    description: "BOOTP/DHCP is a popular protocol for dynamically assigning IP addresses and other network information to systems on the network (rather than having administrators manually manage this information on each host).  However, if this system is not a BOOTP/DHCP server for the network, there is no need to be running this service"
+    rationale: "This server a BOOTP/DHCP server for the network"
+    remediation: "Perform the following to re-enable BOOTP/DHCP services:  1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the bootps definition. 3. Save /etc/inetd.conf."
+    compliance:
+      - cis: ["1.2.10"]
+    condition: all
+    rules:
+      -
+
+  - id: 21013
+    title: 
     description:
     rationale:
     remediation:
     compliance:
-      - cis:
+      -
     references:
       -
     condition: all
     rules:
       -
 
-  - id: 21010
+  - id: 21014
     title:
     description:
     rationale:
     remediation:
     compliance:
-      - cis:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21015
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21016
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21017
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21018
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21019
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21020
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21021
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21022
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21023
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21024
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21025
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21026
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      -
     references:
       -
     condition: all
