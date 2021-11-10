@@ -507,7 +507,7 @@ void test_MonitordConfig_fail(void **state) {
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1202): Configuration error at '/config_path'.");
 
-    MonitordConfig(cfg, &mond, no_agents, day_wait);
+    expect_assert_failure(MonitordConfig(cfg, &mond, no_agents, day_wait));
 }
 
 int main()

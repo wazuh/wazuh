@@ -15,20 +15,37 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 
 #include "../analysisd/mitre.h"
 
+extern OSHash *techniques_table;
+
 /* setup/teardown */
 
 static int setup_group(void **state) {
+    if (setup_hashmap(state) != 0) {
+        return 1;
+    }
+
     test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
     test_mode = 0;
+
+    if (teardown_hashmap(NULL) != 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int teardown_techniques_table(void **state) {
+    OSHash_Free(techniques_table);
     return 0;
 }
 
@@ -124,18 +141,15 @@ void test_queryid_empty_array(void **state)
 
 }
 
-void test_queryid_error_parse_technique_id(void **state)
-{
-    (void) state;
+void test_queryid_error_parse_technique_id(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"ids\":\"technique-0001\"},{\"ids\":\"technique-0002\"}]");
 
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -148,18 +162,15 @@ void test_queryid_error_parse_technique_id(void **state)
 
 }
 
-void test_queryid_error_parse_technique_name(void **state)
-{
-    (void) state;
+void test_queryid_error_parse_technique_name(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\"},{\"id\":\"technique-0002\"}]");
 
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -172,18 +183,15 @@ void test_queryid_error_parse_technique_name(void **state)
 
 }
 
-void test_queryid_error_parse_technique_external_id(void **state)
-{
-    (void) state;
+void test_queryid_error_parse_technique_external_id(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\"}]");
 
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -196,11 +204,9 @@ void test_queryid_error_parse_technique_external_id(void **state)
 
 }
 
-void test_querytactics_error_socket(void **state)
-{
+void test_querytactics_error_socket(void **state) {
     (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = NULL;
 
@@ -209,7 +215,7 @@ void test_querytactics_error_socket(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -227,11 +233,8 @@ void test_querytactics_error_socket(void **state)
 
 }
 
-void test_querytactics_no_response(void **state)
-{
-    (void) state;
+void test_querytactics_no_response(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = NULL;
 
@@ -240,7 +243,7 @@ void test_querytactics_no_response(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -258,11 +261,8 @@ void test_querytactics_no_response(void **state)
 
 }
 
-void test_querytactics_bad_response(void **state)
-{
-    (void) state;
+void test_querytactics_bad_response(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = NULL;
     char * response_tactics = "err not found";
@@ -272,7 +272,7 @@ void test_querytactics_bad_response(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -291,11 +291,8 @@ void test_querytactics_bad_response(void **state)
 
 }
 
-void test_querytactics_error_parse(void **state)
-{
-    (void) state;
+void test_querytactics_error_parse(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"phase_name\":}]");
 
@@ -304,7 +301,7 @@ void test_querytactics_error_parse(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -321,11 +318,8 @@ void test_querytactics_error_parse(void **state)
 
 }
 
-void test_querytactics_empty_array(void **state)
-{
-    (void) state;
+void test_querytactics_empty_array(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[ ]");
 
@@ -334,7 +328,7 @@ void test_querytactics_empty_array(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -351,11 +345,8 @@ void test_querytactics_empty_array(void **state)
 
 }
 
-void test_querytactics_error_parse_tactics(void **state)
-{
-    (void) state;
+void test_querytactics_error_parse_tactics(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"phase\":\"Discovery\"}]");
 
@@ -364,7 +355,7 @@ void test_querytactics_error_parse_tactics(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -382,9 +373,7 @@ void test_querytactics_error_parse_tactics(void **state)
 }
 
 void test_queryname_error_socket(void **state) {
-    (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = NULL;
@@ -394,7 +383,7 @@ void test_queryname_error_socket(void **state) {
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -417,9 +406,7 @@ void test_queryname_error_socket(void **state) {
 }
 
 void test_queryname_no_response(void **state) {
-    (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = NULL;
@@ -429,7 +416,7 @@ void test_queryname_no_response(void **state) {
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -452,9 +439,7 @@ void test_queryname_no_response(void **state) {
 }
 
 void test_queryname_bad_response(void **state) {
-    (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = NULL;
@@ -465,7 +450,7 @@ void test_queryname_bad_response(void **state) {
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -489,9 +474,7 @@ void test_queryname_bad_response(void **state) {
 }
 
 void test_queryname_error_parse(void **state) {
-    (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"info\":}]");
@@ -501,7 +484,7 @@ void test_queryname_error_parse(void **state) {
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -523,9 +506,7 @@ void test_queryname_error_parse(void **state) {
 }
 
 void test_queryname_error_parse_technique_name(void **state) {
-    (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"info\":\"Tactic1\"}]");
@@ -535,7 +516,7 @@ void test_queryname_error_parse_technique_name(void **state) {
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -557,9 +538,7 @@ void test_queryname_error_parse_technique_name(void **state) {
 }
 
 void test_queryname_error_parse_technique_external_id(void **state) {
-    (void) state;
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\"}]");
@@ -569,7 +548,7 @@ void test_queryname_error_parse_technique_external_id(void **state) {
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -590,11 +569,8 @@ void test_queryname_error_parse_technique_external_id(void **state) {
 
 }
 
-void test_query_tactics_error_filling_technique(void **state)
-{
-    (void) state;
+void test_query_tactics_error_filling_technique(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
@@ -604,7 +580,7 @@ void test_query_tactics_error_filling_technique(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -629,11 +605,8 @@ void test_query_tactics_error_filling_technique(void **state)
 
 }
 
-void test_query_tactics_success(void **state)
-{
-    (void) state;
+void test_query_tactics_success(void **state) {
     int ret;
-    OSHash *hash_table = (OSHash *)1;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
@@ -644,7 +617,7 @@ void test_query_tactics_success(void **state)
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, hash_table);
+    will_return(__wrap_OSHash_Create, mock_hashmap);
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -670,11 +643,7 @@ void test_query_tactics_success(void **state)
 
 }
 
-void test_mitre_get_attack(void **state)
-{
-    (void) state;
-
-    static OSHash techniques_table;
+void test_mitre_get_attack(void **state) {
     technique_data tech;
     technique_data tech_rec;
     technique_data *p_tech;
@@ -683,6 +652,7 @@ void test_mitre_get_attack(void **state)
 
     tech.technique_id = mitre_id;
     tech.technique_name = "Technique1";
+
     /* set string to receive*/
     expect_any(__wrap_OSHash_Get,  self);
     expect_string(__wrap_OSHash_Get,  key, mitre_id);

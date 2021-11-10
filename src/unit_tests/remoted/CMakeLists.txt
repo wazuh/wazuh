@@ -19,6 +19,9 @@ set_target_properties(
 
 target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
@@ -26,13 +29,14 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
-                            -Wl,--wrap,_mdebug2 -Wl,--wrap,sleep -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
+                            -Wl,--wrap,sleep -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
                             -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap=key_lock_write -Wl,--wrap=key_unlock -Wl,--wrap=time \
                             -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=OS_IsAllowedDynamicID -Wl,--wrap=_mwarn \
                             -Wl,--wrap=OS_DeleteSocket -Wl,--wrap=nb_close -Wl,--wrap=rem_setCounter -Wl,--wrap=key_lock_read \
-                            -Wl,--wrap=_mdebug1 -Wl,--wrap=rem_inc_tcp -Wl,--wrap=rem_dec_tcp -Wl,--wrap=close -Wl,--wrap=accept \
+                            -Wl,--wrap=rem_inc_tcp -Wl,--wrap=rem_dec_tcp -Wl,--wrap=close -Wl,--wrap=accept \
                             -Wl,--wrap=wnotify_add -Wl,--wrap,fcntl -Wl,--wrap,_merror -Wl,--wrap=nb_open -Wl,--wrap=recvfrom \
-                            -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send -Wl,--wrap=rem_add_send")
+                            -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send \
+                            -Wl,--wrap=rem_add_send ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
@@ -45,7 +49,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_
                             -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue -Wl,--wrap,time")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "-Wl,--wrap,_mwarn")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND remoted_names "test_syslogtcp")
 list(APPEND remoted_flags "-W")
 

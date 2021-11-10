@@ -22,11 +22,7 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
-static const char* VALID_ENTRY = "{"
-    "\"path\": \"/test\",\n"
-    "\"timestamp\": 10,\n"
-    "\"attributes\": {}\n"
-    "}";
+static const char *VALID_ENTRY = "{\"path\":\"/test\",\"timestamp\":10,\"version\":2,\"attributes\":{\"type\":\"file\"}}";
 
 #define BASE_WIN_ALLOWED_ACE \
     "["                      \
@@ -80,8 +76,7 @@ static cJSON *_prepare_valid_entry(sqlite3_int64 inode, void *perm, perm_format_
     cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(2048));
     cJSON_AddItemToObject(object, "mtime", cJSON_CreateNumber(10));
     cJSON_AddItemToObject(object, "inode", cJSON_CreateNumber(inode));
-    cJSON_AddItemToObject(object, "type", cJSON_CreateString("test_type"));
-
+    cJSON_AddItemToObject(object, "type", cJSON_CreateString("file"));
     if (perm_format == PERM_JSON) {
         cJSON_AddItemToObject(object, "perm", perm);
     } else if (perm_format == PERM_STRING) {
@@ -89,7 +84,6 @@ static cJSON *_prepare_valid_entry(sqlite3_int64 inode, void *perm, perm_format_
     } else {
         fail_msg("Invalid format for permission (%d)", perm_format);
     }
-
     cJSON_AddItemToObject(object, "uid", cJSON_CreateString("00000"));
     cJSON_AddItemToObject(object, "gid", cJSON_CreateString("AAAAA"));
     cJSON_AddItemToObject(object, "hash_md5", cJSON_CreateString("AAAA23BCD1113A"));
@@ -111,10 +105,6 @@ static cJSON *_prepare_valid_entry(sqlite3_int64 inode, void *perm, perm_format_
 #define expect_wdb_fim_insert_entry2_perm_success(inode, perm) _expect_wdb_fim_insert_entry2_success(inode, perm)
 
 void _expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode, const char *const perm) {
-    expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
 
     expect_wdb_stmt_cache_call(1);
 
@@ -173,7 +163,6 @@ static int teardown_wdb_t(void **state) {
 /* tests */
 
 static void test_wdb_syscheck_save2_wbs_null(void **state) {
-    (void) state; /* unused */
     int ret;
 
     expect_string(__wrap__merror, formatted_msg, "WDB object cannot be null.");
@@ -187,7 +176,7 @@ static void test_wdb_syscheck_save2_payload_null(void **state) {
     int ret;
     wdb_t * wdb = *state;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse FIM payload: '(null)'");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000): cannot parse FIM payload: ''");
 
     ret = wdb_syscheck_save2(wdb, NULL);
 
@@ -303,9 +292,6 @@ static void test_wdb_fim_insert_entry2_timestamp_null(void **state) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     wdb_t * wdb = *state;
 
-    will_return(__wrap_cJSON_GetStringValue, "/test");
-    will_return(__wrap_cJSON_IsNumber, false);
-
     cJSON_ReplaceItemInObject(data, "timestamp", cJSON_CreateString(""));
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no timestamp path argument.");
@@ -320,12 +306,6 @@ static void test_wdb_fim_insert_entry2_attributes_null(void **state) {
     int ret;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     wdb_t * wdb = *state;
-
-    will_return(__wrap_cJSON_GetStringValue, "/test");
-
-    will_return(__wrap_cJSON_IsNumber, true);
-
-    will_return(__wrap_cJSON_IsObject, false);
 
     cJSON_ReplaceItemInObject(data, "attributes", cJSON_CreateString(""));
 
@@ -342,46 +322,9 @@ static void test_wdb_fim_insert_entry2_fail_cache(void **state) {
     wdb_t * wdb = *state;
     cJSON *data = cJSON_Parse(VALID_ENTRY);
 
-    expect_cJSON_GetStringValue_call("/test");
-
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
-
     will_return(__wrap_wdb_stmt_cache, -1);
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) Can't cache statement");
-
-    ret = wdb_fim_insert_entry2(wdb, data);
-
-    cJSON_Delete(data);
-    assert_int_equal(ret, -1);
-}
-
-static void test_wdb_fim_insert_entry2_fail_element_null(void **state) {
-    int ret;
-    wdb_t * wdb = *state;
-    cJSON* data = cJSON_Parse(VALID_ENTRY);
-    cJSON *array = cJSON_CreateObject();
-
-    cJSON_AddItemToObject(array, "inode", cJSON_CreateObject());
-    cJSON_ReplaceItemInObject(data, "attributes", array);
-    data->child->next->next->child->string = NULL;
-
-    expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
-
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
-
-    expect_wdb_stmt_cache_call(1);
-
-    expect_sqlite3_bind_text_call(1, "/test", 1);
-    expect_sqlite3_bind_text_call(2, "file", 1);
-    expect_sqlite3_bind_int64_call(3, 10, 0);
-    expect_sqlite3_bind_text_call(18, NULL, 1);
-    expect_sqlite3_bind_text_call(19, NULL, 1);
-    expect_sqlite3_bind_text_call(21, "/test", 1);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -393,15 +336,9 @@ static void test_wdb_fim_insert_entry2_fail_element_string(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
-    cJSON *array = cJSON_CreateObject();
+    cJSON *array = cJSON_GetObjectItem(data, "attributes");
 
     cJSON_AddItemToObject(array, "invalid_attribute", cJSON_CreateString("sasssss"));
-    cJSON_ReplaceItemInObject(data, "attributes", array);
-
-    expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
 
     expect_wdb_stmt_cache_call(1);
 
@@ -424,15 +361,10 @@ static void test_wdb_fim_insert_entry2_fail_element_number(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
-    cJSON *array = cJSON_CreateObject();
+    cJSON *array = cJSON_GetObjectItem(data, "attributes");
+
 
     cJSON_AddItemToObject(array, "invalid_attribute", cJSON_CreateNumber(1000));
-    cJSON_ReplaceItemInObject(data, "attributes", array);
-
-    expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
 
     expect_wdb_stmt_cache_call(1);
 
@@ -455,11 +387,6 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
-
-    expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
 
     expect_wdb_stmt_cache_call(1);
 
@@ -486,14 +413,7 @@ static void test_wdb_fim_insert_entry2_registry_arch_null(void **state) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
-    cJSON_AddItemToObject(data, "arch", cJSON_CreateObject());
-
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("registry_value");
-    expect_cJSON_GetStringValue_call(NULL);
+    cJSON_ReplaceItemInObject(cJSON_GetObjectItem(data, "attributes"), "type", cJSON_CreateString("registry_value"));
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save registry request with no arch argument.");
 
@@ -509,16 +429,8 @@ static void test_wdb_fim_insert_entry2_registry_value_name_null(void **state) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
+    cJSON_ReplaceItemInObject(cJSON_GetObjectItem(data, "attributes"), "type", cJSON_CreateString("registry_value"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
-    cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
-
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("registry_value");
-    expect_cJSON_GetStringValue_call("[x32]");
-    expect_cJSON_GetStringValue_call(NULL);
 
     expect_string(__wrap__merror,
                   formatted_msg,
@@ -530,18 +442,13 @@ static void test_wdb_fim_insert_entry2_registry_value_name_null(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_wdb_fim_insert_entry2_registry_item_type_null(void **state) {
+static void test_wdb_fim_insert_entry2_item_type_null(void **state) {
     int ret;
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
-    cJSON_ReplaceItemInObject(data, "type", cJSON_CreateObject());
-
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call(NULL);
+    cJSON_DeleteItemFromObject(cJSON_GetObjectItem(data, "attributes"), "type");
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with no type attribute.");
 
@@ -561,11 +468,7 @@ static void test_wdb_fim_insert_entry2_invalid_item_type(void **state) {
     }
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
-
-    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("invalid");
+    cJSON_ReplaceItemInObject(cJSON_GetObjectItem(data, "attributes"), "type", cJSON_CreateString("invalid"));
 
     expect_string(__wrap__merror, formatted_msg, "DB(000) fim/save request with invalid 'invalid' type argument.");
 
@@ -585,14 +488,8 @@ static void test_wdb_fim_insert_entry2_registry_invalid_item_type(void **state) 
     }
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
+    cJSON_ReplaceItemInObject(cJSON_GetObjectItem(data, "attributes"), "type", cJSON_CreateString("registry_invalid"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
-
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("registry_invalid");
-    expect_cJSON_GetStringValue_call("[x32]");
 
     expect_string(__wrap__merror, formatted_msg,
                   "DB(000) fim/save request with invalid 'registry_invalid' type argument.");
@@ -613,13 +510,9 @@ static void test_wdb_fim_insert_entry2_registry_succesful(void **state) {
     }
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
+    cJSON_ReplaceItemInObject(cJSON_GetObjectItem(data, "attributes"), "type", cJSON_CreateString("registry"));
 
     expect_wdb_stmt_cache_call(1);
-
-    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("registry");
 
     expect_sqlite3_bind_text_call(1, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
     expect_sqlite3_bind_text_call(2, "registry_key", 1);
@@ -646,16 +539,10 @@ static void test_wdb_fim_insert_entry2_registry_key_succesful(void **state) {
     }
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
+    cJSON_ReplaceItemInObject(cJSON_GetObjectItem(data, "attributes"), "type", cJSON_CreateString("registry_key"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
 
     expect_wdb_stmt_cache_call(1);
-
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("registry_key");
-    expect_cJSON_GetStringValue_call("[x32]");
 
     expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
     expect_sqlite3_bind_text_call(2, "registry_key", 1);
@@ -689,19 +576,12 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     }
 
     cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
+    cJSON_ReplaceItemInObject(attributes, "type", cJSON_CreateString("registry_value"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
-    cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
+    cJSON_AddItemToObject(data, "value_name", cJSON_CreateString("testname"));
     cJSON_AddStringToObject(attributes, "value_type", "REG_SZ");
 
     expect_wdb_stmt_cache_call(1);
-
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("registry_value");
-    expect_cJSON_GetStringValue_call("[x32]");
-    expect_cJSON_GetStringValue_call("testname");
 
     expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
     expect_sqlite3_bind_text_call(2, "registry_value", 1);
@@ -783,11 +663,6 @@ static void test_wdb_fim_insert_entry2_invalid_json_object(void **state) {
 
     cJSON_AddItemToObject(cJSON_GetObjectItem(data, "attributes"), "invalid", object);
 
-    expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsObject_call(true);
-    expect_cJSON_GetStringValue_call("file");
-
     expect_wdb_stmt_cache_call(1);
 
     expect_sqlite3_bind_text_call(1, "/test", 1);
@@ -822,13 +697,12 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_timestamp_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_attributes_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_fail_cache),
-        cmocka_unit_test(test_wdb_fim_insert_entry2_fail_element_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_fail_element_string),
         cmocka_unit_test(test_wdb_fim_insert_entry2_fail_element_number),
         cmocka_unit_test(test_wdb_fim_insert_entry2_fail_sqlite3_stmt),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_arch_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_name_null),
-        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_item_type_null),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_item_type_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_item_type),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_invalid_item_type),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_succesful),

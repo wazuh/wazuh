@@ -21,18 +21,22 @@ set_target_properties(
 
 target_link_libraries(TASK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate task manager tests
 list(APPEND task_names "test_wm_task_manager")
-list(APPEND task_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,pthread_exit -Wl,--wrap,CreateThread -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close \
+list(APPEND task_flags "-Wl,--wrap,pthread_exit -Wl,--wrap,CreateThread -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close \
                         -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,w_is_worker -Wl,--wrap,wm_task_manager_parse_message -Wl,--wrap,wm_task_manager_process_task \
-                        -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,getpid")
+                        -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND task_names "test_wm_task_manager_parsing")
-list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,w_get_timestamp")
+list(APPEND task_flags "-Wl,--wrap,w_get_timestamp ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND task_names "test_wm_task_manager_commands")
-list(APPEND task_flags "-Wl,--wrap,_mterror -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
-                        -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,w_sleep_until")
+list(APPEND task_flags "-Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
+                        -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,w_sleep_until \
+                        ${DEBUG_OP_WRAPPERS}")
 
 # Compilig tests
 list(LENGTH task_names count)

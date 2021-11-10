@@ -171,13 +171,7 @@ int test_teardown_context(void **state) {
     os_free(cfg->target_cfg->agent_name);
     os_free(cfg->target_cfg->sender_ip);
     os_free(cfg->target_cfg);
-    os_free(cfg->cert_cfg->agent_cert);
-    os_free(cfg->cert_cfg->agent_key);
-    os_free(cfg->cert_cfg->authpass);
-    os_free(cfg->cert_cfg->ca_cert);
-    os_free(cfg->cert_cfg->ciphers);
-    os_free(cfg->cert_cfg->authpass_file);
-    os_free(cfg->cert_cfg);
+    w_enrollment_cert_destroy(cfg->cert_cfg);
     os_free(cfg->keys);
     if(cfg->ssl) {
         SSL_free(cfg->ssl);
@@ -267,20 +261,14 @@ int test_teardown_w_enrollment_request_key(void **state) {
     os_free(cfg->target_cfg->manager_name);
     os_free(cfg->target_cfg->sender_ip);
     os_free(cfg->target_cfg);
-    os_free(cfg->cert_cfg->agent_cert);
-    os_free(cfg->cert_cfg->agent_key);
-    os_free(cfg->cert_cfg->authpass);
-    os_free(cfg->cert_cfg->ca_cert);
-    os_free(cfg->cert_cfg->ciphers);
-    os_free(cfg->cert_cfg->authpass_file);
-    os_free(cfg->cert_cfg);
+    w_enrollment_cert_destroy(cfg->cert_cfg);
     os_free(cfg->keys);
+
     w_enrollment_destroy(cfg);
     test_mode = 0;
     return 0;
 }
 
-//Setup
 int test_setup_ssl_context(void **state) {
     SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
     SSL *ssl = __real_SSL_new(ctx);
@@ -307,10 +295,8 @@ int test_setup_enrollment_load_pass(void **state) {
 int test_teardown_enrollment_load_pass(void **state) {
     w_enrollment_cert *cert_cfg;
     cert_cfg = *state;
-    os_free(cert_cfg->ciphers);
-    os_free(cert_cfg->authpass);
-    os_free(cert_cfg->authpass_file);
-    os_free(cert_cfg);
+    w_enrollment_cert_destroy(cert_cfg);
+
     test_mode = 0;
     return 0;
 }

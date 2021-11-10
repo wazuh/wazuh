@@ -7234,14 +7234,14 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     w_dir->LowPart = current_time.dwLowDateTime;
     w_dir->HighPart = current_time.dwHighDateTime;
 
-    if (OSHash_Add(syscheck.wdata.directories, "C:\\some\\path", w_dir) != 2)
+    if (__real_OSHash_Add(syscheck.wdata.directories, "C:\\some\\path", w_dir) != 2)
         fail();
 
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.directories->elements, 1);
-    assert_non_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path"));
+    assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path"));
 }
 
 void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
@@ -7264,14 +7264,14 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     w_dir->LowPart = 0;
     w_dir->HighPart = 0;
 
-    if (OSHash_Add(syscheck.wdata.directories, "C:\\some\\path", w_dir) != 2)
+    if (__real_OSHash_Add(syscheck.wdata.directories, "C:\\some\\path", w_dir) != 2)
         fail();
 
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.directories->elements, 0);
-    assert_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path"));
+    assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path"));
 }
 
 void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
@@ -7303,7 +7303,7 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
 
         snprintf(key, OS_SIZE_256, "C:\\some\\path-%d", i);
 
-        if (OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
+        if (__real_OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
             fail();
     }
 
@@ -7311,9 +7311,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.directories->elements, 3);
-    assert_non_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-0"));
-    assert_non_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-1"));
-    assert_non_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
+    assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-0"));
+    assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-1"));
+    assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
 }
 
 void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
@@ -7350,7 +7350,7 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
 
         snprintf(key, OS_SIZE_256, "C:\\some\\path-%d", i);
 
-        if (OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
+        if (__real_OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
             fail();
     }
 
@@ -7358,9 +7358,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.directories->elements, 1);
-    assert_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-0"));
-    assert_non_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-1"));
-    assert_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
+    assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-0"));
+    assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-1"));
+    assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
 }
 
 void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
@@ -7389,16 +7389,16 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
 
         snprintf(key, OS_SIZE_256, "C:\\some\\path-%d", i);
 
-        if (OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
+        if (__real_OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
             fail();
     }
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.wdata.directories->elements, 0);
-    assert_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-0"));
-    assert_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-1"));
-    assert_null(OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
+    assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-0"));
+    assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-1"));
+    assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
 }
 
 void test_whodata_audit_start_fail_to_create_directories_hash_table(void **state) {

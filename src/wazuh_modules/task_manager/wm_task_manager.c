@@ -9,19 +9,26 @@
  * Foundation.
  */
 
-#ifdef WAZUH_UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 #ifndef WIN32
 
 #include "../wmodules.h"
 #include "wm_task_manager_parsing.h"
 #include "wm_task_manager_tasks.h"
 #include "../os_net/os_net.h"
+
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+
+/* Replace pthread_exit with mock_assert, we do this to run some death tests on a very precarious way */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+
+#define pthread_exit(x) mock_assert(0, #x, __FILE__, __LINE__)
+#else
+#define STATIC static
+#endif
+
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return

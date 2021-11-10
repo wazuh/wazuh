@@ -508,6 +508,8 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
+    char buffer[OS_SIZE_8192] = {"teststring"};
+
     expect_string(__wrap_lstat, filename, srcfile);
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
@@ -522,13 +524,13 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
 
     expect_value(__wrap_gzread, gz_fd, 2);
     will_return(__wrap_gzread, OS_SIZE_8192);
-    will_return(__wrap_gzread, "teststring");
+    will_return(__wrap_gzread, buffer);
 
     will_return(__wrap_fwrite, OS_SIZE_8192);
 
     expect_value(__wrap_gzread, gz_fd, 2);
-    will_return(__wrap_gzread, strlen("failstring"));
-    will_return(__wrap_gzread, "failstring");
+    will_return(__wrap_gzread, strlen(buffer));
+    will_return(__wrap_gzread, buffer);
 
     will_return(__wrap_fwrite, 0);
 
@@ -710,7 +712,6 @@ void test_w_homedir_stat_fail(void **state)
 {
     char *argv0 = "/fake/dir/bin";
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
-    char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
     will_return(__wrap_realpath, argv0);
@@ -721,8 +722,8 @@ void test_w_homedir_stat_fail(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable.");
 
-    val = w_homedir(argv0);
-    assert_null(val);
+    expect_assert_failure(w_homedir(argv0));
+
 }
 #endif
 
@@ -835,6 +836,7 @@ void test_expand_win32_wildcards_invalid_handle(void **state) {
     char *path = "C:\\wildcards*";
     char **result;
     expect_find_first_file(path, NULL, (DWORD) 0,  INVALID_HANDLE_VALUE);
+    expect_any(__wrap__mdebug2, formatted_msg);
     result = expand_win32_wildcards(path);
     *state = result;
 

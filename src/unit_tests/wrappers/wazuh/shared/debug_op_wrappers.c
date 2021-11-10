@@ -73,6 +73,7 @@ void __wrap__merror_exit(__attribute__((unused)) const char * file,
     va_end(args);
 
     check_expected(formatted_msg);
+    mock_assert(0, "merror_exit called", file, line);
 }
 
 void __wrap__mferror(__attribute__((unused)) const char * file,
