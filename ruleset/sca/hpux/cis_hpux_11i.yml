@@ -312,7 +312,7 @@ checks:
     rationale: "This machine is a NFS file server."
     remediation: "Perform the following: ch_rc -a -p NFS_SERVER=1 /etc/rc.config.d/nfsconf"
     compliance:
-      - ["1.3.10"]
+      - cis: ["1.3.10"]
     condition: all
     rules:
       -
@@ -323,7 +323,7 @@ checks:
     rationale: "This system must access file systems from remote servers via NFS."
     remediation: "Perform the following: ch_rc -a -p NFS_CLIENT=1 /etc/rc.config.d/nfsconf"
     compliance:
-      - ["1.3.11"]
+      - cis: ["1.3.11"]
     condition: all
     rules:
       -
@@ -334,7 +334,7 @@ checks:
     rationale: "RPC-based services are used such as: This machine is an NFS client or server  This machine is an NIS (YP) or NIS+ client or server  This machine runs a GUI or GUI-based administration tool  The machine runs a third-party software application which is dependent on RPC support (example: FlexLM License managers)"
     remediation: "Perform the following for 11.31 and later: ch_rc -a -p NFS_CORE=1 /etc/rc.config.d/nfsconf     For 11.23 and prior: mv -f /sbin/rc2.d/.NOS400nfs.core /sbin/rc2.d/400nfs.core"
     compliance:
-      - ["1.3.12"]
+      - cis: ["1.3.12"]
     condition: all
     rules:
       -
@@ -345,7 +345,7 @@ checks:
     rationale: "There is a mission-critical reason why this system must run a Web server. "
     remediation: "Perform the following: ch_rc -a -p NS_FTRACK=1           /etc/rc.config.d/ns-ftrack   ch_rc -a -p APACHE_START=1        /etc/rc.config.d/apacheconf    ch_rc -a -p HPWS_APACHE32_START=1 /etc/rc.config.d/hpws_apache32conf   ch_rc -a -p HPWS_TOMCAT_START=1   /etc/rc.config.d/hpws_tomcatconf   ch_rc -a -p NS_FTRACK=1           /etc/rc.config.d/ns-ftrack   ch_rc -a -p HPWS_WEBMIN_START=1   /etc/rc.config.d/hpws_webminconf "
     compliance:
-      - ["1.3.13"]
+      - cis: ["1.3.13"]
     condition: all
     rules:
       -
@@ -356,7 +356,69 @@ checks:
     rationale: "There exists a mission-critical reason why this system must run a DNS server."
     remediation: "Perform the following: 11.23 and prior: ch_rc -a -p NAMED=1 /etc/rc.config.d/namesvrs 11.31 and later: ch_rc -a -p NAMED=1 /etc/rc.config.d/namesvrs_dns"
     compliance:
-      - ["1.3.14"]
+      - cis: ["1.3.14"]
+    condition: all
+    rules:
+      -
+#################################################################
+# 1.4 Kernel Tuning
+#################################################################
+
+  - id: 21027
+    title: "Enable stack protection"
+    description: "Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement.    Note that HP-UX 11i is much more capable in this and other security areas than older releases; therefore, administrators should strongly consider upgrading from older releases."
+    rationale: "Buffer overflow exploits have been the basis for many of the recent highly publicized compromises and defacements of large numbers of Internet connected systems.  Many of the automated tools in use by system crackers exploit well-known buffer overflow problems in vendor-supplied and third-party software.  Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement."
+    remediation: "For 11i v2 and later: kctune -K executable_stack=0 For 11i v1: /usr/sbin/kmtune -s executable_stack=0 && mk_kernel && kmupdate"
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21028
+    title: "Network parameter modifications"
+    description: "Modify the network parameter boot configuration file to meet current best practices.  Note: HP-UX 11.11 systems require patch PHNE_25644 for ndd to set arp_cleanup_interval from /etc/rc.config.d/nddconf  Bastille Note: Bastille performs a similar action but does not support the exact same changes."
+    rationale: "Network parameter default values should align with current best practices unless there is a specific need to use other values."
+    remediation: "Perform the following to update the default network parameter values: 1. Change to the /etc/rc.config.d directory 2. Open nddconf and review the comment lines on how to use the configuration file 3. Set each of the following network parameters to the recommended value.  If a parameter does not have an entry in nddconf then add a new entry to the end of the file while properly incrementing the parameter index 4. Save nddconf.   If creating this file for the first time: 1. Setroot as the owner of nddconf. 2. Set sys as the group owner of nddconf. 3. Restrict write access to nddconf to the file owner. 4. Remove the executable and sticky bit from nddconf. "
+    compliance:
+      - cis: ["1.4.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21029
+    title: "Use more random TCP sequence numbers"
+    description: "Generate initial TCP sequence numbers that comply with RFC1948. Note: In HP-UX 11i v1 and later,  an algorithm largely compliant with RFC1948 is already used.  However, setting the isn passphrase closes the small remaining gap, and adds entropy to the seed."
+    rationale: "Makes remote off-net session hijacking attacks more difficult."
+    remediation: "Perform the following to use more random TCP sequence numbers upon system startup: 1.  Create/open the file /sbin/rc2.d/S999tcpisn 2. Add the following line:  ndd –set /dev/tcp tcp_isn_passprase=<random string> replacing <random string> with a string of random characters. 3. Save the file.  4. Set root as the owner and bin as the group owner of the file. 5. Restrict write access to the file. 6. Set the execution bit for the file."
+    compliance:
+      - cis: ["1.4.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21030
+    title: "Additional network parameter modifications"
+    description: "Configure networking to NOT forward TCP/IP packets between multiple networks, even if the machine has multiple network adapters connected to multiple networks."
+    rationale: "System is not going to be used as a firewall or gateway to pass network traffic between different networks."
+    remediation: "Perform the following to disable forwarding TCP/IP packets between networks: 1. Change to the /etc/rc.config.d directory 2. Open nddconf and review the comment lines on how to use the configuration file 3. Set each of the following network parameters to the recommended value.  If a parameter does not have an entry in nddconf then add a new entry to the end of the file while properly incrementing the parameter index 4. Save nddconf.    If creating this file for the first time: 5. Set root as the owner of nddconf. 6. Set sys as the group owner of nddconf. 7. Restrict write access to nddconf to the file owner. 8. Remove the executable and sticky bit from nddconf. "
+    compliance:
+      - cis: ["1.4.4"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21031
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.5."]
     condition: all
     rules:
       -
