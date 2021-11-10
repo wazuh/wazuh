@@ -23,4 +23,161 @@ requirements:
   description: "Requirements for running the SCA scan against HPUX family."
   condition: any
   rules:
-    - 'c: swlist HPUX*OE* -> r:^HPUX11i
+    - 'c:swlist HPUX*OE* -> r:^HPUX11i'
+
+checks:
+
+#################################################################
+# 1.1  Install patches and supplementary software
+#################################################################
+
+  - id: 21000
+    title: "Apply the latest OS patches"
+    description: "Install the most current HP-UX patches and establish procedures for keeping up with future patches using HP-UX Software Assistant and HP Security Bulletin service."
+    rationale: "Installing up-to-date vendor patches and developing a procedure for keeping up with vendor patches is critical for the security and reliability of the system.  Vendors will issue operating system updates when they become aware of security vulnerabilities and other serious functionality issues, but it is up to their customers to actually download and install these patches."
+    remediation: "Download and install HP-UX Software Assistant from https://www.hp.com/go/swa if not already installed on the system. Follow the installation instructions available the above page. Run Software Assistant (SWA) as: Perform the actions specified by Software Assistant."
+    compliance:
+      - cis: ["1.1.1"]
+      - cis_level: ["1"]
+    references:
+      - https://www.hp.com/go/swa
+      - http://itrc.hp.com/service/patch/releaseIndexPage.do
+      - http://itrc.hp.com/
+    condition: all
+    rules:
+
+
+  - id: 21001
+    title: "Install and configure HP-UX Secure Shell"
+    description: "OpenSSH is a popular free distribution of the standards-track SSH protocols  which allows secure encrypted network logins and file transfers.   HP-UX Secure Shell is HP’s pre-compiled and supported version of OpenSSH."
+    rationale: "Common login and file transfer services such as telnet, FTP, rsh, rlogin, and rcp use insecure, clear-text protocols that are vulnerable to attack.  OpenSSH provides a secure, encrypted replacement for these services.   Security is improved by further constraining services in the default configuration. "
+    remediation: "Perform the following to install and securely configure Secure Shell (SSH) 1. Download and install HP-UX Secure Shell if not already installed on the system.  2. Perform the following post-installation actions to secure the SSH service: a. Change to the /opt/ssh/etc directory b. Open sshd_config c. Set the Protocol token to 2.  If it is absent, add and set it. d. Set the X11Forwarding token to yes.  If it is absent, add and set it. e. Set the IgnoreRhosts token to yes.  If itis absent, add and set it. f. Set the RhostsAuthentication token to no.  If it is absent, add and set it. g. Set the RhostsRSAAuthentication token to no. If it is absent, add and set it. h. Set the PermitRootLogin token to no. If it is absent, add and set it. i. Set the PermitEmptyPasswords token to no. If it is absent, add and set it. j. Set the Banner token to /etc/issue. If it is absent, add and set it. k. Set root as the owner of sshd_config and ssh_config. l. Set sys as the groupowner of sshd_config and ssh_config. m.  Restrict write access to sshd_config and ssh_config to the file owner."
+    compliance:
+      - cis: ["1.1.1"]
+      - cis_level: ["1"]
+    references:
+      - http://www.openssh.org/
+      - http://h20392.www2.hp.com/portal/swdepot/displayProductInfo.do?productNumber=T1471AA
+    condition: all
+    rules:
+      -
+
+#################################################################
+# 1.2 Minimize inetd network services
+#################################################################
+
+  - id: 21002
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21003
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21004
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21005
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21006
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21007
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+  - id: 21008
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21009
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
+
+  - id: 21010
+    title:
+    description:
+    rationale:
+    remediation:
+    compliance:
+      - cis:
+    references:
+      -
+    condition: all
+    rules:
+      -
