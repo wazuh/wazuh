@@ -647,118 +647,118 @@ checks:
   - id: 21049
     title: "Verify that there are no accounts with empty password fields"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password at all.  All accounts should have strong passwords or should be locked by using a password string like '*', 'NP', or '*LOCKED*' "
-    rationale: ""
-    remediation: ""
+    rationale: "User accounts should have passwords, or be locked."
+    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field:  logins –p 2. Lock each account:  passwd –l <user> 3. If a trusted system, set the administrator lock:  /usr/lbin/modprpw –m alock=YES <user>"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.2"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21050
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Set account expiration parameters on active accounts"
+    description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter.  Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires.  Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
+    rationale: "It is a good idea to force users to change passwords on a regular basis."
+    remediation: "Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd –x 91 –n 7 –w 28 <logname>    for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname>  3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a.  PASSWORD_MAXDAYS=91 b.  PASSWORD_MINDAYS=7 c.  PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.3"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21051
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Set strong password enforcement policies"
+    description: "The policies set here are designed to force users to make better password choices when changing their passwords.  Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year.   Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly."
+    rationale: "All users should use strong passwords."
+    remediation: "Perform the following to set strong password enforcement policies: 1. Change the following parameters in the /etc/default/security file to establish default password policies for new users: a.  MIN_PASSORD_LENGTH=7 b.  PASSWORD_HISTORY_DEPTH=10 c.  PASSWORD_MIN_UPPER_CASE_CHARS=1 d.  PASSWORD_MIN_DIGIT_CHARS=1 e.  PASSWORD_MIN_SPECIAL_CHARS=1 f.  PASSWORD_MIN_LOWER_CASE_CHARS=1  2. If using a trusted system, issue the following modprdef commands  to disallow null or trivial passwords: modprdef -m nullpw=NO modprdef -m rstrpw=YES"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.4"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21052
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Verify no legacy '+' entries exist in passwd and group files"
+    description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file.  HP-UX does not use these markers, but they may exist in files that have been imported from other platforms.  They should be deleted if they exist."
+    rationale: "Legacy ‘+’ entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
+    remediation: "Perform the following to remove any legacy ‘+’ entries in passwd and group files: 1. Display legacy ‘+’ entries:   grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.5"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21053
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "No '.' or group/world-writable directory in root $PATH"
+    description: "Remove the current working directory ('.') or other world-writable directories from the root user’s execution path.  To execute a file in the current directory when '.' is not in the $PATH, use the format './filename'."
+    rationale: "Including these paths in the root's executable path allows an attacker to gain superuser access if an administrator operating as root executes a Trojan horse program. "
+    remediation: "Remove the following path components if they exist in the root user’s $PATH: 1. current working directory ('.')  2. empty directories ('::') 3. a trailing path seperator at the end of the $PATH (‘:’)  4. any directory with world or group -write permissions set"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.6"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21054
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Secure user home directories"
+    description: "Remove group write and world access to all user home directories. While the modifications below are relatively benign, making global modifications to user home directories without alerting your user community can result in unexpected outages and unhappy users."
+    rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
+    remediation: "Perform the following to secure user home directories: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group write permission (g-w) and all other permissions (o-rwx)"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.7"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21055
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "No user dot-files should be group/world writable"
+    description: "Remove group and world write permissions from user dot-files. While the modifications below are relatively benign, making global modifications to user dot-files without alerting your user community can result in unexpected outages and unhappy users."
+    rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
+    remediation: "Perform the following: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group/other write permissions (go-w) from any files beginning with ‘.’"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.8"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21056
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Remove user .netrc, .rhosts and .shosts files"
+    description: "Remove user .netrc, .rhosts, and .shosts files. Note that making global modifications to user security files in their home directories without alerting your user community can result in unexpected outages and unhappy users. "
+    rationale: ".netrc files may contain unencrypted passwords that may be used to attack other systems, while .rhosts  and .shosts files used in conjunction with the BSD-style 'r-commands' (rlogin, remsh, rcp) or SSH implement a weak form of authentication based on the network address or host name of the remote computer (which can be spoofed by a potential attacker to exploit the local system)."
+    remediation: "Perform the following to remove user .netrc, .rhosts, and .shosts files. 1. Identify all user accounts, and for each existing home directory: 2. Remove .netrc, .rhosts, and .shosts files"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.9"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21057
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Set default umask for users"
+    description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system.  A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
+    rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user’s files.  The user creating the file has the discretion of making their files and directories readable by others via the chmod command.  Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
+    remediation: "Perform the following to set a default umask for users: 1. Change directory to /etc 2. Append the line  umask 077  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login 3. Update the UMASK parameter to 077 in the file /etc/default/security"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.10"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21058
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Set "mesg n" as default for all users"
+    description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device.  Note that this setting is the default on HP-UX 11i."
+    rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
+    remediation: "Perform the following: 1. Change directory to /etc 2. Append the line  mesg n  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.8.11"]
       - cis_level: ["1"]
     condition: all
     rules:
