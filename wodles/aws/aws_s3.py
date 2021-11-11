@@ -23,6 +23,7 @@
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
 #   15 - Invalid endpoint URL
+#   16 - Throttling error
 
 import argparse
 import signal
@@ -2673,6 +2674,9 @@ class AWSCloudWatchLogs(AWSService):
         Query to delete a row from the DB.
     """
 
+    # Number of attempts when a CloudWatch connection issue is detected.
+    CONNECTION_ATTEMPTS_ALLOWED = 10
+
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups,
                  remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
@@ -2871,25 +2875,48 @@ class AWSCloudWatchLogs(AWSService):
         response = None
         min_start_time = start_time
         max_end_time = end_time if end_time is not None else start_time
+
+        parameters = {'logGroupName': log_group,
+                      'logStreamName': log_stream,
+                      'nextToken': token,
+                      'startTime': start_time,
+                      'endTime': end_time,
+                      'startFromHead': True}
+
+        # Request event logs until CloudWatch returns an empty list for the log stream
         while response is None or response['events'] != list():
             debug('Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
                   '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
 
-            parameters = {'logGroupName': log_group,
-                          'logStreamName': log_stream,
-                          'nextToken': token,
-                          'startTime': start_time,
-                          'endTime': end_time,
-                          'startFromHead': True}
+            # Try to get CloudWatch Log events until the request succeeds or the allowed number of attempts is reached
+            for _ in range(AWSCloudWatchLogs.CONNECTION_ATTEMPTS_ALLOWED):
+                try:
+                    response = self.client.get_log_events(
+                        **{param: value for param, value in parameters.items() if value is not None})
+                    break
+                except botocore.exceptions.EndpointConnectionError:
+                    debug(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
+                          f'available. Attempting again.', 1)
+                except botocore.exceptions.ClientError as err:
+                    if err.response['Error']['Code'] == 'ThrottlingException':
+                        debug(f'WARNING: The "get_log_events" request was denied due to request throttling. '
+                              f'Attempting again.', 1)
+                    else:
+                        debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
+                        sys.exit(1)
+            else:
+                debug(f'ERROR: The "get_log_events" request was denied. No more attempts allowed. '
+                      f'Make sure the CloudWatch Logs endpoint URL is available and AWS CloudWatch service is not '
+                      f'receiving too many non-Wazuh related requests.', 1)
+                sys.exit(16)
 
-            response = self.client.get_log_events(
-                **{param: value for param, value in parameters.items() if value is not None})
-
+            # Update token
             token = response['nextForwardToken']
+            parameters['nextToken'] = token
 
             # Send events to Analysisd
             for event in response['events']:
-                debug('+++ Sending events to Analysd...', 1)
+                debug('+++ Sending events to Analysisd...', 1)
                 debug('The message is "{}"'.format(event['message']), 2)
                 debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
                 self.send_msg(event['message'], dump_json=False)
@@ -2904,8 +2931,6 @@ class AWSCloudWatchLogs(AWSService):
                 elif event['timestamp'] > max_end_time:
                     max_end_time = event['timestamp']
 
-        if token is None and min_start_time is None and max_end_time is None:
-            return None
         return {'token': token, 'start_time': min_start_time, 'end_time': max_end_time}
 
     def get_data_from_db(self, log_group, log_stream):
