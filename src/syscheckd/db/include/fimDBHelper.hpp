@@ -64,6 +64,102 @@ namespace FIMDBHelper
     * @return 0 on success, another value otherwise.
     */
     int updateItem(const std::string &, const nlohmann::json &);
+
+    // Template function must be defined in fimHelper.hpp
+    template<typename T>
+    int FIMDBHelper::removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    {
+        auto deleteJson = R"({
+                                "table": "",
+                                "query": {
+                                    "data":[
+                                    {
+                                    }],
+                                    "where_filter_opt":""
+                                }
+        })"_json;
+        deleteJson["table"] = tableName;
+        deleteJson["query"]["data"] = {filter};
+
+        return T::getInstance().removeItem(deleteJson);
+    }
+
+    template<typename T>
+    int FIMDBHelper::getCount(const std::string & tableName)
+    {
+        auto countQuery = R"({
+                                "table":"",
+                                "query":{"column_list":["count(*) AS count"],
+                                "row_filter":"",
+                                "distinct_opt":false,
+                                "order_by_opt":"",
+                                "count_opt":100}
+        })"_json;
+        countQuery["table"] = tableName;
+        auto count = 0;
+        auto callback {
+            [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+            {
+            }
+        };
+        T::getInstance().executeQuery(countQuery, callback);
+
+        return count;
+    }
+
+    template<typename T>
+    int FIMDBHelper::insertItem(const std::string & tableName, const nlohmann::json & item)
+    {
+        auto insertStatement = R"(
+                                {
+                                    "table": "",
+                                    "data":[
+                                        {
+                                        }
+                                    ]
+                                }
+        )"_json;
+        insertStatement["table"] = tableName;
+        insertStatement["data"] = {item};
+
+        return T::getInstance().insertItem(insertStatement);
+    }
+
+    template<typename T>
+    int FIMDBHelper::updateItem(const std::string & tableName, const nlohmann::json & item)
+    {
+        auto updateStatement = R"(
+                                {
+                                    "table": "",
+                                    "data":[
+                                        {
+                                        }
+                                    ]
+                                }
+        )"_json;
+        updateStatement["table"] = tableName;
+        updateStatement["data"] = {item};
+        auto callback {
+            [](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+            {
+            }
+        };
+
+        return T::getInstance().updateItem(updateStatement, callback);
+    }
+
+    template<typename T>
+    int FIMDBHelper::getDBItem(DBItem & item, const nlohmann::json & query)
+    {
+        auto callback {
+            [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+            {
+                //TODO: Parse query and generate a DBItem
+            }
+        };
+
+        return T::getInstance().executeQuery(query, callback);
+    }
 }
 
 #endif //_FIMDBHELPER_H

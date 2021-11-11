@@ -23,11 +23,11 @@ class FIMDBMOCK final
             static FIMDBMOCK s_instance;
             return s_instance;
         };
+        MOCK_METHOD(int, insertItem, (const nlohmann::json&), ());
 
     private:
         FIMDBMOCK() = default;
         ~FIMDBMOCK() = default;
-        MOCK_METHOD(int, insertItem, (nlohmann::json), ());
 
 };
 class FIMHelperTest : public testing::Test {
