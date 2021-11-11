@@ -37,6 +37,21 @@ def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
 
 
+def pytest_collection_modifyitems(items: list):
+    """Pytest hook used to add standalone and cluster marks to tests having none of them.
+
+    Parameters
+    ----------
+    items : list[pytest.Item]
+        List of pytest items collected in the pytest session.
+    """
+    for item in items:
+        test_name = item.nodeid.split('::')[0]
+        if 'rbac' not in test_name and not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
+            item.add_marker(standalone_env_mode)
+            item.add_marker(cluster_env_mode)
+
+
 def get_token_login_api():
     """Get the API token for the test
 
