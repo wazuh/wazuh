@@ -9,26 +9,29 @@
 
 #include "active_responses.h"
 
+#define CURL "curl"
+#define WGET "wget"
+
 /**
  * Get json with the data to share on slack from an alert. Example:
  * {
- *	"attachments":	[{
- *			"color":	"warning",
- *			"pretext":	"WAZUH Alert",
- *			"title":	"N/A",
- *			"text":	"Jan 28 02:13:23 ubuntu-bionic kernel: [39622.230464] VBoxClient[26081]: ...
- *			"fields":	[{
- *					"title":	"Agentless Host",
- *					"value":	"ubuntu-bionic"
- *				}, {
- *					"title":	"Location",
- *					"value":	"/var/log/syslog"
- *				}, {
- *					"title":	"Rule ID",
- *					"value":	"1010 (level 5)"
- *				}],
- *			"ts":	"1611800004.741250"
- *		}]
+ *  "attachments":  [{
+ *          "color":    "warning",
+ *          "pretext":  "WAZUH Alert",
+ *          "title":    "N/A",
+ *          "text": "Jan 28 02:13:23 ubuntu-bionic kernel: [39622.230464] VBoxClient[26081]: ...
+ *          "fields":   [{
+ *                  "title":    "Agentless Host",
+ *                  "value":    "ubuntu-bionic"
+ *              }, {
+ *                  "title":    "Location",
+ *                  "value":    "/var/log/syslog"
+ *              }, {
+ *                  "title":    "Rule ID",
+ *                  "value":    "1010 (level 5)"
+ *              }],
+ *          "ts":   "1611800004.741250"
+ *      }]
  * }
  *
  * @param alert Alert to extract info
@@ -38,10 +41,11 @@ static cJSON *format_output(const cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
-    char system_command[OS_MAXSTR];
-    char *site_url;
-    char *output_str;
+    char wget_data[OS_MAXSTR];
+    char *site_url = NULL;
+    char *output_str = NULL;
     int action = OS_INVALID;
+    int return_value = OS_INVALID;
     cJSON *input_json = NULL;
     cJSON *output_json = NULL;
 
@@ -69,19 +73,55 @@ int main (int argc, char **argv) {
     output_json = format_output(alert_json);
     output_str = cJSON_PrintUnformatted(output_json);
 
-    memset(system_command, '\0', OS_MAXSTR);
-    snprintf(system_command, OS_MAXSTR -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
-    if (system(system_command) != 0) {
-        write_debug_file(argv[0], "Unable to run curl");
+    // Execute the command
+
+    // Try with curl
+    bool success_command = false;
+    char *exec_cmd1[9] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+    const char *arg1[9] = { CURL, "-H", "Accept: application/json", "-H", "Content-Type: application/json", "-d", output_str, site_url, NULL };
+    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+    wfd_t *wfd = wpopenv(CURL, exec_cmd1, W_BIND_STDOUT | W_BIND_STDERR);
+    if (wfd) {
+        char buffer[4096];
+        while (fgets(buffer, sizeof(buffer), wfd->file_out));
+        int wp_closefd = wpclose(wfd);
+        if ( WIFEXITED(wp_closefd) ) {
+            int wstatus = WEXITSTATUS(wp_closefd);
+            if (wstatus == 0) {
+                success_command = true;
+                return_value = OS_SUCCESS;
+            }
+        }
+    }
+
+    if (!success_command) {
+        write_debug_file(argv[0], "Unable to run curl, trying with wget...");
 
         // Try with wget
-        char *new_output_str = wstr_replace(output_str, "\"", "'");
-        memset(system_command, '\0', OS_MAXSTR);
-        snprintf(system_command, OS_MAXSTR -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
-        if (system(system_command) != 0) {
-            write_debug_file(argv[0], "Unable to run wget");
+        char *exec_cmd2[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
+        snprintf(wget_data, OS_MAXSTR -1, "%s", output_str);
+        const char *arg2[6] = { WGET, "--keep-session-cookies", "--post-data", wget_data, site_url, NULL };
+        memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
+
+        wfd = wpopenv(WGET, exec_cmd2, W_BIND_STDOUT | W_BIND_STDERR);
+        if (wfd) {
+            char buffer[4096];
+            while (fgets(buffer, sizeof(buffer), wfd->file_out));
+            int wp_closefd = wpclose(wfd);
+            if ( WIFEXITED(wp_closefd) ) {
+                int wstatus = WEXITSTATUS(wp_closefd);
+                if (wstatus == 0) {
+                    success_command = true;
+                    return_value = OS_SUCCESS;
+                }
+            }
         }
-        os_free(new_output_str);
+    }
+
+    if (!success_command) {
+        write_debug_file(argv[0], "Unable to run wget");
+        return_value = OS_INVALID;
     }
 
     write_debug_file(argv[0], "Ended");
@@ -91,7 +131,7 @@ int main (int argc, char **argv) {
     os_free(output_str);
     os_free(site_url);
 
-    return OS_SUCCESS;
+    return return_value;
 }
 
 static cJSON *format_output(const cJSON *alert) {
@@ -101,14 +141,15 @@ static cJSON *format_output(const cJSON *alert) {
     cJSON *location_json = NULL;
     cJSON *full_log_json = NULL;
     cJSON *rule_description_json = NULL;
+    cJSON *alert_id_json = NULL;
     cJSON *root_out = NULL;
     cJSON *root_list = NULL;
     cJSON *fields_list = NULL;
-    cJSON *item_objects =NULL;
-    cJSON *item_agent =NULL;
-    cJSON *item_agentless =NULL;
-    cJSON *item_location =NULL;
-    cJSON *item_rule =NULL;
+    cJSON *item_objects = NULL;
+    cJSON *item_agent = NULL;
+    cJSON *item_agentless = NULL;
+    cJSON *item_location = NULL;
+    cJSON *item_rule = NULL;
     char temp_line[OS_MAXSTR];
     int level = -1;
 
@@ -215,7 +256,8 @@ static cJSON *format_output(const cJSON *alert) {
 
     cJSON_AddItemToObject(item_objects, "fields", fields_list);
 
-    cJSON_AddStringToObject(item_objects, "ts", cJSON_GetObjectItem(alert, "id")->valuestring);
+    alert_id_json = cJSON_GetObjectItem(alert, "id");
+    cJSON_AddStringToObject(item_objects, "ts", alert_id_json != NULL ? alert_id_json->valuestring : "");
 
     cJSON_AddItemToArray(root_list, item_objects);
     cJSON_AddItemToObject(root_out, "attachments", root_list);
