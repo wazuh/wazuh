@@ -10,9 +10,9 @@ import operator
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from copy import copy, deepcopy
-from functools import reduce
+from functools import reduce, partial
 from operator import or_
 from typing import Callable, Dict, Tuple, List
 
@@ -31,7 +31,7 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-threadpool = ThreadPoolExecutor(max_workers=1)
+process_pool = ProcessPoolExecutor(max_workers=1)
 
 
 class DistributedAPI:
@@ -222,6 +222,25 @@ class DistributedAPI:
             }
             raise exception.WazuhError(1017, extra_message=extra_info)
 
+    @staticmethod
+    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
+        """Run framework SDK function locally in another process."""
+        def debug_log(logger, message):
+            if logger.name == 'wazuh-api':
+                logger.debug2(message)
+            else:
+                logger.debug(message)
+
+        debug_log(logger, "Starting to execute request locally")
+        common.rbac.set(rbac_permissions)
+        common.broadcast.set(broadcasting)
+        common.cluster_nodes.set(nodes)
+        common.current_user.set(current_user)
+        data = f(**f_kwargs)
+        common.reset_context_cache()
+        debug_log(logger, "Finished executing request locally")
+        return data
+
     async def execute_local_request(self) -> str:
         """Execute an API request locally.
 
@@ -230,19 +249,6 @@ class DistributedAPI:
         str
             JSON response.
         """
-
-        def run_local():
-            self.debug_log("Starting to execute request locally")
-            common.rbac.set(self.rbac_permissions)
-            common.broadcast.set(self.broadcasting)
-            common.cluster_nodes.set(self.nodes)
-            common.current_user.set(self.current_user)
-            common.origin_module.set(self.origin_module)
-            data = self.f(**self.f_kwargs)
-            common.reset_context_cache()
-            self.debug_log("Finished executing request locally")
-            return data
-
         try:
             if self.f_kwargs.get('agent_list') == '*':
                 del self.f_kwargs['agent_list']
@@ -256,13 +262,16 @@ class DistributedAPI:
             if self.local_client_arg is not None:
                 lc = local_client.LocalClient()
                 self.f_kwargs[self.local_client_arg] = lc
-
             try:
                 if self.is_async:
-                    task = run_local()
+                    task = self.run_local(self.f, self.f_kwargs, self.logger, self.rbac_permissions, self.broadcasting,
+                                          self.nodes, self.current_user)
+
                 else:
-                    loop = asyncio.get_running_loop()
-                    task = loop.run_in_executor(threadpool, run_local)
+                    loop = asyncio.get_event_loop()
+                    task = loop.run_in_executor(process_pool, partial(self.run_local, self.f, self.f_kwargs,
+                                                                      self.logger, self.rbac_permissions,
+                                                                      self.broadcasting, self.nodes, self.current_user))
                 try:
                     data = await asyncio.wait_for(task, timeout=timeout)
                 except asyncio.TimeoutError:
@@ -429,6 +438,7 @@ class DistributedAPI:
                     kcopy = deepcopy(self.to_dict())
                     if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
                         kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
+
                     result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,
                                                                             json.dumps(kcopy,
@@ -459,12 +469,12 @@ class DistributedAPI:
 
         async def clean_valid_nodes(nodes_to_clean: List[Tuple]) -> List[Tuple]:
             """Clean nodes response to forward only to real nodes in a single petition for each one.
-    
+
             Parameters
             ----------
             nodes_to_clean : list
                 List of nodes to clean.
-    
+
             Returns
             -------
             list
