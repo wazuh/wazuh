@@ -1168,7 +1168,8 @@ int wdb_syscollector_netproto_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * iface = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "iface"));
-    const int type = cJSON_GetObjectItem(attributes, "type") ? cJSON_GetObjectItem(attributes, "type")->valueint : 0;
+    const char * type_string = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
+    const int type = type_string ? (strcmp(type_string, "ipv6") == 0 ? 1 : 0) : 0;
     const char * gateway = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "gateway"));
     const char * dhcp = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "dhcp"));
     const int metric = cJSON_GetObjectItem(attributes, "metric") ? cJSON_GetObjectItem(attributes, "metric")->valueint : 0;

@@ -480,6 +480,7 @@ static void wdb_syscollector_netproto_save2_fail(void) {
 
     will_return(__wrap_cJSON_GetStringValue, "iface");
     will_return(__wrap_cJSON_GetStringValue, "gateway");
+    will_return(__wrap_cJSON_GetStringValue, "type");
     will_return(__wrap_cJSON_GetStringValue, "dhcp");
     will_return(__wrap_cJSON_GetStringValue, "checksum");
     will_return(__wrap_cJSON_GetStringValue, "item_id");
@@ -491,7 +492,6 @@ static void wdb_syscollector_netproto_save2_fail(void) {
 static void wdb_syscollector_netproto_save2_success(cJSON *attribute) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetObjectItem, 1);
-    will_return(__wrap_cJSON_GetObjectItem, attribute);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -500,6 +500,7 @@ static void wdb_syscollector_netproto_save2_success(cJSON *attribute) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, "iface");
+    will_return(__wrap_cJSON_GetStringValue, "ipv6");
     will_return(__wrap_cJSON_GetStringValue, "gateway");
     will_return(__wrap_cJSON_GetStringValue, "dhcp");
     will_return(__wrap_cJSON_GetStringValue, "checksum");
