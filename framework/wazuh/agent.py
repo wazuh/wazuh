@@ -491,7 +491,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force=None):
         Added agent information.
     """
     # Check length of agent name
-    if len(name) > 128:
+    if len(name) > common.agent_name_len_limit:
         raise WazuhError(1738)
 
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
