@@ -94,7 +94,6 @@ package "db" <<Folder>> #DDDDDD{
         - callback m_syncMessageFunction
         - callback m_loggingFunction
 
-        - string createStatement()
         - FIMDB()
         - ~FIMDB()
         - FIMDB(const FIMDB&)
@@ -106,10 +105,10 @@ package "db" <<Folder>> #DDDDDD{
         + void init()
         + void registerRsync()
         + void loopRsync(lock)
-        + int insertItem(json)
-        + int removeItem(json)
-        + int updateItem(json, callback)
-        + int executeQuery(json, callback)
+        + dbQueryResult insertItem(json)
+        + dbQueryResult removeItem(json)
+        + dbQueryResult updateItem(json, callback)
+        + dbQueryResult executeQuery(json, callback)
         + FimDB getInstance()
     }
     class FimDBWrapper {
