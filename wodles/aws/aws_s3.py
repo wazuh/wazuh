@@ -2266,7 +2266,7 @@ class AWSServerAccess(AWSCustomBucket):
                 return
 
             last_key = self._get_last_key_processed(aws_account_id)
-            last_key_date = datetime.strptime(last_key, '%Y-%m-%d') if last_key else None
+            last_key_date = datetime.strptime(last_key[:19], '%Y-%m-%d-%H-%M-%S') if last_key else None
 
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
