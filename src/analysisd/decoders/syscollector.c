@@ -2011,10 +2011,11 @@ static void fill_event_alert(Eventinfo * lf, const struct deltas_fields_match_li
                       char * response) {
     const bool have_a_escaped_pipe = strstr(response, FIELD_SEPARATOR_DBSYNC_ESCAPE);
 
-    const size_t separator_count = sizeof(char *) * (os_strcnt(response, *FIELD_SEPARATOR_DBSYNC));
+    const size_t separator_count = os_strcnt(response, *FIELD_SEPARATOR_DBSYNC);
+    const size_t field_values_size = sizeof(char *) * (separator_count > 0 ? separator_count : 1);
 
     char ** field_values = NULL;
-    os_calloc(1, separator_count + 1, field_values);
+    os_calloc(1, field_values_size + 1, field_values);
 
     char ** field_values_iterator = field_values;
 
