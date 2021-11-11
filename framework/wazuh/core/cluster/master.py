@@ -10,6 +10,8 @@ import shutil
 from calendar import timegm
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
+from functools import partial
+from multiprocessing import Manager
 from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -508,8 +510,41 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return super().end_receiving_file(task_and_file_names)
 
+    @staticmethod
+    def send_data_to_wdb(data, timeout):
+        """Send chunks of data to Wazuh-db socket.
+
+        Parameters
+        ----------
+        data : dict
+            Dict containing command and list of chunks to be sent to wazuh-db.
+        timeout : Event
+            Event to notify whether the task should stop.
+
+        Returns
+        -------
+        result : dict
+            Dict containing number of updated chunks, error messages (if any) and time spent.
+        """
+        result = {'updated_chunks': 0, 'error_messages': [], 'time_spent': 0}
+        wdb_conn = WazuhDBConnection()
+        before = time()
+
+        for i, chunk in enumerate(data['chunks']):
+            if timeout.is_set():
+                break
+            try:
+                wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+                result['updated_chunks'] += 1
+            except Exception as e:
+                result['error_messages'].append((i, str(e)))
+
+        result['time_spent'] = time() - before
+        wdb_conn.close()
+        return result
+
     async def sync_wazuh_db_info(self, task_id: bytes):
-        """Iterate and update in the local wazuh-db the chunks of data received from a worker.
+        """Create a process to send to the local wazuh-db the chunks of data received from a worker.
 
         Parameters
         ----------
@@ -524,38 +559,45 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = self.task_loggers['Agent-info sync']
         logger.info(f"Starting")
         date_start_master = datetime.now()
-        wdb_conn = WazuhDBConnection()
-        result = {'updated_chunks': 0, 'error_messages': list()}
 
         try:
             # Chunks were stored under 'task_id' as an string.
             received_string = self.in_str[task_id].payload
             data = json.loads(received_string.decode())
         except KeyError as e:
-            await self.send_request(command=b'syn_m_a_err',
+            await self.send_request(command=b"syn_m_a_err",
                                     data=f"error while trying to access string under task_id {str(e)}.".encode())
             raise exception.WazuhClusterError(3035,
                                               extra_message=f"it should be under task_id {str(e)}, but it's empty.")
         except ValueError as e:
-            await self.send_request(command=b'syn_m_a_err', data=f"error while trying to load JSON: {str(e)}".encode())
+            await self.send_request(command=b"syn_m_a_err", data=f"error while trying to load JSON: {str(e)}".encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         # Update chunks in local wazuh-db
-        before = time()
-        for i, chunk in enumerate(data['chunks']):
-            try:
-                logger.debug2(f"Sending chunk {i + 1}/{len(data['chunks'])} to wazuh-db: {chunk}")
-                response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
-                if response[0] != 'ok':
-                    result['error_messages'].append(response)
-                    logger.error(f"Response for chunk {i}/{len(data['chunks'])} was not 'ok': {response}")
-                else:
-                    result['updated_chunks'] += 1
-            except Exception as e:
-                result['error_messages'].append(str(e))
-        logger.debug(f"All chunks updated in wazuh-db in {(time() - before):3f}s.")
+        timeout = self.server.manager.Event()
+        try:
+            task = self.loop.run_in_executor(self.server.task_pool, partial(self.send_data_to_wdb, data, timeout))
+            result = await asyncio.wait_for(task,
+                                            timeout=self.cluster_items['intervals']['master']['timeout_agent_info'])
+        except asyncio.TimeoutError:
+            # If timeout is raised, notify the process running this task to stop.
+            timeout.set()
+            await self.send_request(command=b"syn_m_a_err", data=f"timeout processing agent-info chunks.".encode())
+            raise exception.WazuhClusterError(3037)
+        except Exception as e:
+            await self.send_request(command=b"syn_m_a_err",
+                                    data=f"error processing agent-info chunks in process pool: {str(e)}".encode())
+            raise exception.WazuhClusterError(3038, extra_message=str(e))
+
+        # Log information about the results
+        for error in result["error_messages"]:
+            logger.debug2(f"Chunk {error[0]}/{len(data['chunks'])}: {data['chunks'][error[0]]}")
+            logger.error(f"Wazuh-db response for chunk {error[0]}/{len(data['chunks'])} was not 'ok': {error[1]}")
+        logger.debug(f"{result['updated_chunks']}/{len(data['chunks'])} chunks updated in wazuh-db "
+                     f"in {result['time_spent']:3f}s.")
 
         # Send result to worker
+        result["error_messages"] = [error[1] for error in result["error_messages"]]
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
         date_end_master = datetime.now()
         self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
@@ -669,10 +711,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info(f"Starting. Received metadata of {len(files_metadata)} files.")
 
         # Classify files in shared, missing, extra and extra valid.
-        self.server.local_integrity_lock.acquire()
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
                                                                            files_metadata, self.name)
-        self.server.local_integrity_lock.release()
 
         total_time = (datetime.now() - date_start_master).total_seconds()
         self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
@@ -936,10 +976,12 @@ class Master(server.AbstractServer):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Master")
+        self.manager = Manager()
         self.integrity_control = {}
         self.handler_class = MasterHandler
         self.task_pool = ProcessPoolExecutor(max_workers=1)
         self.integrity_already_executed = []
+        self.task_pool = ProcessPoolExecutor(max_workers=self.cluster_items['intervals']['master']['process_pool_size'])
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update])
