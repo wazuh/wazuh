@@ -764,97 +764,41 @@ checks:
     rules:
       -
 
+#################################################################
+# 1.9 Warning Banners
+#################################################################
+
   - id: 21059
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Create warning banners for terminal-session logins"
+    description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices, as well as for remote terminal-session logins such as through SSH or Telnet.  /etc/motd is generally displayed after all successful logins, no matter where the user is logging in from, but is thought to be less useful because it only provides notification to the user after the machine has been accessed."
+    rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
+    remediation: "Perform the following to create warning banners for terminal-session logins: 1. Compose a default banner text string 2. Append this string to the files  /etc/motd and /etc/motd 3. Change the owner to root and group owner to sys  for the file /etc/motd 4. Change the owner to root and group owner to root for the file /etc/issue 5. Change file permissions to (644) for the files /etc/motd and /etc/issue"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.9.1"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21060
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Create warning banners for GUI logins"
+    description: "The standard graphical login program for HP-UX requires the user to enter their username in one dialog box and their password in a second separate dialog.  The commands below set the warning message on both to be the same message, but the site has the option of using different messages on each screen.  The Dtlogin*greeting.labelString is the message for the first dialog where the user is prompted for their username, and .perslabelString is the message on the second dialog box."
+    rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
+    remediation: "Perform the following to install default warning banners for GUI logins: 1. Create a default banner text string ($banner) 2. For each directory in /usr/dt/config that contains a Xresources file, copy that Xresources file into a corresponding directory in /etc/dt/config (creating the directory if needed) 3. Append the following lines (replacing $banner with the string in step 1) to each /etc/dt/config/*/Xresources file: a. Dtlogin*greeting.labelString: $banner b. Dtlogin*greeting.persLabelString: $banner 4. Change the owner to root and group owner to sys for each Xresource file 5. Change the file permissions to 644 for each Xresource file"
     compliance:
-      - cis: ["1.8."]
+      - cis: ["1.9.2"]
       - cis_level: ["1"]
     condition: all
     rules:
       -
 
   - id: 21061
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
+    title: "Create warning banners for FTP daemon"
+    description: "The FTP daemon in HP-UX 11 is based on the popular Washington University FTP daemon (WU-FTPD), which is an Open Source program widely distributed on the Internet. Note that this setting has no effect if the FTP daemon remains de-activated from item 1.2.1."
+    rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
+    remediation: "Perform the following to install a default warning banner for the FTP daemon: 1. Ensure that an appropriate warning message exists in the /etc/issue file . 2. Append the line “banner /etc/issue” to the file /etc/ftpd/ftpaccess 3. Change file permissions to 600 for /etc/ftpd/ftpaccess 4. Change owner to root and group owner to sys for both /etc/ftpd and /etc/ftpd/ftpaccess"
     compliance:
-      - cis: ["1.8."]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      -
-
-  - id: 21062
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
-    compliance:
-      - cis: ["1.8."]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      -
-
-  - id: 21063
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
-    compliance:
-      - cis: ["1.8."]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      -
-
-  - id: 21064
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
-    compliance:
-      - cis: ["1.8."]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      -
-
-  - id: 21065
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
-    compliance:
-      - cis: ["1.8."]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      -
-
-  - id: 21066
-    title: ""
-    description: ""
-    rationale: ""
-    remediation: ""
-    compliance:
-      - cis: ["1.8."]
+      - cis: ["1.9.3"]
       - cis_level: ["1"]
     condition: all
     rules:
