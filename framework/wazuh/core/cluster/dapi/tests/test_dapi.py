@@ -61,12 +61,6 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
             assert False, f'Unexpected exception: {e.ext}'
 
 
-@pytest.fixture(scope="session", autouse=True)
-def default_session_fixture() -> Iterator[None]:
-    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
-        yield
-
-
 @pytest.mark.parametrize('kwargs', [
     {'f_kwargs': {'select': ['id']}, 'rbac_permissions': {'mode': 'black'}, 'nodes': ['worker1'],
      'basic_services': ('wazuh-modulesd', 'wazuh-db'), 'request_type': 'local_master'},
@@ -329,13 +323,6 @@ def test_DistributedAPI_tmp_file_cluster_error(mock_cluster_status):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
                 raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
-
-
-def filter_node_mock(filter_node=None, *args, **kwargs):
-    if 'filter_node' in kwargs:
-        del kwargs['filter_node']
-
-    cluster.get_nodes_info(*args, filter_node=filter_node, **kwargs)
 
 
 @patch('wazuh.core.cluster.local_client.LocalClient.execute',
