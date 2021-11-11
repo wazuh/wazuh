@@ -2,6 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
+import time
 import hashlib
 import operator
 from os import chmod, path, listdir
@@ -183,6 +185,8 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
+    logger = logging.getLogger('wazuh-api')
+    start = time.time()
     result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
                                       some_msg='Some agents information was not returned',
                                       none_msg='No agent information was returned'
@@ -204,7 +208,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
         data = db_query.run()
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
-
+    logger.info(f'KIBANA API PERFORMANCE TEST => {time.time() - start} with limit {limit}')
     return result
 
 
