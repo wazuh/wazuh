@@ -412,13 +412,450 @@ checks:
     rules:
       -
 
+#################################################################
+# 1.5 File/Directory Permissions/Access
+#################################################################
+
   - id: 21031
+    title: "Set Sticky Bit on World Writable Directories"
+    description: "Ensure that the sticky bit is set for all unexpected or exposed world writable directories"
+    rationale: "When the so-called ""sticky bit"" is set on a directory, then only the owner of a file may remove that file from the directory (as opposed to the usual behavior where anybody with write access to that directory may remove the file).  Setting the sticky bit prevents users from overwriting each other's files, whether accidentally or maliciously, and is generally appropriate for most world-writable directories."
+    remediation: "Perform the following to set the sticky bit on all exposed world writable directories: 1. Execute the checkperms utility to generate a list of all world writable directories not registered as part of an HP-UX installed product. 2. For each directory on this list set the sticky bit: chmod u+t  <directory>"
+    compliance:
+      - cis: ["1.5.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - "c:checkperms -> r:"
+
+  - id: 21032
+    title: "Secure unauthorized world-writable files and SUID/SGID executables"
+    description: "Identify and remove write access for world-writable files and unauthorized SUID/SGID files on the system."
+    rationale: "Data in world-writable files can be modified and compromised by any user on the system.  World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
+    remediation: "Perform the following to identify world writable files and SUID/SGID executables: 1. Execute the checkperms utility to generate a list of all world writable files and  unlisted SUID/SGID files. 2. For each listed world-writable file remove write access for “other” users: chmod o-w <filename> 3. Review each listed SUID/SGID file and remove if unauthorized."
+    compliance:
+      - cis: ["1.5.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - "c:checkperms -> r:"
+
+  - id: 21033
+    title: "Resolve “unowned” files and directories"
+    description: "Evaluate ownership of any files that are not owned by a locally defined user, and consider reassignment to an active user."
+    rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.   It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user onthe system (in this example, 'bin') as appropriate"
+    remediation: "Perform the following to identify 'unowned' files and directories,  and consider resetting ownership to a default owner and restricting access permissions: 1. Locate all local files that are owned by users or groups not listed in the system configuration files. find / \( -nouser –o -nogroup \) 2. Consider resetting user and group ownership of these files to a default active user (e.g. bin) chown bin:bin  <filename> 3. Consider restricting world-write permissions, and removingany SUID/SGID bits on these files. chmod ug-s,o-w <filename>"
+    compliance:
+      - cis: ["1.5.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+#################################################################
+# 1.6 System Access, Authentication, and Authorization
+#################################################################
+
+  - id: 21034
+    title: "Enable Hidden Passwords"
+    description: "Enable hidden passwords by converting the system to a Trusted System or to use Shadow Passwords. Note: do not perform this if the system runs applications that read the encrypted password entries in /etc/passwd directly."
+    rationale: "Without hidden passwords, an intruder could use any user’s account to obtain hashed passwords and use crack or similar utilities to find easily guessed passwords.  Password aging (covered in item 1.8.3) ensures that users change their passwords on a regular basis and helps stop the use of stolen passwords."
+    remediation: "Perform one of the following to convert the system to trusted mode or shadowed mode: A. Use the system management program smh or sam to convert to a trusted system –or- B. Use the command pwconv to convert to shadowed passwords."
+    compliance:
+      - cis: ["1.6.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21035
+    title: "Restrict users who can access to FTP"
+    description: "Configure FTP to prevent certain users from accessing the system via FTP.  The file ftpusers contains a list of users who are not allowed to access the system via FTP.  Generally, only normal users should ever access the system via FTP - there should be no reason for 'system' type accounts to be transferring information via this mechanism.  Certainly, the root account should never be allowed to transfer files directly via FTP."
+    rationale: "Privileged users such as root and other 'system' type accounts should never be transferring information via such an insecure service as FTP."
+    remediation: "Perform the following to restrict default priviledged users from access to FTP: 1. Add the users root daemon bin sys adm lp uucp nuucp nobody hpdb useradm to the file /etc/ftpd/ftpusers (each user on a single line). 2. Set the file owner and group owner to the user bin. 3. Set the file permissions so that only the file owner has read or write perms and no user has execute permission (600)."
+    compliance:
+      - cis: ["1.6.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21036
+    title: "Prevent Syslog from accepting messages from the network"
+    description: "Prevent syslogd from accepting messages from the network.  By default the system logging daemon, syslogd, listens for log messages from other systems on network port 514/udp. Unfortunately, the protocol used to transfer these messages does not include any form of authentication, so a malicious outsider could simply barrage the local system's Syslog port with spurious traffic—either as a denial-of-service attack on the system, or to fill up the local system's logging filesystems so that subsequent attacks will not be logged."
+    rationale: "Disabling unused network services will reduce the remote attack surfaces of the hosting system."
+    remediation: "Disable the syslog network option by doing the following: 1. Open the syslogd startup configuration file /etc/rc.config.d/syslogd 2. Add the parameter '-N' to the SYSLOGD_OPTS= line if it is not already present 3. Save and close the file."
+    compliance:
+      - cis: ["1.6.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21037
+    title: "Disable XDMCP port"
+    description: "Disable the XDMCP port for remote login services. The standard GUI login provided on most Unix systems can act as a remote login server to other devices (including X terminals and other workstations).  Access control is handled via the Xaccess file—by default under HP-UX, this file allows any system on the network to get a remote login screen from the local system.  This behavior can be overridden in the /etc/dt/config/Xaccess file."
+    rationale: "XDMCP is an unencrypted protocol that may reduce the confidentiality and integrity of data that traverses it."
+    remediation: "Perform the following to disable the XDMCP port: 1. Open the file /etc/dt/config/Xconfig.  If it does not exist, copy  it from /usr/dt/config/Xconfig. 2. Append the line Dtlogin.requestPort:0 to the file and close."
+    compliance:
+      - cis: ["1.6.4"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21038
+    title: "Set default locking screensaver timeout"
+    description: "The default timeout is between 10 and 30 minutes of keyboard/mouse inactivity before a password-protected screen saver is invoked by the CDE session manager depending on the OS release and the locale.  Uniformly reduce this default timeout value to 10 minutes (this setting can still be overridden by individual users in their own environment.)"
+    rationale: "Setting the inactivity timer to a low value will reduce the probability of a malicious entity compromising the system via the console."
+    remediation: "Perform the following to set a default screensaver timeout for all environments: 1. For every sys.resources file in each directory in /usr/dt/config/ create a corresponding /etc/dt/config/*/sys.resources file if it does not already exist. 2. Append the following lines to each /etc/dt/config/*/sys.resources file: dtsession*saverTimeout: 10 dtsession*lockTimeout: 10"
+    compliance:
+      - cis: ["1.6.5"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21039
+    title: "Configure IPFilter to allow only select communication"
+    description: "HP-UX IPFilter (B9901AA) is a stateful system firewall that controls IP packet flow in or out of a machine.  It is installed by default on HP-UX 11iv2 (11.23) and later.  On older systems, IPFilter can be obtained from http://www.hp.com/go/ipfilter.  The rules below will work in an otherwise-empty ipf.conf file, or, if there are rules already present, it will block all that were not passed earlier in the ruleset.  This is less likely to break things, but will allow more traffic through.  Alternatively, you can instead take the pass lines below  (not using the block rule), and change them into 'block in quick' rules, and place those at the top of the file.  This will error on the side of blocking traffic.  See ipf(5) for detail.  Your ruleset can be tested using ipftest(1). Bastille note: if using to change and monitor the IPFilter firewall, ensure that rules are added to /etc/opt/sec_mgmt/bastille/ipf.customrules, and that Bastille is rerun with the last config file, so they will not be overwritten in a subsequent lockdown."
+    rationale: "Restricting incoming network traffic to explicitly allowed hosts will help prevent unauthorized access the system."
+    remediation: "Perform the following to add enable ipfilter and install a default ruleset to block unauthorized incoming connections: 1. Enable ipfilter: ipfilter –e 2. Append the following lines to /etc/opt/ipf/ipf.conf : block in all pass in from <allowed net>/<mask> pass in from <allowed net>/<mask> replacing each <allowed net>/<mask> with an authorized IP address and mask. 3. Flush the old rules and read in the updated rules: ipf –Fa –f /etc/opt/ipf/ipf.conf"
+    compliance:
+      - cis: ["1.6.6"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21040
+    title: "Restrict at/cron to authorized users"
+    description: "The cron.allow and at.allow files are a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals. "
+    rationale: "On many systems, only the system administrator needs the ability to schedule jobs."
+    remediation: "Perform the following to restrict at/cron to root only: 1.  Change to the /var/adm/cron directory 2. Archive or delete any existing cron.deny and at.deny files 3. Create or replace the cron.allow and at.allow files with a single line file containing just root  4. Ensure that the files are owned by root and group owned by sys 5. Ensure that no users have write/execute permission to the files, and that only root has read access to the files."
+    compliance:
+      - cis: ["1.6.7"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21041
+    title: "Restrict crontab file permissions"
+    description: "The system crontab files are only accessed by the cron daemon (which runs with superuser privileges) and the crontab command (which is set-UID to root)."
+    rationale: "Allowing unprivileged users to read or (even worse) modify system crontab files can create the potential for a local user on the system to gain elevated privileges."
+    remediation: "Perform the following so that only root has access to the crontab files: 1. Change to the /var/spool/cron/crontabs directory 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the files."
+    compliance:
+      - cis: ["1.6.8"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21042
+    title: "Restrict root logins to system console"
+    description: "Anonymous root logins should never be allowed except on the system console in emergency situations.  At all other times, the administrator should access the system via an unprivileged account and use some authorized mechanism to gain additional privilege, such as the su command, the freely-available sudo package discussed in item SN.6, or the HP Role Based Authorization system also discussed in item SN.6.  These mechanisms provide at least a limited audit trail in the event of problems."
+    rationale: "Anonymous root logins do not provide an audit trail, nor are subject to additional authorization provisions."
+    remediation: "Perform the following to restrict root logins to the system console only: 1. Replace the file /etc/securetty with a single line file containing console 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the file."
+    compliance:
+      - cis: ["1.6.9"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21043
+    title: "Set retry limit for account lockout"
+    description: "The commands below set the number of failed login attempts a user is allowed before their account is disabled. Setting this number to a reasonably low value helps discourage brute force password guessing attacks.  Note that use of this setting may lead to a Denial of Service situation in the event of a widespread password guessing attack, possibly caused by a network security audit. However, choosing not to implement this setting raises the risk of such an attack being successful unless passwords are made harder to guess such as by increasing the minimum password length or diversity requirements on the system as indicated in item 1.8.4.  Note that some other standards suggest fewer retries, in the range from three to five.  You may choose to weigh the helpdesk load versus brute-force-attack defense in your own environment, favoring smaller values when password complexity requirements are not implemented, and there are a large number of user accounts on the server, in an LDAP/NIS-enabled environment, for example.  In all cases, CIS recommends no greater than 10 attempts for the Level 1 benchmark."
+    rationale: "Setting the retry limit to a reasonably low value helps discourage brute force password guessing attacks."
+    remediation: "1. Ensure system is a trusted system. 2. Use the /usr/lbin/modprpw command to set the maximum retry limit to 10 for all current unlocked users except root. 3. Use the /usr/lbin/modprdef command to set the default max retry limit to 10 4. Append the line AUTH_MAXTRIES=10 to /etc/default/security to set the default max retry limit to 10"
+    compliance:
+      - cis: ["1.6.10"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21044
+    title: "Disable nobody access for secure RPC"
+    description: "The keyserv process stores user keys that are utilized with the ONC secure RPC mechanism.  The action below prevents keyserv from using default keys for the 'nobody' user, effectively stopping this user from accessing information via secure RPC."
+    rationale: "The default 'nobody' user should not be accessing information via secure RPC."
+    remediation: "Perform the following to disable nobody access for secure RPC: 1. Add the '-d' option to the  KEYSERV_OPTIONS parameter in the system startup configuration file /etc/rc.config.d/namesvrs"
+    compliance:
+      - cis: ["1.6.11"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+#################################################################
+# 1.7 Logging
+#################################################################
+
+  - id: 21045
+    title: "Enable kernel-level auditing"
+    description: "Kernel-level auditing provides information on commands and system calls that are executed on the local system.  The audit trail may be reviewed with the audisp command.  Kernel auditing has a prerequisite of either Standard Security Mode Extensions, or in the case of HP-UX 11iv1 and prior, Trusted Mode. Kernel-level auditing can consume large amounts of disk space and even cause a system performance impact, particularly on heavily used machines.  Sites may wish to consider logging less information to help reduce the amount of disk space and other system resources consumed by the auditing process. See the audevent(1M) manual page for more information."
+    rationale: "By recording key system events in log files, kernel-level auditing provides a trail to detect and analyze security breaches.  Moreover, this data can be used to detect potential security weakness, and also serves as a deterrent against system abuses."
+    remediation: "Use the Systems Management Homepage (SMH) facility to configure and enable the type and level of auditing appropriate for your environment."
+    compliance:
+      - cis: ["1.7.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21046
+    title: "Enable logging from inetd"
+    description: "If inetd is running, it is a good idea to make use of the 'logging' (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd‟s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systemsdeposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its “ipmon” daemon as either a compliment or alternative to inetd logging."
+    rationale: "Logging information about the source of inetd network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
+    remediation: "Perform the following: ch_rc -a -p INETD_ARGS=-l /etc/rc.config.d/netdaemons"
+    compliance:
+      - cis: ["1.7.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21047
+    title: "Turn on additional logging for FTP daemon"
+    description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd’s /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon  (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
+    rationale: "Logging information about the source of ftp network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
+    remediation: "Perform the following to enable logging for the FTP daemon: 1. Change directory to /etc. 2. Open the inetd.conf file and locate the ftpd configuration entry line. 3. Add the '-L' and '-l' flags to the ftpd entry if not already present. 4. Save and close file."
+    compliance:
+      - cis: ["1.7.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+#################################################################
+# 1.8 User Accounts and Environment
+#################################################################
+
+  - id: 21048
+    title: "Block system accounts"
+    description: "Accounts that are not being used by regular users should be locked.  Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use.  The other listed accounts should never require direct access.  The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
+    rationale: "System accounts are not used by regular users, and almost never require direct access; thus, they should be locked to prevent accidental or malicious usage."
+    remediation: "Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm  1. Lock the account:  passwd –l <user> 2. Set the login shell to an invalid program:  /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock:  /usr/lbin/modprpw –m alock=YES <user>"
+    compliance:
+      - cis: ["1.8.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21049
+    title: "Verify that there are no accounts with empty password fields"
+    description: "An account with an empty password field means that anybody may log in as that user without providing a password at all.  All accounts should have strong passwords or should be locked by using a password string like '*', 'NP', or '*LOCKED*' "
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21050
     title: ""
     description: ""
     rationale: ""
     remediation: ""
     compliance:
-      - cis: ["1.5."]
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21051
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21052
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21053
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21054
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21055
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21056
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21057
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21058
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21059
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21060
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21061
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21062
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21063
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21064
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21065
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      -
+
+  - id: 21066
+    title: ""
+    description: ""
+    rationale: ""
+    remediation: ""
+    compliance:
+      - cis: ["1.8."]
+      - cis_level: ["1"]
     condition: all
     rules:
       -
