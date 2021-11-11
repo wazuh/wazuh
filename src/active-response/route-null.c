@@ -120,6 +120,8 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Invalid system");
     }
 #else
+    char * sec_srcip = os_shell_escape(srcip);
+
     if (action == ADD_COMMAND) {
         const char *regex = ".*Default Gateway.*[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*";
         const char *tmp_file = "default-gateway.txt";
@@ -144,19 +146,22 @@ int main (int argc, char **argv) {
         remove(tmp_file);
 
         if (gateway) {
-            snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe -p ADD %s MASK 255.255.255.255 %s", srcip, gateway);
+            snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe -p ADD %s MASK 255.255.255.255 %s", sec_srcip, gateway);
             system(cmd);
             os_free(gateway);
         } else {
             write_debug_file(argv[0], "Couldn't get default gateway");
             cJSON_Delete(input_json);
+            os_free(sec_srcip);
             return OS_INVALID;
         }
     } else {
         char cmd[OS_MAXSTR + 1];
-		snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe DELETE %s", srcip);
+		snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe DELETE %s", sec_srcip);
         system(cmd);
     }
+
+    os_free(sec_srcip);
 #endif
 
     write_debug_file(argv[0], "Ended");

@@ -117,27 +117,39 @@ char *os_shell_escape(const char *src)
     /* Determine how long the string will be */
     const char *iterator = src;
     for (; *iterator; iterator++) {
-        if ( strchr(shell_escapes, *iterator) ) {
+        if (strchr(shell_escapes, *iterator)) {
+            if ((*iterator == '\\') && (*iterator+1) && (strchr(shell_escapes, *iterator+1))) {
+                // avoid scape because it's already scaped
+                iterator++;
+            }
             length++;
         }
         length++;
     }
     /* Allocate memory */
-    if ( (escaped_string = (char *) calloc(1, length + 1 )) == NULL ) {
-        // Return NULL
+    if ((escaped_string = (char *) calloc(1, length + 1 )) == NULL) {
         return NULL;
     }
 
     /* Escape the escapable characters */
     iterator = src;
-    for ( i = 0; *iterator; iterator++ ) {
-        if ( strchr(shell_escapes, *iterator) ) {
-            escaped_string[i] = '\\';
-            i++;
+    for (i = 0; *iterator; iterator++) {
+        if (strchr(shell_escapes, *iterator)) {
+            if ((*iterator == '\\') && (*iterator+1) && (strchr(shell_escapes, *iterator+1))) {
+                // avoid scape because it's already scaped
+                escaped_string[i] = *iterator;
+                i++;
+                iterator++;
+            } else {
+                escaped_string[i] = '\\';
+                i++;
+            }
         }
         escaped_string[i] = *iterator;
         i++;
     }
+
+    escaped_string[length + 1] = '\0';
 
     return escaped_string;
 }

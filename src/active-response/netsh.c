@@ -56,15 +56,19 @@ int main (int argc, char **argv) {
         }
     }
 
+    char * sec_srcip = os_shell_escape(srcip);
+
     if (action == ADD_COMMAND) {
         char cmd[OS_MAXSTR + 1];
-		snprintf(cmd, OS_MAXSTR, "netsh advfirewall firewall add rule name=\"%s\" interface=any dir=in action=block remoteip=%s/32", RULE_NAME, srcip);
+		snprintf(cmd, OS_MAXSTR, "netsh advfirewall firewall add rule name=\"%s\" interface=any dir=in action=block remoteip=%s/32", RULE_NAME, sec_srcip);
         system(cmd);
     } else {
         char cmd[OS_MAXSTR + 1];
-		snprintf(cmd, OS_MAXSTR, "netsh advfirewall firewall delete rule name=\"%s\" remoteip=%s/32", RULE_NAME, srcip);
+		snprintf(cmd, OS_MAXSTR, "netsh advfirewall firewall delete rule name=\"%s\" remoteip=%s/32", RULE_NAME, sec_srcip);
         system(cmd);
     }
+
+    os_free(sec_srcip);
 
     write_debug_file(argv[0], "Ended");
 
