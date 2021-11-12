@@ -51,7 +51,7 @@ stages:
               relative_dirname: !anystr
               filename: !anystr
           failed_items: []
-          total_affected_items: 4 # Number of cdb_lists by default in Wazuh, this number may change anytime, update accordingly
+          total_affected_items: 6 # Number of cdb_lists by default in Wazuh, this number may change anytime, update accordingly
           total_failed_items: 0
       # Save some data for future use in the test
       save:
@@ -243,7 +243,7 @@ stages:
             - items: !anything
               relative_dirname: "{tavern.request_vars.params.relative_dirname}"
           failed_items: []
-          total_affected_items: 2 # Number of cdb_lists by default in Wazuh with this relative_dirname, this number may change anytime, update accordingly
+          total_affected_items: 4 # Number of cdb_lists by default in Wazuh with this relative_dirname, this number may change anytime, update accordingly
           total_failed_items: 0
 
     # GET /lists?limit=1&relative_dirname=wrong_dirname
