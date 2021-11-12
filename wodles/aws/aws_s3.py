@@ -443,7 +443,7 @@ class AWSBucket(WazuhIntegration):
                                             aws_region = '{aws_region}' AND
                                             log_key = '{prefix}%'
                                         ORDER BY
-                                            log_key DESC
+                                            log_key ASC
                                         LIMIT 1;"""
 
         self.sql_db_maintenance = """DELETE
@@ -1083,7 +1083,7 @@ class AWSConfigBucket(AWSLogsBucket):
                                                     aws_region = '{aws_region}' AND
                                                     created_date = {created_date}
                                                 ORDER BY
-                                                    log_key DESC
+                                                    log_key ASC
                                                 LIMIT 1;"""
 
     def get_days_since_today(self, date):
@@ -1400,7 +1400,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                     flow_log_id = '{flow_log_id}' AND
                                                     created_date = {created_date}
                                                 ORDER BY
-                                                    log_key DESC
+                                                    log_key ASC
                                                 LIMIT 1;"""
 
         self.sql_get_date_last_log_processed = """
@@ -1825,7 +1825,7 @@ class AWSCustomBucket(AWSBucket):
                                             aws_account_id='{aws_account_id}' AND
                                             log_key LIKE '{prefix}%'
                                         ORDER BY
-                                            log_key DESC
+                                            log_key ASC
                                         LIMIT 1;"""
 
         self.sql_db_maintenance = """DELETE
@@ -2234,6 +2234,19 @@ class AWSServerAccess(AWSCustomBucket):
         db_table_name = 's3_server_access'
         AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
         self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
+
+        self.sql_find_last_key_processed = """
+                                        SELECT
+                                            log_key
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            bucket_path='{bucket_path}' AND
+                                            aws_account_id='{aws_account_id}' AND
+                                            log_key LIKE '{prefix}%'
+                                        ORDER BY
+                                            log_key DESC
+                                        LIMIT 1;"""
 
     def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
         """
