@@ -141,6 +141,11 @@ int main(int argc, char **argv)
     mdebug1(STARTUP_MSG, (int)getpid());
 
     /* Read config */
+    if (!test_config) {
+        bool block=true;
+        //while(block){;}
+    }
+    
     if (ClientConf(cfg) < 0) {
         merror_exit(CLIENT_ERROR);
     }
