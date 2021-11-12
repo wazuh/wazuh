@@ -58,7 +58,7 @@
     <description>CrowdStrike: Multiple authentication failures from $(event.UserIp)</description>
     <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
     <mitre>
-      <id>T1110.001</id>
+      <id>T1110</id>
     </mitre>
   </rule>
 
