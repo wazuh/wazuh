@@ -60,7 +60,8 @@ typedef enum _command_list {
     WM_TASK_UPGRADE_CANCEL_TASKS,
     WM_TASK_SET_TIMEOUT,
     WM_TASK_DELETE_OLD,
-    WM_TASK_UNKNOWN
+    WM_TASK_UNKNOWN,
+    WM_TASK_TEST_TASK
 } command_list;
 
 /**
@@ -68,7 +69,8 @@ typedef enum _command_list {
  * */
 typedef enum _module_list {
     WM_TASK_UPGRADE_MODULE = 0,
-    WM_TASK_API_MODULE
+    WM_TASK_API_MODULE,
+    WM_TASK_TEST_MODULE
 } module_list;
 
 /**

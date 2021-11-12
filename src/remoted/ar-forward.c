@@ -13,6 +13,50 @@
 #include "shared.h"
 #include "remoted.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wm_task_general.h"
+
+cJSON* remoted_create_task_manager_payload(const char* status, const char* error);
+
+cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
+    cJSON* response = NULL;
+
+    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock == OS_SOCKTERR) {
+        mterror("TEST_LOGTAG", WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK);
+    } else {
+        char *buffer = NULL;
+        int length;
+        char *message = cJSON_PrintUnformatted(message_object);
+        mtdebug1("TEST_LOGTAG", WM_UPGRADE_TASK_SEND_MESSAGE, message);
+
+        OS_SendSecureTCP(sock, strlen(message), message);
+        os_free(message);
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+
+        switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
+            case OS_SOCKTERR:
+                mterror("TEST_LOGTAG", WM_UPGRADE_SOCKTERR_ERROR);
+                break;
+            case -1:
+                mterror("TEST_LOGTAG", WM_UPGRADE_RECV_ERROR, strerror(errno));
+                break;
+            default:
+                response = cJSON_Parse(buffer);
+                if (!response) {
+                    mterror("TEST_LOGTAG", WM_UPGRADE_INVALID_TASK_MAN_JSON);
+                } else {
+                    mtdebug1("TEST_LOGTAG", WM_UPGRADE_TASK_RECEIVE_MESSAGE, buffer);
+                }
+                break;
+        }
+        os_free(buffer);
+
+        close(sock);
+    }
+
+    return response;
+}
 
 
 /* Start of a new thread. Only returns on unrecoverable errors. */
@@ -98,6 +142,19 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
             mdebug2("Active response sent: %s", msg_to_send);
 
+            //Create task
+            cJSON* task_payload = remoted_create_task_manager_payload("test_status", "error_message");
+
+            cJSON* task_manager_response = wm_agent_send_task_information_master(task_payload);
+            char* str_response = cJSON_PrintUnformatted(task_manager_response);
+
+            mwarn("Task manager response: %s", str_response );
+
+            cJSON_Delete(task_payload);
+            cJSON_Delete(task_manager_response);
+            //**************
+
+
             /* Send to ALL agents */
             if (ar_location & ALL_AGENTS) {
                 char agent_id[KEYSIZE + 1] = "";
@@ -123,4 +180,35 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             }
         }
     }
+}
+
+
+cJSON* remoted_create_task_manager_payload(const char* status, const char* error) {
+    // Create ids array
+     cJSON *agents_array = cJSON_CreateArray();
+     cJSON_AddItemToArray(agents_array, cJSON_CreateNumber(1));
+
+    //******************************************
+    cJSON *request = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_NAME], "test_node");
+    cJSON_AddStringToObject(origin, task_manager_json_keys[WM_TASK_MODULE], task_manager_modules_list[WM_TASK_TEST_MODULE]);
+    cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_ORIGIN], origin);
+    cJSON_AddStringToObject(request, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[WM_TASK_TEST_TASK]);
+    if (agents_array) {
+        cJSON_AddItemToObject(parameters, task_manager_json_keys[WM_TASK_AGENTS], agents_array);
+    }
+    if (status) {
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], status);
+    }
+    if (error) {
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG], error);
+    }
+    cJSON_AddItemToObject(request, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
+
+
+    return request;
+
 }

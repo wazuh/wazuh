@@ -44,12 +44,14 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
     [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks",
     [WM_TASK_SET_TIMEOUT] = "set_timeout",
-    [WM_TASK_DELETE_OLD] = "delete_old"
+    [WM_TASK_DELETE_OLD] = "delete_old",
+    [WM_TASK_TEST_TASK] = "test_task"
 };
 
 const char *task_manager_modules_list[] = {
     [WM_TASK_UPGRADE_MODULE] = "upgrade_module",
-    [WM_TASK_API_MODULE] = "api"
+    [WM_TASK_API_MODULE] = "api",
+    [WM_TASK_TEST_MODULE] = "test_module"
 };
 
 const char *task_statuses[] = {
