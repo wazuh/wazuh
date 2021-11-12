@@ -68,7 +68,7 @@ void OS_Exec(int execq, int *arq, int *sock, const Eventinfo *lf, const active_r
             goto cleanup;
         }
 
-        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, exec_msg);
+        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, exec_msg, false);
 
         if (OS_SendUnix(execq, exec_msg, 0) < 0) {
             merror("Error communicating with execd.");
@@ -133,7 +133,8 @@ void OS_Exec(int execq, int *arq, int *sock, const Eventinfo *lf, const active_r
                 strtok_r(agt_version, "v", &save_ptr);
                 char *major = strtok_r(NULL, ".", &save_ptr);
                 char *minor = strtok_r(NULL, ".", &save_ptr);
-                if (!major || !minor) {
+                char *patch = strtok_r(NULL, ".", &save_ptr);
+                if (!major || !minor || !patch) {
                     merror("Unable to read agent version.");
                     labels_free(agt_labels);
                     cJSON_Delete(json_agt_info);
@@ -142,7 +143,8 @@ void OS_Exec(int execq, int *arq, int *sock, const Eventinfo *lf, const active_r
                     if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
                         getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                     } else {
-                        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg);
+                        bool escape = atoi(major) == 4 && atoi(minor) == 2 && atoi(patch) < 5;
+                        getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg, escape);
                     }
                 }
 
@@ -209,7 +211,8 @@ void OS_Exec(int execq, int *arq, int *sock, const Eventinfo *lf, const active_r
             strtok_r(agt_version, "v", &save_ptr);
             char *major = strtok_r(NULL, ".", &save_ptr);
             char *minor = strtok_r(NULL, ".", &save_ptr);
-            if (!major || !minor) {
+            char *patch = strtok_r(NULL, ".", &save_ptr);
+            if (!major || !minor || !patch) {
                 merror("Unable to read agent version.");
                 labels_free(agt_labels);
                 cJSON_Delete(json_agt_info);
@@ -218,7 +221,8 @@ void OS_Exec(int execq, int *arq, int *sock, const Eventinfo *lf, const active_r
                 if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 } else {
-                    getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg);
+                    bool escape = atoi(major) == 4 && atoi(minor) == 2 && atoi(patch) < 5;
+                    getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg, escape);
                 }
             }
 

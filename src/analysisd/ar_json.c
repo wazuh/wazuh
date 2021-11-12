@@ -25,7 +25,7 @@
  * @param[out] temp_msg Message in JSON format.
  * @pre temp_msg is OS_MAXSTR + 1 or more bytes long.
  */
-void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg)
+void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg, bool escape)
 {
     cJSON *_object = NULL;
     cJSON *_array = NULL;
@@ -74,10 +74,24 @@ void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, cha
     cJSON_AddItemToObject(_object, "alert", json_alert);
 
     msg = cJSON_PrintUnformatted(message);
-    strncpy(temp_msg, msg, OS_MAXSTR);
-    temp_msg[OS_MAXSTR] = '\0';
-    os_free(msg);
-
-    // Clean up Memory
     cJSON_Delete(message);
+
+    if (escape) {
+        char * escaped_exclamation = wstr_replace(msg, "!", "\\\\x21");
+        free(msg);
+        char * escaped_dollar = wstr_replace(escaped_exclamation, "$", "\\\\x24");
+        free(escaped_exclamation);
+        char * escaped_singlequote = wstr_replace(escaped_dollar, "'", "\\\\x27");
+        free(escaped_dollar);
+        char * escaped_backquote = wstr_replace(escaped_singlequote, "`", "\\\\x60");
+        free(escaped_singlequote);
+
+        strncpy(temp_msg, escaped_backquote, OS_MAXSTR);
+        free(escaped_backquote);
+    } else {
+        strncpy(temp_msg, msg, OS_MAXSTR);
+        os_free(msg);
+    }
+
+    temp_msg[OS_MAXSTR] = '\0';
 }

@@ -397,6 +397,97 @@ void test_json_unescape(void ** state)
     }
 }
 
+// Test os_shell_escape
+
+void test_os_shell_escape_already_escaped(void ** state) {
+
+    const char *src = "\\'";  // to scape: \'
+
+    char * ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\\'");  // espected: \'
+
+    os_free(ret);
+}
+
+void test_os_shell_escape_not_escaped(void ** state) {
+
+    const char *src = "\'";  // to escape: '
+
+    char * ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\\\'");  // espected: \'
+
+    os_free(ret);
+}
+
+void test_os_shell_escape_border(void ** state) {
+
+    const char *src = "$ border case `";  // to scape: $ border case `
+
+    char * ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\\$ border case \\`");  // espected: \$ border case \`
+
+    os_free(ret);
+}
+
+void test_os_shell_escape_all(void ** state) {
+
+    const char *src = "\" \' \t ; ` > < | # * [ ] { } & $ ! : ( )";
+
+    char * ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)");
+
+    os_free(ret);
+}
+
+void test_os_shell_avoid_escape_all(void ** state) {
+
+    const char *src = "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)";
+
+    char * ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\\\" \\\' \\\t \\; \\` \\> \\< \\| \\# \\* \\[ \\] \\{ \\} \\& \\$ \\! \\: \\( \\)");
+
+    os_free(ret);
+}
+
+void test_os_shell_escape_backslash(void ** state) {
+
+    const char *src = "\a \t \\a \\t";
+
+    char * ret = os_shell_escape(src);
+
+    assert_non_null(ret);
+    assert_string_equal(ret, "\a \\\t \\\\a \\\\t");
+
+    os_free(ret);
+}
+
+void test_os_shell_double_escape(void ** state) {
+
+    const char *src = "\" \' \t ; ` > < | # * [ ] { } & $ ! : ( )";
+
+    char * ret1 = os_shell_escape(src);
+
+    assert_non_null(ret1);
+
+    char * ret2 = os_shell_escape(ret1);
+
+    assert_non_null(ret2);
+    assert_string_equal(ret1, ret2);
+
+    os_free(ret1);
+    os_free(ret2);
+}
+
 /* Tests */
 
 int main(void) {
@@ -441,6 +532,14 @@ int main(void) {
         cmocka_unit_test(test_strnspn_escaped),
         cmocka_unit_test(test_json_escape),
         cmocka_unit_test(test_json_unescape),
+        // Test os_shell_escape
+        cmocka_unit_test(test_os_shell_escape_already_escaped),
+        cmocka_unit_test(test_os_shell_escape_not_escaped),
+        cmocka_unit_test(test_os_shell_escape_border),
+        cmocka_unit_test(test_os_shell_escape_all),
+        cmocka_unit_test(test_os_shell_avoid_escape_all),
+        cmocka_unit_test(test_os_shell_escape_backslash),
+        cmocka_unit_test(test_os_shell_double_escape),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
