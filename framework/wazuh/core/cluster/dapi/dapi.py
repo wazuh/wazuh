@@ -32,6 +32,8 @@ from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
 process_pool = ProcessPoolExecutor(max_workers=1)
+authentication_pool = ProcessPoolExecutor(max_workers=1)
+authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 
 
 class DistributedAPI:
@@ -225,6 +227,7 @@ class DistributedAPI:
     @staticmethod
     def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
         """Run framework SDK function locally in another process."""
+
         def debug_log(logger, message):
             if logger.name == 'wazuh-api':
                 logger.debug2(message)
@@ -269,9 +272,15 @@ class DistributedAPI:
 
                 else:
                     loop = asyncio.get_event_loop()
-                    task = loop.run_in_executor(process_pool, partial(self.run_local, self.f, self.f_kwargs,
-                                                                      self.logger, self.rbac_permissions,
-                                                                      self.broadcasting, self.nodes, self.current_user))
+                    if self.f.__name__ not in authentication_funcs:
+                        pool = process_pool
+                    else:
+                        pool = authentication_pool
+
+                    task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
+                                                              self.logger, self.rbac_permissions,
+                                                              self.broadcasting, self.nodes,
+                                                              self.current_user))
                 try:
                     data = await asyncio.wait_for(task, timeout=timeout)
                 except asyncio.TimeoutError:
