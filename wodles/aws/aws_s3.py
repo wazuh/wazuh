@@ -2297,7 +2297,7 @@ class AWSServerAccess(AWSCustomBucket):
                     match_start = date_match.span()[0] if date_match else None
                 except TypeError:
                     if self.skip_on_error:
-                        debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename isn't correct, skipping.", 1)
+                        debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, skipping it.", 1)
                         continue
                     else:
                         print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
@@ -2350,7 +2350,7 @@ class AWSServerAccess(AWSCustomBucket):
                     except TypeError:
                         if self.skip_on_error:
                             debug(
-                                f"+++ WARNING: The format of the {bucket_file['Key']} filename isn't correct, skipping.", 1)
+                                f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, skipping it.", 1)
                             continue
                         else:
                             print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
