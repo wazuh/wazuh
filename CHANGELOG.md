@@ -265,6 +265,21 @@ All notable changes to this project will be documented in this file.
 - Fixed error detection in the CURL helper library. ([#9168](https://github.com/wazuh/wazuh/pull/9168))
 
 
+## [v4.2.5]
+
+### Manager
+
+#### Changed
+
+- Active response requests for agents between v4.2.0 and v4.2.4 is now sanitized to prevent unauthorized code execution. ([#10809](https://github.com/wazuh/wazuh/pull/10809))
+
+### Agent
+
+#### Fixed
+
+- A bug in the Active response tools that may allow unauthorized code execution has been mitigated. Reported by @rk700. ([#10809](https://github.com/wazuh/wazuh/pull/10809))
+
+
 ## [v4.2.4] - 2021-10-20
 
 ### Manager
