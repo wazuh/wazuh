@@ -6,8 +6,8 @@
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
-#ifndef DB_STATEMENT_HPP
-#define DB_STATEMENT_HPP
+#ifndef DB_COMMONDEFS_HPP
+#define DB_COMMONDEFS_HPP
 // #include "logging_helper.h"
 // typedef void((*log_callback_t)(const syscollector_log_level_t level, const char* log));
 typedef void((*fim_sync_callback_t)(const void* buffer));
