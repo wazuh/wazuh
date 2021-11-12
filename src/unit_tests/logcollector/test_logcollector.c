@@ -114,7 +114,7 @@ static int teardown_log_context(void **state) {
     if (teardown_local_hashmap(state) != 0) {
         return 1;
     }
-    test_logcollector_t *test_struct = *state;
+    test_logcollector_t * test_struct = *state;
 
     expect_any(__wrap_fclose, _File);
     will_return_always(__wrap_fclose, 0);
@@ -125,6 +125,8 @@ static int teardown_log_context(void **state) {
     free(test_struct->status);
     free(test_struct->node);
     free(test_struct);
+
+    return 0;
 }
 
 static int setup_process(void **state) {
