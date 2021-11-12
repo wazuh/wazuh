@@ -20,6 +20,11 @@ char *__wrap_decode_win_permissions(char *raw_perm) {
     return mock_type(char*);
 }
 
+void __wrap_decode_win_acl_json(cJSON *perms) {
+    check_expected(perms);
+    return;
+}
+
 int __wrap_delete_target_file(const char *path) {
     check_expected(path);
     return mock();
@@ -63,9 +68,13 @@ unsigned int __wrap_w_get_file_attrs(const char *file_path) {
     return mock();
 }
 
-int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size) {
+int __wrap_w_get_file_permissions(const char *file_path, cJSON **output_acl) {
     check_expected(file_path);
-    snprintf(permissions, perm_size, "%s", mock_type(char*));
+
+    assert_non_null(output_acl);
+
+    *output_acl = mock_type(cJSON *);
+
     return mock();
 }
 
@@ -92,19 +101,21 @@ void expect_get_file_user(const char *path, char *sid, char *user) {
     will_return(__wrap_get_file_user, user);
 }
 
-void expect_w_get_file_permissions(const char *file_path, char *perms, int ret) {
+void expect_w_get_file_permissions(const char *file_path, cJSON *perms, int ret) {
     expect_string(__wrap_w_get_file_permissions, file_path, file_path);
     will_return(__wrap_w_get_file_permissions, perms);
     will_return(__wrap_w_get_file_permissions, ret);
 }
 
-DWORD __wrap_get_registry_permissions(__attribute__((unused)) HKEY hndl, char *perm_key) {
-    snprintf(perm_key, OS_SIZE_6144, "%s", mock_type(const char *));
+DWORD __wrap_get_registry_permissions(__attribute__((unused)) HKEY hndl, cJSON **output_acl) {
+    assert_non_null(output_acl);
+
+    *output_acl = mock_type(cJSON *);
 
     return mock();
 }
 
-void expect_get_registry_permissions(const char *permissions, DWORD retval) {
+void expect_get_registry_permissions(cJSON *permissions, DWORD retval) {
     will_return(__wrap_get_registry_permissions, permissions);
     will_return(__wrap_get_registry_permissions, retval);
 }

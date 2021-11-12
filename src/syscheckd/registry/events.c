@@ -179,7 +179,7 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
     cJSON_AddStringToObject(attributes, "type", "registry_key");
 
     if (configuration->opts & CHECK_PERM) {
-        cJSON_AddStringToObject(attributes, "perm", data->perm);
+        cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
     }
 
     if (configuration->opts & CHECK_OWNER) {
@@ -232,7 +232,9 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
         }
 
-        if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
+        // AD might fail to solve the user name, we don't trigger an event if the user name is empty
+        if (old_data->user_name && *old_data->user_name != '\0' && new_data->user_name &&
+            *new_data->user_name != '\0' && strcmp(old_data->user_name, new_data->user_name) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
         }
     }

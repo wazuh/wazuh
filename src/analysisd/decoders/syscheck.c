@@ -101,6 +101,15 @@ static int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state
 // Replace the coded fields with the decoded ones in the checksum
 static void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
 
+/**
+ * @brief Decode a cJSON with Windows permissions and convert to old format string
+ *
+ * @param perm_json cJSON with the permissions
+ *
+ * @returns A string with the old format Windows permissions
+*/
+static char *perm_json_to_old_format(cJSON *perm_json);
+
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1669,6 +1678,7 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     char buf_ptr[26];
 
     assert(lf != NULL);
+    assert(lf->fields != NULL);
 
     cJSON_ArrayForEach(attr_it, attr) {
         if (!attr_it->string) {
@@ -1730,12 +1740,96 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
             if (dst_data) {
                 os_strdup(attr_it->valuestring, *dst_data);
             }
+        } else if (attr_it->type == cJSON_Object) {
+            if (strcmp(attr_it->string, "perm") == 0) {
+                if (new_state) {
+                    lf->fields[FIM_PERM].value = perm_json_to_old_format(attr_it);
+                } else {
+                    lf->fields[FIM_PERM_BEFORE].value = perm_json_to_old_format(attr_it);
+                }
+            }
         } else {
             mdebug1("Unknown FIM data type.");
         }
     }
 
     return 0;
+}
+
+char *decode_ace_json(const cJSON *const perm_array, const char *const account_name, const char *const ace_type) {
+    cJSON *it;
+    char *output = NULL;
+    char *perms = NULL;
+    int length;
+
+    if (perm_array == NULL) {
+        return NULL;
+    }
+
+    length = snprintf(NULL, 0, "%s (%s): ", account_name, ace_type);
+
+    if (length <= 0) {
+        return NULL; // LCOV_EXCL_LINE
+    }
+
+    os_malloc(length + 1, output);
+
+    snprintf(output, length + 1, "%s (%s): ", account_name, ace_type);
+
+    cJSON_ArrayForEach(it, perm_array) {
+        wm_strcat(&perms, cJSON_GetStringValue(it), '|');
+    }
+
+    if (perms) {
+        str_uppercase(perms);
+        wm_strcat(&output, perms, '\0');
+        free(perms);
+    }
+
+    wm_strcat(&output, ", ", '\0');
+
+    return output;
+}
+
+char *perm_json_to_old_format(cJSON *perm_json) {
+    char *account_name;
+    char *output = NULL;
+    int length;
+    cJSON *json_it;
+
+    assert(perm_json != NULL);
+
+    cJSON_ArrayForEach(json_it, perm_json) {
+        char *ace;
+        account_name = cJSON_GetStringValue(cJSON_GetObjectItem(json_it, "name"));
+        if (account_name == NULL) {
+            account_name = json_it->string;
+        }
+
+        ace = decode_ace_json(cJSON_GetObjectItem(json_it, "allowed"), account_name, "allowed");
+        if (ace) {
+            wm_strcat(&output, ace, '\0');
+            free(ace);
+        }
+
+        ace = decode_ace_json(cJSON_GetObjectItem(json_it, "denied"), account_name, "denied");
+        if (ace) {
+            wm_strcat(&output, ace, '\0');
+            free(ace);
+        }
+    }
+
+    if (output == NULL) {
+        return NULL;
+    }
+
+    length = strlen(output);
+
+    if (length > 2 && output[strlen(output) - 2] == ',') {
+        output[length - 2] = '\0';
+    }
+
+    return output;
 }
 
 void fim_adjust_checksum(sk_sum_t *newsum, char **checksum) {

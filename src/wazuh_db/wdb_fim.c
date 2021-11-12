@@ -616,9 +616,11 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     sqlite3_bind_text(stmt, 21, full_path, -1, NULL);
 
     cJSON * element;
+    char *perm = NULL;
 
     cJSON_ArrayForEach(element, attributes) {
         if (element->string == NULL) {
+            os_free(perm);
             os_free(full_path);
             return -1;
         }
@@ -633,6 +635,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_int64(stmt, 13, element->valuedouble);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
+                os_free(perm);
                 os_free(full_path);
                 return -1;
             }
@@ -668,6 +671,26 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 20, element->valuestring, -1, NULL);
             } else {
                 merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
+                os_free(perm);
+                os_free(full_path);
+                return -1;
+            }
+
+            break;
+
+        case cJSON_Object:
+            if (strcmp(element->string, "perm") == 0) {
+                perm = cJSON_PrintUnformatted(element);
+
+                if (perm == NULL) {
+                    mwarn("DB(%s) Failed formatting permissions", wdb->id); // LCOV_EXCL_LINE
+                    continue;                                               // LCOV_EXCL_LINE
+                }
+
+                sqlite3_bind_text(stmt, 5, perm, -1, NULL);
+            } else {
+                merror("DB(%s) Invalid attribute name: %s", wdb->id, element->string);
+                os_free(perm);
                 os_free(full_path);
                 return -1;
             }
@@ -676,10 +699,12 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        os_free(perm);
         os_free(full_path);
         return -1;
     }
     os_free(full_path);
+    os_free(perm);
     return 0;
 }
 

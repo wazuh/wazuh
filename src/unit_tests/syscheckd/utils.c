@@ -48,3 +48,39 @@ int teardown_rb_tree(void **state) {
 
     return 0;
 }
+
+#define BASE_WIN_ALLOWED_ACE "[" \
+    "\"delete\"," \
+    "\"read_control\"," \
+    "\"write_dac\"," \
+    "\"write_owner\"," \
+    "\"synchronize\"," \
+    "\"read_data\"," \
+    "\"write_data\"," \
+    "\"append_data\"," \
+    "\"read_ea\"," \
+    "\"write_ea\"," \
+    "\"execute\"," \
+    "\"read_attributes\"," \
+    "\"write_attributes\"" \
+"]"
+
+#define BASE_WIN_DENIED_ACE "[" \
+    "\"read_control\"," \
+    "\"synchronize\"," \
+    "\"read_data\"," \
+    "\"read_ea\"," \
+    "\"execute\"," \
+    "\"read_attributes\"" \
+"]"
+
+#define BASE_WIN_ACE "{" \
+    "\"name\": \"Users\"," \
+    "\"allowed\": " BASE_WIN_ALLOWED_ACE "," \
+    "\"denied\": " BASE_WIN_DENIED_ACE \
+"}"
+
+cJSON *create_win_permissions_object() {
+    static const char * const BASE_WIN_PERMS = "{\"S-1-5-32-636\": " BASE_WIN_ACE "}";
+    return cJSON_Parse(BASE_WIN_PERMS);
+}

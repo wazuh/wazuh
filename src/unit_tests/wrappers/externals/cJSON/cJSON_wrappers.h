@@ -71,21 +71,13 @@ extern void __real_cJSON_Delete(cJSON *item);
 
 cJSON * WSTD_CALL __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
-void expect_cJSON_GetObjectItem_call(cJSON *object);
-
 extern cJSON * __real_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
 char* WSTD_CALL __wrap_cJSON_GetStringValue(cJSON * item);
 
-void expect_cJSON_GetStringValue_call(char *str);
-
 cJSON_bool __wrap_cJSON_IsNumber(cJSON * item);
 
-void expect_cJSON_IsNumber_call(int ret);
-
 cJSON_bool __wrap_cJSON_IsObject(cJSON * item);
-
-void expect_cJSON_IsObject_call(int ret);
 
 cJSON * __wrap_cJSON_Parse(const char *value);
 
