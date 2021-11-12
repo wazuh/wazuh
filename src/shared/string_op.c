@@ -118,7 +118,7 @@ char *os_shell_escape(const char *src)
     const char *iterator = src;
     for (; *iterator; iterator++) {
         if (strchr(shell_escapes, *iterator)) {
-            if ((*iterator == '\\') && (*iterator+1) && (strchr(shell_escapes, *iterator+1))) {
+            if ((*iterator == '\\') && *(iterator+1) && strchr(shell_escapes, *(iterator+1))) {
                 // avoid scape because it's already scaped
                 iterator++;
             }
@@ -135,7 +135,7 @@ char *os_shell_escape(const char *src)
     iterator = src;
     for (i = 0; *iterator; iterator++) {
         if (strchr(shell_escapes, *iterator)) {
-            if ((*iterator == '\\') && (*iterator+1) && (strchr(shell_escapes, *iterator+1))) {
+            if ((*iterator == '\\') && *(iterator+1) && strchr(shell_escapes, *(iterator+1))) {
                 // avoid scape because it's already scaped
                 escaped_string[i] = *iterator;
                 i++;
