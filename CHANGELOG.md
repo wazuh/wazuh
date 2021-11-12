@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
 - Added Vulnerability Detector support for Amazon Linux. ([#8830](https://github.com/wazuh/wazuh/pull/8830))
 - Introduced new option `<force>` to set the behavior when Authd finds conflicts on agent enrollment requests. ([#10693](https://github.com/wazuh/wazuh/pull/10693))
 - Added saniziters to the unit tests execution. ([#9099](https://github.com/wazuh/wazuh/pull/9099))
+- Vulnerability Detector introduces vulnerability inventory. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
+  - The manager will only deliver alerts when new vulnerabilities are detected in agents or when they stop applying.
 
 #### Changed
 
@@ -49,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Improved Remoted performance with an agent TCP connection sending queue. ([#10326](https://github.com/wazuh/wazuh/pull/10326))
 - Agent DB synchronization has been boosted by caching the last data checksum in Wazuh DB. ([#9093](https://github.com/wazuh/wazuh/pull/9093))
 - Logtest now scans new ruleset files when loading a new session. ([#8892](https://github.com/wazuh/wazuh/pull/8892))
+- CVE alerts by Vulnerability Detector now include the time of detection, severity, and score. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
 
 #### Fixed
 
@@ -143,7 +146,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Windows 11 version collection in the agent. ([#10639](https://github.com/wazuh/wazuh/pull/10639))
 - Fixed missing Eventchannel location in Logcollector configuration reporting. ([#10602](https://github.com/wazuh/wazuh/pull/10602))
 
-## RESTful API
+### RESTful API
 
 #### Added
 
