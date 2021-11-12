@@ -112,10 +112,7 @@ int main (int argc, char **argv) {
     }
 
     // Execute the command
-    char *exec_cmd1[4] = { NULL, NULL, NULL, NULL };
-
-    const char *arg1[4] = { command_ex, args, user, NULL };
-    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+    char *exec_cmd1[4] = { command_ex, args, (char *)user, NULL };
 
     wfd_t *wfd = wpopenv(command_ex, exec_cmd1, W_BIND_STDERR);
     if (!wfd) {

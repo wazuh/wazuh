@@ -41,7 +41,6 @@ static cJSON *format_output(const cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
-    char wget_data[OS_MAXSTR];
     char *site_url = NULL;
     char *output_str = NULL;
     int action = OS_INVALID;
@@ -77,9 +76,7 @@ int main (int argc, char **argv) {
 
     // Try with curl
     bool success_command = false;
-    char *exec_cmd1[9] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-    const char *arg1[9] = { CURL, "-H", "Accept: application/json", "-H", "Content-Type: application/json", "-d", output_str, site_url, NULL };
-    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+    char *exec_cmd1[9] = { CURL, "-H", "Accept: application/json", "-H", "Content-Type: application/json", "-d", output_str, site_url, NULL };
 
     wfd_t *wfd = wpopenv(CURL, exec_cmd1, W_BIND_STDOUT | W_BIND_STDERR);
     if (wfd) {
@@ -99,10 +96,7 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Unable to run curl, trying with wget...");
 
         // Try with wget
-        char *exec_cmd2[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
-        snprintf(wget_data, OS_MAXSTR -1, "%s", output_str);
-        const char *arg2[6] = { WGET, "--keep-session-cookies", "--post-data", wget_data, site_url, NULL };
-        memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
+        char *exec_cmd2[6] = { WGET, "--keep-session-cookies", "--post-data", output_str, site_url, NULL };
 
         wfd = wpopenv(WGET, exec_cmd2, W_BIND_STDOUT | W_BIND_STDERR);
         if (wfd) {
@@ -241,7 +235,7 @@ static cJSON *format_output(const cJSON *alert) {
 
     if (level <= 4) {
         cJSON_AddStringToObject(item_objects, "color", "good");
-    } else if (level >= 5 && level <= 7){
+    } else if (level >= 5 && level <= 7) {
         cJSON_AddStringToObject(item_objects, "color", "warning");
     } else {
         cJSON_AddStringToObject(item_objects, "color", "danger");

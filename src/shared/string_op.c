@@ -149,8 +149,6 @@ char *os_shell_escape(const char *src)
         i++;
     }
 
-    escaped_string[length + 1] = '\0';
-
     return escaped_string;
 }
 

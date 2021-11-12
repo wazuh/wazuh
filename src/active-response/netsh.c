@@ -12,9 +12,11 @@
 #include "active_responses.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
+#define NETSH "C:\\Windows\\System32\\netsh.exe"
 
 int main (int argc, char **argv) {
     (void)argc;
+    char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
 
@@ -56,19 +58,24 @@ int main (int argc, char **argv) {
         }
     }
 
-    char * sec_srcip = os_shell_escape(srcip);
+    char name[OS_MAXSTR -1];
+    char remoteip[OS_MAXSTR -1];
 
-    if (action == ADD_COMMAND) {
-        char cmd[OS_MAXSTR + 1];
-		snprintf(cmd, OS_MAXSTR, "netsh advfirewall firewall add rule name=\"%s\" interface=any dir=in action=block remoteip=%s/32", RULE_NAME, sec_srcip);
-        system(cmd);
-    } else {
-        char cmd[OS_MAXSTR + 1];
-		snprintf(cmd, OS_MAXSTR, "netsh advfirewall firewall delete rule name=\"%s\" remoteip=%s/32", RULE_NAME, sec_srcip);
-        system(cmd);
+    snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
+    snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
+
+    char *exec_args_add[11] = { NETSH, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
+    char *exec_args_delete[8] = { NETSH, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
+
+    wfd_t *wfd = wpopenv(NETSH, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
+    if (!wfd) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: '%s', rule: '%s'", (action == ADD_COMMAND) ? "ADD" : "DELETE", RULE_NAME);
+        write_debug_file(argv[0], log_msg);
     }
-
-    os_free(sec_srcip);
+    else {
+        wpclose(wfd);
+    }
 
     write_debug_file(argv[0], "Ended");
 
