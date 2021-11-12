@@ -8573,6 +8573,8 @@ paths:
                           - 0215-policy_rules.xml
                         list:
                           - etc/lists/audit-keys
+                          - etc/lists/ip_reputation
+                          - etc/lists/uncommon-cmd-opened-process
                           - etc/lists/amazon/aws-eventnames
                           - etc/lists/security-eventchannel
                       auth:
@@ -9729,8 +9731,12 @@ paths:
                     - relative_dirname: etc/lists
                       filename: audit-keys
                     - relative_dirname: etc/lists
+                      filename: ip_reputation
+                    - relative_dirname: etc/lists
                       filename: security-eventchannel
-                  total_affected_items: 4
+                    - relative_dirname: etc/lists
+                      filename: uncommon-cmd-opened-process
+                  total_affected_items: 6
                   total_failed_items: 0
                   failed_items: []
                 message: 'All specified paths were returned'

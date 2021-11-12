@@ -16,13 +16,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /lists?limit=0
   - name: Try to get lists using wrong limit parameter
@@ -60,14 +53,14 @@ stages:
           returned_filename: data.affected_items[0].filename
 
     # We implement a dual stage to check offset parameter behaviour
-    # GET /lists?limit=2&offset=0
+    # GET /lists?limit=2&offset=2
   - name: Try to get lists using limit and offset parameter
     request:
       verify: False
       <<: *get_lists
       params:
         limit: 2
-        offset: 0
+        offset: 2
     response:
       status_code: 200
       json:
@@ -89,14 +82,14 @@ stages:
           offset_item_relative_dirname: data.affected_items[1].relative_dirname
           offset_item_filename: data.affected_items[1].filename
 
-    # GET /lists?limit=1&offset=1
+    # GET /lists?limit=1&offset=3
   - name: Try to get lists using limit and offset parameter
     request:
       verify: False
       <<: *get_lists
       params:
         limit: 1
-        offset: 1
+        offset: 3
     response:
       status_code: 200
       json:
