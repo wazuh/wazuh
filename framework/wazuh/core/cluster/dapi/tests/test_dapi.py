@@ -27,6 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
         from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
         from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult

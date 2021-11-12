@@ -11,7 +11,6 @@ from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
-from subprocess import check_output
 from time import time
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
