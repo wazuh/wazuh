@@ -202,11 +202,6 @@ dbQueryResult FIMDB::removeItem(const nlohmann::json& item)
     {
         m_dbsyncHandler->deleteRows(item);
     }
-    catch (const DbSync::max_rows_error& ex)
-    {
-        m_loggingFunction(LOG_INFO, ex.what());
-        return dbQueryResult::MAX_ROWS_ERROR;
-    }
     catch (const std::exception& ex)
     {
         m_loggingFunction(LOG_ERROR, ex.what());

@@ -186,106 +186,25 @@ constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
     )"
 };
 
+/* Statement related to files items. Defines everything necessary to perform the synchronization loop */
 constexpr auto FIM_FILE_START_CONFIG_STATEMENT
 {
-    R"({"table":"file_entry",
-        "first_query":
-            {
-                "column_list":["board_serial"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"board_serial DESC",
-                "count_opt":1
-            },
-        "last_query":
-            {
-                "column_list":["board_serial"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"board_serial ASC",
-                "count_opt":1
-            },
-        "component":"fim_file_sync",
-        "index":"board_serial",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "range_checksum_query_json":
-            {
-                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
-                "column_list":["board_serial, checksum"],
-                "distinct_opt":false,
-                "order_by_opt":"",
-                "count_opt":100
-            }
-        })"
+    R"({"table":"file_entry"})"
+    //TO DO
 };
 
+/* Statement related to registries items. Defines everything necessary to perform the synchronization loop */
 constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
 {
-    R"({"table":"registry_key",
-        "first_query":
-            {
-                "column_list":["board_serial"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"board_serial DESC",
-                "count_opt":1
-            },
-        "last_query":
-            {
-                "column_list":["board_serial"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"board_serial ASC",
-                "count_opt":1
-            },
-        "component":"fim_registry_sync",
-        "index":"board_serial",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "range_checksum_query_json":
-            {
-                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
-                "column_list":["board_serial, checksum"],
-                "distinct_opt":false,
-                "order_by_opt":"",
-                "count_opt":100
-            }
-        })"
+    R"({"table":"registry_key"})"
+    //TO DO
 };
 
+/* Statement related to values items. Defines everything necessary to perform the synchronization loop */
 constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
 {
-    R"({"table":"registry_data",
-        "first_query":
-            {
-                "column_list":["board_serial"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"board_serial DESC",
-                "count_opt":1
-            },
-        "last_query":
-            {
-                "column_list":["board_serial"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"board_serial ASC",
-                "count_opt":1
-            },
-        "component":"fim_value_sync",
-        "index":"board_serial",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "range_checksum_query_json":
-            {
-                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
-                "column_list":["board_serial, checksum"],
-                "distinct_opt":false,
-                "order_by_opt":"",
-                "count_opt":100
-            }
-        })"
+    R"({"table":"registry_data"})"
+    //TO DO
 };
 
 #endif // DB_STATEMENT_HPP

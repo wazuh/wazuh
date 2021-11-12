@@ -187,16 +187,6 @@ TEST_F(FimDBFixture, removeItemSuccess)
     ASSERT_EQ(return_code, expected_return);
 }
 
-TEST_F(FimDBFixture, removeItemFailMaxRows)
-{
-    nlohmann::json itemJson;
-    EXPECT_CALL(*mockDBSync, deleteRows(itemJson)).WillOnce(testing::Throw(DbSync::max_rows_error("Too many rows.")));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Too many rows."));
-    dbQueryResult expected_return = dbQueryResult::MAX_ROWS_ERROR;
-    dbQueryResult return_code =  fimDBMock.removeItem(itemJson);
-    ASSERT_EQ(return_code, expected_return);
-}
-
 TEST_F(FimDBFixture, removeItemFailException)
 {
     nlohmann::json itemJson;
