@@ -46,3 +46,18 @@ void __wrap_add_insert(__attribute__((unused)) const keyentry *entry, __attribut
 void __wrap_add_remove(__attribute__((unused)) const keyentry *entry) {
     // Empty wrapper
 }
+
+cJSON* __wrap_local_add(const char *id,
+                        const char *name,
+                        const char *ip,
+                        __attribute__((unused)) const char *groups,
+                        const char *key,
+                        __attribute__((unused)) const char *key_hash,
+                        __attribute__((unused)) int force_options) {
+    check_expected(id);
+    check_expected(name);
+    check_expected(ip);
+    check_expected(key);
+    return mock_type(cJSON *);
+} 
+
