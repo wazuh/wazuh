@@ -1312,4 +1312,64 @@
     </mitre>
   </rule>
 
+  <rule id="60226" level="8">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4672$</field>
+    <description>Special privileges assigned to new logon</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1484</id>
+    </mitre>
+  </rule>
+
+  <rule id="60227" level="8">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^6416$</field>
+    <description>A new external device was recognized by the system</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1092</id>
+    </mitre>
+  </rule>
+
+  <rule id="60228" level="4">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4698$</field>
+    <description>A scheduled task was created</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1053</id>
+    </mitre>
+  </rule>
+
+  <rule id="60229" level="4">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^5136$</field>
+    <description>A directory service object was modified</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1484</id>
+    </mitre>
+  </rule>
+
+  <rule id="60230" level="4">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^5137$</field>
+    <description>A directory service object was created</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1484</id>
+    </mitre>
+  </rule>
+
+  <rule id="60231" level="4">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^5141$</field>
+    <description>A directory service object was deleted</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1484</id>
+    </mitre>
+  </rule>
+
 </group>
