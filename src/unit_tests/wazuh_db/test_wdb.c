@@ -28,8 +28,6 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 
-OSHash * open_dbs;
-
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
