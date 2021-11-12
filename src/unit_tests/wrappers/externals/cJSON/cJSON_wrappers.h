@@ -105,4 +105,6 @@ cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
 
 cJSON* __wrap_cJSON_AddBoolToObject(cJSON * const object, const char * const name, const cJSON_bool boolean);
 
+cJSON * __wrap_cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated);
+
 #endif

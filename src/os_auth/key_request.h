@@ -27,7 +27,8 @@
  * */
 typedef enum _request_type {
     K_TYPE_ID,
-    K_TYPE_IP
+    K_TYPE_IP,
+    K_TYPE_UNKNOWN
 } request_type_t;
 
 /**

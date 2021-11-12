@@ -301,9 +301,7 @@ int key_request_dispatch(char * buffer) {
     } else if(strncmp("id:", tmp_buffer, header_length) == 0) {
         type = K_TYPE_ID;
     } else {
-        mdebug1("Wrong type of request.");
-        OSHash_Delete_ex(request_hash, buffer);
-        return OS_INVALID;
+        type = K_TYPE_UNKNOWN;
     }
 
     switch (type) {
@@ -330,7 +328,7 @@ int key_request_dispatch(char * buffer) {
             break;
 
         default:
-            mdebug1("Invalid request.");
+            merror("Invalid request '%s' received in Agent key request.", buffer);
             OSHash_Delete_ex(request_hash, buffer);
             return OS_INVALID;
     }
