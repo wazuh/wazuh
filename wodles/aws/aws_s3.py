@@ -539,7 +539,6 @@ class AWSBucket(WazuhIntegration):
         """
         return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
 
-
     def _get_last_key_processed(self, aws_account_id: str) -> str or None:
         """
         Get the key of the last file processed by the module.
@@ -1135,7 +1134,7 @@ class AWSConfigBucket(AWSLogsBucket):
                                                     aws_region = '{aws_region}' AND
                                                     created_date = {created_date}
                                                 ORDER BY
-                                                    log_key ASC
+                                                    log_key DESC
                                                 LIMIT 1;"""
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
@@ -1558,7 +1557,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                     flow_log_id = '{flow_log_id}' AND
                                                     created_date = {created_date}
                                                 ORDER BY
-                                                    log_key ASC
+                                                    log_key DESC
                                                 LIMIT 1;"""
 
         self.sql_get_date_last_log_processed = """
@@ -2005,7 +2004,7 @@ class AWSCustomBucket(AWSBucket):
                                             aws_account_id='{aws_account_id}' AND
                                             log_key LIKE '{prefix}%'
                                         ORDER BY
-                                            log_key ASC
+                                            log_key DESC
                                         LIMIT 1;"""
 
         self.sql_db_maintenance = """DELETE
@@ -2123,7 +2122,7 @@ class AWSCustomBucket(AWSBucket):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
-        self.iter_files_in_bucket()
+        self.iter_files_in_bucket(aws_account_id=self.aws_account_id)
         self.db_maintenance()
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
@@ -2136,22 +2135,7 @@ class AWSCustomBucket(AWSBucket):
         return cursor.fetchone()[0] > 0
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
-        if self.reparse:
-            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
-                debug(
-                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
-                    2)
-        else:
-            try:
-                self.db_connector.execute(self.sql_mark_complete.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=self.aws_account_id,
-                    log_key=log_file['Key'],
-                    created_date=self.get_creation_date(log_file)
-                ))
-            except Exception as e:
-                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+        AWSBucket.mark_complete(self, self.aws_account_id, aws_region, log_file)
 
     def db_count_custom(self):
         """Counts the number of rows in DB for a region
@@ -2336,6 +2320,9 @@ class AWSLBBucket(AWSCustomBucket):
 
     def get_full_prefix(self, account_id, account_region):
         return f'{self.get_service_prefix(account_id)}{account_region}/'
+
+    def mark_complete(self, aws_account_id, aws_region, log_file):
+        AWSBucket.mark_complete(self, aws_account_id, aws_region, log_file)
 
 
 class AWSALBBucket(AWSLBBucket):
