@@ -235,9 +235,9 @@ checks:
 
   - id: 21016
     title: "Disable the CDE GUI login, if possible"
-    description: "CDE stands for "Common Desktop Environment," and is an environment for logging on to and interacting with your system via an X-windows type GUI interface from the console. Intended for use with workstation or desktop systems, this service is not commonly used with the server-class systems or in large enterprise environments.  The X Windows-based CDE GUI services were developed with a different set of security expecations from those expected in many enterprise deployments, and have had a history of security issues.  Unless there is a mission-critical need for a CDE GUI login to the system, this service should not be run to further reduce opportunities for security attacks."
+    description: "CDE stands for Common Desktop Environment, and is an environment for logging on to and interacting with your system via an X-windows type GUI interface from the console. Intended for use with workstation or desktop systems, this service is not commonly used with the server-class systems or in large enterprise environments.  The X Windows-based CDE GUI services were developed with a different set of security expecations from those expected in many enterprise deployments, and have had a history of security issues.  Unless there is a mission-critical need for a CDE GUI login to the system, this service should not be run to further reduce opportunities for security attacks."
     rationale: "The X Windows-based CDE GUI on HP-UX systems has had a history of security issues, and should be disabled if unused."
-    remediation: "Perform the following to disable the GUI login: ch_rc -a -p DESKTOP="" /etc/rc.config.d/desktop"
+    remediation: "Perform the following to disable the GUI login: ch_rc -a -p DESKTOP='' /etc/rc.config.d/desktop"
     compliance:
       - cis: ["1.3.4"]
       - cis_level: ["1"]
@@ -308,7 +308,7 @@ checks:
 
   - id: 21022
     title: "Only enable NFS server processes if absolutely necessary"
-    description: "NFS is frequently exploited to gain unauthorized access to files and systems.  Clearly there is no need to run the NFS server-related daemons on hosts that are not NFS servers. If the system is an NFS server, the admin should take reasonable precautions when exporting file systems, including restricting NFS access to a specific range of local IP addresses and exporting file systems "read-only" and "nosuid" where appropriate.  For more information consult the exportfs(1M) manual page.  Much higher levels of security can be achieved by combining NFS with secure RPC or Kerberos, although there is significant administrative overhead involved in this transition."
+    description: "NFS is frequently exploited to gain unauthorized access to files and systems.  Clearly there is no need to run the NFS server-related daemons on hosts that are not NFS servers. If the system is an NFS server, the admin should take reasonable precautions when exporting file systems, including restricting NFS access to a specific range of local IP addresses and exporting file systems 'read-only' and 'nosuid' where appropriate.  For more information consult the exportfs(1M) manual page.  Much higher levels of security can be achieved by combining NFS with secure RPC or Kerberos, although there is significant administrative overhead involved in this transition."
     rationale: "This machine is a NFS file server."
     remediation: "Perform the following: ch_rc -a -p NFS_SERVER=1 /etc/rc.config.d/nfsconf"
     compliance:
@@ -419,7 +419,7 @@ checks:
   - id: 21031
     title: "Set Sticky Bit on World Writable Directories"
     description: "Ensure that the sticky bit is set for all unexpected or exposed world writable directories"
-    rationale: "When the so-called ""sticky bit"" is set on a directory, then only the owner of a file may remove that file from the directory (as opposed to the usual behavior where anybody with write access to that directory may remove the file).  Setting the sticky bit prevents users from overwriting each other's files, whether accidentally or maliciously, and is generally appropriate for most world-writable directories."
+    rationale: "When the so-called 'sticky bit' is set on a directory, then only the owner of a file may remove that file from the directory (as opposed to the usual behavior where anybody with write access to that directory may remove the file).  Setting the sticky bit prevents users from overwriting each other's files, whether accidentally or maliciously, and is generally appropriate for most world-writable directories."
     remediation: "Perform the following to set the sticky bit on all exposed world writable directories: 1. Execute the checkperms utility to generate a list of all world writable directories not registered as part of an HP-UX installed product. 2. For each directory on this list set the sticky bit: chmod u+t  <directory>"
     compliance:
       - cis: ["1.5.1"]
@@ -443,7 +443,7 @@ checks:
   - id: 21033
     title: "Resolve “unowned” files and directories"
     description: "Evaluate ownership of any files that are not owned by a locally defined user, and consider reassignment to an active user."
-    rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.   It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user onthe system (in this example, 'bin') as appropriate"
+    rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended.   It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user onthe system (in this example, 'bin') as appropriate"
     remediation: "Perform the following to identify 'unowned' files and directories,  and consider resetting ownership to a default owner and restricting access permissions: 1. Locate all local files that are owned by users or groups not listed in the system configuration files. find / \( -nouser –o -nogroup \) 2. Consider resetting user and group ownership of these files to a default active user (e.g. bin) chown bin:bin  <filename> 3. Consider restricting world-write permissions, and removingany SUID/SGID bits on these files. chmod ug-s,o-w <filename>"
     compliance:
       - cis: ["1.5.2"]
@@ -753,7 +753,7 @@ checks:
       -
 
   - id: 21058
-    title: "Set "mesg n" as default for all users"
+    title: "Set 'mesg n' as default for all users"
     description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device.  Note that this setting is the default on HP-UX 11i."
     rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
     remediation: "Perform the following: 1. Change directory to /etc 2. Append the line  mesg n  to the following files: a.  profile b.  csh.login c.  d.profile d.  d.login"
