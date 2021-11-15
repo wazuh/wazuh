@@ -3,6 +3,6 @@
   - agent:upgrade
   - task:status
   resources:
-  - "agent:id:001"
+  - "agent:id:005"
   - "*:*:*"
   effect: allow
