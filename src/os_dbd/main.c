@@ -21,6 +21,7 @@ static void cleanup();
 static void handler(int signum);
 static void help_dbd(char *home_path) __attribute__((noreturn));
 
+volatile int running = 1;
 
 /* Print information regarding enabled databases */
 static void print_db_info()
@@ -62,8 +63,7 @@ static void help_dbd(char *home_path)
     exit(1);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
 
     /* Connect to the database */
     d = 0;
-    while (d <= (db_config.maxreconnect * 10)) {
+    while (d < db_config.maxreconnect) {
         db_config.conn = osdb_connect(db_config.host, db_config.user,
                                       db_config.pass, db_config.db,
                                       db_config.port, db_config.sock);
@@ -212,8 +212,6 @@ int main(int argc, char **argv)
         }
 
         d++;
-        sleep(d * 60);
-
     }
 
     /* If after the maxreconnect attempts, it still didn't work, exit here */
@@ -287,6 +285,7 @@ void handler(int signum) {
     case SIGINT:
     case SIGTERM:
         minfo(SIGNAL_RECV, signum, strsignal(signum));
+        running = 0;
         break;
     default:
         merror("unknown signal (%d)", signum);

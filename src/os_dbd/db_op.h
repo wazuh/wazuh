@@ -43,5 +43,6 @@ void osdb_escapestr(char *str);
  *            050-176 (oct)
  */
 extern const unsigned char insert_map[256];
+extern volatile int running;
 
 #endif /* OS_DBOP_H */

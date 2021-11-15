@@ -33,7 +33,7 @@ int OS_SelectMaxID(const DBConfig *db_config) __attribute__((nonnull));
 int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config) __attribute__((nonnull));
 
 /* Database inserting main function */
-void OS_DBD(DBConfig *db_config) __attribute__((nonnull)) __attribute__((noreturn));
+void OS_DBD(DBConfig *db_config) __attribute__((nonnull));
 
 /* Set config pointer for osbd_op */
 void osdb_setconfig(DBConfig *db_config);
