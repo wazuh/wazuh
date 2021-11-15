@@ -8,27 +8,27 @@
 
   <rule id="93001" level="0">
     <if_sid>93000</if_sid>
-    <field name="SeverityName" type="pcre2">.+</field>
+    <field name="event.SeverityName" type="pcre2">.+</field>
     <description>CrowdStrike: Detection event)</description>
   </rule>
 
   <rule id="93002" level="3">
     <if_sid>93001</if_sid>
-    <field name="SeverityName" type="pcre2">Low</field>
+    <field name="event.SeverityName" type="pcre2">Low</field>
     <description>CrowdStrike: Detection low severity event)</description>
     <group>gpg13_4.12</group>
   </rule>
 
   <rule id="93003" level="5">
     <if_sid>93001</if_sid>
-    <field name="SeverityName" type="pcre2">Medium</field>
+    <field name="event.SeverityName" type="pcre2">Medium</field>
     <description>CrowdStrike: Detection medium severity event)</description>
     <group>gpg13_4.3,gpg13_4.12</group>
   </rule>
 
   <rule id="93004" level="7">
     <if_sid>93001</if_sid>
-    <field name="SeverityName" type="pcre2">High</field>
+    <field name="event.SeverityName" type="pcre2">High</field>
     <description>CrowdStrike: Detection high severity event)</description>
     <group>pci_dss_10.6.1,gpg13_4.1,gpg13_4.3,gpg13_4.12</group>
   </rule>
