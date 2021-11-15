@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifndef CLIENT
 #ifndef WM_AZURE
 #define WM_AZURE
 
@@ -81,5 +80,4 @@ extern const wm_context WM_AZURE_CONTEXT;   // Context
 // Parse XML configuration
 int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
-#endif
 #endif
