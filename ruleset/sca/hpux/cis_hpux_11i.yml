@@ -60,7 +60,7 @@ checks:
       - http://h20392.www2.hp.com/portal/swdepot/displayProductInfo.do?productNumber=T1471AA
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21002
     title: "Use Bastille to report security configuration state"
@@ -73,7 +73,7 @@ checks:
       - https://www.hp.com/go/bastille
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.2 Minimize inetd network services
@@ -93,7 +93,7 @@ checks:
       - http://docs.hp.com/en/B2355-60130/inetd.conf.4.html
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21004
     title: "Only enable telnet if absolutely necessary"
@@ -104,7 +104,7 @@ checks:
       - cis: ["1.2.2"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21005
     title: "Only enable FTP if absolutely necessary"
@@ -115,7 +115,7 @@ checks:
       - cis: ["1.2.3"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21006
     title: "Only enable rlogin/remsh/rcp if absolutely necessary"
@@ -126,7 +126,7 @@ checks:
       - cis: ["1.2.4"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21007
     title: "Only enable TFTP if absolutely necessary"
@@ -137,7 +137,8 @@ checks:
       - cis: ["1.2.5"]
     condition: all
     rules:
-      -
+    - '1==1'
+
   - id: 21008
     title: "Only enable printer service if absolutely necessary"
     description: "rlpdaemon provides a BSD-compatible print server interface.  Even machines that are print servers may wish to leave this service disabled if they do not need to support BSD-style printing."
@@ -147,7 +148,7 @@ checks:
       - cis: ["1.2.6"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21009
     title: "Only enable rquotad if absolutely necessary"
@@ -158,7 +159,7 @@ checks:
       - cis: ["1.2.7"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21010
     title: "Only enable CDE-related daemons if absolutely necessary"
@@ -169,7 +170,7 @@ checks:
       - cis: ["1.2.8"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21011
     title: "Only enable Kerberos-related daemons if absolutely necessary"
@@ -180,7 +181,7 @@ checks:
       - cis: ["1.2.9"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21012
     title: "Only enable BOOTP/DHCP daemon if absolutely necessary"
@@ -191,7 +192,7 @@ checks:
       - cis: ["1.2.10"]
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.3 Minimize boot services
@@ -207,7 +208,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21014
     title: "Disable NIS/NIS+ related processes, if possible"
@@ -219,7 +220,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21015
     title: "Disable printer daemons, if possible"
@@ -231,7 +232,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21016
     title: "Disable the CDE GUI login, if possible"
@@ -243,7 +244,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21017
     title: "Disable email server, if possible"
@@ -258,7 +259,7 @@ checks:
       - http://www.sendmail.org/
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21018
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
@@ -270,7 +271,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21019
     title: "Disable rarely used standard boot services"
@@ -282,7 +283,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21020
     title: "Only enable Windows-compatibility server processes if absolutely necessary"
@@ -293,7 +294,7 @@ checks:
       - cis: ["1.3.8"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21021
     title: "Only enable Windows-compatibility client processes if absolutely necessary"
@@ -304,7 +305,7 @@ checks:
       - cis: ["1.3.9"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21022
     title: "Only enable NFS server processes if absolutely necessary"
@@ -315,7 +316,7 @@ checks:
       - cis: ["1.3.10"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21023
     title: "Only enable NFS client processes if absolutely necessary"
@@ -326,7 +327,7 @@ checks:
       - cis: ["1.3.11"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21024
     title: "Only enable RPC-based services if absolutely necessary"
@@ -337,7 +338,7 @@ checks:
       - cis: ["1.3.12"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21025
     title: "Only enable Web server if absolutely necessary"
@@ -348,7 +349,7 @@ checks:
       - cis: ["1.3.13"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21026
     title: "Only enable BIND DNS server if absolutely necessary"
@@ -359,8 +360,8 @@ checks:
       - cis: ["1.3.14"]
     condition: all
     rules:
-      -
-#################################################################
+    - '1==1'
+ #################################################################
 # 1.4 Kernel Tuning
 #################################################################
 
@@ -374,7 +375,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21028
     title: "Network parameter modifications"
@@ -386,7 +387,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21029
     title: "Use more random TCP sequence numbers"
@@ -398,7 +399,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21030
     title: "Additional network parameter modifications"
@@ -410,7 +411,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.5 File/Directory Permissions/Access
@@ -450,7 +451,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.6 System Access, Authentication, and Authorization
@@ -466,7 +467,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21035
     title: "Restrict users who can access to FTP"
@@ -478,7 +479,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21036
     title: "Prevent Syslog from accepting messages from the network"
@@ -490,7 +491,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21037
     title: "Disable XDMCP port"
@@ -502,7 +503,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21038
     title: "Set default locking screensaver timeout"
@@ -514,7 +515,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21039
     title: "Configure IPFilter to allow only select communication"
@@ -526,7 +527,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21040
     title: "Restrict at/cron to authorized users"
@@ -538,7 +539,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21041
     title: "Restrict crontab file permissions"
@@ -550,7 +551,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21042
     title: "Restrict root logins to system console"
@@ -562,7 +563,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21043
     title: "Set retry limit for account lockout"
@@ -574,7 +575,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21044
     title: "Disable nobody access for secure RPC"
@@ -586,7 +587,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.7 Logging
@@ -602,7 +603,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21046
     title: "Enable logging from inetd"
@@ -614,7 +615,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21047
     title: "Turn on additional logging for FTP daemon"
@@ -626,7 +627,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.8 User Accounts and Environment
@@ -642,7 +643,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21049
     title: "Verify that there are no accounts with empty password fields"
@@ -654,7 +655,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21050
     title: "Set account expiration parameters on active accounts"
@@ -666,7 +667,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21051
     title: "Set strong password enforcement policies"
@@ -678,7 +679,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21052
     title: "Verify no legacy '+' entries exist in passwd and group files"
@@ -690,7 +691,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21053
     title: "No '.' or group/world-writable directory in root $PATH"
@@ -702,7 +703,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21054
     title: "Secure user home directories"
@@ -714,7 +715,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21055
     title: "No user dot-files should be group/world writable"
@@ -726,7 +727,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21056
     title: "Remove user .netrc, .rhosts and .shosts files"
@@ -738,7 +739,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21057
     title: "Set default umask for users"
@@ -750,7 +751,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21058
     title: "Set 'mesg n' as default for all users"
@@ -762,7 +763,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
 #################################################################
 # 1.9 Warning Banners
@@ -778,7 +779,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
+
 
   - id: 21060
     title: "Create warning banners for GUI logins"
@@ -790,7 +792,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
 
   - id: 21061
     title: "Create warning banners for FTP daemon"
@@ -802,4 +804,4 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      -
+    - '1==1'
