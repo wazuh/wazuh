@@ -940,8 +940,7 @@ class AWSBucket(WazuhIntegration):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
 
-            loop = True
-            while loop:
+            while True:
                 if 'Contents' not in bucket_files:
                     debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                     return
@@ -987,7 +986,7 @@ class AWSBucket(WazuhIntegration):
                     new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                     bucket_files = self.client.list_objects_v2(**new_s3_args)
                 else:
-                    loop = False
+                    break
 
         except SystemExit:
             raise
@@ -2402,19 +2401,6 @@ class AWSServerAccess(AWSCustomBucket):
         AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
         self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
 
-        self.sql_find_last_key_processed = """
-                                        SELECT
-                                            log_key
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            bucket_path='{bucket_path}' AND
-                                            aws_account_id='{aws_account_id}' AND
-                                            log_key LIKE '{prefix}%'
-                                        ORDER BY
-                                            log_key DESC
-                                        LIMIT 1;"""
-
     def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
         """
         Tells if the file key provided is too old to process.
@@ -2442,70 +2428,7 @@ class AWSServerAccess(AWSCustomBucket):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region,
                                                                                    custom_delimiter='-'))
-            if 'Contents' not in bucket_files:
-                debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
-                return
-
-            last_key = self._get_last_key_processed(self.aws_account_id)
-            try:
-                last_key_match = self.date_regex.search(last_key)
-                last_key_date = datetime.strptime(last_key_match.group(), '%Y-%m-%d-%H-%M-%S')
-            except TypeError:
-                # Either last_key is None or no date was found in the log key
-                last_key_date = None
-
-            for bucket_file in bucket_files['Contents']:
-                if not bucket_file['Key']:
-                    continue
-
-                if bucket_file['Key'][-1] == '/':
-                    # The file is a folder
-                    continue
-
-                try:
-                    date_match = self.date_regex.search(bucket_file['Key'])
-                    file_date = datetime.strptime(date_match.group(), '%Y-%m-%d-%H-%M-%S') if date_match else None
-                    match_start = date_match.span()[0] if date_match else None
-                except TypeError:
-                    if self.skip_on_error:
-                        debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, skipping it.", 1)
-                        continue
-                    else:
-                        print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
-                        sys.exit(17)
-
-                if not self.reparse and self._key_is_old(file_date, last_key_date):
-                    debug(f"++ Skipping file too old to process: {bucket_file['Key']}", 1)
-                    continue
-                if not self._same_prefix(match_start, aws_account_id, aws_region):
-                    debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
-                    continue
-
-                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                    if self.reparse:
-                        debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
-                    else:
-                        debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
-                        continue
-
-                debug(f"++ Found new log: {bucket_file['Key']}", 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file)
-            # Optimize DB
-            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-            self.db_connector.commit()
-            # Iterate if there are more logs
-            while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
-                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                bucket_files = self.client.list_objects_v2(**new_s3_args)
-
+            while True:
                 if 'Contents' not in bucket_files:
                     debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                     return
@@ -2520,20 +2443,16 @@ class AWSServerAccess(AWSCustomBucket):
 
                     try:
                         date_match = self.date_regex.search(bucket_file['Key'])
-                        file_date = datetime.strptime(date_match.group(), '%Y-%m-%d-%H-%M-%S') if date_match else None
                         match_start = date_match.span()[0] if date_match else None
                     except TypeError:
                         if self.skip_on_error:
-                            debug(
-                                f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, skipping it.", 1)
+                            debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, "
+                                  "skipping it.", 1)
                             continue
                         else:
                             print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
                             sys.exit(17)
 
-                    if not self.reparse and self._key_is_old(file_date, last_key_date):
-                        debug(f"++ Skipping file too old to process: {bucket_file['Key']}", 1)
-                        continue
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
                         debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                         continue
@@ -2557,6 +2476,14 @@ class AWSServerAccess(AWSCustomBucket):
                 # Optimize DB
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
                 self.db_connector.commit()
+
+                if bucket_files['IsTruncated']:
+                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
+                    new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                    bucket_files = self.client.list_objects_v2(**new_s3_args)
+                else:
+                    break
+
         except SystemExit:
             raise
         except Exception as err:
