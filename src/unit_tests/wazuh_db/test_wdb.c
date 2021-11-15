@@ -25,6 +25,8 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/libc/string_wrappers.h"
 
 typedef struct test_struct {
     wdb_t *wdb;
@@ -35,6 +37,10 @@ typedef struct test_struct {
 
 int setup_wdb(void **state) {
     test_mode = 1;
+    open_dbs = __real_OSHash_Create();
+    if (open_dbs == NULL) {
+        return -1;
+    }
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
@@ -48,6 +54,10 @@ int setup_wdb(void **state) {
 
 int teardown_wdb(void **state) {
     test_mode = 0;
+    if (open_dbs) {
+        OSHash_Free(open_dbs);
+        open_dbs = NULL;
+    }
     test_struct_t *data  = (test_struct_t *)*state;
     os_free(data->output);
     os_free(data->wdb->id);
@@ -65,7 +75,7 @@ void test_wdb_open_tasks_pool_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
     will_return(__wrap_OSHash_Get, data->wdb);
 
@@ -82,7 +92,7 @@ void test_wdb_open_tasks_create_error(void **state)
     wdb_t *ret = NULL;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
     will_return(__wrap_OSHash_Get, NULL);
 
@@ -117,7 +127,7 @@ void test_wdb_open_global_pool_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
     will_return(__wrap_OSHash_Get, data->wdb);
 
@@ -134,7 +144,7 @@ void test_wdb_open_global_create_fail(void **state)
     wdb_t *ret = NULL;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_OSHash_Get, self, (OSHash*) 0);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
     will_return(__wrap_OSHash_Get, NULL);
 
@@ -436,6 +446,201 @@ void test_wdb_exec_stmt_silent_invalid(void **state) {
     assert_int_equal(result, OS_INVALID);
 }
 
+/* Tests wdb_exec_stmt_send */
+
+void test_wdb_exec_stmt_send_single_row_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+    cJSON* j_query_result = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_query_result, json_str, json_value);
+    char* str_query_result = cJSON_PrintUnformatted(j_query_result);
+    char* command_result = NULL;
+    os_calloc(OS_MAXSTR, sizeof(char), command_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
+    //Calling wdb_exec_row_stmt
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 1);
+    expect_any(__wrap_sqlite3_column_type, i);
+    will_return(__wrap_sqlite3_column_type, SQLITE_INTEGER);
+    expect_any(__wrap_sqlite3_column_name, N);
+    will_return(__wrap_sqlite3_column_name, json_str);
+    expect_any(__wrap_sqlite3_column_double, iCol);
+    will_return(__wrap_sqlite3_column_double, json_value);
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    os_snprintf(command_result, OS_MAXSTR, "due %s", str_query_result);
+    expect_value(__wrap_OS_SendSecureTCP, sock, peer);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(command_result));
+    expect_string(__wrap_OS_SendSecureTCP, msg, command_result);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SUCCESS);
+
+    cJSON_Delete(j_query_result);
+    os_free(str_query_result);
+    os_free(command_result);
+}
+
+void test_wdb_exec_stmt_send_multiple_rows_success(void **state) {
+    int ROWS_RESPONSE = 100;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+    cJSON* j_query_result = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_query_result, json_str, json_value);
+    char* str_query_result = cJSON_PrintUnformatted(j_query_result);
+    char* command_result = NULL;
+    os_calloc(OS_MAXSTR, sizeof(char), command_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
+    //Calling wdb_exec_row_stmt
+    expect_sqlite3_step_count(SQLITE_ROW, ROWS_RESPONSE);
+    will_return_count(__wrap_sqlite3_column_count, 1, ROWS_RESPONSE);
+    expect_any_count(__wrap_sqlite3_column_type, i, ROWS_RESPONSE);
+    will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER, ROWS_RESPONSE);
+    expect_any_count(__wrap_sqlite3_column_name, N, ROWS_RESPONSE);
+    will_return_count(__wrap_sqlite3_column_name, json_str, ROWS_RESPONSE);
+    expect_any_count(__wrap_sqlite3_column_double, iCol, ROWS_RESPONSE);
+    will_return_count(__wrap_sqlite3_column_double, json_value, ROWS_RESPONSE);
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    os_snprintf(command_result, OS_MAXSTR, "due %s", str_query_result);
+    expect_value_count(__wrap_OS_SendSecureTCP, sock, peer, ROWS_RESPONSE);
+    expect_value_count(__wrap_OS_SendSecureTCP, size, strlen(command_result), ROWS_RESPONSE);
+    expect_string_count(__wrap_OS_SendSecureTCP, msg, command_result, ROWS_RESPONSE);
+    will_return_count(__wrap_OS_SendSecureTCP, 0, ROWS_RESPONSE);
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SUCCESS);
+
+    cJSON_Delete(j_query_result);
+    os_free(str_query_result);
+    os_free(command_result);
+}
+
+void test_wdb_exec_stmt_send_no_rows_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
+    //Calling wdb_exec_row_stmt
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
+void test_wdb_exec_stmt_send_row_size_limit_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+    const char* json_str = "COLUMN";
+    char* json_value = NULL;
+    os_calloc(OS_MAXSTR, sizeof(char), json_value);
+    memset(json_value,'A',OS_MAXSTR-1);
+    cJSON* j_query_result = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_query_result, json_str, json_value);
+    char* str_query_result = cJSON_PrintUnformatted(j_query_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
+    //Calling wdb_exec_row_stmt
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 1);
+    expect_any(__wrap_sqlite3_column_type, i);
+    will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+    expect_any(__wrap_sqlite3_column_name, N);
+    will_return(__wrap_sqlite3_column_name, json_str);
+    expect_any(__wrap_sqlite3_column_text, iCol);
+    will_return(__wrap_sqlite3_column_text, json_value);
+
+    will_return(__wrap_sqlite3_sql, "STATEMENT");
+    expect_string(__wrap__merror, formatted_msg, "SQL row response for statement STATEMENT is too big to be sent");
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SIZELIM);
+
+    cJSON_Delete(j_query_result);
+    os_free(str_query_result);
+    os_free(json_value);
+}
+
+void test_wdb_exec_stmt_send_socket_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+    const char* json_str = "COLUMN";
+    double json_value = 10;
+    cJSON* j_query_result = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_query_result, json_str, json_value);
+    char* str_query_result = cJSON_PrintUnformatted(j_query_result);
+    char* command_result = NULL;
+    os_calloc(OS_MAXSTR, sizeof(char), command_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
+    //Calling wdb_exec_row_stmt
+    expect_sqlite3_step_call(SQLITE_ROW);
+    will_return(__wrap_sqlite3_column_count, 1);
+    expect_any(__wrap_sqlite3_column_type, i);
+    will_return(__wrap_sqlite3_column_type, SQLITE_INTEGER);
+    expect_any(__wrap_sqlite3_column_name, N);
+    will_return(__wrap_sqlite3_column_name, json_str);
+    expect_any(__wrap_sqlite3_column_double, iCol);
+    will_return(__wrap_sqlite3_column_double, json_value);
+
+    os_snprintf(command_result, OS_MAXSTR, "due %s", str_query_result);
+    expect_value(__wrap_OS_SendSecureTCP, sock, peer);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(command_result));
+    expect_string(__wrap_OS_SendSecureTCP, msg, command_result);
+    will_return(__wrap_OS_SendSecureTCP, -1);
+
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "Socket 1234 error: error (0)");
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SOCKTERR);
+
+    cJSON_Delete(j_query_result);
+    os_free(str_query_result);
+    os_free(command_result);
+}
+
+void test_wdb_exec_stmt_send_timeout_set_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+
+    will_return(__wrap_OS_SetSendTimeout, -1);
+
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "Socket 1234 error setting timeout: error (0)");
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SOCKTERR);
+}
+
+void test_wdb_exec_stmt_send_statement_invalid(void **state) {
+    int peer = 1234;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
+
+    int result = wdb_exec_stmt_send(NULL, peer);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
 /* Tests wdb_init_stmt_in_cache */
 
 void test_wdb_init_stmt_in_cache_success(void **state) {
@@ -518,6 +723,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success_sqlite_done, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success_sqlite_row, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_invalid, setup_wdb, teardown_wdb),
+        //wdb_exec_stmt_send
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_single_row_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_multiple_rows_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_no_rows_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_row_size_limit_err, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_socket_err, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_timeout_set_err, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_statement_invalid, setup_wdb, teardown_wdb),
         //wdb_init_stmt_in_cache
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_transaction, setup_wdb, teardown_wdb),

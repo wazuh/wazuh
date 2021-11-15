@@ -51,6 +51,16 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+#define VULN_CVES_STATUS_VALID    "VALID"
+#define VULN_CVES_STATUS_PENDING  "PENDING"
+#define VULN_CVES_STATUS_OBSOLETE "OBSOLETE"
+#define VULN_CVES_STATUS_REMOVED  "REMOVED"
+
+#define VULN_CVES_TYPE_OS         "OS"
+#define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
+
+#define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -65,18 +75,20 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
+    WDB_STMT_OSINFO_GET,
+    WDB_STMT_OSINFO_SET_TRIAGED,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_INSERT2,
     WDB_STMT_PROGRAM_DEL,
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_PROGRAM_GET,
+    WDB_STMT_PROGRAM_FIND,
     WDB_STMT_HWINFO_INSERT,
     WDB_STMT_HWINFO_INSERT2,
     WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HOTFIX_INSERT2,
     WDB_STMT_HWINFO_DEL,
     WDB_STMT_HOTFIX_DEL,
-    WDB_STMT_SET_HOTFIX_MET,
     WDB_STMT_PORT_INSERT,
     WDB_STMT_PORT_INSERT2,
     WDB_STMT_PORT_DEL,
@@ -129,17 +141,23 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
+    WDB_STMT_FIM_SELECT_CHECKSUM,
     WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_DELETE_AROUND,
     WDB_STMT_FIM_DELETE_RANGE,
     WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_SYNC_SET_COMPLETION,
     WDB_STMT_SYNC_GET_INFO,
+    WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
     WDB_STMT_FIM_FILE_DELETE_AROUND,
     WDB_STMT_FIM_FILE_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM,
     WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_REGISTRY_CLEAR,
     WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
@@ -188,44 +206,63 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
-    WDB_STMT_VULN_CVE_INSERT,
-    WDB_STMT_VULN_CVE_CLEAR,
+    WDB_STMT_VULN_CVES_INSERT,
+    WDB_STMT_VULN_CVES_CLEAR,
+    WDB_STMT_VULN_CVES_UPDATE,
+    WDB_STMT_VULN_CVES_UPDATE_BY_TYPE,
+    WDB_STMT_VULN_CVES_UPDATE_ALL,
+    WDB_STMT_VULN_CVES_FIND_CVE,
+    WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
+    WDB_STMT_VULN_CVES_DELETE_ENTRY,
+    WDB_STMT_SYS_HOTFIXES_GET,
+    WDB_STMT_SYS_PROGRAMS_GET,
+    WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED,
+    WDB_STMT_SYS_PROGRAMS_SET_TRIAGED,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -244,6 +281,7 @@ typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
+    int peer;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
@@ -634,9 +672,6 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 // Delete Hotfix info from DB.
 int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
 
-// Set hotfix metadata.
-int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id);
-
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
 int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace);
 
@@ -650,7 +685,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged);
 
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace);
@@ -766,6 +801,22 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
 
 /**
+ * @brief Function to execute a SQL statement and send the result via TCP socket.
+ *        Each row of the SQL response will be sent in a different command.
+ *        This method will continue until SQL_DONE or an error is obtained.
+ *        This method could block if the receiver lasts longer in receiving the information.
+ *        The block will timeout after the time defined in WDB_BLOCK_SEND_TIMEOUT_S.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [in] peer The peer where the result will be sent.
+ * @return OS_SUCCESS on success.
+ *         OS_INVALID on errors executing SQL statement.
+ *         OS_SOCKTERR on errors handling the socket.
+ *         OS_SIZELIM on error trying to fit the row response into the socket buffer.
+ */
+int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
+
+/**
  * @brief Function to execute a SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
@@ -793,7 +844,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
-int wdb_parse(char * input, char * output);
+int wdb_parse(char * input, char * output, int peer);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -804,8 +855,8 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
  * 1. delete: Deletes pm table
  * 2. save: Inserts the entry or updates if it already exists
  * @param wdb Database of an agent
- * @param input buffer input
- * @param output buffer output, on success responses are:
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
  *        "ok 0" -> If entry was deleted
  *        "ok 1" -> If entry was updated
  *        "ok 2" -> If entry was inserted
@@ -822,8 +873,28 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a packages command
+ * Commands:
+ * 1. del: Deletes packages table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every package on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a hotfixes command
+ * Commands:
+ * 1. del: Deletes hotfixes table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every hotfix on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
@@ -836,12 +907,49 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
 
 /**
+ * @brief Function to parse get operation over the sys_osinfo database table.
+ *
+ * @param wdb The Global struct database.
+ * @param output Buffer output, on success responses are:
+ *        "ok <data>" -> If sql statement was processed.
+ *        "err <error_message>" -> If sql statement wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output);
+
+
+/**
+ * @brief Function to parse set operation over the sys_osinfo database table.
+ *
+ * @param wdb The Global struct database.
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
+ *        "ok" -> If sql statement was processed.
+ *        "err <error_message>" -> If sql statement wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_agents_set_sys_osinfo(wdb_t * wdb, char * input, char * output);
+
+
+/**
+ * @brief Function to parse set triaged over the sys_osinfo database table.
+ *
+ * @param wdb The Global struct database.
+ * @param output Buffer output, on success responses are:
+ *        "ok" -> If sql statement was processed.
+ *        "err <error_message>" -> If sql statement wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_agents_set_sys_osinfo_triaged(wdb_t* wdb, char* output);
+
+
+/**
  * @brief Function to parse generic dbsync message operation, and generate
  * a message to process in wazuh-db process.
  *
  * @param wdb The Global struct database.
- * @param input buffer input
- * @param output buffer output, on success responses are:
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
  *        "ok" -> If entry was processed
  *        "error" -> If entry wasn't processed.
  * @return -1 on error, and 0 on success.
@@ -1143,44 +1251,43 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+// Functions for database integrity
+
+int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
+/**
+ * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
+ *        the syncronization with the agents is in process, or the checksum sent to the manager is not the same than
+ *        the one calculated locally.
+ *
+ *        The 'legacy' flag calls internally to a different SQL statement, to avoid an overflow in the n_attempts column.
+ *        It happens because the old agents call this method once per row, and not once per syncronization cycle.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @param [in] timestamp The syncronization timestamp to store in the table.
+ * @param [in] last_agent_checksum The last global checksum received from the agent.
+ * @param [in] manager_checksum Checksum of the last calculated component on the manager to be stored.
+ * @param [in] legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
+ */
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum, bool legacy);
 
 /**
- * @brief Update sync attempt timestamp
+ * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
+ *        the syncronization with the agents is complete, or the checksum sent to the manager is the same than
+ *        the one calculated locally.
  *
- * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit (non legacy agents).
- * Save the last calculated component checksum on the manager.
- *
- * It should be called when the syncronization with the agents is in process, or the checksum sent
- * to the manager is not the same than the one calculated locally.
- *
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @param [in] timestamp The syncronization timestamp to store in the table.
+ * @param [in] last_agent_checksum The last global checksum received from the agent.
+ * @param [in] manager_checksum Checksum of the last calculated component on the manager to be stored.
  */
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum);
-
-/**
- * @brief Update sync completion timestamp
- *
- * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
- * Increase "n_attempts" and "n_completions" one unit.
- * Save the last calculated component checksum on the manager.
- *
- * It should be called when the syncronization with the agents is complete,
- * or the checksum sent to the manager is the same than the one calculated locally.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id").
- * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
- */
-void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum);
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum);
 
 /**
  * @brief Get the last stored checksum of a component on the manager
@@ -1190,6 +1297,10 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  * @param manager_checksum os_sha1 where the last checksum is returned
  */
 int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum);
+
+void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
@@ -1296,6 +1407,34 @@ int wdb_journal_wal(sqlite3 *db);
  * @retval -1 On error.
  */
 int wdb_enable_foreign_keys(sqlite3 *db);
+
+/**
+*  @brief Calculates SHA1 hash from a NULL terminated string array.
+*
+* @param [in] strings_to_hash NULL Terminated array with strings to hash
+* @param [out] hexdigest Result
+*/
+ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
+*  @brief Calculates SHA1 hash from a NULL terminated set of strings.
+*
+* @param [in] ... NULL Terminated list of strings
+* @param [out] hexdigest Result
+*/
+ int wdbi_strings_hash(os_sha1 hexdigest, ...);
+
+/**
+ * @brief Function to get a MITRE technique's name.
+ *
+ * @param [in] wdb The MITRE struct database.
+ * @param [in] id MITRE technique's ID.
+ * @param [out] output MITRE technique's name.
+ * @retval 1 Sucess: name found on MITRE database.
+ * @retval 0 On error: name not found on MITRE database.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 /**
  * @brief Function to insert an agent.
@@ -1786,7 +1925,7 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the vuln_cve requests.
+ * @brief Function to parse the vuln_cves requests.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the action and the data if needed.
@@ -1794,10 +1933,10 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output);
 
  /**
- * @brief Function to parse the vuln_cve insert action.
+ * @brief Function to parse the vuln_cves insert action.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
@@ -1805,18 +1944,42 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to parse the vuln_cve clear action.
+ * @brief Function to parse the vuln_cves update status action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_update_vuln_cves_status(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cves remove action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
+ *                   whith that status, or the CVE and reference to remove a particular entry. Examples:
+ *                   - To remove by status: {"status":"OBSOLETE"}
+ *                   - To remove a specific entry: {"cve":"cve-xxxx-xxxx","reference":"refxxx"}
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cves clear action.
  *
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
-
+ int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout
