@@ -129,19 +129,16 @@ int main (int argc, char **argv) {
         int count = 0;
         bool flag = true;
         while (flag) {
-            char *exec_cmd1[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-
-            const char *arg1[8] = { iptables, arg, "INPUT", "-s", srcip, "-j", "DROP", NULL };
-            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+            char *exec_cmd1[8] = { iptables, arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL };
 
             wfd = wpopenv(iptables, exec_cmd1, W_BIND_STDERR);
             if (!wfd) {
                 count++;
-                write_debug_file(argv[0], "Unable to run iptables");
-                sleep(count);
-
                 if (count > 4) {
                     flag = false;
+                    write_debug_file(argv[0], "Unable to run iptables");
+                } else {
+                    sleep(count);
                 }
             } else {
                 flag = false;
@@ -152,19 +149,16 @@ int main (int argc, char **argv) {
         count = 0;
         flag = true;
         while (flag) {
-            char *exec_cmd2[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-
-            const char *arg2[8] = { iptables, arg, "FORWARD", "-s", srcip, "-j", "DROP", NULL };
-            memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
+            char *exec_cmd2[8] = { iptables, arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL };
 
             wfd = wpopenv(iptables, exec_cmd2, W_BIND_STDERR);
             if (!wfd) {
                 count++;
-                write_debug_file(argv[0], "Unable to run iptables");
-                sleep(count);
-
                 if (count > 4) {
                     flag = false;
+                    write_debug_file(argv[0], "Unable to run iptables");
+                } else {
+                    sleep(count);
                 }
             } else {
                 flag = false;
@@ -218,7 +212,6 @@ int main (int argc, char **argv) {
         }
 
         char *exec_cmd1[4] = { ipfilter_path, ipfarg, "-", NULL };
-        char *exec_cmd2[4] = { ipfilter_path, ipfarg, "-", NULL };
 
         wfd = wpopenv(ipfilter_path, exec_cmd1, W_BIND_STDIN);
         if (!wfd) {
@@ -229,7 +222,7 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
 
-        wfd = wpopenv(ipfilter_path, exec_cmd2, W_BIND_STDIN);
+        wfd = wpopenv(ipfilter_path, exec_cmd1, W_BIND_STDIN);
         if (!wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
@@ -282,10 +275,7 @@ int main (int argc, char **argv) {
         }
 
         if (action == ADD_COMMAND) {
-            char *exec_cmd1[18] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-
-            const char *arg1[18] = { genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL };
-            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+            char *exec_cmd1[18] = { genfilt_path, "-v", "4", "-a", "D", "-s", (char *)srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL };
 
             wfd = wpopenv(genfilt_path, exec_cmd1, W_BIND_STDERR);
             if (!wfd) {

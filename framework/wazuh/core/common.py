@@ -179,6 +179,7 @@ agent_info_retries = 100  # Retries to detect when agent_info file is updated
 agent_info_sleep = 2  # Seconds between retries
 
 # Common variables
+agent_name_len_limit = 128
 database_limit = 500
 maximum_database_limit = 100000
 limit_seconds = 1800  # 600*3

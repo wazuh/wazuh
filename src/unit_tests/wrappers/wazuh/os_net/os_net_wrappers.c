@@ -102,6 +102,11 @@ int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
     return mock();
 }
 
+int __wrap_OS_SetSendTimeout(__attribute__((unused)) int socket,
+                             __attribute__((unused)) int seconds) {
+    return mock();
+}
+
 
 int __wrap_wnet_select(__attribute__((unused)) int sock,
                        __attribute__((unused)) int timeout) {

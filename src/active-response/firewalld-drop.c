@@ -88,9 +88,9 @@ int main (int argc, char **argv) {
 
         memset(arg1, '\0', COMMANDSIZE_4096);
         if (action == ADD_COMMAND) {
-            strcpy(arg1, "--add-rich-rule=");
+            strcpy(arg1, "--add-rich-rule");
         } else {
-            strcpy(arg1, "--remove-rich-rule=");
+            strcpy(arg1, "--remove-rich-rule");
         }
 
         memset(fw_cmd, '\0', COMMANDSIZE_4096);
@@ -129,19 +129,28 @@ int main (int argc, char **argv) {
         int count = 0;
         bool flag = true;
         while (flag) {
-            char system_command[OS_MAXSTR];
-            memset(system_command, '\0', OS_MAXSTR);
-            snprintf(system_command, OS_MAXSTR -1, "%s %s\"%s\"", fw_cmd, arg1, rule);
-            if (system(system_command) != 0) {
-                count++;
-                write_debug_file(argv[0], "Unable to run firewall-cmd");
-                sleep(count);
+            char *exec_cmd1[4] = { fw_cmd, arg1, rule, NULL };
 
+            wfd_t *wfd = wpopenv(fw_cmd, exec_cmd1, W_BIND_STDERR);
+            if (wfd) {
+                int wp_closefd = wpclose(wfd);
+                if ( WIFEXITED(wp_closefd) ) {
+                    int wstatus = WEXITSTATUS(wp_closefd);
+                    if (wstatus == 0) {
+                        flag = false;
+                    }
+                }
+            }
+            if (flag) {
+                count++;
                 if (count > 4) {
                     flag = false;
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "Unable to run firewall-cmd, action: '%s', rule: '%s'", arg1, rule);
+                    write_debug_file(argv[0], log_msg);
+                } else {
+                    sleep(count);
                 }
-            } else {
-                flag = false;
             }
         }
         unlock(lock_path, argv[0]);

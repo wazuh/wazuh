@@ -61,6 +61,8 @@ cJSON * __wrap_cJSON_CreateObject(void);
 
 cJSON * __wrap_cJSON_CreateNumber(double num);
 
+extern cJSON * __real_cJSON_CreateNumber(double num);
+
 cJSON * __wrap_cJSON_CreateString(const char *string);
 
 extern cJSON * __real_cJSON_CreateString(const char *string);
@@ -71,23 +73,17 @@ extern void __real_cJSON_Delete(cJSON *item);
 
 cJSON * WSTD_CALL __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
-void expect_cJSON_GetObjectItem_call(cJSON *object);
-
 extern cJSON * __real_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
 char* WSTD_CALL __wrap_cJSON_GetStringValue(cJSON * item);
 
-void expect_cJSON_GetStringValue_call(char *str);
-
 cJSON_bool __wrap_cJSON_IsNumber(cJSON * item);
-
-void expect_cJSON_IsNumber_call(int ret);
 
 cJSON_bool __wrap_cJSON_IsObject(cJSON * item);
 
-void expect_cJSON_IsObject_call(int ret);
-
 cJSON * __wrap_cJSON_Parse(const char *value);
+
+cJSON * __wrap_cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated);
 
 extern cJSON * __real_cJSON_Parse(const char *value);
 
@@ -104,7 +100,5 @@ extern cJSON * __real_cJSON_GetArrayItem(const cJSON *array, int index);
 cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
 
 cJSON* __wrap_cJSON_AddBoolToObject(cJSON * const object, const char * const name, const cJSON_bool boolean);
-
-cJSON * __wrap_cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated);
 
 #endif

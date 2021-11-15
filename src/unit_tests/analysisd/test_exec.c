@@ -63,6 +63,7 @@ static int test_teardown(void **state) {
     os_free(data->lf->decoder_info);
     os_free(data->lf->generated_rule);
     os_free(data->ar->ar_cmd);
+    os_free(data->lf->fields);
     os_free(data->lf);
     os_free(data->ar);
     os_free(data);
@@ -781,7 +782,7 @@ void test_getActiveResponseInJSON_extra_args(void **state){
 
     will_return(__wrap_OS_GetOneContentforElement, node);
 
-    getActiveResponseInJSON(data->lf, data->ar, extra_args, msg);
+    getActiveResponseInJSON(data->lf, data->ar, extra_args, msg, false);
 
     cJSON * root = cJSON_Parse(msg);
     cJSON * deviceData = cJSON_GetObjectItem(root,"parameters");

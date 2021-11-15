@@ -47,6 +47,8 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 void * fim_run_realtime(__attribute__((unused)) void * args);
 #endif
 
+void fim_sync_check_eps();
+
 int fim_whodata_initialize();
 #ifdef WIN32
 STATIC void set_priority_windows_thread();
@@ -76,16 +78,12 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     }
 }
 
-// Send a data synchronization control message
-void fim_send_sync_msg(const char *location, const char * msg) {
-    mdebug2(FIM_DBSYNC_SEND, msg);
-    fim_send_msg(DBSYNC_MQ, location, msg);
+void fim_sync_check_eps() {
+    static long n_msg_sent = 0;
 
     if (syscheck.sync_max_eps == 0) {
         return;
     }
-
-    static long n_msg_sent = 0;
 
     if (++n_msg_sent == syscheck.sync_max_eps) {
         sleep(1);
@@ -93,6 +91,34 @@ void fim_send_sync_msg(const char *location, const char * msg) {
     }
 }
 
+// Send a state synchronization message
+void fim_send_sync_state(const char *location, cJSON * msg) {
+    char *plain = dbsync_state_msg(location, msg);
+    mdebug2(FIM_DBSYNC_SEND, plain);
+
+    fim_send_msg(DBSYNC_MQ, location, plain);
+
+    os_free(plain);
+
+    fim_sync_check_eps();
+}
+
+// Send a data synchronization control message
+void fim_send_sync_control(const char *component,
+                           dbsync_msg msg,
+                           long id,
+                           const char *start,
+                           const char *top,
+                           const char *tail,
+                           const char *checksum) {
+    char *plain = dbsync_check_msg(component, msg, id, start, top, tail, checksum);
+    mdebug2(FIM_DBSYNC_SEND, plain);
+    fim_send_msg(DBSYNC_MQ, component, plain);
+
+    os_free(plain);
+
+    fim_sync_check_eps();
+}
 
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const cJSON *_msg) {

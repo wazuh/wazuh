@@ -51,7 +51,7 @@ void test_wdb_parse_global_open_global_fail(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: ");
     expect_string(__wrap__mdebug2, formatted_msg, "Couldn't open DB global: queue/db/global.db");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Couldn't open DB global");
     assert_int_equal(ret, OS_INVALID);
@@ -66,7 +66,7 @@ void test_wdb_parse_global_no_space(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "DB query: global");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'global'");
     assert_int_equal(ret, OS_INVALID);
@@ -78,13 +78,13 @@ void test_wdb_parse_global_substr_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global error";
 
-    will_return(__wrap_wdb_open_global, (wdb_t*)1);
+    will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: error");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: error");
 
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'error'");
     assert_int_equal(ret, OS_INVALID);
@@ -96,12 +96,12 @@ void test_wdb_parse_global_sql_error(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global sql";
 
-    will_return(__wrap_wdb_open_global, (wdb_t*)1);
+    will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sql");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: sql");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'sql'");
     assert_int_equal(ret, OS_INVALID);
@@ -125,7 +125,7 @@ void test_wdb_parse_global_sql_success(void **state)
     will_return(__wrap_wdb_exec,root);
     expect_string(__wrap_wdb_exec, sql, "TEST QUERY");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"test_field\":\"test_value\"}]");
     assert_int_equal(ret, OS_SUCCESS);
@@ -146,7 +146,7 @@ void test_wdb_parse_global_sql_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: TEST QUERY");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -160,7 +160,7 @@ void test_wdb_parse_global_actor_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid DB query actor: error");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query actor: 'error'");
     assert_int_equal(ret, OS_INVALID);
@@ -179,7 +179,7 @@ void test_wdb_parse_global_insert_agent_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for insert-agent.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: insert-agent");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'insert-agent'");
     assert_int_equal(ret, OS_INVALID);
@@ -196,7 +196,7 @@ void test_wdb_parse_global_insert_agent_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when inserting agent.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -212,7 +212,7 @@ void test_wdb_parse_global_insert_agent_compliant_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent {\"id\":1,\"name\":\"test_name\",\"date_add\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when inserting agent. Not compliant with constraints defined in the database.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"name\":\"test_name\",\"date'");
     assert_int_equal(ret, OS_INVALID);
@@ -238,7 +238,7 @@ void test_wdb_parse_global_insert_agent_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -264,7 +264,7 @@ void test_wdb_parse_global_insert_agent_success(void **state)
     expect_value(__wrap_wdb_global_insert_agent, date_add, 123);
     will_return(__wrap_wdb_global_insert_agent, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -283,7 +283,7 @@ void test_wdb_parse_global_update_agent_name_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-name.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-name");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-name'");
     assert_int_equal(ret, OS_INVALID);
@@ -300,7 +300,7 @@ void test_wdb_parse_global_update_agent_name_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent name.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -316,7 +316,7 @@ void test_wdb_parse_global_update_agent_name_invalid_data(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-name {\"id\":1,\"name\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent name.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"name\":null}'");
     assert_int_equal(ret, OS_INVALID);
@@ -336,7 +336,7 @@ void test_wdb_parse_global_update_agent_name_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -354,7 +354,7 @@ void test_wdb_parse_global_update_agent_name_success(void **state)
     expect_string(__wrap_wdb_global_update_agent_name, name, "test_name");
     will_return(__wrap_wdb_global_update_agent_name, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -373,7 +373,7 @@ void test_wdb_parse_global_update_agent_data_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-data.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-data");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-data'");
     assert_int_equal(ret, OS_INVALID);
@@ -390,7 +390,7 @@ void test_wdb_parse_global_update_agent_data_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent version.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -438,7 +438,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -464,7 +464,7 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent version.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"os_name\":\"test_name\",\"os_versi'");
     assert_int_equal(ret, OS_INVALID);
@@ -511,7 +511,7 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
     will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -530,7 +530,7 @@ void test_wdb_parse_global_get_agent_labels_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-labels.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-labels");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-labels'");
     assert_int_equal(ret, OS_INVALID);
@@ -548,7 +548,7 @@ void test_wdb_parse_global_get_agent_labels_query_error(void **state)
     will_return(__wrap_wdb_global_get_agent_labels, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent labels from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting agent labels from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -574,7 +574,7 @@ void test_wdb_parse_global_get_agent_labels_success(void **state)
     expect_value(__wrap_wdb_global_get_agent_labels, id, 1);
     will_return(__wrap_wdb_global_get_agent_labels, root);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]");
     assert_int_equal(ret, OS_SUCCESS);
@@ -594,7 +594,7 @@ void test_wdb_parse_global_set_agent_labels_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for set-labels.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: set-labels");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'set-labels'");
     assert_int_equal(ret, OS_INVALID);
@@ -611,7 +611,7 @@ void test_wdb_parse_global_set_agent_labels_id_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "DB query error near: ");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near ''");
     assert_int_equal(ret, OS_INVALID);
@@ -631,7 +631,7 @@ void test_wdb_parse_global_set_agent_labels_remove_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -655,7 +655,7 @@ void test_wdb_parse_global_set_agent_labels_set_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -685,7 +685,7 @@ void test_wdb_parse_global_set_agent_labels_success(void **state)
     expect_string(__wrap_wdb_global_set_agent_label, value, "test_key4");
     will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -702,7 +702,7 @@ void test_wdb_parse_global_set_agent_labels_success_only_remove(void **state)
     expect_value(__wrap_wdb_global_del_agent_labels, id, 1);
     will_return(__wrap_wdb_global_del_agent_labels, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -721,7 +721,7 @@ void test_wdb_parse_global_update_agent_keepalive_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-keepalive.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-keepalive");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-keepalive'");
     assert_int_equal(ret, OS_INVALID);
@@ -738,7 +738,7 @@ void test_wdb_parse_global_update_agent_keepalive_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent keepalive.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -754,7 +754,7 @@ void test_wdb_parse_global_update_agent_keepalive_invalid_data(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent keepalive.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"connection_status\":\"act'");
     assert_int_equal(ret, OS_INVALID);
@@ -776,7 +776,7 @@ void test_wdb_parse_global_update_agent_keepalive_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -796,7 +796,7 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-keepalive {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -815,7 +815,7 @@ void test_wdb_parse_global_update_connection_status_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-connection-status.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-connection-status");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-connection-status'");
     assert_int_equal(ret, OS_INVALID);
@@ -832,7 +832,7 @@ void test_wdb_parse_global_update_connection_status_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent connection status.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -848,7 +848,7 @@ void test_wdb_parse_global_update_connection_status_invalid_data(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent connection status.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"connection_status\":null'");
     assert_int_equal(ret, OS_INVALID);
@@ -869,7 +869,7 @@ void test_wdb_parse_global_update_connection_status_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -888,7 +888,7 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -907,7 +907,7 @@ void test_wdb_parse_global_delete_agent_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-agent.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-agent");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-agent'");
     assert_int_equal(ret, OS_INVALID);
@@ -925,7 +925,7 @@ void test_wdb_parse_global_delete_agent_query_error(void **state)
     will_return(__wrap_wdb_global_delete_agent, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error deleting agent from agent table in global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error deleting agent from agent table in global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -942,7 +942,7 @@ void test_wdb_parse_global_delete_agent_success(void **state)
     expect_value(__wrap_wdb_global_delete_agent, id, 1);
     will_return(__wrap_wdb_global_delete_agent, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -961,7 +961,7 @@ void test_wdb_parse_global_select_agent_name_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-name.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-name");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-name'");
     assert_int_equal(ret, OS_INVALID);
@@ -979,7 +979,7 @@ void test_wdb_parse_global_select_agent_name_query_error(void **state)
     will_return(__wrap_wdb_global_select_agent_name, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent name from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting agent name from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1000,7 +1000,7 @@ void test_wdb_parse_global_select_agent_name_success(void **state)
     expect_value(__wrap_wdb_global_select_agent_name, id, 1);
     will_return(__wrap_wdb_global_select_agent_name, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1019,7 +1019,7 @@ void test_wdb_parse_global_select_agent_group_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-group.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-group");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-group'");
     assert_int_equal(ret, OS_INVALID);
@@ -1037,7 +1037,7 @@ void test_wdb_parse_global_select_agent_group_query_error(void **state)
     will_return(__wrap_wdb_global_select_agent_group, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent group from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting agent group from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1058,7 +1058,7 @@ void test_wdb_parse_global_select_agent_group_success(void **state)
     expect_value(__wrap_wdb_global_select_agent_group, id, 1);
     will_return(__wrap_wdb_global_select_agent_group, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1077,7 +1077,7 @@ void test_wdb_parse_global_delete_agent_belong_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-agent-belong.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-agent-belong");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-agent-belong'");
     assert_int_equal(ret, OS_INVALID);
@@ -1095,7 +1095,7 @@ void test_wdb_parse_global_delete_agent_belong_query_error(void **state)
     will_return(__wrap_wdb_global_delete_agent_belong, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error deleting agent from belongs table in global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error deleting agent from belongs table in global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1112,7 +1112,7 @@ void test_wdb_parse_global_delete_agent_belong_success(void **state)
     expect_value(__wrap_wdb_global_delete_agent_belong, id, 1);
     will_return(__wrap_wdb_global_delete_agent_belong, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1131,7 +1131,7 @@ void test_wdb_parse_global_find_agent_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for find-agent.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: find-agent");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'find-agent'");
     assert_int_equal(ret, OS_INVALID);
@@ -1148,7 +1148,7 @@ void test_wdb_parse_global_find_agent_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when finding agent id.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1164,7 +1164,7 @@ void test_wdb_parse_global_find_agent_invalid_data(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-agent {\"ip\":null,\"name\":\"test_name\"}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when finding agent id.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"ip\":null,\"name\":\"test_name\"}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1184,7 +1184,7 @@ void test_wdb_parse_global_find_agent_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -1206,7 +1206,7 @@ void test_wdb_parse_global_find_agent_success(void **state)
     expect_string(__wrap_wdb_global_find_agent, name, "test_name");
     will_return(__wrap_wdb_global_find_agent, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"id\":1}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1225,7 +1225,7 @@ void test_wdb_parse_global_update_agent_group_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-agent-group.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-agent-group");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-agent-group'");
     assert_int_equal(ret, OS_INVALID);
@@ -1242,7 +1242,7 @@ void test_wdb_parse_global_update_agent_group_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent group.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1258,7 +1258,7 @@ void test_wdb_parse_global_update_agent_group_invalid_data(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-agent-group {\"group\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent group.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"group\":null}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1278,7 +1278,7 @@ void test_wdb_parse_global_update_agent_group_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -1296,7 +1296,7 @@ void test_wdb_parse_global_update_agent_group_success(void **state)
     expect_string(__wrap_wdb_global_update_agent_group, group, "test_group");
     will_return(__wrap_wdb_global_update_agent_group, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1315,7 +1315,7 @@ void test_wdb_parse_global_find_group_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for find-group.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: find-group");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'find-group'");
     assert_int_equal(ret, OS_INVALID);
@@ -1333,7 +1333,7 @@ void test_wdb_parse_global_find_group_query_error(void **state)
     will_return(__wrap_wdb_global_find_group, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting group id from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting group id from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1354,7 +1354,7 @@ void test_wdb_parse_global_find_group_success(void **state)
     expect_string(__wrap_wdb_global_find_group, group_name, "test_group");
     will_return(__wrap_wdb_global_find_group, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"id\":1}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1373,7 +1373,7 @@ void test_wdb_parse_global_insert_agent_group_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for insert-agent-group.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: insert-agent-group");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'insert-agent-group'");
     assert_int_equal(ret, OS_INVALID);
@@ -1391,7 +1391,7 @@ void test_wdb_parse_global_insert_agent_group_query_error(void **state)
     will_return(__wrap_wdb_global_insert_agent_group, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error inserting group in global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error inserting group in global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1408,7 +1408,7 @@ void test_wdb_parse_global_insert_agent_group_success(void **state)
     expect_string(__wrap_wdb_global_insert_agent_group, group_name, "test_group");
     will_return(__wrap_wdb_global_insert_agent_group, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1427,7 +1427,7 @@ void test_wdb_parse_global_insert_agent_belong_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for insert-agent-belong.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: insert-agent-belong");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'insert-agent-belong'");
     assert_int_equal(ret, OS_INVALID);
@@ -1444,7 +1444,7 @@ void test_wdb_parse_global_insert_agent_belong_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when inserting agent to belongs table.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1460,7 +1460,7 @@ void test_wdb_parse_global_insert_agent_belong_invalid_data(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-belong {\"id_group\":1,\"id_agent\":null}");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when inserting agent to belongs table.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, near '{\"id_group\":1,\"id_agent\":null}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1480,7 +1480,7 @@ void test_wdb_parse_global_insert_agent_belong_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -1498,7 +1498,7 @@ void test_wdb_parse_global_insert_agent_belong_success(void **state)
     expect_value(__wrap_wdb_global_insert_agent_belong, id_agent, 2);
     will_return(__wrap_wdb_global_insert_agent_belong, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1517,7 +1517,7 @@ void test_wdb_parse_global_delete_group_belong_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-group-belong.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-group-belong");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-group-belong'");
     assert_int_equal(ret, OS_INVALID);
@@ -1535,7 +1535,7 @@ void test_wdb_parse_global_delete_group_belong_query_error(void **state)
     will_return(__wrap_wdb_global_delete_group_belong, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error deleting group from belongs table in global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error deleting group from belongs table in global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1552,7 +1552,7 @@ void test_wdb_parse_global_delete_group_belong_success(void **state)
     expect_string(__wrap_wdb_global_delete_group_belong, group_name, "test_group");
     will_return(__wrap_wdb_global_delete_group_belong, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1571,7 +1571,7 @@ void test_wdb_parse_global_delete_group_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-group.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-group");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-group'");
     assert_int_equal(ret, OS_INVALID);
@@ -1589,7 +1589,7 @@ void test_wdb_parse_global_delete_group_query_error(void **state)
     will_return(__wrap_wdb_global_delete_group, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error deleting group in global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error deleting group in global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1606,7 +1606,7 @@ void test_wdb_parse_global_delete_group_success(void **state)
     expect_string(__wrap_wdb_global_delete_group, group_name, "test_group");
     will_return(__wrap_wdb_global_delete_group, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1625,7 +1625,7 @@ void test_wdb_parse_global_select_groups_query_error(void **state)
     will_return(__wrap_wdb_global_select_groups, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting groups from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting groups from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1646,7 +1646,7 @@ void test_wdb_parse_global_select_groups_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-groups");
     will_return(__wrap_wdb_global_select_groups, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"id\":1,\"id\":2}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1665,7 +1665,7 @@ void test_wdb_parse_global_select_agent_keepalive_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-keepalive.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-keepalive");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-keepalive'");
     assert_int_equal(ret, OS_INVALID);
@@ -1682,7 +1682,7 @@ void test_wdb_parse_global_select_agent_keepalive_syntax_error2(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "DB query error near: test_name");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'test_name'");
     assert_int_equal(ret, OS_INVALID);
@@ -1701,7 +1701,7 @@ void test_wdb_parse_global_select_agent_keepalive_query_error(void **state)
     will_return(__wrap_wdb_global_select_agent_keepalive, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent keepalive from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting agent keepalive from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -1723,7 +1723,7 @@ void test_wdb_parse_global_select_agent_keepalive_success(void **state)
     expect_string(__wrap_wdb_global_select_agent_keepalive, ip, "0.0.0.0");
     will_return(__wrap_wdb_global_select_agent_keepalive, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"keepalive\":1000}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1744,7 +1744,7 @@ void test_wdb_parse_global_sync_agent_info_get_success(void **state)
     will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
     will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {SYNC INFO}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1763,7 +1763,7 @@ void test_wdb_parse_global_sync_agent_info_get_last_id_success(void **state)
     will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
     will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {SYNC INFO}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1787,7 +1787,7 @@ void test_wdb_parse_global_sync_agent_info_get_size_limit(void **state)
     will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
     will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     char delims[] = " ";
     char* payload = NULL;
@@ -1812,7 +1812,7 @@ void test_wdb_parse_global_sync_agent_info_set_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for sync-agent-info-set.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: sync-agent-info-set");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'sync-agent-info-set'");
     assert_int_equal(ret, OS_INVALID);
@@ -1829,7 +1829,7 @@ void test_wdb_parse_global_sync_agent_info_set_invalid_json(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax updating unsynced agents.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
     assert_int_equal(ret, OS_INVALID);
@@ -1851,7 +1851,7 @@ void test_wdb_parse_global_sync_agent_info_set_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -1872,7 +1872,7 @@ void test_wdb_parse_global_sync_agent_info_set_id_error(void **state)
     will_return(__wrap_wdb_global_sync_agent_info_set, OS_SUCCESS);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; incorrect agent id in labels array.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot update labels due to invalid id.");
     assert_int_equal(ret, OS_INVALID);
@@ -1897,7 +1897,7 @@ void test_wdb_parse_global_sync_agent_info_set_del_label_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -1926,7 +1926,7 @@ void test_wdb_parse_global_sync_agent_info_set_set_label_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -1953,7 +1953,7 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
     expect_string(__wrap_wdb_global_set_agent_label, value, "test_value");
     will_return(__wrap_wdb_global_set_agent_label, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -1972,7 +1972,7 @@ void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for disconnect-agents.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: disconnect-agents");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'disconnect-agents'");
     assert_int_equal(ret, OS_INVALID);
@@ -1988,7 +1988,7 @@ void test_wdb_parse_global_disconnect_agents_last_id_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents ");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments last id not found.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments last id not found");
     assert_int_equal(ret, OS_INVALID);
@@ -2004,7 +2004,7 @@ void test_wdb_parse_global_disconnect_agents_keepalive_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments keepalive not found.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments keepalive not found");
     assert_int_equal(ret, OS_INVALID);
@@ -2020,7 +2020,7 @@ void test_wdb_parse_global_disconnect_agents_sync_status_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: disconnect-agents 0 100");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments sync_status not found.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments sync_status not found");
     assert_int_equal(ret, OS_INVALID);
@@ -2044,7 +2044,7 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
     will_return(__wrap_wdb_global_get_agents_to_disconnect, WDBC_OK);
     will_return(__wrap_wdb_global_get_agents_to_disconnect, root);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
@@ -2063,7 +2063,7 @@ void test_wdb_parse_global_get_all_agents_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-all-agents.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-all-agents");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-all-agents'");
     assert_int_equal(ret, OS_INVALID);
@@ -2079,7 +2079,7 @@ void test_wdb_parse_global_get_all_agents_argument_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents invalid");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
     assert_int_equal(ret, OS_INVALID);
@@ -2095,7 +2095,7 @@ void test_wdb_parse_global_get_all_agents_argument2_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents last_id");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
     assert_int_equal(ret, OS_INVALID);
@@ -2117,7 +2117,7 @@ void test_wdb_parse_global_get_all_agents_success(void **state)
     will_return(__wrap_wdb_global_get_all_agents, WDBC_OK);
     will_return(__wrap_wdb_global_get_all_agents, root);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);
@@ -2136,7 +2136,7 @@ void test_wdb_parse_global_get_agent_info_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-agent-info.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-agent-info");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-agent-info'");
     assert_int_equal(ret, OS_INVALID);
@@ -2154,7 +2154,7 @@ void test_wdb_parse_global_get_agent_info_query_error(void **state)
     will_return(__wrap_wdb_global_get_agent_info, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent information from global.db.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting agent information from global.db.");
     assert_int_equal(ret, OS_INVALID);
@@ -2175,7 +2175,7 @@ void test_wdb_parse_global_get_agent_info_success(void **state)
     expect_value(__wrap_wdb_global_get_agent_info, id, 1);
     will_return(__wrap_wdb_global_get_agent_info, j_object);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
     assert_int_equal(ret, OS_SUCCESS);
@@ -2194,7 +2194,7 @@ void test_wdb_parse_reset_agents_connection_syntax_error(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for reset-agents-connection.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: reset-agents-connection");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'reset-agents-connection'");
     assert_int_equal(ret, OS_INVALID);
@@ -2213,7 +2213,7 @@ void test_wdb_parse_reset_agents_connection_query_error(void **state)
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
     assert_int_equal(ret, OS_INVALID);
@@ -2230,7 +2230,7 @@ void test_wdb_parse_reset_agents_connection_success(void **state)
     expect_string(__wrap_wdb_global_reset_agents_connection, sync_status, "syncreq");
     will_return(__wrap_wdb_global_reset_agents_connection, OS_SUCCESS);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
@@ -2249,7 +2249,7 @@ void test_wdb_parse_global_get_agents_by_connection_status_syntax_error(void **s
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-agents-by-connection-status.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-agents-by-connection-status");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-agents-by-connection-status'");
     assert_int_equal(ret, OS_INVALID);
@@ -2265,7 +2265,7 @@ void test_wdb_parse_global_get_agents_by_connection_status_status_error(void **s
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 ");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'connection_status' not found.");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments 'connection_status' not found");
     assert_int_equal(ret, OS_INVALID);
@@ -2289,7 +2289,7 @@ void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **
     will_return(__wrap_wdb_global_get_agents_by_connection_status, WDBC_OK);
     will_return(__wrap_wdb_global_get_agents_by_connection_status, root);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
     assert_int_equal(ret, OS_SUCCESS);

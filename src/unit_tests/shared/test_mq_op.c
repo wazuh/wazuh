@@ -28,28 +28,6 @@
 
 /* Redefinitons/wrapping */
 
-void __wrap__merror(const char * file, int line, const char * func, const char * msg, ...){
-    char formatted_msg[OS_SIZE_64];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_SIZE_64, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char * msg, ...){
-    char formatted_msg[OS_SIZE_1024];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, sizeof(formatted_msg), msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
 int __wrap_OS_getsocketsize(int ossock) {
     return SOCKET_SIZE;
 }
@@ -285,7 +263,7 @@ void test_reconnect_mq_simple_fail(void ** state){
 }
 
 void test_reconnect_mq_complex_true(void ** state){
-    (void)state; // Unused
+    (void)state; // Unused __wrap__merror
 
     /* Function parameters */
     char * path = "/test";
@@ -293,19 +271,19 @@ void test_reconnect_mq_complex_true(void ** state){
     int error_message_id = 88;
 
     int ret = 0;
-    char expected_str[OS_SIZE_64];
-    char messages[2][OS_SIZE_64];
+    char expected_str[OS_SIZE_128];
+    char messages[2][OS_SIZE_128];
 
     will_return(__wrap_OS_ConnectUnixDomain, -1);
     will_return(__wrap_OS_ConnectUnixDomain, 0);
 
-    snprintf(expected_str, OS_SIZE_64, UNABLE_TO_RECONNECT, path, error_message, error_message_id);
+    snprintf(expected_str, OS_SIZE_128, UNABLE_TO_RECONNECT, path, error_message, error_message_id);
     expect_string(__wrap__merror, formatted_msg, expected_str);
 
-    snprintf(messages[0], OS_SIZE_64, SUCCESSFULLY_RECONNECTED_SOCKET, path);
+    snprintf(messages[0], OS_SIZE_128, SUCCESSFULLY_RECONNECTED_SOCKET, path);
     expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
 
-    snprintf(messages[1], OS_SIZE_64, MSG_SOCKET_SIZE, SOCKET_SIZE);
+    snprintf(messages[1], OS_SIZE_128, MSG_SOCKET_SIZE, SOCKET_SIZE);
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
 
     ret = MQReconnectPredicated(path, &ptr_function);

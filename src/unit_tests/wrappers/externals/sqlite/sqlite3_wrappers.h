@@ -39,6 +39,10 @@ void expect_sqlite3_bind_text_call(int position, const char *buf, int ret);
 int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
                                         const char *zName);
 
+int __wrap_sqlite3_bind_double(__attribute__((unused)) sqlite3_stmt* stmt,
+                               int index,
+                               double value);
+
 int __wrap_sqlite3_clear_bindings(sqlite3_stmt* pStmt);
 
 int __wrap_sqlite3_close_v2();
@@ -96,5 +100,7 @@ int __wrap_sqlite3_column_type(sqlite3_stmt *pStmt, int i);
 const char* __wrap_sqlite3_column_name(sqlite3_stmt *pStmt, int N);
 
 int __wrap_sqlite3_get_autocommit(__attribute__((unused)) sqlite3 * db);
+
+const char* __wrap_sqlite3_sql(sqlite3_stmt *pStmt);
 
 #endif

@@ -19,9 +19,12 @@ set_target_properties(
 
 target_link_libraries(FLUENTD_FORWARDER_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate fluentd_forwarder tests
 list(APPEND fluentd_forwarder_names "test_fluentd_forwarder")
-list(APPEND fluentd_forwarder_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtinfo -Wl,--wrap,_mtwarn -Wl,--wrap,OS_ConnectTCP")
+list(APPEND fluentd_forwarder_flags "-Wl,--wrap,OS_ConnectTCP ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH fluentd_forwarder_names count)

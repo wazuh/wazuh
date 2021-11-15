@@ -129,7 +129,7 @@ void test_interval_execution(void **state) {
         expect_any(__wrap_wm_exec, secs);
         expect_any(__wrap_wm_exec, add_path);
 
-        will_return(__wrap_wm_exec, strdup("TEST_STRING"));
+        will_return(__wrap_wm_exec, "TEST_STRING");
         will_return(__wrap_wm_exec, 0);
         will_return(__wrap_wm_exec, 0);
 

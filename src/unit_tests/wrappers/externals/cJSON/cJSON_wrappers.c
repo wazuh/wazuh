@@ -93,35 +93,26 @@ cJSON * WSTD_CALL __wrap_cJSON_GetObjectItem(__attribute__ ((__unused__)) const 
     return mock_type(cJSON *);
 }
 
-void expect_cJSON_GetObjectItem_call(cJSON *object) {
-    will_return(__wrap_cJSON_GetObjectItem, object);
-}
-
 char* WSTD_CALL __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(char*);
-}
-
-void expect_cJSON_GetStringValue_call(char *str) {
-    will_return(__wrap_cJSON_GetStringValue, str);
 }
 
 cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
-void expect_cJSON_IsNumber_call(int ret) {
-    will_return(__wrap_cJSON_IsNumber, ret);
-}
-
 cJSON_bool __wrap_cJSON_IsObject(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
-void expect_cJSON_IsObject_call(int ret) {
-    will_return(__wrap_cJSON_IsObject, ret);
+cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
+    return mock_type(cJSON *);
 }
 
-cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
+cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value,
+                                   const char **return_parse_end,
+                                   __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
+    *return_parse_end = NULL;
     return mock_type(cJSON *);
 }
 
@@ -145,16 +136,8 @@ cJSON* __wrap_cJSON_Duplicate(__attribute__ ((__unused__)) const cJSON *item, __
     return mock_type(cJSON*);
 }
 
-cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const object, 
-                                    __attribute__ ((__unused__))const char * const name, 
+cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const object,
+                                    __attribute__ ((__unused__))const char * const name,
                                     __attribute__ ((__unused__))const cJSON_bool boolean) {
-    return mock_type(cJSON *);
-}
-
-cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value, __attribute__ ((__unused__)) const char **return_parse_end,
-                                   __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
-    if (return_parse_end) {
-        *return_parse_end = NULL;
-    }
     return mock_type(cJSON *);
 }
