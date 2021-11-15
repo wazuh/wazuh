@@ -24,6 +24,7 @@
 #   14 - Empty bucket
 #   15 - Invalid endpoint URL
 #   16 - Throttling error
+#   17 - Invalid key format
 
 import argparse
 import signal
@@ -2232,7 +2233,20 @@ class AWSServerAccess(AWSCustomBucket):
     def __init__(self, **kwargs):
         db_table_name = 's3_server_access'
         AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
-        self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2})')
+        self.date_regex = re.compile(r'(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})')
+
+        self.sql_find_last_key_processed = """
+                                        SELECT
+                                            log_key
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            bucket_path='{bucket_path}' AND
+                                            aws_account_id='{aws_account_id}' AND
+                                            log_key LIKE '{prefix}%'
+                                        ORDER BY
+                                            log_key DESC
+                                        LIMIT 1;"""
 
     def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
         """
@@ -2265,16 +2279,29 @@ class AWSServerAccess(AWSCustomBucket):
                 debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
                 return
 
-            last_key = self._get_last_key_processed(aws_account_id)
-            last_key_date = datetime.strptime(last_key, '%Y-%m-%d') if last_key else None
+            last_key = self._get_last_key_processed(self.aws_account_id)
+            try:
+                last_key_match = self.date_regex.search(last_key)
+                last_key_date = datetime.strptime(last_key_match.group(), '%Y-%m-%d-%H-%M-%S')
+            except TypeError:
+                # Either last_key is None or no date was found in the log key
+                last_key_date = None
 
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
 
-                date_match = self.date_regex.search(bucket_file['Key'])
-                file_date = datetime.strptime(date_match.group(), '%Y-%m-%d') if date_match else None
-                match_start = date_match.span()[0] if date_match else None
+                try:
+                    date_match = self.date_regex.search(bucket_file['Key'])
+                    file_date = datetime.strptime(date_match.group(), '%Y-%m-%d-%H-%M-%S') if date_match else None
+                    match_start = date_match.span()[0] if date_match else None
+                except TypeError:
+                    if self.skip_on_error:
+                        debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, skipping it.", 1)
+                        continue
+                    else:
+                        print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
+                        sys.exit(17)
 
                 if not self.reparse and self._key_is_old(file_date, last_key_date):
                     debug(f"++ Skipping file too old to process: {bucket_file['Key']}", 1)
@@ -2316,9 +2343,18 @@ class AWSServerAccess(AWSCustomBucket):
                     if not bucket_file['Key']:
                         continue
 
-                    date_match = self.date_regex.search(bucket_file['Key'])
-                    file_date = datetime.strptime(date_match.group(), '%Y-%m-%d') if date_match else None
-                    match_start = date_match.span()[0] if date_match else None
+                    try:
+                        date_match = self.date_regex.search(bucket_file['Key'])
+                        file_date = datetime.strptime(date_match.group(), '%Y-%m-%d-%H-%M-%S') if date_match else None
+                        match_start = date_match.span()[0] if date_match else None
+                    except TypeError:
+                        if self.skip_on_error:
+                            debug(
+                                f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, skipping it.", 1)
+                            continue
+                        else:
+                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
+                            sys.exit(17)
 
                     if not self.reparse and self._key_is_old(file_date, last_key_date):
                         debug(f"++ Skipping file too old to process: {bucket_file['Key']}", 1)
