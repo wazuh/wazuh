@@ -32,8 +32,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         force: True
-        agents_list: '001'
-        version: '4.0.1'
+        agents_list: '005'
+        upgrade_version: '4.2.4'
     response:
       status_code: 200
 
@@ -47,7 +47,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - agent_id: "001"
+            - agent_id: "005"
               create_time: !anystr
               node: !anystr
               status: !anystr
