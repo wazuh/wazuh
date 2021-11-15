@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
+#include "key_request.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
@@ -163,6 +164,7 @@ int main(int argc, char **argv)
     pthread_t thread_dispatcher = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
+    pthread_t thread_key_request = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -522,6 +524,13 @@ int main(int argc, char **argv)
         }
     }
 
+    if (config.key_request.enabled) {
+        if (status = pthread_create(&thread_key_request, NULL, (void *)&run_key_request_main, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
+    }
+
     /* Join threads */
     pthread_join(thread_local_server, NULL);
     if (config.flags.remote_enrollment) {
@@ -534,6 +543,9 @@ int main(int argc, char **argv)
         w_cond_signal(&cond_pending);
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
+    }
+    if (config.key_request.enabled) {
+        pthread_join(thread_key_request, NULL);
     }
 
     queue_free(client_queue);

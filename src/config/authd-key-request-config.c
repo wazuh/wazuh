@@ -57,24 +57,26 @@ int authd_read_key_request(xml_node **nodes, void *config) {
             }
         // Local path for script execution
         } else if (!strcmp(nodes[i]->element, XML_EXEC_PATH)) {
-            if (key_request->exec_path) {
-                free(key_request->exec_path);
-            }
+            os_free(key_request->exec_path);
 
             if (strlen(nodes[i]->content) >= PATH_MAX) {
                 merror("Exec path is too long at module '%s'. Max path length is '%d'", KREQUEST_NAME, PATH_MAX);
+                return OS_INVALID;
+            } else if (*nodes[i]->content == '\0' || *nodes[i]->content == ' ') {
+                merror("Invalid exec path at module '%s'", KREQUEST_NAME);
                 return OS_INVALID;
             }
 
             os_strdup(nodes[i]->content, key_request->exec_path);
         // Socket path for script execution
         } else if (!strcmp(nodes[i]->element, XML_SOCKET)) {
-            if (key_request->socket) {
-                free(key_request->socket);
-            }
+            os_free(key_request->socket);
 
             if (strlen(nodes[i]->content) >= PATH_MAX) {
                 merror("Socket path is too long at module '%s'. Max path length is '%d'", KREQUEST_NAME, PATH_MAX);
+                return OS_INVALID;
+            } else if (*nodes[i]->content == '\0' || *nodes[i]->content == ' ') {
+                merror("Invalid socket path at module '%s'", KREQUEST_NAME);
                 return OS_INVALID;
             }
 

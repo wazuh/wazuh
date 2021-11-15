@@ -173,4 +173,12 @@ void resolve_hostname(char **hostname, int attempts);
  * */
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
+/**
+ * @brief Connect to an UNIX socket setting the sending and response timeout
+ * @param socket_path Location of the UNIX socket to connect
+ * @param response_timeout Timeout to wait for a response
+ * @return Socket FD on success
+ * @return -1 on socket error
+ * */
+int external_socket_connect(char *socket_path, int response_timeout);
 #endif /* OS_NET_H */

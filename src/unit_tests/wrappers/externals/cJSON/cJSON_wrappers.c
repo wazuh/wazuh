@@ -150,3 +150,11 @@ cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const o
                                     __attribute__ ((__unused__))const cJSON_bool boolean) {
     return mock_type(cJSON *);
 }
+
+cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value, __attribute__ ((__unused__)) const char **return_parse_end,
+                                   __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
+    if (return_parse_end) {
+        *return_parse_end = NULL;
+    }
+    return mock_type(cJSON *);
+}

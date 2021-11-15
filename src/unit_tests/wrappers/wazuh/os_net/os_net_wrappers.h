@@ -47,4 +47,6 @@ int __wrap_wnet_select(int sock, int timeout);
 
 uint32_t __wrap_wnet_order(uint32_t value);
 
+int __wrap_external_socket_connect(char *socket_path, int response_timeout);
+
 #endif
