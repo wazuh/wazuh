@@ -435,10 +435,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Check if an integrity_check has already been performed
         # for the worker in the current iteration of local_integrity
         if sync_type == b'syn_i_w_m_p' and self.name not in self.server.integrity_already_executed:
-            # Add the variable self.name to keep track of the number
-            # of integrity_checks of the worker in one local_integrity
-            if self.server.calculating_local_integrity:
-                self.server.integrity_already_executed.append(self.name)
+            # Add the variable self.name to keep track of the number of integrity_checks per cycle
+            self.server.integrity_already_executed.append(self.name)
 
             permission = self.sync_integrity_free
         elif sync_type == b'syn_a_w_m_p':
@@ -939,9 +937,8 @@ class Master(server.AbstractServer):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(max_workers=2)
+        self.task_pool = ProcessPoolExecutor(max_workers=1)
         self.integrity_already_executed = []
-        self.calculating_local_integrity = False
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update])
@@ -974,9 +971,7 @@ class Master(server.AbstractServer):
             try:
                 task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
                 # With this we avoid that each worker starts integrity_check more than once per local_integrity
-                self.calculating_local_integrity = True
                 self.integrity_control = await asyncio.wait_for(task, timeout=None)
-                self.calculating_local_integrity = False
                 self.integrity_already_executed.clear()
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
