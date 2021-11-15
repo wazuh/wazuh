@@ -8,6 +8,7 @@ import operator
 import os
 import shutil
 from calendar import timegm
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from time import time
 from typing import Tuple, Dict, Callable
@@ -431,7 +432,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if sync_type == b'syn_i_w_m_p':
+        # Check if an integrity_check has already been performed
+        # for the worker in the current iteration of local_integrity
+        if sync_type == b'syn_i_w_m_p' and self.name not in self.server.integrity_already_executed:
+            # Add the variable self.name to keep track of the number of integrity_checks per cycle
+            self.server.integrity_already_executed.append(self.name)
+
             permission = self.sync_integrity_free
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
@@ -605,9 +611,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_end_master'] = datetime.now()
-        logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                   self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
+        self.integrity_sync_status['date_end_master'] = datetime.utcnow()
+        logger.info("Finished in {:.3f}s.".format(
+            (self.integrity_sync_status['date_end_master'] -
+             self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
         self.integrity_sync_status['date_start_master'] = \
             self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
         self.integrity_sync_status['date_end_master'] = \
@@ -929,11 +936,12 @@ class Master(server.AbstractServer):
         """
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
-        self.tasks.append(self.file_status_update)
         self.handler_class = MasterHandler
+        self.task_pool = ProcessPoolExecutor(max_workers=1)
+        self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run])
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
@@ -950,7 +958,6 @@ class Master(server.AbstractServer):
 
     async def file_status_update(self):
         """Asynchronous task that obtain files status periodically.
-
         It updates the local files information every self.cluster_items['intervals']['worker']['sync_integrity']
         seconds.
 
@@ -962,7 +969,10 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                self.integrity_control = wazuh.core.cluster.cluster.get_files_status()
+                task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
+                # With this we avoid that each worker starts integrity_check more than once per local_integrity
+                self.integrity_control = await asyncio.wait_for(task, timeout=None)
+                self.integrity_already_executed.clear()
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
@@ -992,7 +1002,7 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"] = \
-            Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
+                Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
