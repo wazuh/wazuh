@@ -50,7 +50,7 @@ MAX_KILL_TRIES=600
 checkpid()
 {
     for i in ${CDAEMONS}; do
-        for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
+        for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
             ps -p $j >/dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
@@ -189,8 +189,8 @@ disable()
     if [ "$daemon" != '' ]; then
         pstatus ${daemon};
         if [ $? = 1 ]; then
-            kill `cat $DIR/var/run/$daemon*`
-            rm $DIR/var/run/$daemon*
+            kill `cat $DIR/var/run/$daemon-*`
+            rm $DIR/var/run/$daemon-*
             echo "Killing ${daemon}...";
         fi
     fi
@@ -282,9 +282,9 @@ start_service()
 
     # Stop deprecated daemons that could keep alive on updates
     for i in ${DEPRECATED_DAEMONS}; do
-        ls ${DIR}/var/run/${i}*.pid > /dev/null 2>&1
+        ls ${DIR}/var/run/${i}-*.pid > /dev/null 2>&1
         if [ $? = 0 ]; then
-            pid=`cat ${DIR}/var/run/${i}*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
             rm -f ${DIR}/var/run/${i}-${pid}.pid
         fi
@@ -424,9 +424,9 @@ pstatus()
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
+    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
@@ -487,7 +487,7 @@ stop_service()
                 echo "Killing ${i}...";
             fi
 
-            pid=`cat ${DIR}/var/run/${i}*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
 
             if wait_pid $pid
@@ -510,7 +510,7 @@ stop_service()
                 echo "${i} not running...";
             fi
         fi
-        rm -f ${DIR}/var/run/${i}*.pid
+        rm -f ${DIR}/var/run/${i}-*.pid
     done
 
     if [ $USE_JSON = true ]; then
