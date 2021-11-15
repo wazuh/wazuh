@@ -54,7 +54,7 @@
   </rule>
 
   <rule id="93008" level="8" frequency="5" timeframe="120">
-    <if_sid>93006</if_sid>
+    <if_matched_sid>93006</if_matched_sid>
     <description>CrowdStrike: Multiple authentication failures from $(event.UserIp)</description>
     <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
     <mitre>
