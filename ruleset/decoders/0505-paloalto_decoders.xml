@@ -5,7 +5,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!-- Generic paloalto decoder -->
 <decoder name="paloalto">
   <prematch type="pcre2">^[^,]*,\d+\/\d+\/\d+\s\d+:\d+:\d+,\d+,\w+,</prematch>
@@ -35,8 +34,6 @@
   <regex type="pcre2" offset="after_regex">^,[^,]*,[^,]*,([^,]*)</regex>
   <order>high_resolution_timestamp</order>
 </decoder>
-
-
 
 <!-- paloalto traffic decoders -->
 <!-- Supported versions

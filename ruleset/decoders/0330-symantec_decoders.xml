@@ -21,7 +21,6 @@
   <fts>name, location, id, system_name, extra_data</fts>
 </decoder>
 
-
 <!-- Symantec Web Security.
   - Source: http://www.ossec.net/wiki/index.php/Symantec_Websecurity
   - Examples:

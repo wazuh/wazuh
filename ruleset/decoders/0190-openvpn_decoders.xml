@@ -65,10 +65,10 @@ Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
 </decoder>
 
 <!--
- Author: Stuart Williams <stwilliams@workforcesoftware.com>
+  Author: Stuart Williams <stwilliams@workforcesoftware.com>
     Date: 2019-01-29
     Note: Enhanced decoder rules to handle LDAP integrated authentication
-Comments: Not sure how useful the first entry is but will 'log' it - could be useful in auditing numbers etc
+  Comments: Not sure how useful the first entry is but will 'log' it - could be useful in auditing numbers etc
 -->
 
 <!--

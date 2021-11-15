@@ -5,7 +5,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <decoder name="qualysguard">
 	<prematch>^"\d\d\d\d\d\d,""\w+"",""\d\d/\d\d/\d\d\d\d \(Overdue\)"",""\d+.\d+.\d+.\d+""</prematch>
 </decoder>
@@ -19,9 +18,7 @@ EXAMPLE WITHOUT PORT (with an extra resolved added)
 
 EXAMPLE WITHOUT NETBIOS_HOSTNAME
 "000174,""Open"",""06/29/2017 (Overdue)"",""192.168.56.101"",,,""blabla.blabla.bla"",,""Potential Vulnerability - level 5"",""5555"",""Statd Format Bug Vulnerability"",""John Smith (Manager)"",""05/30/2017 at 20:15:13 (GMT-0400)"",""05/30/2017 at 20:15:13 (GMT-0400)"","
-
 -->
-
 <decoder name="qualys_fields">
 	<parent>qualysguard</parent>
 	<regex>"(\d\d\d\d\d\d),""(\w+)"",""(\d\d/\d\d/\d\d\d\d \(Overdue\))"",""(\d+.\d+.\d+.\d+)"",</regex>

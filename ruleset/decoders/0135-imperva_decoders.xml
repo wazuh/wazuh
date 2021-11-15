@@ -18,14 +18,12 @@ eventSev  -> status: 'Medium'
 cs1       -> extra_data: 'Suspicious Response Code'
 cs2       -> url: 'MQ-PAYMENT-API'
 -->
-
 <decoder name="imperva">
-    <program_name>Imperva</program_name>
-</decoder>
-<decoder name="imperva-event">
-    <parent>imperva</parent>
-    <regex offset="after_parent">act=(\S+) dst=(\S+) dpt=\S+ src=(\S+) spt=\S+ proto=(\S+) \S+ eventType=(\S+),eventSev=(\S+),\S+ \S+ \S+ \S+ \S+ cs1=(\.+) cs1Label=\S+ cs2=(\.+)</regex>
-    <order>action,dstip,srcip,protocol,id,status,extra_data,url</order>
+  <program_name>Imperva</program_name>
 </decoder>
 
-<!-- Imperva decoders END -->
+<decoder name="imperva-event">
+  <parent>imperva</parent>
+  <regex offset="after_parent">act=(\S+) dst=(\S+) dpt=\S+ src=(\S+) spt=\S+ proto=(\S+) \S+ eventType=(\S+),eventSev=(\S+),\S+ \S+ \S+ \S+ \S+ cs1=(\.+) cs1Label=\S+ cs2=(\.+)</regex>
+  <order>action,dstip,srcip,protocol,id,status,extra_data,url</order>
+</decoder>

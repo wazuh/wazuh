@@ -7,8 +7,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
-  <!--
+<!--
   - Will extract the severity and username/ip when available.
   - Examples:
   - [2008-03-09 22:43:35.924 'ha-eventmgr' 84503472 info] Event 2053 : User root@127.0.0.1 logged in

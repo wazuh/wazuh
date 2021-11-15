@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modif$
 -->
 
-
 <!-- Exim
   - Examples:
   - 2017-01-23 03:44:14 dovecot_login authenticator failed for (hydra) [10.101.1.18]:35686: 535 Incorrect authentication data (set_id=user)
@@ -18,7 +17,6 @@
   - 2019-10-20 11:14:38 SMTP protocol synchronization error (input sent without waiting for greeting): rejected connection from H=[134.234.45.34] input="GET / HTTP/1.1\r\nHost: 24.255.212.213:98\r\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:47.0) Gecko/20100101 Firefox/47.0\r\nAccept: */*\r\n"
   - 2019-10-20 09:56:39 H=123-123-12-123.example.example.net [123.123.12.123] F=<example@example.com> rejected RCPT <example@exampley.com>: Unrouteable address
 -->
-
 <decoder name="exim-authfailed">
   <parent>windows-date-format</parent>
   <prematch offset="after_parent">authenticator failed</prematch>

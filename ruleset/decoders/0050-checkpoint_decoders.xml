@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Does not currently handle all types of Checkpoint events.
   - Checkpoint NG(X)/FW-1 logs via (Linux) syslog

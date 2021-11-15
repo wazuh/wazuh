@@ -24,7 +24,6 @@
     [Classification: Potentially Bad Traffic] [Priority: 2]
     {UDP} 192.168.20.32 -> 192.168.20.2
   -->
-
 <decoder name="snort">
   <program_name>^snort</program_name>
 </decoder>
@@ -35,12 +34,12 @@
 </decoder>
 
 <decoder name="snort2">
-   <parent>snort</parent>
-   <type>ids</type>
-   <prematch>^[**] |^[\d+:\d+:\d+] </prematch>
-   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\S+)\p*\d* -> </regex>
-   <regex>(\S+)|^[(\d+:\d+:\d+)] \.+ </regex>
-   <regex>(\S+)\p*\d* -> (\S+)</regex>
-   <order>id,srcip,dstip</order>
-   <fts>name,id,srcip,dstip</fts>
+  <parent>snort</parent>
+  <type>ids</type>
+  <prematch>^[**] |^[\d+:\d+:\d+] </prematch>
+  <regex>^[**] [(\d+:\d+:\d+)] \.+ (\S+)\p*\d* -></regex>
+  <regex>(\S+)|^[(\d+:\d+:\d+)] \.+ </regex>
+  <regex>(\S+)\p*\d* -> (\S+)</regex>
+  <order>id,srcip,dstip</order>
+  <fts>name,id,srcip,dstip</fts>
 </decoder>

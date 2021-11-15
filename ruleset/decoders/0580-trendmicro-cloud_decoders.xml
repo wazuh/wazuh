@@ -1,3 +1,10 @@
+<!--
+  -  Trendmicro Cloud decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
 <!--PARENT-->
 <decoder name="trendmicroCEF">
    <program_name type="pcre2">(?i)CEF</program_name>

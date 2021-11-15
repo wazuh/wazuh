@@ -6,13 +6,13 @@
 -->
 
 <decoder name="ECPServerLog">
-    <prematch type="pcre2">,ECP\.Request,</prematch>
+  <prematch type="pcre2">,ECP\.Request,</prematch>
 </decoder>
 
 <decoder name="HTTPProxyLog">
-    <prematch type="pcre2">-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12},.*,Ecp,</prematch>
+  <prematch type="pcre2">-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12},.*,Ecp,</prematch>
 </decoder>
 
 <decoder name="OABGenLog">
-    <prematch type="pcre2">,OABGenerator,</prematch>
+  <prematch type="pcre2">,OABGenerator,</prematch>
 </decoder>

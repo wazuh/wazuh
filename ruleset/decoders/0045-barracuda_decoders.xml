@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
   <!--
   Examples:
   May 14 03:31:21 mx1.example.org inbound/pass1: mail-88-66.reachmail.net[216.55.88.66] 1400074281-06f4a338c037a90001-TkCAQV 1400074281 1400074283 RECV errors@mail-88-68.reachmail.net eteixeira@example.net 2 12 -
@@ -22,57 +21,56 @@
   -->
 
 <decoder name="barracuda-svf-email">
-    <program_name>^inbound/pass|^scan|^outbound/smtp</program_name>
+  <program_name>^inbound/pass|^scan|^outbound/smtp</program_name>
 </decoder>
 
 <decoder name="barracuda-svf1">
-    <parent>barracuda-svf-email</parent>
-    <prematch>^\S+[\S+]|</prematch>
-    <prematch>^\S+</prematch>
-    <regex>^\S+[(\S+)] (\d+-\w+-\w+) \d+ \d+ |</regex>
-    <regex>^(\S+) (\d+-\w+-\w+) \d+ \d+ </regex>
-    <order>srcip, id</order>
+  <parent>barracuda-svf-email</parent>
+  <prematch>^\S+[\S+]|</prematch>
+  <prematch>^\S+</prematch>
+  <regex>^\S+[(\S+)] (\d+-\w+-\w+) \d+ \d+ |</regex>
+  <regex>^(\S+) (\d+-\w+-\w+) \d+ \d+ </regex>
+  <order>srcip, id</order>
 </decoder>
 
 <!-- Info section - SCAN -->
 <decoder name="barracuda-svf1">
-    <parent>barracuda-svf-email</parent>
-    <regex offset="after_regex">(SCAN) (\S+ \S+ \S+ \S+ \d+ \d+ \.+ SUBJ:\.+)$</regex>
-    <order>action, extra_data</order>
+  <parent>barracuda-svf-email</parent>
+  <regex offset="after_regex">(SCAN) (\S+ \S+ \S+ \S+ \d+ \d+ \.+ SUBJ:\.+)$</regex>
+  <order>action, extra_data</order>
 </decoder>
 
 <!-- Info section RECV -->
 <decoder name="barracuda-svf1">
-    <parent>barracuda-svf-email</parent>
-    <regex offset="after_regex">(RECV) (\S+ \S+ \d+ \d+ \.+)$</regex>
-    <order>action, extra_data</order>
+  <parent>barracuda-svf-email</parent>
+  <regex offset="after_regex">(RECV) (\S+ \S+ \d+ \d+ \.+)$</regex>
+  <order>action, extra_data</order>
 </decoder>
 
 <!-- Info section SEND -->
 <decoder name="barracuda-svf1">
-    <parent>barracuda-svf-email</parent>
-    <regex offset="after_regex">(SEND) (\S+ \d+ \S+ \.+)$</regex>
-    <order>action, extra_data</order>
+  <parent>barracuda-svf-email</parent>
+  <regex offset="after_regex">(SEND) (\S+ \d+ \S+ \.+)$</regex>
+  <order>action, extra_data</order>
 </decoder>
 
 <!-- Barracuda S&VF Administration-->
-
 <decoder name="barracuda-svf-admin">
-    <program_name>^web</program_name>
+  <program_name>^web</program_name>
 </decoder>
 
 <decoder name="barracuda-svf-admin-change">
-    <parent>barracuda-svf-admin</parent>
-    <prematch>^[\S+] global[] CHANGE</prematch>
-    <regex offset="after_parent">^[(\S+)] global[] (CHANGE) (\S+ \(\S*)\)$</regex>
-    <order>srcip,action,extra_data</order>
+  <parent>barracuda-svf-admin</parent>
+  <prematch>^[\S+] global[] CHANGE</prematch>
+  <regex offset="after_parent">^[(\S+)] global[] (CHANGE) (\S+ \(\S*)\)$</regex>
+  <order>srcip,action,extra_data</order>
 </decoder>
 
 <decoder name="barracuda-svf-admin-auth">
-    <parent>barracuda-svf-admin</parent>
-    <prematch>^[\S+] LOGIN|</prematch>
-    <prematch>^[\S+] FAILED_LOGIN|</prematch>
-    <prematch>^[\S+] LOGOUT</prematch>
-    <regex offset="after_parent">^[(\S+)] (\S+) \((\S+)\)\p*$</regex>
-    <order>srcip,action,user</order>
+  <parent>barracuda-svf-admin</parent>
+  <prematch>^[\S+] LOGIN|</prematch>
+  <prematch>^[\S+] FAILED_LOGIN|</prematch>
+  <prematch>^[\S+] LOGOUT</prematch>
+  <regex offset="after_parent">^[(\S+)] (\S+) \((\S+)\)\p*$</regex>
+  <order>srcip,action,user</order>
 </decoder>

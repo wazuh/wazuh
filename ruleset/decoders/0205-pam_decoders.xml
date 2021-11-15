@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   -  Will extract username and srcip whenever is possible.
   - Examples:
@@ -39,7 +38,6 @@
   <prematch>^pam_unix|^\(pam_unix\)</prematch>
 </decoder>
 
-
 <decoder name="pam-user">
   <parent>pam</parent>
   <prematch>\)\p* session \w+ |^session \w+ </prematch>
@@ -59,14 +57,12 @@
   <order>uid</order>
 </decoder>
 
-
 <decoder name="pam-pass-changed">
   <parent>pam</parent>
   <prematch>password changed for</prematch>
   <regex offset="after_prematch">^ (\S+)</regex>
   <order>user</order>
 </decoder>
-
 
 <decoder name="pam-fields">
   <parent>pam</parent>

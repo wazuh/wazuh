@@ -25,25 +25,23 @@ Wed 12/07/2016 16:48:15.37 "active-response/bin/route-null.cmd" delete "-" "192.
 Tue 08/28/2018 09:25:23.14 "active-response/bin/netsh.cmd" delete "-" "1.2.3.4" "1535465731.23945822 18258 (some-hostname) any->WinEvtLog (null)"
 Tue 08/28/2018 09:27:23.14 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "1535466424.24354011 18258 (some-hostname) any->WinEvtLog (null)"
 -->
-
-
 <decoder name="ar_log">
   <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
 </decoder>
 
 <decoder name="ar_log_fields">
-    <parent>ar_log</parent>
-    <regex offset="after_parent">^(\S+) (\S+) \S+ (\S+) (\.+) |^(\S+)" (\S+) "\S+" "(\S+)" "(\.+) </regex>
-    <order>script, type, srcip, id</order>
+  <parent>ar_log</parent>
+  <regex offset="after_parent">^(\S+) (\S+) \S+ (\S+) (\.+) |^(\S+)" (\S+) "\S+" "(\S+)" "(\.+) </regex>
+  <order>script, type, srcip, id</order>
 </decoder>
 
 <decoder name="ar_log_fields">
-    <parent>ar_log</parent>
-    <regex offset="after_regex">^(\d+)|(\.+\))</regex>
-    <order>extra_data</order>
+  <parent>ar_log</parent>
+  <regex offset="after_regex">^(\d+)|(\.+\))</regex>
+  <order>extra_data</order>
 </decoder>
 
 <decoder name="ar_log_json">
-    <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d active-response/bin/\S+: </prematch>
-    <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
+  <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d active-response/bin/\S+: </prematch>
+  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
 </decoder>

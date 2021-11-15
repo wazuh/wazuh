@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Examples:
   - Nov 21 15:12:56 unknown audit: [ID 905220 audit.notice] system booted
@@ -45,9 +44,9 @@
     p 10.4.122.243,123 -> 10.4.122.16,123 PR udp len 20 76 K-S OUT
   -->
 <decoder name="ipfilter">
-   <type>firewall</type>
-   <program_name>^ipmon</program_name>
-   <regex> (\w) (\S+),(\d+) -> </regex>
-   <regex>(\S+),(\d+) PR (\w+) </regex>
-   <order>action,srcip,srcport,dstip,dstport,protocol</order>
+  <type>firewall</type>
+  <program_name>^ipmon</program_name>
+  <regex> (\w) (\S+),(\d+) -></regex>
+  <regex>(\S+),(\d+) PR (\w+) </regex>
+  <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>

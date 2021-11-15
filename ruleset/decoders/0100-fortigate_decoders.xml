@@ -8,28 +8,27 @@
 
 <!-- FortiOS 3.0 via syslog -->
 <decoder name="fortigate-firewall-v3">
-    <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
+  <type>syslog</type>
 </decoder>
 
 <!--
 Dec 23 11:13:03 date=2011-07-24 time=10: 13:03 devname=Device_Name device_id=FGTXXXX9999999999 log_id=0038016004 type=traffic subtype=other pri=notice vd=root SN=9999999999 duration=0 user=N/A group=N/A rule=0 policyid=0 proto=6 service=tcp app_type=N/A status=deny src=10.3.3.3 srcname=10.3.3.3 dst=10.4.4.4 dstname=10.4.4.4 src_int=N/A dst_int="N/A" sent=0 rcvd=0
 -->
 <decoder name="fortigate-firewall-v3-fields">
-    <parent>fortigate-firewall-v3</parent>
-    <regex offset="after_parent">proto=\d+ service=(\S+) \.+ status=(\S+) src=(\S+) \.+ dst=(\S+) </regex>
-    <order>protocol,action,srcip,dstip</order>
+  <parent>fortigate-firewall-v3</parent>
+  <regex offset="after_parent">proto=\d+ service=(\S+) \.+ status=(\S+) src=(\S+) \.+ dst=(\S+) </regex>
+  <order>protocol,action,srcip,dstip</order>
 </decoder>
 
 <!--
 Mar 24 12:19:43 date=2011-07-25 time=08: 19:42 devname=Name_of_Device device_id=FGXXXX9999999999 log_id=0038016002 type=traffic subtype=other pri=notice vd=root SN=9999999999 duration=0 user=N/A group=N/A rule=0 policyid=0 proto=1 service=3/icmp app_type=N/A status=accept src=10.1.1.1 srcname=10.1.1.1 dst=10.2.2.2 dstname=10.2.2.2 src_int=N/A dst_int="N/A" sent=0 rcvd=0 sent_pkt=0 rcvd_pkt=0 src_port=0 dst_port=0 vpn="N/A" tran_ip=0.0.0.0 tran_port=0 dir_disp=org tran_disp=noop
 -->
 <decoder name="fortigate-firewall-v3-fields">
-    <parent>fortigate-firewall-v3</parent>
-    <regex offset="after_regex">src_port=(\d+) dst_port=(\d+) </regex>
-    <order>srcport,dstport</order>
+  <parent>fortigate-firewall-v3</parent>
+  <regex offset="after_regex">src_port=(\d+) dst_port=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
-
 
 <!--
 FortiOS 4.0 via syslog
@@ -38,27 +37,18 @@ Feb 19 22:00:07 date=2011-02-19 time=22: 00:07 devname=Device_Name device_id=FGX
 Feb 20 12:31:11 date=2011-02-20 time=12: 31:09 devname=Name_of_Device device_id=FGXXXX1000000000 log_id=8888888888 type=traffic subtype=other pri=notice status=accept vd="root" src=192.168.0.1 srcname=192.168.0.1 src_port=0 dst=192.168.254.254 dstname=192.168.254.254 dst_port=0 service=11/icmp proto=1 app_type=N/A duration=0 rule=0 policyid=0 identidx=0 sent=0 rcvd=0 shaper_drop_sent=0 shaper_drop_rcvd=0 shaper_sent_name="N/A" shaper_rcvd_name="N/A" perip_name="N/A" vpn="N/A" src_int="root" dst_int="N/A" SN=123412341234 app="N/A" app_cat="N/A" user="N/A" group="N/A" carrier_ep="N/A"
 -->
 <decoder name="fortigate-firewall-v4">
-    <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
+  <type>syslog</type>
 </decoder>
-
 
 <decoder name="fortigate-firewall-v4-fields">
-    <parent>fortigate-firewall-v4</parent>
-    <regex offset="after_parent">(\S+) \.+ src=(\S+) \.+ src_port=(\d+) dst=(\S+) \.+ dst_port=(\d+) \.*service=\d+/(\w+) </regex>
-    <order>action,srcip,srcport,dstip,dstport,protocol</order>
+  <parent>fortigate-firewall-v4</parent>
+  <regex offset="after_parent">(\S+) \.+ src=(\S+) \.+ src_port=(\d+) dst=(\S+) \.+ dst_port=(\d+) \.*service=\d+/(\w+) </regex>
+  <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>
 
-
-
-
-
-
 <!-- FortiOS 5.0 via syslog -->
-
-
 <!-- Logs for Fortios 5.0, 5.4 & 5.6  -->
-
 <!--
 date=2016-06-15 time=09:41:35 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=utm subtype=ips eventtype=signature level=alert vd="root" severity=info srcip=192.168.10.8 dstip=157.55.235.162 srcintf="internal2" dstintf="wan2" policyid=2 sessionid=1473454 action=dropped proto=6 service=tcp/20480 attack="HTTP.Unknown.Tunnelling" srcport=62216 dstport=80 direction=outgoing attackid=107347981 profile="default" ref="http://www.fortinet.com/ids/VID107347981" incidentserialno=1999871775 msg="http_decoder: HTTP.Unknown.Tunnelling,"
 -->
@@ -68,7 +58,6 @@ Mar 22 19:21:00 10.10.10.10 date=2016-03-22 time=19:20:46 devname=Text devid=FGT
 Mar 22 19:21:00 10.10.10.10 date=2016-03-22 time=19:20:46 devname=Text devid=FGT3HD0000000000 logid=0000018000 type=anomaly subtype=anomaly level=alert vd="root" severity=critical srcip=10.10.10.61 dstip=10.10.10.84 srcintf="port2" sessionid=0 action=dropped proto=6 service=NONE count=9 attack="IP.Bad.Header" attackid=127 profile="N/A" ref="http://www.fortinet.com/ids/VID127" msg="anomaly: IP.Bad.Header, repeats 9 times" crscore=50 crlevel=critical
 -->
 
-
 <!--
 date=2016-06-15 time=11:44:46 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=utm subtype=webfilter eventtype=urlfilter level=warning vd="root" urlfilteridx=3 urlfilterlist="default" policyid=2 sessionid=1563645 user="" srcip=1.2.3.11 srcport=52414 srcintf="internal2" dstip=1.5.5.92 dstport=443 dstintf="wan2" proto=6 service=HTTPS hostname="4-edge-chat.facebook.com" profile="default" action=blocked reqtype=referral url="/p?partition=-2&cb=lz1k&failure=5&sticky_token=274&sticky_pool=atn2c06_chat-proxy" sentbyte=932 rcvdbyte=0 direction=outgoing msg="URL was blocked because it is in the URL filter list" crscore=30 crlevel=high
 2016 Jun 16 00:00:00 OSSECSERVER->8.5.2.1 date=2016-06-15 time=23:57:11 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=utm subtype=webfilter eventtype=urlfilter level=warning vd="root" urlfilteridx=3 urlfilterlist="default" policyid=8 sessionid=42895 user="" srcip=2.5.8.8 srcport=57629 srcintf="internal1" dstip=13.107.4.50 dstport=80 dstintf="wan1" proto=6 service=HTTP hostname="www.download.windowsupdate.com" profile="default" action=blocked reqtype=direct url="/msdownload/update/v3/static/trustedr/en/authrootstl.cab" sentbyte=217 rcvdbyte=0 direction=outgoing msg="URL was blocked because it is in the URL filter list" crscore=30 crlevel=high
@@ -76,7 +65,6 @@ date=2016-06-15 time=11:44:46 devname=Device_Name devid=FGTXXXX9999999999 logid=
 <!--
 2018 Apr 09 16:03:37 inwazuhmgr->172.24.0.253 date=2018-04-09 time=16:03:37 devname=BA-RSYS-FW devid=FG600C3912803212 logid="1059028704" type="utm" subtype="app-ctrl" eventtype="app-ctrl-all" level="information" vd="BA-EXORA" logtime=1523270017 appid=16009 srcip=172.24.42.175 dstip=111.221.29.254 srcport=55139 dstport=443 srcintf="port3" srcintfrole="wan" dstintf="port5" dstintfrole="undefined" proto=6 service="HTTPS" policyid=107 sessionid=3454887534 applist="block-high-risk" appcat="Update" app="MS.Windows.Update" action="pass" hostname="*.vortex-win.data.microsoft.com" incidentserialno=1405558813 url="/" msg="Update: MS.Windows.Update," apprisk="elevated" scertcname="*.vortex-win.data.microsoft.com"
 -->
-
 
 <!--
 date=2016-06-16 time=09:03:03 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=system level=information vd="root" logdesc="Object attribute configured" user="admin" ui="GUI(4.3.5.8)" action=Edit cfgtid=2162752 cfgpath="firewall.service.custom" cfgobj="Custom-TCP_10443" cfgattr="tcp-portrange[->10443]udp-portrange[->]sctp-portrange[->]" msg="Edit firewall.service.custom Custom-TCP_10443"
@@ -87,49 +75,42 @@ date=2016-06-16 time=08:48:28 devname=Device_Name devid=FGTXXXX9999999999 logid=
 date=2016-06-16 time=16:22:34 devname=Mobipay_Firewall devid=FGTXXXX9999999999 logid=0100032001 type=event subtype=system level=information vd="root" logdesc="Admin login successful" sn=1466090554 user="a@b.com.na" ui=https(10.42.8.253) action=login status=success reason=none profile="super_admin" msg="Administrator a@b.com.na logged in successfully from https(10.42.8.253)"
 -->
 
-
 <!--
 date=2016-06-14 time=12:22:01 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=system level=alert vd="root" logdesc="Admin login failed" sn=0 user="gfedhf" ui=https(4.3.5.253) action=login status=failed reason="name_invalid" msg="Administrator gfedhf login failed from https(4.3.5.253) because of invalid user name"
 date=2016-06-17 time=02:37:41 devname=Mobipay_Firewall devid=FGTXXXX9999999999 logid=0100032002 type=event subtype=system level=alert vd="root" logdesc="Admin login failed" sn=0 user="root" ui=ssh(222.186.130.227) action=login status=failed reason="name_invalid" msg="Administrator root login failed from ssh(222.186.130.227) because of invalid user name"
 -->
-
 
 <!--
 date=2016-06-15 time=10:42:31 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=vpn level=error vd="root" logdesc="IPsec DPD failed" msg="IPsec DPD failure" action=dpd remip=1.2.3.4 locip=4.3.2.1 remport=500 locport=500 outintf="wan1" cookies="fsdagfdfgfdgfdg/qwerweafasfefsd" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="BW" status=dpd_failure
 date=2016-06-15 time=21:35:09 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039426 type=event subtype=vpn level=alert vd="root" logdesc="SSL VPN login fail" action="ssl-login-fail" tunneltype="ssl-web" tunnelid=0 remip=2.4.6.8 tunnelip=(null) user="my_user_name" group="N/A" dst_host="N/A" reason="sslvpn_login_unknown_user" msg="SSL user failed to logged in"
 date=2016-06-16 time=08:47:00 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039947 type=event subtype=vpn level=information vd="root" logdesc="SSL VPN tunnel up" action="tunnel-up" tunneltype="ssl-tunnel" tunnelid=1050355638 remip=9.8.7.7 tunnelip=1.2.4.6 user="my_user_name" group="SSL_VPN" dst_host="N/A" reason="N/A" msg="SSL tunnel established"
 date=2016-06-16 time=08:49:26 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039948 type=event subtype=vpn level=information vd="root" logdesc="SSL VPN tunnel down" action="tunnel-down" tunneltype="ssl-tunnel" tunnelid=1050355638 remip=5.7.8.9 tunnelip=8.4.2.1 user="my_user_name" group="SSL_VPN" dst_host="N/A" reason="N/A" duration=147 sentbyte=2284 rcvdbyte=2630 msg="SSL tunnel shutdown"
-<decoder name="fortigate-firewall-v5-event-vpn-fields1">
-    <parent>fortigate-firewall-v5</parent>
-    <prematch offset="after_parent">type=event subtype=vpn level=\S+ vd="\.+" logdesc="\.+" msg="\.+" action=</prematch>
-    <regex>logdesc="(\.+)" msg=\.+ action=(\.*) remip=(\S+) locip=(\S+) \.+ status=(\S+)</regex>
-    <order>extra_data,action,dstip,srcip,status</order>
-</decoder>
 -->
 
+<!--
+<decoder name="fortigate-firewall-v5-event-vpn-fields1">
+  <parent>fortigate-firewall-v5</parent>
+  <prematch offset="after_parent">type=event subtype=vpn level=\S+ vd="\.+" logdesc="\.+" msg="\.+" action=</prematch>
+  <regex>logdesc="(\.+)" msg=\.+ action=(\.*) remip=(\S+) locip=(\S+) \.+ status=(\S+)</regex>
+  <order>extra_data,action,dstip,srcip,status</order>
+</decoder>
+-->
 
 <!--
 date=2016-06-16 time=10:19:23 devname=Device_Name devid=FGTXXXX9999999999 logid=0000000013 type=traffic subtype=forward level=notice vd=root srcip=7.3.8.5 srcport=57727 srcintf="internal1" dstip=7.8.9.81 dstport=80 dstintf="wan1" poluuid=d6217c58-8c42-51e5-c3a6-c7766895cbfd sessionid=181876 proto=6 action=deny policyid=8 dstcountry="Reserved" srccountry="Reserved" trandisp=snat transip=160.242.8.82 transport=57727 service="HTTP" appid=107347980 app="Proxy.HTTP" appcat="Proxy" apprisk=critical applist="default" appact=drop-session duration=30 sentbyte=0 rcvdbyte=3042 sentpkt=0 utmaction=block countapp=1 crscore=10 craction=1048576
 date=2016-06-16 time=10:49:08 devname=Device_Name devid=FGTXXXX9999999999 logid=0000000013 type=traffic subtype=forward level=notice vd=root srcip=4.3.5.161 srcport=51082 srcintf="internal1" dstip=54.192.197.185 dstport=80 dstintf="wan1" poluuid=d6217c58-8c42-51e5-c3a6-c7766895cbfd sessionid=199618 proto=6 action=deny policyid=8 dstcountry="United States" srccountry="Reserved" trandisp=snat transip=160.242.8.82 transport=51082 service="HTTP" appid=6 app="BitTorrent" appcat="P2P" apprisk=high applist="default" appact=drop-session duration=3 sentbyte=60 rcvdbyte=3050 sentpkt=1 utmaction=block countapp=1 crscore=5 craction=1048576
--->
-
-<!--
 date=2018-05-31 time=08:58:56 devname="BA-RSYS-FW" devid="FG600C3912803212" logid="0211008192" type="utm" subtype="virus" eventtype="infected" level="warning" vd="BA-EXORA" eventtime=1527737336 msg="File is infected." action="blocked" service="HTTP" sessionid=377413095 srcip=172.24.12.52 dstip=164.100.80.203 srcport=64982 dstport=80 srcintf="port5" srcintfrole="undefined" dstintf="port3" dstintfrole="wan" policyid=108 proto=6 direction="incoming" filename="FrontPageImgHandler.ashx" quarskip="File-was-not-quarantined." virus="Malware_Generic.P0" dtype="Virus" ref="http://www.fortinet.com/ve?vn=Malware_Generic.P0" virusid=7024603 url="http://www.karsec.gov.in/FrontPageImgHandler.ashx?id=12" profile="Web-Browsing" agent="Chrome/66.0.3359.181" analyticscksum="a9165dbae34e6e2952270536e95a2bb154dff0cfcdf41315f0796ee14b36123b" analyticssubmit="false" crscore=50 crlevel="critical"
 -->
-
 <decoder name="fortigate-firewall-v5">
-    <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
+  <type>syslog</type>
 </decoder>
-
-
 
 <decoder name="fortigate-firewall-v5">
   <parent>fortigate-firewall-v5</parent>
   <regex>forwardedfor="(\.*)"|forwardedfor=(\.*)\s|forwardedfor=(\.*)$</regex>
   <order>forwardedfor</order>
 </decoder>
-
 
 <decoder name="fortigate-firewall-v5">
   <parent>fortigate-firewall-v5</parent>
@@ -371,8 +352,6 @@ date=2018-05-31 time=08:58:56 devname="BA-RSYS-FW" devid="FG600C3912803212" logi
   <regex>incidentserialno="(\.*)"|incidentserialno=(\.*)\s|incidentserialno=(\.*)$</regex>
   <order>incidentserialno</order>
 </decoder>
-
-
 
 <decoder name="fortigate-firewall-v5">
   <parent>fortigate-firewall-v5</parent>
@@ -698,15 +677,8 @@ date=2018-05-31 time=08:58:56 devname="BA-RSYS-FW" devid="FG600C3912803212" logi
   <order>xauthuser</order>
 </decoder>
 
-
-
-
 <!-- FortiOS 6.0 via syslog -->
-
 <!--  Logs for FortiOS 6.2 -->
-
-
-
 <!--
 date=2019-02-20 time=09:57:22 logid="0111046400" type="event" subtype="fortiextender" level="notice" vd="root" eventtime=1550685442 logdesc="FortiExtender system activity"   action="FortiExtender Authorized"    msg="ext SN:FX04DN4N16002352 authorized"
 date=2019-02-20 time=09:51:42 logid="0111046401" type="event" subtype="fortiextender" level="notice" vd="root" eventtime=1550685102 logdesc="FortiExtender controller activity" sn="FX04DN4N16002352" ip=11.11.11.2 action="ext session-deauthed" msg="ext SN:FX04DN4N16002352 deauthorized"
@@ -747,7 +719,6 @@ date=2019-03-28 time=11:10:55 logid="1701062003" type="utm" subtype="ssl" eventt
 date=2019-05-15 time=16:28:17 logid="1800063000" type="utm" subtype="cifs" eventtype="cifs-filefilter" level="warning" vd="vdom1" eventtime=1557962895 msg="File was blocked by file filter." direction="incoming" action="blocked" service="CIFS" srcip=10.1.100.11 dstip=172.16.200.44 srcport=56348 dstport=445 srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" policyid=1 proto=16 profile="cifs" filesize="13824" filename="sample\\test.xls" filtername="1" filetype="msoffice"
 date=2017-11-15 time=11:44:16 logid="0000000013" type="traffic" subtype="forward" level="notice" vd="vdom1" eventtime=1510775056 srcip=10.1.100.155 srcname="pc1" srcport=40772 srcintf="port12" srcintfrole="undefined" dstip=35.197.51.42 dstname="fortiguard.com" dstport=443 dstintf="port11" dstintfrole="undefined" poluuid="707a0d88-c972-51e7-bbc7-4d421660557b" sessionid=8058 proto=6 action="close" policyid=1 policytype="policy" policymode="learn" service="HTTPS" dstcountry="United States" srccountry="Reserved" trandisp="snat" transip=172.16.200.2 transport=40772 appid=40568 app="HTTPS.BROWSER" appcat="Web.Client" apprisk="medium" duration=2 sentbyte=1850 rcvdbyte=39898 sentpkt=25 rcvdpkt=37 utmaction="allow" countapp=1 devtype="Linux PC" osname="Linux" mastersrcmac="a2:e9:00:ec:40:01" srcmac="a2:e9:00:ec:40:01" srcserver=0 utmref=0-220586
 -->
-
 <decoder name="fortigate-firewall-v6">
   <prematch>date=\d\d\d\d-\d\d-\d\d time=\.+logid=\.+type=\.+subtype=\.+</prematch>
   <type>syslog</type>
@@ -758,7 +729,6 @@ date=2017-11-15 time=11:44:16 logid="0000000013" type="traffic" subtype="forward
   <regex>imei="(\.*)"|imei=(\.*)\s|imei=(\.*)$</regex>
   <order>imei</order>
 </decoder>
-
 
 <decoder name="fortigate-firewall-v6">
   <parent>fortigate-firewall-v6</parent>

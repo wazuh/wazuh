@@ -19,7 +19,6 @@
   - 2014-07-14T14:00:05.508414-04:00 arrakis unbound: [2541:0] info:    0.032768    0.065536 1
   - 2014-07-14T15:05:07.520229-04:00 arrakis unbound: [2541:0] info: 127.0.0.1 github.com. AAAA IN
 -->
-
 <decoder name="unbound">
   <program_name>^unbound</program_name>
 </decoder>

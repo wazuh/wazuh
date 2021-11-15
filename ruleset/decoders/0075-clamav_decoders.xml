@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   -  Nov  5 22:59:19 ix freshclam[32349]: Incremental update failed, trying to download daily.cvd
 -->
@@ -23,9 +22,9 @@ Nov 18 16:51:04 hostname clamd[511]: /usr/share/clamav-testfiles/clam.arj: ClamA
 -->
 <decoder name="clamd-found">
   <parent>clamd</parent>
-   <prematch>FOUND</prematch>
-   <regex>(\S+):\s+(\S+)\((\S+):</regex>
-   <order>url, extra_data, id</order>
+  <prematch>FOUND</prematch>
+  <regex>(\S+):\s+(\S+)\((\S+):</regex>
+  <order>url, extra_data, id</order>
 </decoder>
 
 <decoder name="freshclam">

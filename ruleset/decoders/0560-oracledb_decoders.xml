@@ -8,10 +8,10 @@
 <!--
   localfile implementation example:
   <localfile>
-    <log_format>multi-line-regex</log_format>
-    <location>/tmp/oracle/*.aud</$
-    <multiline_regex match="all">(?m)\n\n</multiline_regex>
-    <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
+  <log_format>multi-line-regex</log_format>
+  <location>/tmp/oracle/*.aud</$
+  <multiline_regex match="all">(?m)\n\n</multiline_regex>
+  <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
   </localfile>
 -->
 <!--
@@ -29,30 +29,30 @@ Log example:
 -->
 
 <decoder name="oracledb_log">
-    <program_name>^oracledb$</program_name>
+  <program_name>^oracledb$</program_name>
 </decoder>
 
 <decoder name="oracledb_transaction_fields">
-    <parent>oracledb_log</parent>
-    <regex>(?Ums)^LENGTH : '(\d+)'\n</regex>
-    <regex>^ACTION :\[\d+] '(.+)'\n</regex>
-    <regex>^DATABASE USER:\[\d+] '(.+)'\n</regex>
-    <regex>^PRIVILEGE :\[\d+] '(.+)'\n</regex>
-    <regex>^CLIENT USER:\[\d+] '(.*)'\n</regex>
-    <regex>^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
-    <regex>^STATUS:\[\d+] '(.*)'\n</regex>
-    <regex type="pcre2">^DBID:\[\d+] '(.*)'</regex>
-    <order>length, action, database_user, privilege_level, client_user, client_terminal, status, database_id</order>
+  <parent>oracledb_log</parent>
+  <regex>(?Ums)^LENGTH : '(\d+)'\n</regex>
+  <regex>^ACTION :\[\d+] '(.+)'\n</regex>
+  <regex>^DATABASE USER:\[\d+] '(.+)'\n</regex>
+  <regex>^PRIVILEGE :\[\d+] '(.+)'\n</regex>
+  <regex>^CLIENT USER:\[\d+] '(.*)'\n</regex>
+  <regex>^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
+  <regex>^STATUS:\[\d+] '(.*)'\n</regex>
+  <regex type="pcre2">^DBID:\[\d+] '(.*)'</regex>
+  <order>length, action, database_user, privilege_level, client_user, client_terminal, status, database_id</order>
 </decoder>
 
 
 <!--
   localfile implementation example:
   <localfile>
-    <log_format>multi-line-regex</log_format>
-    <location>/tmp/oracle/alert_CDBTST931.log</location>
-    <multiline_regex match="start">(?m)\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}</multiline_regex>
-    <out_format>$(timestamp) $(hostname) oracledb_alerts: $(log)</out_format>
+  <log_format>multi-line-regex</log_format>
+  <location>/tmp/oracle/alert_CDBTST931.log</location>
+  <multiline_regex match="start">(?m)\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}</multiline_regex>
+  <out_format>$(timestamp) $(hostname) oracledb_alerts: $(log)</out_format>
   </localfile>
 -->
 <!--
@@ -69,6 +69,6 @@ Log example:
   Process m000 died, see its trace file
 -->
 <decoder name="oracledb_alerts">
-    <program_name>^oracledb_alerts$</program_name>
-    <prematch type="pcre2">ORA\-</prematch>
+  <program_name>^oracledb_alerts$</program_name>
+  <prematch type="pcre2">ORA\-</prematch>
 </decoder>

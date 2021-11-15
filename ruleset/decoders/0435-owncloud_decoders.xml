@@ -39,8 +39,6 @@
   - Sep  1 22:16:33 foo ownCloud[15467]: {core-preview} Passed filename is not valid, might be malicious (file:"test";ip:"127.0.0.1","@source":"ownCloud")
 -->
 
-
-
 <decoder name="owncloud">
   <prematch>^{"reqId":"\S+","message":"\.+","level":\d,"time":"\S+"}$|^{"app":"\S+","message":"\.+","level":\d,"time":"\S+"}$|^{"reqId":"\S+","level":\d,"time":"\S+","message":"\.+"}$</prematch>
 </decoder>

@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   -  Will extract username and srcip from the logs.
   -  Only add to the FTS if the login was successful
@@ -55,7 +54,6 @@
   -  Nov  6 09:53:38 hagal sshd[697]: error: accept: Software caused connection abort
   -  Nov  9 11:36:55 ecaz sshd[26967]: pam_succeed_if(sshd:auth): error retrieving information about user _z9xxbBW
   -->
-
 <decoder name="sshd">
   <program_name>^sshd</program_name>
 </decoder>
@@ -155,7 +153,6 @@ Sep  4 21:13:05 example sshd[12853]: Did not receive identification string from 
 e.g. OpenSSH <= 7.2:
 Sep  4 21:14:25 example sshd[18368]: Did not receive identification string from 192.168.0.1
 -->
-
 <decoder name="ssh-scan2">
   <parent>sshd</parent>
   <prematch>^Broken pipe|^Did not receive identification |^Bad protocol version </prematch>
@@ -183,7 +180,6 @@ Sep  4 21:14:25 example sshd[18368]: Did not receive identification string from 
   <regex offset="after_prematch">^from (\S+):</regex>
   <order>srcip</order>
 </decoder>
-
 <!--XXX
 <decoder name="ssh-pam">
   <parent>sshd</parent>
@@ -229,7 +225,6 @@ Sep  4 21:14:25 example sshd[18368]: Did not receive identification string from 
   <order>user</order>
 </decoder>
 -->
-
 <decoder name="sshd-exceed">
   <parent>sshd</parent>
   <prematch> exceeded for </prematch>

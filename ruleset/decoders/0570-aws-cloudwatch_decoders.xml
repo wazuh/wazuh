@@ -14,83 +14,83 @@ Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '347'\nACTION :[92] 'select 'OPENMODE:
 
 <!-- RDS decoders -->
 <decoder name="RDS">
-    <prematch>^\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d +\d\d:\d\d</prematch>
+  <prematch>^\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d +\d\d:\d\d</prematch>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex>^(\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d) +\d\d:\d\d</regex>
-    <order>timegenerated</order>
+  <parent>RDS</parent>
+  <regex>^(\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d) +\d\d:\d\d</regex>
+  <order>timegenerated</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">LENGTH : '(\S+)'</regex>
-    <order>length</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">LENGTH : '(\S+)'</regex>
+  <order>length</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">\\nACTION :(\.*)\\n</regex>
-    <order>action</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">\\nACTION :(\.*)\\n</regex>
+  <order>action</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">DATABASE USER:([\d+] '\.*')</regex>
-    <order>database.user</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">DATABASE USER:([\d+] '\.*')</regex>
+  <order>database.user</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">PRIVILEGE :([\d+] '\.*')</regex>
-    <order>privilege</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">PRIVILEGE :([\d+] '\.*')</regex>
+  <order>privilege</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">CLIENT USER:([\d+] '\.*')</regex>
-    <order>client.user</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">CLIENT USER:([\d+] '\.*')</regex>
+  <order>client.user</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">CLIENT TERMINAL:([\d+] '\.*')</regex>
-    <order>client.terminal</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">CLIENT TERMINAL:([\d+] '\.*')</regex>
+  <order>client.terminal</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">STATUS:([\d+] '\.*')</regex>
-    <order>status</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">STATUS:([\d+] '\.*')</regex>
+  <order>status</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">DBID:([\d+] '\.*')</regex>
-    <order>dbid</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">DBID:([\d+] '\.*')</regex>
+  <order>dbid</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">SESSIONID:([\d+] '\.*')</regex>
-    <order>sessionid</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">SESSIONID:([\d+] '\.*')</regex>
+  <order>sessionid</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">USERHOST:([\d+] '\.*')</regex>
-    <order>userhost</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">USERHOST:([\d+] '\.*')</regex>
+  <order>userhost</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">CLIENT ADDRESS:([\d+] '\.*')</regex>
-    <order>client.address</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">CLIENT ADDRESS:([\d+] '\.*')</regex>
+  <order>client.address</order>
 </decoder>
 
 <decoder name="RDS-Child">
-    <parent>RDS</parent>
-    <regex offset="after_parent">ACTION NUMBER:([\d+] '\.*')</regex>
-    <order>action.number</order>
+  <parent>RDS</parent>
+  <regex offset="after_parent">ACTION NUMBER:([\d+] '\.*')</regex>
+  <order>action.number</order>
 </decoder>

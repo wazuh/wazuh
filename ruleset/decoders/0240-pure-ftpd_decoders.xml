@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Will extract the username/srcip whenever possible.
   - Samples by Peter Ahlert <peter@ifup.de> (thanks!)
@@ -41,7 +40,6 @@
   - example.com - user1 [11/Mar/2013:12:10:23 -0000] "PUT /ftpdrive/user1/FinalBackup.zip" 200 25268220
   - example.com - user1 [11/Mar/2013:12:24:57 -0000] "GET /ftpdrive/user1/FinalBackup.zip" 200 25268220
   -->
-
 <decoder name="pure-transfer">
   <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d \S\d\d\d\d] "\w+ \S+" </prematch>
   <regex>^(\S+) - (\S+) [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] "(\S+) (\.+) (\d+) \d+$</regex>

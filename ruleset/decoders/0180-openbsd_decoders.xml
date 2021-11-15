@@ -7,12 +7,10 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!-- OpenBSD deluser
   -  2014-02-21T10:22:55.134355-05:00 arrakis userdel[23023]: user removed: name=dac
   -  Dec  1 12:43:16 ip-10-0-0-220 userdel[2793]: delete user 'marge'
 -->
-
 <decoder name="open-userdel">
   <program_name>userdel</program_name>
   <regex>user removed: name=(\S+)$|delete user '(\S+\w)'</regex>
@@ -29,7 +27,6 @@
 </decoder>
 
 <!-- OpenBSD isakmpd decoders -->
-
 <decoder name="isakmpd">
   <program_name>^isakmpd</program_name>
 </decoder>
@@ -63,7 +60,6 @@
 <!-- OpenBSD mountd decoder
 - Apr 11 20:01:02 ix mountd[11618]: Refused mount RPC from host 192.168.17.10 port 45659
 -->
-
 <decoder name="mountd">
   <program_name>^mountd</program_name>
 </decoder>
@@ -83,7 +79,7 @@
   - Mar 30 15:54:22.171929 rule 3/(match) pass out on xl0: 192.168.2.10.1514 > 192.168.2.190.1030:  udp 73
   - Mar 30 15:54:22.174412 rule 3/(match) pass out on xl0: 192.168.2.10.1514 > 192.168.2.190.1030:  udp 89
 
-  -->
+-->
 <decoder name="pf">
    <type>firewall</type>
    <program_name>^pf$</program_name>
@@ -91,7 +87,6 @@
 </decoder>
 
 <!-- OpenBSD smtpd decoders -->
-
 <decoder name="smtpd">
   <program_name>^smtpd</program_name>
 </decoder>

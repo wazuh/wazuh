@@ -10,7 +10,7 @@ OpenSCAP
 Logs from syslog.
 -->
 <decoder name="oscap">
-    <program_name>oscap</program_name>
+  <program_name>oscap</program_name>
 </decoder>
 
 <!--
@@ -20,7 +20,6 @@ Logs from wodle
 <decoder name="oscap">
   <prematch>oscap: </prematch>
 </decoder>
-
 
 <!--
 Rule Result: xccdf
@@ -44,7 +43,6 @@ oscap: msg: "oval-result", scan-id: "0011477050403", content: "cve-ubuntu-xenial
   <order>oscap.scan.id, oscap.scan.content, oscap.check.title, oscap.check.id, oscap.check.result, oscap.check.description, oscap.scan.profile.title, oscap.check.references</order>
 </decoder>
 
-
 <!--
 Report overview: xccdf
 oscap: msg: "xccdf-overview", scan-id: "0011477050403", content: "cve-redhat-7-ds.xml", benchmark-id: "xccdf_org.ssgproject.content_benchmark_RHEL-7", profile-id: "xccdf_org.ssgproject.content_profile_common", profile-title: "Common Profile for General-Purpose Systems", score: "62.500000".
@@ -67,23 +65,22 @@ oscap: msg: "oval-overview", scan-id: "0011477050403", content: "com.ubuntu.xeni
   <order>oscap.scan.id, oscap.scan.content, oscap.scan.score</order>
 </decoder>
 
-
 <!--
 Apr 12 10:50:32 centos oscap: Evaluation started. Content: /usr/share/xml/scap/ssg/content/ssg-centos7-ds.xml, Profile: xccdf_org.ssgproject.content_profile_standard.
 -->
 <decoder name="oscap-eval-start">
-    <parent>oscap</parent>
-    <prematch offset="after_parent">^Evaluation started. </prematch>
-    <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
-    <order>oscap.scan.content, oscap.scan.profile.id</order>
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^Evaluation started. </prematch>
+  <regex offset="after_prematch">^Content: (\S+), Profile: (\S+).$</regex>
+  <order>oscap.scan.content, oscap.scan.profile.id</order>
 </decoder>
 
 <!--
 Apr 12 10:50:42 centos oscap: Evaluation finished. Return code: 0, Base score 100.000000.
 -->
 <decoder name="oscap-eval-finish">
-    <parent>oscap</parent>
-    <prematch offset="after_parent">^Evaluation finished. </prematch>
-    <regex offset="after_prematch">^Return code: (\d+), Base score (\S+).</regex>
-    <order>oscap.scan.return_code, oscap.scan.score</order>
+  <parent>oscap</parent>
+  <prematch offset="after_parent">^Evaluation finished. </prematch>
+  <regex offset="after_prematch">^Return code: (\d+), Base score (\S+).</regex>
+  <order>oscap.scan.return_code, oscap.scan.score</order>
 </decoder>

@@ -6,5 +6,5 @@
 -->
 
 <decoder name="freeipa">
-    <program_name>ipa</program_name>
+  <program_name>ipa</program_name>
 </decoder>

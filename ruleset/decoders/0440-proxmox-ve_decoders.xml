@@ -35,7 +35,6 @@ Sep 10 06:25:47 example pvepw-logger[15428]: received terminate request (signal)
 Sep 10 06:25:47 example pvepw-logger[15428]: stopping pvefw logger
 Sep 10 06:25:48 example pvepw-logger[22551]: starting pvefw logger
 -->
-
 <decoder name="pvedaemon">
   <program_name>^pvedaemon</program_name>
 </decoder>

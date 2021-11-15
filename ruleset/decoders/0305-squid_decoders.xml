@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Pre mach for Squid's log file access.log
   - Examples:
@@ -45,7 +44,6 @@
   <type>squid</type>
   <prematch>^\d+/\d+/\d+ \d+:\d+:\d+\| |^\d+/\d+/\d+ \d+:\d+:\d+ \w+\| </prematch>
 </decoder>
-
 
 <!--
   - Extract action

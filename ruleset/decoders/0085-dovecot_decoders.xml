@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Will extract username, srcip and dstip when available.
   - Jun 17 10:15:24 hostname dovecot: Dovecot v1.2.rc3 starting up (core dumps disabled)

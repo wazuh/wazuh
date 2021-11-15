@@ -10,12 +10,12 @@
 8496:M 14 Apr 09:07:02.261 - Accepted 10.10.10.10:12345
 -->
 <decoder name="redis">
-    <prematch>^\d+:\w \d\d \w\w\w \d\d:\d\d:\d\d.\d+ \p </prematch>
+  <prematch>^\d+:\w \d\d \w\w\w \d\d:\d\d:\d\d.\d+ \p </prematch>
 </decoder>
 
 <decoder name="redis-ip">
-    <parent>redis</parent>
-    <prematch offset="after_parent">^Accepted </prematch>
-    <regex offset="after_prematch">^(\S+):(\d+)</regex>
-    <order>srcip, dstport</order>
+  <parent>redis</parent>
+  <prematch offset="after_parent">^Accepted </prematch>
+  <regex offset="after_prematch">^(\S+):(\d+)</regex>
+  <order>srcip, dstport</order>
 </decoder>

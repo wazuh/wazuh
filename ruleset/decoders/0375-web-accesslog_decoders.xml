@@ -35,45 +35,43 @@
   2 IPs:
   10.10.10.11 10.10.10.12 - - [10/Apr/2017:13:18:05 -0700] "GET /injection/%0d%0aSet-Cookie HTTP/1.1" 404 271 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0"
   -->
-
-
 <decoder name="web-accesslog">
-    <type>web-log</type>
-    <program_name>nginx|apache</program_name>
+  <type>web-log</type>
+  <program_name>nginx|apache</program_name>
 </decoder>
 
 <decoder name="web-accesslog">
-    <type>web-log</type>
-    <prematch>^\S+ \S+ \S+ \.*[\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
+  <type>web-log</type>
+  <prematch>^\S+ \S+ \S+ \.*[\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
 </decoder>
 
 <decoder name="web-accesslog-domain">
-    <type>web-log</type>
-    <parent>web-accesslog</parent>
-    <prematch>^\S+.\D+</prematch>
-    <regex>^\S+ (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
-    <order>srcip, protocol, url, id</order>
+  <type>web-log</type>
+  <parent>web-accesslog</parent>
+  <prematch>^\S+.\D+</prematch>
+  <regex>^\S+ (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
+  <order>srcip, protocol, url, id</order>
 </decoder>
 
 <decoder name="web-accesslog-ip-ip">
-    <type>web-log</type>
-    <parent>web-accesslog</parent>
-    <prematch>^\S+ \S+.\S+ |^\S+ \S+:\S+ </prematch>
-    <regex>^(\S+) (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
-    <order>srcip2, srcip, protocol, url, id</order>
+  <type>web-log</type>
+  <parent>web-accesslog</parent>
+  <prematch>^\S+ \S+.\S+ |^\S+ \S+:\S+ </prematch>
+  <regex>^(\S+) (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
+  <order>srcip2, srcip, protocol, url, id</order>
 </decoder>
 
 <decoder name="web-accesslog-ip">
-    <type>web-log</type>
-    <parent>web-accesslog</parent>
-    <regex>^(\S+) \S+ \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
-    <order>srcip, protocol, url, id</order>
+  <type>web-log</type>
+  <parent>web-accesslog</parent>
+  <regex>^(\S+) \S+ \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
+  <order>srcip, protocol, url, id</order>
 </decoder>
 
 <decoder name="web-accesslog-glpi">
-    <type>web-log</type>
-    <parent>web-accesslog</parent>
-    <prematch>^\S+ - - [\d+/\w+/\d+:\d+:\d+:\d+ +\d+] "\S+ \S+ HTTP/\.+"</prematch>
-    <regex>^(\S+) - - [(\d+/\w+/\d+:\d+:\d+:\d+) +\d+] "(\S+) (\S+) HTTP/(\.+)" (\d+) (\S+) "(\.+)" "(\.+)"</regex>
-    <order>srcip,timestamp,operation, route, http_version, rcode, rsize, url, browser</order>
+  <type>web-log</type>
+  <parent>web-accesslog</parent>
+  <prematch>^\S+ - - [\d+/\w+/\d+:\d+:\d+:\d+ +\d+] "\S+ \S+ HTTP/\.+"</prematch>
+  <regex>^(\S+) - - [(\d+/\w+/\d+:\d+:\d+:\d+) +\d+] "(\S+) (\S+) HTTP/(\.+)" (\d+) (\S+) "(\.+)" "(\.+)"</regex>
+  <order>srcip,timestamp,operation, route, http_version, rcode, rsize, url, browser</order>
 </decoder>

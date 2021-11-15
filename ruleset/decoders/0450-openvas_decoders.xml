@@ -54,7 +54,6 @@ Mar 10 10:05:59 hostname md    omp[9140]: Authentication failure for 'admin' fro
 [Fri Feb  9 18:07:09 2018][4854] Total time to scan all hosts : 5159 seconds
 [Sat Feb 10 05:18:06 2018][3963] Received the Terminated signal
 -->
-
 <decoder name="gsad">
   <program_name>^gsad</program_name>
 </decoder>

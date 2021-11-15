@@ -26,7 +26,7 @@
   -->
 
 <decoder name="sudo">
-    <program_name>^sudo</program_name>
+  <program_name>^sudo</program_name>
 </decoder>
 
 <decoder name="sudo-fields">
@@ -62,20 +62,18 @@
   <order>command</order>
 </decoder>
 
-
-
 <decoder name="sudo">
-    <program_name/>
-    <prematch>^\S+\s+:\s+HOST=\S+\s+:\s+\.+;</prematch>
+  <program_name/>
+  <prematch>^\S+\s+:\s+HOST=\S+\s+:\s+\.+;</prematch>
 </decoder>
 
 <decoder name="sudo2-fields">
-    <parent>sudo</parent>
-    <program_name/>
-    <regex>(\S+)\s+:\s+HOST</regex>
-    <order>srcuser</order>
-    <fts>name,srcuser,location</fts>
-    <ftscomment>First time user executed the sudo command</ftscomment>
+  <parent>sudo</parent>
+  <program_name/>
+  <regex>(\S+)\s+:\s+HOST</regex>
+  <order>srcuser</order>
+  <fts>name,srcuser,location</fts>
+  <ftscomment>First time user executed the sudo command</ftscomment>
 </decoder>
 
 <decoder name="sudo2-fields">

@@ -70,135 +70,161 @@ terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_p
 -->
 
 <decoder name="icinga">
-    <prematch>[\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+] \w+/\w+: \p*\w+</prematch>
+  <prematch>[\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+] \w+/\w+: \p*\w+</prematch>
 </decoder>
 
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>[(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d) +\d+] (\w+)/(\w+):</regex>
-    <order>timestamp,msg_type,operation</order>
+  <parent>icinga</parent>
+  <regex>[(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d) +\d+] (\w+)/(\w+):</regex>
+  <order>timestamp,msg_type,operation</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>[\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+] \w+/\w+: (\D+) '(\.+)'</regex>
-    <order>Process,object</order>
+  <parent>icinga</parent>
+  <regex>[\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+] \w+/\w+: (\D+) '(\.+)'</regex>
+  <order>Process,object</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>PID: (\d+)</regex>
-    <order>PID</order>
+  <parent>icinga</parent>
+  <regex>PID: (\d+)</regex>
+  <order>PID</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>PID (\d+)</regex>
-    <order>PID</order>
+  <parent>icinga</parent>
+  <regex>PID (\d+)</regex>
+  <order>PID</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'(\.+.sh)'</regex>
-    <order>script</order>
+  <parent>icinga</parent>
+  <regex>'(\.+.sh)'</regex>
+  <order>script</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>arguments: '(\.+)'</regex>
-    <order>arguments</order>
+  <parent>icinga</parent>
+  <regex>arguments: '(\.+)'</regex>
+  <order>arguments</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-c' '(\.+)' '-w' '(\.+)'</regex>
-    <order>-c,-w</order>
+  <parent>icinga</parent>
+  <regex>'-c' '(\.+)' '-w' '(\.+)'</regex>
+  <order>-c,-w</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>terminated with exit code (\d+), output: (\.+)</regex>
-    <order>exit_code, output</order>
+  <parent>icinga</parent>
+  <regex>terminated with exit code (\d+), output: (\.+)</regex>
+  <order>exit_code, output</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-d' '(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+)'</regex>
-    <order>-d</order>
+  <parent>icinga</parent>
+  <regex>'-d' '(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+)'</regex>
+  <order>-d</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-e' '(\w+)'</regex>
-    <order>-e</order>
+  <parent>icinga</parent>
+  <regex>'-e' '(\w+)'</regex>
+  <order>-e</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-n' '(\w+)'</regex>
-    <order>-n</order>
+  <parent>icinga</parent>
+  <regex>'-n' '(\w+)'</regex>
+  <order>-n</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-o' '(\.+)'</regex>
-    <order>-o</order>
+  <parent>icinga</parent>
+  <regex>'-o' '(\.+)'</regex>
+  <order>-o</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-r' '(\.+@\w+.\w+)'</regex>
-    <order>-r</order>
+  <parent>icinga</parent>
+  <regex>'-r' '(\.+@\w+.\w+)'</regex>
+  <order>-r</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-s' '(\w+)'</regex>
-    <order>-s</order>
+  <parent>icinga</parent>
+  <regex>'-s' '(\w+)'</regex>
+  <order>-s</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-t' '(\w+)'</regex>
-    <order>-t</order>
+  <parent>icinga</parent>
+  <regex>'-t' '(\w+)'</regex>
+  <order>-t</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-u' '(\w+)'</regex>
-    <order>-u</order>
+  <parent>icinga</parent>
+  <regex>'-u' '(\w+)'</regex>
+  <order>-u</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-H' '(\d+.\d+.\d+.\d+)'</regex>
-    <order>-H</order>
+  <parent>icinga</parent>
+  <regex>'-H' '(\d+.\d+.\d+.\d+)'</regex>
+  <order>-H</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-l' '(\.+)'</regex>
-    <order>-l</order>
+  <parent>icinga</parent>
+  <regex>'-l' '(\.+)'</regex>
+  <order>-l</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-r' '(\.+)'</regex>
-    <order>-r</order>
+  <parent>icinga</parent>
+  <regex>'-r' '(\.+)'</regex>
+  <order>-r</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>'-v' '(\.+)'</regex>
-    <order>-v</order>
+  <parent>icinga</parent>
+  <regex>'-v' '(\.+)'</regex>
+  <order>-v</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>items: (\d+)</regex>
-    <order>items</order>
+  <parent>icinga</parent>
+  <regex>items: (\d+)</regex>
+  <order>items</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>rate: (\.+/s \(\.+\))</regex>
-    <order>rate</order>
+  <parent>icinga</parent>
+  <regex>rate: (\.+/s \(\.+\))</regex>
+  <order>rate</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>message from '(\.+)'</regex>
-    <order>msg_src</order>
+  <parent>icinga</parent>
+  <regex>message from '(\.+)'</regex>
+  <order>msg_src</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>Pending checkables: (\d+)</regex>
-    <order>pending_checkables</order>
+  <parent>icinga</parent>
+  <regex>Pending checkables: (\d+)</regex>
+  <order>pending_checkables</order>
 </decoder>
+
 <decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>Idle checkables: (\d+)</regex>
-    <order>iddle_checkables</order>
-</decoder><decoder name="icinga_child">
-    <parent>icinga</parent>
-    <regex>Checks/s: (\d+)</regex>
-    <order>checks/s</order>
+  <parent>icinga</parent>
+  <regex>Idle checkables: (\d+)</regex>
+  <order>iddle_checkables</order>
+</decoder>
+
+<decoder name="icinga_child">
+  <parent>icinga</parent>
+  <regex>Checks/s: (\d+)</regex>
+  <order>checks/s</order>
 </decoder>

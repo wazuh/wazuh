@@ -5,7 +5,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Group for Huawei USG messages.
   - %%01SECLOG/6/SESSION_TEARDOWN(l):
@@ -13,7 +12,6 @@
   - Oct  5 2018 10:52:12 USG6300 %%01POLICY/6/POLICYPERMIT(l):
   - 2018-10-05 10:52:13 USG6300 %%01SECLOG/6/SESSION_TEARDOWN(l):
  -->
-
 <decoder name="huawei-usg">
   <prematch>^%%\d\d\S+/\d/\S+\(\w\):</prematch>
 </decoder>
@@ -34,7 +32,6 @@
   - yyyy-mm-dd hh:mm:ss date format
   - 2018-10-05 10:52:13 USG6300 %%01SECLOG/6/SESSION_TEARDOWN(l):
 -->
-
 <decoder name="huawei-usg">
   <prematch>^\d\d\d\d-\d\d-\d\d\s+\d\d:\d\d:\d\d\s+USG\d\d\d\d\s+%%\d\d\S+/\d/\S+\(\w\):</prematch>
 </decoder>
@@ -43,7 +40,6 @@
   - yyyy-mm-dd hh:mm:ss date format
   - 2018/10/05 09:52:14 USG6300 %%01URL/4/FILTER(l):
 -->
-
 <decoder name="huawei-usg">
   <prematch>^\d\d\d\d/\d\d/\d\d\s+\d\d:\d\d:\d\d\s+USG\d\d\d\d\s+%%\d\d\S+/\d/\S+\(\w\):</prematch>
 </decoder>
@@ -52,8 +48,7 @@
   - Extracts the ID of USG messages.
   - Sample:
   - 2018/10/05 09:52:14 USG6300 %%01URL/4/FILTER(l): The URL filtering policy was matched. (SyslogId=1932435, VSys="public", Policy="Internet access", SrcIp=1.1.1.1, DstIp=2.2.2.2, SrcPort=53722, DstPort=80, SrcZone=dmz, DstZone=untrust, User="unknown", Protocol=TCP, Application="example.com", Profile="prof01", Type=Timeout or default action, EventNum=1, Category="none", SubCategory="none", Page="*reinstall", Host="service.example.com", Item="none", Action=Alert)
-  -->
-
+-->
 <decoder name="huawei-usg-filter">
   <parent>huawei-usg</parent>
   <prematch>%%\d\dURL/4/FILTER\(l\):</prematch>
@@ -81,7 +76,7 @@
 
 <!-- Huawei USG Default
   - Extracts the ID of USG messages.
-  -->
+-->
 <decoder name="huawei-usg-default">
   <parent>huawei-usg</parent>
   <regex>(%%\d\d\S+/\d/\S+)\(\w\):</regex>

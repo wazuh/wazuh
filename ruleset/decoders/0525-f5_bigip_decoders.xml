@@ -26,9 +26,9 @@ May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_se
 
 <!-- General decoder catch all-->
 <decoder name="f5_bigip_general_fields">
-   <parent>f5_bigip</parent>
-   <regex type="pcre2">^(\S+)\s([^\[]+)\[(\d+)\]:\s([0-9a-fA-F]+):(\d+):\s(.*)$</regex>
-   <order>event.type, process.name, process.pid, event.code, log.level, message</order>
+  <parent>f5_bigip</parent>
+  <regex type="pcre2">^(\S+)\s([^\[]+)\[(\d+)\]:\s([0-9a-fA-F]+):(\d+):\s(.*)$</regex>
+  <order>event.type, process.name, process.pid, event.code, log.level, message</order>
 </decoder>
 
 <!-- 01010251 : Virtual %s exceeded configured rate limit. -->
@@ -45,7 +45,7 @@ May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_se
 <decoder name="f5_bigip_general_fields">
   <parent>f5_bigip</parent>
   <regex type="pcre2">.*server = ([^:]):(\d+)</regex>
-   <order>server_ip, server_port</order>
+  <order>server_ip, server_port</order>
 </decoder>
 
 <!-- 01310027 : ASM subsystem error (%s,%s): %s -->
