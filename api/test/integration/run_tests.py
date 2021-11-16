@@ -214,10 +214,10 @@ def get_script_arguments():
                        help='Get result summary from the already run tests.')
     parser.add_argument('-k', '--keyword', dest='keyword', default=None,
                         help='Specify the keyword to filter tests out. Default None.', action='store')
-    parser.add_argument('-rbac', dest='rbac', default='both', choices=rbac_choices,
+    parser.add_argument('-b', '--rbac', dest='rbac', default='both', choices=rbac_choices,
                         help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default '
                              '"both".', action='store')
-    parser.add_argument('-mode', dest='mode', default='both', choices=mode_choices,
+    parser.add_argument('-m', '--mode', dest='mode', default='both', choices=mode_choices,
                         help='Specify where to pass API integration tests. Run tests in both environments, standalone '
                              'environment or Wazuh cluster environment. Default "both".', action='store')
     parser.add_argument('-i', '--iterations', dest='iterations', default=1, type=int,
