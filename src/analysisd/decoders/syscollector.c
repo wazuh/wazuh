@@ -196,6 +196,8 @@ static struct deltas_fields_match_list const OS_FIELDS[] = {
     { .current = { "version", "os.version" }, .next = &OS_FIELDS[14]},
     { .current = { "os_release", "os.os_release" }, .next = &OS_FIELDS[15]},
     { .current = { "os_display_version", "os.display_version" }, .next = &OS_FIELDS[16]},
+    { .current = { "triaged", "" }, .next = &OS_FIELDS[17]},
+    { .current = { "reference", "" }, .next = &OS_FIELDS[18]},
     { .current = { "checksum", "" }, .next = NULL},
 };
 
