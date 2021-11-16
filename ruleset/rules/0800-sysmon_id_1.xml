@@ -315,7 +315,7 @@
     </rule>
 
     <rule id="92503" level="3">
-        <if_sid>92500</if_sid>
+        <if_sid>92500</if_sid>        
         <list field="win.eventdata.originalFileName" lookup="match_key">etc/lists/uncommon-cmd-opened-process</list>
         <description>A $(win.eventdata.image) binary was started by a Windows cmd shell.</description>
         <mitre>
