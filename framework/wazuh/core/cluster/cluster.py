@@ -4,10 +4,12 @@
 import itertools
 import json
 import logging
+import os.path
 import shutil
 import zipfile
 from datetime import datetime
 from operator import eq
+from operator import itemgetter
 from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
@@ -16,8 +18,9 @@ from time import time
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.InputValidator import InputValidator
+from wazuh.core.agent import Agent
+from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
@@ -421,6 +424,16 @@ def compare_files(good_files, check_files, node_name):
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     extra_files = {key: check_files[key] for key in extra}
     extra_valid_files = {key: check_files[key] for key in extra_valid}
+    if extra_valid_files:
+        # Check if extra-valid agent-groups files correspond to existing agents.
+        try:
+            agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
+            agent_ids = set(map(itemgetter('id'), agents))
+            for file in list(extra_valid_files):
+                if file.startswith('queue/agent-groups/') and os.path.basename(file) not in agent_ids:
+                    extra_valid_files.pop(file, None)
+        except Exception as e:
+            logger.error(f"Error getting agent IDs while verifying which extra-valid files are required: {e}")
 
     # 'all_shared' files are the ones present in both sets but with different MD5 checksum.
     all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
