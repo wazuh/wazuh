@@ -156,7 +156,5 @@ class FIMDB
          * @brief Set the entry limits for the table registry_data
          */
         void setValueLimit();
-
-        std::mutex                                                              m_mutex;
 };
 #endif //_FIMDB_HPP

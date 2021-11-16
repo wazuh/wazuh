@@ -100,7 +100,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->wdata.fd                        = NULL;
 #endif
 #ifdef WIN32
-    syscheck->value_limit                     = 100000;
+    syscheck->reg_entry_limit                 = 100000;
     syscheck->realtime_change                 = 0;
     syscheck->registry                        = NULL;
     syscheck->key_ignore                      = NULL;

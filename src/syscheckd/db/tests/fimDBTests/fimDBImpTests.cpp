@@ -257,6 +257,8 @@ TEST_F(FimDBFixture, registerSyncIDError)
 TEST_F(FimDBFixture, loopRSyncSuccess)
 {
     nlohmann::json itemJson;
+    std::mutex test_mutex;
+
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
@@ -266,7 +268,7 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
 #endif
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
 
-    std::unique_lock<std::mutex> lock{*(fimDBMock.getMutex())};
+    std::unique_lock<std::mutex> lock{test_mutex};
     std::thread syncThread(&FIMDB::loopRSync, &fimDBMock, std::ref(lock));
 
     fimDBMock.stopSync();
@@ -278,13 +280,14 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
 TEST_F(FimDBFixture, loopRSyncStartSyncException)
 {
     nlohmann::json itemJson;
+    std::mutex test_mutex;
 
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_)).WillOnce(testing::Throw(std::exception()));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
 
-    std::unique_lock<std::mutex> lock{*(fimDBMock.getMutex())};
+    std::unique_lock<std::mutex> lock{test_mutex};
     std::thread syncThread(&FIMDB::loopRSync, &fimDBMock, std::ref(lock));
 
     fimDBMock.stopSync();

@@ -88,7 +88,6 @@ package "db" <<Folder>> #DDDDDD{
         - int m_interval_synchronization
         - bool m_stopping
         - condition_variable m_cv
-        - mutex m_mutex
         - DBSync m_dbsyncHandler
         - Rsync m_rsyncHandler
         - callback m_syncMessageFunction

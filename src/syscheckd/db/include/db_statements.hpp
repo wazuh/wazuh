@@ -39,7 +39,6 @@ constexpr auto CREATE_FILE_DB_STATEMENT
 constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS registry_key (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     path TEXT NOT NULL,
     perm TEXT,
     uid INTEGER,
@@ -51,8 +50,10 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
+    item_id TEXT,
     PRIMARY KEY (arch, path));)"
 };
+static const std::vector<std::string> REGISTRY_KEY_ITEM_ID_FIELDS{"arch", "path"};
 
 constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 {
@@ -67,10 +68,11 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-
+    item_id TEXT,
     PRIMARY KEY(key_id, name)
-    FOREIGN KEY (key_id) REFERENCES registry_key(id));)"
+    FOREIGN KEY (key_id) REFERENCES registry_key(item_id));)"
 };
+static const std::vector<std::string> REGISTRY_VALUE_ITEM_ID_FIELDS{"key_id", "name"};
 
 constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
 {
@@ -117,29 +119,29 @@ constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"registry_key",
         "component":"fim_registry_sync",
-        "index":"path",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -155,29 +157,29 @@ constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"registry_data",
         "component":"fim_value_sync",
-        "index":"path",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""

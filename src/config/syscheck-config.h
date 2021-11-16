@@ -404,7 +404,7 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
-    int value_limit;                                   /* maximum number of registry values to monitor */
+    int reg_entry_limit;                               /* maximum number of registry values to monitor */
     registry_ignore *key_ignore;                       /* List of registry keys to ignore */
     registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
     registry_ignore *value_ignore;                     /* List of registry values to ignore*/

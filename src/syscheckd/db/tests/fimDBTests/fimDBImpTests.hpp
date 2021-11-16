@@ -58,11 +58,6 @@ class MockFIMDB: public FIMDB
         {
             FIMDB::stopSync();
         }
-
-        std::mutex* getMutex()
-        {
-            return &m_mutex;
-        }
 };
 
 class MockLoggingCall

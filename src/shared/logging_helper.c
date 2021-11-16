@@ -18,8 +18,14 @@ void taggedLogFunction(modules_log_level_t level, const char* log, const char* t
         case LOG_ERROR:
             mterror(tag, "%s", log);
             break;
+        case LOG_ERROR_EXIT:
+            mterror_exit(tag, "%s", log);
+            break;
         case LOG_INFO:
             mtinfo(tag, "%s", log);
+            break;
+        case LOG_WARNING:
+            mtwarn(tag, "%s", log);
             break;
         case LOG_DEBUG:
             mtdebug1(tag, "%s", log);
@@ -37,8 +43,14 @@ void loggingFunction(modules_log_level_t level, const char* log) {
         case LOG_ERROR:
             merror("%s", log);
             break;
+        case LOG_ERROR_EXIT:
+            merror_exit("%s", log);
+            break;
         case LOG_INFO:
             minfo("%s", log);
+            break;
+        case LOG_WARNING:
+            mwarn("%s", log);
             break;
         case LOG_DEBUG:
             mdebug1("%s", log);
