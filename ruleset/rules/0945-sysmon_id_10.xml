@@ -29,7 +29,7 @@
   <rule id="92920" level="14">
     <if_group>sysmon_event_10</if_group>
     <field name="win.eventdata.targetImage" type="pcre2">(?i)mstsc\.exe</field>
-    <description>Windows Remote Dektop utility process was accessed by $(win.eventdata.sourceImage), possible process injection</description>
+    <description>Windows Remote Desktop utility process was accessed by $(win.eventdata.sourceImage), possible process injection</description>
     <mitre>
       <id>T1055</id>
     </mitre>

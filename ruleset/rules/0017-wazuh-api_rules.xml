@@ -33,7 +33,7 @@
 <rule id="404" level="12">
  <if_sid>400</if_sid>
  <field name="type">CRITICAL</field>
- <description>API: critical error event, requires inmediate atention</description>
+ <description>API: critical error event, requires immediate attention</description>
  <group>pci_dss_10.6.1,gpg13_4.1,gpg13_4.3,gpg13_4.12</group>
 </rule>
 
@@ -61,7 +61,7 @@
 <rule id="424" level="12">
  <if_sid>420</if_sid>
  <field name="type">CRITICAL</field>
- <description>API critical error event, requires inmediate atention</description>
+ <description>API critical error event, requires immediate attention</description>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3,pci_dss_10.6.1,gpg13_4.1</group>
 </rule>
 

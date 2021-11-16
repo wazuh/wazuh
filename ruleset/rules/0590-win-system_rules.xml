@@ -316,7 +316,7 @@
   <rule id="61137" level="10">
     <if_sid>61113</if_sid>
     <field name="win.system.eventID">^10051$</field>
-    <description>Some errors occur aproximately every three seconds</description>
+    <description>Some errors occur approximately every three seconds</description>
     <options>no_full_log</options>
   </rule>
 

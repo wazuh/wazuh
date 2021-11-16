@@ -1256,7 +1256,7 @@
     <if_sid>60749</if_sid>
     <field name="win.system.eventID">^4625$</field>
     <field name="win.eventdata.param1">\.+</field>
-    <description>EventSystem supressed duplicate log entries for $(win.eventdata.param1) seconds</description>
+    <description>EventSystem suppressed duplicate log entries for $(win.eventdata.param1) seconds</description>
     <options>no_full_log</options>
   </rule>
 
@@ -1899,7 +1899,7 @@
   <rule id="60839" level="5">
     <if_sid>60838</if_sid>
     <field name="win.system.eventID">^4098$</field>
-    <description>Unable to translate the MS DTC error code to the appropiate MS DTC error message</description>
+    <description>Unable to translate the MS DTC error code to the appropriate MS DTC error message</description>
     <options>no_full_log</options>
   </rule>
 
@@ -2196,7 +2196,7 @@
   <rule id="60881" level="5">
     <if_sid>60838</if_sid>
     <field name="win.system.eventID">^4166$</field>
-    <description>Exceeded maximum number of active transactions that the MS DTC log file can accomodate</description>
+    <description>Exceeded maximum number of active transactions that the MS DTC log file can accommodate</description>
     <options>no_full_log</options>
   </rule>
 

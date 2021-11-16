@@ -17,7 +17,7 @@
   <rule id="3501" level="0">
     <if_sid>3500</if_sid>
     <match>: result:</match>
-    <description>SPAMD result message (not very usefull here).</description>
+    <description>SPAMD result message (not very useful here).</description>
   </rule>
 
   <rule id="3502" level="0">

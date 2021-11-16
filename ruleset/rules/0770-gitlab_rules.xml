@@ -30,7 +30,7 @@ api_json
         <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
         <match>"status":200</match>
         <options>no_full_log</options>
-        <description>(Gitlab)$(method) request Completed Succesfully</description>
+        <description>(Gitlab)$(method) request Completed Successfully</description>
     </rule>
     <rule id="65602" level="5">
         <decoded_as>json</decoded_as>
@@ -53,7 +53,7 @@ api_json
     <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
     <match>"status":200</match>
     <options>no_full_log</options>
-    <description>(Gitlab)$(method) request Completed Succesfully</description>
+    <description>(Gitlab)$(method) request Completed Successfully</description>
 </rule>
 <rule id="65624" level="5">
     <decoded_as>json</decoded_as>

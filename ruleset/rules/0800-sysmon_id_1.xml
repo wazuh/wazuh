@@ -57,7 +57,7 @@
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(c|w)script\.exe.+[c-z]:\\(Windows\\Temp)|Users\\.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
         <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)cmd\.exe.+/(c|k)</field>
-        <description>Command shell started script with /c modifier. Script itnerpreter is $(win.eventdata.originalFileName)</description>
+        <description>Command shell started script with /c modifier. Script interpreter is $(win.eventdata.originalFileName)</description>
         <mitre>
             <id>T1059</id>
         </mitre>

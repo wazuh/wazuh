@@ -58,7 +58,7 @@
   <rule id="4506" level="8">
     <if_sid>4501</if_sid>
     <id>^00002</id>
-    <description>Netscreen firewall: Successfull admin login</description>
+    <description>Netscreen firewall: Successful admin login</description>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>
@@ -68,7 +68,7 @@
   <rule id="4507" level="8">
     <if_sid>4502</if_sid>
     <id>^00515</id>
-    <description>Netscreen firewall: Successfull admin login</description>
+    <description>Netscreen firewall: Successful admin login</description>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1078</id>

@@ -166,7 +166,7 @@
   <rule id="11220" level="4">
     <if_sid>11200</if_sid>
     <match>listen() failed in</match>
-    <description>proftpd: Unable to bind to adress.</description>
+    <description>proftpd: Unable to bind to address.</description>
   </rule>
 
   <rule id="11221" level="0">
