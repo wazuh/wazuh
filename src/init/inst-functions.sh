@@ -979,12 +979,6 @@ InstallLocal()
     if [ ! -f ${INSTALLDIR}/etc/lists/security-eventchannel ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
     fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/ip_reputation ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/ip_reputation ${INSTALLDIR}/etc/lists/ip_reputation
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/uncommon-cmd-opened-process ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/uncommon-cmd-opened-process ${INSTALLDIR}/etc/lists/uncommon-cmd-opened-process
-    fi
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fts
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agentless

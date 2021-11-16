@@ -231,17 +231,11 @@ All notable changes to this project will be documented in this file.
 - Added SCA policy for Solaris 11.4. ([#10369](https://github.com/wazuh/wazuh/pull/10369))
 - Added Rules for Cloudflare WAF. ([#10658](https://github.com/wazuh/wazuh/pull/10658))
 - Added Rules and Decoders for FortiAuth. ([#10667](https://github.com/wazuh/wazuh/pull/10667))
-- Added CDB list for malicious IP. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
-- Added CDB list for uncommon CMD opened process. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
-- Added Rules for MITRE public Fin7 assessment. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
-- Added IP reputation Rules. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
-- Added Rules and Decoders for FortiAuth. ([#10667](https://github.com/wazuh/wazuh/pull/10667))
 
 #### Changed
 
 - Updated Amazon Linux 2 SCA up to version 2.0.0. ([#10315](https://github.com/wazuh/wazuh/pull/10315))
 - Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1. ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-- Updated Mitre mappings for rules. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
 - Updated Amazon rules to add more granularity. ([#10507](https://github.com/wazuh/wazuh/pull/10507))
 - Updated macOS Big Sur SCA up to 1.2.0 version. ([#10558](https://github.com/wazuh/wazuh/pull/10558))
 
@@ -250,7 +244,6 @@ All notable changes to this project will be documented in this file.
 - Fixed enabled-like checks for Amazon Linux 2 SCA. ([#10315](https://github.com/wazuh/wazuh/pull/10315))
 - Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA. ([#10354](https://github.com/wazuh/wazuh/pull/10354))
 - Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas). ([#10406](https://github.com/wazuh/wazuh/pull/10406))
-- Fixed regex for prematch in FortiDDoS Decoders. ([#10676](https://github.com/wazuh/wazuh/pull/10676))
 - Fixed YML syntax problems in Solaris 11.4 SCA. ([#10707](https://github.com/wazuh/wazuh/pull/10707))
 - Fixed a typo in the Xbox Live Networking Service check for SCA. ([#10375](https://github.com/wazuh/wazuh/pull/10375))
 
