@@ -442,7 +442,9 @@ int test_setup_os_valid_msg(void **state)
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
             \"os_display_version\" : \"107\",\
-            \"checksum\" : \"108\"\
+            \"triaged\" : \"108\",\
+            \"reference\" : \"109\",\
+            \"checksum\" : \"110\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -730,7 +732,9 @@ int test_setup_os_valid_msg_inserted(void **state)
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
             \"os_display_version\" : \"107\",\
-            \"checksum\" : \"108\"\
+            \"triaged\" : \"108\",\
+            \"reference\" : \"109\",\
+            \"checksum\" : \"110\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -767,7 +771,9 @@ int test_setup_os_valid_msg_with_number_pk(void **state)
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
             \"os_display_version\" : \"107\",\
-            \"checksum\" : \"108\"\
+            \"triaged\" : \"108\",\
+            \"reference\" : \"109\",\
+            \"checksum\" : \"110\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -1283,8 +1289,8 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
-    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
+    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1444,8 +1450,8 @@ void test_syscollector_dbsync_os_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo INSERTED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
-    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo INSERTED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
+    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1463,8 +1469,8 @@ void test_syscollector_dbsync_os_valid_msg_with_number_pk(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
-    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
+    const char *result = "ok 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1518,7 +1524,7 @@ void test_syscollector_dbsync_os_valid_msg_no_result_payload(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED 2021/10/29 14:26:24|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|108|109|110|";
     const char *result = "ok";
     int sock = 1;
 
