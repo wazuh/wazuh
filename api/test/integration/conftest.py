@@ -109,12 +109,12 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
                 current_process = subprocess.Popen(
-                    ["docker-compose", "--profile", env_mode,
+                    ["docker-compose",
                      "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg", f"ENV_MODE={env_mode}"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             current_process = subprocess.Popen(
-                ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
+                ["docker-compose", "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
                 stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
 
