@@ -20,11 +20,11 @@ namespace FIMDBHelper
     * @brief Insert a new row from a table.
     *
     * @param tableName a string with the table name
-    * @param item a RegistryKey, RegistryValue or File
+    * @param item a RegistryKey, RegistryValue or File with their parameters
     *
     * @return 0 on success, another value otherwise.
     */
-    int insertItem(const std::string &, const DBItem &);
+    int insertItem(const std::string &, const nlohmann::json &);
 
     /**
     * @brief Get count of all entries in a table
@@ -38,12 +38,12 @@ namespace FIMDBHelper
     /**
     * @brief Get a item from a query
     *
-    * @param tableName a string with the table name
+    * @param item a item object where will be saved the query information
     * @param query a json with a query to the database
     *
     * @return a file, registryKey or registryValue, nullptr otherwise.
     */
-    std::unique_ptr<DBItem> getDBItem(const std::string &, const nlohmann::json &);
+    int getDBItem(DBItem &, const nlohmann::json &);
 
     /**
     * @brief Delete a row from a table
@@ -59,11 +59,11 @@ namespace FIMDBHelper
     * @brief Update a row from a table.
     *
     * @param tableName a string with the table name
-    * @param item a RegistryKey, RegistryValue or File
+    * @param item a RegistryKey, RegistryValue or File with their parameters
     *
     * @return 0 on success, another value otherwise.
     */
-    int updateItem(const std::string &, const DBItem &);
+    int updateItem(const std::string &, const nlohmann::json &);
 }
 
 #endif //_FIMDBHELPER_H

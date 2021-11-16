@@ -14,6 +14,22 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
+class FIMDBMOCK final
+{
+
+    public:
+        static FIMDBMOCK& getInstance()
+        {
+            static FIMDBMOCK s_instance;
+            return s_instance;
+        };
+
+    private:
+        FIMDBMOCK() = default;
+        ~FIMDBMOCK() = default;
+        MOCK_METHOD(int, insertItem, (nlohmann::json), ());
+
+};
 class FIMHelperTest : public testing::Test {
     protected:
         FIMHelperTest() = default;

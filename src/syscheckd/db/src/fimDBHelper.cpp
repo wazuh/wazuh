@@ -9,7 +9,9 @@
  * Foundation.
  */
 #include "fimDBHelper.hpp"
+#include "fimDB.hpp"
 
+template<class T>
 int FIMDBHelper::removeFromDB(const std::string& tableName, const nlohmann::json& filter)
 {
     auto deleteJson = R"({
@@ -24,9 +26,10 @@ int FIMDBHelper::removeFromDB(const std::string& tableName, const nlohmann::json
     deleteJson["table"] = tableName;
     deleteJson["query"]["data"] = {filter};
 
-    return FIMDB::getInstance().removeItem(nlohmann::json::parse(deleteJson));
+    return T::getInstance().removeItem(deleteJson);
 }
 
+template<class T>
 int FIMDBHelper::getCount(const std::string & tableName)
 {
     auto countQuery = R"({
@@ -43,13 +46,14 @@ int FIMDBHelper::getCount(const std::string & tableName)
         [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
         {
         }
-    }
-    FIMDB::getInstance().executeQuery(countQuery, callback);
+    };
+    T::getInstance().executeQuery(countQuery, callback);
 
     return count;
 }
 
-int FIMDBHelper::insertItem(const std::string & tableName, const DBItem & item)
+template<class T>
+int FIMDBHelper::insertItem(const std::string & tableName, const nlohmann::json & item)
 {
     auto insertStatement = R"(
                             {
@@ -61,12 +65,13 @@ int FIMDBHelper::insertItem(const std::string & tableName, const DBItem & item)
                             }   
     )"_json;
     insertStatement["table"] = tableName;
-    insertStatement["data"] = {*item->toJSON()};
+    insertStatement["data"] = {item};
 
-    return FIMDB::getInstance().insertItem(nlohmann::json::parse(insertStatement));
+    return T::getInstance().insertItem(insertStatement);
 }
 
-int FIMDBHelper::updateItem(const std::string & tableName, const DBItem & item)
+template<class T>
+int FIMDBHelper::updateItem(const std::string & tableName, const nlohmann::json & item)
 {
     auto updateStatement = R"(
                             {
@@ -78,26 +83,25 @@ int FIMDBHelper::updateItem(const std::string & tableName, const DBItem & item)
                             }   
     )"_json;
     updateStatement["table"] = tableName;
-    auto updateItem;
+    updateStatement["data"] = {item};
     auto callback {
-        [&updateItem](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        [](ReturnTypeCallback type, const nlohmann::json & jsonResult)
         {
         }
-    }
+    };
 
-    return FIMDB::getInstance().updateItem(nlohmann::json::parse(updateStatement), callback);
+    return T::getInstance().updateItem(updateStatement, callback);
 }
 
-std::unique_ptr<DBItem> FIMDBHelper::getDBItem(const nlohmann::json & query)
+template<class T>
+int FIMDBHelper::getDBItem(DBItem & item, const nlohmann::json & query)
 {
-    auto item;
     auto callback {
         [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
         {
             //TODO: Parse query and generate a DBItem
         }
-    }
-    FIMDB::getInstance().executeQuery(query, callback);
+    };
 
-    return std::make_unique(item);
+    return T::getInstance().executeQuery(query, callback);
 }

@@ -6,11 +6,15 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 file(GLOB fimDBHelper_UNIT_TEST_SRC
     "*.cpp")
+file(GLOB FIMDB_IMP_SRC
+    "${SRC_FOLDER}/syscheckd/db/src/fimDB.cpp"
+   )
 
 file(GLOB FIMDBHELPER_SRC "${SRC_FOLDER}/syscheckd/db/src/fimDBHelper.cpp")
 
 add_executable(fim_db_helper_unit_test
     ${fimDBHelper_UNIT_TEST_SRC}
+    ${FIMDB_IMP_SRC}
     ${FIMDBHELPER_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
