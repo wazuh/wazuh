@@ -441,10 +441,10 @@ int test_setup_os_valid_msg(void **state)
             \"release\" : \"104\",\
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
-            \"os_display_version\" : \"107\",\
-            \"triaged\" : \"108\",\
-            \"reference\" : \"109\",\
-            \"checksum\" : \"110\"\
+            \"checksum\" : \"107\",\
+            \"os_display_version\" : \"108\",\
+            \"triaged\" : \"109\",\
+            \"reference\" : \"110\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -731,10 +731,10 @@ int test_setup_os_valid_msg_inserted(void **state)
             \"release\" : \"104\",\
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
-            \"os_display_version\" : \"107\",\
-            \"triaged\" : \"108\",\
-            \"reference\" : \"109\",\
-            \"checksum\" : \"110\"\
+            \"checksum\" : \"107\",\
+            \"os_display_version\" : \"108\",\
+            \"triaged\" : \"109\",\
+            \"reference\" : \"110\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -770,10 +770,10 @@ int test_setup_os_valid_msg_with_number_pk(void **state)
             \"release\" : \"104\",\
             \"version\" : \"105\",\
             \"os_release\" : \"106\",\
-            \"os_display_version\" : \"107\",\
-            \"triaged\" : \"108\",\
-            \"reference\" : \"109\",\
-            \"checksum\" : \"110\"\
+            \"checksum\" : \"107\",\
+            \"os_display_version\" : \"108\",\
+            \"triaged\" : \"109\",\
+            \"reference\" : \"110\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);

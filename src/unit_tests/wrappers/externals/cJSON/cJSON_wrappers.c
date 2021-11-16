@@ -101,6 +101,10 @@ cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
+cJSON_bool __wrap_cJSON_IsString(const cJSON * const item) {
+    return mock_type(cJSON_bool);
+}
+
 cJSON_bool __wrap_cJSON_IsObject(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }

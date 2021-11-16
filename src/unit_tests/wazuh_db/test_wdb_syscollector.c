@@ -13,6 +13,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_agents_wrappers.h"
 
 static int test_setup(void **state) {
     wdb_t *data = NULL;
@@ -811,92 +812,6 @@ static void wdb_syscollector_osinfo_save2_fail(void) {
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_save(): cannot begin transaction");
 }
-
-static void wdb_syscollector_osinfo_save2_success(void) {
-    int i = 0;
-
-    for (i = 0; i < 17; i++) {
-        will_return(__wrap_cJSON_GetObjectItem, NULL);
-    }
-
-    will_return(__wrap_cJSON_GetStringValue, "scan_time");
-    will_return(__wrap_cJSON_GetStringValue, "hostname");
-    will_return(__wrap_cJSON_GetStringValue, "architecture");
-    will_return(__wrap_cJSON_GetStringValue, "os_name");
-    will_return(__wrap_cJSON_GetStringValue, "os_version");
-    will_return(__wrap_cJSON_GetStringValue, "os_codename");
-    will_return(__wrap_cJSON_GetStringValue, "os_major");
-    will_return(__wrap_cJSON_GetStringValue, "os_minor");
-    will_return(__wrap_cJSON_GetStringValue, "os_patch");
-    will_return(__wrap_cJSON_GetStringValue, "os_build");
-    will_return(__wrap_cJSON_GetStringValue, "os_platform");
-    will_return(__wrap_cJSON_GetStringValue, "sysname");
-    will_return(__wrap_cJSON_GetStringValue, "release");
-    will_return(__wrap_cJSON_GetStringValue, "version");
-    will_return(__wrap_cJSON_GetStringValue, "os_release");
-    will_return(__wrap_cJSON_GetStringValue, "os_display_version");
-    will_return(__wrap_cJSON_GetStringValue, "checksum");
-
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_sqlite3_step_call(SQLITE_DONE);
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "0");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "hostname");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "architecture");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 5);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_name");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 6);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_codename");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 8);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_major");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 9);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_minor");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 10);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_patch");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 11);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_build");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 12);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_platform");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 13);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "sysname");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 14);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "release");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 15);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 16);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_release");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 17);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_display_version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 18);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_sqlite3_step_call(SQLITE_DONE);
-}
-
 
 /* Tests wdb_netinfo_save */
 void test_wdb_netinfo_save_transaction_fail(void **state) {
@@ -1910,63 +1825,6 @@ void test_wdb_hotfix_delete_success(void **state) {
     assert_int_equal(output, 0);
 }
 
-/* Test wdb_set_hotfix_metadata */
-void test_wdb_set_hotfix_metadata_transaction_fail(void **state) {
-    int output = 0;
-    wdb_t *data = (wdb_t *)*state;
-
-    data->transaction = 0;
-    will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_set_hotfix_metadata(): cannot begin transaction");
-
-    output = wdb_set_hotfix_metadata(data, "scan_id");
-    assert_int_equal(output, -1);
-}
-
-void test_wdb_set_hotfix_metadata_cache_fail(void **state) {
-    int output = 0;
-    wdb_t *data = (wdb_t *)*state;
-
-    data->transaction = 1;
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_set_hotfix_metadata(): cannot cache statement");
-
-    output = wdb_set_hotfix_metadata(data, "scan_id");
-    assert_int_equal(output, -1);
-}
-
-void test_wdb_set_hotfix_metadata_sql_fail(void **state) {
-    int output = 0;
-    wdb_t *data = (wdb_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 0);
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_sqlite3_step_call(1);
-    will_return(__wrap_sqlite3_errmsg, "ERROR");
-    expect_string(__wrap__merror, formatted_msg, "Could not set the hotfix metadata: ERROR");
-
-    output = wdb_set_hotfix_metadata(data, "scan_id");
-    assert_int_equal(output, -1);
-}
-
-void test_wdb_set_hotfix_metadata_success(void **state) {
-    int output = 0;
-    wdb_t *data = (wdb_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 0);
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_sqlite3_step_call(SQLITE_DONE);
-
-    output = wdb_set_hotfix_metadata(data, "scan_id");
-    assert_int_equal(output, 0);
-}
-
 /* Test wdb_osinfo_save */
 void test_wdb_osinfo_save_transaction_fail(void **state) {
     int output = 0;
@@ -1980,131 +1838,377 @@ void test_wdb_osinfo_save_transaction_fail(void **state) {
     assert_int_equal(output, -1);
 }
 
-void test_wdb_osinfo_save_cache_fail(void **state) {
+void test_wdb_osinfo_save_retrieve_osinfo_fail(void **state) {
     int output = 0;
     wdb_t *data = (wdb_t *)*state;
 
     will_return(__wrap_wdb_begin2, 0);
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_save(): cannot cache statement");
+    will_return(__wrap_wdb_agents_get_sys_osinfo, NULL);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "Retrieving old information from 'sys_osinfo' table: ERROR");
 
     output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
     assert_int_equal(output, -1);
 }
 
-void test_wdb_osinfo_save_sql_fail(void **state) {
+void test_wdb_osinfo_save_retrieve_osinfo_type_triaged_fail(void ** state) {
     int output = 0;
-    wdb_t *data = (wdb_t *)*state;
+    wdb_t * data = (wdb_t *) *state;
+    cJSON * osinfo_retrieved_info =
+        __real_cJSON_Parse("[{\"triaged\":\"string_value\", \"reference\":\"string_value\"}]");
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+    will_return(__wrap_cJSON_IsNumber, false);
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "No previous data related to the triaged status and reference of the OS");
+    expect_function_call(__wrap_cJSON_Delete);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hostname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "architecture");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_codename");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_major");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_minor");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_patch");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_build");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_platform");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "sysname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_display_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 18);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_any(__wrap_sqlite3_bind_text, buffer);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_any(__wrap_sqlite3_bind_int, value);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                             "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                             "release", "version", "os_release", "os_display_version", "checksum", false);
+    assert_int_equal(output, 0);
+    __real_cJSON_Delete(osinfo_retrieved_info);
+}
+
+void test_wdb_osinfo_save_retrieve_osinfo_type_reference_fail(void ** state) {
+    int output = 0;
+    wdb_t * data = (wdb_t *) *state;
+    cJSON * osinfo_retrieved_info = __real_cJSON_Parse("[{\"triaged\":1, \"reference\":1234}]");
 
     will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+    will_return(__wrap_cJSON_IsNumber, true);
+    will_return(__wrap_cJSON_IsString, false);
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "No previous data related to the triaged status and reference of the OS");
+    expect_function_call(__wrap_cJSON_Delete);
+
     will_return(__wrap_wdb_stmt_cache, 0);
-    expect_sqlite3_step_call(1);
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hostname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "architecture");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_codename");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_major");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_minor");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_patch");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_build");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_platform");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "sysname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_display_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 18);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_any(__wrap_sqlite3_bind_text, buffer);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_any(__wrap_sqlite3_bind_int, value);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                             "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                             "release", "version", "os_release", "os_display_version", "checksum", false);
+    assert_int_equal(output, 0);
+    __real_cJSON_Delete(osinfo_retrieved_info);
+}
+
+void test_wdb_osinfo_save_retrieve_osinfo_ok(void ** state) {
+    int output = 0;
+    wdb_t * data = (wdb_t *) *state;
+    cJSON * osinfo_retrieved_info = __real_cJSON_Parse("[{\"triaged\":1, \"reference\":\"1234\"}]");
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "triaged"));
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "reference"));
+    will_return(__wrap_cJSON_IsNumber, true);
+    will_return(__wrap_cJSON_IsString, true);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hostname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "architecture");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_codename");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_major");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_minor");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_patch");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_build");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_platform");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "sysname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_display_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 18);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_any(__wrap_sqlite3_bind_text, buffer);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_any(__wrap_sqlite3_bind_int, value);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                             "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                             "release", "version", "os_release", "os_display_version", "checksum", false);
+    assert_int_equal(output, 0);
+    __real_cJSON_Delete(osinfo_retrieved_info);
+}
+
+void test_wdb_osinfo_save_cache_fail(void ** state) {
+    int output = 0;
+    wdb_t * data = (wdb_t *) *state;
+    cJSON * osinfo_retrieved_info = __real_cJSON_Parse("[{\"triaged\":1, \"reference\":\"1234\"}]");
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "triaged"));
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "reference"));
+    will_return(__wrap_cJSON_IsNumber, true);
+    will_return(__wrap_cJSON_IsString, true);
+
+    expect_function_call(__wrap_cJSON_Delete);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_save(): cannot cache statement (12)");
+
+    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                             "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                             "release", "version", "os_release", "os_display_version", "checksum", false);
+    assert_int_equal(output, -1);
+    __real_cJSON_Delete(osinfo_retrieved_info);
+}
+
+void test_wdb_osinfo_save_sql_fail(void ** state) {
+    int output = 0;
+    wdb_t * data = (wdb_t *) *state;
+    cJSON * osinfo_retrieved_info = __real_cJSON_Parse("[{\"triaged\":1, \"reference\":\"1234\"}]");
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "triaged"));
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "reference"));
+    will_return(__wrap_cJSON_IsNumber, true);
+    will_return(__wrap_cJSON_IsString, true);
+
+    expect_function_call(__wrap_cJSON_Delete);
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_step_call(SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Deleting old information from 'sys_osinfo' table: ERROR");
 
-    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
+    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                             "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                             "release", "version", "os_release", "os_display_version", "checksum", false);
     assert_int_equal(output, -1);
+    __real_cJSON_Delete(osinfo_retrieved_info);
 }
 
-void test_wdb_osinfo_save_insert_fail(void **state) {
+void test_wdb_osinfo_save_insert_fail(void ** state) {
     int output = 0;
-    wdb_t *data = (wdb_t *)*state;
+    wdb_t * data = (wdb_t *) *state;
+    cJSON * osinfo_retrieved_info = __real_cJSON_Parse("[{\"triaged\":1, \"reference\":\"1234\"}]");
 
     will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "triaged"));
+    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(osinfo_retrieved_info->child, "reference"));
+    will_return(__wrap_cJSON_IsNumber, true);
+    will_return(__wrap_cJSON_IsString, true);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_sqlite3_step_call(SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_insert(): cannot cache statement");
 
-    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
+    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                             "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                             "release", "version", "os_release", "os_display_version", "checksum", false);
     assert_int_equal(output, -1);
-}
-
-void test_wdb_osinfo_save_success(void **state) {
-    int output = 0;
-    wdb_t *data = (wdb_t *)*state;
-
-    will_return(__wrap_wdb_begin2, 0);
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_sqlite3_step_call(SQLITE_DONE);
-
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "hostname");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "architecture");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 5);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_name");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 6);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 7);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_codename");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 8);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_major");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 9);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_minor");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 10);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_patch");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 11);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_build");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 12);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_platform");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 13);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "sysname");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 14);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "release");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 15);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 16);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_release");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 17);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "os_display_version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 18);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_sqlite3_step_call(SQLITE_DONE);
-
-    output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
-    assert_int_equal(output, 0);
+    __real_cJSON_Delete(osinfo_retrieved_info);
 }
 
 /* Test wdb_osinfo_insert */
-void test_wdb_osinfo_insert_cache_fail(void **state) {
+void test_wdb_osinfo_insert_cache_fail(void ** state) {
     int output = 0;
-    wdb_t *data = (wdb_t *)*state;
+    wdb_t * data = (wdb_t *) *state;
 
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_insert(): cannot cache statement");
 
-    output = wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
+    output =
+        wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                          "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                          "release", "version", "os_release", "os_display_version", "checksum", false, "hexdigest", 1);
     assert_int_equal(output, -1);
 }
 
-void test_wdb_osinfo_insert_sql_fail(void **state) {
+void test_wdb_osinfo_insert_sql_fail(void ** state) {
     int output = 0;
-    wdb_t *data = (wdb_t *)*state;
+    wdb_t * data = (wdb_t *) *state;
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -2161,18 +2265,27 @@ void test_wdb_osinfo_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hexdigest");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
 
     expect_sqlite3_step_call(1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "at wdb_osinfo_insert(): sqlite3_step(): ERROR");
 
-    output = wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
+    output =
+        wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                          "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                          "release", "version", "os_release", "os_display_version", "checksum", false, "hexdigest", 1);
     assert_int_equal(output, -1);
 }
 
-void test_wdb_osinfo_insert_success(void **state) {
+void test_wdb_osinfo_insert_success(void ** state) {
     int output = 0;
-    wdb_t *data = (wdb_t *)*state;
+    wdb_t * data = (wdb_t *) *state;
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -2229,9 +2342,18 @@ void test_wdb_osinfo_insert_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 18);
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hexdigest");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, 0);
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version", "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname", "release", "version", "os_release", "os_display_version", "checksum", false);
+    output =
+        wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
+                          "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
+                          "release", "version", "os_release", "os_display_version", "checksum", false, "hexdigest", 1);
     assert_int_equal(output, 0);
 }
 
@@ -4195,19 +4317,121 @@ void test_wdb_syscollector_save2_osinfo_fail(void **state) {
     assert_int_equal(output, -1);
 }
 
-void test_wdb_syscollector_save2_osinfo_success(void **state) {
+void test_wdb_syscollector_save2_osinfo_success(void ** state) {
     int output = 0;
-    wdb_t *data = (wdb_t *)*state;
+    wdb_t * data = (wdb_t *) *state;
+
+    data->transaction = 0;
 
     will_return(__wrap_cJSON_Parse, 1);
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    data->transaction = 1;
-    wdb_syscollector_osinfo_save2_success();
+    for (int i = 0; i < 17; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, NULL);
+    }
+
+    will_return(__wrap_cJSON_GetStringValue, "scan_time");
+    will_return(__wrap_cJSON_GetStringValue, "hostname");
+    will_return(__wrap_cJSON_GetStringValue, "architecture");
+    will_return(__wrap_cJSON_GetStringValue, "os_name");
+    will_return(__wrap_cJSON_GetStringValue, "os_version");
+    will_return(__wrap_cJSON_GetStringValue, "os_codename");
+    will_return(__wrap_cJSON_GetStringValue, "os_major");
+    will_return(__wrap_cJSON_GetStringValue, "os_minor");
+    will_return(__wrap_cJSON_GetStringValue, "os_patch");
+    will_return(__wrap_cJSON_GetStringValue, "os_build");
+    will_return(__wrap_cJSON_GetStringValue, "os_platform");
+    will_return(__wrap_cJSON_GetStringValue, "sysname");
+    will_return(__wrap_cJSON_GetStringValue, "release");
+    will_return(__wrap_cJSON_GetStringValue, "version");
+    will_return(__wrap_cJSON_GetStringValue, "os_release");
+    will_return(__wrap_cJSON_GetStringValue, "os_display_version");
+    will_return(__wrap_cJSON_GetStringValue, "checksum");
+
+    cJSON * osinfo_retrieved_info =
+        __real_cJSON_Parse("[{\"triaged\":\"string_value\", \"reference\":\"string_value\"}]");
+
+    will_return(__wrap_wdb_begin2, 0);
+    will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+    will_return(__wrap_cJSON_IsNumber, false);
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "No previous data related to the triaged status and reference of the OS");
+    expect_function_call(__wrap_cJSON_Delete);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "hostname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "architecture");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_codename");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_major");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_minor");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_patch");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_build");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_platform");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "sysname");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_release");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "os_display_version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 18);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_any(__wrap_sqlite3_bind_text, buffer);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_any(__wrap_sqlite3_bind_int, value);
+    will_return(__wrap_sqlite3_bind_int, 0);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
     expect_function_call(__wrap_cJSON_Delete);
 
     output = wdb_syscollector_save2(data, WDB_SYSCOLLECTOR_OSINFO, NULL);
     assert_int_equal(output, 0);
+    __real_cJSON_Delete(osinfo_retrieved_info);
 }
 
 int main() {
@@ -4255,17 +4479,15 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_hotfix_delete_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_hotfix_delete_sql_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_hotfix_delete_success, test_setup, test_teardown),
-        /* Test wdb_set_hotfix_metadata */
-        cmocka_unit_test_setup_teardown(test_wdb_set_hotfix_metadata_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_set_hotfix_metadata_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_set_hotfix_metadata_sql_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_set_hotfix_metadata_success, test_setup, test_teardown),
         /* Test wdb_osinfo_save */
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_retrieve_osinfo_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_retrieve_osinfo_type_triaged_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_retrieve_osinfo_type_reference_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_retrieve_osinfo_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_sql_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_insert_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_osinfo_save_success, test_setup, test_teardown),
         /* Test wdb_osinfo_insert */
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_insert_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_insert_sql_fail, test_setup, test_teardown),
