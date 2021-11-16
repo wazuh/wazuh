@@ -72,13 +72,25 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
-                         ${CMAKE_SOURCE_DIR}/src/file.cpp)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
+                           ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           ${CMAKE_SOURCE_DIR}/src/fimDB.cpp
+                           ${CMAKE_SOURCE_DIR}/src/registry.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
+                           ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           ${CMAKE_SOURCE_DIR}/src/fimDB.cpp)
+else()
+  add_library(fimdb SHARED ${CMAKE_SOURCE_DIR}/src/db.cpp
+                           ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           ${CMAKE_SOURCE_DIR}/src/fimDB.cpp)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     fimdb PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++")
-  target_sources(fimdb PUBLIC ${CMAKE_SOURCE_DIR}/src/registry.cpp)
 elseif(UNIX AND NOT APPLE)
   set_target_properties(fimdb PROPERTIES LINK_FLAGS
                                          "-static-libgcc -static-libstdc++")
@@ -88,7 +100,7 @@ elseif(UNIX AND NOT APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-  target_link_libraries(fimdb dbsync rsync wazuhext)
+  target_link_libraries(fimdb dbsync rsync wazuhext libwazuh.a)
 else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
                  "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
@@ -99,6 +111,7 @@ else()
     dbsync
     rsync
     wazuhext
+    libwazuh.a
     -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR}
   )
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")

@@ -16,6 +16,7 @@
 #include "sym_load.h"
 #include "defs.h"
 #include "mq_op.h"
+#include "headers/logging_helper.h"
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
 static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
@@ -82,25 +83,6 @@ static void wm_sys_send_dbsync_message(const void* data) {
     }
 }
 
-static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
-
-    switch(level) {
-        case SYS_LOG_ERROR:
-            mterror(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_INFO:
-            mtinfo(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_DEBUG:
-            mtdebug1(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_DEBUG_VERBOSE:
-            mtdebug2(WM_SYS_LOGTAG, "%s", log);
-            break;
-        default:;
-    }
-}
-
 static void wm_sys_log_config(wm_sys_t *sys)
 {
     cJSON * config_json = wm_sys_dump(sys);
@@ -161,7 +143,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
-                               wm_sys_log,
+                               taggedLogFunction,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                SYSCOLLECTOR_NORM_TYPE,

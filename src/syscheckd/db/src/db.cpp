@@ -9,6 +9,7 @@
 #include "dbsync.hpp"
 #include "db.hpp"
 #include "db_statements.hpp"
+#include "fimDB.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,22 +94,9 @@ static char* find_key_value_limiter(char* input);
 
 #endif
 
-std::string CreateStatement()
-{
-    std::string ret = CREATE_FILE_DB_STATEMENT;
-#ifdef WIN32
-    ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
-    ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
-#endif
-
-    return ret;
-}
-
 fdb_t* fim_db_init(int storage)
 {
     fdb_t* fim;
-
-    std::unique_ptr<DBSync> handler_DBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, CreateStatement());
 
     const char* path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 

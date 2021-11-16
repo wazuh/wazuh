@@ -83,21 +83,32 @@ package "db" <<Folder>> #DDDDDD{
         }
     }
     class "FimDB"  <<(S,#FF7700) Singleton>> {
-        - string m_dbpath
+        - int m_max_rows_file
+        - int m_max_rows_registry
+        - int m_interval_synchronization
+        - bool m_stopping
+        - condition_variable m_cv
         - DBSync m_dbsyncHandler
         - Rsync m_rsyncHandler
-        - bool m_isFull
-        - FimDB()
-        - ~FimDB()
+        - callback m_syncMessageFunction
+        - callback m_loggingFunction
 
-        + FimDB getInstance()
-        + void syncDB()
-        + bool isFull()
+        - FIMDB()
+        - ~FIMDB()
+        - FIMDB(const FIMDB&)
+        - void setFileLimit()
+        - void setRegistryLimit()
+        - void setValueLimit()
+        - void sync()
+
         + void init()
-        + dbresult insertItem(DBItem)
-        + dbresult removeItem(DBItem)
-        + dbresult updateItem(DBItem)
-        + dbresult setAllUnscanned()
+        + void registerRsync()
+        + void loopRsync(lock)
+        + dbQueryResult insertItem(json)
+        + dbQueryResult removeItem(json)
+        + dbQueryResult updateItem(json, callback)
+        + dbQueryResult executeQuery(json, callback)
+        + FimDB getInstance()
     }
     class FimDBWrapper {
         - fim_tmp_file **m_tmpFile

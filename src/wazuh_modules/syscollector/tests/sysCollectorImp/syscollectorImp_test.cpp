@@ -53,14 +53,14 @@ void reportFunction(const std::string& /*payload*/)
     // std::cout << payload << std::endl;
 }
 
-void logFunction(const syscollector_log_level_t /*level*/, const std::string& /*log*/)
+void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/)
 {
-    // static const std::map<syscollector_log_level_t, std::string> s_logStringMap
+    // static const std::map<modules_log_level_t, std::string> s_logStringMap
     // {
-    //     {SYS_LOG_ERROR, "ERROR"},
-    //     {SYS_LOG_INFO, "INFO"},
-    //     {SYS_LOG_DEBUG, "DEBUG"},
-    //     {SYS_LOG_DEBUG_VERBOSE, "DEBUG2"}
+    //     {LOG_ERROR, "ERROR"},
+    //     {LOG_INFO, "INFO"},
+    //     {LOG_DEBUG, "DEBUG"},
+    //     {LOG_DEBUG_VERBOSE, "DEBUG2"}
     // };
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }

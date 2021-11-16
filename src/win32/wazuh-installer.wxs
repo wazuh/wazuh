@@ -418,12 +418,12 @@
             <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
             <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager_cmd" Before="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager"/>
             <Custom Action="DepCustomAction_Group_Name_RunAuthd_Password_VerifyAgentManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
-            
+
             <Custom Action="DepStartWinService_cmd" Before="DepStartWinService"/>
             <Custom Action="DepStartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
 
         </InstallExecuteSequence>
-        
+
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
