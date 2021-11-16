@@ -42,6 +42,14 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 
+// Auxiliar structs
+typedef struct test_logcollector_s {
+    logreader *log_reader;
+    SHA_CTX *context;
+    os_file_status_t *status;
+    OSHashNode *node;
+} test_logcollector_t;
+
 extern w_macos_log_vault_t macos_log_vault;
 extern w_macos_log_procceses_t * macos_processes;
 static wfd_t * stream_backup;
@@ -55,8 +63,69 @@ static int setup_group(void **state) {
     macos_log_vault.is_valid_data = true;
     return 0;
 }
+
 static int teardown_group(void **state) {
     test_mode = 0;
+    return 0;
+}
+
+static int setup_local_hashmap(void **state) {
+    if (setup_hashmap(state) != 0) {
+        return 1;
+    }
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, free);
+    files_status = mock_hashmap;
+    return 0;
+}
+
+static int teardown_local_hashmap(void **state) {
+    if (teardown_hashmap(state) != 0) {
+        return 1;
+    }
+    return 0;
+}
+
+static int setup_log_context(void **state) {
+    if (setup_local_hashmap(state) != 0) {
+        return 1;
+    }
+
+    test_logcollector_t *test_struct = calloc(1, sizeof(test_logcollector_t));
+    if (test_struct == NULL) {
+        return 1;
+    }
+
+    test_struct->log_reader = calloc(1, sizeof(logreader));
+    test_struct->context = calloc(1, sizeof(SHA_CTX));
+    test_struct->status = calloc(1, sizeof(os_file_status_t));
+    test_struct->node = calloc(1, sizeof(OSHashNode));
+
+    if (test_struct->log_reader == NULL || test_struct->context == NULL || test_struct->status == NULL ||
+        test_struct->node == NULL) {
+        return 1;
+    }
+
+    test_struct->log_reader->fp = (FILE *) 1;
+    *state = test_struct;
+    return 0;
+}
+
+static int teardown_log_context(void **state) {
+    if (teardown_local_hashmap(state) != 0) {
+        return 1;
+    }
+    test_logcollector_t * test_struct = *state;
+
+    expect_any(__wrap_fclose, _File);
+    will_return_always(__wrap_fclose, 0);
+    Free_Logreader(test_struct->log_reader);
+
+    free(test_struct->log_reader);
+    free(test_struct->context);
+    free(test_struct->status);
+    free(test_struct->node);
+    free(test_struct);
+
     return 0;
 }
 
@@ -88,59 +157,70 @@ static int teardown_process(void **state) {
 /* w_get_hash_context */
 
 void test_w_get_hash_context_NULL_file_exist(void ** state) {
-
-    SHA_CTX * context;
-    os_calloc(1, sizeof(SHA_CTX), context);
+    SHA_CTX context;
     int64_t position = 10;
+    test_logcollector_t *test_struct = *state;
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("/test_path", lf->file);
+    logreader *lf = test_struct->log_reader;
 
-    int mode = OS_BINARY;
-
-    ino_t fd_check = 0;
+    lf->file = strdup("/test_path");
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, lf->file);
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fname, lf->file);
-    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, OS_BINARY);
     expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, nbytes, position);
-    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fd_check, fd_check);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fd_check, 0);
     will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, 0);
 
-    bool ret = w_get_hash_context (lf, context, position);
+    bool ret = w_get_hash_context(lf, &context, position);
 
     assert_true(ret);
-
-    os_free(context);
 }
 
 void test_w_get_hash_context_NULL_file_not_exist(void ** state) {
-
-    SHA_CTX * context;
-    os_calloc(1, sizeof(SHA_CTX), context);
+    SHA_CTX context;
     int64_t position = 10;
+    test_logcollector_t *test_struct = *state;
+    logreader *lf = test_struct->log_reader;
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("/test_path", lf->file);
-
-    int mode = OS_BINARY;
-
-    ino_t fd_check = 0;
+    lf->file = strdup("/test_path");
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, lf->file);
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fname, lf->file);
-    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, OS_BINARY);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, nbytes, position);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fd_check, 0);
+    will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, -1);
+
+    bool ret = w_get_hash_context (lf, &context, position);
+    assert_false(ret);
+}
+
+void test_w_get_hash_context_done(void ** state) {
+    int64_t position = 10;
+    test_logcollector_t *test_struct = *state;
+
+    logreader *lf = test_struct->log_reader;
+    SHA_CTX *context = test_struct->context;
+    os_file_status_t *data = test_struct->status;
+
+    lf->file = strdup("/test_path");
+    data->context.num = 123;
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, lf->file);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fname, lf->file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, OS_BINARY);
     expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, nbytes, position);
     expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fd_check, 0);
     will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, "32bb98743e298dee0a654a654765c765d765ae80");
@@ -149,41 +229,10 @@ void test_w_get_hash_context_NULL_file_not_exist(void ** state) {
     bool ret = w_get_hash_context (lf, context, position);
 
     assert_false(ret);
-
-    os_free(context);
-}
-
-void test_w_get_hash_context_done(void ** state) {
-
-    SHA_CTX * context;
-    os_calloc(1, sizeof(SHA_CTX), context);
-    int64_t position = 10;
-
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("/test_path", lf->file);
-
-    os_file_status_t data = {0};
-    data.context.num = 123;
-
-    expect_any(__wrap_OSHash_Get_ex, self);
-    expect_string(__wrap_OSHash_Get_ex, key, lf->file);
-    will_return(__wrap_OSHash_Get_ex, &data);
-
-    bool ret = w_get_hash_context (lf, context, position);
-
-    assert_memory_equal(&(data.context), context, sizeof(SHA_CTX));
-    assert_true(ret);
-
-    os_free(context);
 }
 
 /* w_update_file_status */
-
 void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
-    test_mode = 1;
-
     char * path = "test/test.log";
     long pos = 0;
     SHA_CTX context = {0};
@@ -201,11 +250,9 @@ void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
     int retval = w_update_file_status(path, pos, &context);
 
     assert_int_equal(retval,-1);
-
 }
 
 void test_w_update_file_status_update_fail_add_OK(void ** state) {
-    test_mode = 1;
 
     char * path = "test/test.log";
     long pos = 0;
@@ -228,9 +275,13 @@ void test_w_update_file_status_update_fail_add_OK(void ** state) {
 }
 
 void test_w_update_file_status_update_OK(void ** state) {
-    test_mode = 1;
-
     char * path = "test/test.log";
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    __real_OSHash_Add_ex(mock_hashmap, path, strdup("data_to_replace"));
+
     long pos = 0;
     SHA_CTX context = {0};
 
@@ -241,14 +292,12 @@ void test_w_update_file_status_update_OK(void ** state) {
 
     int retval = w_update_file_status(path, pos, &context);
 
-    assert_int_equal(retval,0);
-
+    assert_int_equal(retval,0);;
 }
 
 /* w_set_to_pos */
 
 void test_w_set_to_pos_localfile_NULL(void ** state) {
-    test_mode = 1;
     logreader *lf = NULL;
     long pos = 0;
     int mode = OS_BINARY;
@@ -260,7 +309,6 @@ void test_w_set_to_pos_localfile_NULL(void ** state) {
 }
 
 void test_w_set_to_pos_fseek_error(void ** state) {
-    test_mode = 1;
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
     lf->fp = (FILE*)1;
@@ -284,20 +332,17 @@ void test_w_set_to_pos_fseek_error(void ** state) {
     os_free(lf->file);
     os_free(lf->fp);
     os_free(lf);
-
 }
 
 void test_w_set_to_pos_OK(void ** state) {
-    test_mode = 1;
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
     lf->fp = (FILE*)1;
     os_strdup("test", lf->file);
     long pos = 0;
     int mode = OS_BINARY;
-
-    os_calloc(1, sizeof(fpos_t), test_position);
-    test_position->__pos = 1;
+    fpos_t position_stack = {.__pos = 1};
+    test_position = &position_stack;
 
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, 0);
@@ -312,23 +357,19 @@ void test_w_set_to_pos_OK(void ** state) {
 
     os_free(lf->file);
     os_free(lf);
-    os_free(test_position);
-
 }
 
 /* w_save_files_status_to_cJSON */
 
 void test_w_save_files_status_to_cJSON_begin_NULL(void ** state) {
-    test_mode = 1;
-
     OSHashNode *hash_node = NULL;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
@@ -339,23 +380,21 @@ void test_w_save_files_status_to_cJSON_begin_NULL(void ** state) {
 
     char * ret = w_save_files_status_to_cJSON();
     assert_null(ret);
-
 }
 
 void test_w_save_files_status_to_cJSON_OK(void ** state) {
-    test_mode = 1;
+    test_logcollector_t *test_data = *state;
 
-    os_file_status_t * data;
-    os_calloc(1, sizeof(os_file_status_t), data);
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
     strcpy(data->hash,"test1234");
     data->offset = 5;
 
-    OSHashNode *hash_node = NULL;
-    os_calloc(1, sizeof(OSHashNode), hash_node);
     hash_node->key = "test";
     hash_node->data = data;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     strcpy(macos_log_vault.timestamp,"hi 123");
     macos_log_vault.settings = "my settings";
 
@@ -386,9 +425,10 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
@@ -404,10 +444,6 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     char * ret = w_save_files_status_to_cJSON();
 
     assert_string_equal(ret, "test_1234");
-
-    os_free(data);
-    os_free(hash_node);
-
 }
 
 void test_w_save_files_status_to_cJSON_macos_invalid_vault(void ** state) {
@@ -425,7 +461,7 @@ void test_w_save_files_status_to_cJSON_macos_invalid_vault(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
@@ -456,7 +492,7 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
@@ -503,12 +539,12 @@ void test_w_save_files_status_invalid_vault(void ** state) {
 
     OSHashNode *hash_node = NULL;
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     char * ret = w_save_files_status_to_cJSON();
@@ -610,9 +646,6 @@ void test_w_save_files_status_to_cJSON_data(void ** state) {
 /* w_save_file_status */
 
 void test_w_save_file_status_str_NULL(void ** state) {
-    test_mode = 1;
-
-    //test_w_save_files_status_to_cJSON_begin_NULL
     OSHashNode *hash_node = NULL;
     strcpy(macos_log_vault.timestamp,"any timestamp");
     macos_log_vault.settings = "my settings";
@@ -637,16 +670,14 @@ void test_w_save_file_status_str_NULL(void ** state) {
 
 
 void test_w_save_file_status_wfopen_error(void ** state) {
-    test_mode = 1;
+    test_logcollector_t *test_data = *state;
 
-    //test_w_save_files_status_to_cJSON_OK
-    os_file_status_t * data;
-    os_calloc(1, sizeof(os_file_status_t), data);
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
     strcpy(data->hash,"test1234");
     data->offset = 5;
 
-    OSHashNode *hash_node = NULL;
-    os_calloc(1, sizeof(OSHashNode), hash_node);
     hash_node->key = "test";
     hash_node->data = data;
 
@@ -692,7 +723,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
+    will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -701,25 +732,18 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
-
-    w_save_file_status();
-
-    os_free(data);
-    os_free(hash_node);
-
+    expect_assert_failure(w_save_file_status());
 }
 
 void test_w_save_file_status_fwrite_error(void ** state) {
-    test_mode = 1;
+    test_logcollector_t *test_data = *state;
 
-    //test_w_save_files_status_to_cJSON_OK
-    os_file_status_t * data;
-    os_calloc(1, sizeof(os_file_status_t), data);
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
     strcpy(data->hash,"test1234");
     data->offset = 5;
 
-    OSHashNode *hash_node = NULL;
-    os_calloc(1, sizeof(OSHashNode), hash_node);
     hash_node->key = "test";
     hash_node->data = data;
 
@@ -754,6 +778,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
@@ -784,23 +809,17 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     will_return(__wrap_fclose, 1);
 
     w_save_file_status();
-
-    os_free(data);
-    os_free(hash_node);
-
 }
 
 void test_w_save_file_status_OK(void ** state) {
-    test_mode = 1;
+    test_logcollector_t *test_data = *state;
 
-    //test_w_save_files_status_to_cJSON_OK
-    os_file_status_t * data;
-    os_calloc(1, sizeof(os_file_status_t), data);
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
     strcpy(data->hash,"test1234");
     data->offset = 5;
 
-    OSHashNode *hash_node = NULL;
-    os_calloc(1, sizeof(OSHashNode), hash_node);
     hash_node->key = "test";
     hash_node->data = data;
 
@@ -860,17 +879,11 @@ void test_w_save_file_status_OK(void ** state) {
     will_return(__wrap_fclose, 1);
 
     w_save_file_status();
-
-    os_free(data);
-    os_free(hash_node);
-
 }
 
 /* w_load_files_status */
 
 void test_w_load_files_status_empty_array(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
     strcpy(macos_log_vault.timestamp,"hi 123");
     macos_log_vault.settings = "my settings";
@@ -895,8 +908,6 @@ void test_w_load_files_status_empty_array(void ** state) {
 }
 
 void test_w_load_files_status_path_NULL(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
     strcpy(macos_log_vault.timestamp,"hi 123");
     macos_log_vault.settings = "my settings";
@@ -925,8 +936,6 @@ void test_w_load_files_status_path_NULL(void ** state) {
 }
 
 void test_w_load_files_status_path_str_NULL(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
     strcpy(macos_log_vault.timestamp,"hi 123");
     macos_log_vault.settings = "my settings";
@@ -957,8 +966,6 @@ void test_w_load_files_status_path_str_NULL(void ** state) {
 }
 
 void test_w_load_files_status_no_file(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
@@ -996,8 +1003,6 @@ void test_w_load_files_status_no_file(void ** state) {
 }
 
 void test_w_load_files_status_hash_NULL(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
@@ -1038,8 +1043,6 @@ void test_w_load_files_status_hash_NULL(void ** state) {
 }
 
 void test_w_load_files_status_hash_str_NULL(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
@@ -1082,8 +1085,6 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
 }
 
 void test_w_load_files_status_offset_NULL(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
@@ -1129,8 +1130,6 @@ void test_w_load_files_status_offset_NULL(void ** state) {
 }
 
 void test_w_load_files_status_offset_str_NULL(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
@@ -1174,12 +1173,9 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
     w_load_files_status(global_json);
-
 }
 
 void test_w_load_files_status_invalid_offset(void ** state) {
-    test_mode = 1;
-
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
@@ -1227,8 +1223,6 @@ void test_w_load_files_status_invalid_offset(void ** state) {
 }
 
 void test_w_load_files_status_update_add_fail(void ** state) {
-    test_mode = 1;
-
     char * file = "test";
 
     cJSON *global_json = (cJSON*)1;
@@ -1256,7 +1250,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -1288,13 +1282,9 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
     w_load_files_status(global_json);
-
 }
 
 void test_w_load_files_status_update_hash_fail (void ** state) {
-
-    test_mode = 1;
-
     char * file = "test";
 
     cJSON *global_json = (cJSON*)1;
@@ -1322,7 +1312,7 @@ void test_w_load_files_status_update_hash_fail (void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -1341,8 +1331,6 @@ void test_w_load_files_status_update_hash_fail (void ** state) {
 }
 
 void test_w_load_files_status_update_fail(void ** state) {
-    test_mode = 1;
-
     char * file = "test";
 
     cJSON *global_json = (cJSON*)1;
@@ -1370,7 +1358,7 @@ void test_w_load_files_status_update_fail(void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -1404,10 +1392,11 @@ void test_w_load_files_status_update_fail(void ** state) {
 }
 
 void test_w_load_files_status_OK(void ** state) {
-    test_mode = 1;
-
     char * file = "test";
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
+    __real_OSHash_Add_ex(mock_hashmap, file, strdup("data to be replaced"));
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
@@ -1431,7 +1420,7 @@ void test_w_load_files_status_OK(void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -1557,31 +1546,15 @@ void test_w_load_files_status_valid_vault(void ** state) {
 /* w_initialize_file_status */
 
 void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
-    test_mode = 1;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'file_status' hash table");
 
-    will_return(__wrap_OSHash_setSize, 1);
-
-    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
-    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
-
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
-
-    w_initialize_file_status();
-
+    expect_assert_failure(w_initialize_file_status());
 }
 
 void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
-    test_mode = 1;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
 
@@ -1589,22 +1562,11 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'file_status' hash table");
 
-    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
-    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
-
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
-
-    w_initialize_file_status();
+    expect_assert_failure(w_initialize_file_status());
 
 }
 
 void test_w_initialize_file_status_fopen_fail(void ** state) {
-    test_mode = 1;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
 
@@ -1620,12 +1582,9 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
-
 }
 
 void test_w_initialize_file_status_fread_fail(void ** state) {
-    test_mode = 1;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
 
@@ -1650,13 +1609,16 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     will_return(__wrap_fclose, 1);
 
     w_initialize_file_status();
-
 }
 
 void test_w_initialize_file_status_OK(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
+    char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    __real_OSHash_Add_ex(mock_hashmap, file, strdup("data to be replaced"));
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -1674,8 +1636,6 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_fread, 1);
 
     //w_load_files_status
-    char * file = "test";
-    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -1695,7 +1655,7 @@ void test_w_initialize_file_status_OK(void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -1726,14 +1686,11 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_fclose, 1);
 
     w_initialize_file_status();
-
 }
 
 /* w_update_hash_node */
 
 void test_w_update_hash_node_path_NULL(void ** state) {
-    test_mode = 1;
-
     char * path = NULL;
 
     int ret = w_update_hash_node(path, 0);
@@ -1743,10 +1700,7 @@ void test_w_update_hash_node_path_NULL(void ** state) {
 }
 
 void test_w_update_hash_node_update_fail(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
-
     char * path = "test";
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
@@ -1764,12 +1718,9 @@ void test_w_update_hash_node_update_fail(void ** state) {
     int ret = w_update_hash_node(path, 0);
 
     assert_int_equal(ret, 0);
-
 }
 
 void test_w_update_hash_node_sha_fail(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
 
     char * path = "test";
@@ -1789,8 +1740,6 @@ void test_w_update_hash_node_sha_fail(void ** state) {
 }
 
 void test_w_update_hash_node_add_fail(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
 
     char * path = "test";
@@ -1814,11 +1763,12 @@ void test_w_update_hash_node_add_fail(void ** state) {
 }
 
 void test_w_update_hash_node_OK(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
-
     char * path = "test";
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    __real_OSHash_Add_ex(mock_hashmap, path, strdup("data to be replaced"));
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
     expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
@@ -1831,14 +1781,10 @@ void test_w_update_hash_node_OK(void ** state) {
     int ret = w_update_hash_node(path, 0);
 
     assert_int_equal(ret, 0);
-
 }
 
 /*  w_set_to_last_line_read */
 void test_w_set_to_last_line_read_null_reader(void ** state) {
-
-    test_mode = 1;
-
     logreader lf = {0};
     int ret = w_set_to_last_line_read(&lf);
     assert_int_equal(ret, 0);
@@ -1846,12 +1792,14 @@ void test_w_set_to_last_line_read_null_reader(void ** state) {
 }
 
 void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
-    test_mode = 1;
+    fpos_t position_stack = {.__pos = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file = "test"};
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
+    test_position = &position_stack;
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    __real_OSHash_Add_ex(mock_hashmap, log_reader.file, strdup("data to be replaced"));
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
@@ -1860,9 +1808,6 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     //w_set_pos
     long pos = 0;
     int mode = OS_BINARY;
-
-    os_calloc(1, sizeof(fpos_t), test_position);
-    test_position->__pos = 1;
 
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, 0);
@@ -1876,7 +1821,7 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
 
 
     //w_update_hash_node
-    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, lf->file);
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, log_reader.file);
     expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
@@ -1884,29 +1829,21 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
 
     will_return(__wrap_OSHash_Update_ex, 1);
 
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, 0);
-
-    os_free(lf->file);
-    os_free(lf);
-    os_free(test_position);
-
 }
 
 void test_w_set_to_last_line_read_fstat_fail(void ** state) {
-    test_mode = 1;
+    os_file_status_t *data = *state;
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
+    logreader log_reader = {.fp = (FILE *)1, .file = "test"};
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
     will_return(__wrap_OSHash_Get_ex, 1);
 
-    expect_value(__wrap_fileno, __stream, lf->fp);
+    expect_value(__wrap_fileno, __stream, log_reader.fp);
     will_return(__wrap_fileno, 1);
 
     expect_value(__wrap_fstat, __fd, 1);
@@ -1917,32 +1854,24 @@ void test_w_set_to_last_line_read_fstat_fail(void ** state) {
     expect_string(__wrap__merror, formatted_msg, "(1118): Could not retrieve information of file 'test' due to [(0)-(Success)].");
 
 
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, -1);
-
-    os_free(lf->file);
-    os_free(lf);
-
 }
 
 void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
-
     os_file_status_t data = {0};
+    fpos_t position_stack = {.__pos = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file= "test"};
+    test_position = &position_stack;
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    expect_value(__wrap_fileno, __stream, lf->fp);
+    expect_value(__wrap_fileno, __stream, log_reader.fp);
     will_return(__wrap_fileno, 1);
 
     expect_value(__wrap_fstat, __fd, 1);
@@ -1957,35 +1886,21 @@ void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1969): Failure to generate the SHA1 hash from file 'test'");
-
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, -1);
-
-    os_free(lf->file);
-    os_free(lf);
-
 }
 
 void test_w_set_to_last_line_read_diferent_file(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
-
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
-
-    os_file_status_t data = {0};
-    strcpy(data.hash, "1234");
-    data.offset = 1;
+    os_file_status_t data = {.hash = "1234", .offset = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file= "test"};
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    expect_value(__wrap_fileno, __stream, lf->fp);
+    expect_value(__wrap_fileno, __stream, log_reader.fp);
     will_return(__wrap_fileno, 1);
 
     expect_value(__wrap_fstat, __fd, 1);
@@ -2000,8 +1915,6 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
-    long pos = 0;
-
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, 0);
     will_return(__wrap_w_fseek, -1);
@@ -2011,36 +1924,22 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, -1);
-
-    os_free(lf->file);
-    os_free(lf);
-    os_free(test_position);
-
 }
 
 void test_w_set_to_last_line_read_same_file(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
-    lf->diff_max_size = 0;
-
-    os_file_status_t data = {0};
-    strcpy(data.hash, "1234");
-    data.offset = 1;
+    os_file_status_t data = {.hash = "1234", .offset = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file= "test", .diff_max_size = 0};
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    expect_value(__wrap_fileno, __stream, lf->fp);
+    expect_value(__wrap_fileno, __stream, log_reader.fp);
     will_return(__wrap_fileno, 1);
 
     expect_value(__wrap_fstat, __fd, 1);
@@ -2055,8 +1954,6 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
-    long pos = 0;
-
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, 1);
     will_return(__wrap_w_fseek, -1);
@@ -2066,36 +1963,21 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, -1);
-
-    os_free(lf->file);
-    os_free(lf);
-    os_free(test_position);
-
 }
 
 void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
-
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
-    lf->diff_max_size = 0;
-
-    os_file_status_t data = {0};
-    strcpy(data.hash, "1234");
-    data.offset = 1;
+    logreader log_reader = {.fp = (FILE *)1, .file= "test", .diff_max_size = 0};
+    os_file_status_t data = {.hash = "1234", .offset = 1};
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    expect_value(__wrap_fileno, __stream, lf->fp);
+    expect_value(__wrap_fileno, __stream, log_reader.fp);
     will_return(__wrap_fileno, 1);
 
     expect_value(__wrap_fstat, __fd, 1);
@@ -2108,9 +1990,6 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
-
-    //w_set_pos
-    long pos = 0;
 
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, 0);
@@ -2121,36 +2000,22 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, -1);
-
-    os_free(lf->file);
-    os_free(lf);
-    os_free(test_position);
-
 }
 
 void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
-    test_mode = 1;
-
     int mode = OS_BINARY;
+    logreader log_reader = {.fp = (FILE *)1, .file= "test", .diff_max_size = 0};
+    os_file_status_t data = {.hash = "1234", .offset = 1};
 
-    logreader *lf = NULL;
-    os_calloc(1, sizeof(logreader), lf);
-    lf->fp = (FILE*)1;
-    os_strdup("test", lf->file);
-    lf->diff_max_size = 0;
-
-    os_file_status_t data = {0};
-    strcpy(data.hash, "1234");
-    data.offset = 1;
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    expect_value(__wrap_fileno, __stream, lf->fp);
+    expect_value(__wrap_fileno, __stream, log_reader.fp);
     will_return(__wrap_fileno, 1);
 
     expect_value(__wrap_fstat, __fd, 1);
@@ -2165,7 +2030,6 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
-    long pos = 0;
 
     os_calloc(1, sizeof(fpos_t), test_position);
     test_position->__pos = 1;
@@ -2184,22 +2048,17 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
-    expect_value(__wrap_OSHash_Add_ex, self, files_status);
-    expect_string(__wrap_OSHash_Add_ex, key, lf->file);
-    will_return(__wrap_OSHash_Add_ex, 0);
-
     will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, log_reader.file);
+    will_return(__wrap_OSHash_Add_ex, 0);
 
     expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
 
-    int ret = w_set_to_last_line_read(lf);
+    int ret = w_set_to_last_line_read(&log_reader);
 
     assert_int_equal(ret, 1);
-
-    os_free(lf->file);
-    os_free(lf);
-    os_free(test_position);
-
 }
 
 /* _macos_release_log_show */
@@ -2326,7 +2185,7 @@ void test_w_macos_release_log_stream_launched_and_not_running(void ** state) {
 /* w_macos_release_log_execution */
 
 void test_w_macos_release_log_execution_log_stream_and_show_not_launched(void ** state) {
-    
+
     macos_processes = *state;
     macos_processes->show.wfd = NULL;
     macos_processes->stream.wfd = NULL;
@@ -2399,24 +2258,24 @@ void test_w_macos_release_log_execution_log_stream_not_launched_and_show_launche
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
-        cmocka_unit_test(test_w_get_hash_context_NULL_file_exist),
-        cmocka_unit_test(test_w_get_hash_context_NULL_file_not_exist),
-        cmocka_unit_test(test_w_get_hash_context_done),
+        cmocka_unit_test_setup_teardown(test_w_get_hash_context_NULL_file_exist, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_get_hash_context_NULL_file_not_exist, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_get_hash_context_done, setup_log_context, teardown_log_context),
 
         // Test w_update_file_status
-        cmocka_unit_test(test_w_update_file_status_fail_update_add_table_hash),
-        cmocka_unit_test(test_w_update_file_status_update_fail_add_OK),
-        cmocka_unit_test(test_w_update_file_status_update_OK),
+        cmocka_unit_test_setup_teardown(test_w_update_file_status_fail_update_add_table_hash, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_file_status_update_fail_add_OK, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_file_status_update_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_set_to_pos
-        cmocka_unit_test(test_w_set_to_pos_localfile_NULL),
-        cmocka_unit_test(test_w_set_to_pos_fseek_error),
-        cmocka_unit_test(test_w_set_to_pos_OK),
+        cmocka_unit_test_setup_teardown(test_w_set_to_pos_localfile_NULL, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_pos_fseek_error, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_pos_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_save_files_status_to_cJSON
         // Related only to files
-        cmocka_unit_test(test_w_save_files_status_to_cJSON_begin_NULL),
-        cmocka_unit_test(test_w_save_files_status_to_cJSON_OK),
+        cmocka_unit_test_setup_teardown(test_w_save_files_status_to_cJSON_begin_NULL, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_files_status_to_cJSON_OK, setup_log_context, teardown_log_context),
         // Related only to macos
         cmocka_unit_test(test_w_save_files_status_to_cJSON_macos_invalid_vault),
         cmocka_unit_test(test_w_save_files_status_to_cJSON_macos_valid_vault),
@@ -2424,10 +2283,10 @@ int main(void) {
         cmocka_unit_test(test_w_save_files_status_to_cJSON_data),
 
         // Test w_save_file_status
-        cmocka_unit_test(test_w_save_file_status_str_NULL),
-        cmocka_unit_test(test_w_save_file_status_wfopen_error),
-        cmocka_unit_test(test_w_save_file_status_fwrite_error),
-        cmocka_unit_test(test_w_save_file_status_OK),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_str_NULL, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
 
         // Test w_load_files_status
         cmocka_unit_test(test_w_load_files_status_empty_array),
@@ -2439,10 +2298,10 @@ int main(void) {
         cmocka_unit_test(test_w_load_files_status_offset_NULL),
         cmocka_unit_test(test_w_load_files_status_offset_str_NULL),
         cmocka_unit_test(test_w_load_files_status_invalid_offset),
-        cmocka_unit_test(test_w_load_files_status_update_add_fail),
-        cmocka_unit_test(test_w_load_files_status_update_hash_fail),
-        cmocka_unit_test(test_w_load_files_status_update_fail),
-        cmocka_unit_test(test_w_load_files_status_OK),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_add_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_hash_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_OK, setup_local_hashmap, teardown_local_hashmap),
         // Related only to macos
         cmocka_unit_test(test_w_load_files_status_valid_timestamp_only),
         cmocka_unit_test(test_w_load_files_status_valid_settings_only),
@@ -2454,25 +2313,25 @@ int main(void) {
         cmocka_unit_test(test_w_initialize_file_status_OSHash_setSize_fail),
         cmocka_unit_test(test_w_initialize_file_status_fopen_fail),
         cmocka_unit_test(test_w_initialize_file_status_fread_fail),
-        cmocka_unit_test(test_w_initialize_file_status_OK),
+        cmocka_unit_test_setup_teardown(test_w_initialize_file_status_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_update_hash_node
         cmocka_unit_test(test_w_update_hash_node_path_NULL),
         cmocka_unit_test(test_w_update_hash_node_sha_fail),
-        cmocka_unit_test(test_w_update_hash_node_update_fail),
-        cmocka_unit_test(test_w_update_hash_node_add_fail),
-        cmocka_unit_test(test_w_update_hash_node_OK),
+        cmocka_unit_test_setup_teardown(test_w_update_hash_node_update_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_hash_node_add_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_hash_node_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_set_to_last_line_read
         cmocka_unit_test(test_w_set_to_last_line_read_null_reader),
-        cmocka_unit_test(test_w_set_to_last_line_read_OSHash_Get_ex_fail),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OSHash_Get_ex_fail, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test(test_w_set_to_last_line_read_fstat_fail),
-        cmocka_unit_test(test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail),
-        cmocka_unit_test(test_w_set_to_last_line_read_diferent_file),
-        cmocka_unit_test(test_w_set_to_last_line_read_same_file),
-        cmocka_unit_test(test_w_set_to_last_line_read_same_file_rotate),
-        cmocka_unit_test(test_w_set_to_last_line_read_update_hash_node_error),
-        
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_diferent_file, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file_rotate, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_update_hash_node_error, setup_local_hashmap, teardown_local_hashmap),
+
         // Test w_macos_release_log_show
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_not_launched, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_launched_and_running, setup_process, teardown_process),

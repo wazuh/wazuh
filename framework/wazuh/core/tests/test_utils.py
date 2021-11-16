@@ -19,7 +19,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.utils import *
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
-        from wazuh.core.common import wazuh_path
+        from wazuh.core.common import wazuh_path, agent_name_len_limit
 
 # all necessary params
 
@@ -557,7 +557,7 @@ def test_get_hash_str():
     result = get_hash_str('test')
 
     assert isinstance(result, str)
-    assert all(ord(char) < 128 for char in result)
+    assert all(ord(char) < agent_name_len_limit for char in result)
 
 
 def test_get_fields_to_nest():

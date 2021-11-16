@@ -179,7 +179,7 @@ static void test_bqueue_push_peek_drop_ok(void **state) {
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), 0);
 
     char buffer[3] = "";
-    // Try to peek 3 bytes, but it should return 2 
+    // Try to peek 3 bytes, but it should return 2
     assert_int_equal(bqueue_peek(queue, buffer, sizeof(buffer), BQUEUE_NOFLAG), strlen(MESSAGE));
     // drop peeked bytes
     assert_int_equal(bqueue_drop(queue, 2), 0);
@@ -196,7 +196,7 @@ static void test_bqueue_push_peek_drop_fail(void **state) {
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), 0);
 
     char buffer[3] = "";
-    // Try to peek 3 bytes, but it should return 2 
+    // Try to peek 3 bytes, but it should return 2
     assert_int_equal(bqueue_peek(queue, buffer, sizeof(buffer), BQUEUE_WAIT), strlen(MESSAGE));
     // drop more bytes than used.
     assert_int_equal(bqueue_drop(queue, 4), -1);
@@ -223,7 +223,7 @@ static void test_bqueue_push_pop_full_buff(void **state) {
     /* This test will complete 1024 bytes of bufer with AB string,
        pop and validate last 2 bytes
 
-       Buffer: |ABABABAB........ABABAB| 
+       Buffer: |ABABABAB........ABABAB|
                                     ^^
     */
     bqueue_t *queue = *state;
@@ -252,7 +252,7 @@ static void test_bqueue_push_pop_full_buff(void **state) {
 }
 
 static void test_bqueue_push_pop_rollover(void **state) {
-    /* This test will complete 1022 spaces of 1024 bufer with AB string, 
+    /* This test will complete 1022 spaces of 1024 bufer with AB string,
        and pop first 3 bytes, then push 5 new bytes and validate last 5 bytes
 
        Buffer: |345BABAB........ABAB12|
@@ -281,7 +281,7 @@ static void test_bqueue_push_pop_rollover(void **state) {
     assert_int_equal(bqueue_pop(queue, buffer, 1019, BQUEUE_NOFLAG), 1019);
 
     memset(buffer, 0, sizeof(buffer));
-    /* pop 5 bytes, before last and last byte of the buffer, 
+    /* pop 5 bytes, before last and last byte of the buffer,
        and first 3 bytes of the buffer "12345"   */
     assert_int_equal(bqueue_pop(queue, buffer, 5, BQUEUE_NOFLAG), 5);
 
@@ -296,7 +296,7 @@ static void test_bqueue_push_drop_cross_pointers(void **state) {
     */
     bqueue_t *queue = *state;
 
-    char buffer[10] = "";
+    char buffer[11] = "";
     assert_non_null(queue);
 
     // complete fist 10 buffer spaces with "AB"

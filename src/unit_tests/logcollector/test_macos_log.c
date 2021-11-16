@@ -2083,7 +2083,7 @@ void test_w_macos_is_log_executable_error(void ** state) {
 }
 
 void test_w_macos_is_log_executable_sierra_access_fail(void ** state) {
-    
+
     char * backup_codename = NULL;
 
     if (macos_codename != NULL) {
@@ -2761,7 +2761,7 @@ void test_w_macos_log_show_array_add_predicate_valid_query_and_predicate(void **
 
 void test_w_macos_create_log_show_array_complete(void ** state) {
 
-    char start_date[24] = "2021-04-27 12:29:25-0700";
+    char start_date[25] = "2021-04-27 12:29:25-0700";
 
     char * query = NULL;
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", query);
@@ -2795,7 +2795,7 @@ void test_w_macos_create_log_show_array_complete(void ** state) {
 
 void test_w_macos_create_log_show_array_complete_on_sierra(void ** state) {
 
-    char start_date[24] = "2021-04-27 12:29:25-0700";
+    char start_date[25] = "2021-04-27 12:29:25-0700";
 
     char * query = NULL;
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", query);
@@ -3147,7 +3147,7 @@ void test_w_macos_create_log_env_codename_null_previous_settings_null (void ** s
     macos_log_vault.settings = NULL;
 
     will_return(__wrap_w_get_os_codename, NULL);
-    
+
     // test_w_macos_is_log_executable_success
     expect_string(__wrap_access, __name, "/usr/bin/log");
     expect_value(__wrap_access, __type, 1);
@@ -3282,7 +3282,7 @@ void test_w_get_first_child_NULL(void ** state) {
 void test_w_get_first_child_non_null_non_zero(void ** state) {
 
     pid_t * pid_array = NULL;
-    
+
     os_calloc(4, sizeof(pid_t), pid_array);
 
     pid_array[0] = 7;
@@ -3305,7 +3305,7 @@ void test_w_get_first_child_non_null_zero(void ** state) {
     pid_array[1] = 9;
     pid_array[2] = 11;
     pid_array[3] = 20;
-    
+
     will_return(__wrap_w_get_process_childs, pid_array);
 
     assert_int_equal(w_get_first_child(0), 0);
@@ -3313,7 +3313,7 @@ void test_w_get_first_child_non_null_zero(void ** state) {
 
 // Test w_macos_set_is_valid_data
 void test_w_macos_set_is_valid_data_ok(void ** state) {
-    
+
     bool bak_is_valid_data = macos_log_vault.is_valid_data;
     macos_log_vault.is_valid_data = false;
 

@@ -21,8 +21,8 @@
     <description>System shutdown complete</description>
     <options>no_full_log</options>
 </rule>
-  
-  
+
+
 <rule id="90501" level="7">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4098$</field>
@@ -32,21 +32,21 @@
     </mitre>
     <options>no_full_log</options>
 </rule>
-  
+
 <rule id="90502" level="3">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4099$</field>
     <description>Service started application version</description>
     <options>no_full_log</options>
 </rule>
- 
+
 <rule id="90503" level="5">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4100$</field>
     <description>Service paused</description>
     <options>no_full_log</options>
 </rule>
- 
+
 <rule id="90504" level="3">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4101$</field>
@@ -59,8 +59,8 @@
     <field name="win.system.eventID">^4102$</field>
     <description>The transfer of one or more threatNet files failed</description>
     <options>no_full_log</options>
-</rule>   
- 
+</rule>
+
 <rule id="90506" level="5">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4103$</field>
@@ -133,7 +133,7 @@
     <description>Scheduled software update downloaded</description>
     <options>no_full_log</options>
 </rule>
- 
+
 <rule id="90516" level="4">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4114$</field>
@@ -147,7 +147,7 @@
     <description>Vipre was unable to complete the check for software updates. It will retry on the next update event</description>
     <options>no_full_log</options>
 </rule>
- 
+
 <rule id="90518" level="5">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^4116$</field>
@@ -489,5 +489,3 @@
 </rule>
 
 </group>
-
-

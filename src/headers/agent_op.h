@@ -93,7 +93,7 @@ int auth_close(int sock);
  * @param ip IP of the agent to request the new key.
  * @param groups Groups list of the agent to request the new key.
  * @param key KEY of the newly generated key.
- * @param force Force option to be used during the registration. -1 means disabled. 0 or a positive value means enabled.
+ * @param force_options Force options to be used during the registration.
  * @param json_format Flag to identify if the response should be printed in JSON format.
  * @param agent_id ID of the agent when requesting a new key for a specific ID.
  * @param exit_on_error Flag to identify if the application should exit on any error.

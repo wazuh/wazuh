@@ -75,7 +75,7 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent4' G:'Group1,Group2,Group1'", "192.0.0.1", NULL,                             {"192.0.0.1", "agent4", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",                             {"192.0.0.1", "agent5", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,                                       {"192.0.0.2", "agent6", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent7' K:'1234'", "192.0.0.1", NULL,                                             {"192.0.0.1", "agent7", NULL, "1234"},                        {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent7) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent7' K:'07f05add1049244e7e71ad0f54f24d8094cd8f8b'", "192.0.0.1", NULL,         {"192.0.0.1", "agent7", NULL, "07f05add1049244e7e71ad0f54f24d8094cd8f8b"},     {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent7) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent8' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,                            {"192.0.0.3", "agent8", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent8) from: 192.0.0.1", NULL} },
     { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
@@ -122,6 +122,7 @@ extern w_err_t w_auth_parse_data(const char* buf,
 
 static void test_w_auth_parse_data(void **state) {
     char response[2048] = {0};
+    char buffer[OS_SIZE_20480] = {0};
     char ip[IPSIZE + 1];
     char *agentname = NULL;
     char *groups = NULL;
@@ -132,8 +133,8 @@ static void test_w_auth_parse_data(void **state) {
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
         strncpy(ip, parse_values[i].src_ip, IPSIZE);
-
-        err = w_auth_parse_data(parse_values[i].buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
+        strncpy(buffer, parse_values[i].buffer, strlen(parse_values[i].buffer) + 1);
+        err = w_auth_parse_data(buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
 
         assert_int_equal(err, parse_values[i].expected_response.err);
         if (err == OS_SUCCESS) {

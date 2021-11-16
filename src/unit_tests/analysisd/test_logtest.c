@@ -67,6 +67,7 @@ Eventinfo * event_OS_AddEvent = NULL;
 
 w_logtest_session_t * stored_session = NULL;
 bool store_session = false;
+
 extern OSHash *w_logtest_sessions;
 
 int session_level_alert = 7;
@@ -664,34 +665,7 @@ void test_w_logtest_init_pthread_fail(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1109): Unable to create new pthread.");
 
-    will_return(__wrap_CreateThread, 1);
-
-    //w_logtest_clients_handler
-    will_return(__wrap_FOREVER, 1);
-
-    will_return(__wrap_pthread_mutex_lock, 0);
-
-    will_return(__wrap_accept, 5);
-
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
-    will_return(__wrap_OS_RecvSecureTCP, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(7314): Failure to receive message: empty or reception timeout");
-
-    will_return(__wrap_close, 0);
-    will_return(__wrap_FOREVER, 0);
-
-
-    will_return(__wrap_pthread_join, 0);
-    will_return(__wrap_close, 0);
-
-    expect_string(__wrap_unlink, file, LOGTEST_SOCK);
-    will_return(__wrap_unlink, 0);
-
-    will_return(__wrap_pthread_mutex_destroy, 0);
-
-    w_logtest_init();
+    expect_assert_failure(w_logtest_init());
     w_logtest_conf_threads = 1;
 
 }
@@ -1252,7 +1226,7 @@ void test_w_logtest_register_session_remove_old(void ** state) {
 /* w_logtest_initialize_session */
 void test_w_logtest_initialize_session_error_load_ruleset(void ** state) {
     char * token = strdup("test");
-    OSList * msg = (OSList *) 1;
+    OSList * msg = (OSList *) 8;
     w_logtest_session_t * session;
 
     random_bytes_result = 1234565555; // 0x49_95_f9_b3
@@ -1264,6 +1238,7 @@ void test_w_logtest_initialize_session_error_load_ruleset(void ** state) {
     will_return(__wrap_time, 0);
     will_return(__wrap_pthread_mutex_init, 0);
 
+    // test_w_logtest_remove_session_ok_error_load_decoder_cbd_rules_hash
     /* w_logtest_ruleset_load */
     will_return(__wrap_OS_ReadXML, -1);
     will_return(__wrap_OS_ReadXML, "unknown");
@@ -1274,7 +1249,7 @@ void test_w_logtest_initialize_session_error_load_ruleset(void ** state) {
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
                   "(1226): Error reading XML file 'etc/ossec.conf': "
                   "unknown (line 5).");
-    
+
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     session = w_logtest_initialize_session(msg);
@@ -1322,7 +1297,7 @@ void test_w_logtest_initialize_session_error_decoders(void ** state) {
     will_return(__wrap_Read_Alerts, 0);
     will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
     will_return(__wrap_Read_Rules, 0);
-    
+
     will_return(__wrap_ReadDecodeXML, 0);
 
     will_return(__wrap_pthread_mutex_destroy, 0);
@@ -2775,7 +2750,6 @@ void test_w_logtest_check_input_request_debug_rules(void ** state) {
 
     int retval;
     const int ret_expect = W_LOGTEST_CODE_SUCCESS;
-
     OSList * list_msg = (OSList *) 2;
 
     /* location */
@@ -4216,6 +4190,7 @@ void test_w_logtest_process_request_remove_session_invalid_token(void ** state)
     cJSON * json_request = (cJSON *) 8;
     cJSON * json_response = (cJSON *) 2;
     OSList list_msg = {0};
+    OSList mock_list = {0};
     w_logtest_connection_t connection = {0};
     connection.active_client = 5;
 
@@ -4227,7 +4202,7 @@ void test_w_logtest_process_request_remove_session_invalid_token(void ** state)
     expect_string(__wrap__mdebug1, formatted_msg, "(7316): Failure to remove session. token JSON field must be a string");
 
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, NULL);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &mock_list);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7316): Failure to remove session. token JSON field must be a string");
 
 
@@ -4259,7 +4234,7 @@ void test_w_logtest_process_request_remove_session_invalid_token(void ** state)
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
 
-    retval = w_logtest_process_request_remove_session(json_request, json_response, NULL, &connection);
+    retval = w_logtest_process_request_remove_session(json_request, json_response, &mock_list, &connection);
 
     assert_int_equal(retval, expect_retval);
     assert_int_equal(connection.active_client, 5);
@@ -6655,5 +6630,5 @@ int main(void)
 
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, NULL);
 }

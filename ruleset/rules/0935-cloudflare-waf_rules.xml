@@ -43,9 +43,6 @@
     <field name="EdgeResponseStatus" type="pcre2" negate="yes">200</field>
     <description>WAF: Authentication failure from $(OriginIP)</description>
     <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
-    <mitre>
-     <id>T1102</id>
-    </mitre>
   </rule>
 
   <rule id="92648" level="7">
@@ -66,9 +63,6 @@
    <field name="EdgeResponseStatus">401</field>
    <description>WAF: $(ClientRequestURI) Unauthorized.</description>
    <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
-   <mitre>
-    <id>T1102</id>
-   </mitre>
   </rule>
 
   <rule id="92651" level="7">

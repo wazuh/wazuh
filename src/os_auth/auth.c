@@ -183,7 +183,7 @@ w_err_t w_auth_parse_data(const char* buf,
     if (strncmp(++buf, key_hash_token, 2) == 0) {
         os_calloc(1, sizeof(os_sha1), *key_hash);
         char format[15] = {0};
-        sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1));
+        sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1) - 1);
         sscanf(buf, format, *key_hash);
     }
 

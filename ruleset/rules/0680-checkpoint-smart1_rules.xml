@@ -17,7 +17,7 @@
         <field name="fw_action">Accept</field>
         <description>Accept: Connection Accepted.</description>
     </rule>
-	
+
     <rule id="64222" level="4">
         <if_sid>64220</if_sid>
         <field name="fw_action">Drop</field>
@@ -38,7 +38,7 @@
         <field name="fw_action">Encrypt</field>
         <description>Encrypt: Connection Encrypted</description>
     </rule>
-	
+
 	<rule id="64225" level="2">
         <if_sid>64220</if_sid>
         <field name="fw_action">Decrypt</field>
@@ -49,14 +49,14 @@
         <if_sid>64220</if_sid>
         <match>Key Install</match>
         <description>Key Install: Encryption keys were created.</description>
-    </rule>	
+    </rule>
 
 	<rule id="64227" level="4">
         <if_sid>64220</if_sid>
         <field name="fw_action">Monitored</field>
         <description>Monitored: A security event was monitored; however, it was not blocked, due to the current configuration.</description>
     </rule>
-	
+
 	<rule id="64228" level="3">
         <if_sid>64220</if_sid>
         <field name="fw_action">Bypass</field>
@@ -80,7 +80,7 @@
         <match>VPN routing</match>
         <description>VPN routing: The connection was routed through the gateway acting as a central hub.</description>
     </rule>
-	
+
 	<rule id="64232" level="3">
         <if_sid>64220</if_sid>
         <field name="fw_action">Deauthorize</field>
@@ -100,26 +100,26 @@
     <mitre>
       <id>T1190</id>
     </mitre>
-    </rule>	
-	
+    </rule>
+
 	<rule id="64235" level="3">
         <if_sid>64220</if_sid>
         <field name="fw_action">Detect</field>
         <description>Detect: Connection was detected by Interspect.</description>
-    </rule>	
-	
+    </rule>
+
 	<rule id="64236" level="4">
         <if_sid>64220</if_sid>
         <field name="fw_action">Inspect</field>
         <description>Inspect: Connection was subject to a configured protections.</description>
-    </rule>	
-	
+    </rule>
+
 	<rule id="64237" level="7">
         <if_sid>64220</if_sid>
         <field name="fw_action">Quarantine</field>
         <description>Quarantine: The IP source address of the connection was quarantined.</description>
-    </rule>	
-	
+    </rule>
+
 	<rule id="64238" level="7">
         <if_sid>64220</if_sid>
         <match>Replace Malicious code</match>
@@ -127,12 +127,12 @@
     <mitre>
       <id>T1001</id>
     </mitre>
-    </rule>	
-		
+    </rule>
+
 	<rule id="64239" level="3">
         <if_sid>64220</if_sid>
         <field name="fw_action">Allow</field>
         <description>Allow: The firewall allowed a URL.</description>
-    </rule>	
-	
+    </rule>
+
 </group>

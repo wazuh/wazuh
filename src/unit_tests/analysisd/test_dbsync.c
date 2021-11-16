@@ -77,7 +77,7 @@ static int teardown_dbsync_context(void **state) {
 static int setup_send_local(void **state) {
     test_dbsync_t *data = *state;
 
-    data->ctx->component = calloc(OS_SIZE_16, sizeof(char));
+    data->ctx->component = calloc(OS_SIZE_32, sizeof(char));
 
     if(data->ctx->component == NULL) return -1;
 

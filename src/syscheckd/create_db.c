@@ -779,15 +779,16 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     if (configuration->options & CHECK_PERM) {
 #ifdef WIN32
         int error;
-        char perm[OS_SIZE_6144 + 1];
 
-        if (error = w_get_file_permissions(file, perm, OS_SIZE_6144), error) {
+        error = w_get_file_permissions(file, &(data->perm_json));
+        if (error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
             free_file_data(data);
             return NULL;
-        } else {
-            data->perm = decode_win_permissions(perm);
         }
+
+        decode_win_acl_json(data->perm_json);
+        data->perm = cJSON_PrintUnformatted(data->perm_json);
 #else
         data->perm = agent_file_perm(statbuf->st_mode);
 #endif
@@ -872,6 +873,9 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
     data->perm = NULL;
+#ifdef WIN32
+    data->perm_json = NULL;
+#endif
     data->attributes = NULL;
     data->uid = NULL;
     data->gid = NULL;
@@ -885,8 +889,8 @@ void init_fim_data_entry(fim_file_data *data) {
 }
 
 void fim_get_checksum (fim_file_data * data) {
-    char *checksum = NULL;
     int size;
+    char *checksum = NULL;
 
     size = snprintf(0,
             0,
@@ -1010,7 +1014,11 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
     }
 
     if (data->options & CHECK_PERM) {
+#ifndef WIN32
         cJSON_AddStringToObject(attributes, "perm", data->perm);
+#else
+        cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+#endif
     }
 
     if (data->options & CHECK_OWNER) {
@@ -1071,11 +1079,15 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
     }
 
+#ifndef WIN32
     if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
     }
+#else
+    if ( (old_data->options & CHECK_PERM) && compare_win_permissions(old_data->perm_json, new_data->perm_json) == false ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    }
 
-#ifdef WIN32
     if ( (old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
     }
@@ -1086,9 +1098,17 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
         }
 
+#ifndef WIN32
         if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
         }
+#else
+        // AD might fail to solve the user name, we don't trigger an event if the user name is empty
+        if (old_data->user_name && *old_data->user_name != '\0' && new_data->user_name &&
+            *new_data->user_name != '\0' && strcmp(old_data->user_name, new_data->user_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
+#endif
     }
 
     if (old_data->options & CHECK_GROUP) {
@@ -1217,6 +1237,9 @@ void free_file_data(fim_file_data * data) {
         return;
     }
 
+#ifdef WIN32
+    cJSON_Delete(data->perm_json);
+#endif
     os_free(data->perm);
     os_free(data->attributes);
     os_free(data->uid);

@@ -812,6 +812,8 @@ static void test_fim_db_file_update_new_entry(void **state) {
 
     assert_int_equal(res, FIMDB_FULL);
     assert_null(entry);
+    free_entry(entry);
+
 }
 
 static void test_fim_db_file_update_unchanged_entry(void **state) {
@@ -848,6 +850,7 @@ static void test_fim_db_file_update_unchanged_entry(void **state) {
 
     assert_int_equal(res, FIMDB_OK);
     assert_non_null(entry);
+    free_entry(entry);
 }
 
 static void test_fim_db_file_update_updated_entry(void **state) {
@@ -877,6 +880,7 @@ static void test_fim_db_file_update_updated_entry(void **state) {
 
     assert_int_equal(res, FIMDB_OK);
     assert_non_null(entry);
+    free_entry(entry);
 }
 
 /*-----------------------------------------*/
@@ -899,9 +903,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_not_scanned_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_paths_from_inode
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_setup(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup),
-        cmocka_unit_test_setup(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup),
-        cmocka_unit_test_setup(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup,
+
+                                        test_fim_db_teardown),
+
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup,
+
+                                        test_fim_db_teardown),
+
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup,
+
+                                        test_fim_db_teardown),
 #endif
         // fim_db_get_count_file_inode
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_file_data, test_fim_db_setup, test_fim_db_teardown),
@@ -921,7 +933,7 @@ int main(void) {
                                         test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_from_pattern_success, test_fim_db_setup,
 
-                                                                               test_fim_db_teardown),
+                                        test_fim_db_teardown),
 
         // fim_db_remove_validated_path
         cmocka_unit_test(test_fim_db_remove_validated_path_invalid_path),

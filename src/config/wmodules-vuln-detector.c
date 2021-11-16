@@ -61,7 +61,8 @@ static const char *XML_NAME = "name";
 static const char *XML_OS = "os";
 static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
-static const char *XML_IGNORE_TIME = "ignore_time";
+static const char *XML_MIN_FULL_SCAN_INTERVAL = "min_full_scan_interval";
+static const char *XML_RETRY_INTERVAL = "retry_interval";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
@@ -77,6 +78,7 @@ static const char *XML_END = "end";
 static const char *XML_FEED = "feed";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
+static const char *XML_IGNORE_TIME = "ignore_time";
 
 int format_os_version(char *OS, char **os_name, char **os_ver) {
     char OS_cpy[OS_SIZE_1024] = {'\0'};
@@ -393,9 +395,10 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->flags.patch_scan = 1;
     vuldet->flags.permissive_patch_scan = 0;
     vuldet->flags.enabled = 1;
-    vuldet->ignore_time = VU_DEF_IGNORE_TIME;
-    vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
-    vuldet->agents_software = NULL;
+    vuldet->min_full_scan_interval = VU_DEF_MIN_FULL_SCAN_INTERVAL;
+    vuldet->retry_interval = VU_DEF_RETRY_INTERVAL;
+    vuldet->scan_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
+    vuldet->scan_agents = NULL;
     cur_wmodule->context = &WM_VULNDETECTOR_CONTEXT;
     cur_wmodule->tag = strdup(cur_wmodule->context->name);
     cur_wmodule->data = vuldet;
@@ -429,7 +432,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->detection_interval)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->scan_interval)) {
                 merror("Invalid interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -451,9 +454,16 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 merror("Invalid content for tag '%s' at module '%s'", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)) {
-            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->ignore_time)) {
-                merror("Invalid ignore_time at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+        } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)){
+            mwarn("The <%s> tag at module '%s' is deprecated for version newer than 4.3.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name);
+        } else if (!strcmp(nodes[i]->element, XML_MIN_FULL_SCAN_INTERVAL)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->min_full_scan_interval)) {
+                merror("Invalid min_full_scan_interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_RETRY_INTERVAL)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->retry_interval)) {
+                merror("Invalid retry_interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
