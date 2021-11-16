@@ -23,8 +23,7 @@ requirements:
   description: "Requirements for running the SCA scan against HPUX family."
   condition: any
   rules:
-    - 'c:swlist HPUX*OE* -> r:^HPUX11i'
-    - 'c:'
+    - 'c:swlist HPUX*OE* -> r:HPUX11i'
 
 checks:
 
