@@ -24,12 +24,16 @@ class FIMDBMOCK final
             return s_instance;
         };
         MOCK_METHOD(int, insertItem, (const nlohmann::json&), ());
+        MOCK_METHOD(int, removeItem, (const nlohmann::json&), ());
+        MOCK_METHOD(int, updateItem, (const nlohmann::json&, ResultCallbackData), ());
+        MOCK_METHOD(int, executeQuery, (const nlohmann::json&, ResultCallbackData), ());
 
     private:
         FIMDBMOCK() = default;
         ~FIMDBMOCK() = default;
 
 };
+
 class FIMHelperTest : public testing::Test {
     protected:
         FIMHelperTest() = default;
