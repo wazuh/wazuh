@@ -66,4 +66,4 @@ namespace FIMDBHelper
     int updateItem(const std::string &, const DBItem &);
 }
 
-#endif //_FIMDBHELPER_H   
+#endif //_FIMDBHELPER_H
