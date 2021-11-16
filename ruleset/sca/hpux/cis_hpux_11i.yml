@@ -81,7 +81,7 @@ checks:
       - https://www.hp.com/go/bastille
     condition: all
     rules:
-    - 'c:/opt/sec_mgmt/bastille/bin/bastille --assessnobrowser f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config'
+    - 'c:/opt/sec_mgmt/bastille/bin/bastille --assessnobrowser -> f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config'
 
 #################################################################
 # 1.2 Minimize inetd network services
@@ -471,7 +471,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpusers="Y"'
+    - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpusers="N"'
 
   - id: 21036
     title: "Prevent Syslog from accepting messages from the network"
@@ -531,7 +531,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-    - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.cronuser="Y"'
+    - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.cronuser="N"'
 
   - id: 21041
     title: "Restrict crontab file permissions"
