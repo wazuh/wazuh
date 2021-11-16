@@ -652,7 +652,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_end_master'] = datetime.utcnow()
+        self.integrity_sync_status['date_end_master'] = datetime.now()
         logger.info("Finished in {:.3f}s.".format(
             (self.integrity_sync_status['date_end_master'] -
              self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
