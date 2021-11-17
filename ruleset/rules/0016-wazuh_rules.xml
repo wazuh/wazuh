@@ -15,7 +15,7 @@
   <rule id="201" level="0">
     <if_sid>200</if_sid>
     <match>^wazuh: Agent buffer: </match>
-    <description>Agent event queue rule</description>
+    <description>Agent event queue rule.</description>
     <group>agent_flooding,</group>
   </rule>
 
@@ -61,14 +61,14 @@
   <rule id="210" level="0">
     <if_sid>200</if_sid>
     <match>Upgrade procedure</match>
-    <description>Remote upgrade alert</description>
+    <description>Remote upgrade alert.</description>
     <group>upgrade,</group>
   </rule>
 
   <rule id="211" level="0">
     <if_sid>200</if_sid>
     <match>Custom installation</match>
-    <description>Remote installation alert</description>
+    <description>Remote installation alert.</description>
     <group>upgrade,</group>
   </rule>
 
@@ -124,7 +124,7 @@
   <rule id="220" level="7">
     <if_sid>200</if_sid>
     <match>^wazuh: Invalid remote configuration: </match>
-    <description>The agent could not restart due to a $(module) failure in the remote configuration</description>
+    <description>The agent could not restart due to a $(module) failure in the remote configuration.</description>
     <group>agent_restarting,configuration_failure,</group>
   </rule>
 
@@ -147,7 +147,7 @@
     <if_sid>200</if_sid>
     <match>^wazuh: FIM DB: </match>
     <location>syscheck$</location>
-    <description>FIM DB rule</description>
+    <description>FIM DB rule.</description>
     <group>syscheck,fim_db_state,</group>
   </rule>
 

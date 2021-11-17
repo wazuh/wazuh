@@ -132,7 +132,7 @@
   <rule id="517" level="7">
     <if_sid>500</if_sid>
     <match>^ossec: Audit:</match>
-    <description>Syscheck Audit: $(extra_data)</description>
+    <description>Syscheck Audit: $(extra_data).</description>
     <group>syscheck,gdpr_II_5.1.f,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -163,7 +163,7 @@
   <rule id="521" level="11">
     <if_sid>510</if_sid>
     <match>Possible kernel level rootkit</match>
-    <description>Possible kernel level rootkit</description>
+    <description>Possible kernel level rootkit.</description>
     <mitre>
       <id>T1014</id>
     </mitre>
@@ -220,7 +220,7 @@
   <rule id="536" level="0">
     <if_sid>531</if_sid>
       <regex>'df -P':\s+/dev/loop\d+\s+\d+\s+\d+\s+0\s+100%\s+/snap/\w+/\d+</regex>
-      <description>Ignore snap disks because they are always at 100% of capacity</description>
+      <description>Ignore snap disks because they are always at 100% of capacity.</description>
   </rule>
 
 
@@ -314,7 +314,7 @@
     <category>ossec</category>
     <decoded_as>syscheck_registry_key_modified</decoded_as>
     <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Key Integrity Checksum Changed</description>
+    <description>Registry Key Integrity Checksum Changed.</description>
     <mitre>
       <id>T1492</id>
     </mitre>
@@ -335,14 +335,14 @@
     <category>ossec</category>
     <decoded_as>syscheck_registry_key_added</decoded_as>
     <group>syscheck,syscheck_entry_added,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Key Entry Added to the System</description>
+    <description>Registry Key Entry Added to the System.</description>
   </rule>
 
   <!-- active response rules -->
 
   <rule id="600" level="0">
     <decoded_as>ar_log</decoded_as>
-    <description>Active Response Messages Grouped</description>
+    <description>Active Response Messages Grouped.</description>
     <group>active_response,</group>
   </rule>
 
@@ -350,7 +350,7 @@
     <if_sid>600</if_sid>
     <field name="script">firewall-drop</field>
     <field name="type">add</field>
-    <description>Host Blocked by firewall-drop Active Response</description>
+    <description>Host Blocked by firewall-drop Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -358,7 +358,7 @@
     <if_sid>600</if_sid>
     <field name="script">firewall-drop</field>
     <field name="type">delete</field>
-    <description>Host Unblocked by firewall-drop Active Response</description>
+    <description>Host Unblocked by firewall-drop Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -366,7 +366,7 @@
     <if_sid>600</if_sid>
     <field name="script">host-deny</field>
     <field name="type">add</field>
-    <description>Host Blocked by host-deny Active Response</description>
+    <description>Host Blocked by host-deny Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -374,7 +374,7 @@
     <if_sid>600</if_sid>
     <field name="script">host-deny</field>
     <field name="type">delete</field>
-    <description>Host Unblocked by host-deny Active Response</description>
+    <description>Host Unblocked by host-deny Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -382,7 +382,7 @@
     <if_sid>600</if_sid>
     <field name="script">route-null</field>
     <field name="type">add</field>
-    <description>Host Blocked by $(script) Active Response</description>
+    <description>Host Blocked by $(script) Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -390,19 +390,19 @@
     <if_sid>600</if_sid>
     <field name="script">route-null</field>
     <field name="type">delete</field>
-    <description>Host Unblocked by $(script) Active Response</description>
+    <description>Host Unblocked by $(script) Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
   <rule id="607" level="3">
     <if_sid>600</if_sid>
-    <description>Active response: $(script) - $(type)</description>
+    <description>Active response: $(script) - $(type).</description>
     <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
   <rule id="650" level="0">
     <decoded_as>ar_log_json</decoded_as>
-    <description>Active Response JSON Messages Grouped</description>
+    <description>Active Response JSON Messages Grouped.</description>
     <group>active_response,</group>
   </rule>
 
@@ -410,7 +410,7 @@
     <if_sid>650</if_sid>
     <field name="parameters.program">firewall-drop</field>
     <field name="command">add</field>
-    <description>Host Blocked by firewall-drop Active Response</description>
+    <description>Host Blocked by firewall-drop Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -418,7 +418,7 @@
     <if_sid>650</if_sid>
     <field name="parameters.program">firewall-drop</field>
     <field name="command">delete</field>
-    <description>Host Unblocked by firewall-drop Active Response</description>
+    <description>Host Unblocked by firewall-drop Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -426,7 +426,7 @@
     <if_sid>650</if_sid>
     <field name="parameters.program">host-deny</field>
     <field name="command">add</field>
-    <description>Host Blocked by host-deny Active Response</description>
+    <description>Host Blocked by host-deny Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -434,7 +434,7 @@
     <if_sid>650</if_sid>
     <field name="parameters.program">host-deny</field>
     <field name="command">delete</field>
-    <description>Host Unblocked by host-deny Active Response</description>
+    <description>Host Unblocked by host-deny Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -442,7 +442,7 @@
     <if_sid>650</if_sid>
     <field name="parameters.program">route-null</field>
     <field name="command">add</field>
-    <description>Host Blocked by route-null Active Response</description>
+    <description>Host Blocked by route-null Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -450,14 +450,14 @@
     <if_sid>650</if_sid>
     <field name="parameters.program">route-null</field>
     <field name="command">delete</field>
-    <description>Host Unblocked by route-null Active Response</description>
+    <description>Host Unblocked by route-null Active Response.</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
   <rule id="657" level="3">
     <if_sid>650</if_sid>
     <field name="command">add|delete</field>
-    <description>Active response: $(parameters.program) - $(command)</description>
+    <description>Active response: $(parameters.program) - $(command).</description>
     <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -466,20 +466,20 @@
   <rule id="700" level="0">
     <category>ossec</category>
     <decoded_as>ossec-logcollector</decoded_as>
-    <description>Logcollector Messages Grouped</description>
+    <description>Logcollector Messages Grouped.</description>
   </rule>
 
   <rule id="701" level="0">
     <if_sid>700</if_sid>
     <match>INFO: </match>
-    <description>Ignore informational messages (usually at startup)</description>
+    <description>Ignore informational messages (usually at startup).</description>
   </rule>
 
   <rule id="750" level="5">
     <category>ossec</category>
     <decoded_as>syscheck_registry_value_modified</decoded_as>
     <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Value Integrity Checksum Changed</description>
+    <description>Registry Value Integrity Checksum Changed.</description>
     <mitre>
       <id>T1492</id>
     </mitre>
@@ -500,7 +500,7 @@
     <category>ossec</category>
     <decoded_as>syscheck_registry_value_added</decoded_as>
     <group>syscheck,syscheck_entry_added,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Value Entry Added to the System</description>
+    <description>Registry Value Entry Added to the System.</description>
   </rule>
 
 </group>

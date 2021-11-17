@@ -17,21 +17,21 @@
     <if_sid>3800</if_sid>
     <action>RCPT</action>
     <id>^550</id>
-    <description>ms-exchange: E-mail rcpt is not valid (invalid account).</description>
+    <description>Ms-exchange: E-mail rcpt is not valid (invalid account).</description>
     <group>spam,</group>
   </rule>
 
   <rule id="3802" level="4">
     <if_sid>3800</if_sid>
     <id>^5</id>
-    <description>ms-exchange: E-mail 500 error code.</description>
+    <description>Ms-exchange: E-mail 500 error code.</description>
     <group>spam,</group>
   </rule>
 
   <rule id="3851" level="9" frequency="12" timeframe="120" ignore="120">
     <if_matched_sid>3801</if_matched_sid>
     <same_source_ip />
-    <description>ms-exchange: Multiple e-mail attempts to an invalid account.</description>
+    <description>Ms-exchange: Multiple e-mail attempts to an invalid account.</description>
     <mitre>
       <id>T1114</id>
       <id>T1499</id>
@@ -42,7 +42,7 @@
   <rule id="3852" level="9" frequency="14" timeframe="120" ignore="240">
     <if_matched_sid>3802</if_matched_sid>
     <same_source_ip />
-    <description>ms-exchange: Multiple e-mail 500 error code (spam).</description>
+    <description>Ms-exchange: Multiple e-mail 500 error code (spam).</description>
     <mitre>
       <id>T1114</id>
       <id>T1499</id>
