@@ -88,12 +88,12 @@
   <order>user, srcip</order>
 </decoder>
 
- <decoder name="dovecot-disconnect-user">
-   <parent>dovecot</parent>
-   <prematch offset="after_parent">^\w\w\w\w-login: Disconnected\.+user=</prematch>
-   <regex offset="after_parent">user=(\S+), method=\S+, rip=(\S+), lip=(\S+),</regex>
-   <order>srcuser, srcip, dstip</order>
- </decoder>
+<decoder name="dovecot-disconnect-user">
+  <parent>dovecot</parent>
+  <prematch offset="after_parent">^\w\w\w\w-login: Disconnected\.+user=</prematch>
+  <regex offset="after_parent">user=(\S+), method=\S+, rip=(\S+), lip=(\S+),</regex>
+  <order>srcuser, srcip, dstip</order>
+</decoder>
 
 <decoder name="dovecot-disconnect">
   <parent>dovecot</parent>
