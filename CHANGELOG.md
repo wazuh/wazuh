@@ -52,6 +52,8 @@ All notable changes to this project will be documented in this file.
 - Agent DB synchronization has been boosted by caching the last data checksum in Wazuh DB. ([#9093](https://github.com/wazuh/wazuh/pull/9093))
 - Logtest now scans new ruleset files when loading a new session. ([#8892](https://github.com/wazuh/wazuh/pull/8892))
 - CVE alerts by Vulnerability Detector now include the time of detection, severity, and score. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
+- Fixed manager startup when `<database_output>` is enabled. ([#10849](https://github.com/wazuh/wazuh/pull/10849))
+- Changed the cluster "local_integrity" task to run in a separate process to improve overall performance. ([#10767](https://github.com/wazuh/wazuh/pull/10767))
 
 #### Fixed
 
@@ -126,6 +128,7 @@ All notable changes to this project will be documented in this file.
 - Active responses for Windows agents now support native fields from Eventchannel. ([#10208](https://github.com/wazuh/wazuh/pull/10208))
 - Error logs by Logcollector when a file is missing have been changed to info logs. ([#10651](https://github.com/wazuh/wazuh/pull/10651))
 - The agent MSI installer for Windows now detects the platform version to install the default configuration. ([#8724](https://github.com/wazuh/wazuh/pull/8724))
+- Agent logs for inability to resolve the manager hostname now have info level. ([#3659](https://github.com/wazuh/wazuh/pull/3659))
 
 #### Fixed
 
@@ -145,6 +148,8 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM on Linux to parse audit rules with multiple keys for who-data. ([#7506](https://github.com/wazuh/wazuh/pull/7506))
 - Fixed Windows 11 version collection in the agent. ([#10639](https://github.com/wazuh/wazuh/pull/10639))
 - Fixed missing Eventchannel location in Logcollector configuration reporting. ([#10602](https://github.com/wazuh/wazuh/pull/10602))
+- Updated CloudWatch Logs integration to avoid crashing when AWS raises Throttling errors. ([#10794](https://github.com/wazuh/wazuh/pull/10794))
+- Fixed AWS modules' log file filtering when there are logs with and without a prefix mixed in a bucket. ([#10718](https://github.com/wazuh/wazuh/pull/10718))
 
 ### RESTful API
 
@@ -167,6 +172,7 @@ All notable changes to this project will be documented in this file.
 - Added docker logs separately in API integration tests environment to get cleaner reports. ([#10238](https://github.com/wazuh/wazuh/pull/10238))
 - Added new `disconnection_time` field to `GET /agents` response. ([#10437](https://github.com/wazuh/wazuh/pull/10437))
 - Added new filters to agents upgrade endpoints. ([#10457](https://github.com/wazuh/wazuh/pull/10457))
+- Added new API endpoints to access all the MITRE information. ([#8288](https://github.com/wazuh/wazuh/pull/8288))
 
 #### Changed
 
@@ -191,6 +197,7 @@ All notable changes to this project will be documented in this file.
 - Changed Windows agents FIM responses to return permissions as JSON. ([#10158](https://github.com/wazuh/wazuh/pull/10158))
 - Adapted API endpoints to changes in `wazuh-authd` daemon `force` parameter. ([#10389](https://github.com/wazuh/wazuh/pull/10389))
 - Deprecated `use_only_authd` API configuration option and related functionality. `wazuh-authd` will always be required for creating and removing agents. ([#10512](https://github.com/wazuh/wazuh/pull/10512))
+- Improved API validators and related unit tests. ([#10745](https://github.com/wazuh/wazuh/pull/10745))
 
 #### Fixed
 
@@ -216,10 +223,12 @@ All notable changes to this project will be documented in this file.
 - Fixed `PUT /agents/node/{node_id}/restart` endpoint to exclude exception codes properly. ([#10619](https://github.com/wazuh/wazuh/pull/10619))
 - Fixed `PUT /agents/group/{group_id}/restart` endpoint to exclude exception codes properly. ([#10666](https://github.com/wazuh/wazuh/pull/10666))
 - Fixed agent endpoints `q` parameter to allow more operators when filtering by groups. ([#10656](https://github.com/wazuh/wazuh/pull/10656))
+- Fixed API integration tests related to rule, decoder and task endpoints. ([#10830](https://github.com/wazuh/wazuh/pull/10830))
 
 #### Removed
 
 - Removed select parameter from GET /agents/stats/distinct endpoint. ([#8599](https://github.com/wazuh/wazuh/pull/8599))
+- Removed `GET /mitre` endpoint. ([#8099](https://github.com/wazuh/wazuh/pull/8099))
 
 ### Ruleset
 
@@ -319,6 +328,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a condition in the Windows Vulnerability Detector to prevent false positives when evaluating DU patches. ([#10016](https://github.com/wazuh/wazuh/pull/10016))
 - Fixed a memory leak when generating the Windows report in Vulnerability Detector. ([#10214](https://github.com/wazuh/wazuh/pull/10214))
 - Fixed a file descriptor leak in Analysisd when delivering an AR request to an agent. ([#10194](https://github.com/wazuh/wazuh/pull/10194))
+- Fixed error with Wazuh path in Azure module. ([#10250](https://github.com/wazuh/wazuh/pull/10250))
 
 ### Agent
 
@@ -340,7 +350,6 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
 - Fixed a bug in AWS CloudWatch Logs module that caused already processed logs to be collected and reprocessed. ([#10024](https://github.com/wazuh/wazuh/pull/10024))
 - Avoid duplicate alerts from case-insensitive 32-bit registry values in FIM configuration for Windows agents. ([#8256](https://github.com/wazuh/wazuh/pull/8256))
-- Fixed error with Wazuh path in Azure module. ([#10250](https://github.com/wazuh/wazuh/pull/10250))
 - Fixed a bug in the sources and WPK installer that made upgrade unable to detect the previous installation on CentOS 7. ([#10210](https://github.com/wazuh/wazuh/pull/10210))
 
 ### RESTful API
