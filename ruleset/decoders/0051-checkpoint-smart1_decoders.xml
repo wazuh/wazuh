@@ -24,287 +24,342 @@
   <order>timestamp,hostname,ProductVersion</order>
 </decoder>
 
-
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>action:"(\.*)";|action:"(\.*)"$|action:(\.*);|action:(\.*)$</regex>
   <order>fw_action</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>community:"(\.*)";|community:"(\.*)"$|community:(\.*);|community:(\.*)$</regex>
   <order>community</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>conn_direction:"(\.*)";|conn_direction:"(\.*)"$|conn_direction:(\.*);|conn_direction:(\.*)$</regex>
   <order>conn_direction</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>context_num:"(\.*)";|context_num:"(\.*)"$|context_num:(\.*);|context_num:(\.*)$</regex>
   <order>context_num</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>contextnum:"(\.*)";|contextnum:"(\.*)"$|contextnum:(\.*);|contextnum:(\.*)$</regex>
   <order>contextnum</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>cookiei:"(\.*)";|cookiei:"(\.*)"$|cookiei:(\.*);|cookiei:(\.*)$</regex>
   <order>cookiei</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>cookier:"(\.*)";|cookier:"(\.*)"$|cookier:(\.*);|cookier:(\.*)$</regex>
   <order>cookier</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>Cookies:"(\.*)";|Cookies:"(\.*)"$|Cookies:(\.*);|Cookies:(\.*)$</regex>
   <order>Cookies</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>dst:"(\.*)";|dst:"(\.*)"$|dst:(\.*);|dst:(\.*)$</regex>
   <order>dst</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>ESP:"(\.*)";|ESP:"(\.*)"$|ESP:(\.*);|ESP:(\.*)$</regex>
   <order>ESP</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>flags:"(\.*)";|flags:"(\.*)"$|flags:(\.*);|flags:(\.*)$</regex>
   <order>flags</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>for:"(\.*)";|for:"(\.*)"$|for:(\.*);|for:(\.*)$</regex>
   <order>for</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>fw_subproduct:"(\.*)";|fw_subproduct:"(\.*)"$|fw_subproduct:(\.*);|fw_subproduct:(\.*)$</regex>
   <order>fw_subproduct</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>hll_key:"(\.*)";|hll_key:"(\.*)"$|hll_key:(\.*);|hll_key:(\.*)$</regex>
   <order>hll_key</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>ifdir:"(\.*)";|ifdir:"(\.*)"$|ifdir:(\.*);|ifdir:(\.*)$</regex>
   <order>ifdir</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>ifname:"(\.*)";|ifname:"(\.*)"$|ifname:(\.*);|ifname:(\.*)$</regex>
   <order>ifname</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>ike:"(\.*)";|ike:"(\.*)"$|ike:(\.*);|ike:(\.*)$</regex>
   <order>ike</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>inzone:"(\.*)";|inzone:"(\.*)"$|inzone:(\.*);|inzone:(\.*)$</regex>
   <order>inzone</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>layer_name:"(\.*)";|layer_name:"(\.*)"$|layer_name:(\.*);|layer_name:(\.*)$</regex>
   <order>layer_name</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>layer_uuid:"(\.*)";|layer_uuid:"(\.*)"$|layer_uuid:(\.*);|layer_uuid:(\.*)$</regex>
   <order>layer_uuid</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>logid:"(\.*)";|logid:"(\.*)"$|logid:(\.*);|logid:(\.*)$</regex>
   <order>logid</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>loguid:"(\.*)";|loguid:"(\.*)"$|loguid:(\.*);|loguid:(\.*)$</regex>
   <order>loguid</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>match_id:"(\.*)";|match_id:"(\.*)"$|match_id:(\.*);|match_id:(\.*)$</regex>
   <order>match_id</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>methods:"(\.*)";|methods:"(\.*)"$|methods:(\.*);|methods:(\.*)$</regex>
   <order>methods</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>msgid:"(\.*)";|msgid:"(\.*)"$|msgid:(\.*);|msgid:(\.*)$</regex>
   <order>msgid</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>nat_addtnl_rulenum:"(\.*)";|nat_addtnl_rulenum:"(\.*)"$|nat_addtnl_rulenum:(\.*);|nat_addtnl_rulenum:(\.*)$</regex>
   <order>nat_addtnl_rulenum</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>nat_rulenum:"(\.*)";|nat_rulenum:"(\.*)"$|nat_rulenum:(\.*);|nat_rulenum:(\.*)$</regex>
   <order>nat_rulenum</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>origin:"(\.*)";|origin:"(\.*)"$|origin:(\.*);|origin:(\.*)$</regex>
   <order>origin</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>originsicname:"(\.*)";|originsicname:"(\.*)"$|originsicname:(\.*);|originsicname:(\.*)$</regex>
   <order>originsicname</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>outzone:"(\.*)";|outzone:"(\.*)"$|outzone:(\.*);|outzone:(\.*)$</regex>
   <order>outzone</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>parent_rule:"(\.*)";|parent_rule:"(\.*)"$|parent_rule:(\.*);|parent_rule:(\.*)$</regex>
   <order>parent_rule</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>Peer:"(\.*)";|Peer:"(\.*)"$|Peer:(\.*);|Peer:(\.*)$</regex>
   <order>Peer</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>peer_gateway:"(\.*)";|peer_gateway:"(\.*)"$|peer_gateway:(\.*);|peer_gateway:(\.*)$</regex>
   <order>peer_gateway</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>__policy_id_tag:"(\.*)";|__policy_id_tag:"(\.*)"$|__policy_id_tag:(\.*);|__policy_id_tag:(\.*)$</regex>
   <order>policy_id_tag</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>product:"(\.*)";|product:"(\.*)"$|product:(\.*);|product:(\.*)$</regex>
   <order>product</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>proposal:"(\.*)";|proposal:"(\.*)"$|proposal:(\.*);|proposal:(\.*)$</regex>
   <order>proposal</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>proto:"(\.*)";|proto:"(\.*)"$|proto:(\.*);|proto:(\.*)$</regex>
   <order>proto</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>Reason:"(\.*)";|Reason:"(\.*)"$|Reason:(\.*);|Reason:(\.*)$</regex>
   <order>Reason</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>reject_category:"(\.*)";|reject_category:"(\.*)"$|reject_category:(\.*);|reject_category:(\.*)$</regex>
   <order>reject_category</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>rule_action:"(\.*)";|rule_action:"(\.*)"$|rule_action:(\.*);|rule_action:(\.*)$</regex>
   <order>rule_action</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>rule_name:"(\.*)";|rule_name:"(\.*)"$|rule_name:(\.*);|rule_name:(\.*)$</regex>
   <order>rule_name</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>rule_uid:"(\.*)";|rule_uid:"(\.*)"$|rule_uid:(\.*);|rule_uid:(\.*)$</regex>
   <order>rule_uid</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>scheme:"(\.*)";|scheme:"(\.*)"$|scheme:(\.*);|scheme:(\.*)$</regex>
   <order>scheme</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>sequencenum:"(\.*)";|sequencenum:"(\.*)"$|sequencenum:(\.*);|sequencenum:(\.*)$</regex>
   <order>sequencenum</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>service:"(\.*)";|service:"(\.*)"$|service:(\.*);|service:(\.*)$</regex>
   <order>service</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>service_id:"(\.*)";|service_id:"(\.*)"$|service_id:(\.*);|service_id:(\.*)$</regex>
   <order>service_id</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>s_port:"(\.*)";|s_port:"(\.*)"$|s_port:(\.*);|s_port:(\.*)$</regex>
   <order>s_port</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>src:"(\.*)";|src:"(\.*)"$|src:(\.*);|src:(\.*)$</regex>
   <order>src</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>time:"(\.*)";|time:"(\.*)"$|time:(\.*);|time:(\.*)$</regex>
   <order>time</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>Transform:"(\.*)";|Transform:"(\.*)"$|Transform:(\.*);|Transform:(\.*)$</regex>
   <order>Transform</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>version:"(\.*)";|version:"(\.*)"$|version:(\.*);|version:(\.*)$</regex>
   <order>version</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>vpn_feature_name:"(\.*)";|vpn_feature_name:"(\.*)"$|vpn_feature_name:(\.*);|vpn_feature_name:(\.*)$</regex>
   <order>vpn_feature_name</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>xlatedport:"(\.*)";|xlatedport:"(\.*)"$|xlatedport:(\.*);|xlatedport:(\.*)$</regex>
   <order>xlatedport</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>xlateds:"(\.*)";|xlateds:"(\.*)"$|xlateds:(\.*);|xlateds:(\.*)$</regex>
   <order>xlateds</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>xlatedst:"(\.*)";|xlatedst:"(\.*)"$|xlatedst:(\.*);|xlatedst:(\.*)$</regex>
   <order>xlatedst</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>xlatesport:"(\.*)";|xlatesport:"(\.*)"$|xlatesport:(\.*);|xlatesport:(\.*)$</regex>
   <order>xlatesport</order>
 </decoder>
+
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
   <regex>xlatesrc:"(\.*)";|xlatesrc:"(\.*)"$|xlatesrc:(\.*);|xlatesrc:(\.*)$</regex>
