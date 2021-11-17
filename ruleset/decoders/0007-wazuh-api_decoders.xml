@@ -11,79 +11,79 @@
   <prematch type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\sINFO:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sWARNING:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sERROR:\s\w+\s\w+|^\d+\/\d+\/\d+\s\d+:\d+:\d+\sCRITICAL:\s\w+\s\w+</prematch>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">^(\d+\/\d+\/\d+\s\d+:\d+:\d+)</regex>
   <order>event-time</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">^\d+\/\d+\/\d+\s\d+:\d+:\d+\s\w+:\s(\S+)</regex>
   <order>user</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">\s(\w+):\s\w+</regex>
   <order>type</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">:\s\S+\s(\d+\.\d+\.\d+\.\d+)\s</regex>
   <order>srcip</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">"(\w+)\s(.+)"\swith\sparameters\s\{(.+)\}\sand</regex>
   <order>method,uri,parameters</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">"(\w+)\s(.+)"\swith\sparameters\s\{\}\sand</regex>
   <order>method,uri</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">\s"(.+)"\swith\sparameters\s\{</regex>
   <order>endpoint</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">and\sbody\s{(.+)}</regex>
   <order>body</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api</parent>
   <regex type="pcre2">s:\s(\d+)</regex>
   <order>http_status_code</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api-info</parent>
   <regex type="pcre2">^(\d+\/\d+\/\d+\s\d+:\d+:\d+)</regex>
   <order>event-time</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api-info</parent>
   <regex type="pcre2">\s(\w+):\s\w+</regex>
   <order>type</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api-info</parent>
   <regex type="pcre2">:\s(\d+\.\d+\.\d+\.\d+)\s\"</regex>
   <order>srcip</order>
 </decoder>
 
-<decoder name="wazuh-api-son">
+<decoder name="wazuh-api-fields">
   <parent>wazuh-api-info</parent>
   <regex type="pcre2">INFO:(.+)</regex>
   <order>message</order>
