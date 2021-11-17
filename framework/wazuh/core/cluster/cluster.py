@@ -24,6 +24,7 @@ from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
+agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
 
 
 #
@@ -427,11 +428,11 @@ def compare_files(good_files, check_files, node_name):
     if extra_valid_files:
         # Check if extra-valid agent-groups files correspond to existing agents.
         try:
-            agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
-            agent_ids = set(map(itemgetter('id'), agents))
-            for file in list(extra_valid_files):
-                if file.startswith('queue/agent-groups/') and os.path.basename(file) not in agent_ids:
-                    extra_valid_files.pop(file, None)
+            agent_groups = [os.path.basename(file) for file in extra_valid_files if file.startswith(agent_groups_path)]
+            db_agents = Agent.get_agents_overview(select=['id'], limit=None, filters={'id': agent_groups})['items']
+            db_agents = set(map(itemgetter('id'), db_agents))
+            for leftover in set(agent_groups) - db_agents:
+                extra_valid_files.pop(os.path.join(agent_groups_path, leftover), None)
         except Exception as e:
             logger.error(f"Error getting agent IDs while verifying which extra-valid files are required: {e}")
 
