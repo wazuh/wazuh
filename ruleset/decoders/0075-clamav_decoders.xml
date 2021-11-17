@@ -23,9 +23,9 @@ Nov 18 16:51:04 hostname clamd[511]: /usr/share/clamav-testfiles/clam.arj: ClamA
 -->
 <decoder name="clamd-found">
   <parent>clamd</parent>
-   <prematch>FOUND</prematch>
-   <regex>(\S+):\s+(\S+)\((\S+):</regex>
-   <order>url, extra_data, id</order>
+  <prematch>FOUND</prematch>
+  <regex>(\S+):\s+(\S+)\((\S+):</regex>
+  <order>url, extra_data, id</order>
 </decoder>
 
 <decoder name="freshclam">
