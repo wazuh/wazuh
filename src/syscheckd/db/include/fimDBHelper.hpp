@@ -16,9 +16,28 @@
 
 namespace FIMDBHelper
 {
-
-    void initDB(const std::string&, int, int, void(*sync_callback)(const char* log, const char* tag), void(*loggFunction)(modules_log_level_t level));
-
+#ifndef WIN32
+    /**
+     * @brief Init the FIM DB instance.
+     *
+     * @param sync_interval Interval when the sync is performed-
+     * @param file_limit Max number of files.
+     * @param sync_callback Synchronization callback.
+     * @param logCallback Logging callback.
+     */
+    void initDB(int, int, int, fim_sync_callback_t, logging_callback_t);
+#else
+    /**
+     * @brief Init the FIM DB instance.
+     *
+     * @param sync_interval Interval when the sync is performed-
+     * @param file_limit Max number of files.
+     * @param registry_limit Max number of registries.
+     * @param sync_callback Synchronization callback.
+     * @param logCallback Logging callback.
+     */
+    void initDB(int, int, int, int, fim_sync_callback_t, logging_callback_t);
+#endif
     /**
     * @brief Insert a new row from a table.
     *
@@ -180,17 +199,23 @@ namespace FIMDBHelper
 
         return T::getInstance().executeQuery(query, callback);
     }
-
     template<typename T>
-    void FIMDBHelper::initDB(const std::string& path, unsigned int sync_interval, unsigned int file_limit,
-                            fim_sync_callback_t sync_callback,
-                            void(*loggFunction)(modules_log_level_t level))
+#ifndef WIN32
+    void FIMDBHelper::initDB(unsigned int sync_interval, unsigned int file_limit,
+                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
-        auto handler_DBSync = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, T::CreateStatement());
-        auto handler_RSync = std::make_shared<RemoteSync>();
-
-        T::getInstance().init(sync_interval, file_limit, sync_callback, loggFunction, handler_DBSync, handler_RSync);
+        T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
     }
+#else
+    void FIMDBHelper::initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit
+                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    {
+        T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
+                              handler_RSync);
+    }
+#endif
 }
 
 #endif //_FIMDBHELPER_H
