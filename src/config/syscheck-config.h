@@ -385,6 +385,10 @@ typedef struct _config {
     int file_limit;                                    /* maximum number of files to monitor */
     unsigned int file_limit_enabled;                   /* Enable file_limit option */
 
+    int db_entry_file_limit;             /* maximun number of files to monitor */
+    int db_entry_registry_limit;         /* maximun number of registries to monitor */
+    unsigned int db_entry_limit_enabled; /* Enable FIM entry max limits */
+
     char **ignore;                                     /* list of files/dirs to ignore */
     OSMatch **ignore_regex;                            /* regex of files/dirs to ignore */
 
