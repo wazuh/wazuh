@@ -13,7 +13,7 @@
   - Examples:
   - [notice] [imp] Login success for raphaelv@xx [100.121.170.41] to {a.b.c:143} [on line 92 of "/home/webmail/horde/imp/redirect.php"]
   - [error] [imp] FAILED LOGIN 210.179.154.213 to xxx:143[imap] as mala1
-  -->
+-->
 <decoder name="horde_imp">
   <prematch>^[\w+] [imp] |^[\w+] [horde] </prematch>
 </decoder>
