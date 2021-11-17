@@ -13,6 +13,7 @@
 #define _FIMHELPER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "commonDefs.h"
 
 class FIMDBMOCK final
 {
@@ -23,6 +24,9 @@ class FIMDBMOCK final
             static FIMDBMOCK s_instance;
             return s_instance;
         };
+
+        MOCK_METHOD(void, init, (unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
+                                 std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
         MOCK_METHOD(int, insertItem, (const nlohmann::json&), ());
         MOCK_METHOD(int, removeItem, (const nlohmann::json&), ());
         MOCK_METHOD(int, updateItem, (const nlohmann::json&, ResultCallbackData), ());
