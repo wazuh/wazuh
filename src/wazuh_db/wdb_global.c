@@ -660,6 +660,36 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name) {
     }
 }
 
+cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
+    sqlite3_stmt *stmt = NULL;
+    cJSON * result = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_GROUP_BELONG) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_GROUP_BELONG];
+
+    if (sqlite3_bind_int(stmt, 1, id_agent) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return NULL;
+    }
+
+    result = wdb_exec_stmt(stmt);
+
+    if (!result) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+    }
+
+    return result;
+}
+
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent) {
     sqlite3_stmt *stmt = NULL;
 
