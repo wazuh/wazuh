@@ -14,7 +14,8 @@
   chan_sip.c:11242 in handle_request_register: Registration from
   '"503"<sip:503@192.168.1.107>' failed for '192.168.1.137' - Wrong
   password
-  -->
+-->
+
 <decoder name="asterisk">
   <program_name>^asterisk</program_name>
 </decoder>
