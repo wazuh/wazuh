@@ -9,7 +9,6 @@ import shutil
 import zipfile
 from datetime import datetime
 from operator import eq
-from operator import itemgetter
 from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
@@ -430,7 +429,7 @@ def compare_files(good_files, check_files, node_name):
         try:
             agent_groups = [os.path.basename(file) for file in extra_valid_files if file.startswith(agent_groups_path)]
             db_agents = Agent.get_agents_overview(select=['id'], limit=None, filters={'id': agent_groups})['items']
-            db_agents = set(map(itemgetter('id'), db_agents))
+            db_agents = {agent['id'] for agent in db_agents}
             for leftover in set(agent_groups) - db_agents:
                 extra_valid_files.pop(os.path.join(agent_groups_path, leftover), None)
         except Exception as e:
