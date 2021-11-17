@@ -11,7 +11,7 @@
 <group name="syslog,spamd,">
   <rule id="3500" level="0" noalert="1">
     <match>^spamd</match>
-    <description>Grouping for the spamd rules</description>
+    <description>Grouping for the spamd rules.</description>
   </rule>
 
   <rule id="3501" level="0">
