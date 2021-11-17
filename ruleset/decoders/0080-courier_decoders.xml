@@ -15,7 +15,7 @@
   - courierpop3login: LOGIN FAILED, ip=[::ffff:192.168.0.188]
   - imaplogin: DISCONNECTED, ip=[::ffff:127.0.0.1], time=0
   - Nov 24 18:18:28 gandalf pop3d: LOGIN FAILED, ip=[::ffff:1.2.3.4]
-  -->
+-->
 <decoder name="courier">
   <program_name>^pop3d|^courierpop3login|^imaplogin|^courier-pop3|^courier-imap</program_name>
 </decoder>
