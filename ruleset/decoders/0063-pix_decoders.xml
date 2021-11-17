@@ -36,7 +36,8 @@
   - %PIX-6-305011: Built dynamic UDP translation from inside:192.168.1.2/1026 to outside:192.168.2.14/1163
   - %PIX-6-305011: Built dynamic TCP translation from inside:192.168.1.3/54946 to outside:192.168.2.14/1033
   - %PIX-6-302015: Built outbound UDP connection 156 for outside:192.168.2.10/1514 (192.168.2.10/1514) to inside:192.168.1.2/1026 (192.168.2.14/1163)
-  -->
+-->
+
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
 </decoder>
