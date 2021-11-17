@@ -8,7 +8,7 @@
 
 #include "dbsync.hpp"
 #include "db.hpp"
-#include "commonDefs.hpp"
+#include "commonDefs.h"
 #include "fimDB.hpp"
 
 #ifdef __cplusplus
