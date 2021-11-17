@@ -26,7 +26,6 @@ Tue 08/28/2018 09:25:23.14 "active-response/bin/netsh.cmd" delete "-" "1.2.3.4" 
 Tue 08/28/2018 09:27:23.14 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "1535466424.24354011 18258 (some-hostname) any->WinEvtLog (null)"
 -->
 
-
 <decoder name="ar_log">
   <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
 </decoder>
