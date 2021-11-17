@@ -979,7 +979,8 @@ class Master(server.AbstractServer):
         self.manager = Manager()
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(max_workers=self.cluster_items['intervals']['master']['process_pool_size'])
+        self.task_pool = ProcessPoolExecutor(
+            max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
