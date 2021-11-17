@@ -6,8 +6,8 @@
 -->
 
 <!-- Sample log
-2021/04/20 16:00:35 INFO: wazuh 127.0.0.1 "PUT /agents/group" with parameters {"group_id": "group1", "agents_list": "629,650,654,682"} and body {} done in 0.075s: 200
-2021/10/05 10:30:21 INFO: Generated private key file in WAZUH_PATH/api/configuration/ssl/server.key
+  - 2021/04/20 16:00:35 INFO: wazuh 127.0.0.1 "PUT /agents/group" with parameters {"group_id": "group1", "agents_list": "629,650,654,682"} and body {} done in 0.075s: 200
+  - 2021/10/05 10:30:21 INFO: Generated private key file in WAZUH_PATH/api/configuration/ssl/server.key
 -->
 
 <decoder name="wazuh-api">
