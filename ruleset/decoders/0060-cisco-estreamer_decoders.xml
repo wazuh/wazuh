@@ -14,11 +14,11 @@ Sep  4 11:33:17 opsdcossec01 ossec-admin: AlertPriority 3 SourceIp 10.xx.xx.xx D
 -->
 <decoder name="cisco-estreamer">
 	<program_name></program_name>
-    <prematch>AlertPriority \d+ SourceIp \.+ DestinationIP \.+</prematch>
+  <prematch>AlertPriority \d+ SourceIp \.+ DestinationIP \.+</prematch>
 </decoder>
 
 <decoder name="cisco-estreamer-fields">
 	<parent>cisco-estreamer</parent>
-    <regex>AlertPriority (\d+) SourceIp (\S+) DestinationIP (\S+) \S+ \d+ SourcePort (\d+) DestinationPort (\d+) \S+ \S+ \S+ (\S+)</regex>
+  <regex>AlertPriority (\d+) SourceIp (\S+) DestinationIP (\S+) \S+ \d+ SourcePort (\d+) DestinationPort (\d+) \S+ \S+ \S+ (\S+)</regex>
 	<order>extra_data,srcip,dstip,srcport,dstport,id</order>
 </decoder>
