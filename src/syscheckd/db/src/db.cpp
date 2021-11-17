@@ -94,67 +94,34 @@ static char* find_key_value_limiter(char* input);
 
 #endif
 
-fdb_t* fim_db_init(int storage)
+/**
+ * @brief Create the statement string to create the dbsync schema.
+ *
+ * @return std::string Contains the dbsync's schema for FIM db.
+ */
+std::string CreateStatement()
 {
-    fdb_t* fim;
+    std::string ret = CREATE_FILE_DB_STATEMENT;
+#ifdef WIN32
+    ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
+    ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
+#endif
 
-    const char* path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
-
-    os_calloc(1, sizeof(fdb_t), fim);
-    fim->transaction.interval = COMMIT_INTERVAL;
-
-    w_mutex_init(&fim->mutex, NULL);
-
-    if (storage == FIM_DB_DISK)
-    {
-        fim_db_clean();
-    }
-
-    if (fim_db_create_file(path, schema_fim_sql, storage, &fim->db) < 0)
-    {
-        goto free_fim;
-    }
-
-    if (!storage &&
-            sqlite3_open_v2(path, &fim->db, SQLITE_OPEN_READWRITE, NULL))
-    {
-        goto free_fim;
-    }
-
-    if (fim_db_cache(fim))
-    {
-        goto free_fim;
-    }
-
-    char* error;
-    sqlite3_exec(fim->db, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;", NULL, NULL, &error);
-
-    if (error)
-    {
-        merror("SQL error setting synchronous and journal mode: %s (%d)", error, sqlite3_extended_errcode(fim->db));
-        fim_db_finalize_stmt(fim);
-        sqlite3_free(error);
-        goto free_fim;
-    }
-
-    if (fim_db_exec_simple_wquery(fim, "BEGIN;") == FIMDB_ERR)
-    {
-        fim_db_finalize_stmt(fim);
-        goto free_fim;
-    }
-
-    return fim;
-
-free_fim:
-
-    if (fim->db)
-    {
-        sqlite3_close_v2(fim->db);
-    }
-
-    os_free(fim);
-    return NULL;
+    return ret;
 }
+
+int fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback, logging_callback_t log_callback)
+{
+    auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+
+    auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement());
+    auto rsyncHandler = std::make_shared<RemoteSync>();
+
+    FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, sync_callback, log_callback, dbsyncHandler, rsyncHandler);
+
+    return FIMDB_OK;
+}
+
 
 void fim_db_close(fdb_t* fim_sql)
 {

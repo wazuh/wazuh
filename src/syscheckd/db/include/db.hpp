@@ -59,7 +59,7 @@ extern "C" {
 #define FIM_DB_DECODE_TYPE(_func) (void *(*)(sqlite3_stmt *))(_func)
 #define FIM_DB_FREE_TYPE(_func) (void (*)(void *))(_func)
 #define FIM_DB_CALLBACK_TYPE(_func) (void (*)(fdb_t *, void *, int,  void *))(_func)
-
+#include "commonDefs.h"
 extern const char* schema_fim_sql;
 
 /**
@@ -207,16 +207,17 @@ int fim_db_get_checksum_range(fdb_t* fim_sql,
 int fim_db_get_path_range(fdb_t* fim_sql, fim_type type, const char* start, const char* top, fim_tmp_file** file, int storage);
 
 /**
- * @brief Initialize FIM databases.
+ * @brief Initialize the FIM database.
  *
- * Checks if the databases exists.
- * If it exists deletes the previous version and creates a new one.
- *
- * @param storage 1 Store database in memory, disk otherwise.
- *
- * @return FIM database struct.
+ * It will be dbsync the responsible of managing the DB.
+ * @param storage storage 1 Store database in memory, disk otherwise.
+ * @param sync_interval Interval when the synchronization will be performed.
+ * @param file_limit Maximum number of files to be monitored
+ * @param sync_callback Callback to send the synchronization messages.
+ * @param log_callback Callback to perform logging operations.
+ * @return int
  */
-fdb_t* fim_db_init(int storage);
+int fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback, logging_callback_t log_callback);
 
 /**
  * @brief Finalize stmt and close DB.
