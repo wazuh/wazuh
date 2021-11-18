@@ -18,14 +18,14 @@
   <rule id="52001" level="0">
     <if_sid>52000</if_sid>
     <status>ALLOWED|STATUS</status>
-    <description>Apparmor Ignore ALLOWED or STATUS</description>
+    <description>Apparmor Ignore ALLOWED or STATUS.</description>
   </rule>
 
   <rule id="52002" level="3">
     <if_sid>52000</if_sid>
     <status>DENIED</status>
     <match> apparmor=</match>
-    <description>Apparmor DENIED</description>
+    <description>Apparmor DENIED.</description>
   </rule>
 
   <rule id="52003" level="5">
