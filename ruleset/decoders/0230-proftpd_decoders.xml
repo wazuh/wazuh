@@ -23,7 +23,7 @@
   - Oct 24 09:31:08 devXXX proftpd[39209]: [authpriv.info]: 0.0.0.0 (54.86.105.198[54.86.105.198]) - USER 24-0-proc: Login successful.
   - Oct 24 09:29:57 devXXX proftpd[1150]: [authpriv.notice]: 0.0.0.0 (181.49.117.130[181.49.117.130]) - USER root (Login failed): Incorrect password
   - Oct 22 23:23:34 devXXX proftpd[13512]: [authpriv.notice]: 0.0.0.0 (211.177.150.14[211.177.150.14]) - Maximum login attempts (6) exceeded, connection refused
-  -->
+-->
 <decoder name="proftpd">
   <program_name>^proftpd</program_name>
 </decoder>
