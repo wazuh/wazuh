@@ -3,13 +3,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import copy
 import logging
 import os
-
 from concurrent.futures import ThreadPoolExecutor
 from time import time
-                               
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from jose import JWTError, jwt
@@ -134,7 +132,7 @@ def change_keypair():
 def get_security_conf():
     conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
                                                     default_conf=conf.default_security_configuration))
-    return copy.deepcopy(conf.security_conf)
+    return conf.security_conf
 
 
 def generate_token(user_id=None, data=None, run_as=False):
