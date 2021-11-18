@@ -16,7 +16,7 @@
     failed session 2740580090 by root as root:root from 1.254.168.192
   - failed session 2740580090 by root as root:root from 1.254.168.192
   - ok session 347344759 by 500959152 as root:root from 3.11.8.4 obj
-  -->
+-->
 <decoder name="solaris_bsm">
   <program_name>^audit$</program_name>
 </decoder>
@@ -43,11 +43,11 @@
     b 10.4.122.243,138 -> 255.255.255.255,138 PR udp len 20 229 IN mbcast
   - ipmon[11523]: [ID 702911 local0.notice] 09:30:40.398290 ce0 @0:14
     p 10.4.122.243,123 -> 10.4.122.16,123 PR udp len 20 76 K-S OUT
-  -->
+-->
 <decoder name="ipfilter">
-   <type>firewall</type>
-   <program_name>^ipmon</program_name>
-   <regex> (\w) (\S+),(\d+) -> </regex>
-   <regex>(\S+),(\d+) PR (\w+) </regex>
-   <order>action,srcip,srcport,dstip,dstport,protocol</order>
+  <type>firewall</type>
+  <program_name>^ipmon</program_name>
+  <regex> (\w) (\S+),(\d+) -> </regex>
+  <regex>(\S+),(\d+) PR (\w+) </regex>
+  <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>
