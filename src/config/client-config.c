@@ -528,7 +528,7 @@ int Test_Client(const char * path){
     int fail = 0;
     agent test_client = { .server = NULL };
 
-    if (ReadConfig(CAGENT_CONFIG | CCLIENTSHARED, path, &test_client, NULL) < 0) {
+    if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_client, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Client", path);
 		fail = 1;
 	}

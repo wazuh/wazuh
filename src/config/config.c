@@ -129,11 +129,17 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
-            if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-            if ((modules & CCLIENTSHARED) && (Read_Client_Shared(chld_node, d1) < 0)) {
-                goto fail;
+            if (modules & CCLIENT) {
+                if (modules & CAGENT_CONFIG) {
+                    if (Read_Client_Shared(chld_node, d1) < 0){
+                        goto fail;
+                    }
+                }
+                else {
+                    if (Read_Client(xml, chld_node, d1, d2) < 0){
+                        goto fail;
+                    }
+                }
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
             if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
