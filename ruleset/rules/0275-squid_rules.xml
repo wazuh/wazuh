@@ -36,32 +36,28 @@
   <rule id="35004" level="5">
     <if_sid>35002</if_sid>
     <id>^401</id>
-    <description>Squid: Unauthorized: Failed attempt to access </description>
-    <description>authorization-required file or directory.</description>
+    <description>Squid: Unauthorized: Failed attempt to access authorization-required file or directory.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="35005" level="5">
     <if_sid>35002</if_sid>
     <id>^403</id>
-    <description>Squid: Forbidden: Attempt to access forbidden file </description>
-    <description>or directory.</description>
+    <description>Squid: Forbidden: Attempt to access forbidden file or directory.</description>
     <group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="35006" level="5">
     <if_sid>35002</if_sid>
     <id>^404</id>
-    <description>Squid: Not Found: Attempt to access non-existent </description>
-    <description>file or directory.</description>
+    <description>Squid: Not Found: Attempt to access non-existent file or directory.</description>
     <group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="35007" level="5">
     <if_sid>35002</if_sid>
     <id>^407</id>
-    <description>Squid: Proxy Authentication Required: User is not </description>
-    <description>authorized to use proxy.</description>
+    <description>Squid: Proxy Authentication Required: User is not authorized to use proxy.</description>
     <mitre>
       <id>T1090</id>
     </mitre>
@@ -92,8 +88,7 @@
   <rule id="35021" level="6">
     <if_sid>35006</if_sid>
     <url>blst.php|xxx3.php|ngr7.php|ngr2.php|/nul.php$|/mul.php$|/444.php</url>
-    <description>Squid: Attempt to access a Beagle worm (or variant) </description>
-    <description>file.</description>
+    <description>Squid: Attempt to access a Beagle worm (or variant) file.</description>
     <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
     <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
     <mitre>
@@ -146,8 +141,7 @@
     <if_matched_sid>35005</if_matched_sid>
     <same_source_ip />
     <different_url />
-    <description>Squid: Multiple attempts to access forbidden file </description>
-    <description>or directory from same source ip.</description>
+    <description>Squid: Multiple attempts to access forbidden file or directory from same source ip.</description>
     <mitre>
       <id>T1083</id>
     </mitre>
@@ -202,8 +196,7 @@
   <rule id="35056" level="12" frequency="$SQUID_FREQ" timeframe="240">
     <if_matched_sid>35022</if_matched_sid>
     <same_source_ip />
-    <description>Squid: Multiple attempts to access a worm/trojan/virus </description>
-    <description>related web site. System probably infected.</description>
+    <description>Squid: Multiple attempts to access a worm/trojan/virus related web site. System probably infected.</description>
     <group>pci_dss_10.2.4,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
