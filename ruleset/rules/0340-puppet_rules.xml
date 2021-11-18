@@ -14,15 +14,15 @@
         To use "if_sid 80000 or 80001" with these logs, rule 8000 and 80001 must have a level of 0 or >2.
     -->
     <rule id="80000" level="0" noalert="1" >
-        <decoded_as>puppet-master</decoded_as>
-        <description>Puppet Master messages grouped.</description>
-        <group>master,</group>
+      <decoded_as>puppet-master</decoded_as>
+      <description>Puppet Master messages grouped.</description>
+      <group>master,</group>
     </rule>
 
     <rule id="80001" level="0" noalert="1" >
-        <decoded_as>puppet-agent</decoded_as>
-        <description>Puppet Agent messages grouped.</description>
-        <group>agent,</group>
+      <decoded_as>puppet-agent</decoded_as>
+      <description>Puppet Agent messages grouped.</description>
+      <group>agent,</group>
     </rule>
 
     <!-- Mater Rules -->
@@ -32,10 +32,10 @@
     Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3
     -->
     <rule id="80002" level="5">
-        <if_sid>80000</if_sid>
-        <match>^Starting</match>
-        <description>Puppet Master started</description>
-        <group>gpg13_4.14,</group>
+      <if_sid>80000</if_sid>
+      <match>^Starting</match>
+      <description>Puppet Master started.</description>
+      <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -44,11 +44,11 @@
     - Oct  1 12:17:06 puppet puppet-master[1612]: Caught TERM; storing stop
     -->
     <rule id="80003" level="5">
-        <if_sid>80000</if_sid>
-        <match>^Processing|^Caught</match>
-        <regex>\.+stop</regex>
-        <description>Puppet Master stopped</description>
-        <group>gpg13_4.14,</group>
+      <if_sid>80000</if_sid>
+      <match>^Processing|^Caught</match>
+      <regex>\.+stop</regex>
+      <description>Puppet Master stopped.</description>
+      <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -56,10 +56,10 @@
     - Oct  1 17:56:52 puppet puppet-master[7879]: Permission denied - /etc/puppet/modules/ossec/files/ossec-agent-win32-2.8.exe
     -->
     <rule id="80004" level="5">
-        <if_sid>80000</if_sid>
-        <match>^Permission denied </match>
-        <description>Puppet Master: Permission denied</description>
-        <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <if_sid>80000</if_sid>
+      <match>^Permission denied </match>
+      <description>Puppet Master: Permission denied.</description>
+      <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <!--
@@ -70,9 +70,9 @@
     - Oct  5 16:13:20 puppet puppet-agent[9126]: Using cached certificate_revocation_list for ca
     -->
     <rule id="80005" level="0">
-        <if_sid>80000</if_sid>
-        <match>Certificate|certificate</match>
-        <description>Puppet Master: Certificate issue</description>
+      <if_sid>80000</if_sid>
+      <match>Certificate|certificate</match>
+      <description>Puppet Master: Certificate issue.</description>
     </rule>
 
     <!--
@@ -107,25 +107,25 @@
     - *has failure*
     -->
     <rule id="80006" level="7">
-        <if_sid>80000</if_sid>
-        <match>^Could not run: Address already in use</match>
-        <description>Puppet Master: not run - address in use</description>
-        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+      <if_sid>80000</if_sid>
+      <match>^Could not run: Address already in use</match>
+      <description>Puppet Master: not run - address in use.</description>
+      <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80007" level="5">
-        <if_sid>80000</if_sid>
-        <match>^Could not|^You cannot|^too few arguments|^Duplicate declaration|^Unrecognised escape sequence|^Invalid parameter|is not|has not been tested|Unknown function|failed|has failure</match>
-        <regex>manifests</regex>
-        <description>Puppet Master: Manifest Error</description>
-        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+      <if_sid>80000</if_sid>
+      <match>^Could not|^You cannot|^too few arguments|^Duplicate declaration|^Unrecognised escape sequence|^Invalid parameter|is not|has not been tested|Unknown function|failed|has failure</match>
+      <regex>manifests</regex>
+      <description>Puppet Master: Manifest Error.</description>
+      <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80008" level="4">
-        <if_sid>80000</if_sid>
-        <match>^Could not|not found|^Not collecting|^The environment must be|^Syntax error|^Failed|failed|has failure</match>
-        <description>Puppet Master: Error</description>
-        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+      <if_sid>80000</if_sid>
+      <match>^Could not|not found|^Not collecting|^The environment must be|^Syntax error|^Failed|failed|has failure</match>
+      <description>Puppet Master: Error.</description>
+      <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
 
@@ -141,19 +141,19 @@
     - Oct  5 15:18:58 puppet puppet-master[1039]: Sections other than main, master, agent, user are deprecated in puppet.conf. Please use the directory environments feature to specify environments. (See http://docs.puppetlabs.com/puppet/latest/reference/environments.html)
     -->
     <rule id="80009" level="0">
-        <if_sid>80000</if_sid>
-        <program_name>puppet-master</program_name>
-        <match>^Compiled catalog|^Reopening log</match>
-        <description>Puppet Master: Info</description>
-        <group></group>
+      <if_sid>80000</if_sid>
+      <program_name>puppet-master</program_name>
+      <match>^Compiled catalog|^Reopening log</match>
+      <description>Puppet Master: Info.</description>
+      <group></group>
     </rule>
 
     <rule id="80010" level="2">
-        <if_sid>80000</if_sid>
-        <program_name>puppet-master</program_name>
-        <match>^Compiled catalog|^Reopening log|is deprecated|are deprecated</match>
-        <description>Puppet Master: Deprecated</description>
-        <group></group>
+      <if_sid>80000</if_sid>
+      <program_name>puppet-master</program_name>
+      <match>^Compiled catalog|^Reopening log|is deprecated|are deprecated</match>
+      <description>Puppet Master: Deprecated.</description>
+      <group></group>
     </rule>
 
 
@@ -163,10 +163,10 @@
     - Oct  5 16:13:20 puppet puppet-agent[9113]: Starting Puppet client version 3.8.3
     -->
     <rule id="80050" level="5">
-        <if_sid>80001</if_sid>
-        <match>^Starting Puppet client</match>
-        <description>Puppet Agent started</description>
-        <group>gpg13_4.14,</group>
+      <if_sid>80001</if_sid>
+      <match>^Starting Puppet client</match>
+      <description>Puppet Agent started.</description>
+      <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -174,11 +174,11 @@
     - Oct  5 17:43:18 puppet puppet-agent[6273]: Caught INT; storing stop
     -->
     <rule id="80051" level="5">
-        <if_sid>80001</if_sid>
-        <match>^Processing|^Caught</match>
-        <regex>\.+stop</regex>
-        <description>Puppet Agent stopped</description>
-        <group>gpg13_4.14,</group>
+      <if_sid>80001</if_sid>
+      <match>^Processing|^Caught</match>
+      <regex>\.+stop</regex>
+      <description>Puppet Agent stopped.</description>
+      <group>gpg13_4.14,</group>
     </rule>
 
     <!--
@@ -190,16 +190,16 @@
     - Oct 13 11:17:29 server puppet-agent[2910]: Could not request certificate: The certificate retrieved from the master does not match the agent's private key.
     -->
     <rule id="80052" level="2">
-        <if_sid>80001</if_sid>
-        <match>^Could not request certificate</match>
-        <regex>master does not match the agent</regex>
-        <description>Puppet Agent: Certificate - Could not request certificate</description>
+      <if_sid>80001</if_sid>
+      <match>^Could not request certificate</match>
+      <regex>master does not match the agent</regex>
+      <description>Puppet Agent: Certificate - Could not request certificate.</description>
     </rule>
 
     <rule id="80053" level="0">
-        <if_sid>80001</if_sid>
-        <match>^Certificate Request|^Using cached certificate|SSL key</match>
-        <description>Puppet Agent: Certificate issue</description>
+      <if_sid>80001</if_sid>
+      <match>^Certificate Request|^Using cached certificate|SSL key</match>
+      <description>Puppet Agent: Certificate issue.</description>
     </rule>
 
 
@@ -233,45 +233,45 @@
     -->
 
     <rule id="80054" level="4">
-        <if_sid>80001</if_sid>
-        <regex>^No \S+ file found|file \S+ does not exist</regex>
-        <description>Puppet Agent: Error - no file found or does not exist</description>
-        <group>gpg13_4.3,</group>
+      <if_sid>80001</if_sid>
+      <regex>^No \S+ file found|file \S+ does not exist</regex>
+      <description>Puppet Agent: Error - no file found or does not exist.</description>
+      <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80055" level="4">
-        <if_sid>80001</if_sid>
-        <regex>feature \S+ is missing</regex>
-        <description>Puppet Agent: Error - feature is missing</description>
-        <group>gpg13_4.3,</group>
+      <if_sid>80001</if_sid>
+      <regex>feature \S+ is missing</regex>
+      <description>Puppet Agent: Error - feature is missing.</description>
+      <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80056" level="5">
-        <if_sid>80001</if_sid>
-        <match>^Failed to load library</match>
-        <description>Puppet Agent: Error - failed library</description>
-        <group>gpg13_4.3,</group>
+      <if_sid>80001</if_sid>
+      <match>^Failed to load library</match>
+      <description>Puppet Agent: Error - failed library.</description>
+      <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80057" level="5">
-        <if_sid>80001</if_sid>
-        <match>^Failed to apply catalog</match>
-        <description>Puppet Agent: Error - failed to apply catalog</description>
-        <group>gpg13_4.3,</group>
+      <if_sid>80001</if_sid>
+      <match>^Failed to apply catalog</match>
+      <description>Puppet Agent: Error - failed to apply catalog.</description>
+      <group>gpg13_4.3,</group>
     </rule>
 
     <rule id="80058" level="10">
-        <if_sid>80001</if_sid>
-        <match>Connection refused - connect</match>
-        <description>Puppet Agent: connection refused</description>
-        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+      <if_sid>80001</if_sid>
+      <match>Connection refused - connect</match>
+      <description>Puppet Agent: connection refused.</description>
+      <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80059" level="4">
-        <if_sid>80001</if_sid>
-        <match>^Unable to fetch|does not support|Not using cache|Could not retrieve|Failed|failed|has failure</match>
-        <description>Puppet Agent: Error</description>
-        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+      <if_sid>80001</if_sid>
+      <match>^Unable to fetch|does not support|Not using cache|Could not retrieve|Failed|failed|has failure</match>
+      <description>Puppet Agent: Error.</description>
+      <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -301,32 +301,32 @@
     - Oct  8 11:51:20 vpc-puppet puppet-agent[16317]: Executing '/usr/bin/apt-key add /tmp/apt_key20151008-16317-8e36sn'
     -->
     <rule id="80070" level="0">
-        <if_sid>80001</if_sid>
-        <match>created|defined</match>
-        <regex>\(\.+\) created|\(\.+\) defined</regex>
-        <description>Puppet Agent: Info - create or defined content</description>
-        <group>gpg13_4.12,</group>
+      <if_sid>80001</if_sid>
+      <match>created|defined</match>
+      <regex>\(\.+\) created|\(\.+\) defined</regex>
+      <description>Puppet Agent: Info - create or defined content.</description>
+      <group>gpg13_4.12,</group>
     </rule>
 
     <rule id="80071" level="0">
-        <if_sid>80001</if_sid>
-        <match>^Retrieving|^Loading|^Caching|^Evicting|^Using settings|^Finishing transaction|^Configuring| connection for|mode changed|Autorequiring</match>
-        <description>Puppet Agent: Info</description>
-        <group>gpg13_4.12,</group>
+      <if_sid>80001</if_sid>
+      <match>^Retrieving|^Loading|^Caching|^Evicting|^Using settings|^Finishing transaction|^Configuring| connection for|mode changed|Autorequiring</match>
+      <description>Puppet Agent: Info.</description>
+      <group>gpg13_4.12,</group>
     </rule>
 
     <rule id="80072" level="2">
-        <if_sid>80001</if_sid>
-        <match>^Applying configuration|^Finished catalog</match>
-        <description>Puppet Agent: Info - applying configuration</description>
-        <group>gpg13_4.12,</group>
+      <if_sid>80001</if_sid>
+      <match>^Applying configuration|^Finished catalog</match>
+      <description>Puppet Agent: Info - applying configuration.</description>
+      <group>gpg13_4.12,</group>
     </rule>
 
     <rule id="80073" level="2">
-        <if_sid>80001</if_sid>
-        <match>^Executing</match>
-        <description>Puppet Agent: Info - executing </description>
-        <group>gpg13_4.12,</group>
+      <if_sid>80001</if_sid>
+      <match>^Executing</match>
+      <description>Puppet Agent: Info - executing.</description>
+      <group>gpg13_4.12,</group>
     </rule>
 
 
@@ -354,21 +354,21 @@
                 <agent_config> localfile_code </agent_config>
     -->
     <rule id="80090" level="0">
-        <if_sid>530</if_sid>
-        <match>^ossec: output: 'timestamp_puppet</match>
-        <description>Command check if puppet runs every 30 min or less</description>
+      <if_sid>530</if_sid>
+      <match>^ossec: output: 'timestamp_puppet</match>
+      <description>Command check if puppet runs every 30 min or less.</description>
     </rule>
 
     <rule id="80091" level="0">
-        <if_sid>80090</if_sid>
-        <match>Puppet: OK</match>
-        <description>Puppet ran in the last 30 minutes</description>
+      <if_sid>80090</if_sid>
+      <match>Puppet: OK</match>
+      <description>Puppet ran in the last 30 minutes.</description>
     </rule>
 
     <rule id="80092" level="5">
-        <if_sid>80090</if_sid>
-        <match>Puppet: KO</match>
-        <description>Puppet did not run in the last 30 minutes</description>
+      <if_sid>80090</if_sid>
+      <match>Puppet: KO</match>
+      <description>Puppet did not run in the last 30 minutes.</description>
     </rule>
 
 </group>
