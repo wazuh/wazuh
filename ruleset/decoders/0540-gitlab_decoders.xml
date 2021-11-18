@@ -85,8 +85,9 @@
 -->
 <decoder name="gitlab_shell_stderr">
 	<prematch>\w, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]  \w+ -- :</prematch>
-	</decoder>
-	<decoder name="gitlab_shell_stderr_info">
+</decoder>
+
+<decoder name="gitlab_shell_stderr_info">
 	<parent>gitlab_shell_stderr</parent>
 	<prematch>I, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
 	<regex>I, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (INFO) -- : (\.+)</regex>
