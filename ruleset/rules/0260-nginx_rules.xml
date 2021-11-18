@@ -71,7 +71,7 @@
 
   <rule id="31317" level="0">
     <if_sid>31303</if_sid>
-    <match>failed (2: No such file or directory</match>
+    <match>failed (2: No such file or directory)</match>
     <description>Nginx: Common cache error when files were removed.</description>
   </rule>
 
@@ -86,28 +86,28 @@
   <rule id="31330" level="0">
     <if_sid>31301</if_sid>
     <match>ModSecurity: Warning</match>
-    <description>ModSecurity Warning messages grouped</description>
+    <description>ModSecurity Warning messages grouped.</description>
     <group>modsecurity,</group>
   </rule>
 
   <rule id="31331" level="0">
     <if_sid>31301</if_sid>
     <match>ModSecurity: Access denied</match>
-    <description>ModSecurity Access denied messages grouped</description>
+    <description>ModSecurity Access denied messages grouped.</description>
     <group>modsecurity,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="31332" level="0">
     <if_sid>31301</if_sid>
     <match>ModSecurity: Audit log:</match>
-    <description>ModSecurity Audit log messages grouped</description>
+    <description>ModSecurity Audit log messages grouped.</description>
     <group>modsecurity,gpg13_10.1,</group>
   </rule>
 
   <rule id="31333" level="7">
     <if_sid>31331</if_sid>
     <match>with code 403</match>
-    <description>ModSecurity rejected a query</description>
+    <description>ModSecurity rejected a query.</description>
     <mitre>
       <id>T1083</id>
     </mitre>
@@ -117,14 +117,14 @@
   <rule id="31334" level="3">
     <if_sid>31301</if_sid>
     <match>NAXSI_FMT:</match>
-    <description>NAXSI warning</description>
+    <description>NAXSI warning.</description>
     <group>naxsi,</group>
   </rule>
 
   <rule id="31335" level="7">
     <if_sid>31334</if_sid>
     <match>block=1</match>
-    <description>NAXSI rejected a query</description>
+    <description>NAXSI rejected a query.</description>
     <mitre>
       <id>T1083</id>
     </mitre>
