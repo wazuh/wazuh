@@ -77,7 +77,7 @@
 
 <decoder name="wazuh-api-fields">
   <parent>wazuh-api-info</parent>
-  <regex type="pcre2">INFO:(.+):|WARNING:(.+)$|ERROR:(.+)$|CRITICAL:(.+)$</regex>
+  <regex type="pcre2">\w+:\s(.+)</regex>
   <order>message</order>
 </decoder>
 
