@@ -24,13 +24,13 @@
   <rule id="11102" level="0">
     <if_sid>11100</if_sid>
     <match> created </match>
-    <description>FTPD: File created via FTP</description>
+    <description>FTPD: File created via FTP.</description>
   </rule>
 
   <rule id="11103" level="0">
     <if_sid>11100</if_sid>
     <match> deleted </match>
-    <description>FTPD: File deleted via FTP</description>
+    <description>FTPD: File deleted via FTP.</description>
   </rule>
 
   <rule id="11104" level="0">
@@ -49,7 +49,7 @@
     <if_sid>11100</if_sid>
     <match>FTP LOGIN FROM|connection from|connect from</match>
     <group>connection_attempt,pci_dss_10.2.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>FTPD: Remote host connected to FTP server.,</description>
+    <description>FTPD: Remote host connected to FTP server.</description>
   </rule>
 
   <rule id="11107" level="5">
