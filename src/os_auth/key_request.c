@@ -110,11 +110,11 @@ error:
 }
 
 char * key_request_socket_output(request_type_t type, char *request) {
-    int sock;
-    int i;
+    int sock = 0;
+    int i = 0;
     char msg[OS_SIZE_128] = {0};
-    int msg_len;
-    ssize_t length;
+    int msg_len = 0;
+    ssize_t length = 0;
     char *output = NULL;
 
     // Connect to the socket
