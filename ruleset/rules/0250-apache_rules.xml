@@ -289,14 +289,14 @@
   <rule id="30318" level="5">
     <if_sid>30301</if_sid>
     <match>PHP Notice:</match>
-    <description>Apache: PHP Notice in Apache log</description>
+    <description>Apache: PHP Notice in Apache log.</description>
   </rule>
 
   <rule id="30113" level="5">
     <if_sid>30302</if_sid>
     <id>AUDIT</id>
     <field name="apache.error_message">authentication failure for principal</field>
-    <description>Apache: $(apache.error_message) $(apache.remote_ip) due to $(apache.error_reason)</description>
+    <description>Apache: $(apache.error_message) $(apache.remote_ip) due to $(apache.error_reason).</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -304,28 +304,28 @@
   <rule id="30401" level="0">
     <if_sid>30301</if_sid>
     <match>ModSecurity: Warning</match>
-    <description>ModSecurity Warning messages grouped</description>
+    <description>ModSecurity Warning messages grouped.</description>
     <group>modsecurity,</group>
   </rule>
 
   <rule id="30402" level="0">
     <if_sid>30301</if_sid>
     <match>ModSecurity: Access denied</match>
-    <description>ModSecurity Access denied messages grouped</description>
+    <description>ModSecurity Access denied messages grouped.</description>
     <group>modsecurity,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="30403" level="0">
     <if_sid>30301</if_sid>
     <match>ModSecurity: Audit log:</match>
-    <description>ModSecurity Audit log messages grouped</description>
+    <description>ModSecurity Audit log messages grouped.</description>
     <group>modsecurity,gpg13_10.1,</group>
   </rule>
 
   <rule id="30411" level="7">
     <if_sid>30402</if_sid>
     <match>with code 403</match>
-    <description>ModSecurity rejected a query</description>
+    <description>ModSecurity rejected a query.</description>
     <mitre>
       <id>T1083</id>
     </mitre>
