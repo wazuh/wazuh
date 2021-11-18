@@ -2968,7 +2968,7 @@ void test_dbsync_delete_type_exists_data_bind_error(void **state) {
 
     sprintf(error_message, DB_AGENT_SQL_ERROR, "000", error_value);
 
-    os_strdup("osinfo DELETED NULL|NULL|NULL|data5|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|", query);
+    os_strdup("osinfo DELETED NULL|NULL|NULL|data5|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|", query);
 
     will_return(__wrap_wdb_get_cache_stmt, 1);
     will_return_always(__wrap_sqlite3_errmsg, error_value);
