@@ -12,7 +12,7 @@
 <group name="ids,">
   <rule id="20100" level="8">
     <category>ids</category>
-    <if_fts></if_fts>
+    <if_fts />
     <description>First time this IDS alert is generated.</description>
     <group>fts,</group>
   </rule>
@@ -85,8 +85,7 @@
     <same_source_ip />
     <same_id />
     <ignore>srcip, id</ignore>
-    <description>Multiple IDS events from same source ip </description>
-    <description>(ignoring now this srcip and id).</description>
+    <description>Multiple IDS events from same source ip (ignoring now this srcip and id).</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -94,8 +93,7 @@
     <if_matched_sid>20152</if_matched_sid>
     <same_id />
     <ignore>id</ignore>
-    <description>Multiple IDS alerts for same id </description>
-    <description>(ignoring now this id).</description>
+    <description>Multiple IDS alerts for same id (ignoring now this id).</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 </group>
