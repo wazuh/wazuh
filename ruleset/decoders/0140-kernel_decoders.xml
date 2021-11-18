@@ -22,60 +22,57 @@
     LEN=52 TOS=0x10 PREC=0x00 TTL=64 ID=49546 DF PROTO=TCP SPT=43068
     DPT=22 WINDOW=8192 RES=0x00 ACK URGP=0
   - Aug 17 10:03:37 myhostname kernel: SFW2-INext-DROP-DEFLT IN=eth0 OUT= MAC=00:08:02:da:c8:51:00:0f:f7:74:31:8a:08:00 SRC=1.2.3.36 DST=1.2.3.194 LEN=28 TOS=0x00 PREC=0x00 TTL=44 ID=60200 PROTO=ICMP TYPE=8 CODE=0 ID=10466 SEQ=21229
-  -->
+-->
 <decoder name="kernel">
    <program_name>^kernel</program_name>
 </decoder>
 
 <decoder name="iptables-1">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <prematch>^[\d+.\d+] \S+ IN=</prematch>
-
-   <regex>^[\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+)</regex>
-   <regex> \.+ PROTO=(\w+) </regex>
-   <order>action,srcip,dstip,protocol</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <prematch>^[\d+.\d+] \S+ IN=</prematch>
+  <regex>^[\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+)</regex>
+  <regex> \.+ PROTO=(\w+) </regex>
+  <order>action,srcip,dstip,protocol</order>
 </decoder>
 
 <decoder name="iptables-1">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
-   <order>srcport,dstport</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
 
 <decoder name="iptables-2">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <prematch>^\S+ IN=</prematch>
-
-   <regex>^(\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
-   <regex>PROTO=(\w+) </regex>
-   <order>action,srcip,dstip,protocol</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <prematch>^\S+ IN=</prematch>
+  <regex>^(\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
+  <regex>PROTO=(\w+) </regex>
+  <order>action,srcip,dstip,protocol</order>
 </decoder>
 
 <decoder name="iptables-2">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
-   <order>srcport,dstport</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
 
 <decoder name="iptables-shorewall">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <prematch>^Shorewall:\S+:</prematch>
-
-   <regex offset="after_prematch">^(\S+):\.+ SRC=(\S+) DST=(\S+) \.+ </regex>
-   <regex>PROTO=(\w+) </regex>
-   <order>action,srcip,dstip,protocol</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <prematch>^Shorewall:\S+:</prematch>
+  <regex offset="after_prematch">^(\S+):\.+ SRC=(\S+) DST=(\S+) \.+ </regex>
+  <regex>PROTO=(\w+) </regex>
+  <order>action,srcip,dstip,protocol</order>
 </decoder>
 
 <decoder name="iptables-shorewall">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
-   <order>srcport,dstport</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
 
 <decoder name="iptables-shorewall2">
@@ -87,7 +84,6 @@
   <order>action,srcip,dstip,protocol</order>
 </decoder>
 
-
 <!-- OpenWRT firewall
 Tested on OpenWRT with Chaos Calmer 15.05 with firewall logging to syslog.
 Example:
@@ -95,32 +91,32 @@ Example:
 -->
 
 <decoder name="iptables-OpenWRT">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <prematch>^[\d+.\d+] \S+\.*IN=</prematch>
-   <regex>^[\d+.\d+] (\S*)\(</regex>
-   <order>action</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <prematch>^[\d+.\d+] \S+\.*IN=</prematch>
+  <regex>^[\d+.\d+] (\S*)\(</regex>
+  <order>action</order>
 </decoder>
 
 <decoder name="iptables-OpenWRT">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">SRC=(\S+) DST=(\S+)</regex>
-   <order>srcip,dstip</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">SRC=(\S+) DST=(\S+)</regex>
+  <order>srcip,dstip</order>
 </decoder>
 
 <decoder name="iptables-OpenWRT">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">PROTO=(\w+)</regex>
-   <order>protocol</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">PROTO=(\w+)</regex>
+  <order>protocol</order>
 </decoder>
 
 <decoder name="iptables-OpenWRT">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">SPT=(\d+) DPT=(\d+) </regex>
-   <order>srcport,dstport</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">SPT=(\d+) DPT=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
 
 <!-- apparmor
@@ -142,20 +138,19 @@ Example:
   <order>status, extra_data</order>
 </decoder>
 
-
 <!--
-mptscsih \ mptbase decoder
+  mptscsih \ mptbase decoder
 
-Description: module for SCSI controllers.
+  Description: module for SCSI controllers.
 
-Examples:
-[ 5008.286061] mptscsih: ioc0: task abort: FAILED (rv=2003) (sc=ffff88007a8a9f00)
+  Examples:
+  [ 5008.286061] mptscsih: ioc0: task abort: FAILED (rv=2003) (sc=ffff88007a8a9f00)
 
-[ 6498.769248] mptbase: ioc0: RAID STATUS CHANGE for PhysDisk 1 id=8
-[ 6498.769252] mptbase: ioc0:   PhysDisk is now failed, out of sync
+  [ 6498.769248] mptbase: ioc0: RAID STATUS CHANGE for PhysDisk 1 id=8
+  [ 6498.769252] mptbase: ioc0:   PhysDisk is now failed, out of sync
 
-[ 6498.775783] mptbase: ioc0: RAID STATUS CHANGE for VolumeID 0
-[ 6498.775788] mptbase: ioc0:   volume is now degraded, enabled
+  [ 6498.775783] mptbase: ioc0: RAID STATUS CHANGE for VolumeID 0
+  [ 6498.775788] mptbase: ioc0:   volume is now degraded, enabled
 -->
 <decoder name="mptscsih-1">
   <parent>kernel</parent>
@@ -171,23 +166,22 @@ Examples:
   <order>id,data,action,status</order>
 </decoder>
 
-
 <!--
-USB
+  USB
 
-Feb  3 10:23:08 testsys kernel: usb 1-1.2: New USB device found, idVendor=0781, idProduct=5575
-Mar 23 15:04:52 manager kernel: [62828.333722] usb 1-1: New USB device found, idVendor=0930, idProduct=6544
-Mar 23 15:05:23 manager kernel: usb 1-1: USB disconnect, device number 2
-Mar 23 15:05:23 manager kernel: [62859.373865] usb 1-1: USB disconnect, device number 2
+  Feb  3 10:23:08 testsys kernel: usb 1-1.2: New USB device found, idVendor=0781, idProduct=5575
+  Mar 23 15:04:52 manager kernel: [62828.333722] usb 1-1: New USB device found, idVendor=0930, idProduct=6544
+  Mar 23 15:05:23 manager kernel: usb 1-1: USB disconnect, device number 2
+  Mar 23 15:05:23 manager kernel: [62859.373865] usb 1-1: USB disconnect, device number 2
 
-Mar 15 23:14:34 manager kernel: [ 195.634715] usb 1-1: New USB device found, idVendor=0bda, idProduct=568a, bcdDevice=65.10
-Mar 15 23:14:34 manager kernel: [ 290.678326] usb 1-1: USB disconnect, device number 2
+  Mar 15 23:14:34 manager kernel: [ 195.634715] usb 1-1: New USB device found, idVendor=0bda, idProduct=568a, bcdDevice=65.10
+  Mar 15 23:14:34 manager kernel: [ 290.678326] usb 1-1: USB disconnect, device number 2
 -->
 <decoder name="usb-storage-attached">
-    <parent>kernel</parent>
-    <prematch offset="after_parent">^usb|^[\s*\S+] usb</prematch>
-    <regex offset="after_parent">^(usb) |^[\s*\S+] (usb)</regex>
-    <order>id</order>
+  <parent>kernel</parent>
+  <prematch offset="after_parent">^usb|^[\s*\S+] usb</prematch>
+  <regex offset="after_parent">^(usb) |^[\s*\S+] (usb)</regex>
+  <order>id</order>
 </decoder>
 
 <!-- UFW - Uncomplicated Firewall
@@ -196,18 +190,17 @@ Sep 20 15:52:00 managerHost kernel: [ 2870.303541] [UFW AUDIT] IN= OUT=ppp0 SRC=
 Feb  4 23:33:37 hostname kernel: [ 3529.289825] [UFW BLOCK] IN=eth0 OUT= MAC=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd SRC=444.333.222.111 DST=111.222.333.444 LEN=103 TOS=0x00 PREC=0x00 TTL=52 ID=0 DF PROTO=UDP SPT=53 DPT=36427 LEN=83
 -->
 <decoder name="ufw">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <prematch>^[\s*\d+.\d+] [\.*] IN=</prematch>
-
-   <regex>^[\s*\d+.\d+] [(\.*)] \.+ SRC=(\S+) DST=(\S+)</regex>
-   <regex> \.+ PROTO=(\w+) </regex>
-   <order>action,srcip,dstip,protocol</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <prematch>^[\s*\d+.\d+] [\.*] IN=</prematch>
+  <regex>^[\s*\d+.\d+] [(\.*)] \.+ SRC=(\S+) DST=(\S+)</regex>
+  <regex> \.+ PROTO=(\w+) </regex>
+  <order>action,srcip,dstip,protocol</order>
 </decoder>
 
 <decoder name="ufw">
-   <parent>kernel</parent>
-   <type>firewall</type>
-   <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
-   <order>srcport,dstport</order>
+  <parent>kernel</parent>
+  <type>firewall</type>
+  <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
