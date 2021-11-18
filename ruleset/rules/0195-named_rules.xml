@@ -10,7 +10,7 @@
 <group name="syslog,named,">
   <rule id="12100" level="0">
     <decoded_as>named</decoded_as>
-    <description>Grouping of the named rules</description>
+    <description>Grouping of the named rules.</description>
   </rule>
 
   <rule id="12101" level="12">
@@ -57,7 +57,7 @@
     <if_sid>12100</if_sid>
     <match>refused notify from non-master</match>
     <description>DNS configuration error.</description>
-	<group>system_error,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+	  <group>system_error,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12107" level="0">
@@ -72,7 +72,7 @@
     <match>query (cache) denied|: query (cache)</match>
     <description>Query cache denied (probably config error).</description>
     <info type="link">http://www.reedmedia.net/misc/dns/errors.html</info>
-	<group>system_error,pci_dss_10.2.4,pci_dss_10.6.1,gpg13_4.3,connection_attempt,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  	<group>system_error,pci_dss_10.2.4,pci_dss_10.6.1,gpg13_4.3,connection_attempt,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12109" level="12">
@@ -85,8 +85,7 @@
   <rule id="12110" level="8">
     <regex>^zone \S+ serial number \S+ received from master </regex>
     <regex>\S+ \S ours (\S+)</regex>
-    <description>Serial number from master is lower </description>
-    <description>than stored.</description>
+    <description>Serial number from master is lower than stored.</description>
     <group>system_error,gpg13_4.3,</group>
   </rule>
 
@@ -126,14 +125,14 @@
     <match>syntax error near|</match>
     <match>reloading configuration failed: unexpected token</match>
     <description>Syntax error in a named configuration file.</description>
-	<group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  	<group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 
   <rule id="12117" level="1">
     <if_sid>12100</if_sid>
     <regex>refresh: retry limit for master \S+ exceeded</regex>
-    <description>Zone transfer rety limit exceeded</description>
+    <description>Zone transfer rety limit exceeded.</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -152,13 +151,13 @@
   <rule id="12120" level="1">
     <if_sid>12100</if_sid>
     <match>has no address records</match>
-    <description>Missing A or AAAA record</description>
+    <description>Missing A or AAAA record.</description>
   </rule>
 
   <rule id="12121" level="1">
     <if_sid>12100</if_sid>
     <regex>zone \S+: \(master\) removed</regex>
-    <description>Zone has been removed from a master server</description>
+    <description>Zone has been removed from a master server.</description>
   </rule>
 
   <rule id="12122" level="1">
@@ -170,22 +169,22 @@
   <rule id="12123" level="0">
     <if_sid>12100</if_sid>
     <match>already exists previous definition</match>
-    <description>Zone has been duplicated</description>
-	<group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Zone has been duplicated.</description>
+	  <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12125" level="3">
     <if_sid>12100</if_sid>
     <match>reloading configuration failed: unexpected end of input</match>
     <description>BIND Configuration error.</description>
-	<group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+	  <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12126" level="0">
     <if_sid>12100</if_sid>
     <regex>zone \S+: \(master\) removed</regex>
-    <description>Zone has been removed from a master server</description>
-	<group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Zone has been removed from a master server.</description>
+	  <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12127" level="1">
@@ -212,14 +211,14 @@
     <if_sid>12100</if_sid>
     <match>IPv6 interfaces failed</match>
     <description>Could not listen on IPv6 interface.</description>
-	<group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+	  <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12131" level="2">
     <if_sid>12100</if_sid>
     <match>failed; interface ignored</match>
     <description>Could not bind to an interface.</description>
-	<group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+	  <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12132" level="0">
@@ -232,14 +231,14 @@
     <if_sid>12100</if_sid>
     <regex>open: \S+: permission denied$</regex>
     <description>Could not open configuration file, permission denied.</description>
-	<group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+	  <group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12134" level="4">
     <if_sid>12100</if_sid>
     <match>loading configuration: permission denied</match>
     <description>Could not open configuration file, permission denied.</description>
-	<group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+	  <group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="12135" level="0">
@@ -288,13 +287,13 @@
   <rule id="12142" level="0">
     <if_sid>12100</if_sid>
     <match>command channel listening on</match>
-    <description>named command channel is listening.</description>
+    <description>Named command channel is listening.</description>
   </rule>
 
   <rule id="12143" level="0">
     <if_sid>12100</if_sid>
     <match>automatic empty zone</match>
-    <description>named has created an automatic empty zone.</description>
+    <description>Named has created an automatic empty zone.</description>
   </rule>
 
   <rule id="12144" level="9">
@@ -307,7 +306,7 @@
   <rule id="12145" level="1">
     <if_sid>12100</if_sid>
     <regex>zone transfer \S+ denied</regex>
-    <description>zone transfer denied</description>
+    <description>Zone transfer denied.</description>
     <group>pci_dss_10.6.1,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
