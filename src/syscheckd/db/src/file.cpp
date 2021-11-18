@@ -24,15 +24,6 @@ extern void mock_assert(const int result, const char* const expression, const ch
 extern const char* SQL_STMT[];
 
 /**
- * @brief Check if database if full
- *
- * @param fim_sql FIM database structure.
- * @param file_path Path reference to insert in db.
- * @param entry Entry data to be inserted.
- */
-static int fim_db_insert_entry(fdb_t* fim_sql, const char* file_path, const fim_file_data* entry);
-
-/**
  * @brief Set file entry scanned.
  *
  * @param fim_sql FIM database struct.
@@ -208,24 +199,17 @@ char** fim_db_get_paths_from_inode(fdb_t* fim_sql, unsigned long int inode, unsi
     return paths;
 }
 
-int fim_db_insert_entry(fdb_t* fim_sql, const char* file_path, const fim_file_data* entry)
-{
-     /* TODO: Add c++ code to insert a file from a fim_file_data to DB 
-    */
-
-    return FIMDB_OK;
-}
-
-int fim_db_remove_path(fdb_t* fim_sql, const char* path)
+int fim_db_remove_path(const char* path)
 {
     int state = FIMDB_ERR;
+    // nlohmann::json removeFile;
+    // removeFile["path"] = path;
+    // FIMDBHelper::removeFromDB(FIMBD_FILE_TABLE_NAME, removeFile);
 
-    /* TODO: Add c++ code to delete a file from DB 
-    */
     return state;
 }
 
-int fim_db_set_all_unscanned(fdb_t* fim_sql)
+int fim_db_set_all_unscanned()
 {
     int retval;
     /* TODO: Add c++ code to implement set all unscanned in DB 
@@ -273,7 +257,7 @@ int fim_db_get_path_from_pattern(fdb_t* fim_sql, const char* pattern, fim_tmp_fi
 int fim_db_file_update(fdb_t* fim_sql, const char* path, const fim_file_data* data, fim_entry** saved)
 {
     int retval;
-    /* TODO: Add c++ code to update a file in DB 
+    /* TODO: Add c++ code to update a file in DB, We should add a logic to add a new entry if this entry doesn't exists
     */
     return retval;
 }
