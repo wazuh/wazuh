@@ -15,7 +15,7 @@
  - smbd[832]: Connection denied from 0.0.0.0
  - smbd[17535]: Permission denied\-\- user not allowed to delete,
    pause, or resume print job. User name: ahmet. Printer name: prnq1.
-  -->
+-->
 
 <decoder name="smbd">
   <program_name>^smbd</program_name>
