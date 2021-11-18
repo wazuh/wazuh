@@ -28,7 +28,6 @@ from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.cluster.cluster import check_cluster_status
-from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
@@ -226,7 +225,7 @@ class DistributedAPI:
             raise exception.WazuhError(1017, extra_message=extra_info)
 
     @staticmethod
-    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
+    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user, is_async=False):
         """Run framework SDK function locally in another process."""
 
         def debug_log(logger, message):
@@ -243,11 +242,14 @@ class DistributedAPI:
         try:
             data = f(**f_kwargs)
         except Exception as e:
+            if is_async:
+                raise e
+
             data = e
 
         common.reset_context_cache()
         debug_log(logger, "Finished executing request locally")
-        return json.dumps(data, cls=WazuhJSONEncoder)
+        return json.dumps(data, cls=c_common.WazuhJSONEncoder) if not is_async else data
 
     async def execute_local_request(self) -> str:
         """Execute an API request locally.
@@ -273,7 +275,7 @@ class DistributedAPI:
             try:
                 if self.is_async:
                     task = self.run_local(self.f, self.f_kwargs, self.logger, self.rbac_permissions, self.broadcasting,
-                                          self.nodes, self.current_user)
+                                          self.nodes, self.current_user, is_async=True)
 
                 else:
                     loop = asyncio.get_event_loop()
@@ -287,9 +289,13 @@ class DistributedAPI:
                                                               self.broadcasting, self.nodes,
                                                               self.current_user))
                 try:
-                    data = json.loads(await asyncio.wait_for(task, timeout=timeout), object_hook=as_wazuh_object)
-                    if isinstance(data, Exception):
-                        raise data
+                    if not self.is_async:
+                        data = json.loads(await asyncio.wait_for(task, timeout=timeout),
+                                          object_hook=c_common.as_wazuh_object)
+                        if isinstance(data, Exception):
+                            raise data
+                    else:
+                        data = await asyncio.wait_for(task, timeout=timeout)
 
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3021)
