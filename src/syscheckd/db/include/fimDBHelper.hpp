@@ -208,9 +208,9 @@ namespace FIMDBHelper
         T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
     }
 #else
-    void FIMDBHelper::initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit
-                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    void FIMDBHelper::initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
+                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
                               handler_RSync);
