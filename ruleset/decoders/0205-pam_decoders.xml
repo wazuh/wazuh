@@ -9,7 +9,7 @@
 
 
 <!--
-  -  Will extract username and srcip whenever is possible.
+  - Will extract username and srcip whenever is possible.
   - Examples:
   - Dec  1 11:27:21 ip-10-0-0-220 su(pam_unix)[14592]: session closed for user news
   - Dec  1 11:27:21 ip-10-0-0-220 su(pam_unix)[14592]: session opened for user news by (uid=0)
@@ -29,7 +29,7 @@
 
   - Dec  1 11:27:21 ip-10-0-0-220 vsftpd(pam_unix)[25073]: check pass; user unknown
   - Dec  1 12:25:55 ip-10-0-0-220 passwd[2679]: pam_unix(passwd:chauthtok): password changed for marge
-  -->
+-->
 <decoder name="pam">
   <program_name>(pam_unix)$</program_name>
 </decoder>
@@ -38,7 +38,6 @@
   <program_name></program_name>
   <prematch>^pam_unix|^\(pam_unix\)</prematch>
 </decoder>
-
 
 <decoder name="pam-user">
   <parent>pam</parent>
@@ -59,14 +58,12 @@
   <order>uid</order>
 </decoder>
 
-
 <decoder name="pam-pass-changed">
   <parent>pam</parent>
   <prematch>password changed for</prematch>
   <regex offset="after_prematch">^ (\S+)</regex>
   <order>user</order>
 </decoder>
-
 
 <decoder name="pam-fields">
   <parent>pam</parent>
