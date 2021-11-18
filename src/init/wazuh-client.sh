@@ -36,7 +36,7 @@ MAX_KILL_TRIES=600
 checkpid()
 {
     for i in ${DAEMONS}; do
-        for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
+        for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
@@ -201,9 +201,9 @@ pstatus()
         return 0;
     fi
 
-    ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
+    ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        for pid in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+        for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
@@ -248,7 +248,7 @@ stop_service()
         if [ $? = 1 ]; then
             echo "Killing ${i}... ";
 
-            pid=`cat ${DIR}/var/run/${i}*.pid`
+            pid=`cat ${DIR}/var/run/${i}-*.pid`
             kill $pid
 
             if ! wait_pid $pid
@@ -260,7 +260,7 @@ stop_service()
             echo "${i} not running...";
         fi
 
-        rm -f ${DIR}/var/run/${i}*.pid
+        rm -f ${DIR}/var/run/${i}-*.pid
      done
 
     echo "Wazuh $VERSION Stopped"
