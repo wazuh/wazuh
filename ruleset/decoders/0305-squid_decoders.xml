@@ -46,7 +46,6 @@
   <prematch>^\d+/\d+/\d+ \d+:\d+:\d+\| |^\d+/\d+/\d+ \d+:\d+:\d+ \w+\| </prematch>
 </decoder>
 
-
 <!--
   - Extract action
 -->
