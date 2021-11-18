@@ -58,8 +58,7 @@
   <rule id="11452" level="10" frequency="12" timeframe="60">
     <if_matched_sid>11401</if_matched_sid>
     <same_source_ip />
-    <description>vsftpd: Multiple FTP connection attempts from </description>
-    <description>same source IP.</description>
+    <description>vsftpd: Multiple FTP connection attempts from same source IP.</description>
     <mitre>
       <id>T1110</id>
     </mitre>
