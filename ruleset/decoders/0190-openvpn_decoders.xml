@@ -11,10 +11,10 @@
 </decoder>
 
 <!--
-Jul 22 13:10:29 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 TLS Error: TLS key negotiation failed to occur within 60 seconds (check your network connectivity)
-Jul 22 13:10:29 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 TLS Error: TLS handshake failed
-Jul 22 13:10:35 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 Authenticate/Decrypt packet error: packet HMAC authentication failed
-Jul 21 18:31:21 fw01 openvpn[76395]: chapolin/200.200.200.200:17777 send_push_reply(): safe_cap=940
+  Jul 22 13:10:29 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 TLS Error: TLS key negotiation failed to occur within 60 seconds (check your network connectivity)
+  Jul 22 13:10:29 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 TLS Error: TLS handshake failed
+  Jul 22 13:10:35 fw01 openvpn[76395]: girafalez/202.202.202.202:1194 Authenticate/Decrypt packet error: packet HMAC authentication failed
+  Jul 21 18:31:21 fw01 openvpn[76395]: chapolin/200.200.200.200:17777 send_push_reply(): safe_cap=940
 -->
 <decoder name="openvpn-user-ip">
   <parent>openvpn</parent>
@@ -65,10 +65,10 @@ Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
 </decoder>
 
 <!--
- Author: Stuart Williams <stwilliams@workforcesoftware.com>
-    Date: 2019-01-29
-    Note: Enhanced decoder rules to handle LDAP integrated authentication
-Comments: Not sure how useful the first entry is but will 'log' it - could be useful in auditing numbers etc
+  Author: Stuart Williams <stwilliams@workforcesoftware.com>
+  Date: 2019-01-29
+  Note: Enhanced decoder rules to handle LDAP integrated authentication
+  Comments: Not sure how useful the first entry is but will 'log' it - could be useful in auditing numbers etc
 -->
 
 <!--
@@ -90,4 +90,3 @@ Jan 28 14:25:49 VPN-SERVER-05892 openvpn: Incorrect password supplied for LDAP D
   <regex offset="after_prematch">^"CN=(\.+),OU=(\.+),(\.+)"</regex>
   <order>ldap_data.Username,ldap_data.Department,ldap_data.SecurityGroup</order>
 </decoder>
-
