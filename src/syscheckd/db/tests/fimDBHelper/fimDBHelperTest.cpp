@@ -19,8 +19,8 @@ void FIMHelperTest::TearDown(){}
 TEST_F(FIMHelperTest, testInit) {
     std::shared_ptr<DBSync> handlerDbsync;
     std::shared_ptr<RemoteSync> handlerRsync;
-    unsigned int maxFiles;
-    unsigned int syncInterval;
+    unsigned int maxFiles = 0;
+    unsigned int syncInterval = 0;
     EXPECT_CALL(FIMDBMOCK::getInstance(), init(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_));
     FIMDBHelper::initDB<FIMDBMOCK>(syncInterval, maxFiles, NULL, NULL, handlerDbsync, handlerRsync);
 }
