@@ -17,7 +17,7 @@
   - pure-ftpd: (abcde@1.1.0.1) [INFO] Can't change directory to /.test: Permission denied
   - pure-ftpd: (abcde@1.1.0.1) [INFO] Logout.
   - pure-ftpd: (?@59.150.14.54) [WARNING] Authentication failed for user [newuser]
-  -->
+-->
 <decoder name="pure-ftpd">
   <program_name>^pure-ftpd</program_name>
 </decoder>
@@ -40,8 +40,7 @@
   - Examples from ossec-list:
   - example.com - user1 [11/Mar/2013:12:10:23 -0000] "PUT /ftpdrive/user1/FinalBackup.zip" 200 25268220
   - example.com - user1 [11/Mar/2013:12:24:57 -0000] "GET /ftpdrive/user1/FinalBackup.zip" 200 25268220
-  -->
-
+-->
 <decoder name="pure-transfer">
   <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d \S\d\d\d\d] "\w+ \S+" </prematch>
   <regex>^(\S+) - (\S+) [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] "(\S+) (\.+) (\d+) \d+$</regex>
