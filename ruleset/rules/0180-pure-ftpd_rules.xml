@@ -31,20 +31,20 @@
   <rule id="11303" level="0">
     <if_sid>11300</if_sid>
     <match> [INFO] Logout| [INFO] Timeout</match>
-    <description>pure-ftpd: FTP user logout/timeout</description>
+    <description>pure-ftpd: FTP user logout/timeout.</description>
     <group>pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,tsc_CC6.1,</group>
   </rule>
 
   <rule id="11304" level="0">
     <if_sid>11300</if_sid>
     <match> [NOTICE] </match>
-    <description>pure-ftpd: FTP notice messages</description>
+    <description>pure-ftpd: FTP notice messages.</description>
   </rule>
 
   <rule id="11305" level="5">
     <if_sid>11300</if_sid>
     <match>[INFO] Can't change directory to</match>
-    <description>pure-ftpd: Attempt to access invalid directory</description>
+    <description>pure-ftpd: Attempt to access invalid directory.</description>
     <group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
