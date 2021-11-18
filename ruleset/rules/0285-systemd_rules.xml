@@ -12,7 +12,7 @@
 
   <rule id="40700" level="0">
     <program_name>^systemd$|^systemctl$</program_name>
-    <description>Systemd rules</description>
+    <description>Systemd rules.</description>
   </rule>
 
   <rule id="40701" level="0">
