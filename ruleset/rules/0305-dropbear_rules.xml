@@ -17,13 +17,13 @@
   <rule id="51001" level="1">
     <if_sid>51000</if_sid>
     <match>Failed to get kex value</match>
-    <description>Dropbear: Failed to get key exchange value</description>
+    <description>Dropbear: Failed to get key exchange value.</description>
   </rule>
 
   <rule id="51002" level="1">
     <if_sid>51000</if_sid>
     <match>Premature kexdh_init message received</match>
-    <description>Dropbear: Premature kexdh_init message</description>
+    <description>Dropbear: Premature kexdh_init message.</description>
   </rule>
 
   <rule id="51003" level="5">
