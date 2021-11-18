@@ -881,11 +881,11 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            gettime(&t0);
+            /*gettime(&t0);
             OS_RemoveAgentGroup(cur->id);
             gettime(&t1);
             mdebug2("[Writer] OS_RemoveAgentGroup(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
+            */
             gettime(&t0);
             if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
                 mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);

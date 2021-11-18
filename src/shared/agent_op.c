@@ -16,6 +16,7 @@
 #include "syscheckd/syscheck.h"
 #include "config/authd-config.h"
 #include "os_auth/auth.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -272,8 +273,8 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 
 #ifndef CLIENT
 /* Read group. Returns 0 on success or -1 on failure. */
-int get_agent_group(const char *id, char *group, size_t size) {
-    char path[PATH_MAX];
+int get_agent_group(int id, char *group, size_t size) {
+    /*char path[PATH_MAX];
     int result = 0;
     FILE *fp;
 
@@ -299,12 +300,42 @@ int get_agent_group(const char *id, char *group, size_t size) {
     }
 
     fclose(fp);
-    return result;
+    return result;*/
+
+    cJSON* j_groups_array = NULL;
+    cJSON* j_group = NULL;
+    char* concatenated_groups = NULL;
+
+    j_groups_array = wdb_select_group_belong(atoi(id), NULL);
+
+    if (!j_groups_array) {
+        mdebug1("Unable to parse agent's '%s' groups from belongs table", id);
+        return OS_INVALID;
+    }
+
+    // This concatenation still needs the ',' it's important for multigroups hash during upgrade
+    cJSON_ArrayForEach(j_group, j_groups_array) {
+        char* temp_name = cJSON_GetStringValue(cJSON_GetObjectItem(j_group, "name"));
+        if(!concatenated_groups){
+            w_strdup(temp_name, concatenated_groups);
+        } else {
+            concatenated_groups = w_strcat(concatenated_groups, ",", 1);
+            concatenated_groups = w_strcat(concatenated_groups, temp_name, strlen(temp_name));
+        }
+    }
+
+    snprintf(group, strlen(concatenated_groups-1), "%s", concatenated_groups);
+    group[strlen(concatenated_groups-2)] = '\0';
+
+    cJSON_Delete(j_groups_array);
+    os_free(concatenated_groups);
+
+    return OS_SUCCESS;
 }
 
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group) {
-    char path[PATH_MAX];
+    /*char path[PATH_MAX];
     FILE *fp;
     mode_t oldmask;
     int r = 0;
@@ -341,7 +372,18 @@ int set_agent_group(const char * id, const char * group) {
         unlink(path);
     }
 
-    return r;
+    return r;*/
+
+    char* individual_group;
+    char* temp = group;
+    int id_group = -1;
+
+    while ((individual_group = strtok_r(temp, ",", &temp))) {
+        id_group = wdb_find_group(individual_group, NULL);
+        wdb_update_agent_belongs(id_group, atoi(id), NULL);
+    }
+
+    return OS_SUCCESS;
 }
 
 int set_agent_multigroup(char * group) {
@@ -562,11 +604,23 @@ int w_validate_group_name(const char *group, char *response) {
 void w_remove_multigroup(const char *group) {
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
+    char groups_info[OS_SIZE_65536 + 1] = {0};
 
     if (multigroup) {
-        sprintf(path, "%s", GROUPS_DIR);
+        //sprintf(path, "%s", GROUPS_DIR);
 
-        if (wstr_find_in_folder(path,group,1) < 0) {
+        int *agents_array = wdb_get_all_agents(false, NULL);
+        bool found = FALSE;
+
+        while(*agents_array != -1) {
+            get_agent_group(*agents_array, groups_info, OS_SIZE_65536);
+            if(!strcmp(group, groups_info)) {
+                found = TRUE;
+                break;
+            }
+        }
+
+        if (!found) {
             /* Remove the DIR */
             os_sha256 multi_group_hash;
             OS_SHA256_String(group,multi_group_hash);
@@ -583,7 +637,9 @@ void w_remove_multigroup(const char *group) {
                 mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
             }
         }
+        os_free(agents_array);
     }
+
 }
 #endif
 

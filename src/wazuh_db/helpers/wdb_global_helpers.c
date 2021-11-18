@@ -971,11 +971,12 @@ int wdb_remove_group_db(const char *name, int *sock) {
     return result;
 }
 
-int wdb_select_group_belong(int id, int *sock) {
+cJSON* wdb_select_group_belong(int id, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
+    cJSON* j_payload = NULL;
     int aux_sock = -1;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_GROUP_BELONG], id);
@@ -991,18 +992,20 @@ int wdb_select_group_belong(int id, int *sock) {
                 mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
+            j_payload = cJSON_Parse(payload);
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");
             mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
+            j_payload = NULL;
+            break;
         default:
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
+            j_payload = NULL;
     }
 
-    return result;
+    return j_payload;
 }
 
 int wdb_delete_agent_belongs(int id, int *sock) {

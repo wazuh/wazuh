@@ -194,7 +194,7 @@ int OS_RemoveAgent(const char *u_id) {
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
-    OS_RemoveAgentGroup(u_id);
+    //OS_RemoveAgentGroup(u_id);
     return 1;
 }
 

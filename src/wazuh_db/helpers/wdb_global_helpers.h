@@ -261,6 +261,8 @@ int wdb_remove_group_db(const char *name, int *sock);
  */
 int wdb_delete_agent_belongs(int id, int *sock);
 
+cJSON* wdb_select_group_belong(int id, int *sock);
+
 /**
  * @brief Delete group from belongs table.
  *

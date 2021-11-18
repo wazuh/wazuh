@@ -128,7 +128,7 @@ void* wm_database_main(wm_database *data) {
         wm_inotify_setup(data);
 
 #ifndef LOCAL
-        wm_clean_dangling_groups();
+        //wm_clean_dangling_groups();
 #endif
         while (1) {
             path = wm_inotify_pop();
@@ -168,9 +168,9 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(GROUPS_DIR);
+                //wm_scan_directory(GROUPS_DIR);
                 wm_sync_multi_groups(SHAREDCFG_DIR);
-                wm_clean_dangling_groups();
+                //wm_clean_dangling_groups();
                 wm_clean_dangling_legacy_dbs();
                 wm_clean_dangling_wdb_dbs();
             }
@@ -283,14 +283,14 @@ void wm_sync_agents() {
             continue;
         }
 
-        if (get_agent_group(entry->id, group, OS_SIZE_65536 + 1) < 0) {
+        if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1) < 0) {
             *group = 0;
         }
 
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
                              entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
-            wm_sync_agent_group(id, entry->id);
+            //wm_sync_agent_group(id, entry->id);
         }
     }
 
@@ -330,7 +330,7 @@ void wm_sync_agents() {
                 // Remove agent-related files
                 OS_RemoveCounter(id);
                 OS_RemoveAgentTimestamp(id);
-                OS_RemoveAgentGroup(id);
+                //OS_RemoveAgentGroup(id);
 
                 if (name == NULL || *name == '\0') {
                     os_free(name);
@@ -462,7 +462,7 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, OS_SIZE_65536);
+    get_agent_group(atoi(fname), group, OS_SIZE_65536);
 
     if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
@@ -545,7 +545,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
 
     switch (type) {
     case WDB_GROUPS:
-        id_agent = atoi(fname);
+        /*id_agent = atoi(fname);
         if (id_agent <= 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
@@ -566,7 +566,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         free(name);
-        result = wm_sync_agent_group(id_agent, fname);
+        result = wm_sync_agent_group(id_agent, fname);*/
         break;
 
     case WDB_SHARED_GROUPS:
@@ -737,7 +737,7 @@ void wm_inotify_setup(wm_database * data) {
         wm_sync_agents();
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
-        wm_clean_dangling_groups();
+        //wm_clean_dangling_groups();
         wm_clean_dangling_legacy_dbs();
         wm_clean_dangling_wdb_dbs();
     }

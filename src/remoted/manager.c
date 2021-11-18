@@ -790,23 +790,26 @@ static void c_files()
     path[0] = '\0';
     closedir(dp);
 
-    dp = opendir(GROUPS_DIR);
+    /*dp = opendir(GROUPS_DIR);
 
     if (!dp) {
-        /* Unlock mutex */
+        // Unlock mutex
         w_mutex_unlock(&files_mutex);
 
         mdebug1("Opening directory: '%s': %s", GROUPS_DIR, strerror(errno));
         return;
-    }
+    }*/
 
-    while (entry = readdir(dp), entry) {
+    int *agents_array = wdb_get_all_agents(false, NULL);
+
+    //while (entry = readdir(dp), entry) {
+    while(*agents_array != -1) {
         // Skip "." and ".."
-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
+        /*if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
             continue;
-        }
+        }*/
 
-        if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
+        /*if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
             merror("At c_files(): path too long.");
             break;
         }
@@ -815,17 +818,19 @@ static void c_files()
 
         if (!fp) {
             mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
-        }
-        else if (fgets(groups_info, OS_SIZE_65536, fp)!=NULL ) {
+        }*/
+        //else if (fgets(groups_info, OS_SIZE_65536, fp)!=NULL ) {
+        get_agent_group(*agents_array, groups_info, OS_SIZE_65536);
+        if (groups_info) {
             // If it's not a multigroup, skip it
             if (!strstr(groups_info, ",")) {
-                fclose(fp);
-                fp = NULL;
+                //fclose(fp);
+                //fp = NULL;
                 continue;
             }
 
-            fclose(fp);
-            fp = NULL;
+            //fclose(fp);
+            //fp = NULL;
 
             char *endl = strchr(groups_info, '\n');
             if (endl) {
@@ -842,11 +847,13 @@ static void c_files()
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
+        agents_array++;
 
-        if (fp) {
+        /*if (fp) {
             fclose(fp);
             fp = NULL;
-        }
+        }*/
+
     }
 
     OSHashNode *my_node;
@@ -1052,7 +1059,7 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         strncpy(group, agt_group->group, OS_SIZE_65536);
         group[OS_SIZE_65536 - 1] = '\0';
         set_agent_group(agent_id, group);
-    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
+    } else if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536) < 0) {
         group[0] = '\0';
     }
     mdebug2("Agent '%s' group is '%s'", agent_id, group);
@@ -1386,7 +1393,7 @@ void free_pending_data(pending_data_t *data) {
  */
 int purge_group(char *group) {
 
-    DIR *dp;
+    /*DIR *dp;
     char path[PATH_MAX + 1];
     struct dirent *entry = NULL;
     FILE *fp = NULL;
@@ -1457,6 +1464,9 @@ int purge_group(char *group) {
     closedir(dp);
     os_free(new_groups);
     return 0;
+    */
+
+   return wdb_remove_group_db(group, NULL);
 }
 
 /* Should be called before anything here */

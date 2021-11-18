@@ -422,13 +422,13 @@ cJSON* local_add(const char *id,
     }
 
 
-    if (groups) {
+    /*if (groups) {
         char path[PATH_MAX];
         if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             ierror = EINVGROUP;
             goto fail;
         }
-    }
+    }*/
 
     /* Add pending key to write */
     add_insert(keys.keyentries[index],groups);
