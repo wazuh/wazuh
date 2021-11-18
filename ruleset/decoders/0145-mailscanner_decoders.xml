@@ -20,7 +20,7 @@
   111.222.111.222 (david@our.domain.org) to another.domain.org is not s
   pam, SpamAssassin
   - MailScanner[29107]: Message j0EMandY027564 from xxx.xxx.xxx.xxx(xxxxx@xxxxx.ie) to xxxxx.ie is not spam
-  -->
+-->
 <decoder name="mailscanner">
   <program_name>^MailScanner</program_name>
 </decoder>
