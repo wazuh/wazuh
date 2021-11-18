@@ -51,28 +51,16 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
 {
     int ossock;
     struct sockaddr_in server;
-
-#ifndef WIN32
     struct sockaddr_in6 server6;
-#else
-    ipv6 = 0;
-#endif
 
     if (_proto == IPPROTO_UDP) {
-#ifndef WIN32
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-#else
-        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-#endif
+        if ((ossock = socket(ipv6 == 1 ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
             return OS_SOCKTERR;
         }
     } else if (_proto == IPPROTO_TCP) {
         int flag = 1;
-#ifndef WIN32
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-#else
-        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-#endif
+
+        if ((ossock = socket(ipv6 == 1 ? AF_INET6 : AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
             return (int)(OS_SOCKTERR);
         }
 
@@ -86,7 +74,6 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
     }
 
     if (ipv6) {
-#ifndef WIN32
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
@@ -96,7 +83,6 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
             OS_CloseSocket(ossock);
             return (OS_SOCKTERR);
         }
-#endif
     } else {
         memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
@@ -105,7 +91,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
         if ((_ip == NULL) || (_ip[0] == '\0')) {
             server.sin_addr.s_addr = htonl(INADDR_ANY);
         } else {
-            server.sin_addr.s_addr = inet_addr(_ip);
+            inet_pton(AF_INET, _ip, &server.sin_addr);
         }
 
         if (bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0) {
@@ -150,7 +136,7 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
     n_us.sun_family = AF_UNIX;
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
 
-    if ((ossock = socket(PF_UNIX, type, 0)) < 0) {
+    if ((ossock = socket(AF_UNIX, type, 0)) < 0) {
         return (OS_SOCKTERR);
     }
 
@@ -200,7 +186,7 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
     /* Set up path */
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
 
-    if ((ossock = socket(PF_UNIX, type, 0)) < 0) {
+    if ((ossock = socket(AF_UNIX, type, 0)) < 0) {
         return (OS_SOCKTERR);
     }
 
@@ -245,26 +231,14 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
     int ossock;
     int max_msg_size = OS_MAXSTR + 512;
     struct sockaddr_in server;
-#ifndef WIN32
     struct sockaddr_in6 server6;
-#else
-    ipv6 = 0;
-#endif
 
     if (protocol == IPPROTO_TCP) {
-#ifndef WIN32
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-#else
-        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-#endif
+        if ((ossock = socket(ipv6 == 1 ? AF_INET6 : AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
             return (OS_SOCKTERR);
         }
     } else if (protocol == IPPROTO_UDP) {
-#ifndef WIN32
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-#else
-        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-#endif
+        if ((ossock = socket(ipv6 == 1 ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
             return (OS_SOCKTERR);
         }
     } else {
@@ -277,7 +251,6 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
     }
 
     if (ipv6 == 1) {
-#ifndef WIN32
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
@@ -287,12 +260,11 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
             OS_CloseSocket(ossock);
             return (OS_SOCKTERR);
         }
-#endif
     } else {
         memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
         server.sin_port = htons( _port );
-        server.sin_addr.s_addr = inet_addr(_ip);
+        inet_pton(AF_INET, _ip, &server.sin_addr);
 
         if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) < 0) {
 #ifdef WIN32
@@ -395,7 +367,7 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         return (-1);
     }
 
-    strncpy(srcip, inet_ntoa(_nc.sin_addr), addrsize - 1);
+    inet_ntop(AF_INET, &_nc.sin_addr, srcip, addrsize - 1);
     srcip[addrsize - 1] = '\0';
 
     return (clientsocket);
@@ -508,38 +480,45 @@ int OS_SendUnix(int socket, const char *msg, int size)
 }
 #endif
 
-/* Calls gethostbyname (tries x attempts) */
+/*
+ * Retrieve the IP of a host
+ */
 char *OS_GetHost(const char *host, unsigned int attempts)
 {
     unsigned int i = 0;
-    size_t sz;
-    char *ip;
-    struct hostent *h;
+    int status = 0;
+    char *ip = NULL;
+    struct addrinfo *addr, *p;
 
     if (host == NULL) {
         return (NULL);
     }
 
     while (i <= attempts) {
-        if ((h = gethostbyname(host)) == NULL) {
+        if (status = getaddrinfo(host, NULL, NULL, &addr), status) {
             sleep(1);
             i++;
             continue;
         }
 
-        sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr))) + 1;
-        if ((ip = (char *) calloc(sz, sizeof(char))) == NULL) {
-            return (NULL);
+        for(p = addr; p != NULL; p = p->ai_next) {
+            if (p->ai_family == AF_INET) {
+                os_calloc(IPSIZE + 1, sizeof(char), ip);
+                inet_ntop(AF_INET, &((struct sockaddr_in *)p->ai_addr)->sin_addr, ip, IPSIZE);
+                break;
+            } else if (p->ai_family == AF_INET6) {
+                os_calloc(IPSIZE + 1, sizeof(char), ip);
+                inet_ntop(AF_INET6, &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr, ip, IPSIZE);
+                break;
+            }
         }
 
-#ifndef __clang_analyzer__
-        strncpy(ip, inet_ntoa(*((struct in_addr *)h->h_addr)), sz - 1);
-#endif
+        freeaddrinfo(addr);
 
-        return (ip);
+        return ip;
     }
 
-    return (NULL);
+    return NULL;
 }
 
 int OS_CloseSocket(int socket)

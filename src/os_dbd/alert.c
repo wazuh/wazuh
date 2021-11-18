@@ -101,25 +101,24 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     sql_query[OS_SIZE_8192] = '\0';
 
     /* Converting srcip to int */
-    if(al_data->srcip) {
+    if (al_data->srcip) {
         struct in_addr net;
 
         /* Extracting ip address */
-        if(inet_aton(al_data->srcip, &net)) {
+        if (inet_pton(AF_INET, al_data->srcip, &net)) {
             s_ip = net.s_addr;
         }
     }
 
     /* Converting dstip to int */
-    if(al_data->dstip) {
+    if (al_data->dstip) {
         struct in_addr net;
 
         /* Extracting ip address */
-        if(inet_aton(al_data->dstip, &net)) {
+        if (inet_pton(AF_INET, al_data->dstip, &net)) {
             d_ip = net.s_addr;
         }
     }
-
 
     /* Source Port */
     s_port = al_data->srcport;

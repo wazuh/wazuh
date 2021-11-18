@@ -39,7 +39,7 @@ typedef struct test_struct {
     char *ret;
     char *msg;
     char socket_path[256];
-    struct hostent *h;
+    struct addrinfo *addr;
 } test_struct_t;
 
 // Setup / Teardown
@@ -48,8 +48,8 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
 
-    os_calloc(1, sizeof(struct hostent), init_data->h);
-    os_calloc(1, sizeof(char*), init_data->h->h_addr_list);
+    os_calloc(1, sizeof(struct addrinfo), init_data->addr);
+    os_calloc(1, sizeof(struct sockaddr), init_data->addr->ai_addr);
 
     strncpy(init_data->socket_path, "/tmp/tmp_file-XXXXXX", 256);
 
@@ -65,8 +65,8 @@ static int test_teardown(void **state) {
 
     unlink(data->socket_path);
 
-    os_free(data->h->h_addr_list)
-    os_free(data->h)
+    os_free(data->addr->ai_addr);
+    os_free(data->addr);
 
     os_free(data->msg);
     os_free(data->ret);
@@ -360,12 +360,17 @@ void test_send_unix_invalid_sockets(void **state) {
 
 void test_gethost_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
+    char *hostname = "google-public-dns-a.google.com";
 
-    data->h->h_addr_list[0] = "\b\b\b\b";
+    data->addr->ai_family = AF_INET;
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)data->addr->ai_addr;
+    ipv4->sin_addr.s_addr = 134744072;
 
-    will_return(__wrap_gethostbyname, data->h);
+    expect_string(__wrap_getaddrinfo, node, hostname);
+    will_return(__wrap_getaddrinfo, data->addr);
+    will_return(__wrap_getaddrinfo, 0);
 
-    data->ret = OS_GetHost("google-public-dns-a.google.com", 2);
+    data->ret = OS_GetHost(hostname, 2);
 
     assert_non_null(data->ret);
     assert_string_equal(data->ret, "8.8.8.8");
@@ -376,10 +381,19 @@ void test_gethost_null(void **state) {
 }
 
 void test_gethost_not_exists(void **state) {
-    will_return_count(__wrap_gethostbyname, NULL, 3);
+    char *hostname = "this.should.not.exist";
+
+    expect_string_count(__wrap_getaddrinfo, node, hostname, 3);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+
     expect_value_count(__wrap_sleep, seconds, 1, 3);
 
-    assert_null(OS_GetHost("this.should.not.exist", 2));
+    assert_null(OS_GetHost(hostname, 2));
 }
 
 void test_bind_unix_domain(void **state) {
@@ -525,15 +539,20 @@ void test_recv_secure_cluster_TCP_cmd_error(void **state) {
 
 void test_resolve_hostname_success(void ** state){
     test_struct_t *data  = (test_struct_t *)*state;
-    data->h->h_addr_list[0] = "\b\b\b\b";
+
+    data->addr->ai_family = AF_INET;
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)data->addr->ai_addr;
+    ipv4->sin_addr.s_addr = 134744072;
 
     os_strdup("localhost", data->ret);
+
+    expect_string(__wrap_getaddrinfo, node, "localhost");
+    will_return(__wrap_getaddrinfo, data->addr);
+    will_return(__wrap_getaddrinfo, 0);
 
     expect_string(__wrap_OS_IsValidIP, ip_address, data->ret);
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 0);
-
-    will_return(__wrap_gethostbyname, data->h);
 
     resolve_hostname(&data->ret, 5);
 
@@ -559,9 +578,21 @@ void test_resolve_hostname_not_resolved(void ** state){
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 0);
 
-    expect_value_count(__wrap_sleep, seconds, 1, 6);
+    expect_string_count(__wrap_getaddrinfo, node, "localhost", 6);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
+    will_return(__wrap_getaddrinfo, NULL);
+    will_return(__wrap_getaddrinfo, -1);
 
-    will_return_count(__wrap_gethostbyname, NULL, 6);
+    expect_value_count(__wrap_sleep, seconds, 1, 6);
 
     resolve_hostname(&data->ret, 5);
 
@@ -654,7 +685,7 @@ int main(void) {
         /* Receive a message using a Unix socket */
         cmocka_unit_test_setup_teardown(test_recv_unix, test_setup, test_teardown),
 
-        /* Calls gethostbyname */
+        /* Call OS_GetHost */
         cmocka_unit_test(test_gethost_null),
         cmocka_unit_test(test_gethost_not_exists),
         cmocka_unit_test_setup_teardown(test_gethost_success, test_setup, test_teardown),

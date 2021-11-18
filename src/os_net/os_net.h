@@ -65,8 +65,8 @@ int OS_SendUnix(int socket, const char *msg, int size) __attribute__((nonnull));
 
 int OS_SendUDPbySize(int socket, int size, const char *msg) __attribute__((nonnull));
 
-/* OS_GetHost
- * Calls gethostbyname
+/*
+ * OS_GetHost retrieves the IP of a host
  */
 char *OS_GetHost(const char *host, unsigned int attempts);
 
@@ -162,7 +162,7 @@ int wnet_select(int sock, int timeout);
 /**
  * @brief Resolve a given hostname, getting the associated ip
  * @param hostname Hostname to be resolved, if successfull, it will be modified with the format: 'hostname/x.x.x.x'
- * @param attempts Number of attempts of the call to the function gethostbyname
+ * @param attempts Number of attempts of the call to the function OS_GetHost
  * */
 void resolve_hostname(char **hostname, int attempts);
 

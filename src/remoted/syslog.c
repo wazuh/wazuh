@@ -75,7 +75,7 @@ void HandleSyslog()
         }
 
         /* Set the source IP */
-        strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
+        inet_ntop(AF_INET, &peer_info.sin_addr, srcip, IPSIZE - 1);
         srcip[IPSIZE] = '\0';
 
         /* Remove syslog header */

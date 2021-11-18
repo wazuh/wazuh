@@ -572,7 +572,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
+        inet_ntop(AF_INET, &client->addr, ip, IPSIZE - 1);
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client->socket);
         ret = SSL_accept(ssl);

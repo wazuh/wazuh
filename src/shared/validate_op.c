@@ -245,7 +245,7 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     struct in_addr net;
 
     /* Extract IP address */
-    if ((net.s_addr = inet_addr(ip_address)) <= 0) {
+    if (inet_pton(AF_INET, ip_address, &net) <= 0) {
         return (!_true);
     }
 
@@ -273,7 +273,7 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
     int _true = 1;
 
     /* Extract IP address */
-    if ((net.s_addr = inet_addr(ip_address)) <= 0) {
+    if (inet_pton(AF_INET, ip_address, &net) <= 0) {
         return (!_true);
     }
 
@@ -380,13 +380,13 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
             if (strcmp(tmp_str, "255.255.255.255") == 0) {
                 nmask = htonl(_netmasks[32]);
             } else {
-                if ((nmask = inet_addr(ip_address)) <= 0) {
+                if (inet_pton(AF_INET, ip_address, &nmask) <= 0) {
                     return (0);
                 }
             }
         }
 
-        if ((net.s_addr = inet_addr(ip_address)) <= 0) {
+        if (inet_pton(AF_INET, ip_address, &net) <= 0) {
             if (strcmp("0.0.0.0", ip_address) == 0) {
                 net.s_addr = 0;
             } else {
@@ -413,7 +413,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         if (strcmp("any", ip_address) == 0) {
             net.s_addr = 0;
             nmask = 0;
-        } else if ((net.s_addr = inet_addr(ip_address)) <= 0) {
+        } else if (inet_pton(AF_INET, ip_address, &net) <= 0) {
             return (0);
         }
 

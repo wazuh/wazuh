@@ -121,7 +121,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
             size_t tableSize { 0 };
-            int mib[] = { CTL_NET, PF_ROUTE, 0, PF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
 
             if (sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
             {

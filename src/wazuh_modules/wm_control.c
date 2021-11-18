@@ -178,7 +178,8 @@ char* getPrimaryIP(){
             }
 
             struct sockaddr_in * addr = (struct sockaddr_in *)&if_req->lifr_addr;
-            agent_ip = strdup(inet_ntoa(addr->sin_addr));
+            os_calloc(IPSIZE + 1, sizeof(char), agent_ip);
+            inet_ntop(AF_INET, &addr->sin_addr, agent_ip, IPSIZE - 1);
             break;
         }
     }
