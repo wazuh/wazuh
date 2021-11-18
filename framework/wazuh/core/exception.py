@@ -17,6 +17,9 @@ class WazuhException(Exception):
 
     ERRORS = {
         # < 999: API
+        900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
+             'Please restart the Wazuh API',
+        901: 'API executor subprocess broke. A service restart may be needed',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',

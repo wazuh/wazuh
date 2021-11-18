@@ -10,7 +10,7 @@ import operator
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import process, ProcessPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
 from operator import or_
@@ -28,6 +28,7 @@ from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.cluster.cluster import check_cluster_status
+from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
@@ -239,10 +240,14 @@ class DistributedAPI:
         common.broadcast.set(broadcasting)
         common.cluster_nodes.set(nodes)
         common.current_user.set(current_user)
-        data = f(**f_kwargs)
+        try:
+            data = f(**f_kwargs)
+        except Exception as e:
+            data = e
+
         common.reset_context_cache()
         debug_log(logger, "Finished executing request locally")
-        return data
+        return json.dumps(data, cls=WazuhJSONEncoder)
 
     async def execute_local_request(self) -> str:
         """Execute an API request locally.
@@ -282,13 +287,20 @@ class DistributedAPI:
                                                               self.broadcasting, self.nodes,
                                                               self.current_user))
                 try:
-                    data = await asyncio.wait_for(task, timeout=timeout)
+                    data = json.loads(await asyncio.wait_for(task, timeout=timeout), object_hook=as_wazuh_object)
+                    if isinstance(data, Exception):
+                        raise data
+
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3021)
                 except OperationalError:
                     raise exception.WazuhInternalError(2008)
+                except process.BrokenProcessPool:
+                    raise exception.WazuhInternalError(901)
             except json.decoder.JSONDecodeError:
                 raise exception.WazuhInternalError(3036)
+            except process.BrokenProcessPool:
+                raise exception.WazuhInternalError(900)
 
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
