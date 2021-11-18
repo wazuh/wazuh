@@ -413,7 +413,7 @@
     <if_sid>18104</if_sid>
     <id>^631$|^4727$|^635$|^4731$|^658$|^4754$|^648$|^4744$|^653$|^4749$|</id>
     <id>^663$|^4759$</id>
-    <description>Windows: Group Account Created</description>
+    <description>Windows: Group Account Created.</description>
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -421,14 +421,14 @@
     <if_sid>18104</if_sid>
     <id>^634$|^4730$|^638$|^4734$|^662$|^4758$|^652$|^4748$|^657$|^4753$|</id>
     <id>^667$|^4763$</id>
-    <description>Windows: Group Account Deleted</description>
+    <description>Windows: Group Account Deleted.</description>
     <group>group_deleted,win_group_deleted,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="18202" level="5">
     <if_sid>18200</if_sid>
     <id>^631$|^4727$</id>
-    <description>Windows: Security Enabled Global Group Created</description>
+    <description>Windows: Security Enabled Global Group Created.</description>
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <info type="link">https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=631</info>
   </rule>
@@ -436,7 +436,7 @@
   <rule id="18203" level="5">
     <if_sid>18114</if_sid>
     <id>^632$|^4728$</id>
-    <description>Windows: Security Enabled Global Group Member Added</description>
+    <description>Windows: Security Enabled Global Group Member Added.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -447,7 +447,7 @@
   <rule id="18204" level="5">
     <if_sid>18114</if_sid>
     <id>^633$|^4729$</id>
-    <description>Windows: Security Enabled Global Group Member Removed</description>
+    <description>Windows: Security Enabled Global Group Member Removed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -458,7 +458,7 @@
   <rule id="18205" level="5">
     <if_sid>18201</if_sid>
     <id>^634$|^4730$</id>
-    <description>Windows: Security Enabled Global Group Deleted</description>
+    <description>Windows: Security Enabled Global Group Deleted.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -469,7 +469,7 @@
   <rule id="18206" level="5">
     <if_sid>18200</if_sid>
     <id>^635$|^4731$</id>
-    <description>Windows: Security Enabled Local Group Created</description>
+    <description>Windows: Security Enabled Local Group Created.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -480,7 +480,7 @@
   <rule id="18207" level="5">
     <if_sid>18114</if_sid>
     <id>^636$|^4732$</id>
-    <description>Windows: Security Enabled Local Group Member Added</description>
+    <description>Windows: Security Enabled Local Group Member Added.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -491,7 +491,7 @@
   <rule id="18208" level="5">
     <if_sid>18114</if_sid>
     <id>^637$|^4733$</id>
-    <description>Windows: Security Enabled Local Group Member Removed</description>
+    <description>Windows: Security Enabled Local Group Member Removed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -502,7 +502,7 @@
   <rule id="18209" level="5">
     <if_sid>18201</if_sid>
     <id>^638$|^4734$</id>
-    <description>Windows: Security Enabled Local Group Deleted</description>
+    <description>Windows: Security Enabled Local Group Deleted.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -513,7 +513,7 @@
   <rule id="18210" level="5">
     <if_sid>18114</if_sid>
     <id>^639$|^4735$</id>
-    <description>Windows: Security Enabled Local Group Changed</description>
+    <description>Windows: Security Enabled Local Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -524,7 +524,7 @@
   <rule id="18211" level="5">
     <if_sid>18114</if_sid>
     <id>^641$|^4737$</id>
-    <description>Windows: Security Enabled Global Group Changed</description>
+    <description>Windows: Security Enabled Global Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -535,7 +535,7 @@
   <rule id="18212" level="5">
     <if_sid>18200</if_sid>
     <id>^658$|^4754$</id>
-    <description>Windows: Security Enabled Universal Group Created</description>
+    <description>Windows: Security Enabled Universal Group Created.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -546,7 +546,7 @@
   <rule id="18213" level="5">
     <if_sid>18114</if_sid>
     <id>^659$|^4755$</id>
-    <description>Windows: Security Enabled Universal Group Changed</description>
+    <description>Windows: Security Enabled Universal Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -557,7 +557,7 @@
   <rule id="18214" level="5">
     <if_sid>18114</if_sid>
     <id>^660$|^4756$</id>
-    <description>Windows: Security Enabled Universal Group Member Added</description>
+    <description>Windows: Security Enabled Universal Group Member Added.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -568,7 +568,7 @@
   <rule id="18215" level="5">
     <if_sid>18114</if_sid>
     <id>^661$|^4757$</id>
-    <description>Windows: Security Enabled Universal Group Member Removed</description>
+    <description>Windows: Security Enabled Universal Group Member Removed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -579,7 +579,7 @@
   <rule id="18216" level="5">
     <if_sid>18201</if_sid>
     <id>^662$|^4758$</id>
-    <description>Windows: Security Enabled Universal Group Deleted</description>
+    <description>Windows: Security Enabled Universal Group Deleted.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -590,7 +590,7 @@
   <rule id="18217" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+\p*S-1-5-32-544\s</regex>
-    <description>Windows: Administrators Group Changed</description>
+    <description>Windows: Administrators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -601,7 +601,7 @@
   <rule id="18218" level="5">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-1-0}| ID:\s+S-1-1-0\s</regex>
-    <description>Windows: Everyone Group Changed</description>
+    <description>Windows: Everyone Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -612,7 +612,7 @@
   <rule id="18219" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-9}| ID:\s+S-1-5-9\s</regex>
-    <description>Windows: Enterprise Domain Controllers Group Changed</description>
+    <description>Windows: Enterprise Domain Controllers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -623,7 +623,7 @@
   <rule id="18220" level="5">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-11}| ID:\s+S-1-5-11\s</regex>
-    <description>Windows: Authenticated Users Group Changed</description>
+    <description>Windows: Authenticated Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -634,7 +634,7 @@
   <rule id="18221" level="5">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-13}| ID:\s+S-1-5-13\s</regex>
-    <description>Windows: Terminal Server Users Group Changed</description>
+    <description>Windows: Terminal Server Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -645,7 +645,7 @@
   <rule id="18222" level="12">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-512}| ID:\s+S-1-5-21\S+-512\s</regex>
-    <description>Windows: Domain Admins Group Changed</description>
+    <description>Windows: Domain Admins Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -656,7 +656,7 @@
   <rule id="18223" level="5">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-513}| ID:\s+S-1-5-21\S+-513\s</regex>
-    <description>Windows: Domain Users Group Changed</description>
+    <description>Windows: Domain Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -667,14 +667,14 @@
   <rule id="18224" level="0">
     <if_sid>18223,18203</if_sid>
     <match>Target Account Name: None</match>
-    <description>Windows: Local User Group NONE</description>
+    <description>Windows: Local User Group NONE.</description>
     <info type="link">Bogus group user added to upon creation</info>
   </rule>
 
   <rule id="18225" level="12">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-514}| ID:\s+S-1-5-21\S+-514\s</regex>
-    <description>Windows: Domain Guests Group Changed</description>
+    <description>Windows: Domain Guests Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -685,7 +685,7 @@
   <rule id="18226" level="5">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-515}| ID:\s+S-1-5-21\S+-515\s</regex>
-    <description>Windows: Domain Computers Group Changed</description>
+    <description>Windows: Domain Computers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -696,7 +696,7 @@
   <rule id="18227" level="12">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-516}| ID:\s+S-1-5-21\S+-516\s</regex>
-    <description>Windows: Domain Controllers Group Changed</description>
+    <description>Windows: Domain Controllers Group changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -707,7 +707,7 @@
   <rule id="18228" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-517}| ID:\s+S-1-5-21\S+-517\s</regex>
-    <description>Windows: Cert Publishers Group Changed</description>
+    <description>Windows: Cert Publishers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -718,7 +718,7 @@
   <rule id="18229" level="12">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\.+-518}| ID:\s+S-1-5-21\.+-518\s</regex>
-    <description>Windows: Schema Admins Group Changed</description>
+    <description>Windows: Schema Admins Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -729,7 +729,7 @@
   <rule id="18230" level="12">
     <if_sid>18213,18214</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-519}| ID:\s+S-1-5-21\S+-519\s</regex>
-    <description>Windows: Enterprise Admins Group Changed</description>
+    <description>Windows: Enterprise Admins Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -740,7 +740,7 @@
   <rule id="18231" level="10">
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-520}| ID:\s+S-1-5-21\S+-520\s</regex>
-    <description>Windows: Group Policy Creator Owners Group Changed</description>
+    <description>Windows: Group Policy Creator Owners Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -751,7 +751,7 @@
   <rule id="18232" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-553}| ID:\s+S-1-5-21\S+-553\s</regex>
-    <description>Windows: RAS and IAS Servers Group Changed</description>
+    <description>Windows: RAS and IAS Servers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -762,7 +762,7 @@
   <rule id="18233" level="5">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-545}| ID:\s+S-1-5-32-545\s</regex>
-    <description>Windows: Users Group Changed</description>
+    <description>Windows: Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -773,7 +773,7 @@
   <rule id="18234" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-546}| ID:\s+S-1-5-32-546\s</regex>
-    <description>Windows: Guests Group Changed</description>
+    <description>Windows: Guests Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -784,7 +784,7 @@
   <rule id="18235" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-547}| ID:\s+S-1-5-32-547\s</regex>
-    <description>Windows: Power Users Group Changed</description>
+    <description>Windows: Power Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -795,7 +795,7 @@
   <rule id="18236" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-548}| ID:\s+S-1-5-32-548\s</regex>
-    <description>Windows: Account Operators Group Changed</description>
+    <description>Windows: Account Operators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -806,7 +806,7 @@
   <rule id="18237" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-549}| ID:\s+S-1-5-32-549\s</regex>
-    <description>Windows: Server Operators Group Changed</description>
+    <description>Windows: Server Operators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -817,7 +817,7 @@
   <rule id="18238" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-550}| ID:\s+S-1-5-32-550\s</regex>
-    <description>Windows: Print Operators Group Changed</description>
+    <description>Windows: Print Operators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -828,7 +828,7 @@
   <rule id="18239" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-551}| ID:\s+S-1-5-32-551\s</regex>
-    <description>Windows: Backup Operators Group Changed</description>
+    <description>Windows: Backup Operators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -839,7 +839,7 @@
   <rule id="18240" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-552}| ID:\s+S-1-5-32-552\s</regex>
-    <description>Windows: Replicators Group Changed</description>
+    <description>Windows: Replicators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -850,7 +850,7 @@
   <rule id="18241" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-554}| ID:\s+S-1-5-32-554\s</regex>
-    <description>Pre-Windows 2000 Compatible Access Group Changed</description>
+    <description>Pre-Windows 2000 Compatible Access Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -861,7 +861,7 @@
   <rule id="18242" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-555}| ID:\s+S-1-5-32-555\s</regex>
-    <description>Windows: Remote Desktop Users Group Changed</description>
+    <description>Windows: Remote Desktop Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -872,7 +872,7 @@
   <rule id="18243" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-556}| ID:\s+S-1-5-32-556\s</regex>
-    <description>Windows: Network Configuration Operators Group Changed</description>
+    <description>Windows: Network Configuration Operators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -883,7 +883,7 @@
   <rule id="18244" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-557}| ID:\s+S-1-5-32-557\s</regex>
-    <description>Windows: Incoming Forest Trust Builders Group Changed</description>
+    <description>Windows: Incoming Forest Trust Builders Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -894,7 +894,7 @@
   <rule id="18245" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-558}| ID:\s+S-1-5-32-558\s</regex>
-    <description>Windows: Performance Monitor Users Group Changed</description>
+    <description>Windows: Performance Monitor Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -905,7 +905,7 @@
   <rule id="18246" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-559}| ID:\s+S-1-5-32-559\s</regex>
-    <description>Windows: Performance Log Users Group Changed</description>
+    <description>Windows: Performance Log Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -916,7 +916,7 @@
   <rule id="18247" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-560}| ID:\s+S-1-5-32-560\s</regex>
-    <description>Windows Authorization Access Group Changed</description>
+    <description>Windows Authorization Access Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -927,7 +927,7 @@
   <rule id="18248" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-561}| ID:\s+S-1-5-32-561\s</regex>
-    <description>Windows: Terminal Server License Servers Group Changed</description>
+    <description>Windows: Terminal Server License Servers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -938,7 +938,7 @@
   <rule id="18249" level="8">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-562}| ID:\s+S-1-5-32-562\s</regex>
-    <description>Windows: Distributed COM Users Group Changed</description>
+    <description>Windows: Distributed COM Users Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -949,7 +949,7 @@
   <rule id="18250" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-498}| ID:\s+S-1-5-\s*21\.+\s*-498\s</regex>
-    <description>Windows: Enterprise Read-only Domain Controllers Group Changed</description>
+    <description>Windows: Enterprise Read-only Domain Controllers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -960,7 +960,7 @@
   <rule id="18251" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-529}| ID:\s+S-1-5-\s*21\.+\s*-529\s</regex>
-    <description>Windows: Read-only Domain Controllers Group Changed</description>
+    <description>Windows: Read-only Domain Controllers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -971,7 +971,7 @@
   <rule id="18252" level="12">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-569}| ID:\s+S-1-5-32-569\s</regex>
-    <description>Windows: Cryptographic Operators Group Changed</description>
+    <description>Windows: Cryptographic Operators Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -982,7 +982,7 @@
   <rule id="18253" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-571}| ID:\s+S-1-5-\s*21\.+\s*-571\s</regex>
-    <description>Windows: Allowed RODC Password Replication Group Changed</description>
+    <description>Windows: Allowed RODC Password Replication Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -993,7 +993,7 @@
   <rule id="18254" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-572}| ID:\s+S-1-5-\s*21\.+\s*-572\s</regex>
-    <description>Windows: Denied RODC Password Replication Group Changed</description>
+    <description>Windows: Denied RODC Password Replication Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -1004,7 +1004,7 @@
   <rule id="18255" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-573}| ID:\s+S-1-5-32-573\s</regex>
-    <description>Windows: Event Log Readers Group Changed</description>
+    <description>Windows: Event Log Readers Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -1015,7 +1015,7 @@
   <rule id="18256" level="10">
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-574}| ID:\s+S-1-5-32-574\s</regex>
-    <description>Windows: Certificate Service DCOM Access Group Changed</description>
+    <description>Windows: Certificate Service DCOM Access Group Changed.</description>
     <mitre>
       <id>T1484</id>
     </mitre>
@@ -1043,7 +1043,7 @@
   <rule id="18270" level="0">
     <if_sid>18257</if_sid>
     <match> ESENT: | Microsoft-Windows-FailoverClustering-SoftwareStorageBusTarget: </match>
-    <description>Ignore rule 18257: not related to TS Gateway</description>
+    <description>Ignore rule 18257: not related to TS Gateway.</description>
   </rule>
 
   <rule id="18258" level="5">
@@ -1079,7 +1079,7 @@
   <rule id="18170" level="10">
     <if_sid>18139</if_sid>
     <match>Failure Code: 0x1F</match>
-    <description>Windows DC integrity check on decrypted </description>
+    <description>Windows DC integrity check on decrypted.</description>
     <description>field failed.</description>
     <info type="link">https://web.mit.edu/kerberos/</info>
     <mitre>
@@ -1134,7 +1134,7 @@
     <if_sid>18107</if_sid>
     <id>^4624$</id>
     <match>Logon Type:   8</match>
-    <description>IIS NetworkCleartext Logon Success</description>
+    <description>IIS NetworkCleartext Logon Success.</description>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -1202,7 +1202,7 @@
       <if_sid>18103</if_sid>
       <match>chromoting</match>
       <regex>: chromoting: \.* Access denied for client: </regex>
-      <description>Chrome Remote Desktop attempt - access denied</description>
+      <description>Chrome Remote Desktop attempt - access denied.</description>
       <group>pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
@@ -1210,7 +1210,7 @@
       <if_sid>18101</if_sid>
       <match>chromoting</match>
       <regex>: chromoting: \.* Client connected:</regex>
-      <description>Chrome Remote Desktop attempt - connected</description>
+      <description>Chrome Remote Desktop attempt - connected.</description>
       <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
   </rule>
 
@@ -1218,7 +1218,7 @@
       <if_sid>18101</if_sid>
       <match>chromoting</match>
       <regex>: chromoting: \.* Client disconnected:</regex>
-      <description>Chrome Remote Desktop attempt - disconnected</description>
+      <description>Chrome Remote Desktop attempt - disconnected.</description>
       <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
   </rule>
 
