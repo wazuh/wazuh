@@ -23,6 +23,8 @@ from wazuh.rbac.decorators import expose_resources
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
+# Dummy change to force PR file tracking launch rules AIT
+
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
               tsc=None, mitre=None, relative_dirname=None, filename=None, level=None, offset=0,

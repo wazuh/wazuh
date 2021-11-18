@@ -18,6 +18,8 @@ services:
       - master-node
       - master
 
+# Dummy change to force PR file tracking launch all basic AIT
+
   wazuh-worker1:
     build:
       context: .
