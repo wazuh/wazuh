@@ -63,7 +63,7 @@ y Error
     <decoded_as>smtpd</decoded_as>
     <if_sid>53500</if_sid>
     <match>IO error: No SSL error$</match>
-    <description>OpenSMTPd: no SSL</description>
+    <description>OpenSMTPd: no SSL.</description>
   </rule>
 
   <rule id="53508" level="5">
