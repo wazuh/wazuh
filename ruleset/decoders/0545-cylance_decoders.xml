@@ -24,7 +24,6 @@
 -->
 
 <!-- BASIC FIELD TYPES -->
-
 <decoder name="CylancePROTECT_2.0">
 	<prematch>CylancePROTECT\s\w\s\w\s\w\s</prematch>
 </decoder>
