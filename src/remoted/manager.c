@@ -869,7 +869,7 @@ static void c_files()
         else {
             os_free(key);
             os_free(data);
-            closedir(dp);
+            //closedir(dp);
             w_mutex_unlock(&files_mutex);
             return;
         }
@@ -915,7 +915,7 @@ static void c_files()
     os_free(data);
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
-    closedir(dp);
+    //closedir(dp);
     mdebug2("End updating shared files sums.");
 }
 

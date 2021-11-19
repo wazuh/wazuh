@@ -992,7 +992,11 @@ cJSON* wdb_select_group_belong(int id, int *sock) {
                 mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
-            j_payload = cJSON_Parse(payload);
+            if (payload) {
+                j_payload = cJSON_Parse(payload);
+            } else {
+                j_payload = NULL;
+            }
             break;
         case OS_INVALID:
             mdebug1("Global DB Error in the response from socket");

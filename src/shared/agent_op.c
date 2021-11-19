@@ -306,10 +306,10 @@ int get_agent_group(int id, char *group, size_t size) {
     cJSON* j_group = NULL;
     char* concatenated_groups = NULL;
 
-    j_groups_array = wdb_select_group_belong(atoi(id), NULL);
+    j_groups_array = wdb_select_group_belong(id, NULL);
 
     if (!j_groups_array) {
-        mdebug1("Unable to parse agent's '%s' groups from belongs table", id);
+        mdebug1("Unable to parse agent's '%d' groups from belongs table", id);
         return OS_INVALID;
     }
 
@@ -324,8 +324,12 @@ int get_agent_group(int id, char *group, size_t size) {
         }
     }
 
-    snprintf(group, strlen(concatenated_groups-1), "%s", concatenated_groups);
-    group[strlen(concatenated_groups-2)] = '\0';
+    if (concatenated_groups) {
+        snprintf(group, strlen(concatenated_groups-1), "%s", concatenated_groups);
+        group[strlen(concatenated_groups-2)] = '\0';
+    } else {
+        group[0] = '\0';
+    }
 
     cJSON_Delete(j_groups_array);
     os_free(concatenated_groups);
