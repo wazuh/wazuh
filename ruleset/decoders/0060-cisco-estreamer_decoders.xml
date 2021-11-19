@@ -6,11 +6,11 @@
 -->
 
 <!--
-The Cisco Event Streamer (also known as eStreamer) allows you to stream FireSIGHT System intrusion, discovery, and connection data from the Cisco Defense Center or managed device (also referred to as the eStreamer server) to external client applications
+  The Cisco Event Streamer (also known as eStreamer) allows you to stream FireSIGHT System intrusion, discovery, and connection data from the Cisco Defense Center or managed device (also referred to as the eStreamer server) to external client applications
 -->
 
 <!--
-Sep  4 11:33:17 opsdcossec01 ossec-admin: AlertPriority 3 SourceIp 10.xx.xx.xx DestinationIp 10.00.00.00 sfAlertCount 1 SourcePort 00 DestinationPort 00 EventMessage Sourcefire Alert SERVER-MYSQL Oracle Mysql login attempt from unauthorized location
+  Sep  4 11:33:17 opsdcossec01 ossec-admin: AlertPriority 3 SourceIp 10.xx.xx.xx DestinationIp 10.00.00.00 sfAlertCount 1 SourcePort 00 DestinationPort 00 EventMessage Sourcefire Alert SERVER-MYSQL Oracle Mysql login attempt from unauthorized location
 -->
 <decoder name="cisco-estreamer">
 	<program_name></program_name>
