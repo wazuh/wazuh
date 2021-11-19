@@ -24,9 +24,9 @@ Format: TIMESTAMP Sysname %%vendorMODULE/severity/MNEMONIC: location; CONTENT
     Location Optional. This element presents location information for the message in the following format: -attribute1=x-attribute2=y…-attributeN=z
     CONTENT: Text string that contains detailed information about the event or error.
 
-Jun  8 11:54:52 HP-5500EI-HO %%10WEB/4/WEBOPT_LOGIN_FAIL(l): dfddfd failed to log in from 10.10.10.27
-Jun 18 11:54:52 HP-5500EI-HO %%10WEB/4/WEBOPT_LOGIN_FAIL(l): dfddfd failed to log in from 10.10.10.27
-Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.25506.2.2.2.2.2.2.2:dfddfd failed to login from Web, reason is 3
+  Jun  8 11:54:52 HP-5500EI-HO %%10WEB/4/WEBOPT_LOGIN_FAIL(l): dfddfd failed to log in from 10.10.10.27
+  Jun 18 11:54:52 HP-5500EI-HO %%10WEB/4/WEBOPT_LOGIN_FAIL(l): dfddfd failed to log in from 10.10.10.27
+  Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.25506.2.2.2.2.2.2.2:dfddfd failed to login from Web, reason is 3
 -->
 
 <decoder name="hp_5500">
