@@ -1,3 +1,11 @@
+<!--
+  -  Fortiauth rules
+  -  Author: Tom Hancock <t.m.h.a.ncoc.k+wazuh@gmail.com>
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
 <group name="fortiauth">
 
   <rule id="44730" level="0">
