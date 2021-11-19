@@ -18,14 +18,14 @@
 	<rule id="82101" level="3">
 		<if_sid>82100</if_sid>
 		<match>Scan 'Sophos Cloud Scheduled Scan' started</match>
-		<description>Sophos Cloud Scheduled Scan started</description>
+		<description>Sophos Cloud Scheduled Scan started.</description>
 		<group></group>
 	</rule>
 
 	<rule id="82102" level="3">
 		<if_sid>82100</if_sid>
 		<match>Scan 'Sophos Cloud Scheduled Scan' completed</match>
-		<description>Sophos Cloud Scheduled Scan completed</description>
+		<description>Sophos Cloud Scheduled Scan completed.</description>
 		<group></group>
 	</rule>
 
@@ -35,6 +35,7 @@
 		<description>User has started on-access scanning for this machine.</description>
 		<group></group>
 	</rule>
+	
 	<rule id="82104" level="3">
 		<if_sid>82100</if_sid>
 		<match>has stopped</match>
@@ -45,44 +46,44 @@
 	<rule id="82105" level="3">
 		<if_sid>82100</if_sid>
 		<match>detection data version</match>
-		<description>Sophos database updated</description>
-        <group>gpg13_4.4,</group>
+		<description>Sophos database updated.</description>
+    <group>gpg13_4.4,</group>
 	</rule>
 
   <rule id="64270" level="0">
-	<decoded_as>sophos-win</decoded_as>
+		<decoded_as>sophos-win</decoded_as>
     <field name="category">savscan.log</field>
-    <description>savscan category</description>
+    <description>savscan category.</description>
   </rule>
 
   <rule id="64271" level="3">
     <if_sid>64270</if_sid>
     <field name="msg">SAVSCAN-DETAILS</field>
-    <description>SAVSCAN-DETAILS alert</description>
+    <description>SAVSCAN-DETAILS alert.</description>
   </rule>
 
   <rule id="64272" level="6">
     <if_sid>64270</if_sid>
     <field name="msg">NOTIFY_ONDEMANDTHREAT_INFECTED</field>
-    <description>NOTIFY_ONDEMANDTHREAT_INFECTED alert</description>
+    <description>NOTIFY_ONDEMANDTHREAT_INFECTED alert.</description>
   </rule>
 
   <rule id="64273" level="6">
     <if_sid>64270</if_sid>
     <field name="msg">SCANNER_DIED_KILLED</field>
-    <description>SCANNER_DIED_KILLED alert</description>
+    <description>SCANNER_DIED_KILLED alert.</description>
   </rule>
 
   <rule id="64274" level="0">
-	<decoded_as>sophos-win</decoded_as>
+		<decoded_as>sophos-win</decoded_as>
     <field name="category">update.check</field>
-    <description>Update category</description>
+    <description>Update category.</description>
   </rule>
 
   <rule id="64275" level="3">
     <if_sid>64274</if_sid>
     <field name="msg">NO_UPDATED_FROM</field>
-    <description>NO_UPDATED_FROM alert</description>
+    <description>NO_UPDATED_FROM alert.</description>
   </rule>
 
 </group>
