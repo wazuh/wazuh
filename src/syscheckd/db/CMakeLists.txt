@@ -57,6 +57,7 @@ include_directories(${SRC_FOLDER}/data_provider/include/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${CMAKE_SOURCE_DIR}/include)
+link_directories(${CMAKE_SOURCE_DIR}/db/src)
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
