@@ -10,6 +10,7 @@
 #include "db.hpp"
 #include "commonDefs.h"
 #include "fimDB.hpp"
+#include "fimDBHelper.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,16 +111,25 @@ std::string CreateStatement()
     return ret;
 }
 
-int fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback, logging_callback_t log_callback)
+#ifndef WIN32
+void fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback)
+#else
+void fim_db_init(int storage, int sync_interval, int file_limit, int value_limit, fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback)
+#endif
 {
     auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement());
     auto rsyncHandler = std::make_shared<RemoteSync>();
 
+#ifndef WIN32
     FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, sync_callback, log_callback, dbsyncHandler, rsyncHandler);
-
-    return FIMDB_OK;
+#else
+    FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, value_limit, sync_callback, log_callback, dbsyncHandler,
+                               rsyncHandler);
+#endif
 }
 
 

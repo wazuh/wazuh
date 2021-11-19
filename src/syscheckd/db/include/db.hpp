@@ -206,6 +206,7 @@ int fim_db_get_checksum_range(fdb_t* fim_sql,
  */
 int fim_db_get_path_range(fdb_t* fim_sql, fim_type type, const char* start, const char* top, fim_tmp_file** file, int storage);
 
+#ifndef WIN32
 /**
  * @brief Initialize the FIM database.
  *
@@ -215,10 +216,23 @@ int fim_db_get_path_range(fdb_t* fim_sql, fim_type type, const char* start, cons
  * @param file_limit Maximum number of files to be monitored
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
- * @return int
  */
-int fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback, logging_callback_t log_callback);
-
+void fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback);
+#else
+/**
+ * @brief Initialize the FIM database.
+ *
+ * It will be dbsync the responsible of managing the DB.
+ * @param storage storage 1 Store database in memory, disk otherwise.
+ * @param sync_interval Interval when the synchronization will be performed.
+ * @param file_limit Maximum number of files to be monitored
+ * @param sync_callback Callback to send the synchronization messages.
+ * @param log_callback Callback to perform logging operations.
+ */
+void fim_db_init(int storage, int sync_interval, int file_limit, int value_limit, fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback);
+#endif
 /**
  * @brief Finalize stmt and close DB.
  *
