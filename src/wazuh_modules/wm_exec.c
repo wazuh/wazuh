@@ -29,6 +29,7 @@ typedef struct ThreadInfo {
     pthread_cond_t finished;
     int pipe;
     char *output;
+    long size_output;
 #endif
 } ThreadInfo;
 
@@ -278,11 +279,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     char **argv;
     pid_t pid;
     int pipe_fd[2];
-    ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
+    ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0};
     pthread_t thread;
     struct timespec timeout = { 0, 0 };
     int retval = -1;
     int status;
+    static size_output = 0;
 
     if (exitcode) {
         *exitcode = 0;
@@ -296,6 +298,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             return -1;
         }
         w_descriptor_cloexec(pipe_fd[0]);
+    }
+
+    if (*output) {
+        tinfo.output = *output;
+        tinfo.size_output = size_output;
     }
 
     // Fork
@@ -545,8 +552,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             if (retval >= 0) {
                 *output = tinfo.output ? tinfo.output : strdup("");
+                size_output = tinfo.size_output;
             } else {
                 free(tinfo.output);
+                *output = NULL;
+                tinfo.size_output = 0;
+                size_output = 0;
             }
         }
     }
@@ -566,7 +577,10 @@ void* reader(void *args) {
         int nextsize = length + nbytes;
 
         if (nextsize <= WM_STRING_MAX) {
-            tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
+            if (tinfo->size_output < nextsize) {
+                tinfo->output = (char*)realloc(tinfo->output, nextsize + 1);
+                tinfo->size_output = nextsize;
+            }
             memcpy(tinfo->output + length, buffer, nbytes);
             length = nextsize;
         } else {

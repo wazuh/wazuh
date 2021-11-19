@@ -37,6 +37,11 @@ typedef struct request_dump_t {
     int first_scan;
 } request_dump_t;
 
+typedef struct policy_json_t {
+    time_t last_modify;
+    cJSON *object;
+}policy_json_t;
+
 #ifdef WIN32
 static HKEY wm_sca_sub_tree;
 #endif
@@ -44,13 +49,14 @@ static HKEY wm_sca_sub_tree;
 static const int RETURN_NOT_FOUND = 0;
 static const int RETURN_FOUND = 1;
 static const int RETURN_INVALID = 2;
+static char *cmd_output = NULL;
 
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
-static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
+static void wm_sca_read_files(wm_sca_t * data, bool first_time);  // Read policy monitoring files
 static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char ** sorted_variables);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
 static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list);
@@ -125,6 +131,7 @@ static unsigned int summary_invalid = 0;
 static OSHash **cis_db;
 static char **last_sha256;
 static cis_db_hash_info_t *cis_db_for_hash;
+static policy_json_t *policies_json;
 
 static w_queue_t * request_queue;
 static wm_sca_t * data_win;
@@ -182,6 +189,14 @@ void * wm_sca_main(wm_sca_t * data) {
             minfo("Policy '%s' disabled by configuration.", data->policies[i]->policy_path);
         }
     }
+
+    os_calloc(i, sizeof(policy_json_t), policies_json);
+
+    if (!policies_json) {
+        merror(LIST_ERROR);
+        pthread_exit(NULL);
+    }
+
 
     /* Create Hash for each policy file */
     for(i = 0; data->policies[i]; i++) {
@@ -300,6 +315,7 @@ static int wm_sca_start(wm_sca_t * data) {
     char * timestamp = NULL;
     time_t time_start = 0;
     time_t duration = 0;
+    bool first_scan = true;
 
     do {
         const time_t time_sleep = sched_scan_get_time_until_next_scan(&(data->scan_config), WM_SCA_LOGTAG, data->scan_on_start);
@@ -315,7 +331,8 @@ static int wm_sca_start(wm_sca_t * data) {
         time_start = time(NULL);
 
         /* Do scan for every policy file */
-        wm_sca_read_files(data);
+        wm_sca_read_files(data, first_scan);
+        first_scan = false;
 
         /* Send policies scanned for database purge on manager side */
         wm_sca_send_policies_scanned(data);
@@ -328,9 +345,11 @@ static int wm_sca_start(wm_sca_t * data) {
     return 0;
 }
 
-static void wm_sca_read_files(wm_sca_t * data) {
+static void wm_sca_read_files(wm_sca_t * data, bool first_time) {
     int checks_number = 0;
     static int first_scan = 1;
+    struct stat status_file;
+    bool clear_json = true;
 
     /* Read every policy monitoring file */
     if(data->policies) {
@@ -342,7 +361,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             OSStore *vars = NULL;
-            cJSON * object = NULL;
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
             char **sorted_variables = NULL;
@@ -355,27 +373,41 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
             w_file_cloexec(fp);
 
-            /* Yaml parsing */
-            yaml_document_t document;
-
-            if (yaml_parse_file(data->policies[i]->policy_path, &document)) {
-                mwarn("Error found while parsing file: '%s'. Skipping it.", data->policies[i]->policy_path);
-                goto next;
+            // Get information about last modification
+            if (stat(data->policies[i]->policy_path, &status_file) != 0) {
+                first_time = true;
             }
 
-            if (object = yaml2json(&document,1), !object) {
-                mwarn("Error found while transforming yaml to json: '%s'. Skipping it.", data->policies[i]->policy_path);
+            // Create object json if the first time that it has done or file was modified
+            if (first_time || status_file.st_mtime != policies_json[i].last_modify) {
+                /* Yaml parsing */
+                yaml_document_t document;
+
+                if (yaml_parse_file(data->policies[i]->policy_path, &document)) {
+                  mwarn("Error found while parsing file: '%s'. Skipping it.", data->policies[i]->policy_path);
+                    goto next;
+                }
+
+                if (policies_json[i].object) {
+                    cJSON_Delete(policies_json[i].object);
+                    policies_json[i].object = NULL;
+                }
+
+                if (policies_json[i].object = yaml2json(&document,1), !policies_json[i].object) {
+                    mwarn("Error found while transforming yaml to json: '%s'. Skipping it.", data->policies[i]->policy_path);
+                    yaml_document_delete(&document);
+                    goto next;
+                }
+
                 yaml_document_delete(&document);
-                goto next;
+                policies_json[i].last_modify = status_file.st_mtime;
             }
 
-            yaml_document_delete(&document);
-
-            cJSON *policy = cJSON_GetObjectItem(object, "policy");
-            cJSON *variables_policy = cJSON_GetObjectItem(object, "variables");
-            cJSON *checks = cJSON_GetObjectItem(object, "checks");
+            cJSON *policy = cJSON_GetObjectItem(policies_json[i].object, "policy");
+            cJSON *variables_policy = cJSON_GetObjectItem(policies_json[i].object, "variables");
+            cJSON *checks = cJSON_GetObjectItem(policies_json[i].object, "checks");
             requirements_array = cJSON_CreateArray();
-            cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
+            cJSON *requirements = cJSON_GetObjectItem(policies_json[i].object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
             if (wm_sca_check_policy(policy, checks, check_list)) {
@@ -500,14 +532,16 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             os_free(integrity_hash_file);
+            clear_json = false;
 
     next:
             if(fp){
                 fclose(fp);
             }
 
-            if(object) {
-                cJSON_Delete(object);
+            if(clear_json && policies_json[i].object) {
+                cJSON_Delete(policies_json[i].object);
+                policies_json[i].object = NULL;
             }
 
             if(requirements_array){
@@ -1621,7 +1655,6 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
     }
 
     mdebug1("Executing command '%s', and testing output with pattern '%s'", command, pattern);
-    char *cmd_output = NULL;
     int result_code;
 
     switch (wm_exec(command, &cmd_output, &result_code, data->commands_timeout, NULL)) {
@@ -1635,7 +1668,7 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Timeout overtaken running command '%s'", command);
         }
-        os_free(cmd_output);
+        //os_free(cmd_output);
         return RETURN_INVALID;
     default:
         if (result_code == EXECVE_ERROR) {
@@ -1668,7 +1701,7 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
         return RETURN_NOT_FOUND;
     }
 
-    os_free(cmd_output);
+    //os_free(cmd_output);
 
     int i;
     int result = RETURN_NOT_FOUND;
