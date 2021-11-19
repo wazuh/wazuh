@@ -16,56 +16,40 @@
 
 namespace FIMDBHelper
 {
+    template<typename T>
 #ifndef WIN32
     /**
-     * @brief Init the FIM DB instance.
-     *
-     * @param sync_interval Interval when the sync is performed-
-     * @param file_limit Max number of files.
-     * @param sync_callback Synchronization callback.
-     * @param logCallback Logging callback.
-     */
-    void initDB(int, int, int, fim_sync_callback_t, logging_callback_t);
+    * @brief Init the FIM DB instance.
+    *
+    * @param sync_interval Interval when the sync is performed-
+    * @param file_limit Max number of files.
+    * @param sync_callback Synchronization callback.
+    * @param logCallback Logging callback.
+    */
+    void initDB(unsigned int sync_interval, unsigned int file_limit,
+                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    {
+        T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
+    }
 #else
     /**
-     * @brief Init the FIM DB instance.
-     *
-     * @param sync_interval Interval when the sync is performed-
-     * @param file_limit Max number of files.
-     * @param registry_limit Max number of registries.
-     * @param sync_callback Synchronization callback.
-     * @param logCallback Logging callback.
-     */
-    void initDB(int, int, int, int, fim_sync_callback_t, logging_callback_t);
+    * @brief Init the FIM DB instance.
+    *
+    * @param sync_interval Interval when the sync is performed-
+    * @param file_limit Max number of files.
+    * @param registry_limit Max number of registries.
+    * @param sync_callback Synchronization callback.
+    * @param logCallback Logging callback.
+    */
+    void initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
+                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    {
+        T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
+                              handler_RSync);
+    }
 #endif
-    /**
-    * @brief Insert a new row from a table.
-    *
-    * @param tableName a string with the table name
-    * @param item a RegistryKey, RegistryValue or File with their parameters
-    *
-    * @return 0 on success, another value otherwise.
-    */
-    int insertItem(const std::string &, const nlohmann::json &);
-
-    /**
-    * @brief Get count of all entries in a table
-    *
-    * @param tableName a string with the table name
-    *
-    * @return amount of entries on success, 0 otherwise.
-    */
-    int getCount(const std::string &);
-
-    /**
-    * @brief Get a item from a query
-    *
-    * @param item a json object where will be saved the query information
-    * @param query a json with a query to the database
-    *
-    * @return a file, registryKey or registryValue, nullptr otherwise.
-    */
-    int getDBItem(nlohmann::json &, const nlohmann::json &);
 
     /**
     * @brief Delete a row from a table
@@ -75,21 +59,8 @@ namespace FIMDBHelper
     *
     * @return 0 on success, another value otherwise.
     */
-    int removeFromDB(const std::string &, const nlohmann::json &);
-
-    /**
-    * @brief Update a row from a table.
-    *
-    * @param tableName a string with the table name
-    * @param item a RegistryKey, RegistryValue or File with their parameters
-    *
-    * @return 0 on success, another value otherwise.
-    */
-    int updateItem(const std::string &, const nlohmann::json &);
-
-    // Template function must be defined in fimHelper.hpp
     template<typename T>
-    int FIMDBHelper::removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    int removeFromDB(const std::string& tableName, const nlohmann::json& filter)
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
@@ -106,9 +77,16 @@ namespace FIMDBHelper
 
         return T::getInstance().removeItem(deleteJson);
     }
-
+    /**
+    * @brief Get count of all entries in a table
+    *
+    * @param tableName a string with the table name
+    * @param count a int with count values
+    *
+    * @return amount of entries on success, 0 otherwise.
+    */
     template<typename T>
-    int FIMDBHelper::getCount(const std::string & tableName, int & count)
+    int getCount(const std::string & tableName, int & count)
     {
         const auto countQueryStatement = R"({
                                                 "table":"",
@@ -132,8 +110,16 @@ namespace FIMDBHelper
         return T::getInstance().executeQuery(countQuery, callback);
     }
 
+    /**
+    * @brief Insert a new row from a table.
+    *
+    * @param tableName a string with the table name
+    * @param item a RegistryKey, RegistryValue or File with their parameters
+    *
+    * @return 0 on success, another value otherwise.
+    */
     template<typename T>
-    int FIMDBHelper::insertItem(const std::string & tableName, const nlohmann::json & item)
+    int insertItem(const std::string & tableName, const nlohmann::json & item)
     {
         const auto insertStatement = R"(
                                             {
@@ -151,8 +137,16 @@ namespace FIMDBHelper
         return T::getInstance().insertItem(insert);
     }
 
+    /**
+    * @brief Update a row from a table.
+    *
+    * @param tableName a string with the table name
+    * @param item a RegistryKey, RegistryValue or File with their parameters
+    *
+    * @return 0 on success, another value otherwise.
+    */
     template<typename T>
-    int FIMDBHelper::updateItem(const std::string & tableName, const nlohmann::json & item)
+    int updateItem(const std::string & tableName, const nlohmann::json & item)
     {
         const auto updateStatement = R"(
                                             {
@@ -184,8 +178,16 @@ namespace FIMDBHelper
         return T::getInstance().updateItem(update, callback);
     }
 
+    /**
+    * @brief Get a item from a query
+    *
+    * @param item a json object where will be saved the query information
+    * @param query a json with a query to the database
+    *
+    * @return 0 on success, another value otherwise.
+    */
     template<typename T>
-    int FIMDBHelper::getDBItem(nlohmann::json & item, const nlohmann::json & query)
+    int getDBItem(nlohmann::json & item, const nlohmann::json & query)
     {
         auto callback {
             [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
@@ -199,23 +201,6 @@ namespace FIMDBHelper
 
         return T::getInstance().executeQuery(query, callback);
     }
-    template<typename T>
-#ifndef WIN32
-    void FIMDBHelper::initDB(unsigned int sync_interval, unsigned int file_limit,
-                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
-    {
-        T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
-    }
-#else
-    void FIMDBHelper::initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
-                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
-    {
-        T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
-                              handler_RSync);
-    }
-#endif
 }
 
 #endif //_FIMDBHELPER_H
