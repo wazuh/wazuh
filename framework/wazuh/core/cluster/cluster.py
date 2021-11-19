@@ -18,7 +18,7 @@ from time import time
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import Agent
+from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
@@ -428,8 +428,15 @@ def compare_files(good_files, check_files, node_name):
         # Check if extra-valid agent-groups files correspond to existing agents.
         try:
             agent_groups = [os.path.basename(file) for file in extra_valid_files if file.startswith(agent_groups_path)]
-            db_agents = Agent.get_agents_overview(select=['id'], limit=None, filters={'id': agent_groups})['items']
+            db_agents = []
+            # Each query can have at most 7500 agents to prevent it from being larger than the wazuh-db socket.
+            # 7 digits in the worst case per ID + comma -> 8 * 7500 = 60000 (wazuh-db socket is ~64000)
+            for i in range(0, len(agent_groups), chunk_size := 7500):
+                with WazuhDBQueryAgents(select=['id'], limit=None, filters={'rbac_ids': agent_groups[i:i + chunk_size]},
+                                        rbac_negate=False) as db_query:
+                    db_agents.extend(db_query.run()['items'])
             db_agents = {agent['id'] for agent in db_agents}
+
             for leftover in set(agent_groups) - db_agents:
                 extra_valid_files.pop(os.path.join(agent_groups_path, leftover), None)
         except Exception as e:

@@ -1531,7 +1531,7 @@ class WazuhDBQuery(object):
             return self.general_run()
 
         rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
-        return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
+        return self.general_run() if len(','.join(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
             self.oversized_run()
 
     def reset(self):
