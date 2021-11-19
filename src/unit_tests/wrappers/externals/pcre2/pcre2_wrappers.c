@@ -19,7 +19,7 @@ pcre2_match_data_8 * wrap_pcre2_match_data_create_from_pattern(__attribute__((un
     return mock_type(pcre2_match_data_8 *);
 }
 
-int pcre2_match(__attribute__((unused))pcre2_code_8 * code_match_data,
+int wrap_pcre2_match(__attribute__((unused))pcre2_code_8 * code_match_data,
                 __attribute__((unused))const PCRE2_UCHAR8 * str_test,
                 __attribute__((unused))size_t strlen,
                 __attribute__((unused))int a, __attribute__((unused))int b,
