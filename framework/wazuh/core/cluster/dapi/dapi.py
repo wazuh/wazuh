@@ -225,7 +225,7 @@ class DistributedAPI:
             raise exception.WazuhError(1017, extra_message=extra_info)
 
     @staticmethod
-    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user, is_async=False):
+    def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
         """Run framework SDK function locally in another process."""
 
         def debug_log(logger, message):
@@ -239,17 +239,10 @@ class DistributedAPI:
         common.broadcast.set(broadcasting)
         common.cluster_nodes.set(nodes)
         common.current_user.set(current_user)
-        try:
-            data = f(**f_kwargs)
-        except Exception as e:
-            if is_async:
-                raise e
-
-            data = e
-
+        data = f(**f_kwargs)
         common.reset_context_cache()
         debug_log(logger, "Finished executing request locally")
-        return json.dumps(data, cls=c_common.WazuhJSONEncoder) if not is_async else data
+        return data
 
     async def execute_local_request(self) -> str:
         """Execute an API request locally.
@@ -275,7 +268,7 @@ class DistributedAPI:
             try:
                 if self.is_async:
                     task = self.run_local(self.f, self.f_kwargs, self.logger, self.rbac_permissions, self.broadcasting,
-                                          self.nodes, self.current_user, is_async=True)
+                                          self.nodes, self.current_user)
 
                 else:
                     loop = asyncio.get_event_loop()
@@ -289,14 +282,7 @@ class DistributedAPI:
                                                               self.broadcasting, self.nodes,
                                                               self.current_user))
                 try:
-                    if not self.is_async:
-                        data = json.loads(await asyncio.wait_for(task, timeout=timeout),
-                                          object_hook=c_common.as_wazuh_object)
-                        if isinstance(data, Exception):
-                            raise data
-                    else:
-                        data = await asyncio.wait_for(task, timeout=timeout)
-
+                    data = await asyncio.wait_for(task, timeout=timeout)
                 except asyncio.TimeoutError:
                     raise exception.WazuhInternalError(3021)
                 except OperationalError:

@@ -123,7 +123,7 @@ def get_permissions(user_id=None, auth_context=None):
     """
     with AuthenticationManager() as auth:
         if not auth.user_allow_run_as(user_id) and auth_context:
-            raise WazuhPermissionError(code=6004)
+            raise WazuhPermissionError(6004)
         elif auth.user_allow_run_as(user_id):
             roles = get_roles(auth_context=auth_context, user_id=user_id)
         else:
