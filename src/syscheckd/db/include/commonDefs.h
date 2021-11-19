@@ -1,6 +1,6 @@
 /**
  * @file commonDefs.h
- * @brief Definition of common definitions for FIM.
+ * @brief Common definitions for FIM
  * @date 2021-09-06
  *
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.

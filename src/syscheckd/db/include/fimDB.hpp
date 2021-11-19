@@ -46,7 +46,7 @@ constexpr auto CREATE_FILE_DB_STATEMENT
     hash_sha1 TEXT,
     hash_sha256 TEXT,
     mtime INTEGER,
-    PRIMARY KEY(path));)"
+    PRIMARY KEY(path)) WITHOUT ROWID;)"
 };
 
 constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
@@ -64,7 +64,7 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     last_event INTEGER,
     checksum TEXT NOT NULL,
     item_id TEXT,
-    PRIMARY KEY (arch, path));)"
+    PRIMARY KEY(arch, path)) WITHOUT ROWID;)"
 };
 static const std::vector<std::string> REGISTRY_KEY_ITEM_ID_FIELDS{"arch", "path"};
 
@@ -83,7 +83,7 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     checksum TEXT NOT NULL,
     item_id TEXT,
     PRIMARY KEY(key_id, name)
-    FOREIGN KEY (key_id) REFERENCES registry_key(item_id));)"
+    FOREIGN KEY (key_id) REFERENCES registry_key(item_id)) WITHOUT ROWID;)"
 };
 static const std::vector<std::string> REGISTRY_VALUE_ITEM_ID_FIELDS{"key_id", "name"};
 
