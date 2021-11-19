@@ -13,14 +13,6 @@
 
 #define w_free_os_ip(x) if (x) {os_free(x->ip);os_free(x)}
 
-/* IP structure */
-typedef struct _os_ip {
-    char *ip;
-    unsigned int ip_address;
-    unsigned int netmask;
-} os_ip;
-
-
 /**
  * @brief Get the netmask based on the integer value.
  *

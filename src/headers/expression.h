@@ -14,7 +14,6 @@
 
 #include "external/libpcre2/include/pcre2.h"
 #include "os_regex/os_regex.h"
-#include "validate_op.h"
 
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"

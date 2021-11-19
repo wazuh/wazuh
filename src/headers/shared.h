@@ -176,6 +176,13 @@ typedef uint8_t u_int8_t;
 #define fallthrough ((void) 0)
 #endif
 
+/* IP structure */
+typedef struct _os_ip {
+    char *ip;
+    unsigned int ip_address;
+    unsigned int netmask;
+} os_ip;
+
 extern const char *__local_name;
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
