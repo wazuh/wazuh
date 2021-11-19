@@ -6,7 +6,7 @@
 -->
 
 <!--
-Audit decoders (logformat must be "audit")
+  Audit decoders (logformat must be "audit")
 -->
 
 <decoder name="auditd">
@@ -14,7 +14,7 @@ Audit decoders (logformat must be "audit")
 </decoder>
 
 <!--
-type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes exit=3 a0=7ffedc40d83b a1=941 a2=1b6 a3=7ffedc40cce0 items=2 ppid=432 pid=3333 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="touch" exe="/bin/touch" key="audit-wazuh-w" type=CWD msg=audit(1479982525.380:50):  cwd="/var/log/audit" type=PATH msg=audit(1479982525.380:50): item=0 name="/var/log/audit/tmp_directory1/" inode=399849 dev=ca:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT type=PATH msg=audit(1479982525.380:50): item=1 name="/var/log/audit/tmp_directory1/malware.py" inode=399852 dev=ca:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE type=PROCTITLE msg=audit(1479982525.380:50): proctitle=746F756368002F7661722F6C6F672F61756469742F746D705F6469726563746F7279312F6D616C776172652E7079
+  type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes exit=3 a0=7ffedc40d83b a1=941 a2=1b6 a3=7ffedc40cce0 items=2 ppid=432 pid=3333 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=2 comm="touch" exe="/bin/touch" key="audit-wazuh-w" type=CWD msg=audit(1479982525.380:50):  cwd="/var/log/audit" type=PATH msg=audit(1479982525.380:50): item=0 name="/var/log/audit/tmp_directory1/" inode=399849 dev=ca:02 mode=040755 ouid=0 ogid=0 rdev=00:00 nametype=PARENT type=PATH msg=audit(1479982525.380:50): item=1 name="/var/log/audit/tmp_directory1/malware.py" inode=399852 dev=ca:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=CREATE type=PROCTITLE msg=audit(1479982525.380:50): proctitle=746F756368002F7661722F6C6F672F61756469742F746D705F6469726563746F7279312F6D616C776172652E7079
 -->
 
 <!-- ID -->
@@ -124,7 +124,7 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
 </decoder>
 
 <!--
-type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule" key="audit-wazuh-w" list=4 res=1
+  type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule" key="audit-wazuh-w" list=4 res=1
 -->
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
@@ -158,7 +158,7 @@ type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule"
 </decoder>
 
 <!--
-type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=0 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
+  type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=0 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
 -->
 <decoder name="auditd-promiscuous">
   <parent>auditd</parent>
@@ -174,8 +174,8 @@ type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=0 old_p
 </decoder>
 
 <!--
-SELinux: MAC_STATUS
-type=MAC_STATUS msg=audit(1480086668.032:1327): enforcing=0 old_enforcing=1 auid=0 ses=8 type=SYSCALL msg=audit(1480086668.032:1327): arch=c000003e syscall=1 success=yes exit=1 a0=3 a1=7fff9eff0d40 a2=1 a3=7fff9eff0ac0 items=0 ppid=4765 pid=4788 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8 comm="setenforce" exe="/usr/sbin/setenforce" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=(null)
+  SELinux: MAC_STATUS
+  type=MAC_STATUS msg=audit(1480086668.032:1327): enforcing=0 old_enforcing=1 auid=0 ses=8 type=SYSCALL msg=audit(1480086668.032:1327): arch=c000003e syscall=1 success=yes exit=1 a0=3 a1=7fff9eff0d40 a2=1 a3=7fff9eff0ac0 items=0 ppid=4765 pid=4788 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8 comm="setenforce" exe="/usr/sbin/setenforce" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key=(null)
 -->
 <decoder name="auditd-selinux_macstatus">
   <parent>auditd</parent>
@@ -204,25 +204,25 @@ type=MAC_STATUS msg=audit(1480086668.032:1327): enforcing=0 old_enforcing=1 auid
 
 
 <!--
-type=USER_ACCT msg=audit(1480087217.108:6042): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:accounting acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
-type=USER_ACCT msg=audit(1480087533.041:1424): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:accounting grantors=pam_unix,pam_localuser acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
+  type=USER_ACCT msg=audit(1480087217.108:6042): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:accounting acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
+  type=USER_ACCT msg=audit(1480087533.041:1424): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:accounting grantors=pam_unix,pam_localuser acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
 
-type=CRED_ACQ msg=audit(1480087217.108:6043): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
-type=CRED_ACQ msg=audit(1480087533.043:1427): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
+  type=CRED_ACQ msg=audit(1480087217.108:6043): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
+  type=CRED_ACQ msg=audit(1480087533.043:1427): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
 
-type=USER_START msg=audit(1480087217.108:6045): pid=6013 uid=0 auid=0 ses=107 msg='op=PAM:session_open acct="root" exe="/usr/sbin/sshd" hostname=10.1.0.1 addr=10.1.0.1 terminal=ssh res=success'
-type=USER_START msg=audit(1480087533.127:1435): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:session_open grantors=pam_selinux,pam_loginuid,pam_selinux,pam_namespace,pam_keyinit,pam_keyinit,pam_limits,pam_systemd,pam_unix,pam_lastlog acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.1.0.1 terminal=ssh res=success'
+  type=USER_START msg=audit(1480087217.108:6045): pid=6013 uid=0 auid=0 ses=107 msg='op=PAM:session_open acct="root" exe="/usr/sbin/sshd" hostname=10.1.0.1 addr=10.1.0.1 terminal=ssh res=success'
+  type=USER_START msg=audit(1480087533.127:1435): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:session_open grantors=pam_selinux,pam_loginuid,pam_selinux,pam_namespace,pam_keyinit,pam_keyinit,pam_limits,pam_systemd,pam_unix,pam_lastlog acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.1.0.1 terminal=ssh res=success'
 
-type=CRED_REFR msg=audit(1480087217.656:6050): pid=6017 uid=0 auid=0 ses=108 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.10 addr=10.10.10.10 terminal=ssh res=success'
-type=CRED_REFR msg=audit(1480087533.572:1453): pid=4891 uid=0 auid=0 ses=15 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.10.10.10 terminal=ssh res=success'
+  type=CRED_REFR msg=audit(1480087217.656:6050): pid=6017 uid=0 auid=0 ses=108 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.10 addr=10.10.10.10 terminal=ssh res=success'
+  type=CRED_REFR msg=audit(1480087533.572:1453): pid=4891 uid=0 auid=0 ses=15 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.10.10.10 terminal=ssh res=success'
 
-type=CRYPTO_KEY_USER msg=audit(1480087530.909:1417): pid=4886 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=a3:61:6f:52:83:ca:1e:0f:1f:6d:78:68:0d:37:3c:01 direction=? spid=4886 suid=0  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
+  type=CRYPTO_KEY_USER msg=audit(1480087530.909:1417): pid=4886 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=a3:61:6f:52:83:ca:1e:0f:1f:6d:78:68:0d:37:3c:01 direction=? spid=4886 suid=0  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
 
-type=CRYPTO_SESSION msg=audit(1480087530.910:1420): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=start direction=from-server cipher=chacha20-poly1305@openssh.com ksize=512 mac= pfs=diffie-hellman-group-exchange-sha256 spid=4886 suid=74 rport=57989 laddr=10.0.0.74 lport=22  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
+  type=CRYPTO_SESSION msg=audit(1480087530.910:1420): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=start direction=from-server cipher=chacha20-poly1305@openssh.com ksize=512 mac= pfs=diffie-hellman-group-exchange-sha256 spid=4886 suid=74 rport=57989 laddr=10.0.0.74 lport=22  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
 
-type=USER_AUTH msg=audit(1480087533.036:1422): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=pubkey_auth rport=57989 acct="root" exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
+  type=USER_AUTH msg=audit(1480087533.036:1422): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=pubkey_auth rport=57989 acct="root" exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
 
-type=USER_ROLE_CHANGE msg=audit(1480087533.108:1432): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe="/usr/sbin/sshd" hostname=host.net addr=101.10.10.10 terminal=ssh res=success'
+  type=USER_ROLE_CHANGE msg=audit(1480087533.108:1432): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe="/usr/sbin/sshd" hostname=host.net addr=101.10.10.10 terminal=ssh res=success'
 -->
 <decoder name="auditd-user_and_cred">
   <parent>auditd</parent>
@@ -262,8 +262,8 @@ type=USER_ROLE_CHANGE msg=audit(1480087533.108:1432): pid=4885 uid=0 auid=0 ses=
 </decoder>
 
 <!--
-type=LOGIN msg=audit(1480087217.108:6044): pid=6013 uid=0 old-auid=4294967295 auid=0 old-ses=4294967295 ses=107 res=1
-type=LOGIN msg=audit(1480087533.043:1428): pid=4885 uid=0 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 old-auid=4294967295 auid=0 old-ses=4294967295 ses=14 res=1
+  type=LOGIN msg=audit(1480087217.108:6044): pid=6013 uid=0 old-auid=4294967295 auid=0 old-ses=4294967295 ses=107 res=1
+  type=LOGIN msg=audit(1480087533.043:1428): pid=4885 uid=0 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 old-auid=4294967295 auid=0 old-ses=4294967295 ses=14 res=1
 -->
 <decoder name="auditd-login">
   <parent>auditd</parent>
@@ -291,8 +291,8 @@ type=LOGIN msg=audit(1480087533.043:1428): pid=4885 uid=0 subj=system_u:system_r
 </decoder>
 
 <!--
-Generic
-type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="ls" comm="ls" ppid=432 pid=3333 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0
+  Generic
+  type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="ls" comm="ls" ppid=432 pid=3333 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0
 -->
 <decoder name="auditd-generic">
   <parent>auditd</parent>
