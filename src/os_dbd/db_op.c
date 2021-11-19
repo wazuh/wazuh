@@ -173,8 +173,6 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
         merror(DBINIT_ERROR);
         return (NULL);
     }
-    unsigned int timeout= 5;
-    mysql_options(conn, MYSQL_OPT_CONNECT_TIMEOUT, (void *)&timeout);
 
     /* If host is 127.0.0.1 or localhost, use tcp socket */
     if((strcmp(host, "127.0.0.1") == 0) ||
