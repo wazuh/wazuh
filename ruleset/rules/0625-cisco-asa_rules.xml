@@ -8,7 +8,7 @@
 <group name="syslog,cisco,cisco-asa,">
   <rule id="64000" level="0">
     <decoded_as>cisco-asa</decoded_as>
-    <description>Grouping of cisco-ASA rules</description>
+    <description>Grouping of cisco-ASA rules.</description>
   </rule>
 
   <rule id="64001" level="6">
@@ -74,7 +74,7 @@
   <rule id="64010" level="9">
     <if_sid>64005</if_sid>
     <id>^6-308001</id>
-    <description>ASA: Password mismatch while running 'enable' </description>
+    <description>ASA: Password mismatch while running 'enable'.</description>
     <description>on the ASA.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -129,7 +129,7 @@
     -->
   <rule id="64017" level="8">
     <if_sid>64014, 64015, 64016</if_sid>
-    <description>ASA: Attack in progress detected</description>
+    <description>ASA: Attack in progress detected.</description>
     <group>ids,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
