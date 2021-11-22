@@ -17,7 +17,7 @@
   <rule id="67001" level="0">
     <if_sid>60016</if_sid>
     <field name="win.system.severityValue">^INFORMATION$</field>
-    <description>Windows Firewall With Advanced Security informational event</description>
+    <description>Windows Firewall With Advanced Security informational event.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
@@ -25,7 +25,7 @@
   <rule id="67002" level="0">
     <if_sid>60016</if_sid>
     <field name="win.system.severityValue">^WARNING$</field>
-    <description>Windows Firewall With Advanced Security warning event</description>
+    <description>Windows Firewall With Advanced Security warning event.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
@@ -33,7 +33,7 @@
   <rule id="67003" level="5">
     <if_sid>60016</if_sid>
     <field name="win.system.severityValue">^ERROR$</field>
-    <description>Windows Defender error event</description>
+    <description>Windows Defender error event.</description>
     <options>no_full_log</options>
     <group>system_error,pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
@@ -94,14 +94,14 @@
 
   <rule id="67009" level="10" frequency="$MS_FREQ" timeframe="120">
     <if_matched_sid>67002</if_matched_sid>
-    <description>Multiple Windows Firewall With Advanced Security warning events</description>
+    <description>Multiple Windows Firewall With Advanced Security warning events.</description>
     <options>no_full_log</options>
     <group>pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
 
   <rule id="67010" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>67003</if_matched_sid>
-    <description>Multiple Windows Firewall With Advanced Security error events</description>
+    <description>Multiple Windows Firewall With Advanced Security error events.</description>
     <options>no_full_log</options>
     <group>system_error,pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
