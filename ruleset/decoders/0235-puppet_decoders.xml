@@ -9,7 +9,7 @@
   - Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3
 -->
 <decoder name="puppet-master">
-    <program_name>^puppet-master</program_name>
+  <program_name>^puppet-master</program_name>
 </decoder>
 
 <!-- Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3 -->
