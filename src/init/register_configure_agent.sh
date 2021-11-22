@@ -142,8 +142,8 @@ tolower () {
 
 # Add auto-enrollment configuration block
 add_auto_enrollment () {
-    start_config="$(grep -n "<auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
-    end_config="$(grep -n "</auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
+    start_config="$(grep -n "<enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
+    end_config="$(grep -n "</enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
         start_config=$(( start_config + 1 ))
         end_config=$(( end_config - 1 ))
@@ -174,16 +174,16 @@ add_auto_enrollment () {
 
 # Add the auto_enrollment block to the configuration file
 concat_conf(){
-    start_config="$(grep -n "<auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
-    end_config="$(grep -n "</auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
+    start_config="$(grep -n "<enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
+    end_config="$(grep -n "</enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
         # Remove the server configuration
         if [ "${use_unix_sed}" = "False" ] ; then
-            ${sed} -e "/<auto_enrollment>/,/<\/auto_enrollment>/{ /<auto_enrollment>/{p; r ${TMP_ENROLLMENT}
-            }; /<\/auto_enrollment>/p; d }" ${CONF_FILE}
+            ${sed} -e "/<enrollment>/,/<\/enrollment>/{ /<enrollment>/{p; r ${TMP_ENROLLMENT}
+            }; /<\/enrollment>/p; d }" ${CONF_FILE}
         else
-            unix_sed "/<auto_enrollment>/,/<\/auto_enrollment>/{ /<auto_enrollment>/{p; r ${TMP_ENROLLMENT}
-            }; /<\/auto_enrollment>/p; d }" "${CONF_FILE}" "-e"
+            unix_sed "/<enrollment>/,/<\/enrollment>/{ /<enrollment>/{p; r ${TMP_ENROLLMENT}
+            }; /<\/enrollment>/p; d }" "${CONF_FILE}" "-e"
         fi
     else
         cat ${TMP_ENROLLMENT} >> ${CONF_FILE}
@@ -198,9 +198,9 @@ set_auto_enrollment_tag_value () {
     value="$2"
 
     if [ ! -z "${value}" ]; then
-        edit_value_tag "${tag}" ${value} "auto_enrollment"
+        edit_value_tag "${tag}" ${value} "enrollment"
     else
-        delete_auto_enrollment_tag "${tag}" "auto_enrollment"
+        delete_auto_enrollment_tag "${tag}" "enrollment"
     fi
 }
 
