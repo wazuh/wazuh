@@ -16,7 +16,7 @@
     l8249.interbusiness.it [82.49.141.29]
   - imapd[27113]: Authenticated user=badyy host=a.resenet.com.br [1.2.3.4]
   - imapd[27113]: Logout user=badyy host=a.resenet.com.br [1.2.3.4]
-  -->
+-->
 <decoder name="imapd">
   <program_name>^imapd</program_name>
   <regex offset="after_prematch">user=(\S+) \.+ [(\S+)]$</regex>
