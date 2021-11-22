@@ -6,20 +6,25 @@
 -->
 
 <group name="zeek,ids,">
+
   <rule id="66001" level="5">
     <field name="bro_engine">SSH</field>
-    <description>Zeek: SSH Connection</description>
+    <description>Zeek: SSH Connection.</description>
   </rule>
+
   <rule id="66002" level="5">
     <field name="bro_engine">SSL</field>
-    <description>Zeek: SSL Connection</description>
+    <description>Zeek: SSL Connection.</description>
   </rule>
+
   <rule id="66003" level="5">
     <field name="bro_engine">DNS</field>
-    <description>Zeek: DNS Query</description>
+    <description>Zeek: DNS Query.</description>
   </rule>
+
   <rule id="66004" level="5">
     <field name="bro_engine">CONN</field>
-    <description>Zeek: Connection detail</description>
+    <description>Zeek: Connection detail.</description>
   </rule>
+  
 </group>
