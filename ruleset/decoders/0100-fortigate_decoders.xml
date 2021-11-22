@@ -107,8 +107,8 @@ date=2018-05-31 time=08:58:56 devname="BA-RSYS-FW" devid="FG600C3912803212" logi
 -->
 
 <decoder name="fortigate-firewall-v5">
-    <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
+  <type>syslog</type>
 </decoder>
 
 <decoder name="fortigate-firewall-v5">
