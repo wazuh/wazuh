@@ -787,11 +787,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if isinstance(received_filename, Exception):
             raise received_filename
 
-        logger.debug(f"Received file from worker: '{received_filename}'")
+        logger.debug(f"Received extra-valid file from worker: '{received_filename}'")
 
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
         files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
-        logger.debug(f"Received {len(files_metadata)} files to check.")
+        logger.debug(f"Received {len(files_metadata)} extra-valid files to check.")
 
         timeout = self.server.manager.Event()
         # Create a child process to run the task.
@@ -801,21 +801,22 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 partial(self.process_files_from_worker, files_metadata, decompressed_files_path, self.cluster_items,
                         self.name, timeout)
             )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await asyncio.wait_for(
+                task, timeout=self.cluster_items['intervals']['master']['timeout_extra_valid']
+            )
+        except asyncio.TimeoutError:
+            # If timeout is raised, notify the process running this task to stop.
+            timeout.set()
+            raise exception.WazuhClusterError(3039)
         except Exception as e:
-            # TODO: Add new exception
-            raise exception.WazuhClusterError(1000, extra_message=str(e))
+            raise exception.WazuhClusterError(3040, extra_message=str(e))
         finally:
             shutil.rmtree(decompressed_files_path)
 
         # Log any possible error found in the process.
         self.integrity_sync_status['total_extra_valid'] = result['total_updated']
         if result['errors_per_folder']:
-            logger.error("Errors updating worker files: {}".format(' | '.join(
-                ["{}: {}".format(folder, len(errors)) for folder, errors
-                 in result['errors_per_folder'].items()])
-            ))
-            logger.debug(f"ERRORS found per folder are: {dict(result['errors_per_folder'])}")
+            logger.error(f"Errors updating worker files: {dict(result['errors_per_folder'])}")
         for error in result['generic_errors']:
             logger.error(error)
 
@@ -848,25 +849,26 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             for file_path, data in files_metadata.items():
                 if timeout.is_set():
                     break
-                try:
-                    full_path = os.path.join(common.wazuh_path, file_path)
-                    item_key = data['cluster_item_key']
 
-                    # Only valid client.keys is the local one (master).
-                    if os.path.basename(file_path) == 'client.keys':
-                        raise exception.WazuhClusterError(3007)
+                full_path = os.path.join(common.wazuh_path, file_path)
+                item_key = data['cluster_item_key']
 
-                    # If the file is merged, create individual files from it.
-                    if data['merged']:
-                        for unmerged_file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(
-                                data['merge_type'], decompressed_files_path, data['merge_name']
-                        ):
+                # Only valid client.keys is the local one (master).
+                if os.path.basename(file_path) == 'client.keys':
+                    raise exception.WazuhClusterError(3007)
+
+                # If the file is merged, create individual files from it.
+                if data['merged']:
+                    for unmerged_file_path, file_data, file_time in wazuh.core.cluster.cluster.unmerge_info(
+                            data['merge_type'], decompressed_files_path, data['merge_name']
+                    ):
+                        try:
                             if timeout.is_set():
                                 break
 
                             # Destination path.
                             full_unmerged_name = os.path.join(common.wazuh_path, unmerged_file_path)
-                            # Path where to create the file before moving it to the destination path (with safe_move).
+                            # Path where to create the file before moving it to the destination path.
                             tmp_unmerged_path = os.path.join(common.wazuh_path, 'queue', 'cluster', worker_name,
                                                              os.path.basename(unmerged_file_path))
 
@@ -876,7 +878,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             except ValueError:
                                 mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S')
 
-                            # If the file already existed, check if it is older than the one to be copied from worker.
+                            # If the file already existed, check if it is older than the one from worker.
                             if os.path.isfile(full_unmerged_name):
                                 local_mtime = datetime.utcfromtimestamp(int(os.stat(full_unmerged_name).st_mtime))
                                 if local_mtime > mtime:
@@ -892,16 +894,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                             permissions=cluster_items['files'][item_key]['permissions'],
                                             time=(mtime_epoch, mtime_epoch))
                             result['total_updated'] += 1
+                        except Exception as e:
+                            result['errors_per_folder'][item_key].append(str(e))
 
-                    # If the file is not 'merged' type, move it directly to the destination path.
-                    else:
+                # If the file is not 'merged' type, move it directly to the destination path.
+                else:
+                    try:
                         zip_path = os.path.join(decompressed_files_path, file_path)
                         utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
                                         permissions=cluster_items['files'][item_key]['permissions'])
-                except KeyError as e:
-                    result['generic_errors'].append(str(e))
-                except Exception as e:
-                    result['errors_per_folder'][item_key].append(str(e))
+                    except Exception as e:
+                        result['errors_per_folder'][item_key].append(str(e))
         except Exception as e:
             result['generic_errors'].append(f"Error updating worker files (extra valid): '{str(e)}'.")
 
