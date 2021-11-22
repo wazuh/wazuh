@@ -6,7 +6,7 @@
 -->
 
 <!--
-Format: TIMESTAMP Sysname %%vendorMODULE/severity/MNEMONIC: location; CONTENT
+  Format: TIMESTAMP Sysname %%vendorMODULE/severity/MNEMONIC: location; CONTENT
     TIMESTAMP: Date and time when the event occurred.
     Sysname Name or IP address of the device that generated the message.
     %%vendor Manufacturer flag. This element is %%10 for HP.
