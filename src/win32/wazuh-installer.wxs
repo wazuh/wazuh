@@ -4,57 +4,34 @@
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
-        <Property Id="WAZUH_MANAGER" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_MANAGER_PORT" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_PROTOCOL" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_SERVER" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_PORT" Secure="yes">1515</Property>
-        <Property Id="WAZUH_REGISTRATION_PASSWORD" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_KEEP_ALIVE_INTERVAL" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_TIME_RECONNECT" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_CA" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_CERTIFICATE" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_REGISTRATION_KEY" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_AGENT_NAME" Secure="yes">
-        </Property>
-        <Property Id="WAZUH_AGENT_GROUP" Secure="yes">
-        </Property>
+        <Property Id="WAZUH_MANAGER" Secure="yes"/>
+        <Property Id="WAZUH_MANAGER_PORT" Secure="yes"/>
+        <Property Id="WAZUH_PROTOCOL" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_SERVER" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_PORT" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_PASSWORD" Secure="yes"/>
+        <Property Id="WAZUH_KEEP_ALIVE_INTERVAL" Secure="yes"/>
+        <Property Id="WAZUH_TIME_RECONNECT" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_CA" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_CERTIFICATE" Secure="yes"/>
+        <Property Id="WAZUH_REGISTRATION_KEY" Secure="yes"/>
+        <Property Id="WAZUH_AGENT_NAME" Secure="yes"/>
+        <Property Id="WAZUH_AGENT_GROUP" Secure="yes"/>
         <!-- Deprecated options -->
-        <Property Id="ADDRESS" Secure="yes">
-        </Property>
-        <Property Id="GROUP" Secure="yes">
-        </Property>
-        <Property Id="SERVER_PORT" Secure="yes">
-        </Property>
-        <Property Id="NOTIFY_TIME" Secure="yes">
-        </Property>
-        <Property Id="TIME_RECONNECT" Secure="yes">
-        </Property>
-        <Property Id="AUTHD_SERVER" Secure="yes">
-        </Property>
-        <Property Id="AUTHD_PORT" Secure="yes">1515</Property>
-        <Property Id="PROTOCOL" Secure="yes">
-        </Property>
-        <Property Id="PASSWORD" Secure="yes">
-        </Property>
-        <Property Id="CERTIFICATE" Secure="yes">
-        </Property>
-        <Property Id="PEM" Secure="yes">
-        </Property>
-        <Property Id="KEY" Secure="yes">
-        </Property>
-        <Property Id="AGENT_NAME" Secure="yes">
-        </Property>
+        <Property Id="ADDRESS" Secure="yes"/>
+        <Property Id="GROUP" Secure="yes"/>
+        <Property Id="SERVER_PORT" Secure="yes"/>
+        <Property Id="NOTIFY_TIME" Secure="yes"/>
+        <Property Id="TIME_RECONNECT" Secure="yes"/>
+        <Property Id="AUTHD_SERVER" Secure="yes"/>
+        <Property Id="AUTHD_PORT" Secure="yes"/>
+        <Property Id="PROTOCOL" Secure="yes"/>
+        <Property Id="PASSWORD" Secure="yes"/>
+        <Property Id="CERTIFICATE" Secure="yes"/>
+        <Property Id="PEM" Secure="yes"/>
+        <Property Id="KEY" Secure="yes"/>
+        <Property Id="AGENT_NAME" Secure="yes"/>
+
         <Property Id="MsiLogging" Value="v" />
         <Icon Id="icon.ico" SourceFile="ui\favicon.ico" />
         <Property Id="ARPPRODUCTICON" Value="icon.ico" />
@@ -94,12 +71,25 @@
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
 
+        <CustomAction Id="SetWazuhManager" Property="WAZUH_MANAGER" Value="&quot;[ADDRESS]&quot;" />
+        <CustomAction Id="SetWazuhManagerPort" Property="WAZUH_MANAGER_PORT" Value="&quot;[SERVER_PORT]&quot;" />
+        <CustomAction Id="SetWazuhManagerProtocol" Property="WAZUH_PROTOCOL" Value="&quot;[PROTOCOL]&quot;" />
+        <CustomAction Id="SetRegistrationServer" Property="WAZUH_REGISTRATION_SERVER" Value="&quot;[AUTHD_SERVER]&quot;" />
+        <CustomAction Id="SetRegistrationPort" Property="WAZUH_REGISTRATION_PORT" Value="&quot;[AUTHD_PORT]&quot;" />
+        <CustomAction Id="SetRegistrationPassword" Property="WAZUH_REGISTRATION_PASSWORD" Value="&quot;[PASSWORD]&quot;" />
+        <CustomAction Id="SetWazuhKeepAlive" Property="WAZUH_KEEP_ALIVE_INTERVAL" Value="&quot;[NOTIFY_TIME]&quot;" />
+        <CustomAction Id="SetWazuhTimeReconnect" Property="WAZUH_TIME_RECONNECT" Value="&quot;[TIME_RECONNECT]&quot;" />
+        <CustomAction Id="SetRegistrationCA" Property="WAZUH_REGISTRATION_CA" Value="&quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="SetRegistrationCertificate" Property="WAZUH_REGISTRATION_CERTIFICATE" Value="&quot;[PEM]&quot;" />
+        <CustomAction Id="SetRegistrationKet" Property="WAZUH_REGISTRATION_KEY" Value="&quot;[KEY]&quot;" />
+        <CustomAction Id="SetAgentName" Property="WAZUH_AGENT_NAME" Value="&quot;[AGENT_NAME]&quot;" />
+        <CustomAction Id="SetAgentGroup" Property="WAZUH_AGENT_GROUP" Value="&quot;[GROUP]&quot;" />
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
         <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
-        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
+        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[WAZUH_REGISTRATION_SERVER]&quot;,&quot;[WAZUH_REGISTRATION_PORT]&quot;,&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;,&quot;[WAZUH_REGISTRATION_CA]&quot;,&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;,&quot;[WAZUH_REGISTRATION_KEY]&quot;,&quot;[WAZUH_AGENT_NAME]&quot;,&quot;[WAZUH_AGENT_GROUP]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
 
         <CustomAction Id="ReplaceConfiguration" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript ReplaceConf.vbs &quot;[APPLICATIONFOLDER]&quot;" />
@@ -120,6 +110,21 @@
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
+            <!-- Set deployment values -->
+            <Custom Action="SetWazuhManager" After="InstallInitialize">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
+            <Custom Action="SetWazuhManagerPort" After="InstallInitialize">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
+            <Custom Action="SetWazuhManagerProtocol" After="InstallInitialize">PROTOCOL &lt;&gt; "" AND WAZUH_PROTOCOL = ""</Custom>
+            <Custom Action="SetRegistrationServer" After="InstallInitialize">AUTHD_SERVER &lt;&gt; "" AND WAZUH_REGISTRATION_SERVER = ""</Custom>
+            <Custom Action="SetRegistrationPort" After="InstallInitialize">AUTHD_PORT &lt;&gt; "" AND WAZUH_REGISTRATION_PORT = ""</Custom>
+            <Custom Action="SetRegistrationPassword" After="InstallInitialize">PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = ""</Custom>
+            <Custom Action="SetWazuhKeepAlive" After="InstallInitialize">NOTIFY_TIME &lt;&gt; "" AND WAZUH_KEEP_ALIVE_INTERVAL = ""</Custom>
+            <Custom Action="SetWazuhTimeReconnect" After="InstallInitialize">TIME_RECONNECT &lt;&gt; "" AND WAZUH_TIME_RECONNECT = ""</Custom>
+            <Custom Action="SetRegistrationCA" After="InstallInitialize">CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_CA = ""</Custom>
+            <Custom Action="SetRegistrationCertificate" After="InstallInitialize">PEM &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = ""</Custom>
+            <Custom Action="SetRegistrationKet" After="InstallInitialize">KEY &lt;&gt; "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
+            <Custom Action="SetAgentName" After="InstallInitialize">AGENT_NAME &lt;&gt; "" AND WAZUH_AGENT_NAME = ""</Custom>
+            <Custom Action="SetAgentGroup" After="InstallInitialize">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
+
             <!-- Delete OSSEC service if it exist -->
             <Custom Action="CheckSvcRunning_OssecSvc" After="AppSearch">OSSECINSTALLED</Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
