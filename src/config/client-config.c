@@ -236,6 +236,39 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     return (0);
 }
 
+int Read_Client_Shared(XML_NODE node, void *d1)
+{
+    int i = 0;
+
+    /* XML definitions */
+    const char *xml_force_reconnect_interval = "force_reconnect_interval";
+
+    agent * logr = (agent *)d1;
+    logr->force_reconnect_interval = 0;
+
+    for (i = 0; node[i]; i++) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
+            long t = w_parse_time(node[i]->content);
+            if (t < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                logr->force_reconnect_interval = t;
+            }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+    }
+
+    return (0);
+}
+
 int Read_Client_Server(XML_NODE node, agent * logr)
 {
     /* XML definitions */
