@@ -12,11 +12,12 @@
 #include "fimDBHelper.hpp"
 #include "fimDBHelperTest.h"
 
-void FIMHelperTest::SetUp(){}
+void FIMHelperTest::SetUp() {}
 
-void FIMHelperTest::TearDown(){}
+void FIMHelperTest::TearDown() {}
 
-TEST_F(FIMHelperTest, testInit) {
+TEST_F(FIMHelperTest, testInit)
+{
     std::shared_ptr<DBSync> handlerDbsync;
     std::shared_ptr<RemoteSync> handlerRsync;
     unsigned int maxFiles = 0;
@@ -31,7 +32,8 @@ TEST_F(FIMHelperTest, testInit) {
 #endif
 }
 
-TEST_F(FIMHelperTest, insertItemToDatabaseSuccess) {
+TEST_F(FIMHelperTest, insertItemToDatabaseSuccess)
+{
     std::string tableName;
     nlohmann::json insertItem;
     EXPECT_CALL(FIMDBMOCK::getInstance(), insertItem(testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::SUCCESS)));
@@ -40,7 +42,8 @@ TEST_F(FIMHelperTest, insertItemToDatabaseSuccess) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, insertItemToDatabaseWithMaxRows) {
+TEST_F(FIMHelperTest, insertItemToDatabaseWithMaxRows)
+{
     std::string tableName;
     nlohmann::json insertItem;
     EXPECT_CALL(FIMDBMOCK::getInstance(), insertItem(testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::MAX_ROWS_ERROR)));
@@ -49,7 +52,8 @@ TEST_F(FIMHelperTest, insertItemToDatabaseWithMaxRows) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, insertItemToDatabaseWithSomeDbSyncError) {
+TEST_F(FIMHelperTest, insertItemToDatabaseWithSomeDbSyncError)
+{
     std::string tableName;
     EXPECT_CALL(FIMDBMOCK::getInstance(), insertItem(testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::DBSYNC_ERROR)));
     int expectedReturn = static_cast<int>(dbQueryResult::DBSYNC_ERROR);
@@ -57,7 +61,8 @@ TEST_F(FIMHelperTest, insertItemToDatabaseWithSomeDbSyncError) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, deleteItemToDatabaseSuccess) {
+TEST_F(FIMHelperTest, deleteItemToDatabaseSuccess)
+{
     std::string tableName;
     nlohmann::json filter;
     EXPECT_CALL(FIMDBMOCK::getInstance(), removeItem(testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::SUCCESS)));
@@ -66,7 +71,8 @@ TEST_F(FIMHelperTest, deleteItemToDatabaseSuccess) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, deleteItemToDatabaseWithMaxRows) {
+TEST_F(FIMHelperTest, deleteItemToDatabaseWithMaxRows)
+{
     std::string tableName;
     nlohmann::json filter;
     EXPECT_CALL(FIMDBMOCK::getInstance(), removeItem(testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::MAX_ROWS_ERROR)));
@@ -75,7 +81,8 @@ TEST_F(FIMHelperTest, deleteItemToDatabaseWithMaxRows) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, deleteItemToDatabaseWithSomeDbSyncError) {
+TEST_F(FIMHelperTest, deleteItemToDatabaseWithSomeDbSyncError)
+{
     std::string tableName;
     EXPECT_CALL(FIMDBMOCK::getInstance(), removeItem(testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::DBSYNC_ERROR)));
     int expectedReturn = static_cast<int>(dbQueryResult::DBSYNC_ERROR);
@@ -83,7 +90,8 @@ TEST_F(FIMHelperTest, deleteItemToDatabaseWithSomeDbSyncError) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, updateItemToDatabaseSuccess) {
+TEST_F(FIMHelperTest, updateItemToDatabaseSuccess)
+{
     std::string tableName;
     nlohmann::json updateItem;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::SUCCESS)));
@@ -92,7 +100,8 @@ TEST_F(FIMHelperTest, updateItemToDatabaseSuccess) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, updateItemToDatabaseWithMaxRows) {
+TEST_F(FIMHelperTest, updateItemToDatabaseWithMaxRows)
+{
     std::string tableName;
     nlohmann::json filter;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::MAX_ROWS_ERROR)));
@@ -101,7 +110,8 @@ TEST_F(FIMHelperTest, updateItemToDatabaseWithMaxRows) {
     ASSERT_EQ(returnCode, expectedReturn);
 }
 
-TEST_F(FIMHelperTest, updateItemToDatabaseWithSomeDbSyncError) {
+TEST_F(FIMHelperTest, updateItemToDatabaseWithSomeDbSyncError)
+{
     std::string tableName;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_)).WillOnce(testing::Return(static_cast<int>(dbQueryResult::DBSYNC_ERROR)));
     int expectedReturn = static_cast<int>(dbQueryResult::DBSYNC_ERROR);

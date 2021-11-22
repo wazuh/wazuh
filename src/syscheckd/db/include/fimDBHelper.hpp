@@ -27,8 +27,8 @@ namespace FIMDBHelper
     * @param logCallback Logging callback.
     */
     void initDB(unsigned int sync_interval, unsigned int file_limit,
-                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
     }
@@ -43,8 +43,8 @@ namespace FIMDBHelper
     * @param logCallback Logging callback.
     */
     void initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
-                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
                               handler_RSync);
@@ -86,7 +86,7 @@ namespace FIMDBHelper
     * @return amount of entries on success, 0 otherwise.
     */
     template<typename T>
-    int getCount(const std::string & tableName, int & count)
+    int getCount(const std::string& tableName, int& count)
     {
         const auto countQueryStatement = R"({
                                                 "table":"",
@@ -98,12 +98,13 @@ namespace FIMDBHelper
         })";
         auto countQuery = nlohmann::json::parse(countQueryStatement);
         countQuery["table"] = tableName;
-        auto callback {
+        auto callback
+        {
             [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
-                if(type == ReturnTypeCallback::SELECTED)
+                if (type == ReturnTypeCallback::SELECTED)
                 {
-                   count = jsonResult["query"]["count"];
+                    count = jsonResult["query"]["count"];
                 }
             }
         };
@@ -119,7 +120,7 @@ namespace FIMDBHelper
     * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int insertItem(const std::string & tableName, const nlohmann::json & item)
+    int insertItem(const std::string& tableName, const nlohmann::json& item)
     {
         const auto insertStatement = R"(
                                             {
@@ -146,7 +147,7 @@ namespace FIMDBHelper
     * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int updateItem(const std::string & tableName, const nlohmann::json & item)
+    int updateItem(const std::string& tableName, const nlohmann::json& item)
     {
         const auto updateStatement = R"(
                                             {
@@ -161,8 +162,9 @@ namespace FIMDBHelper
         update["table"] = tableName;
         update["data"] = {item};
         bool error = false;
-        auto callback {
-            [&error](ReturnTypeCallback type, const nlohmann::json &)
+        auto callback
+        {
+            [&error](ReturnTypeCallback type, const nlohmann::json&)
             {
                 if (type == ReturnTypeCallback::DB_ERROR)
                 {
@@ -170,7 +172,8 @@ namespace FIMDBHelper
                 }
             }
         };
-        if(error)
+
+        if (error)
         {
             return static_cast<int>(dbQueryResult::DBSYNC_ERROR);
         }
@@ -187,9 +190,10 @@ namespace FIMDBHelper
     * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int getDBItem(nlohmann::json & item, const nlohmann::json & query)
+    int getDBItem(nlohmann::json& item, const nlohmann::json& query)
     {
-        auto callback {
+        auto callback
+        {
             [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
                 if (type == ReturnTypeCallback::SELECTED)
