@@ -466,6 +466,7 @@ class WazuhException(Exception):
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
         3037: 'Error while processing Agent-info chunks',
+        3038: "Error while processing extra-valid files",
         3039: "Timeout processing extra-valid files.",
         3040: "Error while processing extra-valid files",
 
