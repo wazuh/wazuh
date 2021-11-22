@@ -21,6 +21,7 @@ from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove
 from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
+from signal import signal, alarm, SIGALRM
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
 
@@ -1856,3 +1857,23 @@ def temporary_cache():
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+
+class Timeout:
+    """
+    Raise TimeoutError after n seconds.
+    """
+
+    def __init__(self, seconds, error_message=''):
+        self.seconds = seconds
+        self.error_message = error_message
+
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+
+    def __enter__(self):
+        signal(SIGALRM, self.handle_timeout)
+        alarm(self.seconds)
+
+    def __exit__(self, type, value, traceback):
+        alarm(0)

@@ -462,8 +462,7 @@ class WazuhException(Exception):
         3034: "Error sending file. File not found.",
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
-        3037: 'Timeout while waiting for response of Agent-info update in the process pool.',
-        3038: 'Error while processing Agent-info chunks',
+        3037: 'Error while processing Agent-info chunks',
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.

@@ -11,7 +11,6 @@ from calendar import timegm
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from functools import partial
-from multiprocessing import Manager
 from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -518,26 +517,32 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         ----------
         data : dict
             Dict containing command and list of chunks to be sent to wazuh-db.
-        timeout : Event
-            Event to notify whether the task should stop.
+        timeout : int
+            Seconds to wait before stopping the task.
 
         Returns
         -------
         result : dict
             Dict containing number of updated chunks, error messages (if any) and time spent.
         """
-        result = {'updated_chunks': 0, 'error_messages': [], 'time_spent': 0}
+        result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
         wdb_conn = WazuhDBConnection()
         before = time()
 
-        for i, chunk in enumerate(data['chunks']):
-            if timeout.is_set():
-                break
-            try:
-                wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
-                result['updated_chunks'] += 1
-            except Exception as e:
-                result['error_messages'].append((i, str(e)))
+        try:
+            with utils.Timeout(timeout):
+                for i, chunk in enumerate(data['chunks']):
+                    try:
+                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+                        result['updated_chunks'] += 1
+                    except TimeoutError:
+                        raise TimeoutError
+                    except Exception as e:
+                        result['error_messages']['chunks'].append((i, str(e)))
+        except TimeoutError:
+            result['error_messages']['others'].append('Timeout while processing agent-info chunks.')
+        except Exception as e:
+            result['error_messages']['others'].append(f'Error while processing agent-info chunks: {e}')
 
         result['time_spent'] = time() - before
         wdb_conn.close()
@@ -574,25 +579,25 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         # Update chunks in local wazuh-db
-        timeout = self.server.manager.Event()
         try:
-            task = self.loop.run_in_executor(self.server.task_pool, partial(self.send_data_to_wdb, data, timeout))
-            result = await asyncio.wait_for(task,
-                                            timeout=self.cluster_items['intervals']['master']['timeout_agent_info'])
-        except asyncio.TimeoutError:
-            # If timeout is raised, notify the process running this task to stop.
-            timeout.set()
-            await self.send_request(command=b"syn_m_a_err", data=f"timeout processing agent-info chunks.".encode())
-            raise exception.WazuhClusterError(3037)
+            task = self.loop.run_in_executor(
+                self.server.task_pool,
+                partial(self.send_data_to_wdb, data, self.cluster_items['intervals']['master']['timeout_agent_info'])
+            )
+            result = await asyncio.wait_for(task, timeout=None)
         except Exception as e:
-            await self.send_request(command=b"syn_m_a_err",
-                                    data=f"error processing agent-info chunks in process pool: {str(e)}".encode())
-            raise exception.WazuhClusterError(3038, extra_message=str(e))
+            await self.send_request(command=b'syn_m_a_err',
+                                    data=f'error processing agent-info chunks in process pool: {str(e)}'.encode())
+            raise exception.WazuhClusterError(3037, extra_message=str(e))
 
         # Log information about the results
-        for error in result["error_messages"]:
+        for error in result['error_messages']['others']:
+            logger.error(error)
+
+        for error in result['error_messages']['chunks']:
             logger.debug2(f"Chunk {error[0]}/{len(data['chunks'])}: {data['chunks'][error[0]]}")
             logger.error(f"Wazuh-db response for chunk {error[0]}/{len(data['chunks'])} was not 'ok': {error[1]}")
+
         logger.debug(f"{result['updated_chunks']}/{len(data['chunks'])} chunks updated in wazuh-db "
                      f"in {result['time_spent']:3f}s.")
 
@@ -976,7 +981,6 @@ class Master(server.AbstractServer):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Master")
-        self.manager = Manager()
         self.integrity_control = {}
         self.handler_class = MasterHandler
         self.task_pool = ProcessPoolExecutor(
