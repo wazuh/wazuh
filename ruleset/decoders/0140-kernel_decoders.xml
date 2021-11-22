@@ -24,7 +24,7 @@
   - Aug 17 10:03:37 myhostname kernel: SFW2-INext-DROP-DEFLT IN=eth0 OUT= MAC=00:08:02:da:c8:51:00:0f:f7:74:31:8a:08:00 SRC=1.2.3.36 DST=1.2.3.194 LEN=28 TOS=0x00 PREC=0x00 TTL=44 ID=60200 PROTO=ICMP TYPE=8 CODE=0 ID=10466 SEQ=21229
 -->
 <decoder name="kernel">
-   <program_name>^kernel</program_name>
+  <program_name>^kernel</program_name>
 </decoder>
 
 <decoder name="iptables-1">
