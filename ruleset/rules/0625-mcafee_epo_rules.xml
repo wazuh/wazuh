@@ -8,13 +8,14 @@
 
 <group name="mcafee_epo,">
 
-    <rule id="65500" level="0">
-        <decoded_as>mcafee-epo2</decoded_as>
-        <description>Mcafee EPO2</description>
-    </rule>
-    <rule id="65501" level="3">
-        <if_sid>65500</if_sid>
-        <description>$(ThreatName)</description>
-    </rule>
+  <rule id="65500" level="0">
+    <decoded_as>mcafee-epo2</decoded_as>
+    <description>Mcafee EPO2.</description>
+  </rule>
+  
+  <rule id="65501" level="3">
+    <if_sid>65500</if_sid>
+    <description>$(ThreatName).</description>
+  </rule>
 
 </group>
