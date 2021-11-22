@@ -10,7 +10,7 @@
   - Logs from syslog.
 -->
 <decoder name="oscap">
-    <program_name>oscap</program_name>
+  <program_name>oscap</program_name>
 </decoder>
 
 <!--
