@@ -20,25 +20,25 @@
   <rule id="64202" level="4">
     <if_sid>64200</if_sid>
     <field name="Severity">3|4</field>
-    <description>Panda Security: Low severity event detected. Category: $(Cat)</description>
+    <description>Panda Security: Low severity event detected. Category: $(Cat).</description>
   </rule>
   
   <rule id="64203" level="4">
     <if_sid>64200</if_sid>
     <field name="Severity">5|6</field>
-    <description>Panda Security: Medium severity event detected. Category: $(Cat)</description>
+    <description>Panda Security: Medium severity event detected. Category: $(Cat).</description>
   </rule>
   
   <rule id="64204" level="12">
     <if_sid>64200</if_sid>
     <field name="Severity">7|8</field>
-    <description>Panda Security: High severity alert detected. Category: $(Cat)</description>
+    <description>Panda Security: High severity alert detected. Category: $(Cat).</description>
   </rule>
   
   <rule id="64205" level="14">
     <if_sid>64200</if_sid>
     <field name="Severity">9|10</field>
-    <description>Panda Security: Very high severity alert detected! Category: $(Cat)</description>
+    <description>Panda Security: Very high severity alert detected! Category: $(Cat).</description>
   </rule>
 
   <rule id="64206" level="7">
@@ -55,7 +55,7 @@
   
   <rule id="64208" level="7">
     <if_sid>64200</if_sid>
-	<field name="Broken">true</field>
+	  <field name="Broken">true</field>
     <description>Panda Security: The file is corrupted or defective.</description>
   </rule>
  
