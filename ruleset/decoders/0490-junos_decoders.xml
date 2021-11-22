@@ -7,7 +7,7 @@
 
 
 <decoder name="junos-ids">
-    <program_name>junos-ids</program_name>
+	<program_name>junos-ids</program_name>
 </decoder>
 
 <!--
