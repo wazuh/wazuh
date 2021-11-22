@@ -18,8 +18,6 @@
   <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d </prematch>
 </decoder>
 
-
-
 <!-- Windows firewall decoder.
   - Will extract action, protocol, srcip, dstip, srcport and dstport.
   - Examples:
@@ -188,7 +186,6 @@
   - 2015 Nov 19 18:32:31 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Process Create:  UtcTime: 2015-11-19 17:32:31.562  ProcessGuid: {0B364D7C-07AF-564E-0000-001098C90800}  ProcessId: 2188  Image: C:\Windows\System32\rundll32.exe  CommandLine: C:\Windows\system32\rundll32.exe C:\Windows\system32\inetcpl.cpl,ClearMyTracksByProcess Flags:65800 WinX:0 WinY:0 IEFrame:0000000000000000  CurrentDirectory: C:\Users\Administrator.WIN-K3UD9R5LCEL\Desktop\  User: WIN-K3UD9R5LCEL\Administrator  LogonGuid: {0B364D7C-FDDB-564D-0000-00209CA10100}  LogonId: 0x1a19c  TerminalSessionId: 1  IntegrityLevel: High  Hashes: SHA1=963B55ACC8C566876364716D5AAFA353995812A8  ParentProcessGuid: {0B364D7C-FE43-564D-0000-0010F1720200}  ParentProcessId: 576  ParentImage: C:\Program Files\Internet Explorer\iexplore.exe  ParentCommandLine: "C:\Program Files\Internet Explorer\iexplore.exe"
   - 2017 Mar 29 13:36:36 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-P57C9KN929H: Process Create:  UtcTime: 2017-03-29 11:36:36.964  ProcessGuid: {DB577E3B-9C44-58DB-0000-0010B0983A00}  ProcessId: 3784  Image: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe  CommandLine: "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" "-file" "C:\Users\Alberto\Desktop\test.ps1"  CurrentDirectory: C:\Users\Alberto\Desktop\  User: WIN-P57C9KN929H\Alberto  LogonGuid: {DB577E3B-89E5-58DB-0000-0020CB290500}  LogonId: 0x529cb  TerminalSessionId: 1  IntegrityLevel: Medium  Hashes: MD5=92F44E405DB16AC55D97E3BFE3B132FA,SHA256=6C05E11399B7E3C8ED31BAE72014CF249C144A8F4A2C54A758EB2E6FAD47AEC7  ParentProcessGuid: {DB577E3B-89E6-58DB-0000-0010FA3B0500}  ParentProcessId: 2308  ParentImage: C:\Windows\explorer.exe  ParentCommandLine: C:\Windows\Explorer.EXE
 -->
-
 <decoder name="Sysmon-EventID#1">
   <parent>windows</parent>
   <type>windows</type>
@@ -250,7 +247,6 @@
   2015 Nov 19 20:33:25 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(3): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Network connection detected:  UtcTime: 2015-11-19 19:33:23.824  ProcessGuid: {0B364D7C-23F6-564E-0000-00100D5A1100}  ProcessId: 2028  Image: C:\Program Files (x86)\Internet Explorer\iexplore.exe  User: WIN-K3UD9R5LCEL\Administrator  Protocol: tcp  Initiated: true  SourceIsIpv6: false  SourceIp: 192.168.2.201  SourceHostname: WIN-K3UD9R5LCEL.LinDomain  SourcePort: 49192  SourcePortName:   DestinationIsIpv6: false  DestinationIp: XXX.58.XXX.206  DestinationHostname: webdest  DestinationPort: 443  DestinationPortName: https
   2018 Nov 03 14:41:15 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(3): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: HOST2.abcusa.local: Network connection detected:  RuleName:   UtcTime: 2018-11-03 18:41:12.049  ProcessGuid: {1DCE106C-1FD9-5BD9-0000-001089032E01}  ProcessId: 12836  Image: C:\Windows\System32\mmc.exe  User: ABCUSA\admin.smith  Protocol: tcp  Initiated: true  SourceIsIpv6: false  SourceIp: 10.150.133.7  SourceHostname: HOST2.abcusa.local  SourcePort: 54709  SourcePortName:   DestinationIsIpv6: false  DestinationIp: 10.150.133.6  DestinationHostname: HOST1.abcusa.local  DestinationPort: 49161  DestinationPortName:
 -->
-
 <decoder name="Sysmon-EventID#3">
   <parent>windows</parent>
   <type>windows</type>
@@ -270,7 +266,6 @@
   Event ID 4: Sysmon service state changed
   2015 Nov 19 20:27:42 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(4): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-K3UD9R5LCEL: Sysmon service state changed:  UtcTime: 2015-11-19 19:27:42.796  State: Started
 -->
-
 <decoder name="Sysmon-EventID#4">
   <parent>windows</parent>
   <type>windows</type>
