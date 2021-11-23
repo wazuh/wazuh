@@ -1400,6 +1400,9 @@ stages:
 ---
 test_name: PUT /agents/reconnect
 
+marks:
+  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
+
 stages:
 
   - name: Try to reconnect non existing agent (Allowed)

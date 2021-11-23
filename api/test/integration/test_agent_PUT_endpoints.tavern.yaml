@@ -391,6 +391,9 @@ stages:
 ---
 test_name: PUT /agents/reconnect
 
+marks:
+  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
+
 stages:
 
   # PUT /agents/reconnect?agents_list=wrong_id
@@ -841,6 +844,9 @@ stages:
 
 ---
 test_name: PUT /agents/upgrade
+
+marks:
+  - xfail # Review agents upgrade API integration tests - https://github.com/wazuh/wazuh/issues/10791
 
 stages:
 
