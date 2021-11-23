@@ -215,7 +215,7 @@ main () {
         use_unix_sed="True"
     fi
 
-    if [ ! -z ${WAZUH_MANAGER} ]; then
+    if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
@@ -253,6 +253,22 @@ main () {
         set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
         delete_blank_lines ${TMP_ENROLLMENT}
         concat_conf
+
+    elif [ -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${INSTALLDIR}/logs/ossec.log
+    fi
+
+    if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
+        # Options to be used in register time.
+        OPTIONS="-m ${WAZUH_REGISTRATION_SERVER}"
+        OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_REGISTRATION_PORT}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_REGISTRATION_PASSWORD}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-A" "${WAZUH_AGENT_NAME}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-G" "${WAZUH_AGENT_GROUP}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_REGISTRATION_CA}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_REGISTRATION_KEY}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_REGISTRATION_CERTIFICATE}")
+        ${INSTALLDIR}/bin/agent-auth ${OPTIONS} >> ${INSTALLDIR}/logs/ossec.log 2>/dev/null
     fi
 }
 
