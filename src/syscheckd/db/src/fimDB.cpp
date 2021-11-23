@@ -11,8 +11,6 @@
 
 #include "fimDB.hpp"
 
-#define FIM_LOCATION      "syscheck"
-
 void FIMDB::setFileLimit()
 {
     m_dbsyncHandler->setTableMaxRow("file_entry", m_max_rows_file);
@@ -34,47 +32,26 @@ void FIMDB::setValueLimit()
 
 void FIMDB::registerRSync()
 {
-    // LCOV_EXCL_START
-    const auto reportFimSyncWrapper
-    {
-        [this](const std::string & dataString)
-        {
-            m_syncMessageFunction(dataString);
-            m_loggingFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-        }
-    };
-    // LCOV_EXCL_STOP
-
-    m_rsyncHandler->registerSyncID("fim_file_sync",
+    m_rsyncHandler->registerSyncID("fim_file",
                                     m_dbsyncHandler->handle(),
                                     nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                    reportFimSyncWrapper);
+                                    m_syncFileMessageFunction);
 #ifdef WIN32
-    m_rsyncHandler->registerSyncID("fim_registry_sync",
+    m_rsyncHandler->registerSyncID("fim_registry",
                                     m_dbsyncHandler->handle(),
                                     nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                    reportFimSyncWrapper);
-
-    m_rsyncHandler->registerSyncID("fim_value_sync",
-                                    m_dbsyncHandler->handle(),
-                                    nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT),
-                                    reportFimSyncWrapper);
-
+                                    m_syncRegistryMessageFunction);
 #endif
-
 }
 
 void FIMDB::sync()
 {
-
     m_loggingFunction(LOG_INFO, "Executing FIM sync.");
-    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), m_syncMessageFunction);
+    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), m_syncFileMessageFunction);
 #ifdef WIN32
-    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), m_syncMessageFunction);
-    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_VALUE_START_CONFIG_STATEMENT), m_syncMessageFunction);
+    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), m_syncRegistryMessageFunction);
 #endif
     m_loggingFunction(LOG_INFO, "Finished FIM sync.");
-
 }
 
 void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
@@ -110,11 +87,19 @@ void FIMDB::init(unsigned int interval_synchronization,
 #endif
 {
     // LCOV_EXCL_START
-    std::function<void(const std::string&)> callbackSyncWrapper
+    std::function<void(const std::string&)> callbackSyncFileWrapper
     {
         [callbackSync](const std::string & msg)
         {
-            callbackSync(FIM_LOCATION, msg.c_str());
+            callbackSync(FIM_COMPONENT_FILE, msg.c_str());
+        }
+    };
+
+    std::function<void(const std::string&)> callbackSyncRegistryWrapper
+    {
+        [callbackSync](const std::string & msg)
+        {
+            callbackSync(FIM_COMPONENT_REGISTRY, msg.c_str());
         }
     };
     // LCOV_EXCL_STOP
@@ -134,7 +119,8 @@ void FIMDB::init(unsigned int interval_synchronization,
 #endif
     m_dbsyncHandler = dbsyncHandler;
     m_rsyncHandler = rsyncHanlder;
-    m_syncMessageFunction = callbackSyncWrapper;
+    m_syncFileMessageFunction = callbackSyncFileWrapper;
+    m_syncRegistryMessageFunction = callbackSyncRegistryWrapper;
     m_loggingFunction = callbackLogWrapper;
     m_stopping = false;
 

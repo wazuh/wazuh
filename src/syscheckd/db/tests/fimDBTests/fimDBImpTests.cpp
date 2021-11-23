@@ -173,7 +173,7 @@ TEST_F(FimDBFixture, updateItemSuccess)
 TEST_F(FimDBFixture, registerSyncIDSuccess)
 {
 
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 #ifdef WIN32
     EXPECT_CALL(*mockRSync, registerSyncID("fim_registry_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
     EXPECT_CALL(*mockRSync, registerSyncID("fim_value_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT), testing::_));

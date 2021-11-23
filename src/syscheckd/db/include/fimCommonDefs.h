@@ -20,4 +20,6 @@ typedef enum FIMDBErrorCodes
 typedef void((*fim_sync_callback_t)(const char *tag, const char* buffer));
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));
 
+static w_queue_t * fim_sync_queue;
+
 #endif // DB_STATEMENT_H
