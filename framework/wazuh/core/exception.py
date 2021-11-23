@@ -17,6 +17,9 @@ class WazuhException(Exception):
 
     ERRORS = {
         # < 999: API
+        900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
+             'Please restart the Wazuh API',
+        901: 'API executor subprocess broke. A service restart may be needed',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -229,9 +232,9 @@ class WazuhException(Exception):
                },
         1707: {'message': 'Cannot send request, agent is not active',
                'remediation': 'Please, check non-active agents connection and try again. Visit '
-               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
-               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
-               ' to obtain more information on registering and connecting agents'
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
+                              ' to obtain more information on registering and connecting agents'
                },
         1708: {'message': 'There is an agent with the same ID',
                'remediation': 'Please choose another ID'
@@ -557,6 +560,11 @@ class WazuhException(Exception):
 
         # > 9000: Authd
     }
+
+    # Reserve agent upgrade custom errors
+    ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
+                                    'The error message will be the output of upgrade module'}
+                   for key in range(1811, 1900)})
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
                  type=None):

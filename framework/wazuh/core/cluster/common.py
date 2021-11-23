@@ -561,7 +561,7 @@ class Handler(asyncio.Protocol):
             res = await self.send_request(b'dapi_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
         except Exception as e:
             self.logger.error(f"Error sending API response to local client: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=WazuhJSONEncoder).encode()
             res = await self.send_request(b'dapi_err', exc_info)
         finally:
@@ -585,7 +585,7 @@ class Handler(asyncio.Protocol):
             await self.send_request(b'sendsyn_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
         except Exception as e:
             self.logger.error(f"Error sending send sync response to local client: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=WazuhJSONEncoder).encode()
             await self.send_request(b'sendsync_err', exc_info)
         finally:

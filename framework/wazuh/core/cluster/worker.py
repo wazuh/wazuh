@@ -123,7 +123,7 @@ class SyncFiles(SyncTask):
             raise task_id
         elif task_id.startswith(b'Error'):
             self.logger.error(task_id.decode())
-            exc_info = json.dumps(exception.WazuhClusterError(code=3016, extra_message=str(task_id)),
+            exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
                                   cls=c_common.WazuhJSONEncoder).encode()
             await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
             return
@@ -156,7 +156,7 @@ class SyncFiles(SyncTask):
         except Exception as e:
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder).encode()
             await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' + exc_info)
         finally:
@@ -620,7 +620,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                         json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 logger.error(f"Error synchronizing integrity: {e}")
-                exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+                exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder)
                 await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
 
@@ -693,7 +693,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
 
@@ -715,7 +715,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         if isinstance(self.sync_tasks[name].filename, Exception):
             exc_info = json.dumps(exception.WazuhClusterError(
-                code=1000, extra_message=str(self.sync_tasks[name].filename)), cls=c_common.WazuhJSONEncoder)
+                1000, extra_message=str(self.sync_tasks[name].filename)), cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
             raise self.sync_tasks[name].filename
 
@@ -759,7 +759,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
         finally:

@@ -706,7 +706,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 task_id = await self.send_request(command=b'syn_m_c', data=b'')
                 if isinstance(task_id, Exception) or task_id.startswith(b'Error'):
                     exc_info = task_id if isinstance(task_id, Exception) else \
-                        exception.WazuhClusterError(code=3016, extra_message=str(task_id))
+                        exception.WazuhClusterError(3016, extra_message=str(task_id))
                     task_id = b'None'
                     raise exc_info
 
@@ -729,7 +729,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             except Exception as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
-                exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+                exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder).encode()
                 result = await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
             finally:
