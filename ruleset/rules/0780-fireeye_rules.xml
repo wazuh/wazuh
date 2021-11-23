@@ -13,33 +13,32 @@ Aug 26 02:48:33 uk001 cef[20526]: CEF:0|fireeye|hx|3.5.1|FireEye Acquisition Sta
 
 <group name="fireeye,">
 
-    <rule id="150100" level="0">
-        <decoded_as>cef-fireeye</decoded_as>
-        <description>FireEye</description>
-    </rule>
+  <rule id="150100" level="0">
+    <decoded_as>cef-fireeye</decoded_as>
+    <description>FireEye.</description>
+  </rule>
 
-    <rule id="150101" level="7">
-        <if_sid>150100</if_sid>
-        <description>FireEye: $(type)</description>
-    </rule>
+  <rule id="150101" level="7">
+    <if_sid>150100</if_sid>
+    <description>FireEye: $(type).</description>
+  </rule>
 
-    <rule id="150102" level="7">
-        <if_sid>150101</if_sid>
-        <field name="value">\.+</field>
-        <description>FireEye: $(type) - $(value)</description>
-    </rule>
+  <rule id="150102" level="7">
+    <if_sid>150101</if_sid>
+    <field name="value">\.+</field>
+    <description>FireEye: $(type) - $(value).</description>
+  </rule>
 
-    <rule id="150103" level="0">
-        <if_sid>150101,150102</if_sid>
-        <field name="type">FireEye Acquisition Started|FireEye Acquisition Queued|FireEye Acquisition Completed</field>
-        <description>FireEye: $(type) - ignored</description>
-    </rule>
+  <rule id="150103" level="0">
+    <if_sid>150101,150102</if_sid>
+    <field name="type">FireEye Acquisition Started|FireEye Acquisition Queued|FireEye Acquisition Completed</field>
+    <description>FireEye: $(type) - ignored.</description>
+  </rule>
 
-    <rule id="150150" level="3">
-        <decoded_as>fireeye-silverfish</decoded_as>
-        <description>FireEye NX: Silverfish</description>
-        <group>fireeye_nx_silverfish,</group>
-    </rule>
-
+  <rule id="150150" level="3">
+    <decoded_as>fireeye-silverfish</decoded_as>
+    <description>FireEye NX: Silverfish.</description>
+    <group>fireeye_nx_silverfish,</group>
+  </rule>
 
 </group>
