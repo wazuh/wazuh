@@ -145,8 +145,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
                             if (sock && AF_INET == sock->sa_family)
                             {
-                                char gateway[MAXHOSTNAMELEN] = { 0 };
-                                retVal = inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr.s_addr, gateway, sizeof(gateway) - 1);
+                                retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr);
                             }
 
                             break;

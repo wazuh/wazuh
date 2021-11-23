@@ -392,7 +392,7 @@ void test_HandleSecureMessage_unvalid_message(void **state)
     global_counter = 0;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "127.0.0.1", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0100007F;
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -435,7 +435,7 @@ void test_handle_new_tcp_connection_success(void **state)
     int sock_client = 12;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.0.10", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
     will_return(__wrap_accept, sock_client);
 
@@ -464,7 +464,7 @@ void test_handle_new_tcp_connection_wnotify_fail(void **state)
     int sock_client = 12;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.0.10", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
     will_return(__wrap_accept, sock_client);
 
@@ -516,7 +516,7 @@ void test_handle_new_tcp_connection_socket_fail(void **state)
     int sock_client = 12;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.0.10", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
     will_return(__wrap_accept, -1);
     errno = -1;
@@ -531,7 +531,7 @@ void test_handle_new_tcp_connection_socket_fail_err(void **state)
     int sock_client = 12;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.0.10", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
     will_return(__wrap_accept, -1);
     errno = ECONNABORTED;
@@ -546,7 +546,7 @@ void test_handle_incoming_data_from_udp_socket_0(void **state)
     logr.udp_sock = 1;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.0.10", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
     will_return(__wrap_recvfrom, 0);
 
@@ -559,7 +559,7 @@ void test_handle_incoming_data_from_udp_socket_success(void **state)
     logr.udp_sock = 1;
 
     peer_info.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.0.10", &peer_info.sin_addr);
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
     will_return(__wrap_recvfrom, 10);
 
