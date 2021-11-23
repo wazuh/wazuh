@@ -25,73 +25,87 @@ api_json
 -->
 
 <group name="gitlab_v.12_production_json">
-    <rule id="65600" level="3">
-        <decoded_as>json</decoded_as>
-        <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
-        <match>"status":200</match>
-        <options>no_full_log</options>
-        <description>(Gitlab)$(method) request Completed Succesfully</description>
-    </rule>
-    <rule id="65602" level="5">
-        <decoded_as>json</decoded_as>
-        <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
-        <match>"status":400</match>
-        <options>no_full_log</options>
-        <description>(Gitlab)ERROR: couldn't complete $(method) request</description>
-    </rule>
-    <rule id="65603" level="5">
-        <decoded_as>json</decoded_as>
-        <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
-        <match>"status":300</match>
-        <options>no_full_log</options>
-        <description>(Gitlab)REDIRECTION:The $(method) request has more than one possible response</description>
-    </rule>
+
+  <rule id="65600" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
+    <match>"status":200</match>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(method) request Completed Succesfully.</description>
+  </rule>
+  
+  <rule id="65602" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
+    <match>"status":400</match>
+    <options>no_full_log</options>
+    <description>(Gitlab)ERROR: couldn't complete $(method) request.</description>
+  </rule>
+
+  <rule id="65603" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
+    <match>"status":300</match>
+    <options>no_full_log</options>
+    <description>(Gitlab)REDIRECTION:The $(method) request has more than one possible response.</description>
+  </rule>
+
 </group>
+
 <group name="gitlab_v.12_api_json">
-<rule id="65623" level="3">
+
+  <rule id="65623" level="3">
     <decoded_as>json</decoded_as>
     <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
     <match>"status":200</match>
     <options>no_full_log</options>
-    <description>(Gitlab)$(method) request Completed Succesfully</description>
-</rule>
-<rule id="65624" level="5">
+    <description>(Gitlab)$(method) request Completed Succesfully.</description>
+  </rule>
+
+  <rule id="65624" level="5">
     <decoded_as>json</decoded_as>
     <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
     <match>"status":400</match>
     <options>no_full_log</options>
-    <description>(Gitlab)ERROR: couldn't complete $(method) request</description>
-</rule>
-<rule id="65625" level="5">
+    <description>(Gitlab)ERROR: couldn't complete $(method) request.</description>
+  </rule>
+
+  <rule id="65625" level="5">
     <decoded_as>json</decoded_as>
     <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
     <match>"status":300</match>
     <options>no_full_log</options>
-    <description>(Gitlab)REDIRECTION:The $(method) request has more than one possible response</description>
-</rule>
+    <description>(Gitlab)REDIRECTION:The $(method) request has more than one possible response.</description>
+  </rule>
+
 </group>
 
 <group name="gitlab_v.12_application_log">
-<rule id="65604" level="3">
+
+  <rule id="65604" level="3">
     <decoded_as>gitlab-12_application_log</decoded_as>
     <field name="new_user">\.+</field>
-    <description>(Gitlab)User $(new_user) was created</description>
-</rule>
-<rule id="65606" level="3">
+    <description>(Gitlab)User $(new_user) was created.</description>
+  </rule>
+
+  <rule id="65606" level="3">
     <decoded_as>gitlab-12_application_log</decoded_as>
     <field name="project_autor">\.+</field>
-    <description>(Gitlab)$(project_autor) created a new project</description>
-</rule>
-<rule id="65607" level="3">
+    <description>(Gitlab)$(project_autor) created a new project.</description>
+  </rule>
+
+  <rule id="65607" level="3">
     <decoded_as>gitlab-12_application_log</decoded_as>
     <field name="removed_user">\.+</field>
-    <description>(Gitlab)User $(removed_user) was removed</description>
-</rule>
-<rule id="65608" level="3">
+    <description>(Gitlab)User $(removed_user) was removed.</description>
+  </rule>
+
+  <rule id="65608" level="3">
     <decoded_as>gitlab-12_application_log</decoded_as>
     <field name="project_removed">\.+</field>
-    <description>(Gitlab)Project $(project_removed) was removed</description>
-</rule>
+    <description>(Gitlab)Project $(project_removed) was removed.</description>
+  </rule>
+
 </group>
 
         <!--
@@ -105,20 +119,23 @@ api_json
         -->
 
 <group name="gitlab_v.12_integrations_json">
-<rule id="65609" level="5">
+
+  <rule id="65609" level="5">
     <decoded_as>json</decoded_as>
     <regex>"service_class":"\w+","project_id":\d+,"project_path":"\.+"</regex>
     <field name="severity">ERROR</field>
     <options>no_full_log</options>
-    <description>(Gitlab)$(message)</description>
-</rule>
-<rule id="65610" level="3">
+    <description>(Gitlab)$(message).</description>
+  </rule>
+
+  <rule id="65610" level="3">
     <decoded_as>json</decoded_as>
     <regex>"service_class":"\w+","project_id":\d+,"project_path":"\.+"</regex>
     <field name="severity">INFO</field>
     <options>no_full_log</options>
-    <description>(Gitlab)$(message)</description>
-</rule>
+    <description>(Gitlab)$(message).</description>
+  </rule>
+
 </group>
 
         <!--
@@ -132,20 +149,23 @@ api_json
         -->
 
 <group name="gitlab_v.12_kubernetes_json">
-<rule id="65611" level="5">
+
+  <rule id="65611" level="5">
     <decoded_as>json</decoded_as>
     <regex>"exception":"\.+","error_code":\w+,"service":"\.+","app_id":\d+,</regex>
     <field name="severity">ERROR</field>
     <options>no_full_log</options>
     <description>(Gitlab)$(severity):$(message).</description>
-</rule>
-<rule id="65612" level="3">
+  </rule>
+
+  <rule id="65612" level="3">
     <decoded_as>json</decoded_as>
     <regex>"exception":"\.+","error_code":\w+,"service":"\.+","app_id":\d+,</regex>
     <field name="severity">INFO</field>
     <options>no_full_log</options>
     <description>(Gitlab)$(severity):$(message).</description>
-</rule>
+  </rule>
+
 </group>
 
         <!--
