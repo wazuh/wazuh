@@ -8,6 +8,7 @@
 -->
 
 <group name="firewall,">
+
   <rule id="4100" level="0">
     <category>firewall</category>
     <description>Firewall rules grouped.</description>
@@ -30,4 +31,5 @@
     <description>Multiple Firewall drop events from same source.</description>
     <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
+  
 </group>
