@@ -424,7 +424,6 @@ class WazuhException(Exception):
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
         3010: 'Received the status/group of a non-existent agent',
-        3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
         3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
@@ -466,6 +465,7 @@ class WazuhException(Exception):
         3034: "Error sending file. File not found.",
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
+        3037: 'Error while processing Agent-info chunks',
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.

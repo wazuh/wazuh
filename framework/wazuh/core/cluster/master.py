@@ -10,6 +10,7 @@ import shutil
 from calendar import timegm
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
+from functools import partial
 from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -437,7 +438,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if sync_type == b'syn_i_w_m_p' and self.name not in self.server.integrity_already_executed:
             # Add the variable self.name to keep track of the number of integrity_checks per cycle
             self.server.integrity_already_executed.append(self.name)
-
             permission = self.sync_integrity_free
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
@@ -509,8 +509,47 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return super().end_receiving_file(task_and_file_names)
 
+    @staticmethod
+    def send_data_to_wdb(data, timeout):
+        """Send chunks of data to Wazuh-db socket.
+
+        Parameters
+        ----------
+        data : dict
+            Dict containing command and list of chunks to be sent to wazuh-db.
+        timeout : int
+            Seconds to wait before stopping the task.
+
+        Returns
+        -------
+        result : dict
+            Dict containing number of updated chunks, error messages (if any) and time spent.
+        """
+        result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
+        wdb_conn = WazuhDBConnection()
+        before = time()
+
+        try:
+            with utils.Timeout(timeout):
+                for i, chunk in enumerate(data['chunks']):
+                    try:
+                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+                        result['updated_chunks'] += 1
+                    except TimeoutError:
+                        raise e
+                    except Exception as e:
+                        result['error_messages']['chunks'].append((i, str(e)))
+        except TimeoutError:
+            result['error_messages']['others'].append('Timeout while processing agent-info chunks.')
+        except Exception as e:
+            result['error_messages']['others'].append(f'Error while processing agent-info chunks: {e}')
+
+        result['time_spent'] = time() - before
+        wdb_conn.close()
+        return result
+
     async def sync_wazuh_db_info(self, task_id: bytes):
-        """Iterate and update in the local wazuh-db the chunks of data received from a worker.
+        """Create a process to send to the local wazuh-db the chunks of data received from a worker.
 
         Parameters
         ----------
@@ -523,10 +562,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Worker's response after finishing the synchronization.
         """
         logger = self.task_loggers['Agent-info sync']
-        logger.info(f"Starting")
+        logger.info('Starting')
         date_start_master = datetime.now()
-        wdb_conn = WazuhDBConnection()
-        result = {'updated_chunks': 0, 'error_messages': list()}
 
         try:
             # Chunks were stored under 'task_id' as an string.
@@ -534,35 +571,44 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             data = json.loads(received_string.decode())
         except KeyError as e:
             await self.send_request(command=b'syn_m_a_err',
-                                    data=f"error while trying to access string under task_id {str(e)}.".encode())
+                                    data=f'error while trying to access string under task_id {str(e)}.'.encode())
             raise exception.WazuhClusterError(3035,
                                               extra_message=f"it should be under task_id {str(e)}, but it's empty.")
         except ValueError as e:
-            await self.send_request(command=b'syn_m_a_err', data=f"error while trying to load JSON: {str(e)}".encode())
+            await self.send_request(command=b'syn_m_a_err', data=f'error while trying to load JSON: {str(e)}'.encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         # Update chunks in local wazuh-db
-        before = time()
-        for i, chunk in enumerate(data['chunks']):
-            try:
-                logger.debug2(f"Sending chunk {i + 1}/{len(data['chunks'])} to wazuh-db: {chunk}")
-                response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
-                if response[0] != 'ok':
-                    result['error_messages'].append(response)
-                    logger.error(f"Response for chunk {i}/{len(data['chunks'])} was not 'ok': {response}")
-                else:
-                    result['updated_chunks'] += 1
-            except Exception as e:
-                result['error_messages'].append(str(e))
-        logger.debug(f"All chunks updated in wazuh-db in {(time() - before):3f}s.")
+        try:
+            task = self.loop.run_in_executor(
+                self.server.task_pool,
+                partial(self.send_data_to_wdb, data, self.cluster_items['intervals']['master']['timeout_agent_info'])
+            )
+            result = await asyncio.wait_for(task, timeout=None)
+        except Exception as e:
+            await self.send_request(command=b'syn_m_a_err',
+                                    data=f'error processing agent-info chunks in process pool: {str(e)}'.encode())
+            raise exception.WazuhClusterError(3037, extra_message=str(e))
+
+        # Log information about the results
+        for error in result['error_messages']['others']:
+            logger.error(error)
+
+        for error in result['error_messages']['chunks']:
+            logger.debug2(f'Chunk {error[0]+1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
+            logger.error(f'Wazuh-db response for chunk {error[0]+1}/{len(data["chunks"])} was not "ok": {error[1]}')
+
+        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
+                     f'in {result["time_spent"]:3f}s.')
 
         # Send result to worker
+        result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
         date_end_master = datetime.now()
         self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
                                             'date_end_master': date_end_master.strftime(decimals_date_format),
                                             'n_synced_chunks': result['updated_chunks']})
-        logger.info("Finished in {:.3f}s ({} chunks updated).".format((date_end_master - date_start_master
+        logger.info('Finished in {:.3f}s ({} chunks updated).'.format((date_end_master - date_start_master
                                                                        ).total_seconds(), result['updated_chunks']))
 
         return response
@@ -611,7 +657,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_end_master'] = datetime.utcnow()
+        self.integrity_sync_status['date_end_master'] = datetime.now()
         logger.info("Finished in {:.3f}s.".format(
             (self.integrity_sync_status['date_end_master'] -
              self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
@@ -919,7 +965,8 @@ class Master(server.AbstractServer):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(max_workers=1)
+        self.task_pool = ProcessPoolExecutor(
+            max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
