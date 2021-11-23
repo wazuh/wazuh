@@ -660,7 +660,7 @@ class AWSBucket(WazuhIntegration):
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """
-        Returns a AWS bucket marker using a custom date.
+        Return a AWS bucket marker using a custom date.
 
         Parameters
         ----------
@@ -1199,7 +1199,7 @@ class AWSConfigBucket(AWSLogsBucket):
         return datetime.strftime(aux, '%Y%m%d')
 
     def _remove_padding_zeros_from_marker(self, marker: str) -> str:
-        """Removes the leading zeros from the month and day of a given marker.
+        """Remove the leading zeros from the month and day of a given marker.
 
         For example, 'AWSLogs/123456789012/Config/us-east-1/2020/01/06' would become
         'AWSLogs/123456789012/Config/us-east-1/2020/1/6'.
@@ -1224,7 +1224,7 @@ class AWSConfigBucket(AWSLogsBucket):
             sys.exit(16)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
-        """Returns a marker using the only_logs_after date to pass it as a filter to the list_objects_v2 method.
+        """Return a marker using the only_logs_after date to pass it as a filter to the list_objects_v2 method.
 
         This method removes the leading zeroes for the month and the day to comply with the config buckets folder
         structure.
@@ -1245,7 +1245,7 @@ class AWSConfigBucket(AWSLogsBucket):
                                                                                        aws_account_id))
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
-        """Returns a marker using the specified date to pass it as a filter to the list_objects_v2 method.
+        """Return a marker using the specified date to pass it as a filter to the list_objects_v2 method.
 
         This method removes the leading zeroes for the month and the day to comply with the config buckets folder
         structure.
