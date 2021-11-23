@@ -168,15 +168,15 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         datetime or None
             The datetime of the last log parsed or None if no log have been parsed yet for that bucket.
         """
-        creation_time = None
+        creation_time = datetime.min.replace(tzinfo=pytz.UTC)
         query_creation_time = self.db_connector.execute(
             self.sql_find_last_creation_time.format(table_name=self.db_table_name,
                                                     project_id=self.project_id,
                                                     bucket_name=self.bucket_name,
                                                     prefix=self.prefix))
         try:
-            creation_time = query_creation_time.fetchone()[0]
-            creation_time = datetime.strptime(creation_time, self.datetime_format)
+            creation_time_result = query_creation_time.fetchone()[0]
+            creation_time = datetime.strptime(creation_time_result, self.datetime_format)
         except (TypeError, IndexError):
             pass
         return creation_time
@@ -215,17 +215,6 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         int
             Number of blobs processed.
         """
-        def block_process_blob():
-            """Helper function that wraps all the code that must be executed for each processed blob."""
-            nonlocal blob, processed_files, processed_messages, new_creation_time, current_creation_time
-            self.logger.info(f'Processing {blob.name}')
-            processed_messages += self.process_blob(blob)
-
-            if current_creation_time > new_creation_time:
-                processed_files.clear()
-                new_creation_time = current_creation_time
-
-            processed_files.append(blob)
 
         try:
             bucket_contents = self.bucket.list_blobs(prefix=self.prefix, delimiter='/')
@@ -243,27 +232,23 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                     continue
 
                 current_creation_time = blob.time_created
+                comparison_date = self.only_logs_after if self.only_logs_after else self.default_date
 
-                if not self.only_logs_after or current_creation_time >= self.only_logs_after:
-                    if last_creation_time:
-                        if current_creation_time > last_creation_time:
-                            block_process_blob()
+                if current_creation_time >= comparison_date:
+                    if (current_creation_time > last_creation_time) or \
+                            (current_creation_time == last_creation_time and blob.name not in previous_processed_files):
+                        self.logger.info(f'Processing {blob.name}')
+                        processed_messages += self.process_blob(blob)
 
-                        if current_creation_time == last_creation_time:
-                            if blob.name not in previous_processed_files:
-                                block_process_blob()
-                            else:
-                                self.logger.info(f'Skipping previously processed file: {blob.name}')
-                    elif not self.only_logs_after:
-                        if current_creation_time >= self.default_date:
-                            block_process_blob()
-                        else:
-                            self.logger.info(f'The creation time of {blob.name} is older than {self.default_date}. '
-                                             f'Skipping it...')
+                        if current_creation_time > new_creation_time:
+                            processed_files.clear()
+                            new_creation_time = current_creation_time
+
+                        processed_files.append(blob)
                     else:
-                        block_process_blob()
+                        self.logger.info(f'Skipping previously processed file: {blob.name}')
                 else:
-                    self.logger.info(f'The creation time of {blob.name} is older than {self.only_logs_after}. '
+                    self.logger.info(f'The creation time of {blob.name} is older than {comparison_date}. '
                                      f'Skipping it...')
 
         finally:

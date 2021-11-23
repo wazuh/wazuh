@@ -660,15 +660,15 @@ class AWSBucket(WazuhIntegration):
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """
-        Return a AWS bucket marker using a custom date.
+        Return an AWS bucket marker using a custom date.
 
         Parameters
         ----------
-        aws_region: str
+        aws_region : str
             The region.
-        aws_account_id: str
+        aws_account_id : str
             The account ID.
-        date: datetime
+        date : datetime
             The date that must be used to create the filter.
 
         Returns
@@ -749,20 +749,7 @@ class AWSBucket(WazuhIntegration):
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
             else:
-                query_first_key = self.db_connector.execute(
-                    self.sql_find_first_key_processed.format(
-                        bucket_path=self.bucket_path,
-                        table_name=self.db_table_name,
-                        aws_account_id=aws_account_id,
-                        aws_region=aws_region,
-                        prefix=self.prefix
-                    )
-                )
-                try:
-                    filter_marker = query_first_key.fetchone()[0]
-                except (TypeError, IndexError):
-                    # The DB is empty and there's no only_logs_after, we start from the default date
-                    filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+                filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
             query_last_key = self.db_connector.execute(
                 self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
@@ -1273,21 +1260,7 @@ class AWSConfigBucket(AWSLogsBucket):
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
             else:
-                query_first_key = self.db_connector.execute(
-                    self.sql_find_first_key_processed.format(
-                        bucket_path=self.bucket_path,
-                        table_name=self.db_table_name,
-                        aws_account_id=aws_account_id,
-                        aws_region=aws_region,
-                        prefix=self.prefix
-                    )
-                )
-                try:
-                    filter_marker = query_first_key.fetchone()[0]
-                except (TypeError, IndexError):
-                    # The DB is empty and there's no only_logs_after, we start from today's date
-                    filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
-
+                filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
             created_date = self.add_zero_to_day(date)
             query_last_key_of_day = self.db_connector.execute(
@@ -1773,20 +1746,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
             else:
-                query_first_key = self.db_connector.execute(
-                    self.sql_find_first_key_processed.format(
-                        bucket_path=self.bucket_path,
-                        table_name=self.db_table_name,
-                        aws_account_id=aws_account_id,
-                        aws_region=aws_region,
-                        prefix=self.prefix
-                    )
-                )
-                try:
-                    filter_marker = query_first_key.fetchone()[0]
-                except (TypeError, IndexError):
-                    # The DB is empty and there's no only_logs_after, we start from today's date
-                    filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+                filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
 
             query_last_key_of_day = self.db_connector.execute(
@@ -2121,7 +2081,7 @@ class AWSCustomBucket(AWSBucket):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
-        self.iter_files_in_bucket(aws_account_id=self.aws_account_id)
+        self.iter_files_in_bucket()
         self.db_maintenance()
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
@@ -2403,7 +2363,7 @@ class AWSServerAccess(AWSCustomBucket):
 
     def _key_is_old(self, file_date: datetime or None, last_key_date: datetime or None) -> bool:
         """
-        Tells if the file key provided is too old to process.
+        Check if the file key provided is too old to process.
 
         Parameters
         ----------
@@ -2933,8 +2893,6 @@ class AWSCloudWatchLogs(AWSService):
                     token = None
 
                     if db_values:
-                        # The value has been set to a date earlier in the past than the first recorded, and therefore
-                        # the logs in between should be fetched
                         if db_values['start_time'] and db_values['start_time'] > start_time:
                             result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                          token=None, start_time=start_time,
