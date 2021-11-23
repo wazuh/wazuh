@@ -846,7 +846,7 @@ stages:
 test_name: PUT /agents/upgrade
 
 marks:
-  - xfail # Review agents upgrade API integration tests - https://github.com/wazuh/wazuh/issues/10791
+  - xfail # Agents stay with "pending" status for too long - https://github.com/wazuh/wazuh/issues/10162
 
 stages:
 
