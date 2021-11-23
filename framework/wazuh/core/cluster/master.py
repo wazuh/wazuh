@@ -794,16 +794,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                          os.path.basename(file_path))
 
                         try:
-                            agent_id = os.path.basename(file_path)
-                            # If the agent does not exist on the master, do not copy its file from the worker.
-                            if agent_id not in agent_ids:
-                                n_errors['warnings'][data['cluster_item_key']] = 1 \
-                                    if n_errors['warnings'].get(data['cluster_item_key']) is None \
-                                    else n_errors['warnings'][data['cluster_item_key']] + 1
-
-                                self.logger.debug2(f"Received group of an non-existent agent '{agent_id}'")
-                                continue
-
                             # Format the file_data specified inside the merged file.
                             try:
                                 mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S.%f')
@@ -861,15 +851,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         n_errors = {'errors': {}, 'warnings': {}}
 
-        # Get ID of all agents.
-        try:
-            agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
-            agent_ids = set(map(operator.itemgetter('id'), agents))
-        except Exception as e:
-            logger.debug2(f"Error getting agent ids: {e}")
-            agent_ids = {}
-
-        # Iterate and update each file specified in 'files_metadata' if conditions are meets.
+        # Iterate and update each file specified in 'files_metadata' if conditions are met.
         try:
             for filename, data in files_metadata.items():
                 await update_file(data=data, name=filename)
