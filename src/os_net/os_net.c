@@ -77,7 +77,12 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
-        server6.sin6_addr = in6addr_any;
+
+        if ((_ip == NULL) || (_ip[0] == '\0')) {
+            server6.sin6_addr = in6addr_any;
+        } else {
+            inet_pton(AF_INET6, _ip, &server6.sin6_addr.s6_addr);
+        }
 
         if (bind(ossock, (struct sockaddr *) &server6, sizeof(server6)) < 0) {
             OS_CloseSocket(ossock);

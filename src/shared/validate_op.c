@@ -371,19 +371,8 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
             }
         }
         /* Full netmask */
-        else {
-            /* Init the masks */
-            if (!_mask_inited) {
-                _init_masks();
-            }
-
-            if (strcmp(tmp_str, "255.255.255.255") == 0) {
-                nmask = htonl(_netmasks[32]);
-            } else {
-                if (inet_pton(AF_INET, ip_address, &nmask) <= 0) {
-                    return (0);
-                }
-            }
+        else if (inet_pton(AF_INET, tmp_str, &nmask) <= 0) {
+            return (0);
         }
 
         if (inet_pton(AF_INET, ip_address, &net) <= 0) {
