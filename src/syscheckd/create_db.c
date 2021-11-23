@@ -153,11 +153,8 @@ time_t fim_scan() {
     /* DEPRECATED CODE
     fim_db_set_all_unscanned(syscheck.database);
     */
-
     w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
-        dir_it = node_it->data;
-        event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
         char *path = fim_get_real_path(dir_it);
 
         fim_checker(path, &evt_data, dir_it);
