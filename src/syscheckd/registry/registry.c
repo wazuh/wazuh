@@ -542,9 +542,9 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
             cJSON_Delete(json_event);
         }
     }
-
+    /* DEPRECATED CODE
     fim_db_remove_registry_value_data(fim_sql, data->registry_entry.value);
-
+    */
     if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_value(data->registry_entry.key->path, data->registry_entry.value->name,
                                       data->registry_entry.key->arch);
@@ -586,7 +586,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
             cJSON_Delete(json_event);
         }
     }
-
+    /* DEPRECATED CODE
     result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
 
     if (result == FIMDB_OK && file && file->elements) {
@@ -599,6 +599,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
     }
+    */
 }
 
 /**
@@ -608,7 +609,7 @@ void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
     fim_event_mode event_mode = FIM_SCHEDULED;
     int result;
-
+    /* DEPRECATED CODE
     result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
 
     if (result != FIMDB_OK) {
@@ -628,6 +629,7 @@ void fim_registry_process_unscanned_entries() {
                                                fim_registry_process_value_delete_event, syscheck.database_store,
                                                &_base_line, &event_mode, NULL);
     }
+    */
 }
 
 /**
@@ -672,6 +674,7 @@ void fim_registry_process_value_event(fim_entry *new,
 
     fim_registry_get_checksum_value(new->registry_entry.value);
 
+    /* DEPRECATED CODE
     saved->registry_entry.value = fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id,
                                                            new->registry_entry.value->name);
 
@@ -705,6 +708,7 @@ void fim_registry_process_value_event(fim_entry *new,
     fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
 
     fim_registry_free_value_data(saved->registry_entry.value);
+    */
 }
 
 /**
@@ -729,6 +733,7 @@ void fim_read_values(HKEY key_handle,
     TCHAR *value_buffer;
     BYTE *data_buffer;
     DWORD i;
+    /* DEPRECATED CODE
 
     if (new->registry_entry.key->id == 0) {
         if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
@@ -738,6 +743,7 @@ void fim_read_values(HKEY key_handle,
             return;
         }
     }
+    */
 
     value_data.id = new->registry_entry.key->id;
     new->registry_entry.value = &value_data;
@@ -871,6 +877,7 @@ void fim_open_key(HKEY root_key_handle,
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     saved.type = FIM_TYPE_REGISTRY;
+    /* DEPRECATED CODE
     saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
     saved.registry_entry.value = NULL;
 
@@ -909,7 +916,7 @@ void fim_open_key(HKEY root_key_handle,
                             mode);
         }
     }
-
+    */
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
@@ -924,10 +931,10 @@ void fim_registry_scan() {
 
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);
-
+    /* DEPRECATED CODE
     fim_db_set_all_registry_data_unscanned(syscheck.database);
     fim_db_set_all_registry_key_unscanned(syscheck.database);
-
+    */
     /* Get sub class and a valid registry entry */
     for (i = 0; syscheck.registry[i].entry; i++) {
         /* Ignored entries are zeroed */
