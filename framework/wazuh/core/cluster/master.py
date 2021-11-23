@@ -562,7 +562,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Worker's response after finishing the synchronization.
         """
         logger = self.task_loggers['Agent-info sync']
-        logger.info(f"Starting")
+        logger.info('Starting')
         date_start_master = datetime.now()
 
         try:
@@ -570,12 +570,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             received_string = self.in_str[task_id].payload
             data = json.loads(received_string.decode())
         except KeyError as e:
-            await self.send_request(command=b"syn_m_a_err",
-                                    data=f"error while trying to access string under task_id {str(e)}.".encode())
+            await self.send_request(command=b'syn_m_a_err',
+                                    data=f'error while trying to access string under task_id {str(e)}.'.encode())
             raise exception.WazuhClusterError(3035,
                                               extra_message=f"it should be under task_id {str(e)}, but it's empty.")
         except ValueError as e:
-            await self.send_request(command=b"syn_m_a_err", data=f"error while trying to load JSON: {str(e)}".encode())
+            await self.send_request(command=b'syn_m_a_err', data=f'error while trying to load JSON: {str(e)}'.encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         # Update chunks in local wazuh-db
@@ -595,20 +595,20 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.error(error)
 
         for error in result['error_messages']['chunks']:
-            logger.debug2(f"Chunk {error[0]}/{len(data['chunks'])}: {data['chunks'][error[0]]}")
-            logger.error(f"Wazuh-db response for chunk {error[0]}/{len(data['chunks'])} was not 'ok': {error[1]}")
+            logger.debug2(f'Chunk {error[0]+1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
+            logger.error(f'Wazuh-db response for chunk {error[0]+1}/{len(data["chunks"])} was not "ok": {error[1]}')
 
-        logger.debug(f"{result['updated_chunks']}/{len(data['chunks'])} chunks updated in wazuh-db "
-                     f"in {result['time_spent']:3f}s.")
+        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
+                     f'in {result["time_spent"]:3f}s.')
 
         # Send result to worker
-        result["error_messages"] = [error[1] for error in result["error_messages"]]
+        result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
         date_end_master = datetime.now()
         self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
                                             'date_end_master': date_end_master.strftime(decimals_date_format),
                                             'n_synced_chunks': result['updated_chunks']})
-        logger.info("Finished in {:.3f}s ({} chunks updated).".format((date_end_master - date_start_master
+        logger.info('Finished in {:.3f}s ({} chunks updated).'.format((date_end_master - date_start_master
                                                                        ).total_seconds(), result['updated_chunks']))
 
         return response
