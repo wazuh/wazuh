@@ -59,7 +59,11 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
+<<<<<<< HEAD
     void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+=======
+    int removeFromDB(const std::string & tableName, const nlohmann::json & filter)
+>>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
@@ -74,7 +78,11 @@ namespace FIMDBHelper
         deleteJson["table"] = tableName;
         deleteJson["query"]["data"] = {filter};
 
+<<<<<<< HEAD
         T::getInstance().removeItem(deleteJson);
+=======
+        return queryError(T::getInstance().removeItem(deleteJson));
+>>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
     /**
     * @brief Get count of all entries in a table
@@ -106,7 +114,12 @@ namespace FIMDBHelper
                 }
             }
         };
+<<<<<<< HEAD
         T::getInstance().executeQuery(countQuery, callback);
+=======
+
+        return queryError(T::getInstance().executeQuery(countQuery, callback));
+>>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 
     /**
@@ -132,7 +145,11 @@ namespace FIMDBHelper
         insert["table"] = tableName;
         insert["data"] = {item};
 
+<<<<<<< HEAD
         T::getInstance().insertItem(insert);
+=======
+        return queryError(T::getInstance().insertItem(insert));
+>>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 
     /**
@@ -170,7 +187,11 @@ namespace FIMDBHelper
             }
         };
 
+<<<<<<< HEAD
         T::getInstance().updateItem(update, callback);
+=======
+        return queryError(T::getInstance().updateItem(update, callback));
+>>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 
     /**
@@ -194,6 +215,7 @@ namespace FIMDBHelper
             }
         };
 
+<<<<<<< HEAD
         T::getInstance().executeQuery(query, callback);
     }
 
@@ -219,6 +241,9 @@ namespace FIMDBHelper
         query["query"]["count_opt"] = 100;
 
         return query;
+=======
+        return queryError(T::getInstance().executeQuery(query, callback));
+>>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 }
 
