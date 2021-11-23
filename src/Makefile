@@ -42,6 +42,12 @@ EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
+ifeq (${uname_S},Linux)
+EXTERNAL_LZMA=external/lzma/
+EXTERNAL_POPT=external/popt/
+EXTERNAL_LIBMAGIC=external/libmagic/
+EXTERNAL_ZSTD=external/zstd/
+endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
@@ -797,6 +803,11 @@ LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
+ZSTD_LIB = $(EXTERNAL_ZSTD)build/upstream/build/cmake/lib/libzstd.a
+LIBMAGIC_LIB = $(EXTERNAL_LIBMAGIC)src/.libs/libmagic.a
+POPT_LIB = $(EXTERNAL_POPT)upstream/src/.libs/libpopt.a
+LZMA_LIB = $(EXTERNAL_LZMA)upstream/src/liblzma/.libs/liblzma.a
+
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -828,6 +839,10 @@ endif
 endif
 ifeq (${uname_S},Darwin)
 EXTERNAL_LIBS += ${LIBPLIST_LIB}
+endif
+
+ifeq (${uname_S},Linux)
+EXTERNAL_LIBS += ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB}
 endif
 
 .PHONY: external test_external
@@ -1081,6 +1096,46 @@ else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
 endif
 
+### lzma lib ###
+
+LZMA_BUILD_DIR = $(EXTERNAL_LZMA)build/
+
+$(LZMA_LIB): $(LZMA_BUILD_DIR)Makefile
+	 $(MAKE) -C $(LZMA_BUILD_DIR)
+
+$(LZMA_BUILD_DIR)Makefile:
+	mkdir -p $(LZMA_BUILD_DIR) && cmake -S $(EXTERNAL_LZMA) -B $(LZMA_BUILD_DIR)
+
+### popt lib ###
+
+POPT_BUILD_DIR = $(EXTERNAL_POPT)build/
+
+$(POPT_LIB): $(POPT_BUILD_DIR)Makefile
+	 $(MAKE) -C $(POPT_BUILD_DIR)
+$(POPT_BUILD_DIR)Makefile:
+	mkdir -p $(POPT_BUILD_DIR) && cmake -S $(EXTERNAL_POPT) -B $(POPT_BUILD_DIR)
+
+### zstd lib ###
+
+ZSTD_BUILD_DIR = $(EXTERNAL_ZSTD)/build
+
+$(ZSTD_LIB): $(ZSTD_BUILD_DIR)Makefile
+	$(MAKE) -C $(ZSTD_BUILD_DIR)
+
+$(ZSTD_BUILD_DIR)Makefile:
+	mkdir -p $(ZSTD_BUILD_DIR) && cmake -S $(EXTERNAL_ZSTD) -B $(ZSTD_BUILD_DIR)
+
+### libmagic lib ###
+
+LIBMAGIC_BUILD_FLAGS += -DZLIB_INC_PATH=$(ROUTE_PATH)/$(EXTERNAL_ZLIB) -DZLIB_LIB_PATH=$(ROUTE_PATH)/$(ZLIB_LIB)
+LIBMAGIC_BUILD_DIR = $(EXTERNAL_LIBMAGIC)build/
+
+$(LIBMAGIC_LIB): $(LIBMAGIC_BUILD_DIR)Makefile
+	 $(MAKE) -C $(LIBMAGIC_BUILD_DIR)
+
+$(EXTERNAL_LIBMAGIC)build/Makefile: $(ZLIB_LIB)
+	mkdir -p $(LIBMAGIC_BUILD_DIR) && cmake -S $(EXTERNAL_LIBMAGIC) -B $(LIBMAGIC_BUILD_DIR) $(LIBMAGIC_BUILD_FLAGS)
+
 ################################
 #### External dependencies  ####
 ################################
@@ -1089,7 +1144,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 15
+DEPS_VERSION = 16
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
@@ -1133,7 +1188,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive lzma libmagic zstd popt
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
