@@ -24,6 +24,7 @@ from shutil import Error, copyfile, move
 from signal import signal, alarm, SIGALRM
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
+from signal import signal, alarm, SIGALRM
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
