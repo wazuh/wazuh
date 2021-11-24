@@ -797,10 +797,11 @@ void* run_writer(__attribute__((unused)) void *arg) {
         int removed_agents = 0;
 
         w_mutex_lock(&mutex_keys);
-
+        minfo("write_pending_1: %d", write_pending);
         while (!write_pending && running) {
             w_cond_wait(&cond_pending, &mutex_keys);
         }
+        minfo("write_pending_2: %d", write_pending);
 
         mdebug1("Dumping changes into disk.");
 
@@ -839,9 +840,11 @@ void* run_writer(__attribute__((unused)) void *arg) {
         OS_FreeKeys(copy_keys);
         free(copy_keys);
 
-        for (cur = copy_insert; cur; cur = next) {
-            next = cur->next;
+        minfo("copy_insert null? %s", copy_insert ? "not null" : "null");
 
+        for (cur = copy_insert; cur; cur = next) {
+            minfo("Problem");
+            next = cur->next;
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
             if (cur->group) {

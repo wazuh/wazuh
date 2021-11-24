@@ -358,8 +358,8 @@ int set_agent_multigroup(char * group) {
         *endl = '\0';
     }
 
-    /* Remove multigroup if it's not used on any other agent */
-    w_remove_multigroup(group);
+    /* Clean multigroup files if it's not used on any other agent */
+    w_clean_multigroup_files(group);
 
     /* Check if the multigroup dir is created */
     os_sha256 multi_group_hash;
@@ -559,10 +559,10 @@ int w_validate_group_name(const char *group, char *response) {
 }
 
 #ifndef CLIENT
-void w_remove_multigroup(const char *group) {
+void w_clean_multigroup_files(const char *group) {
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
-
+    minfo("GROUPS: %s", group);
     if (multigroup) {
         sprintf(path, "%s", GROUPS_DIR);
 
@@ -580,7 +580,7 @@ void w_remove_multigroup(const char *group) {
             sprintf(path, "%s/%s", MULTIGROUPS_DIR, _hash);
 
             if (rmdir_ex(path) != 0) {
-                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
+                mdebug1("At w_clean_multigroup_files(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
             }
         }
     }

@@ -69,7 +69,7 @@ int create_multigroup_dir(const char * multigroup);
 
 int set_agent_multigroup(char * group);
 
-void w_remove_multigroup(const char *group);
+void w_clean_multigroup_files(const char *group);
 
 #endif
 
