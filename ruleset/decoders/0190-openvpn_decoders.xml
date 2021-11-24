@@ -24,8 +24,8 @@
 </decoder>
 
 <!--
-Jul 21 18:31:19 fw01 openvpn[76395]: 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:17777
-May 14 17:49:12 auth openvpn: Sun May 14 17:49:12 2017 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:53230
+  Jul 21 18:31:19 fw01 openvpn[76395]: 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:17777
+  May 14 17:49:12 auth openvpn: Sun May 14 17:49:12 2017 200.200.200.200:17777 [chapolin] Peer Connection Initiated with [AF_INET]200.200.200.200:53230
 -->
 <decoder name="openvpn-ip-user">
   <parent>openvpn</parent>
@@ -35,7 +35,7 @@ May 14 17:49:12 auth openvpn: Sun May 14 17:49:12 2017 200.200.200.200:17777 [ch
 </decoder>
 
 <!--
-Sep 24 10:39:30 foo ovpn-server[145]: TLS Error: cannot locate HMAC in incoming packet from [AF_INET6]::ffff:192.168.178.1:50165
+  Sep 24 10:39:30 foo ovpn-server[145]: TLS Error: cannot locate HMAC in incoming packet from [AF_INET6]::ffff:192.168.178.1:50165
 -->
 <decoder name="openvpn-ip-port">
   <parent>openvpn</parent>
@@ -45,7 +45,7 @@ Sep 24 10:39:30 foo ovpn-server[145]: TLS Error: cannot locate HMAC in incoming 
 </decoder>
 
 <!--
-Aug 30 16:08:29 foo ovpn-server[107]: 192.168.178.1 [admin] Peer Connection Initiated with [AF_INET6]::ffff:192.168.178.1:44902
+  Aug 30 16:08:29 foo ovpn-server[107]: 192.168.178.1 [admin] Peer Connection Initiated with [AF_INET6]::ffff:192.168.178.1:44902
 -->
 <decoder name="openvpn-ip-user-port">
   <parent>openvpn</parent>
@@ -55,7 +55,7 @@ Aug 30 16:08:29 foo ovpn-server[107]: 192.168.178.1 [admin] Peer Connection Init
 </decoder>
 
 <!--
-Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
+  Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
 -->
 <decoder name="openvpn-user">
   <parent>openvpn</parent>
@@ -72,7 +72,7 @@ Jul 21 18:32:24 fw01 openvpn: user 'chapolin' authenticated
 -->
 
 <!--
-Jan 28 14:25:49 VPN-SERVER-05892 openvpn: LDAP bind failed: Invalid credentials (80090308: LdapErr: DSID-55555555, comment: AcceptSecurityContext error, data 775, v3839)
+  Jan 28 14:25:49 VPN-SERVER-05892 openvpn: LDAP bind failed: Invalid credentials (80090308: LdapErr: DSID-55555555, comment: AcceptSecurityContext error, data 775, v3839)
 -->
 <decoder name="openvpn_ldap_bind_failed">
   <parent>openvpn</parent>
@@ -82,7 +82,7 @@ Jan 28 14:25:49 VPN-SERVER-05892 openvpn: LDAP bind failed: Invalid credentials 
 </decoder>
 
 <!--
-Jan 28 14:25:49 VPN-SERVER-05892 openvpn: Incorrect password supplied for LDAP DN "CN=Harry T. Hacker,OU=business unit,OU=department,DC=domain,DC=com".
+  Jan 28 14:25:49 VPN-SERVER-05892 openvpn: Incorrect password supplied for LDAP DN "CN=Harry T. Hacker,OU=business unit,OU=department,DC=domain,DC=com".
 -->
 <decoder name="openvpn_ldap_incorrect_password">
   <parent>openvpn</parent>
