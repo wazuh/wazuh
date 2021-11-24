@@ -35,11 +35,13 @@ CREATE TABLE IF NOT EXISTS agent (
     `group` TEXT DEFAULT 'default',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
-    disconnection_time INTEGER DEFAULT 0
+    disconnection_time INTEGER DEFAULT 0,
+    groups_hash TEXT default NULL
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
+CREATE INDEX IF NOT EXISTS agent_groups_hash ON agent (groups_hash);
 
 INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
 
@@ -62,13 +64,16 @@ CREATE TABLE IF NOT EXISTS `group` (
 
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER,
+    id_group INTEGER REFERENCES `group`(id),
     PRIMARY KEY (id_agent, id_group)
 );
+
+CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
+CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '3');
+INSERT INTO metadata (key, value) VALUES ('db_version', '4');
