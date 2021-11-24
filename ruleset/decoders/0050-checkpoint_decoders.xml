@@ -7,7 +7,6 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-
 <!--
   - Does not currently handle all types of Checkpoint events.
   - Checkpoint NG(X)/FW-1 logs via (Linux) syslog
@@ -33,23 +32,23 @@
   - Examples:
   -
   - Checkpoint: 21Aug2007 12:00:00 accept 10.10.10.2 >eth0 rule: 100; rule_uid:
-{00000000-0000-0000-0000-000000000000}; service_id: nbdatagram; src:
-10.10.10.3; dst: 10.10.10.255; proto: udp; product: VPN-1 & FireWall-1;
-service: 138; s_port: 138;
+    {00000000-0000-0000-0000-000000000000}; service_id: nbdatagram; src:
+    10.10.10.3; dst: 10.10.10.255; proto: udp; product: VPN-1 & FireWall-1;
+    service: 138; s_port: 138;
   -
   - Checkpoint: 13:00:00 accept 10.10.10.2 >eth0 rule: 101; rule_uid:
-{00000000-0000-0000-0000-000000000000}; service_id: http; src: 10.10.10.3; dst:
-10.1.2.3; proto: tcp; product: VPN-1 & FireWall-1; service: 80; s_port: 1111;
+    {00000000-0000-0000-0000-000000000000}; service_id: http; src: 10.10.10.3; dst:
+    10.1.2.3; proto: tcp; product: VPN-1 & FireWall-1; service: 80; s_port: 1111;
   -
   - Checkpoint: 21Aug2007 14:49:26 drop   10.10.10.1 >eth4 rule: 102; rule_uid:
-{00000000-0000-0000-0000-000000000000}; ICMP: Echo Request; src: 10.10.10.2;
-dst: 10.10.10.3; proto: icmp; ICMP Type: 8; ICMP Code: 0; product: VPN-1 &
-FireWall-1;
+    {00000000-0000-0000-0000-000000000000}; ICMP: Echo Request; src: 10.10.10.2;
+    dst: 10.10.10.3; proto: icmp; ICMP Type: 8; ICMP Code: 0; product: VPN-1 &
+    FireWall-1;
   -
   - Checkpoint:  3Apr2008 15:02:15 monitor 10.10.10.3 >eth2 Attack Info: Line
-in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
-10.10.10.5; proto: tcp; product: SmartDefense; service: 111; s_port: 222;
-  -->
+    in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
+    10.10.10.5; proto: tcp; product: SmartDefense; service: 111; s_port: 222;
+-->
 
 <!-- \s+\S+ \d\d:\d\d:\d\d (\w+) \d+.\d+.\d+.\d+ \p\S+ rule: -->
 <decoder name="checkpoint-syslog">

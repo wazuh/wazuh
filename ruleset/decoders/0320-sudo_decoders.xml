@@ -7,6 +7,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
+
 <!--
   -  Will extract the username
   -  Examples:
@@ -19,14 +20,15 @@
   -  Feb 26 07:27:16 localhost sudo:   homer : TTY=pts/0 ; PWD=/home/homer ; USER=root ; COMMAND=/bin/ls /var/ossec/etc
 
   - Output for /etc/sudoers
+  - Comment: / in the log with -/-server=server.d.com is there to escape the hypens(-). Remove it before doing a logtest.
   - Aug 31 08:11:00 2017 : homer : HOST=hostname : TTY=pts/1 ; PWD=/home ; USER=root ; COMMAND=/bin/bash
-  - Aug 31 10:15:22 2017 : homer : HOST=hostname : TTY=pts/1 ; PWD=/home/homer/testingDestination ; USER=root ; COMMAND=/usr/local/bin/puppet agent -t --server=server.d.com
+  - Aug 31 10:15:22 2017 : homer : HOST=hostname : TTY=pts/1 ; PWD=/home/homer/testingDestination ; USER=root ; COMMAND=/usr/local/bin/puppet agent -t -/-server=server.d.com
   - Aug 31 08:23:20 2017 : bart1 : HOST=hostname : command not allowed ; TTY=pts/0 ; PWD=/home ; USER=homer ; COMMAND=/u/homer/sudoTesting/testcopyscript.sh
 
-  -->
+-->
 
 <decoder name="sudo">
-    <program_name>^sudo</program_name>
+  <program_name>^sudo</program_name>
 </decoder>
 
 <decoder name="sudo-fields">
@@ -62,20 +64,18 @@
   <order>command</order>
 </decoder>
 
-
-
 <decoder name="sudo">
-    <program_name/>
-    <prematch>^\S+\s+:\s+HOST=\S+\s+:\s+\.+;</prematch>
+  <program_name/>
+  <prematch>^\S+\s+:\s+HOST=\S+\s+:\s+\.+;</prematch>
 </decoder>
 
 <decoder name="sudo2-fields">
-    <parent>sudo</parent>
-    <program_name/>
-    <regex>(\S+)\s+:\s+HOST</regex>
-    <order>srcuser</order>
-    <fts>name,srcuser,location</fts>
-    <ftscomment>First time user executed the sudo command</ftscomment>
+  <parent>sudo</parent>
+  <program_name/>
+  <regex>(\S+)\s+:\s+HOST</regex>
+  <order>srcuser</order>
+  <fts>name,srcuser,location</fts>
+  <ftscomment>First time user executed the sudo command</ftscomment>
 </decoder>
 
 <decoder name="sudo2-fields">

@@ -14,7 +14,7 @@
   - 1286536318.542    755 192.168.0.68 TCP_MISS/200 507 POST http://wazuh.com- DIRECT/X.X.X.X application/xml
   - 1140701044.525   1231 192.168.1.201 TCP_DENIED/400 1536 GET ahmet - NONE/- text/html
   - 1140701230.827    781 192.168.1.210 TCP_DENIED/407 1785 GET http://www.ossec.net oahmet NONE/- text/html
-  -->
+-->
 <decoder name="squid-accesslog">
   <type>squid</type>
   <prematch>^\d+ \S+ TCP_\S+ |^\d+ \S+ UDP_\S+ |^\d+ \S+ NONE\S+ </prematch>
@@ -24,7 +24,7 @@
 
 <!--
   - Extract srcip, action, id and url.
-  -->
+-->
 <decoder name="squid-accesslog-default">
   <parent>squid-accesslog</parent>
   <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
@@ -45,7 +45,6 @@
   <type>squid</type>
   <prematch>^\d+/\d+/\d+ \d+:\d+:\d+\| |^\d+/\d+/\d+ \d+:\d+:\d+ \w+\| </prematch>
 </decoder>
-
 
 <!--
   - Extract action

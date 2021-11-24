@@ -18,11 +18,11 @@
   - id=NSA3600  sn=C0EAE4599999 time="2019-02-27 12:55:40 UTC" fw=2.228.169.242 pri=5 c=0 m=1197 msg="NAT Mapping" n=4748427 src=10.12.14.9::X0-V500 dst=217.56.236.4::X3 proto=icmp note="Source: 2.228.169.242, 63130, Destination: 217.56.236.4, 8, Protocol: 1" rule="17 (LAN->WAN)"
   - id=NSA2650GG sn=18B169D79980 time="2019-03-19 06:44:01 UTC" fw=83.211.91.146 pri=3 c=4 m=14 msg="Web site access denied" app=49177 appName="General HTTPS" n=856789 src=192.168.0.46:59668:X0:nb020.example.com dst=34.194.213.204:443:X1:example.com srcMac=a0:ce:c8:13:99:c5 dstMac=1a:b1:69:d7:99:80 proto=tcp/https dstname=example.com arg=/ code=49 Category="Freeware/Software Downloads"
   - id=NSA2650GG sn=18B169D79980 time="2019-03-18 08:33:45 UTC" fw=83.211.91.146 pri=3 c=4 m=14 msg="Web site access denied" app=49177 appName="General HTTPS" n=838005 src=192.168.0.62:54993:X0:pc048.example.com dst=151.101.242.49:443:X1 srcMac=c8:9c:dc:fd:9d:02 dstMac=1a:b1:69:d7:99:80 proto=tcp/https dstname=example.com arg=/ code=49 Category="Freeware/Software Downloads"
-  -->
+-->
 
 <decoder name="sonicwall">
-   <prematch>^\<\d+>\s*id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ |^\s*id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ </prematch>
-   <plugin_decoder>SonicWall_Decoder</plugin_decoder>
+  <prematch>^\<\d+>\s*id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ |^\s*id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ </prematch>
+  <plugin_decoder>SonicWall_Decoder</plugin_decoder>
 </decoder>
 
 <decoder name="sonicwall-fields">
@@ -66,7 +66,6 @@
   <regex offset="after_regex">proto=(\S+)</regex>
   <order>protocol</order>
 </decoder>
-
 
 <decoder name="sonicwall-fields">
   <parent>sonicwall</parent>

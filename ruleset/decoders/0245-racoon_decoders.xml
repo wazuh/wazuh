@@ -10,7 +10,7 @@
 <!--
   - Extract id (error or info) and ip address whenever possible.
   - 2006-08-08 01:42:09: ERROR: couldn't find the pskey for 222.155.15.88.
-  -->
+-->
 <decoder name="racoon">
   <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d: </prematch>
 </decoder>
@@ -18,7 +18,6 @@
 <decoder name="racoon-failed">
   <parent>racoon</parent>
   <use_own_name>true</use_own_name>
-
   <prematch offset="after_parent">^ERROR: couldn't find the pskey </prematch>
   <regex offset="after_prematch">^for (\S+)</regex>
   <order>srcip</order>

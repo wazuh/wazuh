@@ -21,7 +21,7 @@
   - May  8 08:26:55 mail postfix/postscreen[22055]: NOQUEUE: reject: RCPT from [157.122.148.242]:47407: 550 5.7.1 Service unavailable...
   - May  8 08:26:55 mail postfix/smtpd[27266]: warning: hostname other.host does not resolve to address 1.2.3.4: no address associated with name
   - May  8 08:26:55 mail postfix/smtpd[27266]: warning: hostname other.host does not resolve to address 1.2.3.4
- -->
+-->
 
 <decoder name="postfix">
   <program_name>^postfix</program_name>

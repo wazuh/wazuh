@@ -11,6 +11,7 @@
 <!--
   - Will extract the srcip
   - Examples:
+  - Comment: / in the log with -/- is there to escape the hypens(-). Remove it before doing a logtest.
   - Without ID: Will extract the srcip and srcport (when it is available)
       - [error] [client 80.230.208.105] Directory index forbidden by rule: /home/
       - [error] [client 64.94.163.159] Client sent malformed Host header
@@ -28,7 +29,7 @@
         - [Tue Feb 16 04:02:21.018764 2016] [:error] [pid 3223] [client 10.10.10.10:5555] ModSecurity: Access denied with code 403 (phase 2). Text...
   - Others
       - [notice] Apache configured
-      - [Thu Oct 23 15:17:55.926123 2014] [ssl:info] [pid 18838] SSL Library Error: error:1407609B:SSL routines:SSL23_GET_CLIENT_HELLO:https proxy request -- speaking HTTP to HTTPS port!?
+      - [Thu Oct 23 15:17:55.926123 2014] [ssl:info] [pid 18838] SSL Library Error: error:1407609B:SSL routines:SSL23_GET_CLIENT_HELLO:https proxy request -/- speaking HTTP to HTTPS port!?
       - [Tue Sep 30 12:11:21.258612 2014] [ssl:error] [pid 30473] AH02032: Hostname www.example.com provided via SNI and hostname ssl://www.example.com provided via HTTP are different
       - [Wed Jul 31 16:44:52.967837 2019] [core:notice] [pid 8575] AH00094: Command line: '/usr/sbin/httpd -D FOREGROUND'
 
@@ -36,51 +37,51 @@
 
 <!-- Parent decoders -->
 <decoder name="apache-errorlog">
-    <program_name>^apache2|^httpd</program_name>
+  <program_name>^apache2|^httpd</program_name>
 </decoder>
 
 <decoder name="apache-errorlog">
-    <prematch type="pcre2">^\[\w+\]\s</prematch>
+  <prematch type="pcre2">^\[\w+\]\s</prematch>
 </decoder>
 
 <decoder name="apache-errorlog">
-    <prematch type="pcre2">^\[\w{3}\s\w{3}\s\d{1,2}+\s\d{2}:\d{2}:\d{2}(?:\.\d+)?\s\d{4}\]\s</prematch>
+  <prematch type="pcre2">^\[\w{3}\s\w{3}\s\d{1,2}+\s\d{2}:\d{2}:\d{2}(?:\.\d+)?\s\d{4}\]\s</prematch>
 </decoder>
 
 <!-- Siblings decoders -->
 <decoder name="apache-errorlog-fields">
-    <parent>apache-errorlog</parent>
-    <regex type="pcre2">\[(?:(\w+):)?:?(\w+)\]</regex>
-    <order>apache.module, severity</order>
+  <parent>apache-errorlog</parent>
+  <regex type="pcre2">\[(?:(\w+):)?:?(\w+)\]</regex>
+  <order>apache.module, severity</order>
 </decoder>
 
 <decoder name="apache-errorlog-fields">
-    <parent>apache-errorlog</parent>
-    <regex offset="after_parent" type="pcre2">\[pid\s(\d+)(?::tid\s(\d+))?\]</regex>
-    <order>pid, tid</order>
+  <parent>apache-errorlog</parent>
+  <regex offset="after_parent" type="pcre2">\[pid\s(\d+)(?::tid\s(\d+))?\]</regex>
+  <order>pid, tid</order>
 </decoder>
 
 <decoder name="apache-errorlog-fields">
-    <parent>apache-errorlog</parent>
-    <regex offset="after_parent" type="pcre2">\s([\w\-_]+\.\w+)\((\d+)\):\s</regex>
-    <order>apache.log_file, apache.log_line</order>
+  <parent>apache-errorlog</parent>
+  <regex offset="after_parent" type="pcre2">\s([\w\-_]+\.\w+)\((\d+)\):\s</regex>
+  <order>apache.log_file, apache.log_line</order>
 </decoder>
 
 <decoder name="apache-errorlog-fields">
-    <parent>apache-errorlog</parent>
-    <regex offset="after_parent" type="pcre2">\[client\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1)(?::(\d+))?\]</regex>
-    <order>srcip, srcport</order>
+  <parent>apache-errorlog</parent>
+  <regex offset="after_parent" type="pcre2">\[client\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1)(?::(\d+))?\]</regex>
+  <order>srcip, srcport</order>
 </decoder>
 
 <decoder name="apache-errorlog-fields">
-    <parent>apache-errorlog</parent>
-    <regex offset="after_parent" type="pcre2">\]\s((?:([^\[:]+):\s)?[^\[](?:.+referer:\s(.+)|.+)$)</regex>
-    <order>message, id, referer</order>
+  <parent>apache-errorlog</parent>
+  <regex offset="after_parent" type="pcre2">\]\s((?:([^\[:]+):\s)?[^\[](?:.+referer:\s(.+)|.+)$)</regex>
+  <order>message, id, referer</order>
 </decoder>
 
 <!-- Specific decoders -->
 <decoder name="apache-errorlog-fields">
-    <parent>apache-errorlog</parent>
-    <regex offset="after_parent" type="pcre2">\s\w+:\s([^"]+)"([^"]+)":\s([^\[]+)\[RemoteIP:\s([^\]]+)]</regex>
-    <order>apache.error_message, user, apache.error_reason, apache.remote_ip</order>
+  <parent>apache-errorlog</parent>
+  <regex offset="after_parent" type="pcre2">\s\w+:\s([^"]+)"([^"]+)":\s([^\[]+)\[RemoteIP:\s([^\]]+)]</regex>
+  <order>apache.error_message, user, apache.error_reason, apache.remote_ip</order>
 </decoder>

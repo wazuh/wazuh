@@ -7,6 +7,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
+
 <!--
 Background on Cisco syslog format:
 
@@ -63,7 +64,6 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   - Uptime, no date or sequence number
   - 00:00:46: %LINK-3-UPDOWN: Interface Port-channel1, changed state to up
 -->
-
 <decoder name="cisco-ios">
   <prematch>^\d+:\d+:\d+: %\w+-\d-\w+: </prematch>
 </decoder>
@@ -72,7 +72,6 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   - Sequence number, no date or time
   - 000019: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
 -->
-
 <decoder name="cisco-ios">
   <prematch>^\d+: %\w+-\d-\w+: </prematch>
 </decoder>
@@ -104,7 +103,6 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   - Mar  1 18:48:50.483 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
   - Mar  1 2019 18:48:50.483 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
 -->
-
 <decoder name="cisco-ios">
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
@@ -150,7 +148,6 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   - 1348: Jun 12 18:22:22.555 UTC: %SYS-5-CONFIG_I:
   - 1348: Jun 12 2019 18:22:22.555 UTC: %SYS-5-CONFIG_I:
 -->
-
 <decoder name="cisco-ios">
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
@@ -185,7 +182,6 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   - 1348: HOSTNAME: .Jun 12 18:22:22.555 UTC: %SYS-5-CONFIG_I:
   - 1348: HOSTNAME: Jun 12 18:22:22.555 UTC: %SYS-5-CONFIG_I:
 -->
-
 <decoder name="cisco-ios">
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+:\d+:\d+:\s+%|</prematch>
   <prematch>^\d+:\s\.+:\s\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+:\s+%|</prematch>
@@ -215,8 +211,7 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   -
   - %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
   - %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
-  -->
-
+-->
 <decoder name="cisco-ios-acl">
   <parent>cisco-ios</parent>
   <prematch>%SEC-6-IPACCESSLOGP: list \S+ \S+ \S+</prematch>
@@ -231,7 +226,7 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:51654 -> 10.10.10.10:4444]
   - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:60797 -> 10.10.10.10:80]
   - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:5123 Subsig:2 Sev:5 WWW IIS Internet Printing Overflow [192.168.100.11:60797 -> 10.10.10.10:80]
-  -->
+-->
 <decoder name="cisco-ios-ids">
   <parent>cisco-ios</parent>
   <type>ids</type>
@@ -245,8 +240,7 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
 <!-- Cisco IOS config changed via console
  - Mar  1 18:48:50 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (1.2.3.4)
  - Mar  1 18:48:50 UTC: %SYS-5-CONFIG_I: Configured from console by johnsmith on vty2 (1.2.3.4)
- -->
-
+-->
 <decoder name="cisco-ios-chcfg">
   <parent>cisco-ios</parent>
   <prematch>%SYS-5-CONFIG_I: Configured from console by \w+ \(</prematch>
@@ -263,8 +257,7 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
 
 <!-- Cisco IOS
   - Extracts the ID of cisco ios messages IF NOT IDS/ACL log.
-  -->
-
+-->
 <decoder name="cisco-ios-default">
   <parent>cisco-ios</parent>
   <regex>%(\w+)-(\d)-(\w+):</regex>
@@ -274,10 +267,9 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
 <!-- Cisco IOS
   - Extracts the ID of cisco ios messages IF NOT IDS/ACL log.
 
-- Modified according CISCO documentation: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
-- Log line: Jul 29 20:08:37 UTC: %FTD-session-6-305012: Teardown dynamic TCP translation from INTF-INSIDE-1:10.40.1.239/60914 to INTF-INET-SWKO:209.137.221.2/60914 duration 0:00:00
-  -->
-
+  - Modified according CISCO documentation: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
+  - Log line: Jul 29 20:08:37 UTC: %FTD-session-6-305012: Teardown dynamic TCP translation from INTF-INSIDE-1:10.40.1.239/60914 to INTF-INET-SWKO:209.137.221.2/60914 duration 0:00:00
+-->
 <decoder name="cisco-ios-default">
   <parent>cisco-ios</parent>
   <regex>%(\w+)-session-(\d)-(\w+): </regex>

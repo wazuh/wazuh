@@ -11,17 +11,16 @@
 </decoder>
 
 <!--
-EXAMPLE WITH PORT
-"000151,""Open"",""07/02/2017 (Overdue)"",""192.168.1.128"",""443"",,""blabla5757abla"",""HJFEW7823H"",""Vulnerability - level 3"",""1235"",""SSL/TLS Server supports TLSv1.0"",""John Smith (Manager)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"","
+	EXAMPLE WITH PORT
+	"000151,""Open"",""07/02/2017 (Overdue)"",""192.168.1.128"",""443"",,""blabla5757abla"",""HJFEW7823H"",""Vulnerability - level 3"",""1235"",""SSL/TLS Server supports TLSv1.0"",""John Smith (Manager)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"","
 
-EXAMPLE WITHOUT PORT (with an extra resolved added)
-"000148,""Open"",""06/17/2017 (Overdue)"",""192.168.1.128"",,,""blablabla4444"",""EUIFEWUEW78"",""Potential Vulnerability - level 4"",""1000"",""Potential UDP Backdoor"",""John Smith (Manager)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"""
+	EXAMPLE WITHOUT PORT (with an extra resolved added)
+	"000148,""Open"",""06/17/2017 (Overdue)"",""192.168.1.128"",,,""blablabla4444"",""EUIFEWUEW78"",""Potential Vulnerability - level 4"",""1000"",""Potential UDP Backdoor"",""John Smith (Manager)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"""
 
-EXAMPLE WITHOUT NETBIOS_HOSTNAME
-"000174,""Open"",""06/29/2017 (Overdue)"",""192.168.56.101"",,,""blabla.blabla.bla"",,""Potential Vulnerability - level 5"",""5555"",""Statd Format Bug Vulnerability"",""John Smith (Manager)"",""05/30/2017 at 20:15:13 (GMT-0400)"",""05/30/2017 at 20:15:13 (GMT-0400)"","
+	EXAMPLE WITHOUT NETBIOS_HOSTNAME
+	"000174,""Open"",""06/29/2017 (Overdue)"",""192.168.56.101"",,,""blabla.blabla.bla"",,""Potential Vulnerability - level 5"",""5555"",""Statd Format Bug Vulnerability"",""John Smith (Manager)"",""05/30/2017 at 20:15:13 (GMT-0400)"",""05/30/2017 at 20:15:13 (GMT-0400)"","
 
 -->
-
 <decoder name="qualys_fields">
 	<parent>qualysguard</parent>
 	<regex>"(\d\d\d\d\d\d),""(\w+)"",""(\d\d/\d\d/\d\d\d\d \(Overdue\))"",""(\d+.\d+.\d+.\d+)"",</regex>
@@ -67,7 +66,7 @@ EXAMPLE WITHOUT NETBIOS_HOSTNAME
 		But it may dipher in other log examples.
 	- The "Modified" is a date parameter which is never  empty and has the following structure
 		* dd/mm/yyyy at hh:mm:ss (\S+)
-	- The "Created" is exacty the same as "Modified"
+	- The "Created" is exacty the] same as "Modified"
 -->
 <decoder name="qualys_fields">
 	<parent>qualysguard</parent>

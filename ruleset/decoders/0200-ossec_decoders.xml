@@ -49,9 +49,9 @@
 </decoder>
 
 <decoder name="ossec-alert1">
-   <parent>ossec</parent>
-   <prematch>^ossec: Alert Level:</prematch>
-   <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
+  <parent>ossec</parent>
+  <prematch>^ossec: Alert Level:</prematch>
+  <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
 </decoder>
 
 <decoder name="ossec-alert">

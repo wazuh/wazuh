@@ -7,7 +7,7 @@
 -->
 
 <!--
-  - example log file:
+  - Example log file:
   - 2017-05-25 03:01:24 VShellSSH2 conn 55 10.64.32.61 55995 - - - 0 0 0 0 172.20.4.237 22 "00055: Connection accepted from 10.64.32.61:55995"
   - 2017-05-24 00:00:09 VShellSSH2 auth 44268 - - root - - 0 0 0 0 - - "44268: Authentication for root failed: Logon failure: unknown user name or bad password."
   - 2017-05-24 00:00:10 VShellSSH2 dbg 44269 116.31.116.28 15482 - - - 0 0 0 0 - - "44269: Connection from 116.31.116.28 rejected by Deny Hosts file 'C:\Program Files\VanDyke Software\VShell\Deny\deny.txt'"
@@ -16,9 +16,9 @@
   - Requires a new local file definition in the ossec agent config.
   - Example:
   - <localfile>
-     <location>D:\VShell_Logs\%Y%m%d.log</location>
-     <log_format>syslog</log_format>
-   </localfile>
+      <location>D:\VShell_Logs\%Y%m%d.log</location>
+      <log_format>syslog</log_format>
+    </localfile>
 -->
 <decoder name="vshell-rejected">
   <parent>windows-date-format</parent>

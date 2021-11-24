@@ -5,10 +5,11 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- PUPPET MASTER -->
-<!-- Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3 -->
+<!-- PUPPET MASTER 
+  - Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3
+-->
 <decoder name="puppet-master">
-    <program_name>^puppet-master</program_name>
+  <program_name>^puppet-master</program_name>
 </decoder>
 
 <!-- Oct  1 10:32:26 puppet puppet-master[1055]: Starting Puppet master version 3.8.3 -->
@@ -28,10 +29,11 @@
 </decoder>
 
 
-<!-- PUPPET AGENT -->
-<!-- Oct  5 16:13:20 puppet puppet-agent[9113]: Starting Puppet client version 3.8.3 -->
+<!-- PUPPET AGENT
+  - Oct  5 16:13:20 puppet puppet-agent[9113]: Starting Puppet client version 3.8.3
+-->
 <decoder name="puppet-agent">
-    <program_name>^puppet-agent</program_name>
+  <program_name>^puppet-agent</program_name>
 </decoder>
 
 <!-- Oct  5 16:13:20 puppet puppet-agent[9113]: Starting Puppet client version 3.8.3 -->
