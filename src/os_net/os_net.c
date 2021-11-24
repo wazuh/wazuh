@@ -81,7 +81,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
         if ((_ip == NULL) || (_ip[0] == '\0')) {
             server6.sin6_addr = in6addr_any;
         } else {
-            inet_pton(AF_INET6, _ip, &server6.sin6_addr.s6_addr);
+            get_ipv6_numeric(_ip, &server6.sin6_addr);
         }
 
         if (bind(ossock, (struct sockaddr *) &server6, sizeof(server6)) < 0) {
@@ -96,7 +96,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
         if ((_ip == NULL) || (_ip[0] == '\0')) {
             server.sin_addr.s_addr = htonl(INADDR_ANY);
         } else {
-            inet_pton(AF_INET, _ip, &server.sin_addr);
+            get_ipv4_numeric(_ip, &server.sin_addr);
         }
 
         if (bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0) {
@@ -259,7 +259,7 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
-        inet_pton(AF_INET6, _ip, &server6.sin6_addr.s6_addr);
+        get_ipv6_numeric(_ip, &server6.sin6_addr);
 
         if (connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) < 0) {
             OS_CloseSocket(ossock);
@@ -269,7 +269,7 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
         memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
         server.sin_port = htons( _port );
-        inet_pton(AF_INET, _ip, &server.sin_addr);
+        get_ipv4_numeric(_ip, &server.sin_addr);
 
         if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) < 0) {
 #ifdef WIN32
@@ -886,4 +886,68 @@ const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
     tmp_str = strchr(resolved_hostname, '/');
 
     return tmp_str ? ++tmp_str : resolved_hostname;
+}
+
+int get_ipv4_numeric(const char *address, struct in_addr *addr) {
+    int ret = OS_INVALID;
+
+#ifdef WIN32
+    if (checkVista()) {
+        typedef int (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+        inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+
+        if (NULL != InetPton) {
+            if (InetPton(AF_INET, address, addr) == 1) {
+                ret = OS_SUCCESS;
+            }
+        } else {
+            mwarn("It was not possible to convert IPv4 address");
+        }
+    } else {
+        if ((addr->s_addr = inet_addr(address)) > 0) {
+            ret = OS_SUCCESS;
+        }
+    }
+#else
+    if (inet_pton(AF_INET, address, addr) == 1) {
+        ret = OS_SUCCESS;
+    }
+#endif
+
+    return ret;
+}
+
+int get_ipv6_numeric(const char *address, struct in6_addr *addr6) {
+    int ret = OS_INVALID;
+
+#ifdef WIN32
+    if (checkVista()) {
+        typedef int (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+        inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+
+        if (NULL != InetPton) {
+            if (InetPton(AF_INET6, address, addr6) == 1) {
+                ret = OS_SUCCESS;
+            }
+        } else {
+            mwarn("It was not possible to convert IPv6 address");
+        }
+    } else {
+        mwarn("IPv6 in Windows XP is not supported");
+    }
+#else
+    if (inet_pton(AF_INET6, address, addr6) == 1) {
+        ret = OS_SUCCESS;
+    }
+#endif
+
+    return ret;
+}
+
+char *get_ipv4_string(struct in_addr addr) {
+    return NULL;
+}
+
+char *get_ipv6_string(struct in6_addr addr6) {
+    return NULL;
 }

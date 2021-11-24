@@ -173,4 +173,34 @@ void resolve_hostname(char **hostname, int attempts);
  * */
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
+/**
+ * @brief Get the numeric form of an IPv4 address.
+ * @param address IPv4 address in string form.
+ * @param addr Buffer to store the numeric form of the IPv4.
+ * @return 0 on success, -1 otherwise.
+ * */
+int get_ipv4_numeric(const char *address, struct in_addr *addr);
+
+/**
+ * @brief Get the numeric form of an IPv6 address.
+ * @param address IPv6 address in string form.
+ * @param addr Buffer to store the numeric form of the IPv6.
+ * @return 0 on success, -1 otherwise.
+ * */
+int get_ipv6_numeric(const char *address, struct in6_addr *addr6);
+
+/**
+ * @brief Get the string form of an IPv4 address.
+ * @param addr IPv4 address in numeric form.
+ * @return String form of an IPv4 address, NULL on error.
+ * */
+char *get_ipv4_string(struct in_addr addr);
+
+/**
+ * @brief Get the string form of an IPv6 address.
+ * @param addr IPv6 address in numeric form.
+ * @return String form of an IPv6 address, NULL on error.
+ * */
+char *get_ipv6_string(struct in6_addr addr6);
+
 #endif /* OS_NET_H */

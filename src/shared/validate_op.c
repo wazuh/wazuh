@@ -9,6 +9,7 @@
  */
 
 #include "shared.h"
+#include "os_net/os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -245,7 +246,7 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     struct in_addr net;
 
     /* Extract IP address */
-    if (inet_pton(AF_INET, ip_address, &net) <= 0) {
+    if (OS_INVALID == get_ipv4_numeric(ip_address, &net)) {
         return (!_true);
     }
 
@@ -273,7 +274,7 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
     int _true = 1;
 
     /* Extract IP address */
-    if (inet_pton(AF_INET, ip_address, &net) <= 0) {
+    if (OS_INVALID == get_ipv4_numeric(ip_address, &net)) {
         return (!_true);
     }
 
@@ -299,7 +300,6 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
  */
 int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 {
-    unsigned int nmask = 0;
     char *tmp_str;
 
     /* Can't be null */
@@ -353,6 +353,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
     if (tmp_str) {
         int cidr;
         struct in_addr net;
+        struct in_addr nmask;
 
         *tmp_str = '\0';
         tmp_str++;
@@ -364,18 +365,18 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                 if (!_mask_inited) {
                     _init_masks();
                 }
-                nmask = _netmasks[cidr];
-                nmask = htonl(nmask);
+                nmask.s_addr = _netmasks[cidr];
+                nmask.s_addr = htonl(nmask.s_addr);
             } else {
                 return (0);
             }
         }
         /* Full netmask */
-        else if (inet_pton(AF_INET, tmp_str, &nmask) <= 0) {
+        else if (OS_INVALID == get_ipv4_numeric(tmp_str, &nmask)) {
             return (0);
         }
 
-        if (inet_pton(AF_INET, ip_address, &net) <= 0) {
+        if (OS_INVALID == get_ipv4_numeric(ip_address, &net)) {
             if (strcmp("0.0.0.0", ip_address) == 0) {
                 net.s_addr = 0;
             } else {
@@ -384,8 +385,8 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         }
 
         if (final_ip) {
-            final_ip->ip_address = net.s_addr & nmask;
-            final_ip->netmask = nmask;
+            final_ip->ip_address = net.s_addr & nmask.s_addr;
+            final_ip->netmask = nmask.s_addr;
         }
 
         tmp_str--;
@@ -397,12 +398,14 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
     /* No CIDR available */
     else {
         struct in_addr net;
-        nmask = 32;
+        struct in_addr nmask;
+
+        nmask.s_addr = 32;
 
         if (strcmp("any", ip_address) == 0) {
             net.s_addr = 0;
-            nmask = 0;
-        } else if (inet_pton(AF_INET, ip_address, &net) <= 0) {
+            nmask.s_addr = 0;
+        } else if (OS_INVALID == get_ipv4_numeric(ip_address, &net)) {
             return (0);
         }
 
@@ -413,11 +416,11 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                 _init_masks();
             }
 
-            final_ip->netmask = htonl(_netmasks[nmask]);
+            final_ip->netmask = htonl(_netmasks[nmask.s_addr]);
         }
 
         /* IP without CIDR */
-        if (nmask) {
+        if (nmask.s_addr) {
             return (1);
         }
 
