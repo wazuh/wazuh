@@ -804,9 +804,9 @@ MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 ZSTD_LIB = $(EXTERNAL_ZSTD)build/upstream/build/cmake/lib/libzstd.a
-LIBMAGIC_LIB = $(EXTERNAL_LIBMAGIC)src/.libs/libmagic.a
-POPT_LIB = $(EXTERNAL_POPT)upstream/src/.libs/libpopt.a
-LZMA_LIB = $(EXTERNAL_LZMA)upstream/src/liblzma/.libs/liblzma.a
+LIBMAGIC_LIB = $(EXTERNAL_LIBMAGIC)output/src/.libs/libmagic.a
+POPT_LIB = $(EXTERNAL_POPT)output/src/.libs/libpopt.a
+LZMA_LIB = $(EXTERNAL_LZMA)output/src/liblzma/.libs/liblzma.a
 
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
@@ -826,6 +826,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
+EXTERNAL_LIBS += ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB}
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
@@ -841,9 +842,6 @@ ifeq (${uname_S},Darwin)
 EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
-ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB}
-endif
 
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS)
@@ -2345,6 +2343,10 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
+	rm -rf ${LIBMAGIC_BUILD_DIR}
+	rm -rf ${ZSTD_BUILD_DIR}
+	rm -rf ${LZMA_BUILD_DIR}
+	rm -rf ${POPT_BUILD_DIR}
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
