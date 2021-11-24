@@ -111,19 +111,19 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Set deployment values -->
-            <Custom Action="SetWazuhManager" After="InstallInitialize">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
-            <Custom Action="SetWazuhManagerPort" After="InstallInitialize">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
-            <Custom Action="SetWazuhManagerProtocol" After="InstallInitialize">PROTOCOL &lt;&gt; "" AND WAZUH_PROTOCOL = ""</Custom>
-            <Custom Action="SetRegistrationServer" After="InstallInitialize">AUTHD_SERVER &lt;&gt; "" AND WAZUH_REGISTRATION_SERVER = ""</Custom>
-            <Custom Action="SetRegistrationPort" After="InstallInitialize">AUTHD_PORT &lt;&gt; "" AND WAZUH_REGISTRATION_PORT = ""</Custom>
-            <Custom Action="SetRegistrationPassword" After="InstallInitialize">PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = ""</Custom>
-            <Custom Action="SetWazuhKeepAlive" After="InstallInitialize">NOTIFY_TIME &lt;&gt; "" AND WAZUH_KEEP_ALIVE_INTERVAL = ""</Custom>
-            <Custom Action="SetWazuhTimeReconnect" After="InstallInitialize">TIME_RECONNECT &lt;&gt; "" AND WAZUH_TIME_RECONNECT = ""</Custom>
-            <Custom Action="SetRegistrationCA" After="InstallInitialize">CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_CA = ""</Custom>
-            <Custom Action="SetRegistrationCertificate" After="InstallInitialize">PEM &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = ""</Custom>
-            <Custom Action="SetRegistrationKet" After="InstallInitialize">KEY &lt;&gt; "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
-            <Custom Action="SetAgentName" After="InstallInitialize">AGENT_NAME &lt;&gt; "" AND WAZUH_AGENT_NAME = ""</Custom>
-            <Custom Action="SetAgentGroup" After="InstallInitialize">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
+            <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
+            <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
+            <Custom Action="SetWazuhManagerProtocol" Before="SetCustomActionDataValue">PROTOCOL &lt;&gt; "" AND WAZUH_PROTOCOL = ""</Custom>
+            <Custom Action="SetRegistrationServer" Before="SetCustomActionDataValue">AUTHD_SERVER &lt;&gt; "" AND WAZUH_REGISTRATION_SERVER = ""</Custom>
+            <Custom Action="SetRegistrationPort" Before="SetCustomActionDataValue">AUTHD_PORT &lt;&gt; "" AND WAZUH_REGISTRATION_PORT = ""</Custom>
+            <Custom Action="SetRegistrationPassword" Before="SetCustomActionDataValue">PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = ""</Custom>
+            <Custom Action="SetWazuhKeepAlive" Before="SetCustomActionDataValue">NOTIFY_TIME &lt;&gt; "" AND WAZUH_KEEP_ALIVE_INTERVAL = ""</Custom>
+            <Custom Action="SetWazuhTimeReconnect" Before="SetCustomActionDataValue">TIME_RECONNECT &lt;&gt; "" AND WAZUH_TIME_RECONNECT = ""</Custom>
+            <Custom Action="SetRegistrationCA" Before="SetCustomActionDataValue">CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_CA = ""</Custom>
+            <Custom Action="SetRegistrationCertificate" Before="SetCustomActionDataValue">PEM &lt;&gt; "" AND WAZUH_REGISTRATION_CERTIFICATE = ""</Custom>
+            <Custom Action="SetRegistrationKet" Before="SetCustomActionDataValue">KEY &lt;&gt; "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
+            <Custom Action="SetAgentName" Before="SetCustomActionDataValue">AGENT_NAME &lt;&gt; "" AND WAZUH_AGENT_NAME = ""</Custom>
+            <Custom Action="SetAgentGroup" Before="SetCustomActionDataValue">GROUP &lt;&gt; "" AND WAZUH_AGENT_GROUP = ""</Custom>
 
             <!-- Delete OSSEC service if it exist -->
             <Custom Action="CheckSvcRunning_OssecSvc" After="AppSearch">OSSECINSTALLED</Custom>
@@ -131,7 +131,7 @@
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
             <!-- Install functions -->
-            <Custom Action="SetCustomActionDataValue" After="DeleteOssecService">NOT Installed</Custom>
+            <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
