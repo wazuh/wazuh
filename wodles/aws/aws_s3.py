@@ -903,6 +903,10 @@ class AWSBucket(WazuhIntegration):
                     if not bucket_file['Key']:
                         continue
 
+                    if bucket_file['Key'][-1] == '/':
+                        # The file is a folder
+                        continue
+
                     if self.check_prefix:
                         date_match = self.date_regex.search(bucket_file['Key'])
                         match_start = date_match.span()[0] if date_match else None
@@ -1194,6 +1198,10 @@ class AWSConfigBucket(AWSLogsBucket):
                 if not bucket_file['Key']:
                     continue
 
+                if bucket_file['Key'][-1] == '/':
+                    # The file is a folder
+                    continue
+
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -1227,6 +1235,11 @@ class AWSConfigBucket(AWSLogsBucket):
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
+
+                    if bucket_file['Key'][-1] == '/':
+                        # The file is a folder
+                        continue
+
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
                             debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -1663,6 +1676,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 if not bucket_file['Key']:
                     continue
 
+                if bucket_file['Key'][-1] == '/':
+                    # The file is a folder
+                    continue
+
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -1699,6 +1716,11 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
+
+                    if bucket_file['Key'][-1] == '/':
+                        # The file is a folder
+                        continue
+
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
                         if self.reparse:
                             debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -2291,6 +2313,10 @@ class AWSServerAccess(AWSCustomBucket):
                 if not bucket_file['Key']:
                     continue
 
+                if bucket_file['Key'][-1] == '/':
+                    # The file is a folder
+                    continue
+
                 try:
                     date_match = self.date_regex.search(bucket_file['Key'])
                     file_date = datetime.strptime(date_match.group(), '%Y-%m-%d-%H-%M-%S') if date_match else None
@@ -2341,6 +2367,10 @@ class AWSServerAccess(AWSCustomBucket):
 
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
+                        continue
+
+                    if bucket_file['Key'][-1] == '/':
+                        # The file is a folder
                         continue
 
                     try:
