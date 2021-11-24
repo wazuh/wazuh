@@ -197,6 +197,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
+    WDB_STMT_GLOBAL_MULTIGROUP_EXISTS,
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
@@ -1231,6 +1232,16 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
 
 /**
+ * @brief Function to parse last_id get-all-agents.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the multigroup hash.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_multigroup_exists(wdb_t *wdb, char *input, char *output);
+
+/**
  * @brief Function to parse the reset agent connection status request.
  *
  * @param [in] wdb The global struct database.
@@ -1765,6 +1776,17 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
  * @retval -1 on error.
  */
 int wdb_global_agent_exists(wdb_t *wdb, int agent_id);
+
+/**
+ * @brief Checks if given multigroup hash is present in the agent table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] multigroup_hash multigroup hash to check.
+ * @retval FALSE if the multigroup hash was not found.
+ * @retval TRUE if the multigroup hash was found.
+ * @retval FALSE on error.
+ */
+bool wdb_global_multigroup_exists(wdb_t *wdb, const char *multigroup_hash);
 
 /**
  * @brief Function to reset connection_status column of every agent (excluding the manager).

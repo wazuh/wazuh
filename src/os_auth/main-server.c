@@ -841,7 +841,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
-
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
             if (cur->group) {

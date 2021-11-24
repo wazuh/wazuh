@@ -1288,6 +1288,30 @@ int wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     }
 }
 
+bool wdb_global_multigroup_exists(wdb_t *wdb, const char *multigroup_hash) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_MULTIGROUP_EXISTS);
+
+    if (stmt == NULL) {
+        return FALSE;
+    }
+
+    if (sqlite3_bind_text(stmt, 1, multigroup_hash, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+         if (sqlite3_column_int(stmt, 0) == 0) {return FALSE;}
+         return TRUE;
+    case SQLITE_DONE:
+        return FALSE;
+    default:
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return FALSE;
+    }
+}
+
 int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
     sqlite3_stmt *stmt = NULL;
 

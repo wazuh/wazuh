@@ -40,6 +40,7 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
+    [WDB_GLOBAL_MULTIGROUP_EXISTS] = "global check-multigroup-existance %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
@@ -1036,6 +1037,37 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
     }
 
     return result;
+}
+
+bool wdb_check_multigroup_existance(const char *groups, int *sock) {
+    cJSON *result = NULL;
+    bool response = FALSE;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+    cJSON *j_exists = NULL;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GLOBAL_MULTIGROUP_EXISTS], groups);
+
+    result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    if (!result) {
+        merror("Error querying Wazuh DB to get groups from agent table.");
+        return FALSE;
+    }
+
+    j_exists = cJSON_GetObjectItem(result->child, "exists");
+    if (cJSON_IsBool(j_exists)) {
+        if((bool)j_exists->valueint) {
+            response = TRUE;
+        }
+    }
+
+    return response;
 }
 
 int wdb_reset_agents_connection(const char *sync_status, int *sock) {

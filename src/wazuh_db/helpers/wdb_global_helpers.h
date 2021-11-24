@@ -37,6 +37,7 @@ typedef enum global_db_access {
     WDB_DELETE_GROUP,
     WDB_DELETE_AGENT_BELONG,
     WDB_DELETE_GROUP_BELONG,
+    WDB_GLOBAL_MULTIGROUP_EXISTS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_DISCONNECT_AGENTS
@@ -268,6 +269,15 @@ int wdb_delete_agent_belongs(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_from_belongs_db(const char *name, int *sock);
+
+/**
+ * @brief Checks if a multigroup is used by at least one agent.
+ *
+ * @param[in] name The group name.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns TRUE on if multigroup exists or FALSE if not.
+ */
+bool wdb_check_multigroup_existance(const char *multigroups, int *sock);
 
 /**
  * @brief Reset the connection_status column of every agent (excluding the manager).

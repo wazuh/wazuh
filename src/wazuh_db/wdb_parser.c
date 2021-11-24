@@ -772,6 +772,15 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_delete_agent_belong(wdb, next, output);
             }
+        } else if (strcmp(query, "check-multigroup-existance") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for check-multigroup-existance.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_multigroup_exists(wdb, next, output);
+            }
         } else if (strcmp(query, "find-agent") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for find-agent.");
@@ -5513,6 +5522,30 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output) {
     }
 
     snprintf(output, OS_MAXSTR + 1, "ok");
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_multigroup_exists(wdb_t *wdb, char *input, char *output) {
+    char *multigroup_hash = input;
+    cJSON *response = cJSON_CreateArray();
+    cJSON *message = cJSON_CreateObject();
+    char *out = NULL;
+    int exists = wdb_global_multigroup_exists(wdb, multigroup_hash);
+
+    if (exists < 0) {
+        mdebug1("Error inserting group in global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error inserting group in global.db.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddBoolToObject(message, "exists", exists);
+    cJSON_AddItemToArray(response, message);
+
+    out = cJSON_PrintUnformatted(response);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(response);
+
     return OS_SUCCESS;
 }
 

@@ -16,6 +16,7 @@
 #include "syscheckd/syscheck.h"
 #include "config/authd-config.h"
 #include "os_auth/auth.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -358,8 +359,8 @@ int set_agent_multigroup(char * group) {
         *endl = '\0';
     }
 
-    /* Remove multigroup if it's not used on any other agent */
-    w_remove_multigroup(group);
+    /* Clean multigroup files if it's not used on any other agent */
+    w_clean_multigroup_files(group);
 
     /* Check if the multigroup dir is created */
     os_sha256 multi_group_hash;
@@ -559,28 +560,24 @@ int w_validate_group_name(const char *group, char *response) {
 }
 
 #ifndef CLIENT
-void w_remove_multigroup(const char *group) {
+void w_clean_multigroup_files(const char *group) {
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char path[PATH_MAX + 1] = {0};
 
     if (multigroup) {
+        char path[PATH_MAX + 1] = {0};
+        char _hash[9] = {0};
+        os_sha256 multigroup_hash;
+        multigroup_hash[8] = '\0';
+
         sprintf(path, "%s", GROUPS_DIR);
+        OS_SHA256_String(group, multigroup_hash);
+        strncpy(_hash, multigroup_hash, 8);
 
-        if (wstr_find_in_folder(path,group,1) < 0) {
-            /* Remove the DIR */
-            os_sha256 multi_group_hash;
-            OS_SHA256_String(group,multi_group_hash);
-            char _hash[9] = {0};
-
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
-
-            strncpy(_hash,multi_group_hash,8);
-
+        if (!wdb_check_multigroup_existance(_hash, NULL)) {
             sprintf(path, "%s/%s", MULTIGROUPS_DIR, _hash);
 
             if (rmdir_ex(path) != 0) {
-                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
+                mdebug1("At w_clean_multigroup_files(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
             }
         }
     }
