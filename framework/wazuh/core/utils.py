@@ -24,7 +24,6 @@ from shutil import Error, copyfile, move
 from signal import signal, alarm, SIGALRM
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
-from signal import signal, alarm, SIGALRM
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -937,6 +936,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+
     def check_date_format(element):
         """Check if a given field is a date. If so, transform the date to the standard API format (ISO 8601).
         If not, return the field.
@@ -1451,8 +1451,8 @@ class WazuhDBQuery(object):
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
             self.query += "{0} IS NOT NULL AND {0} {1}" \
                           " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
-                                                                   query_operator,
-                                                                   date_filter['field'])
+                                                                  query_operator,
+                                                                  date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):
             self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
                 self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
@@ -1856,7 +1856,9 @@ def temporary_cache():
                 return f(*args, **kwargs)
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
