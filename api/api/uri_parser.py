@@ -28,7 +28,7 @@ class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
                 q = parse_api_param(request.url, 'q')
                 if q:
                     if ';' in q:
-                        raise_if_exc(APIError(code=2009))
+                        raise_if_exc(APIError(2009))
 
             # Transform to lowercase the values for query parameter's spec.yaml enums
             lower_fields = ['component', 'configuration', 'hash', 'requirement', 'status', 'type', 'section', 'tag',
