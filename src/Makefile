@@ -803,10 +803,10 @@ LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
-ZSTD_LIB = $(EXTERNAL_ZSTD)build/upstream/build/cmake/lib/libzstd.a
-LIBMAGIC_LIB = $(EXTERNAL_LIBMAGIC)output/src/.libs/libmagic.a
-POPT_LIB = $(EXTERNAL_POPT)output/src/.libs/libpopt.a
-LZMA_LIB = $(EXTERNAL_LZMA)output/src/liblzma/.libs/liblzma.a
+ZSTD_LIB = $(EXTERNAL_ZSTD)build/cmake/build/lib/libzstd.a
+LIBMAGIC_LIB = $(EXTERNAL_LIBMAGIC)build/output/src/.libs/libmagic.a
+POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
+LZMA_LIB = $(EXTERNAL_LZMA)build/output/src/liblzma/.libs/liblzma.a
 
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
@@ -1099,10 +1099,10 @@ endif
 LZMA_BUILD_DIR = $(EXTERNAL_LZMA)build/
 
 $(LZMA_LIB): $(LZMA_BUILD_DIR)Makefile
-	 $(MAKE) -C $(LZMA_BUILD_DIR)
+	cd $(LZMA_BUILD_DIR) && $(MAKE)
 
 $(LZMA_BUILD_DIR)Makefile:
-	mkdir -p $(LZMA_BUILD_DIR) && cmake -S $(EXTERNAL_LZMA) -B $(LZMA_BUILD_DIR)
+	mkdir -p $(LZMA_BUILD_DIR) && cd $(LZMA_BUILD_DIR) && cmake ..
 
 ### popt lib ###
 
@@ -1114,14 +1114,14 @@ $(POPT_BUILD_DIR)Makefile:
 	mkdir -p $(POPT_BUILD_DIR) && cmake -S $(EXTERNAL_POPT) -B $(POPT_BUILD_DIR)
 
 ### zstd lib ###
-
-ZSTD_BUILD_DIR = $(EXTERNAL_ZSTD)/build
+ZSTD_CMAKE_DIR = $(EXTERNAL_ZSTD)/build/cmake/
+ZSTD_BUILD_DIR = $(ZSTD_CMAKE_DIR)/build
 
 $(ZSTD_LIB): $(ZSTD_BUILD_DIR)Makefile
-	$(MAKE) -C $(ZSTD_BUILD_DIR)
+	cd $(ZSTD_BUILD_DIR) && $(MAKE)
 
 $(ZSTD_BUILD_DIR)Makefile:
-	mkdir -p $(ZSTD_BUILD_DIR) && cmake -S $(EXTERNAL_ZSTD) -B $(ZSTD_BUILD_DIR)
+	mkdir -p $(ZSTD_BUILD_DIR) && cd $(ZSTD_BUILD_DIR) && cmake ..
 
 ### libmagic lib ###
 
@@ -1129,10 +1129,10 @@ LIBMAGIC_BUILD_FLAGS += -DZLIB_INC_PATH=$(ROUTE_PATH)/$(EXTERNAL_ZLIB) -DZLIB_LI
 LIBMAGIC_BUILD_DIR = $(EXTERNAL_LIBMAGIC)build/
 
 $(LIBMAGIC_LIB): $(LIBMAGIC_BUILD_DIR)Makefile
-	 $(MAKE) -C $(LIBMAGIC_BUILD_DIR)
+	cd $(LIBMAGIC_BUILD_DIR) && $(MAKE)
 
 $(EXTERNAL_LIBMAGIC)build/Makefile: $(ZLIB_LIB)
-	mkdir -p $(LIBMAGIC_BUILD_DIR) && cmake -S $(EXTERNAL_LIBMAGIC) -B $(LIBMAGIC_BUILD_DIR) $(LIBMAGIC_BUILD_FLAGS)
+	mkdir -p $(LIBMAGIC_BUILD_DIR) && cd $(LIBMAGIC_BUILD_DIR) && cmake .. $(LIBMAGIC_BUILD_FLAGS)
 
 ################################
 #### External dependencies  ####
