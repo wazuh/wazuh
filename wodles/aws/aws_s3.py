@@ -687,10 +687,9 @@ class AWSBucket(WazuhIntegration):
 
     def find_account_ids(self):
         try:
-            common_prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
-                                                          Delimiter='/')['CommonPrefixes']
-            return [prefix['Prefix'].split('/')[-2] for prefix in common_prefixes if
-                    self.prefix_regex.match(prefix['Prefix'].split('/')[-2])]
+            prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
+                                                   Delimiter='/')['CommonPrefixes']
+            return [account_id for p in prefixes if self.prefix_regex.match(account_id := p['Prefix'].split('/')[-2])]
         except KeyError:
             bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
