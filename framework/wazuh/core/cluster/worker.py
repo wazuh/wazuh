@@ -72,8 +72,7 @@ class SyncTask:
             self.logger.debug("Permission to synchronize granted.")
             return True
         else:
-            self.logger.debug("Master didn't grant permission to start a new synchronization because there is one "
-                              "still in progress.")
+            self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
 
         return False
 
