@@ -15,9 +15,15 @@
 // This function performs those data migrations between
 // updates that cannot be resolved with queries
 static int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step);
+static int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step);
+
 // Migrate to the fourth version of the database:
 // - The attributes field of the fim_entry table is decoded
 static int wdb_adjust_v4(wdb_t *wdb);
+
+// Migrating to the fourth version of the database:
+// The groups_hash column is calculated with the hash of the group column
+static int wdb_global_adjust_v4(wdb_t *wdb);
 
 /* SQL statements used for the global.db upgrade */
 typedef enum wdb_stmt_global {
@@ -109,7 +115,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
         mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
-        if (wdb_sql_exec(wdb, UPDATES[i]) == -1) {
+        if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_global_upgrade(wdb, i)) {
             mwarn("Failed to update global.db to version %d", i + 1);
             wdb = wdb_backup_global(wdb, version);
             break;
@@ -302,6 +308,19 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
         default:
             return 0;
     }
+}
+
+int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step) {
+    switch (upgrade_step) {
+        case 3:
+            return wdb_global_adjust_v4(wdb);
+        default:
+            return 0;
+    }
+}
+
+int wdb_global_adjust_v4(wdb_t *wdb) {
+    return wdb_global_update_all_agents_groups_hash(wdb);
 }
 
 int wdb_adjust_v4(wdb_t *wdb) {
