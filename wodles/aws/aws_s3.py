@@ -2899,10 +2899,7 @@ class AWSCloudWatchLogs(AWSService):
                                                                          end_time=db_values['start_time'])
 
                         if db_values['end_time']:
-                            if self.only_logs_after_millis is not None and \
-                                    db_values['end_time'] < self.only_logs_after_millis:
-                                start_time = self.only_logs_after_millis
-                            else:
+                            if not self.only_logs_after_millis or db_values['end_time'] > self.only_logs_after_millis:
                                 start_time = db_values['end_time'] + 1
                                 token = db_values['token']
 
