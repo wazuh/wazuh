@@ -23,7 +23,7 @@
     <field name="docker.level">info</field>
     <description>Docker: Information message.</description>
     <group>docker-info,</group>
-  <rule>
+  </rule>
 
   <!--
   time="2017-02-18T08:48:04.269962983Z" level=warning msg="Text"
