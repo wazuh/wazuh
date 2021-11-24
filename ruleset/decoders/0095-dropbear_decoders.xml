@@ -12,7 +12,7 @@
 </decoder>
 
 <!--
-Jan  8 16:39:33 tp.lan dropbear[14824]: Bad password attempt for 'root' from 193.219.28.149:48629
+  Jan  8 16:39:33 tp.lan dropbear[14824]: Bad password attempt for 'root' from 193.219.28.149:48629
 -->
 <decoder name="dropbear-bad-password">
   <parent>dropbear</parent>
@@ -22,7 +22,7 @@ Jan  8 16:39:33 tp.lan dropbear[14824]: Bad password attempt for 'root' from 193
 </decoder>
 
 <!--
-Jan  8 19:54:12 tp.lan dropbear[15197]: Login attempt for nonexistent user from 182.72.89.122:4328
+  Jan  8 19:54:12 tp.lan dropbear[15197]: Login attempt for nonexistent user from 182.72.89.122:4328
 -->
 <decoder name="dropbear-nonexist">
   <parent>dropbear</parent>
@@ -32,7 +32,7 @@ Jan  8 19:54:12 tp.lan dropbear[15197]: Login attempt for nonexistent user from 
 </decoder>
 
 <!--
-Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with key md5 78:d6:41:ca:78:37:80:88:1d:15:0a:68:91:d1:4e:ad from 10.10.10.241:51737
+  Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with key md5 78:d6:41:ca:78:37:80:88:1d:15:0a:68:91:d1:4e:ad from 10.10.10.241:51737
 -->
 <decoder name="dropbear-from">
   <parent>dropbear</parent>
