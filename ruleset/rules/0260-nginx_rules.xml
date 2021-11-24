@@ -71,7 +71,7 @@
 
   <rule id="31317" level="0">
     <if_sid>31303</if_sid>
-    <match>failed (2: No such file or directory)</match>
+    <match>failed (2: No such file or directory</match>
     <description>Nginx: Common cache error when files were removed.</description>
   </rule>
 
