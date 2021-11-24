@@ -12,7 +12,6 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from functools import partial
-from multiprocessing import Manager
 from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -597,8 +596,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.error(error)
 
         for error in result['error_messages']['chunks']:
-            logger.debug2(f'Chunk {error[0]+1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
-            logger.error(f'Wazuh-db response for chunk {error[0]+1}/{len(data["chunks"])} was not "ok": {error[1]}')
+            logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
+            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
 
         logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
                      f'in {result["time_spent"]:3f}s.')
