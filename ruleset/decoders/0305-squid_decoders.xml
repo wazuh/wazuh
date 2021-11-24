@@ -24,7 +24,7 @@
 
 <!--
   - Extract srcip, action, id and url.
-  -->
+-->
 <decoder name="squid-accesslog-default">
   <parent>squid-accesslog</parent>
   <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
