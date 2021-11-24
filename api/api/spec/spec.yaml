@@ -1718,7 +1718,7 @@ components:
                         shared:
                           type: integer
                           format: int32
-                sync_agentinfo_free:
+                sync_agent_info_free:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
@@ -7914,6 +7914,7 @@ paths:
                             extra: 0
                             extra_valid: 0
                             shared: 0
+                        sync_agent_info_free: true
                         last_sync_agentinfo:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
@@ -7940,6 +7941,7 @@ paths:
                             extra: 0
                             extra_valid: 0
                             shared: 0
+                        sync_agent_info_free: true
                         last_sync_agentinfo:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z

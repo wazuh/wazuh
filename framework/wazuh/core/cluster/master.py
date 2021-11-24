@@ -189,6 +189,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                     not key.startswith('tmp')},
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
                                                    not key.startswith('tmp')},
+                           'sync_agent_info_free': self.sync_agent_info_free,
                            'last_sync_agentinfo': self.sync_agent_info_status,
                            'last_keep_alive': self.last_keepalive}
                 }
@@ -987,9 +988,11 @@ class Master(server.AbstractServer):
                 task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
                 # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_control = await asyncio.wait_for(task, timeout=None)
-                self.integrity_already_executed.clear()
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
+            finally:
+                self.integrity_already_executed.clear()
+
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
                                        f"metadata of {len(self.integrity_control)} files.")
 
