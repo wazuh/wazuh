@@ -6,9 +6,9 @@
 -->
 
 <!--
-[TypeMessage] DayWeek DayMonthYear Time - (SessionID) Message
+  [TypeMessage] DayWeek DayMonthYear Time - (SessionID) Message
 
-Examples:
+  Examples:
   [06] Thu 26Nov15 17:55:14 - Event: FILE_UPLOAD (Event 07); Type: EMAIL; To: admin@company.com
   [01] Thu 26Nov15 17:55:14 - Domain started
   [02] Thu 26Nov15 17:55:14 - (000002) Connected to 192.168.2.200 (local address 192.168.2.201, port 22)
