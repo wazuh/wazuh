@@ -610,8 +610,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
                                             'date_end_master': date_end_master.strftime(decimals_date_format),
                                             'n_synced_chunks': result['updated_chunks']})
-        logger.info('Finished in {:.3f}s ({} chunks updated).'.format((date_end_master - date_start_master
-                                                                       ).total_seconds(), result['updated_chunks']))
+        logger.info('Finished in {:.3f}s. Updated {} chunks.'.format((date_end_master - date_start_master
+                                                                      ).total_seconds(), result['updated_chunks']))
 
         return response
 
@@ -644,6 +644,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity check']
         date_start_master = datetime.now()
+        logger.info(f"Starting.")
 
         logger.debug("Waiting to receive zip file from worker.")
         await asyncio.wait_for(received_file.wait(),
@@ -660,7 +661,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
         # There are no files inside decompressed_files_path, only files_metadata.json which has already been loaded.
         shutil.rmtree(decompressed_files_path)
-        logger.info(f"Starting. Received metadata of {len(files_metadata)} files.")
 
         # Classify files in shared, missing, extra and extra valid.
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
@@ -673,10 +673,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
-            logger.info(f"Finished in {total_time:.3f}s. Sync not required.")
+            logger.info(f"Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. "
+                        f"Sync not required.")
             result = await self.send_request(command=b'syn_m_c_ok', data=b'')
         else:
-            logger.info(f"Finished in {total_time:.3f}s. Sync required.")
+            logger.info(f"Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. "
+                        f"Sync required.")
 
             logger = self.task_loggers['Integrity sync']
             logger.info("Starting.")
