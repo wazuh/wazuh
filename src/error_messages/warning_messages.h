@@ -11,6 +11,9 @@
 #ifndef WARN_MESSAGES_H
 #define WARN_MESSAGES_H
 
+/* Active Response */
+#define AR_SERVER_AGENT "(1306): Invalid agent ID. Use location=server to run AR on the manager."
+
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"
 #define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"
