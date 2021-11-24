@@ -180,6 +180,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
@@ -1612,6 +1613,25 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
+
+/**
+ * @brief Function to update the agent's groups_hash column. It reads the group column, calculates and stores its hash
+ *        but if the group column is NULL, the method returns without modifying groups_hash.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id);
+
+/**
+ * @brief Function to update the agent's groups_hash column for all agents. It gets all agents and calls
+ *        wdb_global_update_agent_groups_hash() for each one.
+ *
+ * @param [in] wdb The Global struct database.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_all_agents_groups_hash(wdb_t* wdb);
 
 /**
  * @brief Function to get a group id using the group name.
