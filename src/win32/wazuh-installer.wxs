@@ -52,7 +52,7 @@
         <Property Id="BUILDVERSION" Value="0">
             <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
         </Property>
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixQuietExec"/>
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec"/>
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
