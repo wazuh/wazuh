@@ -1623,9 +1623,11 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID
+ * @param [in] groups_string The comma separated groups string to hash and store in groups_hash column. If not set,
+ *                           it will be read from 'group' column.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id);
+int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string);
 
 /**
  * @brief Function to update the agent's groups_hash column for all agents. It gets all agents and calls

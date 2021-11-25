@@ -599,24 +599,29 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
     }
 }
 
-int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id) {
+int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
     cJSON* j_agent_info = NULL;
     char* agent_groups = NULL;
     char truncated_groups_hash[9] = {0};
     os_sha256 groups_hash;
     int result = OS_INVALID;
 
-    j_agent_info = wdb_global_get_agent_info(wdb, agent_id);
-    if(!j_agent_info) {
-        mdebug1("Unable to get the agent's '%d' info to update the groups_hash column", agent_id);
-        return OS_INVALID;
-    }
+    // If the comma separated groups string is not send, read it from 'group' column
+    if(!groups_string) {
+        j_agent_info = wdb_global_get_agent_info(wdb, agent_id);
+        if(!j_agent_info) {
+            mdebug1("Unable to get the agent's '%d' info to update the groups_hash column", agent_id);
+            return OS_INVALID;
+        }
 
-    agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
-    if(!agent_groups) {
-        mdebug2("Empty group column for agent '%d', groups_hash column won't be updated", agent_id);
-        cJSON_Delete(j_agent_info);
-        return OS_SUCCESS;
+        agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
+        if(!agent_groups) {
+            mdebug2("Empty group column for agent '%d', groups_hash column won't be updated", agent_id);
+            cJSON_Delete(j_agent_info);
+            return OS_SUCCESS;
+        }
+    } else {
+        agent_groups = groups_string;
     }
 
     OS_SHA256_String(agent_groups, groups_hash);
@@ -687,7 +692,7 @@ int wdb_global_update_all_agents_groups_hash(wdb_t* wdb) {
         switch (step_result) {
         case SQLITE_ROW:
             agent_id = sqlite3_column_int(stmt, 0);
-            update_result = wdb_global_update_agent_groups_hash(wdb, agent_id);
+            update_result = wdb_global_update_agent_groups_hash(wdb, agent_id, NULL);
             break;
         case SQLITE_DONE:
             result = OS_SUCCESS;
