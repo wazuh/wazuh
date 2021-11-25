@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include "syscheck.h"
 #include "registry/registry.h"
+#include "test_fim.h"
 
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
@@ -117,9 +118,20 @@ static void test_fim_registry_event_invalid_saved_entry_type(void **state) {
 
 static void test_fim_registry_event_added_key_event(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL };
     cJSON *ret, *data, *attributes;
 
@@ -150,13 +162,27 @@ static void test_fim_registry_event_added_key_event(void **state) {
     assert_int_equal(cJSON_GetObjectItem(attributes, "mtime")->valueint, 1000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(new_key.perm_json);
 }
 
 static void test_fim_registry_event_added_key_event_attributes_disabled(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, 0, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes;
 
@@ -188,16 +214,41 @@ static void test_fim_registry_event_added_key_event_attributes_disabled(void **s
     assert_null(cJSON_GetObjectItem(attributes, "mtime"));
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(new_key.perm_json);
 }
 
 static void test_fim_registry_event_modified_key_event(void **state) {
     fim_entry new, saved;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
-    fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-old-permission", "110", "220", "user_old_name", "group_old_name", 1100, ARCH_64BIT, 0, 1234, "234567890ABCDEF1234567890ABCDEF123456789"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
+    cJSON *saved_permissions = cJSON_CreateObject();
+    fim_registry_key saved_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = saved_permissions,
+                                 .perm = cJSON_PrintUnformatted(saved_permissions),
+                                 .uid = "110",
+                                 .gid = "220",
+                                 .user_name = "user_old_name",
+                                 .group_name = "group_old_name",
+                                 .mtime = 1100,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "234567890ABCDEF1234567890ABCDEF123456789" };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes, *old_attributes, *it;
     char *changed_attributes[] = { "permission", "uid", "user_name", "gid", "group_name", "mtime" };
@@ -249,16 +300,43 @@ static void test_fim_registry_event_modified_key_event(void **state) {
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 1100);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "checksum")),
                         "234567890ABCDEF1234567890ABCDEF123456789");
+
+    free(new_key.perm);
+    free(saved_key.perm);
+    cJSON_Delete(permissions);
+    cJSON_Delete(saved_permissions);
 }
 
 static void test_fim_registry_event_modified_key_event_attributes_disabled(void **state) {
     fim_entry new, saved;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
-    fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-old-permission", "110", "220", "user_old_name", "group_old_name", 1100, ARCH_64BIT, 0, 1234, "234567890ABCDEF1234567890ABCDEF123456789"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
+    cJSON *saved_permissions = cJSON_CreateObject();
+    fim_registry_key saved_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = saved_permissions,
+                                 .perm = cJSON_PrintUnformatted(saved_permissions),
+                                 .uid = "110",
+                                 .gid = "220",
+                                 .user_name = "user_old_name",
+                                 .group_name = "group_old_name",
+                                 .mtime = 1100,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "234567890ABCDEF1234567890ABCDEF123456789" };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, 0, 320, 0, NULL, NULL };
     cJSON *ret;
 
@@ -273,13 +351,29 @@ static void test_fim_registry_event_modified_key_event_attributes_disabled(void 
     ret = fim_registry_event(&new, &saved, &configuration, FIM_SCHEDULED, FIM_MODIFICATION, NULL, NULL);
 
     assert_null(ret);
+
+    free(new_key.perm);
+    free(saved_key.perm);
+    cJSON_Delete(permissions);
+    cJSON_Delete(saved_permissions);
 }
 
 static void test_fim_registry_event_deleted_key_event(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes;
 
@@ -311,13 +405,27 @@ static void test_fim_registry_event_deleted_key_event(void **state) {
     assert_int_equal(cJSON_GetObjectItem(attributes, "mtime")->valueint, 1000);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_deleted_key_event_attributes_disabled(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     registry configuration = { "HKEY_USERS\\Some", ARCH_64BIT, 0, 320, 0, NULL, NULL };
     cJSON *ret, *data, *attributes;
 
@@ -349,13 +457,27 @@ static void test_fim_registry_event_deleted_key_event_attributes_disabled(void *
     assert_null(cJSON_GetObjectItem(attributes, "mtime"));
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_added_value_event(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -404,13 +526,27 @@ static void test_fim_registry_event_added_value_event(void **state) {
                         "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_added_value_event_attributes_disabled(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -455,13 +591,27 @@ static void test_fim_registry_event_added_value_event_attributes_disabled(void *
     assert_null(cJSON_GetObjectItem(attributes, "hash_sha256"));
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_modified_value_event(void **state) {
     fim_entry new, saved;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -473,9 +623,19 @@ static void test_fim_registry_event_modified_value_event(void **state) {
                                           10000,
                                           "1234567890ABCDEF1234567890ABCDEF12345678",
                                           FIM_MODIFICATION };
-    fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    fim_registry_key saved_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data saved_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -546,13 +706,28 @@ static void test_fim_registry_event_modified_value_event(void **state) {
                         "234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(old_attributes, "checksum")),
                         "234567890ABCDEF1234567890ABCDEF123456789");
+
+    free(new_key.perm);
+    free(saved_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_modified_value_event_attributes_disabled(void **state) {
     fim_entry new, saved;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -564,9 +739,19 @@ static void test_fim_registry_event_modified_value_event_attributes_disabled(voi
                                           10000,
                                           "1234567890ABCDEF1234567890ABCDEF12345678",
                                           FIM_MODIFICATION };
-    fim_registry_key saved_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    fim_registry_key saved_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data saved_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -594,13 +779,28 @@ static void test_fim_registry_event_modified_value_event_attributes_disabled(voi
     *state = ret;
 
     assert_null(ret);
+
+    free(new_key.perm);
+    free(saved_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_deleted_value_event(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -648,13 +848,27 @@ static void test_fim_registry_event_deleted_value_event(void **state) {
                         "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF");
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(permissions);
 }
 
 static void test_fim_registry_event_deleted_value_event_attributes_disabled(void **state) {
     fim_entry new;
-    fim_registry_key new_key = {
-        3, "HKEY_USERS\\Some\\random\\key", "windows-permission", "100", "200", "user_name", "group_name", 1000, ARCH_64BIT, 0, 1234, "1234567890ABCDEF1234567890ABCDEF12345678"
-    };
+    cJSON *permissions = create_win_permissions_object();
+    fim_registry_key new_key = { .id = 3,
+                                 .path = "HKEY_USERS\\Some\\random\\key",
+                                 .perm_json = permissions,
+                                 .perm = cJSON_PrintUnformatted(permissions),
+                                 .uid = "100",
+                                 .gid = "200",
+                                 .user_name = "user_name",
+                                 .group_name = "group_name",
+                                 .mtime = 1000,
+                                 .arch = ARCH_64BIT,
+                                 .scanned = 0,
+                                 .last_event = 1234,
+                                 .checksum = "1234567890ABCDEF1234567890ABCDEF12345678" };
     fim_registry_value_data new_value = { 3,
                                           "the\\value",
                                           REG_SZ,
@@ -699,6 +913,9 @@ static void test_fim_registry_event_deleted_value_event_attributes_disabled(void
     assert_null(cJSON_GetObjectItem(attributes, "hash_sha256"));
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    free(new_key.perm);
+    cJSON_Delete(permissions);
 }
 
 int main(void) {

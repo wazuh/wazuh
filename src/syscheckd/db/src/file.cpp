@@ -197,15 +197,18 @@ fim_entry* fim_db_decode_full_row(sqlite3_stmt* stmt)
     entry->file_entry.data->dev = (unsigned long int)sqlite3_column_int(stmt, 6);
     entry->file_entry.data->inode = (unsigned long int)sqlite3_column_int64(stmt, 7);
     entry->file_entry.data->size = (unsigned int)sqlite3_column_int(stmt, 8);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 9), entry->file_entry.data->perm);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 10), entry->file_entry.data->attributes);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 11), entry->file_entry.data->uid);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 12), entry->file_entry.data->gid);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 13), entry->file_entry.data->user_name);
-    sqlite_strdup((char*)sqlite3_column_text(stmt, 14), entry->file_entry.data->group_name);
-    strncpy(entry->file_entry.data->hash_md5, (char*)sqlite3_column_text(stmt, 15), sizeof(os_md5) - 1);
-    strncpy(entry->file_entry.data->hash_sha1, (char*)sqlite3_column_text(stmt, 16), sizeof(os_sha1) - 1);
-    strncpy(entry->file_entry.data->hash_sha256, (char*)sqlite3_column_text(stmt, 17), sizeof(os_sha256) - 1);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 9), entry->file_entry.data->perm);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 10), entry->file_entry.data->attributes);
+#ifdef WIN32
+    entry->file_entry.data->perm_json = cJSON_Parse(entry->file_entry.data->perm);
+#endif
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 11), entry->file_entry.data->uid);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 12), entry->file_entry.data->gid);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 13), entry->file_entry.data->user_name);
+    sqlite_strdup((char *)sqlite3_column_text(stmt, 14), entry->file_entry.data->group_name);
+    strncpy(entry->file_entry.data->hash_md5, (char *)sqlite3_column_text(stmt, 15), sizeof(os_md5) - 1);
+    strncpy(entry->file_entry.data->hash_sha1, (char *)sqlite3_column_text(stmt, 16), sizeof(os_sha1) - 1);
+    strncpy(entry->file_entry.data->hash_sha256, (char *)sqlite3_column_text(stmt, 17), sizeof(os_sha256) - 1);
     entry->file_entry.data->mtime = (unsigned int)sqlite3_column_int(stmt, 18);
 
     return entry;

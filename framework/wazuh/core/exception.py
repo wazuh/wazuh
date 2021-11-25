@@ -4,7 +4,7 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version, agent_name_len_limit
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
@@ -17,6 +17,9 @@ class WazuhException(Exception):
 
     ERRORS = {
         # < 999: API
+        900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
+             'Please restart the Wazuh API',
+        901: 'API executor subprocess broke. A service restart may be needed',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -229,9 +232,9 @@ class WazuhException(Exception):
                },
         1707: {'message': 'Cannot send request, agent is not active',
                'remediation': 'Please, check non-active agents connection and try again. Visit '
-               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
-               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
-               ' to obtain more information on registering and connecting agents'
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
+                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
+                              ' to obtain more information on registering and connecting agents'
                },
         1708: {'message': 'There is an agent with the same ID',
                'remediation': 'Please choose another ID'
@@ -301,7 +304,7 @@ class WazuhException(Exception):
                'remediation': 'Please choose another group or remove an agent from the target group'
                },
         1738: {'message': 'Agent name is too long',
-               'remediation': 'Max length allowed for agent name is 128'
+               'remediation': f'Max length allowed for agent name is {agent_name_len_limit}'
                },
         1739: {'message': 'Error getting agents group sync',
                'remediation': f'Please check that the agent and the group are correctly created. Official documentation: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/grouping-agents.html'
@@ -421,7 +424,6 @@ class WazuhException(Exception):
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
         3010: 'Received the status/group of a non-existent agent',
-        3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
         3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
@@ -463,6 +465,8 @@ class WazuhException(Exception):
         3034: "Error sending file. File not found.",
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
+        3037: 'Error while processing Agent-info chunks',
+        3038: "Error while processing extra-valid files",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -557,6 +561,11 @@ class WazuhException(Exception):
 
         # > 9000: Authd
     }
+
+    # Reserve agent upgrade custom errors
+    ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
+                                    'The error message will be the output of upgrade module'}
+                   for key in range(1811, 1900)})
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
                  type=None):

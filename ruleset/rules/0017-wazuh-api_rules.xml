@@ -8,9 +8,6 @@
 <rule id="420" level="0">
  <decoded_as>wazuh-api-info</decoded_as>
  <description>Rules for Wazuh API events</description>
- <mitre>
-  <id>T1102</id>
- </mitre>
 </rule>
 
 <rule id="401" level="3">
@@ -44,9 +41,6 @@
  <if_sid>420</if_sid>
  <field name="type">INFO</field>
  <description>API informative event</description>
- <mitre>
-  <id>T1102</id>
- </mitre>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5</group>
 </rule>
 
@@ -54,9 +48,6 @@
  <if_sid>420</if_sid>
  <field name="type">WARNING</field>
  <description>API warning event</description>
- <mitre>
-  <id>T1102</id>
- </mitre>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12</group>
 </rule>
 
@@ -64,9 +55,6 @@
  <if_sid>420</if_sid>
  <field name="type">ERROR</field>
  <description>API error event</description>
- <mitre>
-  <id>T1102</id>
- </mitre>
  <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3</group>
 </rule>
 
@@ -74,10 +62,7 @@
  <if_sid>420</if_sid>
  <field name="type">CRITICAL</field>
  <description>API critical error event, requires inmediate atention</description>
- <mitre>
-  <id>T1102</id>
- </mitre>
-   <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3,pci_dss_10.6.1,gpg13_4.1</group>
+ <group>pci_dss_1.3.2,pci_dss_6.5.10,pci_dss_7.1,pci_dss_8.1,tsc_cc6.1,hipaa_164.312.a.1,gpg13_3.3,gpg13_7.1,nist_800_53_AC.7,nist_800_53_SC.5,gpg13_4.12,gpg13_4.3,pci_dss_10.6.1,gpg13_4.1</group>
 </rule>
 
 <rule id="425" level="7">
@@ -98,9 +83,6 @@
  <field name="http_status_code" negate="yes">200</field>
  <description>API: authentication failure from $(srcip)</description>
  <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
- <mitre>
-  <id>T1102</id>
- </mitre>
 </rule>
 
 <rule id="405" level="7">
@@ -121,9 +103,6 @@
  <field name="http_status_code">401</field>
  <description>API: $(endpoint) Unauthorized.</description>
  <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
- <mitre>
-  <id>T1102</id>
- </mitre>
 </rule>
 
 <rule id="412" level="7">

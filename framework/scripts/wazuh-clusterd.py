@@ -10,6 +10,8 @@ import os
 import sys
 from signal import signal, Signals, SIGTERM, SIG_DFL
 
+from psutil import Process
+
 from wazuh.core.utils import check_pid
 
 
@@ -30,11 +32,30 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
 
 
+def terminate_child_processes(parent_pid):
+    """Stop the execution of all cluster child processes.
+
+    Parameters
+    ----------
+    parent_pid : int
+        Parent process ID.
+    """
+    for child in Process(parent_pid).children(recursive=True):
+        try:
+            child.kill()
+        except Exception:
+            pass
+
+
 def exit_handler(signum, frame):
+    cluster_pid = os.getpid()
     main_logger.info(f'SIGNAL [({signum})-({Signals(signum).name})] received. Exit...')
 
+    # Terminate cluster's child processes
+    terminate_child_processes(cluster_pid)
+
     # Remove cluster's pidfile
-    pyDaemonModule.delete_pid('wazuh-clusterd', os.getpid())
+    pyDaemonModule.delete_pid('wazuh-clusterd', cluster_pid)
 
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
@@ -184,4 +205,5 @@ if __name__ == '__main__':
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
+        terminate_child_processes(pid)
         pyDaemonModule.delete_pid('wazuh-clusterd', pid)

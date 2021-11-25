@@ -6,11 +6,11 @@ import re
 from copy import deepcopy
 from functools import lru_cache
 
-import api.configuration as configuration
+from api.authentication import get_security_conf
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens,\
+from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
     load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
@@ -1103,7 +1103,7 @@ def get_rbac_actions(endpoint: str = None):
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
 def get_security_config():
     """Returns current security configuration."""
-    return WazuhResult({'data': configuration.security_conf})
+    return WazuhResult({'data': get_security_conf()})
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])

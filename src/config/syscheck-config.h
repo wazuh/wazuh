@@ -268,6 +268,9 @@ typedef struct registry_ignore_regex {
 typedef struct fim_file_data {
     // Checksum attributes
     unsigned int size;
+#ifdef WIN32
+    cJSON * perm_json;
+#endif
     char * perm;
     char * attributes;
     char * uid;
@@ -292,6 +295,7 @@ typedef struct fim_file_data {
 typedef struct fim_registry_key {
     unsigned int id;
     char * path;
+    cJSON * perm_json;
     char * perm;
     char * uid;
     char * gid;

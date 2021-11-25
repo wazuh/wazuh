@@ -11,6 +11,9 @@
 #ifndef WARN_MESSAGES_H
 #define WARN_MESSAGES_H
 
+/* Active Response */
+#define AR_SERVER_AGENT "(1306): Invalid agent ID. Use location=server to run AR on the manager."
+
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"
 #define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"
@@ -61,6 +64,8 @@
 #define FIM_AUDIT_DISABLED                      "(6946): Audit is disabled."
 #define FIM_WARN_FORMAT_PATH                    "(6947): Error formatting path: '%s'"
 #define FIM_DATABASE_NODES_COUNT_FAIL           "(6948): Unable to get the number of entries in database."
+#define FIM_CJSON_ERROR_CREATE_ITEM             "(6949): Cannot create a cJSON item"
+
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."

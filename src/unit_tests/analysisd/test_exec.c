@@ -782,7 +782,7 @@ void test_getActiveResponseInJSON_extra_args(void **state){
 
     will_return(__wrap_OS_GetOneContentforElement, node);
 
-    getActiveResponseInJSON(data->lf, data->ar, extra_args, msg);
+    getActiveResponseInJSON(data->lf, data->ar, extra_args, msg, false);
 
     cJSON * root = cJSON_Parse(msg);
     cJSON * deviceData = cJSON_GetObjectItem(root,"parameters");

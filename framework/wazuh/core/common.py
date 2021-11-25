@@ -10,6 +10,7 @@ from copy import deepcopy
 from functools import lru_cache
 from functools import wraps
 from grp import getgrnam
+from multiprocessing import Event
 from pwd import getpwnam
 from typing import Dict, Any
 
@@ -179,6 +180,7 @@ agent_info_retries = 100  # Retries to detect when agent_info file is updated
 agent_info_sleep = 2  # Seconds between retries
 
 # Common variables
+agent_name_len_limit = 128
 database_limit = 500
 maximum_database_limit = 100000
 limit_seconds = 1800  # 600*3
@@ -221,6 +223,9 @@ cluster_integrity_mtime: ContextVar[Dict] = ContextVar('cluster_integrity_mtime'
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 
 _context_cache = dict()
+
+# Clear cache event
+cache_event = Event()
 
 
 def context_cached(key: str = '') -> Any:
