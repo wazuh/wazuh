@@ -26,7 +26,7 @@ namespace FIMDBHelper
     * @param sync_callback Synchronization callback.
     * @param logCallback Logging callback.
     */
-    void initDB(unsigned int sync_interval, unsigned int file_limit,
+    void initDB(const unsigned int sync_interval, const unsigned int file_limit,
                 fim_sync_callback_t sync_callback, logging_callback_t logCallback,
                 std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
@@ -42,7 +42,7 @@ namespace FIMDBHelper
     * @param sync_callback Synchronization callback.
     * @param logCallback Logging callback.
     */
-    void initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
+    void initDB(const unsigned int sync_interval, const unsigned int file_limit, const unsigned int registry_limit,
                 fim_sync_callback_t sync_callback, logging_callback_t logCallback,
                 std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
@@ -160,9 +160,9 @@ namespace FIMDBHelper
         )";
         auto update = nlohmann::json::parse(updateStatement);
         update["table"] = tableName;
-        update["data"] = {item};
+        update["data"] = nlohmann::json::array({item});
         bool error = false;
-        auto callback
+        const auto callback
         {
             [&error](ReturnTypeCallback type, const nlohmann::json&)
             {
@@ -192,7 +192,7 @@ namespace FIMDBHelper
     template<typename T>
     int getDBItem(nlohmann::json& item, const nlohmann::json& query)
     {
-        auto callback
+        const auto callback
         {
             [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
@@ -220,7 +220,6 @@ namespace FIMDBHelper
     {
         nlohmann::json query;
         query["table"] = tableName;
-        query["query"] = {};
         query["query"]["column_list"] = columnList["column_list"];
         query["query"]["row_filter"] = filter;
         query["query"]["distinct_opt"] = false;

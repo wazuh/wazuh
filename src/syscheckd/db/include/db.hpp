@@ -20,10 +20,6 @@ extern "C" {
 #define FIM_DB_MEMORY_PATH  ":memory:"
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
 
-#define FIMDB_OK 0   // Successful result.
-#define FIMDB_ERR -1 // Generic error.
-#define FIMDB_FULL -2 // DB is full.
-
 #define EVP_MAX_MD_SIZE 64
 
 #ifndef WIN32
@@ -37,8 +33,8 @@ extern "C" {
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  */
-void fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback);
+enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
+                                 logging_callback_t log_callback);
 #else
 /**
  * @brief Initialize the FIM database.
@@ -50,8 +46,8 @@ void fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callba
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  */
-void fim_db_init(int storage, int sync_interval, int file_limit, int value_limit, fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback);
+enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, int value_limit,
+                             fim_sync_callback_t sync_callback, logging_callback_t log_callback);
 #endif
 
 #ifdef __cplusplus

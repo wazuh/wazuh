@@ -22,7 +22,7 @@ extern "C" {
  *
  * @return std::string Contains the dbsync's schema for FIM db.
  */
-std::string CreateStatement()
+const char * CreateStatement()
 {
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
@@ -30,28 +30,42 @@ std::string CreateStatement()
     ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
 #endif
 
-    return ret;
+    return ret.c_str();
 }
 
 #ifndef WIN32
-void fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback)
+enum FIMDBErrorCodes  fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
+                                  logging_callback_t log_callback)
 #else
-void fim_db_init(int storage, int sync_interval, int file_limit, int value_limit, fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback)
+enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, int value_limit,
+                                 fim_sync_callback_t sync_callback, logging_callback_t log_callback)
 #endif
 {
-    auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+    auto retVal {FIMDB_OK};
 
-    auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement());
-    auto rsyncHandler = std::make_shared<RemoteSync>();
+    try
+    {
+        auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+
+        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement());
+        auto rsyncHandler = std::make_shared<RemoteSync>();
 
 #ifndef WIN32
-    FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, sync_callback, log_callback, dbsyncHandler, rsyncHandler);
+        FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, sync_callback, log_callback, dbsyncHandler, rsyncHandler);
 #else
-    FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, value_limit, sync_callback, log_callback, dbsyncHandler,
-                               rsyncHandler);
+        FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, value_limit, sync_callback, log_callback, dbsyncHandler,
+                                   rsyncHandler);
 #endif
+    }
+    catch (const DbSync::dbsync_error& ex)
+    {
+        auto errorMessage = "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+        log_callback(LOG_ERROR, errorMessage.c_str());
+
+        retVal = FIMDB_ERR;
+    }
+
+    return retVal;
 }
 
 

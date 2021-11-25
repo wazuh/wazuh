@@ -77,13 +77,19 @@ void read_internal(int debug_level)
 
 void fim_initialize() {
     // Create store data
+    enum FIMDBErrorCodes ret_value;
 #ifndef WIN32
-    fim_db_init(syscheck.database_store, syscheck.sync_interval, syscheck.file_limit, NULL, loggingFunction);
+    ret_value = fim_db_init(syscheck.database_store, syscheck.sync_interval, syscheck.file_limit, NULL,
+                            loggingFunction);
 #else
-    fim_db_init(syscheck.database_store, syscheck.sync_interval, syscheck.file_limit, syscheck.reg_entry_limit,
-                NULL, loggingFunction);
-
+    ret_value = fim_db_init(syscheck.database_store, syscheck.sync_interval, syscheck.file_limit,
+                            syscheck.reg_entry_limit, NULL, loggingFunction);
 #endif
+
+    if (ret_value == FIMDB_ERR) {
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "dbsync db");
+    }
+
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
