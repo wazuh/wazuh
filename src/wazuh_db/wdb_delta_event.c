@@ -94,10 +94,10 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
         strcat(query, " SET ");
 
         const size_t separator_count = os_strcnt(data, *FIELD_SEPARATOR_DBSYNC);
-        const size_t field_values_size = sizeof(char*) * (separator_count > 0 ? separator_count : 1);
+        const size_t field_values_size = sizeof(char *) * (separator_count > 0 ? separator_count : 1);
         // field_values vector will be used to point to the beginning of each field.
         char ** field_values = NULL;
-        os_calloc(1, field_values_size + 1, field_values);
+        os_calloc(1, field_values_size + sizeof(char *), field_values);
         char **curr = field_values;
 
         char * data_temp = NULL;
