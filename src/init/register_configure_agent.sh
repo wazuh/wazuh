@@ -12,8 +12,9 @@
 # . /etc/ossec-init.conf
 
 # Global variables
-CONF_FILE="${DIRECTORY}/etc/ossec.conf"
-TMP_ENROLLMENT="${DIRECTORY}/tmp/autoenrollment.conf"
+INSTALLDIR=${1}
+CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
+TMP_ENROLLMENT="${INSTALLDIR}/tmp/autoenrollment.conf"
 
 
 # Set default sed alias
@@ -205,12 +206,12 @@ tolower () {
 
 # Add auto-enrollment configuration block
 add_auto_enrollment () {
-    start_config="$(grep -n "<auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
-    end_config="$(grep -n "</auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
+    start_config="$(grep -n "<auto_enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
+    end_config="$(grep -n "</auto_enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
         start_config=$(( start_config + 1 ))
         end_config=$(( end_config - 1 ))
-        sed -n "${start_config},${end_config}p" ${DIRECTORY}/etc/ossec.conf >> "${TMP_ENROLLMENT}"
+        sed -n "${start_config},${end_config}p" ${INSTALLDIR}/etc/ossec.conf >> "${TMP_ENROLLMENT}"
     else
         # Write the client configuration block
         echo "<ossec_config>" >> "${TMP_ENROLLMENT}"
@@ -233,8 +234,8 @@ add_auto_enrollment () {
 
 # Add the auto_enrollment block to the configuration file
 concat_conf(){
-    start_config="$(grep -n "<auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
-    end_config="$(grep -n "</auto_enrollment>" ${DIRECTORY}/etc/ossec.conf | cut -d':' -f 1)"
+    start_config="$(grep -n "<auto_enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
+    end_config="$(grep -n "</auto_enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
         # Remove the server configuration
         if [ "${use_unix_sed}" = "False" ] ; then
@@ -278,10 +279,10 @@ main () {
     get_deprecated_vars
 
     if [ ! -z ${WAZUH_MANAGER} ]; then
-        if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
-            touch -f ${DIRECTORY}/logs/ossec.log
-            chmod 660 ${DIRECTORY}/logs/ossec.log
-            chown root:ossec ${DIRECTORY}/logs/ossec.log
+        if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
+            touch -f ${INSTALLDIR}/logs/ossec.log
+            chmod 660 ${INSTALLDIR}/logs/ossec.log
+            chown root:wazuh ${INSTALLDIR}/logs/ossec.log
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
