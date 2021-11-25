@@ -5116,6 +5116,13 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
                 cJSON_Delete(agent_data);
                 return OS_INVALID;
             }
+
+            if (OS_SUCCESS != wdb_global_update_agent_groups_hash(wdb, id, group)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent group.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
