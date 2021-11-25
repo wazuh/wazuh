@@ -1,130 +1,130 @@
 <!--
     Copyright (C) 2015-2021, Wazuh Inc.
-		Sophos Rules
+    Sophos Rules
 -->
 
 <!-- ID: 82100 - 82199 -->
 
 <group name="sophos,">
 
-	<rule id="82100" level="0">
-		<decoded_as>sophos</decoded_as>
-		<description>Sophos alerts.</description>
-	</rule>
+  <rule id="82100" level="0">
+    <decoded_as>sophos</decoded_as>
+    <description>Sophos alerts.</description>
+  </rule>
 
-	<rule id="82101" level="3">
-		<if_sid>82100</if_sid>
-		<match>Scan 'Sophos Cloud Scheduled Scan' started</match>
-		<description>Sophos Cloud Scheduled Scan started</description>
-		<group></group>
-	</rule>
+  <rule id="82101" level="3">
+    <if_sid>82100</if_sid>
+    <match>Scan 'Sophos Cloud Scheduled Scan' started</match>
+    <description>Sophos Cloud Scheduled Scan started</description>
+    <group></group>
+  </rule>
 
-	<rule id="82102" level="3">
-		<if_sid>82100</if_sid>
-		<match>Scan 'Sophos Cloud Scheduled Scan' completed</match>
-		<description>Sophos Cloud Scheduled Scan completed</description>
-	</rule>
+  <rule id="82102" level="3">
+    <if_sid>82100</if_sid>
+    <match>Scan 'Sophos Cloud Scheduled Scan' completed</match>
+    <description>Sophos Cloud Scheduled Scan completed</description>
+  </rule>
 
-	<rule id="82103" level="3">
-		<if_sid>82100</if_sid>
-		<match>has started</match>
-		<description>User has started on-access scanning for this machine.</description>
-	</rule>
+  <rule id="82103" level="3">
+    <if_sid>82100</if_sid>
+    <match>has started</match>
+    <description>User has started on-access scanning for this machine.</description>
+  </rule>
 
-	<rule id="82104" level="3">
-		<if_sid>82100</if_sid>
-		<match>has stopped</match>
-		<description>User has stopped on-access scanning for this machine.</description>
-	</rule>
+  <rule id="82104" level="3">
+    <if_sid>82100</if_sid>
+    <match>has stopped</match>
+    <description>User has stopped on-access scanning for this machine.</description>
+  </rule>
 
-	<rule id="82105" level="3">
-		<if_sid>82100</if_sid>
-		<match>detection data version</match>
-		<description>Sophos database updated</description>
-		<group>gpg13_4.4,</group>
-	</rule>
+  <rule id="82105" level="3">
+    <if_sid>82100</if_sid>
+    <match>detection data version</match>
+    <description>Sophos database updated</description>
+    <group>gpg13_4.4,</group>
+  </rule>
 
-	<rule id="64270" level="0">
-		<decoded_as>sophos-win</decoded_as>
-		<field name="category">savscan.log</field>
-		<description>savscan category</description>
-	</rule>
+  <rule id="64270" level="0">
+    <decoded_as>sophos-win</decoded_as>
+    <field name="category">savscan.log</field>
+    <description>savscan category</description>
+  </rule>
 
-	<rule id="64271" level="3">
-		<if_sid>64270</if_sid>
-		<field name="msg">SAVSCAN-DETAILS</field>
-		<description>SAVSCAN-DETAILS alert</description>
-	</rule>
+  <rule id="64271" level="3">
+    <if_sid>64270</if_sid>
+    <field name="msg">SAVSCAN-DETAILS</field>
+    <description>SAVSCAN-DETAILS alert</description>
+  </rule>
 
-	<rule id="64272" level="6">
-		<if_sid>64270</if_sid>
-		<field name="msg">NOTIFY_ONDEMANDTHREAT_INFECTED</field>
-		<description>NOTIFY_ONDEMANDTHREAT_INFECTED alert</description>
-	</rule>
+  <rule id="64272" level="6">
+    <if_sid>64270</if_sid>
+    <field name="msg">NOTIFY_ONDEMANDTHREAT_INFECTED</field>
+    <description>NOTIFY_ONDEMANDTHREAT_INFECTED alert</description>
+  </rule>
 
-	<rule id="64273" level="6">
-		<if_sid>64270</if_sid>
-		<field name="msg">SCANNER_DIED_KILLED</field>
-		<description>SCANNER_DIED_KILLED alert</description>
-	</rule>
+  <rule id="64273" level="6">
+    <if_sid>64270</if_sid>
+    <field name="msg">SCANNER_DIED_KILLED</field>
+    <description>SCANNER_DIED_KILLED alert</description>
+  </rule>
 
-	<rule id="64274" level="0">
-		<decoded_as>sophos-win</decoded_as>
-		<field name="category">update.check</field>
-		<description>Update category</description>
-	</rule>
+  <rule id="64274" level="0">
+    <decoded_as>sophos-win</decoded_as>
+    <field name="category">update.check</field>
+    <description>Update category</description>
+  </rule>
 
-	<rule id="64275" level="3">
-		<if_sid>64274</if_sid>
-		<field name="msg">NO_UPDATED_FROM</field>
-		<description>NO_UPDATED_FROM alert</description>
-	</rule>
+  <rule id="64275" level="3">
+    <if_sid>64274</if_sid>
+    <field name="msg">NO_UPDATED_FROM</field>
+    <description>NO_UPDATED_FROM alert</description>
+  </rule>
 
-	<!-- Sophos UTM firewall rules-->
+  <!-- Sophos UTM firewall rules-->
 
-	<rule id="82110" level="0">
-		<decoded_as>sophos-fw</decoded_as>
-		<description>Sophos UTM firewall events</description>
-	</rule>
+  <rule id="82110" level="0">
+    <decoded_as>sophos-fw</decoded_as>
+    <description>Sophos UTM firewall events</description>
+  </rule>
 
-	<rule id="82111" level="3">
-		<if_sid>82110</if_sid>
-		<field name="severity">info</field>
-		<description>Sophos UTM firewall: Informational event</description>
-	</rule>
+  <rule id="82111" level="3">
+    <if_sid>82110</if_sid>
+    <field name="severity">info</field>
+    <description>Sophos UTM firewall: Informational event</description>
+  </rule>
 
-	<rule id="82112" level="5">
-		<if_sid>82110</if_sid>
-		<field name="severity">warn|Warning</field>
-		<description>Sophos UTM firewall: Warning event</description>
-		<group>gpg13_4.12</group>
-	</rule>
+  <rule id="82112" level="5">
+    <if_sid>82110</if_sid>
+    <field name="severity">warn|Warning</field>
+    <description>Sophos UTM firewall: Warning event</description>
+    <group>gpg13_4.12</group>
+  </rule>
 
-	<rule id="82113" level="6">
-		<if_sid>82110</if_sid>
-		<field name="severity">error|Error</field>
-		<description>Sophos UTM firewall: Error event</description>
-		<group>gpg13_4.3,gpg13_4.12</group>
-	</rule>
+  <rule id="82113" level="6">
+    <if_sid>82110</if_sid>
+    <field name="severity">error|Error</field>
+    <description>Sophos UTM firewall: Error event</description>
+    <group>gpg13_4.3,gpg13_4.12</group>
+  </rule>
 
-	<rule id="82114" level="4">
-		<if_sid>82110</if_sid>
-		<field name="method">POST</field>
-		<description>Sophos UTM firewall: method POST event</description>
-		<group>hipaa_164.312.c.1</group>
-	</rule>
+  <rule id="82114" level="4">
+    <if_sid>82110</if_sid>
+    <field name="method">POST</field>
+    <description>Sophos UTM firewall: method POST event</description>
+    <group>hipaa_164.312.c.1</group>
+  </rule>
 
-	<rule id="82115" level="3">
-		<if_sid>82110</if_sid>
-		<field name="method">GET</field>
-		<description>Sophos UTM firewall: method GET event</description>
-	</rule>
+  <rule id="82115" level="3">
+    <if_sid>82110</if_sid>
+    <field name="method">GET</field>
+    <description>Sophos UTM firewall: method GET event</description>
+  </rule>
 
-	<rule id="82116" level="4">
-		<if_sid>82110</if_sid>
-		<field name="method">OPTIONS</field>
-		<description>Sophos UTM firewall: method OPTIONS event</description>
-		<group>hipaa_164.312.c.1</group>
-	</rule>
-	
+  <rule id="82116" level="4">
+    <if_sid>82110</if_sid>
+    <field name="method">OPTIONS</field>
+    <description>Sophos UTM firewall: method OPTIONS event</description>
+    <group>hipaa_164.312.c.1</group>
+  </rule>
+  
 </group>
