@@ -184,7 +184,7 @@ int get_ipv4_numeric(const char *address, struct in_addr *addr);
 /**
  * @brief Get the numeric form of an IPv6 address.
  * @param address IPv6 address in string form.
- * @param addr Buffer to store the numeric form of the IPv6.
+ * @param addr6 Buffer to store the numeric form of the IPv6.
  * @return 0 on success, -1 otherwise.
  * */
 int get_ipv6_numeric(const char *address, struct in6_addr *addr6);
@@ -192,15 +192,19 @@ int get_ipv6_numeric(const char *address, struct in6_addr *addr6);
 /**
  * @brief Get the string form of an IPv4 address.
  * @param addr IPv4 address in numeric form.
- * @return String form of an IPv4 address, NULL on error.
+ * @param address Buffer to store the string form of the IPv4.
+ * @param address_size Size of the buffer.
+ * @return 0 on success, -1 otherwise.
  * */
-char *get_ipv4_string(struct in_addr addr);
+int get_ipv4_string(struct in_addr addr, char *address, size_t address_size);
 
 /**
  * @brief Get the string form of an IPv6 address.
- * @param addr IPv6 address in numeric form.
- * @return String form of an IPv6 address, NULL on error.
+ * @param addr6 IPv6 address in numeric form.
+ * @param address Buffer to store the string form of the IPv6.
+ * @param address_size Size of the buffer.
+ * @return 0 on success, -1 otherwise.
  * */
-char *get_ipv6_string(struct in6_addr addr6);
+int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size);
 
 #endif /* OS_NET_H */

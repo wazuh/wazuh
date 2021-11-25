@@ -17,6 +17,11 @@
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifdef WIN32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
+
 #ifdef __MACH__
 #define TCP_KEEPIDLE TCP_KEEPALIVE
 #endif
@@ -372,8 +377,7 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         return (-1);
     }
 
-    inet_ntop(AF_INET, &_nc.sin_addr, srcip, addrsize - 1);
-    srcip[addrsize - 1] = '\0';
+    get_ipv4_string(_nc.sin_addr, srcip, addrsize - 1);
 
     return (clientsocket);
 }
@@ -509,11 +513,11 @@ char *OS_GetHost(const char *host, unsigned int attempts)
         for(p = addr; p != NULL; p = p->ai_next) {
             if (p->ai_family == AF_INET) {
                 os_calloc(IPSIZE + 1, sizeof(char), ip);
-                inet_ntop(AF_INET, &((struct sockaddr_in *)p->ai_addr)->sin_addr, ip, IPSIZE);
+                get_ipv4_string(((struct sockaddr_in *)p->ai_addr)->sin_addr, ip, IPSIZE - 1);
                 break;
             } else if (p->ai_family == AF_INET6) {
                 os_calloc(IPSIZE + 1, sizeof(char), ip);
-                inet_ntop(AF_INET6, &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr, ip, IPSIZE);
+                get_ipv6_string(((struct sockaddr_in6 *)p->ai_addr)->sin6_addr, ip, IPSIZE - 1);
                 break;
             }
         }
@@ -893,7 +897,7 @@ int get_ipv4_numeric(const char *address, struct in_addr *addr) {
 
 #ifdef WIN32
     if (checkVista()) {
-        typedef int (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
         inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
 
         if (NULL != InetPton) {
@@ -922,7 +926,7 @@ int get_ipv6_numeric(const char *address, struct in6_addr *addr6) {
 
 #ifdef WIN32
     if (checkVista()) {
-        typedef int (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
         inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
 
         if (NULL != InetPton) {
@@ -944,10 +948,64 @@ int get_ipv6_numeric(const char *address, struct in6_addr *addr6) {
     return ret;
 }
 
-char *get_ipv4_string(struct in_addr addr) {
-    return NULL;
+int get_ipv4_string(struct in_addr addr, char *address, size_t address_size) {
+    int ret = OS_INVALID;
+
+#ifdef WIN32
+    if (checkVista()) {
+        typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+        inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+
+        if (NULL != InetNtop) {
+            if (InetNtop(AF_INET, &addr, address, address_size)) {
+                ret = OS_SUCCESS;
+            }
+        } else {
+            mwarn("It was not possible to convert IPv4 address");
+        }
+    } else {
+        char *aux = inet_ntoa(addr);
+        if (aux) {
+            strncpy(address, aux, address_size);
+            ret = OS_SUCCESS;
+        }
+    }
+#else
+    if (inet_ntop(AF_INET, &addr, address, address_size)) {
+        ret = OS_SUCCESS;
+    }
+#endif
+
+    return ret;
 }
 
-char *get_ipv6_string(struct in6_addr addr6) {
-    return NULL;
+int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
+    int ret = OS_INVALID;
+
+#ifdef WIN32
+    if (checkVista()) {
+        typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+        inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+
+        if (NULL != InetNtop) {
+            if (InetNtop(AF_INET6, &addr6, address, address_size)) {
+                ret = OS_SUCCESS;
+            }
+        } else {
+            mwarn("It was not possible to convert IPv6 address");
+        }
+    } else {
+        mwarn("IPv6 in Windows XP is not supported");
+    }
+#else
+    if (inet_ntop(AF_INET6, &addr6, address, address_size)) {
+        ret = OS_SUCCESS;
+    }
+#endif
+
+    return ret;
 }
+
+#ifdef WIN32
+#pragma GCC diagnostic pop
+#endif

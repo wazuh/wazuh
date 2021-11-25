@@ -427,7 +427,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
+    get_ipv4_string(peer_info->sin_addr, srcip, IPSIZE - 1);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
