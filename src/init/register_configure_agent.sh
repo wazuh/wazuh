@@ -232,7 +232,6 @@ add_auto_enrollment () {
         echo "      <server_ca_path>/path/to/server_ca</server_ca_path>" >> "${TMP_ENROLLMENT}"
         echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>" >> "${TMP_ENROLLMENT}"
         echo "      <agent_key_path>/path/to/agent.key</agent_key_path>" >> "${TMP_ENROLLMENT}"
-        echo "      <authorization_pass>TopSecret</authorization_pass>" >> "${TMP_ENROLLMENT}"
         echo "    </enrollment>" >> "${TMP_ENROLLMENT}"
         echo "  </client>" >> "${TMP_ENROLLMENT}"
         echo "</ossec_config>" >> "${TMP_ENROLLMENT}"
@@ -309,6 +308,10 @@ main () {
                 WAZUH_REGISTRATION_SERVER="${WAZUH_MANAGER}"
             fi
         fi
+        
+        if [ -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
+            echo ${WAZUH_REGISTRATION_PASSWORD} > "${INSTALLDIR}/etc/authd.pass"
+        fi
 
         # Options to be modified in ossec.conf
         edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
@@ -319,7 +322,6 @@ main () {
         add_auto_enrollment
         set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
         set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
-        set_auto_enrollment_tag_value "authorization_pass" ${WAZUH_REGISTRATION_PASSWORD}
         set_auto_enrollment_tag_value "server_ca_path" ${WAZUH_REGISTRATION_CA}
         set_auto_enrollment_tag_value "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE}
         set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
