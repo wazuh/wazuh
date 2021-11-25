@@ -33,6 +33,7 @@
 		<description>User has started on-access scanning for this machine.</description>
 		<group></group>
 	</rule>
+
 	<rule id="82104" level="3">
 		<if_sid>82100</if_sid>
 		<match>has stopped</match>
@@ -48,7 +49,7 @@
 	</rule>
 
   <rule id="64270" level="0">
-	<decoded_as>sophos-win</decoded_as>
+		<decoded_as>sophos-win</decoded_as>
     <field name="category">savscan.log</field>
     <description>savscan category</description>
   </rule>
@@ -72,7 +73,7 @@
   </rule>
 
   <rule id="64274" level="0">
-	<decoded_as>sophos-win</decoded_as>
+		<decoded_as>sophos-win</decoded_as>
     <field name="category">update.check</field>
     <description>Update category</description>
   </rule>
