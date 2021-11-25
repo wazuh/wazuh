@@ -1622,9 +1622,6 @@ stages:
 ---
 test_name: PUT /agents/node/{node_id}/restart
 
-marks:
-  - xfail  # https://github.com/wazuh/wazuh/issues/10105
-
 stages:
 
   - name: Restart all agents belonging to master-node (Allow node_id - Could deny agent_id)
