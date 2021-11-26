@@ -828,6 +828,15 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
 cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
 
 /**
+ * @brief Function to execute a SQL statement and save the result in a single JSON array without column name like:
+ *        ["string1","string2", ...]
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+cJSON * wdb_exec_stmt_single_array(sqlite3_stmt * stmt);
+
+/**
  * @brief Function to execute a SQL query and save the result in a JSON array.
  *
  * @param [in] db The SQL database to be queried.
