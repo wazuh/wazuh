@@ -55,7 +55,8 @@ def test_metadata_version_buckets(mocked_db, class_):
                         'only_logs_after': '19700101', 'skip_on_error': True,
                         'account_alias': None, 'prefix': 'test',
                         'delete_file': False, 'aws_organization_id': None,
-                        'region': None})
+                        'region': None, 'suffix': '', 'discard_field': None,
+                        'discard_regex': None, 'sts_endpoint': None, 'service_endpoint': None})
 
         query_version = ins.db_connector.execute(ins.sql_get_metadata_version)
         metadata_version = query_version.fetchone()[0]
@@ -106,7 +107,8 @@ def test_db_maintenance(class_, sql_file, db_name):
                         'only_logs_after': '19700101', 'skip_on_error': True,
                         'account_alias': None, 'prefix': '',
                         'delete_file': False, 'aws_organization_id': None,
-                        'region': None})
+                        'region': None, 'suffix': '', 'discard_field': None,
+                        'discard_regex': None, 'sts_endpoint': None, 'service_endpoint': None})
 
         account_id = '123456789'
         ins.aws_account_id = account_id  # set 'aws_account_id' for custom buckets
