@@ -34,7 +34,7 @@ const char * CreateStatement()
 }
 
 #ifndef WIN32
-enum FIMDBErrorCodes  fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
+enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
                                   logging_callback_t log_callback)
 #else
 enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, int value_limit,
