@@ -31,14 +31,17 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 list(APPEND shared_tests_names "test_validate_op")
 list(APPEND shared_tests_flags " ")
 
+#list(APPEND shared_tests_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,w_calloc_expression_t \
+#                                -Wl,--wrap,w_expression_compile -Wl,--wrap,w_free_expression_t")
+
+
+
 list(APPEND shared_tests_names "test_string_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_expression")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
-                             -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
-                             -Wl,--wrap,pcre2_match_data_create_from_pattern -Wl,--wrap,pcre2_match \
-                             -Wl,--wrap,pcre2_match_data_free -Wl,--wrap,pcre2_get_ovector_pointer")
+                             -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
 
 list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
