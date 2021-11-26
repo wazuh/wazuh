@@ -19,8 +19,8 @@
 
   <!-- Main audit rules -->
   <!--
-  type=DAEMON_RESUME msg=audit(1300385209.456:8846): auditd resuming logging, sending auid=? pid=? subj=? res=success
-  type=DAEMON_START msg=audit(1450875964.131:8728): auditd start, ver=2.4 format=raw kernel=3.16.0-4-amd64 auid=4294967295 pid=1437 res=failed
+    type=DAEMON_RESUME msg=audit(1300385209.456:8846): auditd resuming logging, sending auid=? pid=? subj=? res=success
+    type=DAEMON_START msg=audit(1450875964.131:8728): auditd start, ver=2.4 format=raw kernel=3.16.0-4-amd64 auid=4294967295 pid=1437 res=failed
   -->
   <rule id="80701" level="1">
     <if_sid>80700</if_sid>
@@ -39,7 +39,7 @@
   </rule>
 
   <!--
-  type=DAEMON_END msg=audit(1450876093.165:8729): auditd normal halt, sending auid=0 pid=1 subj= res=success
+    type=DAEMON_END msg=audit(1450876093.165:8729): auditd normal halt, sending auid=0 pid=1 subj= res=success
   -->
   <rule id="80703" level="10">
     <if_sid>80700</if_sid>
@@ -50,7 +50,7 @@
   </rule>
 
   <!--
-  type=DAEMON_ABORT msg=audit(1339336882.189:9206): auditd error halt, auid=4294967295 pid=3095 res=failed
+    type=DAEMON_ABORT msg=audit(1339336882.189:9206): auditd error halt, auid=4294967295 pid=3095 res=failed
   -->
   <rule id="80704" level="10">
     <if_sid>80700</if_sid>
@@ -60,8 +60,8 @@
   </rule>
 
   <!--
-  type=CONFIG_CHANGE msg=audit(1368831799.081:466947): auid=4294967295 ses=4294967295 op="remove rule" path="/path/to/my/bin0" key=(null) list=4 res=1
-  type=DAEMON_CONFIG msg=audit(1264985324.554:4915): auditd error getting hup info - no change, sending auid=? pid=? subj=? res=failed
+    type=CONFIG_CHANGE msg=audit(1368831799.081:466947): auid=4294967295 ses=4294967295 op="remove rule" path="/path/to/my/bin0" key=(null) list=4 res=1
+    type=DAEMON_CONFIG msg=audit(1264985324.554:4915): auditd error getting hup info - no change, sending auid=? pid=? subj=? res=failed
   -->
   <rule id="80705" level="3">
     <if_sid>80700</if_sid>
@@ -73,7 +73,7 @@
 
   <!-- ANOM* rules -->
   <!--
-  type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=256 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
+    type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=256 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
   -->
   <rule id="80710" level="10">
     <if_sid>80700</if_sid>
@@ -84,7 +84,7 @@
   </rule>
 
   <!--
-  type=ANOM_ABEND msg=audit(1222174623.498:608): auid=4294967295 uid=0 gid=7 ses=4294967295 subj=system_u:system_r:cupsd_t:s0-s0:c0.c1023 pid=7192 comm="ipp" sig=11
+    type=ANOM_ABEND msg=audit(1222174623.498:608): auid=4294967295 uid=0 gid=7 ses=4294967295 subj=system_u:system_r:cupsd_t:s0-s0:c0.c1023 pid=7192 comm="ipp" sig=11
   -->
   <rule id="80711" level="10">
     <if_sid>80700</if_sid>
@@ -94,7 +94,7 @@
   </rule>
 
   <!--
-  type=ANOM_EXEC msg=audit(1222174623.498:608): user pid=12965 uid=1 auid=2 ses=1 msg='op=PAM:unix_chkpwd acct="snap" exe="/sbin/unix_chkpwd" (hostname=?, addr=?, terminal=pts/0 res=failed)'
+    type=ANOM_EXEC msg=audit(1222174623.498:608): user pid=12965 uid=1 auid=2 ses=1 msg='op=PAM:unix_chkpwd acct="snap" exe="/sbin/unix_chkpwd" (hostname=?, addr=?, terminal=pts/0 res=failed)'
   -->
   <rule id="80712" level="10">
     <if_sid>80700</if_sid>
@@ -107,7 +107,7 @@
   </rule>
 
   <!--
-  type=ANOM_MK_EXEC msg=audit(1234567890.123:1234): Text
+    type=ANOM_MK_EXEC msg=audit(1234567890.123:1234): Text
   -->
   <rule id="80713" level="7">
     <if_sid>80700</if_sid>
@@ -117,7 +117,7 @@
   </rule>
 
   <!--
-  type=ANOM_ACCESS_FS msg=audit(1234567890.123:1234): Text
+    type=ANOM_ACCESS_FS msg=audit(1234567890.123:1234): Text
   -->
   <rule id="80714" level="8">
     <if_sid>80700</if_sid>
@@ -131,7 +131,7 @@
   </rule>
 
   <!--
-  type=ANOM_AMTU_FAIL msg=audit(1234567890.123:1234): Text
+    type=ANOM_AMTU_FAIL msg=audit(1234567890.123:1234): Text
   -->
   <rule id="80715" level="8">
     <if_sid>80700</if_sid>
@@ -141,8 +141,8 @@
   </rule>
 
   <!--
-  type=ANOM_MAX_DAC msg=audit(1234567890.123:1234): Text
-  type=ANOM_MAX_MAC msg=audit(1234567890.123:1234): Text
+    type=ANOM_MAX_DAC msg=audit(1234567890.123:1234): Text
+    type=ANOM_MAX_MAC msg=audit(1234567890.123:1234): Text
   -->
   <rule id="80716" level="8">
     <if_sid>80700</if_sid>
@@ -152,8 +152,8 @@
   </rule>
 
   <!--
-  type=ANOM_RBAC_FAIL msg=audit(1234567890.123:1234): Text
-  type=ANOM_RBAC_INTEGRITY_FAIL msg=audit(1234567890.123:1234): Text
+    type=ANOM_RBAC_FAIL msg=audit(1234567890.123:1234): Text
+    type=ANOM_RBAC_INTEGRITY_FAIL msg=audit(1234567890.123:1234): Text
   -->
   <rule id="80717" level="8">
     <if_sid>80700</if_sid>
@@ -163,7 +163,7 @@
   </rule>
 
   <!--
-  type=ANOM_ADD_ACCT msg=audit(1450770603.209:3300446): Text
+    type=ANOM_ADD_ACCT msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80718" level="3">
     <if_sid>80700</if_sid>
@@ -176,7 +176,7 @@
  </rule>
 
   <!--
-  type=ANOM_DEL_ACCT msg=audit(1450770603.209:3300446): Text
+    type=ANOM_DEL_ACCT msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80719" level="3">
     <if_sid>80700</if_sid>
@@ -189,7 +189,7 @@
   </rule>
 
   <!--
-  type=ANOM_MOD_ACCT msg=audit(1450770603.209:3300446): Text
+    type=ANOM_MOD_ACCT msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80720" level="3">
     <if_sid>80700</if_sid>
@@ -199,7 +199,7 @@
   </rule>
 
   <!--
-  type=ANOM_ROOT_TRANS msg=audit(1450770603.209:3300446): Text
+    type=ANOM_ROOT_TRANS msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80721" level="10">
     <if_sid>80700</if_sid>
@@ -212,7 +212,7 @@
   </rule>
 
   <!--
-  type=ANOM_LOGIN_ACCT msg=audit(1450770603.209:3300446): Text
+    type=ANOM_LOGIN_ACCT msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80722" level="5">
     <if_sid>80700</if_sid>
@@ -222,7 +222,7 @@
   </rule>
 
   <!--
-  type=ANOM_LOGIN_FAILURES msg=audit(1450770603.209:3300446): Text
+    type=ANOM_LOGIN_FAILURES msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80723" level="5">
     <if_sid>80700</if_sid>
@@ -235,7 +235,7 @@
   </rule>
 
   <!--
-  type=ANOM_LOGIN_LOCATION msg=audit(1450770603.209:3300446): Text
+    type=ANOM_LOGIN_LOCATION msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80724" level="5">
     <if_sid>80700</if_sid>
@@ -245,7 +245,7 @@
   </rule>
 
   <!--
-  type=ANOM_LOGIN_SESSIONS msg=audit(1450770603.209:3300446): Text
+    type=ANOM_LOGIN_SESSIONS msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80725" level="4">
     <if_sid>80700</if_sid>
@@ -255,7 +255,7 @@
   </rule>
 
   <!--
-  type=ANOM_LOGIN_TIME msg=audit(1450770603.209:3300446): Text
+    type=ANOM_LOGIN_TIME msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80726" level="5">
     <if_sid>80700</if_sid>
@@ -267,7 +267,7 @@
 
   <!-- SELinux rules -->
   <!--
-  type=AVC msg=audit(1226270358.848:238): avc:  denied  { write } for  pid=13349 comm="certwatch" name="cache" dev=dm-0 ino=218171 scontext=system_u:system_r:certwatch_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir
+    type=AVC msg=audit(1226270358.848:238): avc:  denied  { write } for  pid=13349 comm="certwatch" name="cache" dev=dm-0 ino=218171 scontext=system_u:system_r:certwatch_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir
   -->
   <rule id="80730" level="3">
     <if_sid>80700</if_sid>
@@ -277,7 +277,7 @@
   </rule>
 
   <!--
-  type=MAC_STATUS msg=audit(1336836093.835:406): enforcing=1 old_enforcing=0 auid=0 ses=2
+    type=MAC_STATUS msg=audit(1336836093.835:406): enforcing=1 old_enforcing=0 auid=0 ses=2
   -->
   <rule id="80731" level="10">
     <if_sid>80700</if_sid>
@@ -287,8 +287,8 @@
   </rule>
 
   <!--
-  type=SELINUX_ERR msg=audit(1311948547.151:138): op=security_compute_av reason=bounds scontext=system_u:system_r:anon_webapp_t:s0-s0:c0,c100,c200 tcontext=system_u:object_r:security_t:s0 tclass=dir perms=ioctl,read,lock
-  type=USER_SELINUX_ERR msg=audit(1311948547.151:138): Text
+    type=SELINUX_ERR msg=audit(1311948547.151:138): op=security_compute_av reason=bounds scontext=system_u:system_r:anon_webapp_t:s0-s0:c0,c100,c200 tcontext=system_u:object_r:security_t:s0 tclass=dir perms=ioctl,read,lock
+    type=USER_SELINUX_ERR msg=audit(1311948547.151:138): Text
   -->
   <rule id="80732" level="10">
     <if_sid>80700</if_sid>
@@ -300,7 +300,7 @@
 
   <!-- Miscellaneous rules -->
   <!--
-  type=CRYPTO_REPLAY_USER msg=audit(1234567890.123:1234): Text
+    type=CRYPTO_REPLAY_USER msg=audit(1234567890.123:1234): Text
   -->
   <rule id="80740" level="12">
     <if_sid>80700</if_sid>
@@ -313,7 +313,7 @@
   </rule>
 
   <!--
-  type=CHGRP_ID msg=audit(1450770603.209:3300446): Text
+    type=CHGRP_ID msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80741" level="5">
     <if_sid>80700</if_sid>
@@ -323,7 +323,7 @@
   </rule>
 
   <!--
-  type=CHUSER_ID msg=audit(1450770603.209:3300446): Text
+    type=CHUSER_ID msg=audit(1450770603.209:3300446): Text
   -->
   <rule id="80742" level="5">
     <if_sid>80700</if_sid>
@@ -431,11 +431,11 @@
   </rule>
 
   <!--
-  Generic rule with dynamic description
+    Generic rule with dynamic description
   <rule id="80799" level="1">
-      <if_sid>80700</if_sid>
-      <description>Audit: $(audit.type).</description>
-      <group>audit_generic,</group>
+    <if_sid>80700</if_sid>
+    <description>Audit: $(audit.type).</description>
+    <group>audit_generic,</group>
   </rule>
   -->
 
