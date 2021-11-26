@@ -16,6 +16,8 @@
   - These rules were created using logs from the software with the following details:
     Software Name: ESET Remote Administrator
     Software Version: 8.1
+  
+  ID range: 42001 - 42100
 -->
 
 <group name="eset,">
