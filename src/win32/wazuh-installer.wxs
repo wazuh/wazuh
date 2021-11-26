@@ -42,7 +42,6 @@
         <WixVariable Id="WixUIBannerBmp" Value="ui\bannrbmp.jpg" />
         <WixVariable Id="WixUIDialogBmp" Value="ui\dlgbmp.jpg" />
         <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Run Agent configuration interface" />
-        <Property Id="WixShellExecTarget" Value="[#WIN32UI.EXE]" />
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
@@ -52,12 +51,14 @@
         <Property Id="BUILDVERSION" Value="0">
             <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
         </Property>
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec"/>
+        
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
         </Property>
+
+        <CustomAction Id="LaunchUI" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]win32ui.exe" Return="asyncNoWait" />
 
         <Property Id="OSSECINSTALLED">
             <RegistrySearch Id="OssecInstalled" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Services\OssecSvc" Name="DisplayName" />
@@ -107,7 +108,7 @@
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
             <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
-            <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+            <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchUI">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
             <!-- Set deployment values -->
@@ -228,8 +229,7 @@
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
                     </Component>
                     <Component Id="WIN32UI.EXE" DiskId="1" Guid="E7ACBC6F-D8A0-410B-B8D2-2AD9F5152BA0">
-                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe">
-                        </File>
+                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe"/>
                         <File Id="WIN32UI.EXE.MANIFEST" Name="win32ui.exe.manifest" Source="win32ui.exe.manifest" />
                     </Component>
                     <Component Id="REMOVE_OLD_NSIS" Guid="3536239B-022D-4A9B-A7F8-2F64132115ED">
@@ -280,15 +280,15 @@
                         <File Id="WXP_SYSCHECK.TEMPLATE" Name="syscheck.template" Source="..\..\etc\templates\config\windows\xp\syscheck.template"/>
                         <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
                     </Component>
-                    <Component Id="W2003_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
+                    <Component Id="W2003_CONF_LOCALFILE" DiskId="1" Guid="D0CCDE58-2593-48FF-85CC-E681B78DCEFE">
                         <File Id="W2003_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\2003\localfile-events.template"/>
                         <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
                     </Component>
-                    <Component Id="W2003_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
+                    <Component Id="W2003_CONF_PROFILE" DiskId="1" Guid="5F70333D-BA3F-4722-BE78-3FF67FE216F9">
                         <File Id="W2003_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2003\profile.template"/>
                         <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
                     </Component>
-                    <Component Id="W2003_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
+                    <Component Id="W2003_CONF_SYSCHECK" DiskId="1" Guid="B89F2D95-F0FA-4B51-B680-42F430F2EB82">
                         <File Id="W2003_SYSCHECK.TEMPLATE" Name="syscheck.template" Source="..\..\etc\templates\config\windows\2003\syscheck.template"/>
                         <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
                     </Component>
