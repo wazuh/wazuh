@@ -1146,6 +1146,53 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     return result;
 }
 
+cJSON * wdb_exec_stmt_single_array(sqlite3_stmt * stmt) {
+    cJSON* j_result = NULL;
+
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        return NULL;
+    }
+
+    int status = SQLITE_ERROR;
+    j_result = cJSON_CreateArray();
+
+    do {
+        status = sqlite3_step(stmt);
+        if (SQLITE_ROW == status) {
+            int count = sqlite3_column_count(stmt);
+            // Every step should return only one element
+            if (count == 1) {
+                switch (sqlite3_column_type(stmt, 0)) {
+                case SQLITE_INTEGER:
+                case SQLITE_FLOAT:
+                    cJSON_AddItemToArray(j_result, cJSON_CreateNumber(sqlite3_column_double(stmt, 0)));
+                    break;
+
+                case SQLITE_TEXT:
+                case SQLITE_BLOB:
+                    cJSON_AddItemToArray(j_result,cJSON_CreateString((const char *)sqlite3_column_text(stmt, 0)));
+                    break;
+
+                case SQLITE_NULL:
+                default:
+                    ;
+                }
+            } else if(count > 1) {
+                mdebug2("Ignoring extra columns in the query step");
+            }
+        }
+    } while (status == SQLITE_ROW);
+
+    if (status != SQLITE_DONE) {
+        mdebug1("SQL statement execution failed");
+        cJSON_Delete(j_result);
+        j_result = NULL;
+    }
+
+    return j_result;
+}
+
 cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     sqlite3_stmt * stmt = NULL;
     cJSON * result = NULL;
