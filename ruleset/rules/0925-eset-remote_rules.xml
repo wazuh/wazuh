@@ -72,7 +72,7 @@
     <description>Eset: Error message was logged from $(hostname).</description>
   </rule>
 
-  <rule id="42009" level="9">
+  <rule id="42009" level="12">
     <if_sid>42001</if_sid>
     <field name="severity">^Critical$</field>
     <description>Eset: Critical message was logged from $(hostname).</description>
