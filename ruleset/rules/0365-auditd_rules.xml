@@ -1,9 +1,13 @@
 <!--
-  -  Audit rules
-  -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
+
+<!-- 
+  Audit rules for:
+    Audit rules ID:           80700 - 80792
+    Passwd rules ID:          80793 - 80799
+-->
+
 
 <group name="audit,">
 
@@ -42,7 +46,7 @@
     <field name="audit.type">DAEMON_END</field>
     <field name="audit.res">success</field>
     <description>Auditd: End.</description>
-    <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>audit_daemon,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!--
@@ -123,7 +127,7 @@
     <mitre>
       <id>T1203</id>
       <id>T1492</id>
-    </mitre>
+      </mitre>
   </rule>
 
   <!--
@@ -439,13 +443,15 @@
   <rule id="80793" level="8">
     <if_sid>80700</if_sid>
     <field name="audit.type">ACCT_LOCK</field>
-    <description>Account password access locked.</description>
+    <description>Audit: Passwd was used to lock an account.</description>
+    <group>audit_command,gdpr_IV_30.1.g,</group>
   </rule>
 
   <rule id="80794" level="8">
     <if_sid>80700</if_sid>
     <field name="audit.type">ACCT_UNLOCK</field>
-    <description>Account password access unlocked.</description>
+    <description>Audit: Passwd was used to unlock an account.</description>
+    <group>audit_command,gdpr_IV_30.1.g,</group>
   </rule>
     
 </group>
