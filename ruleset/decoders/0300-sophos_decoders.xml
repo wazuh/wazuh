@@ -5,7 +5,6 @@
 <!--
   Sophos decoders for: 
     Sophos Anti-Virus.
-    Sophos UTM 9 firewall.
 -->
 
 <!--
@@ -86,86 +85,4 @@
   <parent>sophos-win</parent>
   <regex>\<msg>NOTIFY_ONDEMANDTHREAT_INFECTED\.+\</msg>\.+\<arg>(\.+)\</arg></regex>
   <order>infected_file_path</order>
-</decoder>
-
-<!-- Sophos UTM 9 Firewall.
-  <139>2021:05:19-09:39:29 fw-int-name httpd[25917]: [proxy_http:error] [pid 25917:tid 3878202224] (70007)The timeout specified has expired: [client x.x.x.x:60914] AH01102: error reading status line from remote server x.x.x.x:443" method="POST" srcip="x.x.x.x" dstip="" user="" group="" ad_domain="" statuscode="502" cached="0" profile="REF_DefaultHTTPProfile (Default Web Filter Profile)" filteraction="REF_HttCffSquid (Priv.Network)" size="0" request="0xcbc77100" url="http://c.whatsapp.net/chat" referer="" error="Received invalid request from client" authtime="0" dnstime="0" aptptime="275" cattime="47787" avscantime="0" fullreqtime="30118744" device="0" auth="0" ua="Mozilla/5.0 (compatible; WAChat/1.2; +http://www.whatsapp.com/contact)" exceptions="" category="122" reputation="neutral" categoryname="Instant Messaging""
-  <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: \
-  <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: W main::_log:435() =>  severity="warn" sys="System" sub="eplog" name="Listing [https://7d00efe0-ace4-3345-b667-91841040205e-wdx-ace4.broker.sophos.com//7d00efe0-ace4-3345-b667-91841040205e/] failed with return code 58: Problem with the local SSL certificate unable to use client certificate (no key found or wrong pass phrase?)
-  <30>2021:05:19-16:20:54 fw-int-name httpproxy[5997]: id="0002" severity="info" sys="SecureWeb" sub="http" name="web request blocked" action="block
--->
-<decoder name="sophos-fw">
-  <hostname>fw-int-name</hostname>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex type="pcre2">^\<\d+\>(\d+:\d+:\d+-\d+:\d+:\d+)\s</regex>
-  <order>date</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>severity="(\.+)"</regex>
-  <order>severity</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>method="(\.+)"</regex>
-  <order>method</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>name="(\.+)"</regex>
-  <order>name</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>sys="(\.+)"</regex>
-  <order>sys</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>sub="(\.+)"</regex>
-  <order>sub</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>name="(\.+)"</regex>
-  <order>name</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>action="(\.+)"</regex>
-  <order>action</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>srcip="(\.+)"</regex>
-  <order>srcip</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>dstip="(\.+)"</regex>
-  <order>dstip</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>user="(\.+)"</regex>
-  <order>user</order>
-</decoder>
-
-<decoder name="sophos-fw-fields">
-  <parent>sophos-fw</parent>
-  <regex>reputation="(\.+)"</regex>
-  <order>reputation</order>
 </decoder>
