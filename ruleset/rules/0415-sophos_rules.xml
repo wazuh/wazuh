@@ -1,6 +1,6 @@
 <!--
-    Copyright (C) 2015-2021, Wazuh Inc.
-    Sophos Rules
+  Copyright (C) 2015-2021, Wazuh Inc.
+  Sophos Rules
 -->
 
 <!-- ID: 82100 - 82199 -->
@@ -93,21 +93,21 @@
     <description>Sophos UTM firewall: Informational event</description>
   </rule>
 
-  <rule id="82112" level="5">
+  <rule id="82112" level="4">
     <if_sid>82110</if_sid>
     <field name="severity">warn|Warning</field>
     <description>Sophos UTM firewall: Warning event</description>
     <group>gpg13_4.12</group>
   </rule>
 
-  <rule id="82113" level="6">
+  <rule id="82113" level="7">
     <if_sid>82110</if_sid>
     <field name="severity">error|Error</field>
     <description>Sophos UTM firewall: Error event</description>
     <group>gpg13_4.3,gpg13_4.12</group>
   </rule>
 
-  <rule id="82114" level="4">
+  <rule id="82114" level="3">
     <if_sid>82110</if_sid>
     <field name="method">POST</field>
     <description>Sophos UTM firewall: method POST event</description>
@@ -120,7 +120,7 @@
     <description>Sophos UTM firewall: method GET event</description>
   </rule>
 
-  <rule id="82116" level="4">
+  <rule id="82116" level="3">
     <if_sid>82110</if_sid>
     <field name="method">OPTIONS</field>
     <description>Sophos UTM firewall: method OPTIONS event</description>

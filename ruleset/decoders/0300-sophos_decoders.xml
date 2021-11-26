@@ -1,5 +1,5 @@
 <!--
-    Copyright (C) 2015-2021, Wazuh Inc.
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
 <!--
@@ -14,21 +14,21 @@ https://community.sophos.com/kb/en-us/43391
  -->
 
 <decoder name="sophos">
-    <prematch>^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tScan|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUser|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUsing</prematch>
+  <prematch>^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tScan|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUser|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUsing</prematch>
 </decoder>
 
 <decoder name="sophos-user">
-    <parent>sophos</parent>
-    <prematch>User</prematch>
-    <regex offset="after_parent">\((\.+)\) has</regex>
-    <order>srcuser</order>
+  <parent>sophos</parent>
+  <prematch>User</prematch>
+  <regex offset="after_parent">\((\.+)\) has</regex>
+  <order>srcuser</order>
 </decoder>
 
 <decoder name="sophos-update">
-    <parent>sophos</parent>
-    <prematch>detection</prematch>
-    <regex offset="after_parent"> detection data version (\.+) </regex>
-    <order>extra_data</order>
+  <parent>sophos</parent>
+  <prematch>detection</prematch>
+  <regex offset="after_parent"> detection data version (\.+) </regex>
+  <order>extra_data</order>
 </decoder>
 
 <!--
@@ -38,131 +38,131 @@ https://community.sophos.com/kb/en-us/43391
 <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>  
 -->
 <decoder name="sophos-win">
-    <prematch>\<log>\.+\</log></prematch>
+  <prematch>\<log>\.+\</log></prematch>
 </decoder>
 
 <decoder  name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<category>(\.+)\</category></regex>
-    <order>category</order>
+  <parent>sophos-win</parent>
+  <regex>\<category>(\.+)\</category></regex>
+  <order>category</order>
 </decoder>
 
 <decoder name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<level>(\w+)\</level></regex>
-    <order>level</order>
+  <parent>sophos-win</parent>
+  <regex>\<level>(\w+)\</level></regex>
+  <order>level</order>
 </decoder>
 
 <decoder name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<domain>(\.+)\</domain></regex>
-    <order>domain</order>
+  <parent>sophos-win</parent>
+  <regex>\<domain>(\.+)\</domain></regex>
+  <order>domain</order>
 </decoder>
 
 <decoder name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<msg>(\.+)\</msg></regex>
-    <order>msg</order>
+  <parent>sophos-win</parent>
+  <regex>\<msg>(\.+)\</msg></regex>
+  <order>msg</order>
 </decoder>
 
 <decoder name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<time>(\w+)\</time></regex>
-    <order>time</order>
+  <parent>sophos-win</parent>
+  <regex>\<time>(\w+)\</time></regex>
+  <order>time</order>
 </decoder>
 
 <decoder name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg></regex>
-    <order>mbootrecords,bootrecords,scanned_files,scan_errors,threads,infected_files</order>
+  <parent>sophos-win</parent>
+  <regex>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg>\<arg>(\w+)\</arg></regex>
+  <order>mbootrecords,bootrecords,scanned_files,scan_errors,threads,infected_files</order>
 </decoder>
 
 <decoder name="sophos-win">
-    <parent>sophos-win</parent>
-    <regex>\<msg>NOTIFY_ONDEMANDTHREAT_INFECTED\.+\</msg>\.+\<arg>(\.+)\</arg></regex>
-    <order>infected_file_path</order>
+  <parent>sophos-win</parent>
+  <regex>\<msg>NOTIFY_ONDEMANDTHREAT_INFECTED\.+\</msg>\.+\<arg>(\.+)\</arg></regex>
+  <order>infected_file_path</order>
 </decoder>
 
 <!-- Sophos UTM Firewall -->
 <!-- Sample logs 
-    <139>2021:05:19-09:39:29 fw-int-name httpd[25917]: [proxy_http:error] [pid 25917:tid 3878202224] (70007)The timeout specified has expired: [client x.x.x.x:60914] AH01102: error reading status line from remote server x.x.x.x:443\" method=\"POST\" srcip=\"x.x.x.x\" dstip=\"\" user=\"\" group=\"\" ad_domain=\"\" statuscode=\"502\" cached=\"0\" profile=\"REF_DefaultHTTPProfile (Default Web Filter Profile)\" filteraction=\"REF_HttCffSquid (Priv.Network)\" size=\"0\" request=\"0xcbc77100\" url=\"http://c.whatsapp.net/chat\" referer=\"\" error=\"Received invalid request from client\" authtime=\"0\" dnstime=\"0\" aptptime=\"275\" cattime=\"47787\" avscantime=\"0\" fullreqtime=\"30118744\" device=\"0\" auth=\"0\" ua=\"Mozilla/5.0 (compatible; WAChat/1.2; +http://www.whatsapp.com/contact)\" exceptions=\"\" category=\"122\" reputation=\"neutral\" categoryname=\"Instant Messaging\""
-    <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: \
-    <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: W main::_log:435() =>  severity=\"warn\" sys=\"System\" sub=\"eplog\" name=\"Listing [https://7d00efe0-ace4-3345-b667-91841040205e-wdx-ace4.broker.sophos.com//7d00efe0-ace4-3345-b667-91841040205e/] failed with return code 58: Problem with the local SSL certificate unable to use client certificate (no key found or wrong pass phrase?)
-    <30>2021:05:19-16:20:54 fw-int-name httpproxy[5997]: id=\"0002\" severity=\"info\" sys=\"SecureWeb\" sub=\"http\" name=\"web request blocked\" action=\"block
+  <139>2021:05:19-09:39:29 fw-int-name httpd[25917]: [proxy_http:error] [pid 25917:tid 3878202224] (70007)The timeout specified has expired: [client x.x.x.x:60914] AH01102: error reading status line from remote server x.x.x.x:443\" method=\"POST\" srcip=\"x.x.x.x\" dstip=\"\" user=\"\" group=\"\" ad_domain=\"\" statuscode=\"502\" cached=\"0\" profile=\"REF_DefaultHTTPProfile (Default Web Filter Profile)\" filteraction=\"REF_HttCffSquid (Priv.Network)\" size=\"0\" request=\"0xcbc77100\" url=\"http://c.whatsapp.net/chat\" referer=\"\" error=\"Received invalid request from client\" authtime=\"0\" dnstime=\"0\" aptptime=\"275\" cattime=\"47787\" avscantime=\"0\" fullreqtime=\"30118744\" device=\"0\" auth=\"0\" ua=\"Mozilla/5.0 (compatible; WAChat/1.2; +http://www.whatsapp.com/contact)\" exceptions=\"\" category=\"122\" reputation=\"neutral\" categoryname=\"Instant Messaging\""
+  <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: \
+  <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: W main::_log:435() =>  severity=\"warn\" sys=\"System\" sub=\"eplog\" name=\"Listing [https://7d00efe0-ace4-3345-b667-91841040205e-wdx-ace4.broker.sophos.com//7d00efe0-ace4-3345-b667-91841040205e/] failed with return code 58: Problem with the local SSL certificate unable to use client certificate (no key found or wrong pass phrase?)
+  <30>2021:05:19-16:20:54 fw-int-name httpproxy[5997]: id=\"0002\" severity=\"info\" sys=\"SecureWeb\" sub=\"http\" name=\"web request blocked\" action=\"block
 -->
 
 <decoder name="sophos-fw">
-    <prematch>fw-int-name</prematch>
+  <prematch>fw-int-name</prematch>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex type="pcre2">^<\d+>(\d+:\d+:\d+-\d+:\d+:\d+)\s</regex>
-    <order>date</order>
+  <parent>sophos-fw</parent>
+  <regex type="pcre2">^<\d+>(\d+:\d+:\d+-\d+:\d+:\d+)\s</regex>
+  <order>date</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>severity=\"(\w+)\"</regex>
-    <order>severity</order>
+  <parent>sophos-fw</parent>
+  <regex>severity=\"(\w+)\"</regex>
+  <order>severity</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>method=\"(\w+)\"</regex>
-    <order>method</order>
+  <parent>sophos-fw</parent>
+  <regex>method=\"(\w+)\"</regex>
+  <order>method</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>name=\"(\w+)\"</regex>
-    <order>name</order>
+  <parent>sophos-fw</parent>
+  <regex>name=\"(\w+)\"</regex>
+  <order>name</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>sys=\"(\w+)\"</regex>
-    <order>sys</order>
+  <parent>sophos-fw</parent>
+  <regex>sys=\"(\w+)\"</regex>
+  <order>sys</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>sub=\"(\w+)\"</regex>
-    <order>sub</order>
+  <parent>sophos-fw</parent>
+  <regex>sub=\"(\w+)\"</regex>
+  <order>sub</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>name=\"(\w+)\"</regex>
-    <order>name</order>
+  <parent>sophos-fw</parent>
+  <regex>name=\"(\w+)\"</regex>
+  <order>name</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>action=\"(\w+)\"</regex>
-    <order>action</order>
+  <parent>sophos-fw</parent>
+  <regex>action=\"(\w+)\"</regex>
+  <order>action</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>srcip=\"(\w+)\"</regex>
-    <order>srcip</order>
+  <parent>sophos-fw</parent>
+  <regex>srcip=\"(\w+)\"</regex>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>dstip=\"(\w+)\"</regex>
-    <order>dstip</order>
+  <parent>sophos-fw</parent>
+  <regex>dstip=\"(\w+)\"</regex>
+  <order>dstip</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>user=\"(\w+)\"</regex>
-    <order>user</order>
+  <parent>sophos-fw</parent>
+  <regex>user=\"(\w+)\"</regex>
+  <order>user</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
-    <parent>sophos-fw</parent>
-    <regex>reputation=\"(\w+)\"</regex>
-    <order>reputation</order>
+  <parent>sophos-fw</parent>
+  <regex>reputation=\"(\w+)\"</regex>
+  <order>reputation</order>
 </decoder>
