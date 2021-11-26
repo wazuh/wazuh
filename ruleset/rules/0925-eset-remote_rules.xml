@@ -4,22 +4,19 @@
 
 
 <!-- 
-  Description:
+  ESET rules for:
+    ESET Remote Administrator v8.1: 42001 - 42009
+  
+  Comments:
   This ruleset evaluates logs decoded by 0575-eset-remote-decoders.xml to trigger alerts
   based on the rules below.
   
   The reference below shows some events, their main parts and their different log types.
   Reference: https://help.eset.com/protect_admin/81/en-US/events-exported-to-json-format.html
   
-  Software details: 
-  These rules were created using logs from the software with the following details:
-  Software Name: ESET Remote Administrator
-  Software Version: 8.1
-  
-  ID range: 42001 - 42100
 -->
 
-<group name="eset,">
+<group name="eset,firewall,">
 
   <rule id="42001" level="0">
     <decoded_as>eset-bsd</decoded_as>
@@ -37,14 +34,14 @@
     <if_sid>42001</if_sid>
     <field name="event_type">^FirewallAggregated_Event$</field>
     <description>ESET: Firewall aggregated rules group.</description>
-    <group>firewallaggregated_event,</group>
+    <group>firewall, firewall_aggregated_event,</group>
   </rule>
 
   <rule id="42004" level="3">
     <if_sid>42001</if_sid>
     <field name="event_type">^HipsAggregated_Event$</field>
     <description>ESET: HIPS aggregated rules group.</description>
-    <group>hipsaggregated_event,</group>
+    <group>hips_aggregated_event,</group>
   </rule>
 
   <rule id="42005" level="2">
@@ -58,25 +55,28 @@
     <if_sid>42001</if_sid>
     <field name="event_type">^EnterpriseInspectorAlert_Event$</field>
     <description>ESET: Enterprise inspector alert rules group.</description>
-    <group>enterpriseinspectoralert_event,</group>
+    <group>enterprise_inspector_alert_event,</group>
   </rule>
 
   <rule id="42007" level="5">
     <if_sid>42001</if_sid>
     <field name="severity">^Warning$</field>
     <description>ESET: Warning message was logged from $(hostname).</description>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.a.1,nist_800_53_SC.7,pci_dss_1.4,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
 
   <rule id="42008" level="7">
     <if_sid>42001</if_sid>
     <field name="severity">^Error$</field>
     <description>ESET: Error message was logged from $(hostname).</description>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.a.1,nist_800_53_SC.7,pci_dss_1.4,system_error,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
 
   <rule id="42009" level="12">
     <if_sid>42001</if_sid>
     <field name="severity">^Critical$</field>
     <description>ESET: Critical message was logged from $(hostname).</description>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.a.1,nist_800_53_SC.7,pci_dss_1.4,system_error,tsc_CC6.7,tsc_CC6.8,</group>
   </rule>
 
 </group>
