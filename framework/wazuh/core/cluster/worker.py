@@ -709,8 +709,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         file_received : asyncio.Event
             Asyncio event that is unlocked once the file has been received.
         """
-        await asyncio.wait_for(file_received.wait(),
-                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+        logger = self.task_loggers['Integrity sync']
+
+        try:
+            await asyncio.wait_for(file_received.wait(),
+                                   timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+        except Exception:
+            await self.send_request(
+                command=b'syn_i_w_m_r',
+                data=b'None ' + json.dumps(timeout_exc := WazuhClusterError(3039, extra_message=self.name),
+                                           cls=c_common.WazuhJSONEncoder).encode()
+            )
+            raise timeout_exc
 
         if isinstance(self.sync_tasks[name].filename, Exception):
             exc_info = json.dumps(exception.WazuhClusterError(
@@ -721,7 +731,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         zip_path = ""
         # Path of the zip containing a JSON with metadata and files to be updated in this worker node.
         received_filename = self.sync_tasks[name].filename
-        logger = self.task_loggers['Integrity sync']
 
         try:
             self.integrity_sync_status['date_start'] = time.time()

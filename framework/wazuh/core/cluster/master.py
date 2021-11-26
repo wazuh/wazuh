@@ -61,7 +61,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
         # Integrity task is only freed if master is not waiting for Extra valid files.
         if not self.wazuh_common.extra_valid_requested:
-            self.wazuh_common.sync_integrity_free = True
+            self.wazuh_common.sync_integrity_free = (True, datetime.utcnow())
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
@@ -98,7 +98,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
         """
         super().done_callback(future)
         self.wazuh_common.extra_valid_requested = False
-        self.wazuh_common.sync_integrity_free = True
+        self.wazuh_common.sync_integrity_free = (True, datetime.utcnow())
 
 
 class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
@@ -153,7 +153,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         super().__init__(**kwargs, tag="Worker")
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_agent_info_free = True
-        self.sync_integrity_free = True
+        self.sync_integrity_free = (True, datetime.utcnow())
 
         # Variable used to check whether integrity sync process includes extra_valid files.
         self.extra_valid_requested = False
@@ -184,7 +184,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Healthcheck information for each process.
         """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
-                'status': {'sync_integrity_free': self.sync_integrity_free,
+                'status': {'sync_integrity_free': self.sync_integrity_free[0],
                            'last_check_integrity': {key: value for key, value in self.integrity_check_status.items() if
                                                     not key.startswith('tmp')},
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
@@ -440,7 +440,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if sync_type == b'syn_i_w_m_p' and self.name not in self.server.integrity_already_executed:
             # Add the variable self.name to keep track of the number of integrity_checks per cycle
             self.server.integrity_already_executed.append(self.name)
-            permission = self.sync_integrity_free
+
+            # Reset integrity permissions if False for more than "max_locked_integrity_time" seconds
+            if not self.sync_integrity_free[0] and (datetime.utcnow() - self.sync_integrity_free[1]).total_seconds() > \
+                    self.cluster_items['intervals']['master']['max_locked_integrity_time']:
+                self.sync_integrity_free = (True, datetime.utcnow())
+            permission = self.sync_integrity_free[0]
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
         else:
@@ -464,7 +469,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         if sync_type == b'syn_i_w_m':
-            self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
+            self.sync_integrity_free, sync_function = (False, datetime.utcnow()), ReceiveIntegrityTask
         elif sync_type == b'syn_e_w_m':
             sync_function = ReceiveExtraValidTask
         elif sync_type == b'syn_a_w_m':
@@ -491,7 +496,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        self.sync_integrity_free = True
+        self.sync_integrity_free = (True, datetime.utcnow())
         return super().error_receiving_file(error_msg.decode())
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
@@ -765,7 +770,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.integrity_sync_status['date_end_master'] = \
             self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
         self.extra_valid_requested = False
-        self.sync_integrity_free = True
+        self.sync_integrity_free = (True, datetime.utcnow())
 
     async def sync_worker_files(self, task_id: str, received_file: asyncio.Event, logger):
         """Wait until extra valid files are received from the worker and create a child process for them.

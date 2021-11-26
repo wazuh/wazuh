@@ -467,6 +467,7 @@ class WazuhException(Exception):
         3036: "JSON couldn't be loaded",
         3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
+        3039: "Timeout while waiting to receive a file",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
