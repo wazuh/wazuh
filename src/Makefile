@@ -1111,9 +1111,10 @@ POPT_BUILD_DIR = $(EXTERNAL_POPT)build/
 $(POPT_LIB): $(POPT_BUILD_DIR)Makefile
 	 $(MAKE) -C $(POPT_BUILD_DIR)
 $(POPT_BUILD_DIR)Makefile:
-	mkdir -p $(POPT_BUILD_DIR) && cmake -S $(EXTERNAL_POPT) -B $(POPT_BUILD_DIR)
+	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
 
 ### zstd lib ###
+
 ZSTD_CMAKE_DIR = $(EXTERNAL_ZSTD)/build/cmake/
 ZSTD_BUILD_DIR = $(ZSTD_CMAKE_DIR)/build
 
@@ -1131,7 +1132,7 @@ LIBMAGIC_BUILD_DIR = $(EXTERNAL_LIBMAGIC)build/
 $(LIBMAGIC_LIB): $(LIBMAGIC_BUILD_DIR)Makefile
 	cd $(LIBMAGIC_BUILD_DIR) && $(MAKE)
 
-$(EXTERNAL_LIBMAGIC)build/Makefile: $(ZLIB_LIB)
+$(LIBMAGIC_BUILD_DIR)Makefile: $(ZLIB_LIB)
 	mkdir -p $(LIBMAGIC_BUILD_DIR) && cd $(LIBMAGIC_BUILD_DIR) && cmake .. $(LIBMAGIC_BUILD_FLAGS)
 
 ################################
