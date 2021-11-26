@@ -11,6 +11,7 @@
 #ifndef VALIDATE_H
 #define VALIDATE_H
 
+
 #define w_free_os_ip(x) if (x) {os_free(x->ip);os_free(x)}
 
 /**
@@ -22,6 +23,15 @@
  * @return Returns 1.
  */
 int getNetmask(unsigned int mask, char *strmask, size_t size) __attribute__((nonnull));
+
+
+/**
+ * @brief Convert the netmask from an integer value, valid from 0 to 64.
+ *
+ * @param[in] netnumb Integer value of the netmask.
+ * @return Returns netmask value on success or -1 on failure.
+ */
+uint64_t convertNetmask(int netnumb);
 
 
 /* Run-time definitions */
@@ -177,6 +187,6 @@ long long w_validate_bytes(const char *content);
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
-#define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
+#define isSingleHost(x) (x->ipv4->netmask == 0xFFFFFFFF)
 
 #endif /* VALIDATE_H */

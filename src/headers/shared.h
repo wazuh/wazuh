@@ -176,12 +176,39 @@ typedef uint8_t u_int8_t;
 #define fallthrough ((void) 0)
 #endif
 
+#if 0
 /* IP structure */
 typedef struct _os_ip {
     char *ip;
     unsigned int ip_address;
     unsigned int netmask;
+    unsigned int is_ipv6;
+    uint64_t     ipv6_netmask;
 } os_ip;
+#endif
+
+/* IPv4 structure */
+typedef struct _os_ipv4 {
+    unsigned int ip_address;
+    unsigned int netmask;
+} os_ipv4;
+
+/* IPv6 structure */
+typedef struct _os_ipv6 {
+    uint32_t ip_address[4];
+    uint32_t netmask[4];
+} os_ipv6;
+
+/* IP structure */
+typedef struct _os_ip {
+    char *ip;
+    union {
+        os_ipv4 *ipv4;
+        os_ipv6 *ipv6;
+    };
+    bool is_ipv6;
+} os_ip;
+
 
 extern const char *__local_name;
 /*** Global prototypes ***/

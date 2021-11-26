@@ -669,8 +669,8 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     if (key->ip) {
         os_calloc(1, sizeof(os_ip), copy->ip);
         copy->ip->ip = strdup(key->ip->ip);
-        copy->ip->ip_address = key->ip->ip_address;
-        copy->ip->netmask = key->ip->netmask;
+        copy->ip->ipv4->ip_address = key->ip->ipv4->ip_address;
+        copy->ip->ipv4->netmask = key->ip->ipv4->netmask;
     }
 
     copy->sock = key->sock;
