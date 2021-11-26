@@ -616,7 +616,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
 
         agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
         if(!agent_groups) {
-            mdebug2("Empty group column for agent '%d', groups_hash column won't be updated", agent_id);
+            mdebug2("Empty group column for agent '%d'. The groups_hash column won't be updated", agent_id);
             cJSON_Delete(j_agent_info);
             return OS_SUCCESS;
         }
