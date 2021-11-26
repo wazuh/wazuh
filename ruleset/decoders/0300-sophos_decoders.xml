@@ -83,7 +83,7 @@ https://community.sophos.com/kb/en-us/43391
   <order>infected_file_path</order>
 </decoder>
 
-<!-- Sophos UTM Firewall -->
+<!-- Sophos UTM 9 Firewall -->
 <!-- Sample logs 
   <139>2021:05:19-09:39:29 fw-int-name httpd[25917]: [proxy_http:error] [pid 25917:tid 3878202224] (70007)The timeout specified has expired: [client x.x.x.x:60914] AH01102: error reading status line from remote server x.x.x.x:443" method="POST" srcip="x.x.x.x" dstip="" user="" group="" ad_domain="" statuscode="502" cached="0" profile="REF_DefaultHTTPProfile (Default Web Filter Profile)" filteraction="REF_HttCffSquid (Priv.Network)" size="0" request="0xcbc77100" url="http://c.whatsapp.net/chat" referer="" error="Received invalid request from client" authtime="0" dnstime="0" aptptime="275" cattime="47787" avscantime="0" fullreqtime="30118744" device="0" auth="0" ua="Mozilla/5.0 (compatible; WAChat/1.2; +http://www.whatsapp.com/contact)" exceptions="" category="122" reputation="neutral" categoryname="Instant Messaging""
   <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: \

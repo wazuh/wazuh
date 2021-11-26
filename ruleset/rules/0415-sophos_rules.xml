@@ -44,7 +44,7 @@
     <group>gpg13_4.4,</group>
   </rule>
 
-  <!-- Sophos UTM firewall rules-->
+  <!-- Sophos UTM 9 firewall rules-->
 
   <rule id="82110" level="0">
     <decoded_as>sophos-fw</decoded_as>
