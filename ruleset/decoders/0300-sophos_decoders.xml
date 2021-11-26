@@ -97,72 +97,72 @@ https://community.sophos.com/kb/en-us/43391
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex type="pcre2">^<\d+>(\d+:\d+:\d+-\d+:\d+:\d+)\s</regex>
+  <regex type="pcre2">^\<\d+\>(\d+:\d+:\d+-\d+:\d+:\d+)\s</regex>
   <order>date</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>severity=\"(\w+)\"</regex>
+  <regex>severity="(\w+)"</regex>
   <order>severity</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>method=\"(\w+)\"</regex>
+  <regex>method="(\w+)"</regex>
   <order>method</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>name=\"(\w+)\"</regex>
+  <regex>name="(\w+)"</regex>
   <order>name</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>sys=\"(\w+)\"</regex>
+  <regex>sys="(\w+)"</regex>
   <order>sys</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>sub=\"(\w+)\"</regex>
+  <regex>sub="(\w+)"</regex>
   <order>sub</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>name=\"(\w+)\"</regex>
+  <regex>name="(\w+)"</regex>
   <order>name</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>action=\"(\w+)\"</regex>
+  <regex>action="(\w+)"</regex>
   <order>action</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>srcip=\"(\w+)\"</regex>
+  <regex>srcip="(\w+)"</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>dstip=\"(\w+)\"</regex>
+  <regex>dstip="(\w+)"</regex>
   <order>dstip</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>user=\"(\w+)\"</regex>
+  <regex>user="(\w+)"</regex>
   <order>user</order>
 </decoder>
 
 <decoder name="sophos-fw-fields">
   <parent>sophos-fw</parent>
-  <regex>reputation=\"(\w+)\"</regex>
+  <regex>reputation="(\w+)"</regex>
   <order>reputation</order>
 </decoder>
