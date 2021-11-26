@@ -211,7 +211,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
                                     -Wl,--wrap=File_DateofChange \
-                                    -Wl,--wrap,getpid, -Wl,--wrap,realtime_start \
+                                    -Wl,--wrap,getpid,--wrap,realtime_start \
                                     -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
                                     -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
                                     -Wl,--wrap,pthread_mutex_unlock")
