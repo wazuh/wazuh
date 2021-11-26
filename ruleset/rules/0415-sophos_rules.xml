@@ -66,7 +66,7 @@
 
   <rule id="82113" level="7">
     <if_sid>82110</if_sid>
-    <field name="severity">error|Error</field>
+    <match>error|Error</match>
     <description>Sophos UTM firewall: Error event.</description>
     <group>gpg13_4.3,gpg13_4.12</group>
   </rule>
