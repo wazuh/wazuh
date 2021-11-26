@@ -717,9 +717,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         except Exception:
             await self.send_request(
                 command=b'syn_i_w_m_r',
-                data=b'None ' + json.dumps(timeout_exc := WazuhClusterError(3039, extra_message=self.name),
-                                           cls=c_common.WazuhJSONEncoder).encode()
-            )
+                data=b'None ' + json.dumps(timeout_exc := WazuhClusterError(
+                    3039, extra_message=f'Integrity sync at {self.name}'), cls=c_common.WazuhJSONEncoder).encode())
             raise timeout_exc
 
         if isinstance(self.sync_tasks[name].filename, Exception):
