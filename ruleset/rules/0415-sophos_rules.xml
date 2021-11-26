@@ -1,9 +1,13 @@
 <!--
   Copyright (C) 2015-2021, Wazuh Inc.
-  Sophos Rules
 -->
 
-<!-- ID: 82100 - 82199 -->
+<!-- 
+  Sophos rules for:
+    Sophos Anti-Virus ID:           82100 - 82199
+    Sophos UTM 9 Firewall ID:       82100 - 82199
+    Sophos Anti-Virus Windows ID:   64270 - 64275
+-->
 
 <group name="sophos,">
 

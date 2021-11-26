@@ -3,16 +3,20 @@
 -->
 
 <!--
-Sophos Anti-Virus
-SAV.txt
-https://community.sophos.com/kb/en-us/43391
+  Sophos decoders for: 
+    Sophos Anti-Virus.
+    Sophos UTM 9 firewall.
+-->
 
-20160806 050000	Scan 'Sophos Cloud Scheduled Scan' started.
-20160806 052043	Scan 'Sophos Cloud Scheduled Scan' completed.
-20160805 175034	User (NT AUTHORITY\SYSTEM) has stopped on-access scanning for this machine.
-20160805 175143	Using detection data version 5.29 (detection engine 3.65.2). This version can detect 11628132 items.
- -->
-
+<!--
+  Sophos Anti-Virus
+  SAV.txt
+  https://community.sophos.com/kb/en-us/43391
+  20160806 050000	Scan 'Sophos Cloud Scheduled Scan' started.
+  20160806 052043	Scan 'Sophos Cloud Scheduled Scan' completed.
+  20160805 175034	User (NT AUTHORITY\SYSTEM) has stopped on-access scanning for this machine.
+  20160805 175143	Using detection data version 5.29 (detection engine 3.65.2). This version can detect 11628132 items.
+-->
 <decoder name="sophos">
   <prematch>^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tScan|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUser|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUsing</prematch>
 </decoder>
@@ -32,10 +36,11 @@ https://community.sophos.com/kb/en-us/43391
 </decoder>
 
 <!--
-<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SAVSCAN-DETAILS %s %s %s %s %s %s</msg><time>1558570140</time><arg>0</arg><arg>0</arg><arg>108267</arg><arg>131</arg><arg>0</arg><arg>0</arg></log>
-<log><category>update.check</category><level>INFO</level><domain>savupdate</domain><msg>NO_UPDATED_FROM %s</msg><time>1558572421</time><arg>http://10.11.12.13/SophosUpdate/CIDs/S000/EESAVUNIX/SUNOS_9_SPARC</arg></log>
-<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>NOTIFY_ONDEMANDTHREAT_INFECTED %s</msg><time>1558572421</time><arg>path_file</arg></log>
-<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>  
+  Sophos Anti-Virus Windows.
+  <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SAVSCAN-DETAILS %s %s %s %s %s %s</msg><time>1558570140</time><arg>0</arg><arg>0</arg><arg>108267</arg><arg>131</arg><arg>0</arg><arg>0</arg></log>
+  <log><category>update.check</category><level>INFO</level><domain>savupdate</domain><msg>NO_UPDATED_FROM %s</msg><time>1558572421</time><arg>http://10.11.12.13/SophosUpdate/CIDs/S000/EESAVUNIX/SUNOS_9_SPARC</arg></log>
+  <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>NOTIFY_ONDEMANDTHREAT_INFECTED %s</msg><time>1558572421</time><arg>path_file</arg></log>
+  <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>  
 -->
 <decoder name="sophos-win">
   <prematch>\<log>\.+\</log></prematch>
@@ -83,16 +88,14 @@ https://community.sophos.com/kb/en-us/43391
   <order>infected_file_path</order>
 </decoder>
 
-<!-- Sophos UTM 9 Firewall -->
-<!-- Sample logs 
+<!-- Sophos UTM 9 Firewall.
   <139>2021:05:19-09:39:29 fw-int-name httpd[25917]: [proxy_http:error] [pid 25917:tid 3878202224] (70007)The timeout specified has expired: [client x.x.x.x:60914] AH01102: error reading status line from remote server x.x.x.x:443" method="POST" srcip="x.x.x.x" dstip="" user="" group="" ad_domain="" statuscode="502" cached="0" profile="REF_DefaultHTTPProfile (Default Web Filter Profile)" filteraction="REF_HttCffSquid (Priv.Network)" size="0" request="0xcbc77100" url="http://c.whatsapp.net/chat" referer="" error="Received invalid request from client" authtime="0" dnstime="0" aptptime="275" cattime="47787" avscantime="0" fullreqtime="30118744" device="0" auth="0" ua="Mozilla/5.0 (compatible; WAChat/1.2; +http://www.whatsapp.com/contact)" exceptions="" category="122" reputation="neutral" categoryname="Instant Messaging""
   <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: \
   <28>2021:05:19-16:14:58 fw-int-name epsecd[7837]: W main::_log:435() =>  severity="warn" sys="System" sub="eplog" name="Listing [https://7d00efe0-ace4-3345-b667-91841040205e-wdx-ace4.broker.sophos.com//7d00efe0-ace4-3345-b667-91841040205e/] failed with return code 58: Problem with the local SSL certificate unable to use client certificate (no key found or wrong pass phrase?)
   <30>2021:05:19-16:20:54 fw-int-name httpproxy[5997]: id="0002" severity="info" sys="SecureWeb" sub="http" name="web request blocked" action="block
 -->
-
 <decoder name="sophos-fw">
-  <prematch>fw-int-name</prematch>
+  <hostname>fw-int-name</hostname>
 </decoder>
 
 <decoder name="sophos-fw-fields">
