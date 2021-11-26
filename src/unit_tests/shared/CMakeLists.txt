@@ -26,13 +26,13 @@ list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_rbtree_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
+list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_validate_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_string_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_expression")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
@@ -46,14 +46,14 @@ list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
 
 list(APPEND shared_tests_names "test_queue_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
-                                -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait -Wl,--wrap,getpid")
+                                -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
 
 list(APPEND shared_tests_names "test_queue_linked_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
                                 -Wl,--wrap=pthread_cond_signal")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_set_agent_group")
@@ -70,16 +70,16 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                                 -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                                -Wl,--wrap=fgets -Wl,--wrap,getpid -Wl,--wrap,OS_CloseSocket")
+                                -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname,--wrap=getpid \
-                                -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat")
+    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname \
+                                -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat,--wrap=getpid")
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
+list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_buffer_op")
 list(APPEND shared_tests_flags " ")
@@ -107,7 +107,12 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
                                 -Wl,--wrap,OSRegex_Execute_ex")
 
 list(APPEND shared_tests_names "test_rootcheck_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close,--wrap=getpid")
+set(ROOTCHECK_OP_BASE_FLAGS "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS}")
+else()
+list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS} -Wl,--wrap=getpid")
+endif()
 
 list(APPEND shared_tests_names "test_fs_op")
 list(APPEND shared_tests_flags " ")
@@ -119,14 +124,14 @@ endif()
 list(APPEND shared_tests_names "test_syscheck_op")
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,getpwuid_r -Wl,--wrap,w_getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
-                            -Wl,--wrap,sysconf -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,sysconf ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0")
 else()
-    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject")
+    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject -Wl,--wrap,getpid")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
