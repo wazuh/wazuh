@@ -3,7 +3,7 @@
 -->
 
 <!-- 
-  Sophos rules for:
+  Rules for:
     Sophos Anti-Virus ID:           82100 - 82199
     Sophos Anti-Virus Windows ID:   64270 - 64275
 -->
@@ -45,8 +45,6 @@
     <description>Sophos database updated</description>
     <group>gpg13_4.4,</group>
   </rule>
-
-  <!-- Sophos Win rules-->
 
   <rule id="64270" level="0">
     <decoded_as>sophos-win</decoded_as>
