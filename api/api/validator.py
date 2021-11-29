@@ -97,6 +97,7 @@ api_config_schema = {
             "properties": {
                 "level": {"type": "string"},
                 "path": {"type": "string"},  # Deprecated. To be removed on later versions
+                "format": {"type": "string", "enum": ["plain", "json"]}
             },
         },
         "cors": {

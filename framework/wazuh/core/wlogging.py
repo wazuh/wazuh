@@ -79,9 +79,9 @@ class WazuhLogger:
         self.debug_level = debug_level
         self.logger_name = logger_name
         if custom_formatter is None:
-            self.custom_formatter = logging.Formatter(self.tag, style='{', datefmt="%Y/%m/%d %H:%M:%S")
+            self.custom_formatter = logging.Formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
         else:
-            self.custom_formatter = custom_formatter(self.tag, style='{', datefmt="%Y/%m/%d %H:%M:%S")
+            self.custom_formatter = custom_formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
 
     def setup_logger(self):
         """
