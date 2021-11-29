@@ -1,3 +1,12 @@
+<!--
+  Copyright (C) 2015-2021, Wazuh Inc.
+-->
+
+<!-- 
+  Rules for:
+    FortiAuth ID: 44730 - 44739
+-->
+
 <group name="fortiauth">
 
   <rule id="44730" level="0">

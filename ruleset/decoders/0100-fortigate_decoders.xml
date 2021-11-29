@@ -6,28 +6,37 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
+<!-- 
+  Decoders for:
+    FortiOS 3.0
+    FortiOS 4.0
+    FortiOS 5.0
+    FortiOS 6.0
+
+-->
+
 <!-- FortiOS 3.0 via syslog -->
 <decoder name="fortigate-firewall-v3">
-    <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
+  <type>syslog</type>
 </decoder>
 
 <!--
 Dec 23 11:13:03 date=2011-07-24 time=10: 13:03 devname=Device_Name device_id=FGTXXXX9999999999 log_id=0038016004 type=traffic subtype=other pri=notice vd=root SN=9999999999 duration=0 user=N/A group=N/A rule=0 policyid=0 proto=6 service=tcp app_type=N/A status=deny src=10.3.3.3 srcname=10.3.3.3 dst=10.4.4.4 dstname=10.4.4.4 src_int=N/A dst_int="N/A" sent=0 rcvd=0
 -->
 <decoder name="fortigate-firewall-v3-fields">
-    <parent>fortigate-firewall-v3</parent>
-    <regex offset="after_parent">proto=\d+ service=(\S+) \.+ status=(\S+) src=(\S+) \.+ dst=(\S+) </regex>
-    <order>protocol,action,srcip,dstip</order>
+  <parent>fortigate-firewall-v3</parent>
+  <regex offset="after_parent">proto=\d+ service=(\S+) \.+ status=(\S+) src=(\S+) \.+ dst=(\S+) </regex>
+  <order>protocol,action,srcip,dstip</order>
 </decoder>
 
 <!--
 Mar 24 12:19:43 date=2011-07-25 time=08: 19:42 devname=Name_of_Device device_id=FGXXXX9999999999 log_id=0038016002 type=traffic subtype=other pri=notice vd=root SN=9999999999 duration=0 user=N/A group=N/A rule=0 policyid=0 proto=1 service=3/icmp app_type=N/A status=accept src=10.1.1.1 srcname=10.1.1.1 dst=10.2.2.2 dstname=10.2.2.2 src_int=N/A dst_int="N/A" sent=0 rcvd=0 sent_pkt=0 rcvd_pkt=0 src_port=0 dst_port=0 vpn="N/A" tran_ip=0.0.0.0 tran_port=0 dir_disp=org tran_disp=noop
 -->
 <decoder name="fortigate-firewall-v3-fields">
-    <parent>fortigate-firewall-v3</parent>
-    <regex offset="after_regex">src_port=(\d+) dst_port=(\d+) </regex>
-    <order>srcport,dstport</order>
+  <parent>fortigate-firewall-v3</parent>
+  <regex offset="after_regex">src_port=(\d+) dst_port=(\d+) </regex>
+  <order>srcport,dstport</order>
 </decoder>
 
 
@@ -38,15 +47,15 @@ Feb 19 22:00:07 date=2011-02-19 time=22: 00:07 devname=Device_Name device_id=FGX
 Feb 20 12:31:11 date=2011-02-20 time=12: 31:09 devname=Name_of_Device device_id=FGXXXX1000000000 log_id=8888888888 type=traffic subtype=other pri=notice status=accept vd="root" src=192.168.0.1 srcname=192.168.0.1 src_port=0 dst=192.168.254.254 dstname=192.168.254.254 dst_port=0 service=11/icmp proto=1 app_type=N/A duration=0 rule=0 policyid=0 identidx=0 sent=0 rcvd=0 shaper_drop_sent=0 shaper_drop_rcvd=0 shaper_sent_name="N/A" shaper_rcvd_name="N/A" perip_name="N/A" vpn="N/A" src_int="root" dst_int="N/A" SN=123412341234 app="N/A" app_cat="N/A" user="N/A" group="N/A" carrier_ep="N/A"
 -->
 <decoder name="fortigate-firewall-v4">
-    <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
+  <type>syslog</type>
 </decoder>
 
 
 <decoder name="fortigate-firewall-v4-fields">
-    <parent>fortigate-firewall-v4</parent>
-    <regex offset="after_parent">(\S+) \.+ src=(\S+) \.+ src_port=(\d+) dst=(\S+) \.+ dst_port=(\d+) \.*service=\d+/(\w+) </regex>
-    <order>action,srcip,srcport,dstip,dstport,protocol</order>
+  <parent>fortigate-firewall-v4</parent>
+  <regex offset="after_parent">(\S+) \.+ src=(\S+) \.+ src_port=(\d+) dst=(\S+) \.+ dst_port=(\d+) \.*service=\d+/(\w+) </regex>
+  <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>
 
 

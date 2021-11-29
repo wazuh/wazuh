@@ -1,8 +1,16 @@
 <!--
-References:
+  Copyright (C) 2015-2021, Wazuh Inc.
+-->
+
+<!-- 
+  Rules for:
+    FortiMail ID: 44401 - 44721
+
+  References:
     For the creation of the parent rule I had in mind this article: https://kb.fortinet.com/kb/documentLink.do?externalID=FD44560
     For the creation of the child rules I had in mind this article: https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/f7868f9d-b70f-11ea-8b7d-00505692583a/FortiMail-6.4.0-Log_Reference.pdf
-Severity Correlation:
+  
+  Severity Correlation:
     0 Emergency   Level 13
     1 Alert       Level 10
     2 Critical    Level 7
