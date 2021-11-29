@@ -53,6 +53,7 @@ cJSON *getAuthdConfig(void) {
     cJSON_AddNumberToObject(auth,"port",config.port);
     if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
     if (config.flags.remote_enrollment) cJSON_AddStringToObject(auth,"remote_enrollment","yes"); else cJSON_AddStringToObject(auth,"remote_enrollment","no");
+    if (config.ipv6) cJSON_AddStringToObject(auth,"ipv6","yes"); else cJSON_AddStringToObject(auth,"ipv6","no");
     if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
     if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
