@@ -1,24 +1,32 @@
 <!--
   Copyright (C) 2015-2021, Wazuh Inc.
+
+  Rules for:
+    NexCloud ID: 88200 - 88299
 -->
 
 <!--
-  Enable audit in Nextcloud if you want full log
-  Paste the following in /var/ossec/etc/ossec.conf for the decoder to work properly:
+
+  Two log sources are valid for NextCloud rules:
+
+  To use the NextCloud decoder paste the following in /var/ossec/etc/ossec.conf:
   <localfile>
     <location>ABSOLUTE_PATH_TO_YOUR_NEXTCLOUD_.json_LOG_FILE</location>
     <log_format>json</log_format>
     <label key="@source">NextCloud</label>
   </localfile>
-  OPTIONAL
+
+
+  If you enabled audit in your Nextcloud system you may use those logs instead.
+  Paste the following in /var/ossec/etc/ossec.conf:
   <localfile>
     <location>ABSOLUTE_PATH_TO_YOUR_AUDIT_.json_LOG_FILE</location>
     <log_format>json</log_format>
     <label key="@source">NextCloud</label>
   </localfile>
- -->
+-->
 
-<!-- ID: 88200 - 88299 -->
+
 
 <group name="json,nextcloud,">
 
@@ -40,7 +48,7 @@
     <match>Login attempt: </match>
     <options>no_full_log</options>
     <description>NextCloud authentication attempt.</description>
-    <group>gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88212" level="6">
@@ -48,13 +56,13 @@
     <match>Login failed: </match>
     <options>no_full_log</options>
     <description>NextCloud authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88203" level="10" frequency="8" timeframe="120">
     <if_matched_sid>88212</if_matched_sid>
-    <description>NextCloud brute force (multiple failed logins).</description>
     <options>no_full_log</options>
+    <description>NextCloud brute force (multiple failed logins).</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
@@ -64,9 +72,9 @@
   <rule id="88204" level="6">
     <if_sid>88200,88201</if_sid>
     <match>Passed filename is not valid, might be malicious </match>
+    <options>no_full_log</options>
     <description>NextCloud possible malicious request.</description>
     <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <options>no_full_log</options>
   </rule>
 
   <rule id="88205" level="8">
@@ -134,7 +142,7 @@
     <match>File created: </match>
     <options>no_full_log</options>
     <description>NextCloud file created.</description>
-    <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_11.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88215" level="6">
@@ -142,7 +150,7 @@
     <match>File deleted: </match>
     <options>no_full_log</options>
     <description>NextCloud file deleted.</description>
-    <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_11.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88216" level="6">
@@ -150,7 +158,7 @@
     <match>Preview accessed: </match>
     <options>no_full_log</options>
     <description>NextCloud preview accessed.</description>
-    <group>pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>
