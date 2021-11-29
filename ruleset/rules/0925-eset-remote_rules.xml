@@ -2,10 +2,9 @@
   Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
-
 <!-- 
   ESET rules for:
-    ESET Remote Administrator v8.1: 42001 - 42009
+    ESET Remote Administrator v8.1: 42001 - 42100
   
   Comments:
   This ruleset evaluates logs decoded by 0575-eset-remote-decoders.xml to trigger alerts
