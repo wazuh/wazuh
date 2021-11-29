@@ -478,9 +478,6 @@
                     <Component Id="LIBGCC_S_SJLJ_1.DLL" DiskId="1" Guid="27BDCB9A-F89F-4009-A789-1F779EB05697">
                         <File Id="LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" Source="libgcc_s_sjlj-1.dll" />
                     </Component>
-                    <Component Id="LIBGCC_S_DW2_1.DLL" DiskId="1" Guid="4AD9DD9B-ACCB-43FE-83D2-98C4A0289D38">
-                        <File Id="LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" Source="libgcc_s_dw2-1.dll" />
-                    </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
                     </Component>
@@ -870,7 +867,6 @@
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
             <ComponentRef Id="LIBGCC_S_SJLJ_1.DLL" />
-            <ComponentRef Id="LIBGCC_S_DW2_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
