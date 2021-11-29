@@ -46,11 +46,8 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
     } else {
         TAG = EVENTS;
     }
-#ifndef WIN32
-    snprintf(logs_path, PATH_MAX, "%s%s", !isChroot() ? DEFAULTDIR : "", TAG);
-#else
+
     snprintf(logs_path, PATH_MAX, "%s", TAG);
-#endif
     year_list = get_rotation_node_list(logs_path, NULL, NULL, NULL, NULL);
     os_calloc(1, sizeof(rotation_list), rot_list);
 
@@ -60,7 +57,7 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
 
         for (i = 0; i < 12; i++) {
             DIR *dir;
-            snprintf(month_path, PATH_MAX, "%s/%d/%s", logs_path, year_it->first_value, MONTHS[i]);
+            os_snprintf(month_path, PATH_MAX, "%s/%d/%s", logs_path, year_it->first_value, MONTHS[i]);
             if (dir = opendir(month_path), dir) {
                 rotation_node *last_file_node = NULL;
                 int count = 0;
@@ -405,7 +402,7 @@ void remove_old_logs(const char *base_dir, int maxage, const char * type, rotati
     char path[PATH_MAX];
     int year;
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
@@ -431,7 +428,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold, const 
     char path[PATH_MAX];
     int month;
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
@@ -468,9 +465,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     char path[PATH_MAX];
     char ext[9];
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = NULL;
     time_t now = time(NULL);
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     int counter, day;
 
     char match_log_simple[PATH_MAX], match_log[PATH_MAX];
@@ -541,7 +538,7 @@ time_t calc_next_rotation(time_t tm, const char units, int interval)
 {
     int counter;  /* Number of intervals to rotate in a day */
     int i = 1;
-    struct tm rot;
+    struct tm rot  = { .tm_sec = 0 };
     time_t ret = tm;
     int seconds, n_minutes;
     localtime_r(&ret, &rot);

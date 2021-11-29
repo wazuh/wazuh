@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -35,7 +35,6 @@ int main(int argc, char **argv)
     int clear_daily = 0;
     int clear_weekly = 0;
 
-    const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     gid_t gid;
@@ -43,6 +42,13 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    /* Define current working directory */
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* user arguments */
     if (argc != 2) {
@@ -53,7 +59,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -62,9 +68,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
+
+    os_free(home_path);
 
     /* Inside chroot now */
     nowChroot();
@@ -93,7 +101,7 @@ int main(int argc, char **argv)
     if (clear_daily) {
         const char *daily_dir = STATQUEUE;
         DIR *daily;
-        struct dirent *entry;
+        struct dirent *entry = NULL;
 
         daily = opendir(daily_dir);
         if (!daily) {
@@ -125,7 +133,7 @@ int main(int argc, char **argv)
             const char *daily_dir = STATWQUEUE;
             char dir_path[PATH_MAX + 1];
             DIR *daily;
-            struct dirent *entry;
+            struct dirent *entry = NULL;
 
             snprintf(dir_path, PATH_MAX, "%s/%d", daily_dir, i);
             daily = opendir(dir_path);
@@ -155,5 +163,6 @@ int main(int argc, char **argv)
     }
 
     printf("\n** Internal stats clear.\n\n");
+
     return (0);
 }

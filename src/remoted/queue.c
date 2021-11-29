@@ -1,5 +1,5 @@
 /* Remoted queue handling library
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 2, 2018.
  *
  * This program is free software; you can redistribute it
@@ -15,7 +15,6 @@ static w_queue_t * queue;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
 
-size_t global_counter;
 
 // Init message queue
 void rem_msginit(size_t size) {

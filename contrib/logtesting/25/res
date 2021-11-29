@@ -1,8 +1,0 @@
-**Phase 1: Completed pre-decoding.
-       full event: 'Feb 1 14:39:16 nogan sudo: test2 : 3 incorrect password attempts ; TTY=pts/4 ; PWD=/home/test2 ; USER=root ; COMMAND=/bin/ls'
-       hostname: 'melancia'
-       program_name: '(null)'
-       log: 'Feb 1 14:39:16 nogan sudo: test2 : 3 incorrect password attempts ; TTY=pts/4 ; PWD=/home/test2 ; USER=root ; COMMAND=/bin/ls'
-
-**Phase 2: Completed decoding.
-       No decoder matched.

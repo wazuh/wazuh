@@ -102,11 +102,11 @@ tostart="Pour démarrer Wazuh"
 tostop="Pour arrêter Wazuh"
 configat="La configuration peut être visualisée ou modifiée dans"
 addserveragent="Vous devez ajouter le(s) agent(s) avant qu'ils aient un accés autorisé."
-runma="Lancez 'manage_agent' pour les ajouter ou les supprimer"
 presskey="Appuyez sur Entrée pour continuer"
 
 # Update
 wanttoupdate="Vous avez déjà installé Wazuh. Voulez-vous le mettre à jour ?"
+mustuninstall="L'installation ne peut pas continuer sans désinstaller les anciennes versions. Sortie."
 unabletoupdate="Impossible de mettre à jour. Une nouvelle installation est nécessaire."
 updatecompleted="Mise à jour complète."
 updatefailed="Echec de la mise à jour."

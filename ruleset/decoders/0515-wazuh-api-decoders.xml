@@ -1,0 +1,67 @@
+<!--
+  -  WazuhAPI decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<decoder name="wazuhapi">
+  <prematch>WazuhAPI </prematch>
+</decoder>
+
+<!-- WazuhAPI 2019-02-27 15:23:17 user: [::ffff:11.0.0.19] GET /version? - 200 - error: '0'. -->
+
+  <decoder name="wazuhapi_requests">
+    <parent>wazuhapi</parent>
+    <prematch>\d+-\d+-\d+ \d+:\d+:\d+ \S+: [\S+] \w+ \S+ - \d+</prematch>
+    <regex offset="after_parent">(\d+-\d+-\d+ \d+:\d+:\d+) (\S+): [(\S+)] (\w+) (\S+) - \d+ - error: '(\d+)'</regex>
+    <order>timestamp,apiuser,remoteaddress,method,request,errorcode</order>
+  </decoder>
+
+<!-- WazuhAPI 2019-03-19 13:46:48 foo: Agent does not exist: 500 --> <!-- exceptions -->
+  <!-- This is a generic exception log, the decoder should work for every exception -->
+  <decoder name="wazuhapi_exceptions">
+    <parent>wazuhapi</parent>
+    <prematch></prematch>
+    <regex offset="after_parent">(\d+-\d+-\d+ \d+:\d+:\d+) (\S+): (\.+): \d+</regex>
+    <order>timestamp,apiuser,exception_message</order>
+  </decoder>
+
+<!-- WazuhAPI 2019-02-27 15:22:22 : Listening on: http://:::55000 -->
+
+  <decoder name="wazuhapi_listening">
+    <parent>wazuhapi</parent>
+    <prematch>Listening on</prematch>
+    <regex offset="after_parent">(\d+-\d+-\d+ \d+:\d+:\d+) : Listening on: (\.+)</regex>
+    <order>timestamp,apiurl</order>
+  </decoder>
+
+
+<!-- WazuhAPI 2019-03-18 16:08:13 user: [::1] User: "user" - Authentication failed. -->
+
+  <decoder name="wazuhapi_authfail">
+    <parent>wazuhapi</parent>
+    <prematch>Authentication failed</prematch>
+    <regex offset="after_parent">(\d+-\d+-\d+ \d+:\d+:\d+) (\S+):\.+ Authentication failed</regex>
+    <order>timestamp,apiuser</order>
+  </decoder>
+
+
+
+<!-- WazuhAPI 2019-03-18 16:08:13 Error: Address in use (port "550"): Close the program using that port or change the port. -->
+
+  <decoder name="wazuhapi_porterror">
+    <parent>wazuhapi</parent>
+    <prematch>Address in use</prematch>
+    <regex offset="after_parent">(\d+-\d+-\d+ \d+:\d+:\d+) Error: Address in use \(port "(\d+)"\)</regex>
+    <order>timestamp,port</order>
+  </decoder>
+
+<!-- WazuhAPI 2019-03-18 16:08:13 : [::1] Authentication error: 15 - Error message -->
+
+  <decoder name="wazuhapi_autherror">
+    <parent>wazuhapi</parent>
+    <prematch>Authentication error</prematch>
+    <regex offset="after_parent">(\d+-\d+-\d+ \d+:\d+:\d+) : [\.+] Authentication error: (\d+) - (\.+)</regex>
+    <order>timestamp,auth_error,error_message</order>
+  </decoder>

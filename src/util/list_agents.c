@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -31,7 +31,6 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
 
@@ -44,6 +43,9 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+    char * home_path = w_homedir(argv[0]);
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* User arguments */
     if (argc < 2) {
         helpmsg();
@@ -53,7 +55,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -62,9 +64,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
+
+    os_free(home_path);
 
     /* Inside chroot now */
     nowChroot();
@@ -104,5 +108,6 @@ int main(int argc, char **argv)
     } else {
         printf("** No agent available.\n");
     }
+
     return (0);
 }

@@ -1,0 +1,133 @@
+<!--
+  -  Microsoft Exchange proxylogon rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  Based on https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/
+-->
+
+<group name="ms,exchange,">
+
+    <!--
+    Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","eventID":"1","version":"5","level":"4","task":"1","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-03-26T18:28:37.194586400Z","eventRecordID":"1521","processID":"12768","threadID":"12156","channel":"Microsoft-Windows-Sysmon/Operational","computer":"WIN-03FGEGKLSPR.fakecorp.com","severityValue":"INFORMATION","message":"\"Process Create:\r\nRuleName: -\r\nUtcTime: 2021-03-26 18:28:37.194\r\nProcessGuid: {F5960AB9-27D5-605E-A501-000000002000}\r\nProcessId: 7496\r\nImage: C:\\\\Windows\\\\System32\\\\cmd.exe\r\nFileVersion: 6.1.7601.17514 (win7sp1_rtm.101119-1850)\r\nDescription: Windows Command Processor\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: Cmd.Exe\r\nCommandLine: C:\\\\Windows\\\\system32\\\\cmd.exe\r\nCurrentDirectory: c:\\\\windows\\\\system32\\\\inetsrv\\\\r\nUser: NT AUTHORITY\\\\SYSTEM\r\nLogonGuid: {F5960AB9-F5C7-605D-E703-000000000000}\r\nLogonId: 0x3e7\r\nTerminalSessionId: 0\r\nIntegrityLevel: System\r\nHashes: SHA256=DB06C3534964E3FC79D2763144BA53742D7FA250CA336F4A0FE724B75AAFF386\r\nParentProcessGuid: {F5960AB9-FF45-605D-0C01-000000002000}\r\nParentProcessId: 11416\r\nParentImage: C:\\Program Files\\Microsoft\\Exchange Server\\V15\\Bin\\UMWorkerProcess.exe\r\nParentCommandLine: \"UMWorkerProcess.exe\""},"eventdata":{"utcTime":"2021-03-26 18:28:37.194","processGuid":"{F5960AB9-27D5-605E-A501-000000002000}","processId":"7496","image":"C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\cmd.exe","fileVersion":"6.1.7601.17514 (win7sp1_rtm.101119-1850)","description":"Windows Command Processor","product":"Microsoft® Windows® Operating System","company":"Microsoft Corporation","originalFileName":"Cmd.Exe","commandLine":"C:\\\\\\\\Windows\\\\\\\\system32\\\\\\\\cmd.exe","currentDirectory":"c:\\\\\\\\windows\\\\\\\\system32\\\\\\\\inetsrv\\\\\\\\","user":"NT AUTHORITY\\\\\\\\SYSTEM","logonGuid":"{F5960AB9-F5C7-605D-E703-000000000000}","logonId":"0x3e7","terminalSessionId":"0","integrityLevel":"System","hashes":"SHA256=DB06C3534964E3FC79D2763144BA53742D7FA250CA336F4A0FE724B75AAFF386","parentProcessGuid":"{F5960AB9-FF45-605D-0C01-000000002000}","parentProcessId":"11416","parentImage":"C:\\\\Program Files\\\\Microsoft\\\\Exchange Server\\\\V15\\Bin\\\\UMWorkerProcess.exe","parentCommandLine":"UMWorkerProcess.exe"}}}
+    -->
+    <rule id="91000" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.parentImage">\\UMWorkerProcess.exe</field>
+        <field name="win.eventdata.originalFileName" negate="yes">werfault.exe|wermgr.exe</field>
+        <description>UMWorkerProcess.exe spawned unexpected processes. Possible malicious activity</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
+    </rule>
+
+    <rule id="91001" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image">\\UMWorkerProcess.exe</field>
+        <field name="win.eventdata.targetFilename" negate="yes">CacheCleanup.bin$|.txt$|.log$|.cfg$|cleanup.bin$</field>
+        <description>UMWorkerProcess.exe spawned creating abnormal files. Possible malicious activity</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
+    </rule>
+
+<!--
+Sample: 2021-04-06T14:54:34.255Z,61d2c86f-f9bb-456d-88c0-3529172510ac,15,0,847,30,,Ecp,192.168.0.60,/ecp/lkO.js,,FBA,False,,,ServerInfo~Admin@WIN-03FGEGKLSPR:444/ecp/DDI/DDIService.svc/GetList?reqId=1615583487987&schema=VirtualDirectory&msExchEcpCanary=Sw7TsEblh0O9yAO2zOMLYYjmrzSe-tgIeEyMoR9keCLkC8uBhZ54ExFEhXKulvSv9x5C62ymOnE.&a=,Mozilla/5.0,192.168.0.127,WIN-03FGEGKLSPR,200,200,,POST,Proxy,win-03fgegklspr,41.42.31996.000,CrossRegion,X-BEResource-Cookie,,,,159,598,1,,0,0,,0,,0,,0,0,6375,0,0,1,0,6378,0,0,0,6380,0,6378,1,2,2,6380,,,CorrelationID=<empty>;BeginRequest=2021-04-06T14:54:27.880Z;ProxyState-Run=None;BeginGetRequestStream=2021-04-06T14:54:27.880Z;OnRequestStreamReady=2021-04-06T14:54:27.880Z;BeginGetResponse=2021-04-06T14:54:27.880Z;OnResponseReady=2021-04-06T14:54:34.255Z;EndGetResponse=2021-04-06T14:54:34.255Z;ProxyState-Complete=ProxyResponseData;,
+
+CVE-2021-26855 (ProxyLogon) exploitation can be detected via the following Exchange HttpProxy logs:
+These logs are located in the following directory: %PROGRAMFILES%\Microsoft\Exchange Server\V15\Logging\HttpProxy
+Exploitation can be identified by searching for log entries where the AuthenticatedUser is empty and the AnchorMailbox contains the pattern of ServerInfo~*/*
+-->
+    <rule id="91002" level="12">
+        <decoded_as>HTTPProxyLog</decoded_as>
+        <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
+        <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-26855)</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
+    </rule>
+
+<!--
+Sample: 2021-04-06T14:54:38.677Z,WIN-03FGEGKLSPR,ECP.Request,"S:TIME=4365;S:SID=3a5d3a0b-a544-4d5c-9b1d-3d33d4968b48;'S:CMD=Set-OabVirtualDirectory.ExternalUrl=''http://o/#<sanitized>bad code goes here</sanitized>''.Identity=''87fc3593-ca62-4d08-93bd-782275d33c1''';S:REQID=;S:URL=/ecp/DDI/DDIService.svc/SetObject?schema=OABVirtualDirectory&msExchEcpCanary=MALCOD.&a=%5D:444/ecp/lkO.js;S:EX=;S:ACTID=c3f8f7e0-9817-46da-9ed4-fe575da51fbd;S:RS=0;S:BLD=15.0.847.32"
+
+CVE-2021-27065  is a post-authentication arbitrary file write vulnerability in Exchange. If HAFNIUM could authenticate
+with the Exchange server then they could use this vulnerability to write a file to any path on the server.
+They could authenticate by exploiting the CVE-2021-26855 SSRF vulnerability or by compromising a legitimate
+admin’s credentials.
+-->
+    <rule id="91003" level="12">
+        <decoded_as>ECPServerLog</decoded_as>
+        <regex type="pcre2">Set-.+VirtualDirectory.+?Url.+\<\w+.*\>.*?\<\/\w+\>.+?VirtualDirectory</regex>
+        <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-27065)</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
+    </rule>
+
+<!--
+CVE-2021-26858 exploitation can be detected via the Exchange log files:
+C:\Program Files\Microsoft\Exchange Server\V15\Logging\OABGeneratorLog
+Files should only be downloaded to the %PROGRAMFILES%\Microsoft\Exchange Server\V15\ClientAccess\OAB\Temp directory
+In case of exploitation, files are downloaded to other directories (UNC or local paths)
+-->
+    <rule id="91004" level="12">
+        <decoded_as>OABGenLog</decoded_as>
+        <match>Download failed and temporary file</match>
+        <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
+        <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858)</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
+    </rule>
+
+
+<!--
+CVE-2021-26857 is an insecure deserialization vulnerability in the Unified Messaging service. Insecure deserialization
+is where untrusted user-controllable data is deserialized by a program. Exploiting this vulnerability gave HAFNIUM the
+ability to run code as SYSTEM on the Exchange server. This requires administrator permission or another vulnerability
+to exploit.
+-->
+    <rule id="91005" level="0">
+        <if_sid>60602</if_sid>
+        <field name="win.system.providerName">^MSExchange Unified Messaging$</field>
+        <options>no_full_log</options>
+        <description>Filtering MSExchange Unified Message error events</description>
+    </rule>
+
+    <rule id="91006" level="12">
+        <if_sid>91005</if_sid>
+        <field name="win.system.message">System.InvalidCastException</field>
+        <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857)</description>
+        <mitre>
+        <id>T1068</id>
+        </mitre>
+    </rule>
+
+    <rule id="91007" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName">cmd.exe|powershell.exe|powershell_ISE.exe</field>
+        <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
+        <description>Powershell initializing MS Exchange snapin. Possible mailbox data dump</description>
+        <mitre>
+        <id>T1114</id>
+        <id>T1059</id>
+        </mitre>
+    </rule>
+
+    <rule id="91008" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
+        <field name="win.eventdata.commandLine" type="pcre2">\$client = New-Object System\.Net\.Sockets\.TCPClient</field>
+        <description>Possible Nishang Invoke-PowerShellTcpOneLine reverse shell script execution</description>
+        <mitre>
+        <id>T1210</id>
+        <id>T1588</id>
+        <id>T1059</id>
+        </mitre>
+    </rule>
+
+</group>
+

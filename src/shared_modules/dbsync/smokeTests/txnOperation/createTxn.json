@@ -1,0 +1,6 @@
+{
+    "action": "dbsync_create_txn",
+    "body": {
+        "tables": ["processes"]
+    }
+}

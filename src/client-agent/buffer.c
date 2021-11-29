@@ -1,6 +1,6 @@
 /*
  * Anti-flooding mechanism
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 4, 2017
  *
  * This program is free software; you can redistribute it
@@ -18,14 +18,20 @@
 #include <windows.h>
 #endif
 
-static volatile int i = 0;
-static volatile int j = 0;
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC volatile int i = 0;
+STATIC volatile int j = 0;
 static volatile int state = NORMAL;
 
 int warn_level;
 int normal_level;
 int tolerance;
-int ms_slept;
 
 struct{
   unsigned int full:1;
@@ -40,7 +46,14 @@ static pthread_cond_t cond_no_empty;
 
 static time_t start, end;
 
-static void delay(unsigned int ms);
+/**
+ * @brief Sleep according to max_eps parameter
+ *
+ * Sleep (1 / max_eps) - ts_loop
+ *
+ * @param ts_loop Loop time.
+ */
+static void delay(struct timespec * ts_loop);
 
 /* Create agent buffer */
 void buffer_init(){
@@ -101,7 +114,7 @@ int buffer_append(const char *msg){
             break;
     }
 
-    agent_state.msg_count++;
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
     /* When buffer is full, event is dropped */
 
@@ -131,9 +144,12 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     char normal_msg[OS_MAXSTR];
 
     char warn_str[OS_SIZE_2048];
-    int wait_ms = 1000 / agt->events_persec;
+    struct timespec ts0;
+    struct timespec ts1;
 
     while(1){
+        gettime(&ts0);
+
         w_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
@@ -182,8 +198,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
             buff.warn = 0;
             mwarn(WARN_BUFFER, warn_level);
             snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
-            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", warn_str);
-            delay(wait_ms);
+            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
             send_msg(warn_msg, -1);
         }
 
@@ -191,8 +206,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.full = 0;
             mwarn(FULL_BUFFER);
-            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_FULL_BUFFER);
-            delay(wait_ms);
+            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
             send_msg(full_msg, -1);
         }
 
@@ -200,8 +214,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.flood = 0;
             mwarn(FLOODED_BUFFER);
-            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_FLOOD_BUFFER);
-            delay(wait_ms);
+            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
             send_msg(flood_msg, -1);
         }
 
@@ -209,25 +222,38 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.normal = 0;
             minfo(NORMAL_BUFFER, normal_level);
-            snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_NORMAL_BUFFER);
-            delay(wait_ms);
+            snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_NORMAL_BUFFER);
             send_msg(normal_msg, -1);
         }
 
-        delay(wait_ms);
         os_wait();
         send_msg(msg_output, -1);
         free(msg_output);
+
+        gettime(&ts1);
+        time_sub(&ts1, &ts0);
+        delay(&ts1);
     }
 }
 
-void delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { 0, ms * 1000 };
-    select(0 , NULL, NULL, NULL, &timeout);
-#endif
+void delay(struct timespec * ts_loop) {
+    long interval_ns = 1000000000 / agt->events_persec;
+    struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
+    time_sub(&ts_timeout, ts_loop);
+    nanosleep(&ts_timeout, NULL);
+}
 
-    ms_slept += ms;
+int w_agentd_get_buffer_lenght() {
+
+    int retval = -1;
+
+    if (agt->buffer > 0) {
+        w_mutex_lock(&mutex_lock);
+        retval = (i - j) % (agt->buflength + 1);
+        w_mutex_unlock(&mutex_lock);
+
+        retval = (retval < 0) ? (retval + agt->buflength + 1) : retval;
+    }
+
+    return retval;
 }

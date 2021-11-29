@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 26, 2018.
  *
  * This program is free software; you can redistribute it
@@ -27,14 +27,14 @@ size_t mailcom_dispatch(char * command, char ** output) {
         // getconfig section
         if (!rcv_args){
             mdebug1("MAILCOM getconfig needs arguments.");
-            *output = strdup("err MAILCOM getconfig needs arguments");
+            os_strdup("err MAILCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return mailcom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("MAILCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +46,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "global") == 0){
         if (cfg = getMailConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -57,7 +57,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "alerts") == 0){
         if (cfg = getMailAlertsConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -68,7 +68,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal") == 0){
         if (cfg = getMailInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -83,7 +83,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At MAILCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
@@ -97,11 +97,7 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
     fd_set fdset;
     char socket_path[PATH_MAX + 1] = {0};
 
-    snprintf(socket_path,PATH_MAX,"%s",DEFAULTDIR MAIL_LOCAL_SOCK);
-
-    if(isChroot()){
-        snprintf(socket_path,PATH_MAX,"%s",MAIL_LOCAL_SOCK);
-    }
+    snprintf(socket_path,PATH_MAX,"%s", MAIL_LOCAL_SOCK);
 
     mdebug1("Local requests thread ready");
 

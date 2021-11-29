@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -106,8 +106,11 @@ void rootcheck_connect();
 void run_rk_check(void);
 
 /* Rootcheck thread */
+#ifdef WIN32
+DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void * args);
+#else
 void * w_rootcheck_thread(__attribute__((unused)) void * args);
-
+#endif
 /*** Plugins prototypes ***/
 void check_rc_files(const char *basedir, FILE *fp);
 void check_rc_trojans(const char *basedir, FILE *fp);

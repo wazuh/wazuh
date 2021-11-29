@@ -8,7 +8,6 @@
 
     Meer informatie is te vinden op:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
          --- Druk op ENTER om te voltooien. ---
     --- (Misschien meer informatie hieronder). ---

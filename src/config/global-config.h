@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -29,6 +29,10 @@ typedef struct __Config {
     u_int8_t logbylevel;
     u_int8_t logfw;
     int decoder_order_size;
+
+    /* Agent's disconnection global parameters */
+    long agents_disconnection_time;
+    long agents_disconnection_alert_time;
 
     /* Prelude support */
     u_int8_t prelude;

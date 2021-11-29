@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,19 @@
 #include "remote-config.h"
 #include "config.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+/**
+ * @brief gets the remoted protocol configuration from a configuration string
+ * @param content configuration string
+ * @return returns the TCP/UDP protocol configuration 
+ */
+STATIC int w_remoted_get_net_protocol(const char * content);
 
 /* Reads remote config */
 int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -23,6 +36,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int deny_size = 1;
     remoted *logr;
     int defined_queue_size = 0;
+    const int DEFAULT_RIDS_CLOSING_TIME = 300;
 
     /*** XML Definitions ***/
 
@@ -36,7 +50,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_queue_size = "queue_size";
+    const char *xml_rids_closing_time = "rids_closing_time";
 
     logr = (remoted *)d1;
 
@@ -109,6 +124,8 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->ipv6[pl + 1] = 0;
     logr->lip[pl + 1] = NULL;
 
+    logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -141,23 +158,16 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_proto) == 0) {
-            if (strcasecmp(node[i]->content, "tcp") == 0) {
-#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-                logr->proto[pl] = IPPROTO_TCP;
-#else
-                merror(TCP_NOT_SUPPORT);
-                return (OS_INVALID);
-#endif
-            } else if (strcasecmp(node[i]->content, "udp") == 0) {
-                logr->proto[pl] = IPPROTO_UDP;
-            } else {
-                merror(XML_VALUEERR, node[i]->element,
-                       node[i]->content);
-                return (OS_INVALID);
-            }
+            
+            logr->proto[pl] = w_remoted_get_net_protocol(node[i]->content);
+
         } else if (strcasecmp(node[i]->element, xml_remote_ipv6) == 0) {
             if (strcasecmp(node[i]->content, "yes") == 0) {
                 logr->ipv6[pl] = 1;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->ipv6[pl] = 0;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_remote_ipv6);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_lip) == 0) {
             os_strdup(node[i]->content, logr->lip[pl]);
@@ -209,6 +219,22 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
             defined_queue_size = 1;
+        } else if (strcmp(node[i]->element, xml_rids_closing_time) == 0) {
+            char * time_unit_ptr = NULL;
+            long rids_closing_time = 0;
+            const char * TIME_UNITS = "sSmMhHdD";
+
+            time_unit_ptr = strpbrk(node[i]->content, TIME_UNITS);
+            rids_closing_time = w_parse_time(node[i]->content);
+
+            if ((time_unit_ptr != NULL && *(time_unit_ptr + 1) !='\0') ||
+                (rids_closing_time <= 0 || rids_closing_time > INT_MAX)) {
+                    mwarn(REMOTED_INV_VALUE_DEFAULT, node[i]->content, xml_rids_closing_time);
+                    rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
+            }
+
+            logr->rids_closing_time = (int) rids_closing_time;
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -233,7 +259,18 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Set default protocol */
     if (logr->proto[pl] == 0) {
-        logr->proto[pl] = IPPROTO_UDP;
+        logr->proto[pl] = REMOTED_NET_PROTOCOL_DEFAULT;
+    }
+    /* Only secure connections support TCP and UDP at the same time */
+    else if (logr->conn[pl] != SECURE_CONN && (logr->proto[pl] == REMOTED_NET_PROTOCOL_TCP_UDP)) {
+        mwarn(REMOTED_NET_PROTOCOL_ONLY_SECURE, REMOTED_NET_PROTOCOL_DEFAULT_STR);
+        logr->proto[pl] = REMOTED_NET_PROTOCOL_DEFAULT;
+    }
+
+    /*  Secure does not support IPv6. */
+    if (logr->conn[pl] == SECURE_CONN && logr->ipv6[pl]) {
+        mwarn(REMOTED_INET6_SECURE_CONNNECTION);
+        logr->ipv6[pl] = 0;
     }
 
     /* Queue_size is only for secure connections */
@@ -243,4 +280,42 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     return (0);
+}
+
+STATIC int w_remoted_get_net_protocol(const char * content) {
+
+    const size_t MAX_ARRAY_SIZE = 64;
+    const char * XML_REMOTE_PROTOCOL = "protocol";
+    size_t current = 0;
+    int retval = 0;
+
+    char ** proto_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
+
+    if (proto_arr) {
+        while (proto_arr[current]) {
+            char * word = &(proto_arr[current])[strspn(proto_arr[current], " ")];
+            word[strcspn(word, " ")] = '\0';
+
+            if (strcasecmp(word, REMOTED_NET_PROTOCOL_TCP_STR) == 0) {
+                retval |= REMOTED_NET_PROTOCOL_TCP;
+            } else if (strcasecmp(word, REMOTED_NET_PROTOCOL_UDP_STR) == 0) {
+                retval |= REMOTED_NET_PROTOCOL_UDP;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, word, XML_REMOTE_PROTOCOL);
+            }
+
+            os_free(proto_arr[current]);
+            current++;
+        }
+
+        os_free(proto_arr);
+
+    }
+
+    if (retval == 0) {
+        mwarn(REMOTED_NET_PROTOCOL_ERROR, REMOTED_NET_PROTOCOL_DEFAULT_STR);
+        retval = REMOTED_NET_PROTOCOL_DEFAULT;
+    }
+
+    return retval;
 }

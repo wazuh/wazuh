@@ -1,10 +1,14 @@
 /*
  * SQL Schema for global database
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ *
  * June 30, 2016.
+ *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
- */
+*/
+
+PRAGMA foreign_keys=ON;
 
 CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
@@ -28,33 +32,43 @@ CREATE TABLE IF NOT EXISTS agent (
     node_name TEXT DEFAULT 'unknown',
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
-    status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
-    fim_offset INTEGER NOT NULL DEFAULT 0,
-    reg_offset INTEGER NOT NULL DEFAULT 0,
-    `group` TEXT DEFAULT 'default'
+    `group` TEXT DEFAULT 'default',
+    sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
+    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
+    disconnection_time INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
-INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL);
+INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
+
+CREATE TABLE IF NOT EXISTS labels (
+    id INTEGER,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (id,key)
+);
 
 CREATE TABLE IF NOT EXISTS info (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 
-CREATE TABLE IF NOT EXISTS `group`
-    (
+CREATE TABLE IF NOT EXISTS `group` (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT
-    );
+);
 
-CREATE TABLE IF NOT EXISTS belongs
-    (
-    id_agent INTEGER,
+CREATE TABLE IF NOT EXISTS belongs (
+    id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
     id_group INTEGER,
     PRIMARY KEY (id_agent, id_group)
-    );
+);
 
-PRAGMA journal_mode=WAL;
+CREATE TABLE IF NOT EXISTS metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO metadata (key, value) VALUES ('db_version', '3');

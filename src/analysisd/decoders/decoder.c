@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -17,9 +17,8 @@
 
 
 /* Use the osdecoders to decode the received event */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
+void DecodeEvent(struct _Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match, OSDecoderNode *node)
 {
-    OSDecoderNode *node;
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
@@ -28,8 +27,6 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
     const char *cmatch = NULL;
     const char *regex_prev = NULL;
     const char *result = NULL;
-
-    node = OS_GetFirstOSDecoder(lf->program_name);
 
     if (!node) {
         return;
@@ -46,8 +43,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
 
         /* First check program name */
         if (lf->program_name) {
-            if (!OSMatch_Execute(lf->program_name, lf->p_name_size,
-                                 nnode->program_name)) {
+            if (!w_expression_match(nnode->program_name, lf->program_name, NULL, decoder_match)) {
                 continue;
             }
             pmatch = lf->log;
@@ -55,7 +51,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
 
         /* If prematch fails, go to the next osdecoder in the list */
         if (nnode->prematch) {
-            if (!(pmatch = OSRegex_Execute_ex(lf->log, nnode->prematch, decoder_match))) {
+            if (!w_expression_match(nnode->prematch, lf->log, &pmatch, decoder_match)) {
                 continue;
             }
 
@@ -101,7 +97,8 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
                         llog2 = lf->log;
                     }
 
-                    if ((cmatch = OSRegex_Execute_ex(llog2, nnode->prematch, decoder_match))) {
+                    if (w_expression_match(nnode->prematch, llog2, &cmatch, decoder_match)) {
+
                         if (*cmatch != '\0') {
                             cmatch++;
                         }
@@ -147,7 +144,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
         while (child_node) {
             /* If we have an external decoder, execute it */
             if (nnode->plugindecoder) {
-                nnode->plugindecoder(lf, decoder_match);
+                nnode->plugindecoder(lf, rules_hash, decoder_match);
             } else if (nnode->regex) {
                 int i;
 
@@ -175,12 +172,13 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
                 }
 
                 /* If Regex does not match, return */
-                if (!(result = OSRegex_Execute_ex(llog, nnode->regex, decoder_match))) {
+                if (!w_expression_match(nnode->regex, llog, &result, decoder_match)) {
                     if (nnode->get_next) {
                         child_node = child_node->next;
                         nnode = child_node->osdecoder;
                         continue;
                     }
+
                     return;
                 }
 
@@ -227,6 +225,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
         print_out("       No decoder matched.");
     }
 #endif
+
 }
 
 /* Find index of a dynamic field. Returns NULL if not found. */
@@ -245,6 +244,7 @@ const char* FindField(const Eventinfo *lf, const char *key) {
 
 void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       dstuser: '%s'", field);
@@ -257,6 +257,7 @@ void *DstUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
 
 void *SrcUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       srcuser: '%s'", field);
@@ -269,6 +270,7 @@ void *SrcUser_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
 
 void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       srcip: '%s'", field);
@@ -278,14 +280,12 @@ void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *o
     lf->srcip = field;
 
 #ifdef LIBGEOIP_ENABLED
-
     if(!lf->srcgeoip) {
         lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
 #ifdef TESTRULE
         if (lf->srcgeoip && !alert_only)
             print_out("       srcgeoip: '%s'", lf->srcgeoip);
 #endif
-
     }
 #endif
     return (NULL);
@@ -293,6 +293,7 @@ void *SrcIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *o
 
 void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       dstip: '%s'", field);
@@ -305,7 +306,7 @@ void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *o
 
     if(!lf->dstgeoip) {
         lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
-        #ifdef TESTRULE
+#ifdef TESTRULE
             if (lf->dstgeoip && !alert_only)
                 print_out("       dstgeoip: '%s'", lf->dstgeoip);
         #endif
@@ -317,6 +318,7 @@ void *DstIP_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *o
 
 void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       srcport: '%s'", field);
@@ -329,6 +331,7 @@ void *SrcPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
 
 void *DstPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       dstport: '%s'", field);
@@ -341,6 +344,7 @@ void *DstPort_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char 
 
 void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       protocol: '%s'", field);
@@ -353,6 +357,7 @@ void *Protocol_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char
 
 void *Action_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       action: '%s'", field);
@@ -365,6 +370,7 @@ void *Action_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *
 
 void *ID_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       id: '%s'", field);
@@ -377,6 +383,7 @@ void *ID_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *orde
 
 void *Url_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       url: '%s'", field);
@@ -389,6 +396,7 @@ void *Url_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *ord
 
 void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       data: '%s'", field);
@@ -401,6 +409,7 @@ void *Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *or
 
 void *Extra_Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       extra_data: '%s'", field);
@@ -413,6 +422,7 @@ void *Extra_Data_FP(Eventinfo *lf, char *field, __attribute__((unused)) const ch
 
 void *Status_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       status: '%s'", field);
@@ -425,6 +435,7 @@ void *Status_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *
 
 void *SystemName_FP(Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       system_name: '%s'", field);
@@ -437,6 +448,7 @@ void *SystemName_FP(Eventinfo *lf, char *field, __attribute__((unused)) const ch
 
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order)
 {
+
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("       %s: '%s'", order, field);
@@ -445,11 +457,5 @@ void *DynamicField_FP(Eventinfo *lf, char *field, const char *order)
 
     os_strdup(order, lf->fields[lf->nfields].key);
     lf->fields[lf->nfields++].value = field;
-    return (NULL);
-}
-
-void *None_FP(__attribute__((unused)) Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
-{
-    free(field);
     return (NULL);
 }

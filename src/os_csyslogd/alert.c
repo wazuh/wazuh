@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -9,6 +9,7 @@
  */
 
 #include "csyslogd.h"
+#include "shared.h"
 #include "cJSON.h"
 #include "config/config.h"
 #include "os_net/os_net.h"
@@ -18,15 +19,21 @@
  * Returns 1 on success or 0 on error
  */
 
-int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
-{
+int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
     char *tstamp;
     char *hostname;
     char syslog_msg[OS_MAXSTR];
 
-    /* Invalid socket */
+
+    /* Invalid socket, reconnect */
     if (syslog_config->socket < 0) {
-        return (0);
+        resolve_hostname(&syslog_config->server, 5);
+
+        syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0);
+        if (syslog_config->socket < 0) {
+            return (0);
+        }
+        mdebug2(SUCCESSFULLY_RECONNECTED_SOCKET, syslog_config->server);
     }
 
     /* Clear the memory before insert */
@@ -303,14 +310,19 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2 );
     }
 
-    OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
+    if (OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg) != 0) {
+        OS_CloseSocket(syslog_config->socket);
+        syslog_config->socket = -1;
+        merror(ERROR_SENDING_MSG, syslog_config->server);
+    }
+
     return (1);
 }
 
 /* Send alerts via syslog from JSON alert
  * Returns 1 on success or 0 on error
  */
-int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config) {
+int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config) {
     cJSON * rule;
     cJSON * timestamp;
     cJSON * groups;
@@ -318,7 +330,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     char * string;
     int i;
     char msg[OS_MAXSTR];
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     time_t now;
     char * end;
     char strtime[64];
@@ -326,7 +338,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     mdebug2("OS_Alert_SendSyslog_JSON()");
 
     if (rule = cJSON_GetObjectItem(json_data, "rule"), !rule) {
-        merror("Alert with no rule field.");
+        mdebug2("Alert with no rule field.");
         return 0;
     }
 
@@ -419,8 +431,23 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
              string
             );
 
+    /* Invalid socket, reconnect */
+    if (syslog_config->socket < 0) {
+        resolve_hostname(&syslog_config->server, 5);
+
+        syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0);
+        if (syslog_config->socket < 0) {
+            return (0);
+        }
+        mdebug2(SUCCESSFULLY_RECONNECTED_SOCKET, syslog_config->server);
+    }
+
     mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", msg);
-    OS_SendUDPbySize(syslog_config->socket, strlen(msg), msg);
+    if (OS_SendUDPbySize(syslog_config->socket, strlen(msg), msg) != 0) {
+        OS_CloseSocket(syslog_config->socket);
+        syslog_config->socket = -1;
+        merror(ERROR_SENDING_MSG, syslog_config->server);
+    }
     free(string);
 
     return 1;

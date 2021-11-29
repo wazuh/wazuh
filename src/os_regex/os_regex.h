@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -83,17 +83,30 @@ typedef struct _OSMatch {
  */
 int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
 
-/* Compare an already compiled regular expression with
- * a not NULL string.
- * Returns end of str on success or NULL on error.
- * The error code is set on reg->error.
+/**
+ * @brief Compares an already compiled OSRegex regular expression with a string
+ * 
+ * @warning Do not mix between `OSRegex_Execute` and `OSRegex_Execute_ex` calls for the same pointer `reg`
+ * @param str string to test
+ * @param reg compiled pattern
+ * @return Returns the end of the string on success or NULL otherwise
  */
 const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnull(2)));
 
-/* Extension of OSRegex_Execute that allows to choose
- * external sub_strings and prts_str.
- * Returns end of str on success or NULL on error.
- * The error code is set on reg->error.
+/**
+ * @brief Compares an already compiled OSRegex regular expression with a string
+ * 
+ * Extension of OSRegex_Execute that allows to choose between external sub_strings and prts_str.
+ * The regex_match structure handles match patterns and serves to parallelize the regex
+ * 
+ * @warning If any call to `OSRegex_Execute_ex` has a null `regex_match` argument then 
+ * all calls to with the same pointer `reg` must have a null regex_match argument (This limits the parallelism)
+ * @warning Do not mix between `OSRegex_Execute_ex` and `OSRegex_Execute` calls for the same pointer `reg`
+ * 
+ * @param str string to test
+ * @param reg compiled pattern
+ * @param regex_match Structure to manage pattern matches
+ * @return Returns the end of the string on success or NULL otherwise
  */
  const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match) __attribute__((nonnull(2)));
 
@@ -149,6 +162,12 @@ int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnul
 
 /* Checks if a specific string is numeric (like "129544") */
 int OS_StrIsNum(const char *str);
+
+/*
+ * @brief Free memory of regex_matching struct
+ * @param reg struct to remove
+ */
+void OSRegex_free_regex_matching (regex_matching *reg);
 
 /* Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.

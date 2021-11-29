@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -27,7 +27,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    struct tm p;
+    struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
     /* The message is formated in the following way:
@@ -82,6 +82,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
+     *   or  2021-04-21 10:16:09.404756-0700 (for macos ULS --syslog output)
      */
     if (
         (
@@ -132,6 +133,19 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             (pieces[14] == ':') &&
             (pieces[17] == ':') &&
             (pieces[20] == ' ') && (lf->log += 21)
+        )
+     ||
+        (
+            (loglen > 33) &&
+            (isdigit(pieces[0])) &&
+            (pieces[4] == '-') &&
+            (pieces[7] == '-') &&
+            (pieces[10] == ' ') &&
+            (pieces[13] == ':') &&
+            (pieces[16] == ':') &&
+            (pieces[19] == '.') &&
+            (pieces[26] == '-') &&
+            (pieces[31] == ' ') && (lf->log += 32)
         )
 
     ) {
@@ -520,18 +534,32 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     if (lf->location[0] == '[') {
         /* Messages from an agent */
         char *orig = lf->location;
+        bool extra_info = false;
 
         lf->agent_id = lf->location + 1;
         lf->location = strchr(lf->agent_id, ']');
 
         if (!lf->location) {
+            lf->location = orig;
+            lf->agent_id = NULL;
+            lf->hostname = NULL;
             merror(FORMAT_ERROR);
             return (-1);
         }
 
+        if (strlen(lf->location) > 1) {
+            extra_info = true;
+        }
+
         *lf->location = '\0';
         os_strdup(lf->agent_id, lf->agent_id);
-        os_strdup(lf->location + 2, lf->location);
+
+        if (extra_info) {
+            os_strdup(lf->location + 2, lf->location);
+        } else {
+            os_strdup("", lf->location);
+        }
+
 
         if (lf->location[0] == '(') {
             char * end;
@@ -554,7 +582,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     }
 
     /* Set up the event data */
-    localtime(&c_time);
     gettime(&local_c_timespec);
     time(&lf->generate_time);
     lf->time = local_c_timespec;
@@ -579,5 +606,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         print_out("       log: '%s'", lf->log);
     }
 #endif
+    
     return (0);
 }

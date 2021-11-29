@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,6 +12,8 @@
 #include <pthread.h>
 #include "remoted.h"
 #include "os_net/os_net.h"
+
+extern netbuffer_t netbuffer_send;
 
 /* pthread key update mutex */
 static pthread_rwlock_t keyupdate_rwlock;
@@ -70,9 +72,9 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
     int key_id;
     ssize_t msg_size;
-    char crypt_msg[OS_MAXSTR + 1];
+    char crypt_msg[OS_MAXSTR + 1] = {0};
     int retval = 0;
-    int error;
+    int error = 0;
 
     key_lock_read();
     key_id = OS_IsAllowedID(&keys, agent_id);
@@ -83,36 +85,52 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    w_mutex_lock(&keys.keyentries[key_id]->mutex);
+
     /* If we don't have the agent id, ignore it */
-    if (keys.keyentries[key_id]->rcvd < (time(0) - DISCON_TIME)) {
+    if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
-        mwarn(SEND_DISCON, keys.keyentries[key_id]->id);
+        mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }
 
+    w_mutex_unlock(&keys.keyentries[key_id]->mutex);
+
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
+    w_mutex_lock(&keys.keyentries[key_id]->mutex);
+
     if (msg_size <= 0) {
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         merror(SEC_ERROR);
         return (-1);
     }
 
+    crypt_msg[msg_size] = '\0';
+
     /* Send initial message */
-    if (logr.proto[logr.position] == IPPROTO_UDP) {
-        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
+    if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
+        /* UDP mode, send the message */
+        retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
         error = errno;
     } else if (keys.keyentries[key_id]->sock >= 0) {
-        w_mutex_lock(&keys.keyentries[key_id]->mutex);
-        retval = OS_SendSecureTCP(keys.keyentries[key_id]->sock, msg_size, crypt_msg);
-        error = errno;
+        /* TCP mode, enqueue the message in the send buffer */
+        if (retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size), !retval) {
+            rem_inc_msg_queued();
+        }
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
+        key_unlock();
+        return retval;
     } else {
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
         return -1;
     }
 
+    /* Check UDP send result */
     if (retval < 0) {
         switch (error) {
         case 0:
@@ -133,9 +151,10 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
             merror(SEND_ERROR " [%d]", agent_id, strerror(error), keys.keyentries[key_id]->sock);
         }
     } else {
-        rem_inc_msg_sent();
+        rem_add_send(retval);
     }
 
+    w_mutex_unlock(&keys.keyentries[key_id]->mutex);
     key_unlock();
     return retval;
 }

@@ -1,0 +1,164 @@
+<!--
+  -  WazuhAPI rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="wazuhapi">
+
+  <rule id="30000" level="0">
+    <decoded_as>wazuhapi</decoded_as>
+    <description></description>
+  </rule>
+
+<!-- WazuhAPI 2019-02-27 15:23:17 user: [::ffff:11.0.0.19] GET /version? - 200 - error: '0'. -->
+  <rule id="30001" level="3">
+    <if_sid>30000</if_sid>
+    <regex>^WazuhAPI \d+-\d+-\d+ \d+:\d+:\d+ \S+: [(\S+)] \w+ \S+ - \d+</regex>
+    <description>Wazuh API request received.</description>
+  </rule>
+  
+  <!-- Childs -->
+
+    <rule id="30002" level="3">
+      <if_sid>30001</if_sid>
+      <match>GET</match>
+      <description>Wazuh API GET request received.</description>
+    </rule>
+
+      <rule id="30003" level="8">
+        <if_sid>30002</if_sid>
+        <description>Wazuh API request $(method) $(request) with error code $(errorcode)</description>
+      </rule>
+
+      <rule id="30004" level="3">
+        <if_sid>30003</if_sid>
+        <field name="errorcode">0</field>
+        <description>Wazuh API request $(method) $(request)</description>
+      </rule>
+
+    <rule id="30005" level="7">
+      <if_sid>30001</if_sid>
+      <match>POST</match>
+      <description>Wazuh API request POST received.</description>
+    </rule>
+
+      <rule id="30006" level="7">
+        <if_sid>30005</if_sid>
+        <description>Wazuh API request $(method) $(request) with error code $(errorcode)</description>
+      </rule>
+
+      <rule id="30007" level="7">
+        <if_sid>30005</if_sid>
+        <field name="errorcode">0</field>
+        <description>Wazuh API request $(method) $(request)</description>
+      </rule>
+
+    <rule id="30008" level="10">
+      <if_sid>30001</if_sid>
+      <match>DELETE</match>
+      <description>Wazuh API request DELETE received.</description>
+    </rule>
+
+      <rule id="30009" level="3">
+        <if_sid>30008</if_sid>
+        <description>Wazuh API request $(method) $(request) got the error $(errorcode)</description>
+      </rule>
+
+      <rule id="30010" level="3">
+        <if_sid>30008</if_sid>
+        <field name="errorcode">0</field>
+        <description>Wazuh API request $(method) $(request)</description>
+      </rule>
+
+    <rule id="30011" level="7">
+      <if_sid>30001</if_sid>
+      <match>PUT</match>
+      <description>Wazuh API request PUT received.</description>
+    </rule>
+
+    <rule id="30012" level="3">
+        <if_sid>30011</if_sid>
+        <description>Wazuh API request $(method) $(request) got the error $(errorcode)</description>
+      </rule>
+
+    <rule id="30013" level="3">
+      <if_sid>30011</if_sid>
+      <field name="errorcode">0</field>
+      <description>Wazuh API request $(method) $(request)</description>
+    </rule>
+
+
+<!-- WazuhAPI 2019-03-19 13:46:48 foo: Agent does not exist: 500 --> <!-- exceptions -->
+  <!-- This is a generic exception log, the rule should work for every exception -->
+  <rule id="30014" level="12">
+    <if_sid>30000</if_sid>
+    <regex>^WazuhAPI \d+-\d+-\d+ \d+:\d+:\d+ \S+: \.+: \d+</regex>
+    <description>An exception was given, the message is: $(exception_message)</description>
+  </rule>
+
+<!-- app.js logs -->
+  <!-- WazuhAPI 2019-03-18 16:08:13 user: [::1] User: "user" - Authentication failed. -->
+    <rule id="30015" level="9">
+      <if_sid>30000</if_sid>
+      <match>Authentication failed</match>
+      <description>Authentication with api from user $(apiuser) failed.</description>
+    </rule>
+
+  <!-- WazuhAPI 2019-03-18 16:08:13 : [::1] Authentication error: 15 - Error message -->
+    <rule id="30016" level="9">
+      <if_sid>30000</if_sid>
+      <match>Authentication error</match>
+      <description>Authentication with api failed with the error $(auth_error) and the message: $(error_message).</description>
+    </rule>
+  
+  <!-- WazuhAPI 2019-03-18 16:08:13 user: Internal Error -->
+    <rule id="30017" level="12">
+      <if_sid>30000</if_sid>
+      <match>Internal Error</match>
+      <description>Internal error detected in the API.</description>
+    </rule>
+
+    <!-- WazuhAPI 2019-03-18 16:08:13 user: Internal Error: uncaughtException -->
+      <rule id="30018" level="12">
+        <if_sid>30017</if_sid>
+        <match>Internal Error: uncaughtException</match>
+        <description>Internal error detected in the API, an uncaught exception was thrown.</description>
+      </rule>
+
+  <!-- WazuhAPI 2019-03-18 16:08:13 user: Exiting... -->
+    <rule id="30019" level="10">
+      <if_sid>30000</if_sid>
+      <match>Exiting...</match>
+      <description>The API has just exited.</description>
+    </rule>
+
+    <!-- Childs -->
+
+      <rule id="30020" level="10">
+        <if_sid>30019</if_sid>
+        <match>Exiting... (SIGTERM)</match>
+        <description>The API has just exited. (SIGTERM)</description>
+      </rule>
+
+      <rule id="30021" level="10">
+        <if_sid>30019</if_sid>
+        <match>Exiting... (SIGINT)</match>
+        <description>The API has just exited. (SIGINT)</description>
+      </rule>
+  <!-- WazuhAPI 2019-02-27 15:22:22 : Listening on: http://:::55000 -->
+    <rule id="30022" level="3">
+      <if_sid>30000</if_sid>
+      <match>Listening on</match>
+      <description>Api is hearing at $(apiurl)</description>
+    </rule> 
+
+  <!-- WazuhAPI 2019-03-18 16:08:13 Error: Address in use (port "550"): Close the program using that port or change the port. -->
+    <rule id="30023" level="10">
+      <if_sid>30000</if_sid>
+      <match>Address in use</match>
+      <description>Another instance is using the port $(port)</description>
+    </rule>
+
+</group>

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -31,9 +31,7 @@ static int read_dev_file(const char *file_name)
 
     /* Process directories recursively */
     if (S_ISDIR(statbuf.st_mode)) {
-#ifdef DEBUG
-        mtinfo(ARGV0, "Reading dir: %s\n", file_name);
-#endif
+        mtdebug2(ARGV0, "Reading dir: %s\n", file_name);
         return (read_dev_dir(file_name));
     }
 
@@ -54,7 +52,7 @@ static int read_dev_dir(const char *dir_name)
 {
     int i;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     char f_name[PATH_MAX + 2];
     char f_dir[PATH_MAX + 2];
 

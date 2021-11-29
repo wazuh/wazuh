@@ -69,3 +69,8 @@ Depending on the affected components by this PR, the following checks should be 
 - [ ] The data flow works as expected (agent-manager-api-app)
 - [ ] Added unit tests (for new features)
 - [ ] Stress test for affected components
+
+<!-- Ruleset required checks, rules/decoder -->
+- Decoder/Rule tests
+  - [ ] Added unit testing files ".ini"
+  - [ ] runtests.py executed without errors

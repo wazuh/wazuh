@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -15,19 +15,24 @@
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 #include "execd.h"
+#include "active-response/active_responses.h"
+
+#ifdef WAZUH_UNIT_TESTING
+    #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
 
 #ifdef ARGV0
 #undef ARGV0
 #endif
 
-#define ARGV0 "ossec-execd"
+#define ARGV0 "wazuh-execd"
 extern w_queue_t * winexec_queue;
 
 /* Timeout list */
 OSList *timeout_list;
 OSListNode *timeout_node;
 
-void *win_exec_main(void * args);
+DWORD WINAPI win_exec_main(void * args);
 
 /* Shut down win-execd properly */
 static void WinExecd_Shutdown()
@@ -42,7 +47,16 @@ static void WinExecd_Shutdown()
         list_entry = (timeout_data *)timeout_node->data;
 
         mdebug2("Delete pending AR: %s", list_entry->command[0]);
-        ExecCmd_Win32(list_entry->command[0]);
+
+        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+        if (wfd) {
+            /* Send alert to AR script */
+            fprintf(wfd->file_in, "%s\n", list_entry->parameters);
+            fflush(wfd->file_in);
+            wpclose(wfd);
+        } else {
+            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+        }
 
         /* Delete current node - already sets the pointer to next */
         OSList_DeleteCurrentlyNode(timeout_list);
@@ -56,7 +70,7 @@ static void WinExecd_Shutdown()
 int WinExecd_Start()
 {
     int c;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */
@@ -70,8 +84,6 @@ int WinExecd_Start()
         return (0);
     }
 
-    CheckExecConfig();
-
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
@@ -84,16 +96,32 @@ int WinExecd_Start()
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
 
-    w_create_thread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
-            winexec_queue, 0, NULL);
+    w_create_thread(NULL, 0, win_exec_main,
+                    winexec_queue, 0, NULL);
 
     return (1);
 }
 
+/* Free the timeout list
+ */
+void FreeTimeoutList() {
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+    }
+    os_free(timeout_list);
+}
+
 // Create a thread to run windows AR simultaneous
-void *win_exec_main(__attribute__((unused)) void * args) {
+DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {
-        WinExecdRun(queue_pop_ex(winexec_queue));
+        char* exec_msg = queue_pop_ex(winexec_queue);
+        if (exec_msg) {
+            WinExecdRun(exec_msg);
+            os_free(exec_msg);
+        }
     }
 }
 
@@ -109,9 +137,23 @@ void WinTimeoutRun()
         list_entry = (timeout_data *)timeout_node->data;
 
         /* Timed out */
-        if ((curr_time - list_entry->time_of_addition) >
-                list_entry->time_to_block) {
-            ExecCmd_Win32(list_entry->command[0]);
+        if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
+
+            mdebug1("Executing command '%s %s' after a timeout of '%ds'",
+                list_entry->command[0],
+                list_entry->parameters ? list_entry->parameters : "",
+                list_entry->time_to_block
+            );
+
+            wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+            if (wfd) {
+                /* Send alert to AR script */
+                fprintf(wfd->file_in, "%s\n", list_entry->parameters);
+                fflush(wfd->file_in);
+                wpclose(wfd);
+            } else {
+                merror(EXEC_CMD_FAIL, strerror(errno), errno);
+            }
 
             /* Delete currently node - already sets the pointer to next */
             OSList_DeleteCurrentlyNode(timeout_list);
@@ -119,9 +161,7 @@ void WinTimeoutRun()
 
             /* Clear the memory */
             FreeTimeoutEntry(list_entry);
-        }
-
-        else {
+        } else {
             timeout_node = OSList_GetNextNode(timeout_list);
         }
     }
@@ -131,180 +171,177 @@ void WinExecdRun(char *exec_msg)
 {
     time_t curr_time;
 
-    int i, j;
     int timeout_value;
     int added_before = 0;
 
-    char **timeout_args;
-
-    char *tmp_msg = NULL;
-    char *name;
-    char *command;
-    char *cmd_user;
-    char *cmd_ip;
-    char buffer[OS_MAXSTR + 1];
+    cJSON *json_root = NULL;
+    char *name = NULL;
+    char *cmd[2] = { NULL, NULL };
+    char *cmd_parameters = NULL;
 
     timeout_data *timeout_entry;
 
     /* Current time */
     curr_time = time(0);
 
-    /* Get application name */
-    name = exec_msg;
-
-    /* Zero the name */
-    tmp_msg = strchr(exec_msg, ' ');
-    if (!tmp_msg) {
-        if (name[0] != '!') {
-            mwarn(EXECD_INV_MSG, exec_msg);
-
-            return;
-        } else {
-            tmp_msg = exec_msg + strlen(exec_msg);
-        }
-    } else {
-        *tmp_msg = '\0';
-        tmp_msg++;
-    }
-
-    /* Get user */
-    cmd_user = tmp_msg;
-    tmp_msg = strchr(tmp_msg, ' ');
-    if (!tmp_msg) {
-        if (name[0] != '!') {
-            mwarn(EXECD_INV_MSG, cmd_user);
-            return;
-        } else {
-            tmp_msg = cmd_user + strlen(cmd_user);
-        }
-    } else {
-        *tmp_msg = '\0';
-        tmp_msg++;
-    }
-
-    /* Get IP */
-    cmd_ip = tmp_msg;
-    tmp_msg = strchr(tmp_msg, ' ');
-    if (!tmp_msg) {
-        if (name[0] != '!') {
-            mwarn(EXECD_INV_MSG, cmd_ip);
-            return;
-        } else {
-            tmp_msg = cmd_ip + strlen(cmd_ip);
-        }
-    } else {
-        *tmp_msg = '\0';
-        tmp_msg++;
-    }
-
-    /* Get the command to execute (valid name) */
-    command = GetCommandbyName(name, &timeout_value);
-    if (!command) {
-        ReadExecConfig();
-        command = GetCommandbyName(name, &timeout_value);
-        if (!command) {
-            merror(EXEC_INV_NAME, name);
-            return;
-        }
-    }
-
-    /* Command not present */
-    if (command[0] == '\0') {
+    /* Parse message */
+    if (json_root = cJSON_Parse(exec_msg), !json_root) {
+        merror(EXEC_INV_JSON, exec_msg);
         return;
     }
 
-    /* Allocate memory for the timeout argument */
-    os_calloc(MAX_ARGS + 2, sizeof(char *), timeout_args);
-
-    /* Add initial variables to the timeout cmd */
-    snprintf(buffer, OS_MAXSTR, "\"%s\" %s \"%s\" \"%s\" \"%s\"",
-             command, DELETE_ENTRY, cmd_user, cmd_ip, tmp_msg);
-    os_strdup(buffer, timeout_args[0]);
-    timeout_args[1] = NULL;
-
-    /* Get size for the strncmp */
-    i = 0, j = 0;
-    while (buffer[i] != '\0') {
-        if (buffer[i] == ' ') {
-            j++;
-        }
-
-        i++;
-        if (j == 4) {
-            break;
-        }
+    /* Get application name */
+    cJSON *json_command = cJSON_GetObjectItem(json_root, "command");
+    if (json_command && (json_command->type == cJSON_String)) {
+        name = json_command->valuestring;
+    } else {
+        merror(EXEC_INV_CMD, exec_msg);
+        cJSON_Delete(json_root);
+        return;
     }
 
-    /* Check if this command was already executed */
-    timeout_node = OSList_GetFirstNode(timeout_list);
-    added_before = 0;
-
-    while (timeout_node) {
-        timeout_data *list_entry;
-
-        list_entry = (timeout_data *)timeout_node->data;
-        if (strncmp(list_entry->command[0], timeout_args[0], i) == 0) {
-            /* Means we executed this command before
-             * and we don't need to add it again
-             */
-            added_before = 1;
-
-            /* Update the timeout */
-            list_entry->time_of_addition = curr_time;
-            break;
+    /* Get command to execute */
+    cmd[0] = GetCommandbyName(name, &timeout_value);
+    if (!cmd[0]) {
+        ReadExecConfig();
+        cmd[0] = GetCommandbyName(name, &timeout_value);
+        if (!cmd[0]) {
+            merror(EXEC_INV_NAME, name);
+            cJSON_Delete(json_root);
+            return;
         }
-
-        /* Continue with the next entry in timeout list */
-        timeout_node = OSList_GetNextNode(timeout_list);
+    }
+    if (cmd[0][0] == '\0') {
+        cJSON_Delete(json_root);
+        return;
     }
 
-    /* If it wasn't added before, do it now */
-    if (!added_before) {
-        snprintf(buffer, OS_MAXSTR, name[0] == '!' ? "\"%s\" %s %s %s %s" : "\"%s\" %s \"%s\" \"%s\" \"%s\"", command,
-                 ADD_ENTRY, cmd_user, cmd_ip, tmp_msg);
-        /* Execute command */
-        ExecCmd_Win32(buffer);
+    /* Command parameters */
+    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
+    cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
+    cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
+    cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
+    cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
+    cmd_parameters = cJSON_PrintUnformatted(json_root);
+
+    /* Execute command */
+    mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
+
+    wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN | W_BIND_STDOUT);
+    if (wfd) {
+        char response[OS_SIZE_8192];
+        char rkey[OS_SIZE_4096];
+        cJSON *keys_json = NULL;
+
+        /* Send alert to AR script */
+        fprintf(wfd->file_in, "%s\n", cmd_parameters);
+        fflush(wfd->file_in);
+
+        /* Receive alert keys from AR script to check timeout list */
+        if (fgets(response, sizeof(response), wfd->file_out) == NULL) {
+            mdebug1("Active response won't be added to timeout list. "
+                    "Message not received with alert keys from script '%s'", cmd[0]);
+            wpclose(wfd);
+            os_free(cmd_parameters);
+            cJSON_Delete(json_root);
+            return;
+        }
+
+        /* Set rkey initially with the name of the AR */
+        memset(rkey, '\0', OS_SIZE_4096);
+        snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd[0]));
+
+        keys_json = get_json_from_input(response);
+        if (keys_json != NULL) {
+            const char *action = get_command_from_json(keys_json);
+            if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {
+                char *keys = get_keys_from_json(keys_json);
+                if (keys != NULL) {
+                    /* Append to rkey the alert keys that the AR script will use */
+                    strcat(rkey, keys);
+                    os_free(keys);
+                }
+            }
+            cJSON_Delete(keys_json);
+        }
+
+        added_before = 0;
 
         /* We don't need to add to the list if the timeout_value == 0 */
         if (timeout_value) {
-            /* Create the timeout entry */
-            os_calloc(1, sizeof(timeout_data), timeout_entry);
-            timeout_entry->command = timeout_args;
-            timeout_entry->time_of_addition = curr_time;
-            timeout_entry->time_to_block = timeout_value;
+            /* Check if this command was already executed */
+            timeout_node = OSList_GetFirstNode(timeout_list);
+            while (timeout_node) {
+                timeout_data *list_entry;
 
-            /* Add command to the timeout list */
-            if (!OSList_AddData(timeout_list, timeout_entry)) {
-                merror(LIST_ADD_ERROR);
-                FreeTimeoutEntry(timeout_entry);
+                list_entry = (timeout_data *)timeout_node->data;
+                if (strcmp(list_entry->rkey, rkey) == 0) {
+                    /* Means we executed this command before and we don't need to add it again */
+                    added_before = 1;
+
+                    /* Update the timeout */
+                    mdebug1("Command already received, updating time of addition to now.");
+                    list_entry->time_of_addition = curr_time;
+                    list_entry->time_to_block = timeout_value;
+                    break;
+                }
+
+                /* Continue with the next entry in timeout list */
+                timeout_node = OSList_GetNextNode(timeout_list);
+            }
+
+            /* If it wasn't added before, do it now */
+            if (!added_before) {
+                /* Timeout parameters */
+                cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+
+                /* Create the timeout entry */
+                os_calloc(1, sizeof(timeout_data), timeout_entry);
+                os_calloc(2, sizeof(char *), timeout_entry->command);
+                os_strdup(cmd[0], timeout_entry->command[0]);
+                timeout_entry->command[1] = NULL;
+                timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
+                os_strdup(rkey, timeout_entry->rkey);
+                timeout_entry->time_of_addition = curr_time;
+                timeout_entry->time_to_block = timeout_value;
+
+                /* Add command to the timeout list */
+                mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
+                    timeout_entry->command[0],
+                    timeout_entry->parameters,
+                    timeout_entry->time_to_block
+                );
+
+                if (!OSList_AddData(timeout_list, timeout_entry)) {
+                    merror(LIST_ADD_ERROR);
+                    FreeTimeoutEntry(timeout_entry);
+                }
             }
         }
 
-        /* If no timeout, we still need to free it in here */
-        else {
-            char **ss_ta = timeout_args;
-            while (*timeout_args) {
-                os_free(*timeout_args);
-                *timeout_args = NULL;
-                timeout_args++;
-            }
-            os_free(ss_ta);
-        }
-    }
-
-    /* We didn't add it to the timeout list */
-    else {
-        char **ss_ta = timeout_args;
-
-        /* Clear the timeout arguments */
-        while (*timeout_args) {
-            os_free(*timeout_args);
-            *timeout_args = NULL;
-            timeout_args++;
+        /* If it wasn't added before, continue execution */
+        if (!added_before) {
+            /* Continue command */
+            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(CONTINUE_ENTRY));
+        } else {
+            /* Abort command */
+            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ABORT_ENTRY));
         }
 
-        os_free(ss_ta);
+        os_free(cmd_parameters);
+        cmd_parameters = cJSON_PrintUnformatted(json_root);
+
+        /* Send continue/abort message to AR script */
+        fprintf(wfd->file_in, "%s\n", cmd_parameters);
+        fflush(wfd->file_in);
+
+        wpclose(wfd);
+    } else {
+        merror(EXEC_CMD_FAIL, strerror(errno), errno);
     }
+
+    os_free(cmd_parameters);
+    cJSON_Delete(json_root);
 }
 
 #endif /* WIN32 */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -18,6 +18,7 @@
 #include "md5_op.h"
 #include <openssl/md5.h>
 #include "headers/defs.h"
+#include "headers/file_op.h"
 
 int OS_MD5_File(const char *fname, os_md5 output, int mode)
 {
@@ -27,10 +28,10 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
     unsigned char digest[16];
     size_t n;
 
-    memset(output, 0, 33);
+    memset(output, 0, sizeof(os_md5));
     buf[1024] = '\0';
 
-    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }

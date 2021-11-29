@@ -1,0 +1,552 @@
+---
+test_name: POST /agents
+
+marks:
+  - base_tests
+
+stages:
+
+    # POST /agents
+  - name: Try to create a new agent without body
+    request: &agent_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json: &error_spec
+        detail: !anystr
+        title: !anystr
+
+    # POST /agents
+  - name: Create a new agent
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+    response:
+      status_code: 200
+      json: &agent_create_response
+        error: !anyint
+        data:
+          id: !anystr
+          key: !anystr
+    delay_after: !float "{global_db_delay}"
+
+    # POST /agents
+  - name: Try to create agent with a name already present
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+    response:
+      status_code: 400
+      json:
+        error: 1705
+
+    # POST /agents
+  - name: Try to create an agent with a name longer than 128 chars
+    request:
+      verify: False
+      <<: *agent_request
+      method: POST
+      json:
+        name: "IhavetoolongofanamebecauseireallywantthisframeworktostopmeireallyhopeitdoesstopmeotherwiseiwillcauserealpainintheAPIandidontwantto"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
+    response:
+      status_code: 400
+      json:
+        error: 1738
+
+    # POST /agents
+  - name: Try to create agent with missing field name
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        ip: "any"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # POST /agents
+  - name: Create agent without assigning an specific IP
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewAgentPost2"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+
+    # POST /agents
+  - name: Create agent with an specific IP
+    request:
+      verify: False
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "100.100.100.100"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
+
+    # POST /agents
+  - name: Try to create an agent with a duplicated IP
+    request:
+      verify: False
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost4"
+        ip: "100.100.100.100"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents
+  - name: Try to create an agent with an invalid IP (letters)
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewAgentPost5"
+        ip: "A.B.C.D"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents
+  - name: Try to create an agent with an invalid IP (wrong numbers)
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewAgentPost5"
+        ip: "333.333.333.333"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents
+  - name: Create an agent with force time
+    request:
+      verify: False
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents (no IP)
+
+stages:
+  # POST /agents without IP. It must be any
+  - name: Create an agent without IP
+    request:
+      verify: False
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentWithoutIP"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+      save:
+        json:
+          agent_id_no_ip: data.id
+    delay_after: !float "{global_db_delay}"
+
+  - name: Check that this agent has the IP 'any'
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "{agent_id_no_ip:s}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: "{agent_id_no_ip:s}"
+              registerIP: 'any'
+              ip: 'any'
+
+---
+test_name: POST /groups
+
+stages:
+
+    # POST /groups
+  - name: Try to create a group without body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # POST /groups
+  - name: Create a group called group4
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        group_id: "group4"
+    response:
+      status_code: 200
+      json:
+        message: !anystr
+
+    # POST /groups
+  - name: Try to create a group that already exists
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        group_id: "group1"
+    response:
+      status_code: 400
+      json:
+        error: 1711
+
+    # POST /groups
+  - name: Try to create a group with an invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        group_id: ";wrong_name"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+---
+test_name: POST /agents/insert
+
+stages:
+
+    # POST /agents/insert
+  - name: Try to create a new agent without body
+    request: &agent_insert_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+    # POST /agents/insert
+  - name: Create a new agent specifying id, ip, key and name
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
+
+    # POST /agents/insert
+  - name: Try to create a new agent with an already present name
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "751"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      json:
+        error: 1705
+
+    # POST /agents/insert
+  - name: Try to create a new agent with an already present id
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert1"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      json:
+        error: 1708
+
+    # POST /agents/insert
+  - name: Try to create a new agent with an invalid key
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert1"
+        ip: "any"
+        id: "751"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # POST /agents/insert
+  - name: Try to create a new agent without specifying a name
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # POST /agents/insert
+  - name: Extra field
+    skip: True
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertExtra"
+        ip: "any"
+        id: "753"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        extra: "Nothing"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Create a new agent using a manual IP
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertMIP"
+        id: "755"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+    delay_after: !float "{global_db_delay}"
+
+    # POST /agents/insert
+  - name: Try to create an agent using an already registered IP
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertDIP"
+        id: "756"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents/insert
+  - name: Try to create an agent with an invalid IP (letters)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "A.B.C.D"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents/insert
+  - name: Try to create an agent with an invalid IP (wrong numbers)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "333.333.333.333"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents/insert
+  - name: Create an agent using force
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1s"
+          after_registration_time: "1s"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Create an agent using force (requirements are not met)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+    response:
+      status_code: 400
+      json:
+        error: 1705
+
+    # POST /agents/insert
+  - name: Create an agent using force (invalid parameters)
+    request:
+      verify: False
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force:
+          enabled: True
+          disconnected_time:
+            enabled: True
+            value: "1d"
+            invalid: True
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+---
+test_name: POST /agents/insert/quick
+
+stages:
+
+    # POST /agents/insert/quick?agent_name=test_agent
+  - name: Create new agent specifying its name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: test_agent
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          id: !anystr
+          key: !anystr
+    delay_after: !float "{global_db_delay}"
+
+    # POST /agents/insert/quick?agent_name=wrong%name
+  - name: Try to create agent with an invalid name (invalid_character)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: 'wrong*name'
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # POST /agents/insert/quick?agent_name=test_agent
+  - name: Try to create an already existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agent_name: test_agent
+    response:
+      status_code: 400
+      json:
+        error: 1705

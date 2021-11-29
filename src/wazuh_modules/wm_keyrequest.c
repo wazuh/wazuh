@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for remote key requests
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -14,6 +14,7 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 #include "shared.h"
+#include "config/authd-config.h"
 
 #define RELAUNCH_TIME 300
 
@@ -52,7 +53,9 @@ const wm_context WM_KEY_REQUEST_CONTEXT = {
     KEY_WM_NAME,
     (wm_routine)wm_key_request_main,
     (wm_routine)(void *)wm_key_request_destroy,
-    (cJSON * (*)(const void *))wm_key_request_dump
+    (cJSON * (*)(const void *))wm_key_request_dump,
+    NULL,
+    NULL
 };
 
 typedef enum _request_type{
@@ -86,8 +89,8 @@ void * wm_key_request_main(wm_krequest_t * data) {
     /* Init the queue input */
     request_queue = queue_init(data->queue_size);
 
-    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK_PATH, READ)) < 0) {
-        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK_PATH, strerror(errno));
+    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK, READ, 0)) < 0) {
+        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK, strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -378,13 +381,30 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             return -1;
         }
 
-        int sock;
-        if (sock = auth_connect(), sock < 0) {
-            mwarn("Could not connect to authd socket. Is authd running?");
-        } else {
-            auth_add_agent(sock, id, agent_name->valuestring, agent_address->valuestring, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
-            close(sock);
+        authd_force_options_t authd_force_options = {0};
+        if(data->force_insert) {
+            authd_force_options.enabled = true;
         }
+
+        if(w_is_worker()) {
+            char response[OS_SIZE_2048] = {'\0'};
+            char *new_id = NULL;
+            char *new_key = NULL;
+            if (0 == w_request_agent_add_clustered(response, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, &new_id, &new_key, &authd_force_options, agent_id->valuestring)) {
+                mdebug1("Agent Key Polling response forwarded to the master node for agent '%s'", agent_id->valuestring);
+                os_free(new_id);
+                os_free(new_key);
+            }
+        } else {
+            int sock;
+            if (sock = auth_connect(), sock < 0) {
+                mwarn("Could not connect to authd socket. Is authd running?");
+            } else {
+                w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, &authd_force_options, 1, agent_id->valuestring, 0);
+                close(sock);
+            }
+        }
+
         cJSON_Delete(agent_infoJSON);
     }
 
@@ -474,7 +494,7 @@ void * w_socket_launcher(void * args) {
 
     mdebug1("Running integration daemon: %s", exec_path);
 
-    if (argv = wm_strtok(exec_path), !argv) {
+    if (argv = w_strtok(exec_path), !argv) {
         merror("Could not split integration command: %s", exec_path);
         pthread_exit(NULL);
     }
@@ -485,17 +505,25 @@ void * w_socket_launcher(void * args) {
 
         // Run integration
 
-        if (wfd = wpopenv(argv[0], argv, W_BIND_STDERR | W_APPEND_POOL), !wfd) {
+        if (wfd = wpopenv(argv[0], argv, W_BIND_STDERR), !wfd) {
             mwarn("Couldn not execute '%s'. Trying again in %d seconds.", exec_path, RELAUNCH_TIME);
             sleep(RELAUNCH_TIME);
             continue;
         }
 
+#ifdef WIN32
+        wm_append_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_append_sid(wfd->pid);
+        }
+#endif
+
         time_started = time(NULL);
 
         // Pick stderr
 
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
 
             // Remove newline
 
@@ -506,10 +534,16 @@ void * w_socket_launcher(void * args) {
             // Dump into the log
             mdebug1("Integration STDERR: %s", buffer);
         }
-
+#ifdef WIN32
+        wm_remove_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_remove_sid(wfd->pid);
+        }
+#endif
         // At this point, the process exited
-
         wstatus = wpclose(wfd);
+
         wstatus = WEXITSTATUS(wstatus);
 
         if (wstatus == EXECVE_ERROR) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,10 +15,10 @@
 #include <winsvc.h>
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agent"
+#define ARGV0 "wazuh-agent"
 #endif
 
-static LPTSTR g_lpszServiceName        = "OssecSvc";
+static LPTSTR g_lpszServiceName        = "WazuhSvc";
 static LPTSTR g_lpszServiceDisplayName = "Wazuh";
 static LPTSTR g_lpszServiceDescription = "Wazuh Windows Agent";
 
@@ -27,6 +27,7 @@ static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
 
 void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
 void wm_kill_children();
+extern void stop_wmodules();
 
 /* Start OSSEC-HIDS service */
 int os_start_service()
@@ -80,6 +81,12 @@ int os_stop_service()
 
         CloseServiceHandle(schSCManager);
     }
+
+    /*
+    * Sleep for a short period of time to avoid possible race-conditions with
+    * newer instances of wazuh-agent.
+    */
+    Sleep(300); //milliseconds
 
     return (rc);
 }
@@ -242,21 +249,23 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
     if (ossecServiceStatusHandle) {
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
-                ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;
 
-                minfo("Received exit signal.");
-                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Exiting...");
-
+                minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
+                ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
+                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                minfo("Set pending exit signal.");
+
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
+                stop_wmodules();
 #endif
-                return;
-            default:
+                ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
+                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                minfo("Exit completed successfully.");
                 break;
         }
     }

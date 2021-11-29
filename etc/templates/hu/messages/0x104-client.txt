@@ -1,5 +1,0 @@
-
- - Először hozzá kell adnia ezt a klienst a szerverhez,
-   így azok tudnak kommunikálni egymással. Amikor ezzel
-   végzett, már futtathatja a 'manage_agents' eszközt,
-   a hitelesítő kulcs szerverről történő importálásához.

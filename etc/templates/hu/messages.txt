@@ -103,12 +103,11 @@ tostop="Az Wazuh leállítása"
 configat="A konfigurációs fájl megtekinthető vagy módosítható itt: "
 addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst
    hozzá kell adnia a szerverhez."
-runma="Futtassa a 'manage_agents' parancsot a kliensek hozzáadásához
-   vagy eltávolításához."
 presskey="A folytatáshoz nyomja meg az ENTER-t"
 
 # Update
 wanttoupdate="Az Wazuh már telepítve van. Szeretné frissíteni?"
+mustuninstall="A telepítés nem folytatható a régi verziók eltávolítása nélkül. Kilépés."
 unabletoupdate="A frissítés nem lehetséges. Egy teljesen új installáció szükséges."
 updatecompleted="A frissítés sikeresen befejeződött."
 updatefailed="A frissítés meghiúsult."

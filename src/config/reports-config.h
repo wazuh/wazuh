@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,7 @@
 #define REPORTSCONFIG_H
 
 #include "report_op.h"
+#include "global-config.h"
 
 /* Structure for the report */
 typedef struct _report_config {
@@ -60,6 +61,8 @@ typedef struct _monitor_config {
 
     char **agents;
     report_config **reports;
+
+    _Config global;
 } monitor_config;
 
 #endif /* REPORTSCONFIG_H */

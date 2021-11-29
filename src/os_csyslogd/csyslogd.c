@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -30,7 +30,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 {
     int s = 0;
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     int tries = 0;
     alert_source_t sources = get_alert_sources(syslog_config);
     file_queue *fileq = NULL;
@@ -42,12 +42,12 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
         /* Get current time before starting */
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         /* Initialize file queue to read the alerts */
         os_calloc(1, sizeof(file_queue), fileq);
 
-        for (tries = 0; tries < OS_CSYSLOGD_MAX_TRIES && Init_FileQueue(fileq, p, 0) < 0; tries++) {
+        for (tries = 0; tries < OS_CSYSLOGD_MAX_TRIES && Init_FileQueue(fileq, &tm_result, 0) < 0; tries++) {
             sleep(1);
         }
 
@@ -82,10 +82,13 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     /* Connect to syslog */
 
     for (s = 0; syslog_config[s]; s++) {
-        syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port, syslog_config[s]->server, 0);
+        mdebug2("Resolving server hostname: %s", syslog_config[s]->server);
+        resolve_hostname(&syslog_config[s]->server, 5);
+
+        syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port, get_ip_from_resolved_hostname(syslog_config[s]->server), 0);
 
         if (syslog_config[s]->socket < 0) {
-            merror(CONNS_ERROR, syslog_config[s]->server, strerror(errno));
+            merror(CONNS_ERROR, syslog_config[s]->server, syslog_config[s]->port, "udp", strerror(errno));
         } else {
             minfo("Forwarding alerts via syslog to: '%s:%d'.",
                    syslog_config[s]->server, syslog_config[s]->port);
@@ -95,12 +98,12 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     /* Infinite loop reading the alerts and inserting them */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         if (sources.alert_log) {
             /* Get message if available (timeout of 5 seconds) */
             mdebug2("Read_FileMon()");
-            al_data = Read_FileMon(fileq, p, 1);
+            al_data = Read_FileMon(fileq, &tm_result, 1);
         }
 
         if (sources.alert_json) {

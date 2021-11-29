@@ -1,6 +1,6 @@
 /*
  * Local Authd server
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 20, 2017.
  *
  * This program is free software; you can redistribute it
@@ -13,20 +13,27 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include "os_err.h"
+#include <config/authd-config.h>
 
-#define EINTERNAL   0
-#define EJSON       1
-#define ENOFUNCTION 2
-#define ENOARGUMENT 3
-#define ENONAME     4
-#define ENOIP       5
-#define EDUPIP      6
-#define EDUPNAME    7
-#define EKEY        8
-#define ENOID       9
-#define ENOAGENT    10
-#define EDUPID      11
-#define EAGLIM      12
+typedef enum auth_local_err {
+    EINTERNAL = 0,
+    EJSON,
+    ENOFUNCTION,
+    ENOARGUMENT,
+    ENONAME,
+    ENOIP,
+    EDUPIP,
+    EDUPNAME,
+    EKEY,
+    ENOID,
+    ENOAGENT,
+    EDUPID,
+    EAGLIM,
+    EINVGROUP,
+    ENOMASTER
+} auth_local_err;
+
 
 static const struct {
     int code;
@@ -38,26 +45,43 @@ static const struct {
     { 9004, "No such argument" },
     { 9005, "No such name" },
     { 9006, "No such IP" },
-    { 9007, "Duplicated IP" },
-    { 9008, "Duplicated name" },
+    { 9007, "Duplicate IP" },
+    { 9008, "Duplicate name" },
     { 9009, "Issue generating key" },
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
-    { 9012, "Duplicated ID" },
-    { 9013, "Maximum number of agents reached" }
+    { 9012, "Duplicate ID" },
+    { 9013, "Maximum number of agents reached" },
+    { 9014, "Invalid Group(s) Name(s)" },
+    { 9015, "Cannot execute this request on a worker node" }
 };
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
 // Add a new agent
-static cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force);
+static cJSON* local_add(const char *id,
+                        const char *name,
+                        const char *ip,
+                        const char *groups,
+                        const char *key,
+                        const char *key_hash,
+                        authd_force_options_t *force_options);
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
 
 // Get agent data
 static cJSON* local_get(const char *id);
+
+// Generates an agent info json response
+static cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key);
+
+// Generates an agent deleted response
+static cJSON* local_create_agent_delete_response(void);
+
+// Generates an error json response
+static cJSON* local_create_error_response(int code, const char *message);
 
 // Thread for internal server
 void* run_local_server(__attribute__((unused)) void *arg) {
@@ -91,9 +115,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             if (errno != EINTR) {
                 merror_exit("at run_local_server(): select(): %s", strerror(errno));
             }
-
             continue;
-
         case 0:
             continue;
         }
@@ -102,7 +124,6 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
                 merror("at run_local_server(): accept(): %s", strerror(errno));
             }
-
             continue;
         }
 
@@ -157,14 +178,20 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
 // Dispatch local request
 char* local_dispatch(const char *input) {
-    cJSON *request;
+    cJSON *request = NULL;
     cJSON *function;
     cJSON *arguments;
     cJSON *response = NULL;
     char *output = NULL;
     int ierror;
+    char *groups = NULL;
 
     if (input[0] == '{') {
+        if (config.worker_node) {
+            ierror = ENOMASTER;
+            goto fail;
+        }
+
         const char *jsonErrPtr;
         if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
             ierror = EJSON;
@@ -177,12 +204,15 @@ char* local_dispatch(const char *input) {
         }
 
         if (!strcmp(function->valuestring, "add")) {
-            cJSON *item;
-            char *id;
-            char *name;
-            char *ip;
+            cJSON *item = NULL;
+            cJSON *force = NULL;
+            cJSON *disconnected_time = NULL;
+            char *id = NULL;
+            char *name = NULL;
+            char *ip = NULL;
+            char *key_hash = NULL;
             char *key = NULL;
-            int force = 0;
+            authd_force_options_t force_options = {0};
 
             if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
                 ierror = ENOARGUMENT;
@@ -195,18 +225,71 @@ char* local_dispatch(const char *input) {
                 ierror = ENONAME;
                 goto fail;
             }
-
             name = item->valuestring;
 
             if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
                 ierror = ENOIP;
                 goto fail;
             }
-
             ip = item->valuestring;
+
+            if (item = cJSON_GetObjectItem(arguments, "groups"), item) {
+                groups = wstr_delete_repeated_groups(item->valuestring);
+                if (!groups) {
+                    ierror = EINVGROUP;
+                    goto fail;
+                }
+            }
+
+            key_hash = (item = cJSON_GetObjectItem(arguments, "key_hash"), item) ? item->valuestring : NULL;
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
-            force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-            response = local_add(id, name, ip, key, force);
+
+            if (force = cJSON_GetObjectItem(arguments, "force"), force) {
+                if (item = cJSON_GetObjectItem(force, "enabled"), !item) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+                force_options.enabled = (bool)item->valueint;
+
+                if (item = cJSON_GetObjectItem(force, "key_mismatch"), !item) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+                force_options.key_mismatch = (bool)item->valueint;
+
+                if (disconnected_time = cJSON_GetObjectItem(force, "disconnected_time"), !disconnected_time) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+
+                if (item = cJSON_GetObjectItem(disconnected_time, "enabled"), !item) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+                force_options.disconnected_time_enabled = (bool)item->valueint;
+
+                item = cJSON_GetObjectItem(disconnected_time, "value");
+                if(cJSON_IsNumber(item)) {
+                    force_options.disconnected_time = item->valueint;
+                }
+                else if (!cJSON_IsString(item) || get_time_interval(item->valuestring, &force_options.disconnected_time)) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+
+                item = cJSON_GetObjectItem(force, "after_registration_time");
+                if(cJSON_IsNumber(item)) {
+                    force_options.after_registration_time = item->valueint;
+                }
+                else if (!cJSON_IsString(item) || get_time_interval(item->valuestring, &force_options.after_registration_time)) {
+                    ierror = EJSON;
+                    goto fail;
+                }
+            }
+
+            response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
+
+            os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
             cJSON *item;
             int purge;
@@ -222,6 +305,7 @@ char* local_dispatch(const char *input) {
             }
 
             purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
+
             response = local_remove(item->valuestring, purge);
         } else if (!strcmp(function->valuestring, "get")) {
             cJSON *item;
@@ -251,9 +335,8 @@ char* local_dispatch(const char *input) {
         }
 
         cJSON_Delete(request);
-    }
-    // Read configuration commands
-    else {
+    } else {
+        // Read configuration commands
         authcom_dispatch(input,&output);
     }
 
@@ -261,82 +344,76 @@ char* local_dispatch(const char *input) {
 
 fail:
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
-    cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
+    response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
     cJSON_Delete(request);
+    os_free(groups);
     return output;
 }
 
-cJSON* local_add(const char *id, const char *name, const char *ip, const char *key, int force) {
+cJSON* local_add(const char *id,
+                 const char *name,
+                 const char *ip,
+                 const char *groups,
+                 const char *key,
+                 const char *key_hash,
+                 authd_force_options_t *force_options) {
     int index;
-    char *id_exist;
-    cJSON *response;
-    cJSON *data;
+    cJSON *response = NULL;
     int ierror;
-    double antiquity;
+    char* str_result = NULL;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
 
-    // Check for duplicated ID
+    /* Check if groups are valid to be aggregated */
+    if (groups) {
+        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)) {
+            ierror = EINVGROUP;
+            goto fail;
+        }
+    }
 
+    // Check for duplicate ID
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
-            id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
-            add_backup(keys.keyentries[index]);
-            OS_DeleteKey(&keys, id_exist, 0);
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate ID. %s", str_result);
         } else {
+            mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
             ierror = EDUPID;
             goto fail;
         }
     }
 
-    /* Check for duplicated IP */
-
+    /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
-                id_exist = keys.keyentries[index]->id;
-                minfo("Duplicated IP '%s' (%s). Saving backup.", ip, id_exist);
-                add_backup(keys.keyentries[index]);
-                OS_DeleteKey(&keys, id_exist, 0);
-            } else {
-                ierror = EDUPIP;
-                goto fail;
-            }
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate IP '%s'. %s", ip, str_result);
+        } else {
+            mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+            ierror = EDUPIP;
+            goto fail;
+        }
         }
     }
 
     /* Check whether the agent name is the same as the manager */
-
     if (!strcmp(name, shost)) {
         ierror = EDUPNAME;
         goto fail;
     }
 
-    /* Check for duplicated names */
-
+    /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
-            id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated name '%s' (%s). Saving backup.", name, id_exist);
-            add_backup(keys.keyentries[index]);
-            OS_DeleteKey(&keys, id_exist, 0);
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate name. %s", str_result);
         } else {
+            mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
             ierror = EDUPNAME;
             goto fail;
         }
-    }
-
-    /* Check for agents limit */
-
-    if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-        ierror = EAGLIM;
-        goto fail;
     }
 
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
@@ -344,45 +421,46 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
         goto fail;
     }
 
+
+    if (groups) {
+        char path[PATH_MAX];
+        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+            ierror = EINVGROUP;
+            goto fail;
+        }
+    }
+
     /* Add pending key to write */
-    add_insert(keys.keyentries[index],NULL);
+    add_insert(keys.keyentries[index],groups);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
-    cJSON_AddStringToObject(data, "id", keys.keyentries[index]->id);
-    cJSON_AddStringToObject(data, "name", name);
-    cJSON_AddStringToObject(data, "ip", ip);
-    cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->raw_key);
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
+    os_free(str_result);
     return response;
 
 fail:
     w_mutex_unlock(&mutex_keys);
-    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
-    cJSON_AddStringToObject(response, "message", ERRORS[ierror].message);
+    response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
+    os_free(str_result);
     return response;
 }
 
 // Remove an agent
 cJSON* local_remove(const char *id, int purge) {
     int index;
-    cJSON *response = cJSON_CreateObject();
+    cJSON *response = NULL;
 
     mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
     w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
-        merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-        cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
-        cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
+        mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+        response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     } else {
         minfo("Agent '%s' (%s) deleted (requested locally)", id, keys.keyentries[index]->name);
         /* Add pending key to write */
@@ -390,9 +468,7 @@ cJSON* local_remove(const char *id, int purge) {
         OS_DeleteKey(&keys, id, purge);
         write_pending = 1;
         w_cond_signal(&cond_pending);
-
-        cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+        response = local_create_agent_delete_response();
     }
 
     w_mutex_unlock(&mutex_keys);
@@ -402,25 +478,57 @@ cJSON* local_remove(const char *id, int purge) {
 // Get agent data
 cJSON* local_get(const char *id) {
     int index;
-    cJSON *data;
-    cJSON *response = cJSON_CreateObject();
+    cJSON *response = NULL;
 
     mdebug2("local_get(%s)", id);
     w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
-        merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
-        cJSON_AddNumberToObject(response, "error", ERRORS[ENOAGENT].code);
-        cJSON_AddStringToObject(response, "message", ERRORS[ENOAGENT].message);
-    } else {
-        cJSON_AddNumberToObject(response, "error", 0);
-        cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
-        cJSON_AddStringToObject(data, "id", id);
-        cJSON_AddStringToObject(data, "name", keys.keyentries[index]->name);
-        cJSON_AddStringToObject(data, "ip", keys.keyentries[index]->ip->ip);
-        cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
+        mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+        response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
+    }
+    else {
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key);
     }
 
     w_mutex_unlock(&mutex_keys);
+    return response;
+}
+
+// Generates an agent info json response
+cJSON* local_create_agent_response(const char *id, const char *name, const char *ip, const char *key) {
+    cJSON *response = NULL;
+    cJSON *data = NULL;
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddItemToObject(response, "data", data = cJSON_CreateObject());
+    cJSON_AddStringToObject(data, "id", id);
+    cJSON_AddStringToObject(data, "name", name);
+    cJSON_AddStringToObject(data, "ip", ip);
+    cJSON_AddStringToObject(data, "key", key);
+
+    return response;
+}
+
+// Generates an agent deleted response
+static cJSON* local_create_agent_delete_response(void) {
+    cJSON *response = NULL;
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+
+    return response;
+}
+
+// Generates an error json response
+static cJSON* local_create_error_response(int code, const char *message) {
+    cJSON *response = NULL;
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", code);
+    cJSON_AddStringToObject(response, "message", message);
+
     return response;
 }

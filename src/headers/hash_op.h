@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -33,6 +33,12 @@ typedef struct _OSHash {
     void (*free_data_function)(void *data);
     OSHashNode **table;
 } OSHash;
+
+typedef enum _OSHash_results_codes {
+    OSHASH_ERROR = 0,
+    OSHASH_DUPLICATE,
+    OSHASH_SUCCESS,
+} OSHash_results_codes;
 
 /* Prototypes */
 
@@ -88,5 +94,10 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 */
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
+
+/*
+ * Returns the index of the key.
+*/
+int OSHash_GetIndex(OSHash *self, const char *key);
 
 #endif /* OS_HASHOP */

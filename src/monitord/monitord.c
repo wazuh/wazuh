@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,8 +8,16 @@
  * Foundation
  */
 
+#include "cJSON.h"
+#include "debug_op.h"
+#include "hash_op.h"
+#include "os_err.h"
 #include "shared.h"
 #include "monitord.h"
+#include "config/config.h"
+#include "string_op.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "time.h"
 
 /* Global variables */
 monitor_config mond;
@@ -17,12 +25,16 @@ monitor_config mond;
 time_t last_rot_log;
 time_t last_rot_json;
 
-static void rotate_logs(rotation_list *list, char *path, char *new_path, int *day, int interval, int today, int json,
+bool worker_node;
+OSHash* agents_to_alert_hash;
+monitor_time_control mond_time_control;
+
+static void rotate_logs(rotation_list *list, char *path, char *new_path, int *day, int interval, int json,
                         time_t *last_rot, time_t now) {
     int counter;
     struct tm t;
     time_t last_day;
-    *day = interval ? *day : today;
+    *day = interval ? *day : mond_time_control.today;
 
     if (list && list->last) {
         if (interval) {
@@ -43,10 +55,10 @@ static void rotate_logs(rotation_list *list, char *path, char *new_path, int *da
     }
 
     if (list && list->last && *day == list->last->first_value) {
-        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json,
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != mond_time_control.today ? 1 : 0, json,
                                 counter, mond.log_list_plain, mond.log_list_json);
     } else {
-        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != today ? 1 : 0, json,
+        new_path = w_rotate_log(path, mond.compress_rotation, mond.maxage, *day != mond_time_control.today ? 1 : 0, json,
                                 -1, mond.log_list_plain, mond.log_list_json);
     }
     if (new_path) {
@@ -54,7 +66,7 @@ static void rotate_logs(rotation_list *list, char *path, char *new_path, int *da
     }
     os_free(new_path);
     *last_rot = now;
-    *day = today;
+    *day = mond_time_control.today;
 }
 
 /*
@@ -76,74 +88,55 @@ static void check_size_interval(time_t now, time_t rot_time, int size, int *inte
 
 void Monitord()
 {
-    time_t tm, n_time, n_time_json;
-    struct tm p;
-    int counter = 0;
+    time_t tm = 0, n_time = 0, n_time_json = 0;
     int interval_log = 0, interval_json = 0;
     int interval_set_log = 0, interval_set_json = 0;
 
-    char path_ossec[PATH_MAX];
-    char path_ossec_json[PATH_MAX];
+    char path[PATH_MAX];
+    char path_json[PATH_MAX];
 
     struct stat buf, buf_json;
     off_t size = 0, size_json = 0;
 
-    int today = 0;
     int today_log = 0;
     int today_json = 0;
-    int thismonth = 0;
-    int thisyear = 0;
 
     char *new_path = NULL;
-    char str[OS_SIZE_1024 + 1];
 
     /* Wait a few seconds to settle */
     sleep(10);
-
-    memset(str, '\0', OS_SIZE_1024 + 1);
-
-    /* Get current time before starting */
-    tm = time(NULL);
-    localtime_r(&tm, &p);
-
-    today = p.tm_mday;
-    thismonth = p.tm_mon;
-    thisyear = p.tm_year + 1900;
-    today_log = today;
-    today_json = today;
 
     /* Calculate when is the next rotation */
     n_time = mond.interval ? calc_next_rotation(tm, mond.interval_units, mond.interval) : 0;
     n_time_json = mond.interval ? n_time : 0;
 
     /* Set internal log path to rotate them */
-#ifdef WIN32
-    // ossec.log
+    /* ossec.log */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // ossec.json
+    /* ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#else
-    // /var/ossec/logs/ossec.log
-    snprintf(path_ossec, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
-    // /var/ossec/logs/ossec.json
-    snprintf(path_ossec_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
-#endif
 
     /* Connect to the message queue or exit */
-    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    monitor_queue_connect();
+    if (mond.a_queue < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-    }
-
-    /* Send startup message */
-    snprintf(str, OS_SIZE_1024 - 1, OS_AD_STARTED);
-    if (SendMSG(mond.a_queue, str, ARGV0,
-                LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND);
     }
 
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
+    /* Creating agents disconnected alert table */
+    agents_to_alert_hash = OSHash_Create();
+    if(!agents_to_alert_hash) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    }
+
+    /* Get current time and initiate counters */
+    monitor_init_time_control();
+    today_log = mond_time_control.today;
+    today_json = mond_time_control.today;
+
+    // TODO: Review and reallocate this warning
     mwarn("The following internal options will be deprecated in the next version: compress, rotate_log, keep_log_days, day_wait, size_rotate_read and daily_rotations."
           "Please, use the 'logging' configuration block instead.");
 
@@ -155,28 +148,36 @@ void Monitord()
 
     /* Main monitor loop */
     while (1) {
-        tm = time(NULL);
-        localtime_r(&tm, &p);
-        counter++;
+        monitor_step_time();
 
+        /* In a local installation, there is no need to check agents */
 #ifndef LOCAL
-        /* Check for unavailable agents, every two minutes */
-        if (mond.monitor_agents && counter >= 120) {
-            monitor_agents();
-            counter = 0;
+        if (mond.a_queue < 0) {
+            /* Connecting to the message queue */
+            monitor_queue_connect();
+        }
+        if(check_disconnection_trigger()){
+            monitor_agents_disconnection();
+        }
+        if(check_alert_trigger()){
+            monitor_agents_alert();
+        }
+        if(check_deletion_trigger()){
+            monitor_agents_deletion();
         }
 #endif
 
+        // TODO: Review this logic agains changes in https://github.com/wazuh/wazuh/pull/6396
         if (mond.enabled && mond.rotation_enabled) {
             /* Calculate the logs size only if rotation by size is active */
             if (mond.min_size > 0 || mond.max_size > 0) {
-                if (stat(path_ossec, &buf) < 0) {
-                    merror("Couldn't stat '%s' file due to '%s'", path_ossec, strerror(errno));
+                if (stat(path, &buf) < 0) {
+                    merror("Couldn't stat '%s' file due to '%s'", path, strerror(errno));
                 } else {
                     size = buf.st_size;
                 }
-                if (stat(path_ossec_json, &buf_json) < 0) {
-                    merror("Couldn't stat '%s' file due to '%s'", path_ossec_json, strerror(errno));
+                if (stat(path_json, &buf_json) < 0) {
+                    merror("Couldn't stat '%s' file due to '%s'", path_json, strerror(errno));
                 } else {
                     size_json = buf_json.st_size;
                 }
@@ -187,14 +188,14 @@ void Monitord()
                 /* Rotate ossec.log by size (min_size) and interval */
                 check_size_interval(tm, n_time, size, &interval_log, &interval_set_log);
                 if (tm > n_time && (long) size >= mond.min_size && mond.ossec_log_plain) {
-                    rotate_logs(mond.log_list_plain, path_ossec, new_path, &today_log, interval_log, p.tm_mday, 0, &last_rot_log, tm);
+                    rotate_logs(mond.log_list_plain, path, new_path, &today_log, interval_log, 0, &last_rot_log, tm);
                     n_time = calc_next_rotation(tm, mond.interval_units, mond.interval);
                     interval_set_log = 0;
                 }
                 /* Rotate ossec.json by size (min_size) and interval */
                 check_size_interval(tm, n_time_json, size_json, &interval_json, &interval_set_json);
                 if (tm > n_time_json && (long) size_json >= mond.min_size && mond.ossec_log_json) {
-                    rotate_logs(mond.log_list_json, path_ossec_json, new_path, &today_json, interval_json, p.tm_mday, 1, &last_rot_json, tm);
+                    rotate_logs(mond.log_list_json, path_json, new_path, &today_json, interval_json, 1, &last_rot_json, tm);
                     n_time_json = calc_next_rotation(tm, mond.interval_units, mond.interval);
                     interval_set_json = 0;
                 }
@@ -203,34 +204,32 @@ void Monitord()
                 if (mond.max_size > 0) {
                     /* If log file reachs maximum size, rotate ossec.log */
                     if ((long) size >= mond.max_size && mond.ossec_log_plain) {
-                        rotate_logs(mond.log_list_plain, path_ossec, new_path, &today_log, 0, p.tm_mday, 0, &last_rot_log, tm);
+                        rotate_logs(mond.log_list_plain, path, new_path, &today_log, 0, 0, &last_rot_log, tm);
                     }
                     /* If log file reachs maximum size, rotate ossec.json */
                     if ((long) size_json >= mond.max_size && mond.ossec_log_json) {
-                        rotate_logs(mond.log_list_json, path_ossec_json, new_path, &today_json, 0, p.tm_mday, 1, &last_rot_json, tm);
+                        rotate_logs(mond.log_list_json, path_json, new_path, &today_json, 0, 1, &last_rot_json, tm);
                     }
                 }
                 /* Rotation by interval */
                 if (mond.interval > 0 && tm > n_time) {
                     /* Rotate ossec.log */
                     if (mond.ossec_log_plain) {
-                        rotate_logs(mond.log_list_plain, path_ossec, new_path, &today_log, 1, p.tm_mday, 0, &last_rot_log, tm);
+                        rotate_logs(mond.log_list_plain, path, new_path, &today_log, 1, 0, &last_rot_log, tm);
                     }
                     /* Rotate ossec.json */
                     if (mond.ossec_log_json) {
-                        rotate_logs(mond.log_list_json, path_ossec_json, new_path, &today_json, 1, p.tm_mday, 1, &last_rot_json, tm);
+                        rotate_logs(mond.log_list_json, path_json, new_path, &today_json, 1, 1, &last_rot_json, tm);
                     }
                     n_time = calc_next_rotation(tm, mond.interval_units, mond.interval);
                 }
             }
         }
         if (mond.enabled) {
-            if (today != p.tm_mday) {
+            if(check_logs_time_trigger()){
                 /* Generate reports */
-                generate_reports(today, thismonth, thisyear, &p);
-                today = p.tm_mday;
-                thismonth = p.tm_mon;
-                thisyear = p.tm_year + 1900;
+                generate_reports(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear, &mond_time_control.current_time);
+                monitor_update_date();
             }
         }
         sleep(1);
@@ -251,6 +250,18 @@ cJSON *getMonitorOptions(void) {
     return root;
 }
 
+cJSON *getMonitorGlobalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *monconf = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(monconf,"agents_disconnection_time",mond.global.agents_disconnection_time);
+    cJSON_AddNumberToObject(monconf,"agents_disconnection_alert_time",mond.global.agents_disconnection_alert_time);
+
+    cJSON_AddItemToObject(root,"monitord",monconf);
+
+    return root;
+}
 
 cJSON *getReportsOptions(void) {
 
@@ -298,7 +309,6 @@ cJSON *getMonitorLogging(void) {
     cJSON *logging;
     char aux[50];
 
-
     root = cJSON_CreateObject();
     logging = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "logging", logging);
@@ -328,4 +338,82 @@ cJSON *getMonitorLogging(void) {
     }
 
     return root;
+}
+
+void monitor_queue_connect() {
+    if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
+        /* Send startup message */
+        if (SendMSG(mond.a_queue, OS_AD_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
+            mond.a_queue = -1;  // We keep trying to reconnect next time.
+            merror(QUEUE_SEND);
+        }
+    }
+}
+
+void monitor_init_time_control() {
+    time_t tm;
+
+    mond_time_control.current_time.tm_sec = 0;
+    mond_time_control.disconnect_counter = 0;
+    mond_time_control.alert_counter = 0;
+    mond_time_control.delete_counter = 0;
+
+    tm = time(NULL);
+    localtime_r(&tm, &mond_time_control.current_time);
+
+    mond_time_control.today = mond_time_control.current_time.tm_mday;
+    mond_time_control.thismonth = mond_time_control.current_time.tm_mon;
+    mond_time_control.thisyear = mond_time_control.current_time.tm_year + 1900;
+
+}
+
+void monitor_step_time() {
+    time_t tm;
+    tm = time(NULL);
+    localtime_r(&tm, &mond_time_control.current_time);
+
+    mond_time_control.disconnect_counter++;
+    if (mond.monitor_agents != 0) {
+        mond_time_control.alert_counter++;
+    }
+    if(mond.delete_old_agents != 0 && mond.monitor_agents != 0){
+        mond_time_control.delete_counter++;
+    }
+}
+
+void monitor_update_date() {
+    mond_time_control.today = mond_time_control.current_time.tm_mday;
+    mond_time_control.thismonth = mond_time_control.current_time.tm_mon;
+    mond_time_control.thisyear = mond_time_control.current_time.tm_year + 1900;
+}
+
+int check_disconnection_trigger() {
+    if (mond_time_control.disconnect_counter >= mond.global.agents_disconnection_time) {
+        mond_time_control.disconnect_counter = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int check_alert_trigger() {
+    if (mond.monitor_agents != 0 && mond_time_control.alert_counter >= mond.global.agents_disconnection_alert_time) {
+        mond_time_control.alert_counter = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int check_deletion_trigger() {
+    if (mond.monitor_agents != 0 && mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
+        mond_time_control.delete_counter = 0;
+        return 1;
+    }
+    return 0;
+}
+
+int check_logs_time_trigger() {
+    if ( mond_time_control.today != mond_time_control.current_time.tm_mday) {
+        return 1;
+    }
+    return 0;
 }

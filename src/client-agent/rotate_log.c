@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * June 13, 2017.
  *
  * This program is free software; you can redistribute it
@@ -126,7 +126,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     struct stat buf, buf_json;
     off_t size = 0, size_json = 0;
     time_t n_time, n_time_json, now = time(NULL);
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     int today_log, today_json;
     char *new_path = NULL;
     int interval_log = 0, interval_json = 0;
@@ -136,21 +136,14 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     today_log = tm.tm_mday;
     today_json = today_log;
 
-#ifdef WIN32
     // ossec.log
     snprintf(path, PATH_MAX, "%s", LOGFILE);
     // ossec.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#else
-    // /var/ossec/logs/ossec.log
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
-    // /var/ossec/logs/ossec.json
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
-#endif
 
     init_conf();
 
-    const char *cfg = (isChroot() ? OSSECCONF : DEFAULTCPATH);
+    const char *cfg = OSSECCONF;
     int c;
     c = 0;
     c |= CROTMONITORD;

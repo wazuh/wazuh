@@ -1,5 +1,0 @@
-
- - You first need to add this agent to the server so they
-   can communicate with each other. When you have done so,
-   you can run the 'manage_agents' tool to import the
-   authentication key from the server.

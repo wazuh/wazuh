@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,1206 +9,1433 @@
  */
 
 #include "shared.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/md5_sha1/md5_sha1_op.h"
-#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
-#include "syscheck_op.h"
-#include "wazuh_modules/wmodules.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/sha256/sha256_op.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
+#include "integrity_op.h"
+#include "time_op.h"
+#include "db/fim_db_files.h"
+#include "db/fim_db_registries.h"
+#include "registry/registry.h"
 
-/* Prototypes */
-static int read_file(const char *dir_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth, char silent)  __attribute__((nonnull(1)));
+#ifdef WAZUH_UNIT_TESTING
+/* Remove static qualifier when unit testing */
+#define static
 
-static int read_dir_diff(char *dir_name);
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
 
-static pthread_mutex_t lastcheck_mutex;
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
 
-/* Global variables */
-static int __counter = 0;
+// Global variables
+static int _base_line = 0;
 
-static int read_dir_diff(char *dir_name) {
-    size_t dir_size;
-    char *f_name = NULL;
-    char *file_name = NULL;
-    char *local_dir = NULL;
-    int retval = -1;
+static fim_state_db _db_state = FIM_STATE_DB_EMPTY;
 
-    os_calloc(PATH_MAX + 2, sizeof(char), f_name);
-    os_calloc(PATH_MAX, sizeof(char), file_name);
-    os_calloc(PATH_MAX, sizeof(char), local_dir);
+static const char *FIM_EVENT_TYPE_ARRAY[] = {
+    "added",
+    "deleted",
+    "modified"
+};
 
-    snprintf(local_dir, PATH_MAX - 1, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
+static const char *FIM_EVENT_MODE[] = {
+    "scheduled",
+    "realtime",
+    "whodata"
+};
 
-    DIR *dp;
-    struct dirent *entry;
+/**
+ * @brief Update directories configuration with the wildcard list, at runtime
+ *
+ */
+void update_wildcards_config();
 
-    /* Directory should be valid */
-    if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
-        merror(NULL_ERROR);
-        goto end;
+
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *_evt_data,
+                               void *configuration,
+                               __attribute__((unused)) void *_unused_field) {
+    cJSON *json_event = NULL;
+    const directory_t *original_configuration = (const directory_t *)configuration;
+    event_data_t *evt_data = (event_data_t *)_evt_data;
+
+    if (original_configuration->options & CHECK_SEECHANGES) {
+        fim_diff_process_delete_file(entry->file_entry.path);
     }
 
-    /* Open the directory given */
-    dp = opendir(dir_name);
-    if (!dp) {
-        if (errno == ENOTDIR || (errno == ENOENT && !strcmp(dir_name, local_dir))) {
-            retval = 0;
-            goto end;
-        } else {
-            mwarn(FIM_WARN_ACCESS, dir_name, errno, strerror(errno));
-            goto end;
-        }
+    // Remove path from the DB.
+    w_mutex_lock(mutex);
+    if (fim_db_remove_path(fim_sql, entry->file_entry.path) == FIMDB_ERR) {
+        w_mutex_unlock(mutex);
+        return;
     }
 
-    int ret_add;
-    while ((entry = readdir(dp)) != NULL) {
-        char *s_name;
+    if (evt_data->report_event) {
+        json_event = fim_json_event(entry, NULL, original_configuration, evt_data, NULL);
+    }
+    w_mutex_unlock(mutex);
 
-        /* Ignore . and ..  */
-        if ((strcmp(entry->d_name, ".") == 0) ||
-            (strcmp(entry->d_name, "..") == 0)) {
-            continue;
-        }
-
-        strncpy(f_name, dir_name, PATH_MAX);
-        s_name = f_name;
-        s_name += dir_size;
-
-        /* Check if the file name is already null terminated */
-        if (*(s_name - 1) != PATH_SEP) {
-            *s_name++ = PATH_SEP;
-        }
-
-        *s_name = '\0';
-        strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
-
-        if (strcmp(DIFF_GZ_FILE, s_name) == 0) {
-            memset(file_name, 0, strlen(file_name));
-            memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
-            if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add != 2) {
-                merror(FIM_ERROR_ADD_FILE, file_name);
-            }
-        } else {
-            read_dir_diff(f_name);
-        }
+    if (json_event != NULL) {
+        send_syscheck_msg(json_event);
     }
 
-    closedir(dp);
-    retval = 0;
-end:
-    free(f_name);
-    free(file_name);
-    free(local_dir);
-    return retval;
+    cJSON_Delete(json_event);
+}
+
+void fim_delete_file_event(fdb_t *fim_sql,
+                           fim_entry *entry,
+                           pthread_mutex_t *mutex,
+                           void *_evt_data,
+                           __attribute__((unused)) void *_unused_field_1,
+                           __attribute__((unused)) void *_unused_field_2) {
+    event_data_t *evt_data = (event_data_t *)_evt_data;
+    directory_t *configuration = NULL;
+
+    configuration = fim_configuration_directory(entry->file_entry.path);
+
+    if (configuration == NULL) {
+        return;
+    }
+    /* Don't send alert if received mode and mode in configuration aren't the same.
+       Scheduled mode events must always be processed to preserve the state of the agent's DB.
+    */
+    switch (evt_data->mode) {
+    case FIM_REALTIME:
+        if (!(configuration->options & REALTIME_ACTIVE)) {
+            return;
+        }
+        break;
+
+    case FIM_WHODATA:
+        if (!(configuration->options & WHODATA_ACTIVE)) {
+            return;
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    fim_generate_delete_event(fim_sql, entry, mutex, evt_data, configuration, NULL);
 }
 
 
-void remove_local_diff(){
+time_t fim_scan() {
+    struct timespec start;
+    struct timespec end;
+    time_t end_of_scan;
+    clock_t cputime_start;
+    int nodes_count = 0;
+    OSListNode *node_it;
+    directory_t *dir_it;
 
-    /* Fill hash table with the content of DIFF_DIR_PATH/local */
-    const char LOCALDIR[] = {PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0'};
-    char *local_path = NULL;
-    os_calloc(PATH_MAX, sizeof(char), local_path);
-
-    strcpy(local_path, DIFF_DIR_PATH);
-    strcat(local_path, LOCALDIR);
-
-    read_dir_diff(local_path);
-
-    unsigned int i = 0;
-
-    /* Delete all monitored files from hash table */
-    OSHashNode *curr_node_local, *internal_node;
-    OSHashNode *curr_node_fp;
-
-    char *full_path = NULL;
-    os_calloc(OS_SIZE_8192, sizeof(char), full_path);
-
-    w_rwlock_rdlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-    for (i = 0; i <= syscheck.fp->rows; i++) {
-        curr_node_fp = syscheck.fp->table[i];
-        if (curr_node_fp && curr_node_fp->key) {
-            do {
-                *full_path='\0';
-                wm_strcat(&full_path, local_path, '\0');
-#ifdef WIN32
-                char *windows_path;
-                windows_path = strchr(curr_node_fp->key, ':');
-                wm_strcat(&full_path, windows_path+1, '\0');
-#else
-                wm_strcat(&full_path, curr_node_fp->key, '\0');
-#endif
-                if (!OSHash_Get_ex(syscheck.local_hash, full_path)) {
-                    mdebug2(FIM_LOCALDIFF_DELETE, full_path);
-                    OSHash_Delete_ex(syscheck.local_hash, full_path);
-                }
-                curr_node_fp=curr_node_fp->next;
-            } while(curr_node_fp && curr_node_fp->key);
-        }
-    }
-    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-    free(full_path);
-
-    /* Delete local files that aren't monitored */
-    for (i = 0; i <= syscheck.local_hash->rows; i++) {
-        curr_node_local = syscheck.local_hash->table[i];
-        if (curr_node_local && curr_node_local->key) {
-            do{
-                internal_node = curr_node_local->next;
-                mdebug2(FIM_LOCAL_DIFF_DELETE, curr_node_local->key);
-                if (rmdir_ex(curr_node_local->key) != 0) {
-                    mwarn(FIM_WARN_DELETE, curr_node_local->key);
-                }
-                remove_empty_folders(curr_node_local->key);
-                if (OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key) != 0) {
-                    mwarn(FIM_WARN_DELETE_HASH_TABLE, curr_node_local->key);
-                }
-                curr_node_local = internal_node;
-            }
-            while(curr_node_local && curr_node_local->key);
-        }
-    }
-
-    free(local_path);
-}
-
-/* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth, char silent)
-{
-    int opts;
-    OSMatch *restriction;
-    char *buf;
-    syscheck_node *s_node;
-    struct stat statbuf;
-    char str_size[50], str_mtime[50], str_inode[50];
-    char *wd_sum = NULL;
-    char *alert_msg = NULL;
-    char *esc_linked_file = NULL;
-    char *c_sum = NULL;
-#ifdef WIN32
-    char *sid = NULL;
-    char *user = NULL;
-    char *str_perm = NULL;
-#else
-    char str_owner[50], str_group[50], str_perm[50];
-    char *hash_file_name;
-#endif
-
-    memset(&statbuf, 0, sizeof(struct stat));
-    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
-
-    opts = syscheck.opts[dir_position];
-    restriction = syscheck.filerestrict[dir_position];
-
-    if (fim_check_ignore(linked_file ? linked_file : file_name) == 1) {
-        os_free(wd_sum);
-        return (0);
-    }
-
-    if (linked_file) {
-        esc_linked_file = escape_syscheck_field((char *) linked_file);
-    }
+    cputime_start = clock();
+    gettime(&start);
+    minfo(FIM_FREQUENCY_STARTED);
+    fim_send_scan_info(FIM_SCAN_START);
 
 
-#ifdef WIN32
-    /* Win32 does not have lstat */
-    if (stat(file_name, &statbuf) < 0)
-#else
-    if (lstat(file_name, &statbuf) < 0)
-#endif
-    {
-        os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
+    fim_diff_folder_size();
+    syscheck.disk_quota_full_msg = true;
 
-        switch (errno) {
-        case ENOENT:
-            mdebug2(FIM_CANNOT_ACCESS_FILE, file_name);
-            /* Fallthrough */
+    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
 
-        case ENOTDIR:
-            /*Deletion message sending*/
-            mdebug1(FIM_FILE_MSG_DELETE, file_name);
+    w_mutex_lock(&syscheck.fim_scan_mutex);
 
-            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s:%c %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
-            send_syscheck_msg(alert_msg);
-            fim_delete_hashes(file_name);
+    update_wildcards_config();
 
-            os_free(alert_msg);
-            os_free(wd_sum);
-            free(esc_linked_file);
-            return (0);
+    fim_db_set_all_unscanned(syscheck.database);
 
-        default:
-            merror(FIM_ERROR_ACCESING, file_name, strerror(errno), errno);
-            os_free(alert_msg);
-            os_free(wd_sum);
-            free(esc_linked_file);
-            return (-1);
-        }
-    }
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
+        char *path = fim_get_real_path(dir_it);
 
-    if (S_ISDIR(statbuf.st_mode)) {
-#ifdef WIN32
-        /* Directory links are not supported */
-        if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
-            mwarn(FIM_WARN_SYMLINKS_UNSUPPORTED, file_name);
-            os_free(wd_sum);
-            os_free(alert_msg);
-            free(esc_linked_file);
-            return (-1);
-        }
-#endif
-        os_free(wd_sum);
-        os_free(alert_msg);
-        free(esc_linked_file);
-        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, silent));
-    }
+        fim_checker(path, &evt_data, dir_it);
 
-    if (fim_check_restrict (file_name, restriction) == 1) {
-        mdebug1(FIM_FILE_IGNORE_RESTRICT, file_name);
-        os_free(wd_sum);
-        os_free(alert_msg);
-        free(esc_linked_file);
-        return (0);
-    }
-
-    /* No S_ISLNK on Windows */
-#ifdef WIN32
-    if (S_ISREG(statbuf.st_mode))
-#else
-    struct stat statbuf_lnk;
-    memset(&statbuf_lnk, 0, sizeof(struct stat));
-
-    if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
-#endif
-    {
-        mdebug2(FIM_SCANNING_FILE, file_name);
-        os_md5 mf_sum = {'\0'};
-        os_sha1 sf_sum = {'\0'};
-        os_sha256 sf256_sum = {'\0'};
-
-        /* Generate checksums */
-        if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
-            /* If it is a link, check if dest is valid */
 #ifndef WIN32
-            if (S_ISLNK(statbuf.st_mode)) {
-                if (stat(file_name, &statbuf_lnk) == 0) {
-                    if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
-                        if (!(opts & CHECK_FOLLOW)) {
-                            mdebug2(FIM_SIMBOLIC_LINK_DISABLE);
-                            os_free(alert_msg);
-                            os_free(wd_sum);
-                            free(esc_linked_file);
-                            return 0;
-                        } else {
-                            os_free(alert_msg);
-                            os_free(wd_sum);
-                            free(esc_linked_file);
-                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, silent));
-                        }
-                    }
-                } else {
-                    if (opts & CHECK_FOLLOW) {
-                        mwarn(FIM_WARN_STAT_BROKEN_LINK, strerror(errno), file_name);
-                    }
-                    os_free(wd_sum);
-                    os_free(alert_msg);
-                    free(esc_linked_file);
-                    return -1;
-                }
-            } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0)
-#else
-            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0)
-#endif
-            {
-                os_free(wd_sum);
-                os_free(alert_msg);
-                free(esc_linked_file);
-                return -1;
-            }
+        realtime_adddir(path, dir_it);
+#elif defined WIN_WHODATA
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            realtime_adddir(path, dir_it);
         }
-
-        if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
-            char * alertdump = NULL;
- #ifdef WIN_WHODATA
-            if (evt && evt->scan_directory == 1) {
-                if (w_update_sacl(file_name)) {
-                    mdebug1(FIM_SCAL_NOREFRESH, file_name);
-                    goto end;
-                }
-            }
 #endif
-            os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
+        os_free(path);
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
-            if (opts & CHECK_SEECHANGES) {
-                alertdump = seechanges_addfile(file_name);
-            }
+    w_mutex_unlock(&syscheck.fim_scan_mutex);
+
+
 #ifdef WIN32
-            // Get the user name and its id
-            if (opts & CHECK_OWNER) {
-                user = get_user(file_name, statbuf.st_uid, &sid);
-            }
-
-            // Get the file permissions
-            if (opts & CHECK_PERM) {
-                int error;
-                char perm_unescaped[OS_SIZE_6144 + 1];
-                if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-                    merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
-                } else {
-                    str_perm = escape_perm_sum(perm_unescaped);
-                }
-            }
-
-            if (opts & CHECK_SIZE) {
-                sprintf(str_size,"%ld",(long)statbuf.st_size);
-            } else {
-                *str_size = '\0';
-            }
-
-            if (opts & CHECK_MTIME) {
-                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-            } else {
-                *str_mtime = '\0';
-            }
-
-            if (opts & CHECK_INODE) {
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-            } else {
-                *str_inode = '\0';
-            }
-
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
-                    opts & CHECK_SIZE ? '+' : '-',
-                    opts & CHECK_PERM ? '+' : '-',
-                    opts & CHECK_OWNER ? '+' : '-',
-                    opts & CHECK_GROUP ? '+' : '-',
-                    opts & CHECK_MD5SUM ? '+' : '-',
-                    opts & CHECK_SHA1SUM ? '+' : '-',
-                    opts & CHECK_MTIME ? '+' : '-',
-                    opts & CHECK_INODE ? '+' : '-',
-                    opts & CHECK_SHA256SUM ? '+' : '-',
-                    opts & CHECK_ATTRS ? '+' : '-',
-                    opts & CHECK_SEECHANGES ? '+' : '-',
-                    str_size,
-                    str_perm ? str_perm : "",
-                    (opts & CHECK_OWNER) && sid ? sid : "",
-                    opts & CHECK_MD5SUM ? mf_sum : "",
-                    opts & CHECK_SHA1SUM ? sf_sum : "",
-                    user ? user : "",
-                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                    str_mtime,
-                    opts & CHECK_INODE ? str_inode : "",
-                    opts & CHECK_SHA256SUM ? sf256_sum : "",
-                    opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
-
-#else
-            if (opts & CHECK_SIZE) {
-                sprintf(str_size, "%ld", (long)statbuf.st_size);
-            } else {
-                *str_size = '\0';
-            }
-
-            if (opts & CHECK_PERM) {
-                sprintf(str_perm, "%d", (int)statbuf.st_mode);
-            } else {
-                *str_perm = '\0';
-            }
-
-            if (opts & CHECK_OWNER) {
-                sprintf(str_owner, "%d", (int)statbuf.st_uid);
-            } else {
-                *str_owner = '\0';
-            }
-
-            if (opts & CHECK_GROUP) {
-                sprintf(str_group, "%d", (int)statbuf.st_gid);
-            } else {
-                *str_group = '\0';
-            }
-
-            if (opts & CHECK_MTIME) {
-                sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
-            } else {
-                *str_mtime = '\0';
-            }
-
-            sprintf(str_inode, "%ld", (long)statbuf.st_ino);
-
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
-                    opts & CHECK_SIZE ? '+' : '-',
-                    opts & CHECK_PERM ? '+' : '-',
-                    opts & CHECK_OWNER ? '+' : '-',
-                    opts & CHECK_GROUP ? '+' : '-',
-                    opts & CHECK_MD5SUM ? '+' : '-',
-                    opts & CHECK_SHA1SUM ? '+' : '-',
-                    opts & CHECK_MTIME ? '+' : '-',
-                    opts & CHECK_INODE ? '+' : '-',
-                    opts & CHECK_SHA256SUM ? '+' : '-',
-                    opts & CHECK_ATTRS ? '+' : '-',
-                    opts & CHECK_SEECHANGES ? '+' : '-',
-                    str_size,
-                    str_perm,
-                    str_owner,
-                    str_group,
-                    opts & CHECK_MD5SUM ? mf_sum : "",
-                    opts & CHECK_SHA1SUM ? sf_sum : "",
-                    opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
-                    opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
-                    str_mtime,
-                    opts & CHECK_INODE ? str_inode : "",
-                    opts & CHECK_SHA256SUM ? sf256_sum : "",
-                    0);
+    fim_registry_scan();
 #endif
+    if (syscheck.file_limit_enabled) {
+        nodes_count = fim_db_get_count_entries(syscheck.database);
+    }
 
-            os_calloc(1, sizeof(syscheck_node), s_node);
-            s_node->checksum = strdup(alert_msg);
-            s_node->dir_position = dir_position;
+    check_deleted_files();
 
-            if (OSHash_Add_ex(syscheck.fp, file_name, s_node) != 2) {
-                os_free(s_node->checksum);
-                os_free(s_node);
-                merror(FIM_ERROR_ADD_FILE, file_name);
-            }
-#ifndef WIN32
-            hash_file_name = strdup(file_name);
-            int ret = OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name);
-            char * inode_path;
+    if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
+        w_mutex_lock(&syscheck.fim_scan_mutex);
 
-            switch (ret) {
-            case 0:
-                os_free(hash_file_name);
-                mdebug2(FIM_HASH_ADD_FAIL, file_name, str_inode);
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
+            char *path;
+            event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
+
+            if (fim_db_is_full(syscheck.database)) {
                 break;
-            case 1:
-                if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
-                    if(strcmp(inode_path, file_name)) {
-                        mdebug2(FIM_HASH_UPDATE, file_name, inode_path, str_inode);
-                        OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
-                        read_file(inode_path, NULL, dir_position, evt, max_depth, silent);
-                        os_free(inode_path);
-                    }
-                    else {
-                        os_free(hash_file_name);
-                    }
-                }
-                else {
-                    os_free(hash_file_name);
-                }
+            }
+
+            path = fim_get_real_path(dir_it);
+
+            fim_checker(path, &evt_data, dir_it);
+
+            // Verify the directory is being monitored correctly
+#ifndef WIN32
+            realtime_adddir(path, dir_it);
+#elif defined WIN_WHODATA
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                realtime_adddir(path, dir_it);
             }
 #endif
-            /* Send the new checksum to the analysis server */
-            alert_msg[OS_MAXSTR] = '\0';
-            /* Extract the whodata sum here to not include it in the hash table */
-            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
-            }
+            os_free(path);
+        }
+        w_rwlock_unlock(&syscheck.directories_lock);
+
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
 
 #ifdef WIN32
-
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
-                str_size,
-                str_perm ? str_perm : "",
-                (opts & CHECK_OWNER) && sid ? sid : "",
-                opts & CHECK_MD5SUM ? mf_sum : "",
-                opts & CHECK_SHA1SUM ? sf_sum : "",
-                user ? user : "",
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                str_mtime,
-                opts & CHECK_INODE ? str_inode : "",
-                opts & CHECK_SHA256SUM ? sf256_sum : "",
-                opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
-                wd_sum,
-                syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                esc_linked_file ? esc_linked_file : "",
-                silent,
-                file_name,
-                alertdump ? "\n" : "",
-                alertdump ? alertdump : "");
-
-            os_free(user);
-#else
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
-                str_size,
-                str_perm,
-                str_owner,
-                str_group,
-                opts & CHECK_MD5SUM ? mf_sum : "",
-                opts & CHECK_SHA1SUM ? sf_sum : "",
-                opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
-                str_mtime,
-                opts & CHECK_INODE ? str_inode : "",
-                opts & CHECK_SHA256SUM ? sf256_sum : "",
-                0,
-                wd_sum,
-                syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                esc_linked_file ? esc_linked_file : "",
-                silent,
-                file_name,
-                alertdump ? "\n" : "",
-                alertdump ? alertdump : "");
-#endif
-            if(max_depth <= syscheck.max_depth){
-                send_syscheck_msg(alert_msg);
-            }
-
-            os_free(alert_msg);
-            os_free(alertdump);
-        } else {
-#ifdef WIN_WHODATA
-            // This scan is only to find new files
-            // Modified files will be reported by the whodata flow
-            if (evt && evt->scan_directory == 1) {
-                goto end;
-            }
-#endif
-            os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
-            os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
-
-            buf = s_node->checksum;
-
-            /* If it returns < 0, we have already alerted */
-            if (c_read_file(file_name, linked_file, buf, c_sum, dir_position, evt) < 0) {
-                goto end;
-            }
-
-            w_mutex_lock(&lastcheck_mutex);
-            OSHash_Delete(syscheck.last_check, file_name);
-            w_mutex_unlock(&lastcheck_mutex);
-
-            if (strcmp(c_sum, buf + SK_DB_NATTR)) {
-                // Extract the whodata sum here to not include it in the hash table
-                if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                    merror(FIM_ERROR_WHODATA_SUM_MAX, linked_file && *linked_file ? linked_file : file_name);
-                }
-                // Update database
-                snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn_escaped(c_sum, ' '), c_sum);
-                s_node->checksum = strdup(alert_msg);
-
-                /* Send the new checksum to the analysis server */
-                alert_msg[OS_MAXSTR] = '\0';
-                char *fullalert = NULL;
-                if (buf[SK_DB_REPORT_CHANG] == '+') {
-                    fullalert = seechanges_addfile(file_name);
-                    if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s:%c %s\n%s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name, fullalert);
-                        os_free(fullalert);
-                        fullalert = NULL;
-                    } else {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s:%c %s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
-                    }
-                } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s:%c %s",
-                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
-                }
-                os_free(buf);
-                send_syscheck_msg(alert_msg);
-            }
-            os_free(alert_msg);
-            os_free(c_sum);
+        if (fim_db_is_full(syscheck.database) != 0) {
+            fim_registry_scan();
         }
-
-        /* Sleep here too */
-        if (__counter >= (syscheck.sleep_after)) {
-            sleep(syscheck.tsleep);
-            __counter = 0;
-        }
-        __counter++;
-    } else {
-        mdebug1(FIM_SCANNING_IRREGFILE, linked_file ? linked_file : file_name);
+#endif
     }
 
+    gettime(&end);
+    end_of_scan = time(NULL);
 
-end:
-    os_free(esc_linked_file);
-    os_free(wd_sum);
-    os_free(alert_msg);
-    os_free(c_sum);
-#ifdef WIN32
-    if (sid) {
-        LocalFree(sid);
+    if (syscheck.file_limit_enabled) {
+        fim_check_db_state();
     }
-    os_free(str_perm);
-#endif
-    return 0;
+
+    if (_base_line == 0) {
+        _base_line = 1;
+    }
+    else {
+        // In the first scan, the fim initialization is different between Linux and Windows.
+        // Realtime watches are set after the first scan in Windows.
+        if (fim_realtime_get_queue_overflow()) {
+            fim_realtime_set_queue_overflow(false);
+            realtime_sanitize_watch_map();
+        }
+        fim_realtime_print_watches();
+    }
+
+    minfo(FIM_FREQUENCY_ENDED);
+    fim_send_scan_info(FIM_SCAN_END);
+
+    if (isDebug()) {
+        fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
+    }
+    return end_of_scan;
 }
 
-int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link, char silent)
-{
-    char *f_name;
-    short is_nfs;
+void fim_checker(const char *path, event_data_t *evt_data, const directory_t *parent_configuration) {
+    directory_t *configuration;
+    int depth;
+    fim_entry *saved_entry = NULL;
+
+#ifdef WIN32
+    // Ignore the recycle bin.
+    if (check_removed_file(path)){
+        return;
+    }
+#endif
+
+    configuration = fim_configuration_directory(path);
+    if (configuration == NULL) {
+        return;
+    }
+
+    if (parent_configuration == NULL) {
+        // First time entering fim_checker
+        // It's dangerous to go alone! Take this.
+        parent_configuration = configuration;
+    }
+
+    if (evt_data->mode == FIM_SCHEDULED) {
+        // If the directory has another configuration will scan it with that configuration
+        if (parent_configuration != configuration) {
+            return;
+        }
+    } else if (evt_data->mode != FIM_MODE(configuration->options)) {
+        // If this event is not generated by a scan, the mode of the event and
+        // the mode configured must match
+        return;
+    }
+
+    depth = fim_check_depth(path, configuration);
+
+    if (depth > configuration->recursion_level) {
+        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, path);
+        return;
+    }
+
+    // Deleted file. Sending alert.
+    if (w_stat(path, &(evt_data->statbuf)) == -1) {
+        if(errno != ENOENT) {
+            mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
+            return;
+        }
+
+        saved_entry = fim_db_get_path(syscheck.database, path);
+
+        if (saved_entry) {
+            evt_data->type = FIM_DELETE;
+            fim_delete_file_event(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
+            free_entry(saved_entry);
+            saved_entry = NULL;
+        } else if (configuration->options & CHECK_SEECHANGES) {
+            fim_diff_process_delete_file(path);
+        }
+
+        return;
+    }
+
+#ifdef WIN_WHODATA
+    if (evt_data->w_evt && evt_data->w_evt->scan_directory == 1) {
+        if (w_update_sacl(path)) {
+            mdebug1(FIM_SCAL_NOREFRESH, path);
+        }
+    }
+#endif
+
+    if (HasFilesystem(path, syscheck.skip_fs)) {
+        return;
+    }
+
+    switch (evt_data->statbuf.st_mode & S_IFMT) {
+#ifndef WIN32
+    case FIM_LINK:
+        // Fallthrough
+#endif
+    case FIM_REGULAR:
+        if (fim_check_ignore(path) == 1) {
+            return;
+        }
+
+        if (fim_check_restrict(path, configuration->filerestrict) == 1) {
+            return;
+        }
+
+        fim_file(path, configuration, evt_data);
+        break;
+
+    case FIM_DIRECTORY:
+        if (depth == configuration->recursion_level) {
+            mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
+            return;
+        }
+        fim_directory(path, evt_data, configuration);
+
+#ifdef INOTIFY_ENABLED
+        if (FIM_MODE(configuration->options) == FIM_REALTIME) {
+            fim_add_inotify_watch(path, configuration);
+        }
+#endif
+        break;
+    }
+}
+
+
+int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration) {
     DIR *dp;
     struct dirent *entry;
-    size_t dir_size;
-    int pos;
-    char linked_read_file[PATH_MAX + 1] = {'\0'};
+    char *f_name;
+    char *s_name;
+    size_t path_size;
 
-    if (!dir_name) {
+    if (!dir) {
         merror(NULL_ERROR);
         return OS_INVALID;
     }
 
-    if(max_depth < 0) {
-        mdebug1(FIM_MAX_RECURSION_LEVEL, dir_name);
-        return 0;
-    }
-
-#ifdef WIN32
-    if (check_removed_file(dir_name)) {
-        mdebug2(FIM_DISCARD_RECYCLEBIN, dir_name);
-        return 0;
-    }
-#endif
-
-    // 3.8 - We can't follow symlinks in Windows
-#ifndef WIN32
-    switch(read_links(dir_name, dir_position, max_depth, is_link)) {
-    case 2:
-        mdebug2(FIM_SYMBOLIC_LINK_DISCARDED
-                dir_name);
-        return 0;
-    case 1:
-        mdebug1(FIM_SYMBOLIC_LINK_ADD, dir_name);
-        return 0;
-    case 0:
-        break;
-    default:
-        return -1;
-    }
-#endif
-
-    os_calloc(PATH_MAX + 2, sizeof(char), f_name);
-
-    /* Directory should be valid */
-    if (dir_size = strlen(dir_name), dir_size > PATH_MAX) {
-        free(f_name);
-        return (-1);
-    }
-
-    /* Open the directory given */
-    dp = opendir(dir_name);
-
-    /* Should we check for NFS? */
-    if (syscheck.skip_nfs && dp) {
-        is_nfs = IsNFS(dir_name);
-        if (is_nfs != 0) {
-            // Error will be -1, and 1 means skipped
-            free(f_name);
-            closedir(dp);
-            return (is_nfs);
-        }
-    }
+    // Open the directory given
+    dp = opendir(dir);
 
     if (!dp) {
-        if (errno == ENOTDIR || errno == ENOENT) {
-            if (read_file(dir_name, link, dir_position, evt, max_depth, silent) == 0) {
-                free(f_name);
-                return (0);
-            }
-        }
-
-#ifdef WIN32
-        int di = 0;
-        char *(defaultfilesn[]) = {
-            "C:\\autoexec.bat",
-            "C:\\config.sys",
-            "C:\\WINDOWS/System32/eventcreate.exe",
-            "C:\\WINDOWS/System32/eventtriggers.exe",
-            "C:\\WINDOWS/System32/tlntsvr.exe",
-            "C:\\WINDOWS/System32/Tasks",
-            NULL
-        };
-
-        while (defaultfilesn[di] != NULL) {
-            if (strcmp(defaultfilesn[di], dir_name) == 0) {
-                break;
-            }
-            di++;
-        }
-
-#ifdef WIN_WHODATA
-        if (defaultfilesn[di] == NULL && !(evt && evt->ignore_not_exist)) {
-#else
-        if (defaultfilesn[di] == NULL) {
-#endif
-            mdebug1(FIM_PATH_NOT_OPEN, dir_name, strerror(errno));
-        } else {
-            free(f_name);
-            return 0;
-        }
-#else
-        mdebug1(FIM_PATH_NOT_OPEN, dir_name, strerror(errno));
-
-#endif /* WIN32 */
-        free(f_name);
-        return (-1);
+        mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));
+        return OS_INVALID;
     }
 
-    if (pos = find_dir_pos(dir_name, 1, 1, 0), dir_position != pos) {
-        free(f_name);
-        closedir(dp);
-        return 0;
-    }
-
-    int opts = syscheck.opts[pos];
-
-    /* Check for real time flag */
-    if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
-#ifdef INOTIFY_ENABLED
-        realtime_adddir(dir_name, opts & CHECK_WHODATA);
-#else
-#ifndef WIN32
-        mwarn(FIM_WARN_REALTIME_UNSUPPORTED, dir_name);
-#endif
-#endif
-    }
-
+    os_calloc(PATH_MAX + 2, sizeof(char), f_name);
     while ((entry = readdir(dp)) != NULL) {
-        char *s_name;
-        *linked_read_file = '\0';
-
-        /* Ignore . and ..  */
+        // Ignore . and ..
         if ((strcmp(entry->d_name, ".") == 0) ||
                 (strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
 
-        strncpy(f_name, dir_name, PATH_MAX);
-        s_name =  f_name;
-        s_name += dir_size;
+        strncpy(f_name, dir, PATH_MAX);
+        path_size = strlen(dir);
+        s_name = f_name + path_size;
 
-        /* Check if the file name is already null terminated */
-#ifdef WIN32
-        if (*(s_name - 1) != '\\') {
-            *s_name++ = '\\';
+        // Check if the file name is already null terminated
+        if (*(s_name - 1) != PATH_SEP) {
+            *s_name++ = PATH_SEP;
         }
-#else
-        if (*(s_name - 1) != '/') {
-            *s_name++ = '/';
-        }
-#endif
-
-        *s_name = '\0';
-        strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
+        *(s_name) = '\0';
+        strncpy(s_name, entry->d_name, PATH_MAX - path_size - 2);
 
 #ifdef WIN32
         str_lowercase(f_name);
 #endif
-        /* Check integrity of the file */
-
-        if (syscheck.converted_links[dir_position]) {
-            replace_linked_path(f_name, dir_position, linked_read_file);
-        }
-
-        read_file(f_name, *linked_read_file ? linked_read_file : NULL, dir_position, evt, max_depth, silent);
+        // Process the event related to f_name
+        fim_checker(f_name, evt_data, configuration);
     }
 
     os_free(f_name);
     closedir(dp);
-    return (0);
+    return 0;
 }
 
-int run_dbcheck()
-{
-    unsigned int i = 0;
-    char *alert_msg = NULL;
-    OSHash *last_backup;
-    int pos;
 
-    os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
+/**
+ * @brief Processes a file, update the DB entry and return an event. No mutex is used inside this function.
+ *
+ * @param path The path to the file being processed.
+ * @param configuration The configuration associated with the file being processed.
+ * @param evt_data Information on how the event was triggered.
+ */
+static cJSON *
+_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
+    fim_entry new;
+    fim_entry *saved = NULL;
+    cJSON *json_event = NULL;
+    char *diff = NULL;
 
-    mdebug2(FIM_MONITORING_FILES_COUNT, "before", OSHash_Get_Elem_ex(syscheck.fp));
+    assert(path != NULL);
+    assert(configuration != NULL);
+    assert(evt_data != NULL);
 
-    __counter = 0;
-    while (syscheck.dir[i] != NULL) {
-        char *clink;
-#ifdef WIN_WHODATA
-        if (syscheck.wdata.dirs_status[i].status & WD_CHECK_REALTIME) {
-            // At this point the directories in whodata mode that have been deconfigured are added to realtime
-            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
-            if (realtime_adddir(syscheck.dir[i], 0) != 1) {
-                merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
-            } else {
-                mdebug1(FIM_REALTIME_MONITORING, syscheck.dir[i]);
-            }
-        }
-#endif
-        clink = get_converted_link_path(i);
-        read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, '-');
-        free(clink);
-        i++;
+    new.file_entry.path = (char *)path;
+    new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
+    if (new.file_entry.data == NULL) {
+        mdebug1(FIM_GET_ATTRIBUTES, path);
+        return NULL;
     }
 
-    if (syscheck.dir[0]) {
-        char linked_file[PATH_MAX + 1];
-        // Check for deleted files
-        w_mutex_lock(&lastcheck_mutex);
-        last_backup = syscheck.last_check;
-
-        // Prepare last_check for next scan
-        syscheck.last_check = OSHash_Duplicate_ex(syscheck.fp);
-        w_mutex_unlock(&lastcheck_mutex);
-
-        // Send messages for deleted files
-        OSHashNode *curr_node;
-        unsigned int i;
-
-        for (curr_node = OSHash_Begin(last_backup, &i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, &i, curr_node)) {
-            char *esc_linked_file = NULL;
-            if (pos = find_dir_pos(curr_node->key, 1, 0, 0), pos >= 0) {
-                *linked_file = '\0';
-                if (syscheck.converted_links[pos]) {
-                    replace_linked_path(curr_node->key, pos, linked_file);
-                }
-
-                if (*linked_file) {
-                    esc_linked_file = escape_syscheck_field((char *) linked_file);
-                }
-
-                mdebug1(FIM_FILE_MSG_DELETE, curr_node->key);
-                snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s:%s: %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", esc_linked_file ? esc_linked_file : "", curr_node->key);
-                free(esc_linked_file);
-                send_syscheck_msg(alert_msg);
-            }
-
-            fim_delete_hashes(curr_node->key);
-
-            OSHash_Delete_ex(syscheck.last_check, curr_node->key);
-        }
-
-        last_backup->free_data_function = NULL;
-        OSHash_Free(last_backup);
-
-        // Check and delete backup local/diff
-        remove_local_diff();
+    if (fim_db_file_update(syscheck.database, path, new.file_entry.data, &saved) != FIMDB_OK) {
+        free_file_data(new.file_entry.data);
+        free_entry(saved);
+        return NULL;
     }
 
-    free(alert_msg);
-    mdebug2(FIM_MONITORING_FILES_COUNT, "after", OSHash_Get_Elem_ex(syscheck.fp));
-
-    return (0);
-}
-
-int create_db()
-{
-    int i = 0;
-    char sym_link_thread = 0;
-
-    w_mutex_init(&lastcheck_mutex, NULL);
-
-    if (!syscheck.fp) {
-        merror_exit(FIM_CRITICAL_ERROR_DB);
-    }
-
-    if (!OSHash_setSize_ex(syscheck.fp, 2048)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
-    if (!OSHash_setSize(syscheck.local_hash, 2048)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
-#ifndef WIN32
-    if (!OSHash_setSize(syscheck.inode_hash, 2048)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
-#endif
-
-    if ((syscheck.dir == NULL) || (syscheck.dir[0] == NULL)) {
-        merror(FIM_ERROR_NOTHING_TOCKECK);
-        return (-1);
-    }
-
-    /* Read all available directories */
-    __counter = 0;
-    do {
-        char *clink = get_converted_link_path(i);
-
-        if (syscheck.converted_links[i]) {
-            sym_link_thread = 1;
-        }
-
-        if (read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, '-') == 0) {
-            mdebug2(FIM_FREQUENCY_DIRECTORY, syscheck.dir[i]);
-        }
-        free(clink);
-#ifdef WIN32
-        if (syscheck.opts[i] & CHECK_WHODATA) {
-#ifdef WIN_WHODATA
-            realtime_adddir(syscheck.dir[i], i + 1);
-            if (!syscheck.wdata.whodata_setup) {
-                syscheck.wdata.whodata_setup = 1;
-            }
-#endif
-        } else if (syscheck.opts[i] & CHECK_REALTIME) {
-            realtime_adddir(syscheck.dir[i], 0);
-        }
-#else
-#ifndef INOTIFY_ENABLED
-        // Realtime mode on Linux requires inotify
-        if (syscheck.opts[i] & CHECK_REALTIME) {
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, syscheck.dir[i]);
-        }
-#endif
-#endif
-        i++;
-    } while (syscheck.dir[i] != NULL);
-
-    remove_local_diff();
-
-    w_mutex_lock(&lastcheck_mutex);
-    OSHash_Free(syscheck.last_check);
-    /* Duplicate hash table to check for deleted files */
-    syscheck.last_check = OSHash_Duplicate(syscheck.fp);
-    w_mutex_unlock(&lastcheck_mutex);
-
-    if (sym_link_thread) {
-        symlink_checker_init();
-    }
-
-    return (0);
-}
-
-int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
-    int retval = 0;
-
-#ifndef WIN_WHODATA
-    if (!evt) {
-#else
-    if (!evt || evt->scan_directory) {
-#endif
-        if (snprintf(wd_sum, size, "::::::::::") >= size) {
-            retval = 1;
-        }
+    if (!saved) {
+        evt_data->type = FIM_ADD; // New entry
     } else {
-        char *process_esc = NULL;
-        char *name_esc = evt->user_name;
-        char *esc_it = NULL;
+        evt_data->type = FIM_MODIFICATION; // Checking for changes
+    }
 
-        // Escape process
-        esc_it = wstr_replace(evt->process_name, ":", "\\:");
-        process_esc = wstr_replace(esc_it, " ", "\\ ");
+    if (configuration->options & CHECK_SEECHANGES) {
+        diff = fim_file_diff(path, configuration);
+    }
 
-#ifdef WIN32
-        // Only Windows agents can have spaces in their names
-        name_esc = wstr_replace(evt->user_name, " ", "\\ ");
+    json_event = fim_json_event(&new, saved ? saved->file_entry.data : NULL, configuration, evt_data, diff);
+
+    os_free(diff);
+    free_file_data(new.file_entry.data);
+    free_entry(saved);
+
+    return json_event;
+}
+
+void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
+    cJSON *json_event = NULL;
+
+    check_max_fps();
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    json_event = _fim_file(path, configuration, evt_data);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (json_event && _base_line && evt_data->report_event) {
+        send_syscheck_msg(json_event);
+    }
+
+    cJSON_Delete(json_event);
+}
+
+
+void fim_realtime_event(char *file) {
+    struct stat file_stat;
+
+    // If the file exists, generate add or modify events.
+    if (w_stat(file, &file_stat) >= 0) {
+        event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+
+        /* Need a sleep here to avoid triggering on vim
+         * (and finding the file removed)
+         */
+        fim_rt_delay();
+
+        fim_checker(file, &evt_data, NULL);
+    } else {
+        // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        fim_process_missing_entry(file, FIM_REALTIME, NULL);
+    }
+}
+
+void fim_whodata_event(whodata_evt * w_evt) {
+
+    struct stat file_stat;
+
+    // If the file exists, generate add or modify events.
+    if(w_stat(w_evt->path, &file_stat) >= 0) {
+        event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true };
+
+        fim_rt_delay();
+
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        fim_checker(w_evt->path, &evt_data, NULL);
+        w_rwlock_unlock(&syscheck.directories_lock);
+    } else {
+        // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        w_rwlock_unlock(&syscheck.directories_lock);
+#ifndef WIN32
+        char **paths = NULL;
+        const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
+        const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
+
+        paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
+
+        if(paths) {
+            for(int i = 0; paths[i]; i++) {
+                w_rwlock_rdlock(&syscheck.directories_lock);
+                fim_process_missing_entry(paths[i], FIM_WHODATA, w_evt);
+                w_rwlock_unlock(&syscheck.directories_lock);
+                os_free(paths[i]);
+            }
+            os_free(paths);
+        }
 #endif
-        if (snprintf(wd_sum, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%i:%lli",
-                (evt->user_id)?evt->user_id:"",
-                (name_esc)?name_esc:"",
-                (evt->group_id)?evt->group_id:"",
-                (evt->group_name)?evt->group_name:"",
-                (process_esc)?process_esc:"",
-                (evt->audit_uid)?evt->audit_uid:"",
-                (evt->audit_name)?evt->audit_name:"",
-                (evt->effective_uid)?evt->effective_uid:"",
-                (evt->effective_name)?evt->effective_name:"",
-                evt->ppid,
-                (long long unsigned int) evt->process_id
-            ) >= size) {
-            retval = 1;
-            snprintf(wd_sum, size, "::::::::::");
+    }
+}
+
+void fim_process_wildcard_removed(directory_t *configuration) {
+    fim_tmp_file *files = NULL;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
+
+    fim_entry *entry = fim_db_get_path(syscheck.database, configuration->path);
+
+    if (entry != NULL) {
+        fim_generate_delete_event(syscheck.database, entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+        free_entry(entry);
+        return;
+    }
+
+    // Since the file doesn't exist, research if it's directory and have files in DB.
+    char pattern[PATH_MAX] = {0};
+
+    // Create the sqlite LIKE pattern -> "pathname/%"
+    snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
+
+    fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
+
+    if (files && files->elements) {
+        if (fim_db_remove_wildcard_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store,
+                                         &evt_data, configuration) != FIMDB_OK) {
+            merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        }
+    }
+}
+
+void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
+    fim_entry *saved_data = NULL;
+    fim_tmp_file *files = NULL;
+
+    // Search path in DB.
+    saved_data = fim_db_get_path(syscheck.database, pathname);
+
+    // Exists, create event.
+    if (saved_data) {
+        event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true };
+        fim_checker(pathname, &evt_data, NULL);
+        free_entry(saved_data);
+        return;
+    }
+
+    // Since the file doesn't exist, research if it's directory and have files in DB.
+    char pattern[PATH_MAX] = {0};
+
+    // Create the sqlite LIKE pattern -> "pathname/%"
+    snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
+
+    fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
+
+    if (files && files->elements) {
+        event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true, .type = FIM_DELETE };
+        if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store,
+                                         &evt_data) != FIMDB_OK) {
+            merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        }
+    }
+}
+
+// Checks the DB state, sends a message alert if necessary
+void fim_check_db_state() {
+    int nodes_count = 0;
+    cJSON *json_event = NULL;
+    char *json_plain = NULL;
+    char alert_msg[OS_SIZE_256] = {'\0'};
+
+    nodes_count = fim_db_get_count_entries(syscheck.database);
+
+    if (nodes_count < 0) {
+        mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+        return;
+    }
+
+    switch (_db_state) {
+    case FIM_STATE_DB_FULL:
+        if (nodes_count >= syscheck.file_limit) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_90_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit) && (nodes_count >= syscheck.file_limit * 0.9)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_80_PERCENTAGE:
+        if ((nodes_count < syscheck.file_limit * 0.9) && (nodes_count >= syscheck.file_limit * 0.8)) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_NORMAL:
+        if (nodes_count == 0) {
+            _db_state = FIM_STATE_DB_EMPTY;
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            return;
+        }
+        break;
+    case FIM_STATE_DB_EMPTY:
+        if (nodes_count == 0) {
+            return;
+        }
+        else if (nodes_count < syscheck.file_limit * 0.8) {
+            _db_state = FIM_STATE_DB_NORMAL;
+            return;
+        }
+        break;
+    default: // LCOV_EXCL_LINE
+        break; // LCOV_EXCL_LINE
+    }
+
+    json_event = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_event, "file_limit", syscheck.file_limit);
+    cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
+
+    if (nodes_count >= syscheck.file_limit) {
+        _db_state = FIM_STATE_DB_FULL;
+        mwarn(FIM_DB_FULL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "full");
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.9) {
+        _db_state = FIM_STATE_DB_90_PERCENTAGE;
+        minfo(FIM_DB_90_PERCENTAGE_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
+    }
+    else if (nodes_count >= syscheck.file_limit * 0.8) {
+        _db_state = FIM_STATE_DB_80_PERCENTAGE;
+        minfo(FIM_DB_80_PERCENTAGE_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
+    }
+    else if (nodes_count > 0) {
+        _db_state = FIM_STATE_DB_NORMAL;
+        minfo(FIM_DB_NORMAL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
+    }
+    else {
+        _db_state = FIM_STATE_DB_EMPTY;
+        minfo(FIM_DB_NORMAL_ALERT);
+        cJSON_AddStringToObject(json_event, "alert_type", "normal");
+    }
+
+    json_plain = cJSON_PrintUnformatted(json_event);
+
+    snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", json_plain);
+
+    send_log_msg(alert_msg);
+
+    os_free(json_plain);
+    cJSON_Delete(json_event);
+}
+
+// Returns the position of the path into directories array
+directory_t *fim_configuration_directory(const char *path) {
+    char full_path[OS_SIZE_4096 + 1] = {'\0'};
+    char full_entry[OS_SIZE_4096 + 1] = {'\0'};
+    directory_t *dir_it = NULL;
+    directory_t *dir = NULL;
+    OSListNode *node_it;
+    int top = 0;
+    int match = 0;
+
+    if (!path || *path == '\0') {
+        return NULL;
+    }
+
+    trail_path_separator(full_path, path, sizeof(full_path));
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        char *real_path = fim_get_real_path(dir_it);
+
+        trail_path_separator(full_entry, real_path, sizeof(full_entry));
+        match = w_compare_str(full_entry, full_path);
+
+        if (top < match && full_path[match - 1] == PATH_SEP) {
+            dir = dir_it;
+            top = match;
         }
 
-#ifdef WIN32
-        free(name_esc);
-#endif
-        free(process_esc);
-        free(esc_it);
+        os_free(real_path);
     }
-    return retval;
+
+    if (dir == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
+    }
+
+    return dir;
+}
+
+int fim_check_depth(const char *path, const directory_t *configuration) {
+    const char * pos;
+    int depth = -1;
+    char *parent_path;
+    unsigned int parent_path_size;
+
+    assert(configuration != NULL);
+
+    parent_path = fim_get_real_path(configuration);
+    parent_path_size = strlen(parent_path);
+    os_free(parent_path);
+
+    if (parent_path_size > strlen(path)) {
+        return -1;
+    }
+
+#ifdef WIN32
+    // Check for monitoring of 'U:\'
+    if(parent_path_size == 3 && path[2] == '\\') {
+        depth = 0;
+    }
+#else
+    // Check for monitoring of '/'
+    if(parent_path_size == 1) {
+        depth = 0;
+    }
+#endif
+
+    pos = path + parent_path_size;
+    while (pos) {
+        if (pos = strchr(pos, PATH_SEP), pos) {
+            depth++;
+        } else {
+            break;
+        }
+        pos++;
+    }
+
+    return depth;
+}
+
+
+// Get data from file
+fim_file_data *fim_get_data(const char *file, const directory_t *configuration, const struct stat *statbuf) {
+    fim_file_data * data = NULL;
+
+    os_calloc(1, sizeof(fim_file_data), data);
+    init_fim_data_entry(data);
+
+    if (configuration->options & CHECK_SIZE) {
+        data->size = statbuf->st_size;
+    }
+
+    if (configuration->options & CHECK_PERM) {
+#ifdef WIN32
+        int error;
+
+        error = w_get_file_permissions(file, &(data->perm_json));
+        if (error) {
+            mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
+            free_file_data(data);
+            return NULL;
+        }
+
+        decode_win_acl_json(data->perm_json);
+        data->perm = cJSON_PrintUnformatted(data->perm_json);
+#else
+        data->perm = agent_file_perm(statbuf->st_mode);
+#endif
+    }
+
+#ifdef WIN32
+    if (configuration->options & CHECK_ATTRS) {
+        os_calloc(OS_SIZE_256, sizeof(char), data->attributes);
+        decode_win_attributes(data->attributes, w_get_file_attrs(file));
+    }
+#endif
+
+    if (configuration->options & CHECK_MTIME) {
+#ifdef WIN32
+        data->mtime = get_UTC_modification_time(file);
+#else
+        data->mtime = statbuf->st_mtime;
+#endif
+    }
+
+#ifdef WIN32
+    if (configuration->options & CHECK_OWNER) {
+        data->user_name = get_file_user(file, &data->uid);
+    }
+#else
+    if (configuration->options & CHECK_OWNER) {
+        char aux[OS_SIZE_64];
+        snprintf(aux, OS_SIZE_64, "%u", statbuf->st_uid);
+        os_strdup(aux, data->uid);
+
+        data->user_name = get_user(statbuf->st_uid);
+    }
+
+    if (configuration->options & CHECK_GROUP) {
+        char aux[OS_SIZE_64];
+        snprintf(aux, OS_SIZE_64, "%u", statbuf->st_gid);
+        os_strdup(aux, data->gid);
+
+        data->group_name = get_group(statbuf->st_gid);
+    }
+#endif
+
+    snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
+    snprintf(data->hash_sha1, sizeof(os_sha1), "%s", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    snprintf(data->hash_sha256, sizeof(os_sha256), "%s", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+
+    // The file exists and we don't have to delete it from the hash tables
+    data->scanned = 1;
+
+    // We won't calculate hash for symbolic links, empty or large files
+    if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && (size_t)statbuf->st_size < syscheck.file_max_size) &&
+        (configuration->options & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM))) {
+        if (OS_MD5_SHA1_SHA256_File(file, syscheck.prefilter_cmd, data->hash_md5, data->hash_sha1, data->hash_sha256,
+                                    OS_BINARY, syscheck.file_max_size) < 0) {
+            mdebug1(FIM_HASHES_FAIL, file);
+            free_file_data(data);
+            return NULL;
+        }
+    }
+
+    if ((configuration->options & CHECK_MD5SUM) == 0) {
+        data->hash_md5[0] = '\0';
+    }
+
+    if ((configuration->options & CHECK_SHA1SUM) == 0) {
+        data->hash_sha1[0] = '\0';
+    }
+
+    if ((configuration->options & CHECK_SHA256SUM) == 0) {
+        data->hash_sha256[0] = '\0';
+    }
+
+    data->inode = statbuf->st_ino;
+    data->dev = statbuf->st_dev;
+    data->options = configuration->options;
+    data->last_event = time(NULL);
+    fim_get_checksum(data);
+
+    return data;
+}
+
+void init_fim_data_entry(fim_file_data *data) {
+    data->size = 0;
+    data->perm = NULL;
+#ifdef WIN32
+    data->perm_json = NULL;
+#endif
+    data->attributes = NULL;
+    data->uid = NULL;
+    data->gid = NULL;
+    data->user_name = NULL;
+    data->group_name = NULL;
+    data->mtime = 0;
+    data->inode = 0;
+    data->hash_md5[0] = '\0';
+    data->hash_sha1[0] = '\0';
+    data->hash_sha256[0] = '\0';
+}
+
+void fim_get_checksum (fim_file_data * data) {
+    int size;
+    char *checksum = NULL;
+
+    size = snprintf(0,
+            0,
+            "%d:%s:%s:%s:%s:%s:%s:%u:%lu:%s:%s:%s",
+            data->size,
+            data->perm ? data->perm : "",
+            data->attributes ? data->attributes : "",
+            data->uid ? data->uid : "",
+            data->gid ? data->gid : "",
+            data->user_name ? data->user_name : "",
+            data->group_name ? data->group_name : "",
+            data->mtime,
+            data->inode,
+            data->hash_md5,
+            data->hash_sha1,
+            data->hash_sha256);
+
+    os_calloc(size + 1, sizeof(char), checksum);
+    snprintf(checksum,
+            size + 1,
+            "%d:%s:%s:%s:%s:%s:%s:%u:%lu:%s:%s:%s",
+            data->size,
+            data->perm ? data->perm : "",
+            data->attributes ? data->attributes : "",
+            data->uid ? data->uid : "",
+            data->gid ? data->gid : "",
+            data->user_name ? data->user_name : "",
+            data->group_name ? data->group_name : "",
+            data->mtime,
+            data->inode,
+            data->hash_md5,
+            data->hash_sha1,
+            data->hash_sha256);
+
+    OS_SHA1_Str(checksum, -1, data->checksum);
+    free(checksum);
+}
+
+void check_deleted_files() {
+    fim_tmp_file *file = NULL;
+
+    if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_NOT_SCANNED);
+    }
+
+    if (file && file->elements) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
+        w_rwlock_unlock(&syscheck.directories_lock);
+    }
+}
+
+cJSON *fim_json_event(const fim_entry *new_data,
+                      const fim_file_data *old_data,
+                      const directory_t *configuration,
+                      const event_data_t *evt_data,
+                      const char *diff) {
+    cJSON * changed_attributes = NULL;
+
+    assert(new_data != NULL);
+
+    if (old_data != NULL) {
+        changed_attributes = fim_json_compare_attrs(old_data, new_data->file_entry.data);
+
+        // If no such changes, do not send event.
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    cJSON * json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON * data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+    cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
+
+    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data));
+
+    if (old_data) {
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
+    }
+
+    char * tags = NULL;
+    if (evt_data->w_evt) {
+        cJSON_AddItemToObject(data, "audit", fim_audit_json(evt_data->w_evt));
+    }
+
+    tags = configuration->tag;
+
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
+
+    if (tags != NULL) {
+        cJSON_AddStringToObject(data, "tags", tags);
+    }
+
+    return json_event;
+}
+
+// Create file attribute set JSON from a FIM entry structure
+
+cJSON * fim_attributes_json(const fim_file_data * data) {
+    cJSON * attributes = cJSON_CreateObject();
+
+    // TODO: Read structure.
+    // SQLite Development
+    cJSON_AddStringToObject(attributes, "type", "file");
+
+    if (data->options & CHECK_SIZE) {
+        cJSON_AddNumberToObject(attributes, "size", data->size);
+    }
+
+    if (data->options & CHECK_PERM) {
+#ifndef WIN32
+        cJSON_AddStringToObject(attributes, "perm", data->perm);
+#else
+        cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+#endif
+    }
+
+    if (data->options & CHECK_OWNER) {
+        cJSON_AddStringToObject(attributes, "uid", data->uid);
+    }
+
+    if (data->options & CHECK_GROUP) {
+        cJSON_AddStringToObject(attributes, "gid", data->gid);
+    }
+
+    if (data->user_name) {
+        cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+    }
+
+    if (data->group_name) {
+        cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+    }
+
+    if (data->options & CHECK_INODE) {
+        cJSON_AddNumberToObject(attributes, "inode", data->inode);
+    }
+
+    if (data->options & CHECK_MTIME) {
+        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
+    }
+
+    if (data->options & CHECK_MD5SUM) {
+        cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
+    }
+
+    if (data->options & CHECK_SHA1SUM) {
+        cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
+    }
+
+    if (data->options & CHECK_SHA256SUM) {
+        cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
+    }
+
+#ifdef WIN32
+    if (data->options & CHECK_ATTRS) {
+        cJSON_AddStringToObject(attributes, "attributes", data->attributes);
+    }
+#endif
+
+    if (*data->checksum) {
+        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+    }
+
+    return attributes;
+}
+
+// Create file attribute comparison JSON object
+
+cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_data * new_data) {
+    cJSON * changed_attributes = cJSON_CreateArray();
+
+    if ( (old_data->options & CHECK_SIZE) && (old_data->size != new_data->size) ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+    }
+
+#ifndef WIN32
+    if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    }
+#else
+    if ( (old_data->options & CHECK_PERM) && compare_win_permissions(old_data->perm_json, new_data->perm_json) == false ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    }
+
+    if ( (old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
+    }
+#endif
+
+    if (old_data->options & CHECK_OWNER) {
+        if (old_data->uid && new_data->uid && strcmp(old_data->uid, new_data->uid) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
+        }
+
+#ifndef WIN32
+        if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
+#else
+        // AD might fail to solve the user name, we don't trigger an event if the user name is empty
+        if (old_data->user_name && *old_data->user_name != '\0' && new_data->user_name &&
+            *new_data->user_name != '\0' && strcmp(old_data->user_name, new_data->user_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
+#endif
+    }
+
+    if (old_data->options & CHECK_GROUP) {
+        if (old_data->gid && new_data->gid && strcmp(old_data->gid, new_data->gid) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
+        }
+
+        if (old_data->group_name && new_data->group_name && strcmp(old_data->group_name, new_data->group_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
+        }
+    }
+
+    if ( (old_data->options & CHECK_MTIME) && (old_data->mtime != new_data->mtime) ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
+    }
+
+#ifndef WIN32
+    if ( (old_data->options & CHECK_INODE) && (old_data->inode != new_data->inode) ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+    }
+#endif
+
+    if ( (old_data->options & CHECK_MD5SUM) && (strcmp(old_data->hash_md5, new_data->hash_md5) != 0) ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
+    }
+
+    if ( (old_data->options & CHECK_SHA1SUM) && (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
+    }
+
+    if ( (old_data->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
+    }
+
+    return changed_attributes;
+}
+
+// Create file audit data JSON object
+
+cJSON * fim_audit_json(const whodata_evt * w_evt) {
+    cJSON * fim_audit = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+    cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+    cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+    cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#ifndef WIN32
+    cJSON_AddStringToObject(fim_audit, "cwd", w_evt->cwd);
+    cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+    cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+    cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+    cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+    cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+    cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+    cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);
+    cJSON_AddStringToObject(fim_audit, "parent_cwd", w_evt->parent_cwd);
+    cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
+#endif
+
+    return fim_audit;
+}
+
+
+// Create scan info JSON event
+
+cJSON * fim_scan_info_json(fim_scan_event event, long timestamp) {
+    cJSON * root = cJSON_CreateObject();
+    cJSON * data = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "type", event == FIM_SCAN_START ? "scan_start" : "scan_end");
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddNumberToObject(data, "timestamp", timestamp);
+
+    return root;
 }
 
 int fim_check_ignore (const char *file_name) {
-    /* Check if the file should be ignored */
+    // Check if the file should be ignored
     if (syscheck.ignore) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
                 mdebug2(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
-                return (1);
+                return 1;
             }
             i++;
         }
     }
 
-    /* Check in the regex entry */
+    // Check in the regex entry
     if (syscheck.ignore_regex) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
                 mdebug2(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
-                return (1);
+                return 1;
             }
             i++;
         }
     }
 
-    return (0);
+    return 0;
 }
+
 
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
-    /* Restrict file types */
-    if (restriction) {
-        if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
-            return (1);
-        }
-    }
-
-    return (0);
-}
-
-#ifndef WIN32
-// Only Linux follow symlinks
-int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link) {
-    char *dir_name_full;
-    char *real_path;
-    int opts;
-
-    os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-    os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
-
-    if (is_link) {
-        if (realpath(dir_name, real_path) == NULL) {
-            mdebug1(FIM_CHECK_LINK_REALPATH, dir_name);
-            free(real_path);
-            free(dir_name_full);
-            return -1;
-        }
-        strcat(real_path, "/");
-        opts = syscheck.opts[dir_position];
-
-        unsigned int i = 0;
-        while (syscheck.dir[i] != NULL) {
-            strncpy(dir_name_full, syscheck.dir[i], PATH_MAX);
-            strcat(dir_name_full, "/");
-                if (strstr(real_path, dir_name_full) != NULL) {
-                    free(real_path);
-                    free(dir_name_full);
-                    return 2;
-            }
-            i++;
-        }
-        real_path[strlen(real_path) - 1] = '\0';
-        if(syscheck.filerestrict[dir_position]) {
-            dump_syscheck_entry(&syscheck,
-                                real_path,
-                                opts,
-                                0,
-                                syscheck.filerestrict[dir_position]->raw,
-                                max_depth, syscheck.tag[dir_position],
-                                -1);
-        } else {
-            dump_syscheck_entry(&syscheck,
-                                real_path,
-                                opts,
-                                0,
-                                NULL,
-                                max_depth, syscheck.tag[dir_position],
-                                -1);
-        }
-        /* Check for real time flag */
-        if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
-#ifdef INOTIFY_ENABLED
-            realtime_adddir(real_path, opts & CHECK_WHODATA);
-#else
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, dir_name);
-#endif
-        }
-
-        free(real_path);
-        free(dir_name_full);
+    if (file_name == NULL) {
+        merror(NULL_ERROR);
         return 1;
     }
 
-    free(real_path);
-    free(dir_name_full);
+    // Restrict file types
+    if (restriction) {
+        if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
+            mdebug2(FIM_FILE_IGNORE_RESTRICT, file_name, restriction->raw);
+            return 1;
+        }
+    }
+
     return 0;
 }
 
+
+void free_file_data(fim_file_data * data) {
+    if (!data) {
+        return;
+    }
+
+#ifdef WIN32
+    cJSON_Delete(data->perm_json);
 #endif
+    os_free(data->perm);
+    os_free(data->attributes);
+    os_free(data->uid);
+    os_free(data->gid);
+    os_free(data->user_name);
+    os_free(data->group_name);
 
-int fim_delete_hashes(const char * const file_name) {
-    syscheck_node *data;
+    os_free(data);
+}
 
-    if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
+
+void free_entry(fim_entry * entry) {
+    if (entry) {
 #ifndef WIN32
-        char *inode_str;
-
-        if(inode_str = get_attr_from_checksum(data->checksum, SK_INODE), !inode_str || *inode_str == '\0') {
-            unsigned int inode_it;
-            OSHashNode *s_inode;
-
-            //Looking for inode if check_inode = no
-            for (s_inode = OSHash_Begin(syscheck.inode_hash, &inode_it); s_inode && s_inode->data; s_inode = OSHash_Next(syscheck.inode_hash, &inode_it, s_inode)) {
-                if(!strcmp(s_inode->data, file_name)){
-                    inode_str = s_inode->key;
-                    break;
-                }
-            }
-        }
-
-        char * inode_path;
-
-        if(inode_str) {
-            if (inode_path = OSHash_Get_ex(syscheck.inode_hash, inode_str), inode_path) {
-                if(!strcmp(inode_path, file_name)) {
-                    char *w_inode;
-                    if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
-                        os_free(w_inode);
-                    }
-                }
-            }
+        os_free(entry->file_entry.path);
+        free_file_data(entry->file_entry.data);
+        free(entry);
+#else
+        if (entry->type == FIM_TYPE_FILE) {
+            os_free(entry->file_entry.path);
+            free_file_data(entry->file_entry.data);
+            free(entry);
+        } else {
+            fim_registry_free_entry(entry);
         }
 #endif
-        os_free(data->checksum);
-        os_free(data);
     }
-
-    return 0;
 }
 
-void replace_linked_path(const char *file_name, int dir_position, char *linked_file) {
-    char *dir_path;
-    char *real_path;
-    size_t dir_size;
-    size_t real_size;
 
-    w_rwlock_rdlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+void fim_diff_folder_size() {
+    char *diff_local;
 
-    dir_size = strlen(syscheck.dir[dir_position]) + 1;
-    real_size = strlen(syscheck.converted_links[dir_position]) + 1;
+    os_malloc(strlen(DIFF_DIR) + strlen("/local") + 1, diff_local);
 
-    os_calloc(dir_size + 2, sizeof(char), dir_path);
-    os_calloc(real_size + 2, sizeof(char), real_path);
+    snprintf(diff_local, strlen(DIFF_DIR) + strlen("/local") + 1, "%s/local", DIFF_DIR);
 
-    snprintf(dir_path, dir_size + 1, "%s/", syscheck.dir[dir_position]);
-    snprintf(real_path, real_size + 1, "%s/", syscheck.converted_links[dir_position]);
-
-    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-
-    if (!strncmp(real_path, file_name, real_size)) {
-        snprintf(linked_file, PATH_MAX, "%s%s", dir_path, file_name + real_size);
-        mdebug2(FIM_WHODATA_REPLACELINK, file_name, linked_file);
+    if (IsDir(diff_local) == 0) {
+        syscheck.diff_folder_size = DirSize(diff_local) / 1024;
     }
 
-    free(dir_path);
-    free(real_path);
+    os_free(diff_local);
 }
 
-char *get_converted_link_path(int position) {
-    char *linked_dir = NULL;
+void update_wildcards_config() {
+    OSList *removed_entries = NULL;
+    OSListNode *node_it;
+    OSListNode *aux_it;
+    directory_t *dir_it;
+    directory_t *new_entry;
+    char **paths;
 
-    if (syscheck.converted_links[position]) {
-        w_rwlock_rdlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-        os_strdup(syscheck.converted_links[position], linked_dir);
-        w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+    if (syscheck.wildcards == NULL || syscheck.directories == NULL) {
+        return;
     }
-    return linked_dir;
+
+    mdebug2(FIM_WILDCARDS_UPDATE_START);
+    w_rwlock_wrlock(&syscheck.directories_lock);
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        dir_it->is_expanded = 0;
+    }
+
+    OSList_foreach(node_it, syscheck.wildcards) {
+        dir_it = node_it->data;
+        paths = expand_wildcards(dir_it->path);
+
+        if (paths == NULL) {
+            continue;
+        }
+
+        for (int i = 0; paths[i]; i++) {
+            new_entry = fim_copy_directory(dir_it);
+            os_free(new_entry->path);
+
+            new_entry->path = paths[i];
+#ifdef WIN32
+            str_lowercase(new_entry->path);
+#endif
+            new_entry->is_expanded = 1;
+
+            if (new_entry->diff_size_limit == -1) {
+                new_entry->diff_size_limit = syscheck.file_size_limit;
+            }
+
+            fim_insert_directory(syscheck.directories, new_entry);
+        }
+        os_free(paths);
+    }
+
+    removed_entries = OSList_Create();
+    if (removed_entries == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        w_rwlock_unlock(&syscheck.directories_lock);
+        return;
+    }
+    OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
+
+    node_it = OSList_GetFirstNode(syscheck.directories);
+    while (node_it != NULL) {
+        dir_it = node_it->data;
+        if (dir_it->is_wildcard && dir_it->is_expanded == 0) {
+#if INOTIFY_ENABLED
+            if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+                fim_realtime_delete_watches(dir_it);
+            }
+#endif
+#if ENABLE_AUDIT
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                remove_audit_rule_syscheck(dir_it->path);
+            }
+#endif
+            // Inserting like this will cause the new list to have the order reversed to the one in syscheck.directories
+            // This will cause the following loop to delete "inner" directories before "outer" ones
+            OSList_PushData(removed_entries, dir_it);
+
+            // Delete node
+            aux_it = OSList_GetNext(syscheck.directories, node_it);
+            OSList_DeleteThisNode(syscheck.directories, node_it);
+            node_it = aux_it;
+        } else {
+            node_it = OSList_GetNext(syscheck.directories, node_it);
+        }
+    }
+
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    OSList_foreach(node_it, removed_entries) {
+        dir_it = node_it->data;
+        fim_process_wildcard_removed(dir_it);
+        mdebug2(FIM_WILDCARDS_REMOVE_DIRECTORY, dir_it->path);
+    }
+    OSList_Destroy(removed_entries);
+
+    mdebug2(FIM_WILDCARDS_UPDATE_FINALIZE);
 }
+
+// LCOV_EXCL_START
+void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start) {
+    mdebug1(FIM_RUNNING_SCAN,
+            time_diff(&start, &end),
+            (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
+
+#ifdef WIN32
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
+    mdebug1(FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database));
+#else
+    unsigned inode_items = 0;
+    unsigned inode_paths = 0;
+
+    inode_items = fim_db_get_count_file_inode(syscheck.database);
+    inode_paths = fim_db_get_count_file_entry(syscheck.database);
+
+    mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
+#endif
+
+    return;
+}
+
+char *fim_get_real_path(const directory_t *dir) {
+    char *real_path = NULL;
+
+#ifndef WIN32
+    w_mutex_lock(&syscheck.fim_symlink_mutex);
+
+    //Create a safe copy of the path to be used by other threads.
+    if ((dir->options & CHECK_FOLLOW) == 0) {
+        os_strdup(dir->path, real_path);
+    } else if (dir->symbolic_links) {
+        os_strdup(dir->symbolic_links, real_path);
+    } else if (IsLink(dir->path) == 0) { // Broken link
+        os_strdup("", real_path);
+    } else {
+        os_strdup(dir->path, real_path);
+    }
+
+    w_mutex_unlock(&syscheck.fim_symlink_mutex);
+#else // WIN32
+    os_strdup(dir->path, real_path);
+#endif
+
+    return real_path;
+}
+
+// Sleep during rt_delay milliseconds
+
+void fim_rt_delay() {
+    if (syscheck.rt_delay){
+#ifdef WIN32
+        Sleep(syscheck.rt_delay);
+#else
+        struct timeval timeout = {0, syscheck.rt_delay * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
+#endif
+    }
+}
+
+// LCOV_EXCL_STOP

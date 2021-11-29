@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -15,50 +15,41 @@
 typedef enum wdb_stmt_metadata {
     WDB_STMT_METADATA_INSERT,
     WDB_STMT_METADATA_UPDATE,
-    WDB_STMT_METADATA_FIND
+    WDB_STMT_METADATA_FIND,
+    WDB_STMT_METADATA_TABLE_CHECK
 } wdb_stmt_metadata;
 
 static const char *SQL_METADATA_STMT[] = {
     "INSERT INTO metadata (key, value) VALUES (?, ?);",
     "UPDATE metadata SET value = ? WHERE key = ?;",
-    "SELECT value FROM metadata WHERE key = ?;"
+    "SELECT value FROM metadata WHERE key = ?;",
+    "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?;"
 };
-
-int wdb_metadata_initialize (wdb_t *wdb) {
-    int result = 0;
-
-    if (wdb_metadata_insert_entry(wdb, "db_version", "3") < 0) {
-        merror("Couldn't fill metadata into database '%s'", wdb->agent_id);
-        result = -1;
-    }
-
-    return result;
-}
 
 int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
     char *key, *value;
 
     key = data;
     if (value = strchr(data, ' '), !value) {
-        mdebug1("DB(%s) Invalid metadata value.", wdb->agent_id);
+        mdebug1("DB(%s) Invalid metadata value.", wdb->id);
         return -1;
     }
     *value++ = '\0';
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        merror("DB(%s) Cannot begin transaction", wdb->agent_id);
+        merror("DB(%s) Cannot begin transaction", wdb->id);
         return -1;
     }
 
     switch (wdb_metadata_find_entry(wdb, key)) {
     case -1:
-        mdebug1("DB(%s) Cannot find metadata entry", wdb->agent_id);
+        mdebug1("DB(%s) Cannot find metadata entry", wdb->id);
         return -1;
 
     case 0:
         // Adding metadata
         if (wdb_metadata_insert_entry(wdb, key, value) < 0) {
-            mdebug1("DB(%s) Cannot insert metadata entry", wdb->agent_id);
+            mdebug1("DB(%s) Cannot insert metadata entry", wdb->id);
             return -1;
         }
         break;
@@ -66,7 +57,7 @@ int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
     default:
         // Update metadata entry
         if (wdb_metadata_update_entry(wdb, key, value) < 1) {
-            mdebug1("DB(%s) Cannot update metadata entry", wdb->agent_id);
+            mdebug1("DB(%s) Cannot update metadata entry", wdb->id);
             return -1;
         }
     }
@@ -83,7 +74,7 @@ int wdb_metadata_find_entry(wdb_t * wdb, const char * key) {
                             -1,
                             &stmt,
                             NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -99,7 +90,7 @@ int wdb_metadata_find_entry(wdb_t * wdb, const char * key) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         sqlite3_finalize(stmt);
         return -1;
     }
@@ -113,7 +104,7 @@ int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value) 
                             -1,
                             &stmt,
                             NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -124,7 +115,7 @@ int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value) 
         sqlite3_finalize(stmt);
         return 0;
     } else {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         sqlite3_finalize(stmt);
         return -1;
     }
@@ -138,7 +129,7 @@ int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value) 
                             -1,
                             &stmt,
                             NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -149,7 +140,7 @@ int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value) 
         sqlite3_finalize(stmt);
         return sqlite3_changes(wdb->db);
     } else {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         sqlite3_finalize(stmt);
         return -1;
     }
@@ -163,7 +154,7 @@ int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
                             -1,
                             &stmt,
                             NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -180,8 +171,40 @@ int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
             return 0;
             break;
         default:
-            mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+            mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             sqlite3_finalize(stmt);
             return -1;
+    }
+}
+
+int wdb_metadata_table_check(wdb_t * wdb, const char * key) {
+    sqlite3_stmt *stmt = NULL;
+    int ret = OS_INVALID;
+
+    if (sqlite3_prepare_v2(wdb->db,
+                            SQL_METADATA_STMT[WDB_STMT_METADATA_TABLE_CHECK],
+                            -1,
+                            &stmt,
+                            NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    if (sqlite3_bind_text(stmt, 1, key, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
+        return OS_INVALID;
+    }
+
+    switch (sqlite3_step(stmt)) {
+    case SQLITE_ROW:
+        ret = (int)sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+        return ret;
+        break;
+    default:
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
+        return OS_INVALID;
     }
 }

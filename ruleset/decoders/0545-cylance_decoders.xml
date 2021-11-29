@@ -1,0 +1,243 @@
+<!--
+  -  Cylance decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+<!--
+Event Type:Device
+Sep 17 15:57:27 ec2-52-72-144-44 1 2019-09-17T15:07:38.5460000Z sysloghost CylancePROTECT - - - Event Type: Device, Event Name: SystemSecurity, Device Name: xxxx, Agent Version: 0.0.0.0, IP Address: (0.0.0.0), MAC Address: (xxxxx), Logged On Users: (xxxxx), OS: Microsoft Windows Server 0000 Datacenter x64 0.0.0, Zone Names: (aws)
+Event Type:ExploitAttempt
+Sep 18 13:12:00 x-00-0-0-0 1 2019-09-18T13:06:18.3420000Z sysloghost CylancePROTECT - - - Event Type: ExploitAttempt, EventName: none, Device Name: xxx-xx-xx, IP Address: (0.0.0.0), Action: None, Process ID: 20288, Process Name:C:\WINDOWS\system32\xxxx.exe, User Name: SYSTEM, Violation Type: Remote Unmap of Memory, Zone Names: (User), Device Id: xx23xx-xx23xx-xx23xx-xx23xx-xx23xx, Policy Name: xxxxxx_+xxx+xxx
+Event Type:AuditLog
+Sep 17 14:38:29 x-00-0-0-0 1 2019-09-17T14:26:13.6670000Z sysloghost CylancePROTECT - - - Event Type: AuditLog, Event Name:LoginSuccess, Message: Provider: CylancePROTECT, Source IP: 0.0.0.0, User: xxxx xxx (xxxx@xxxx.com) Sep 14 19:28:48 xx-xx-xx-xx-00 1 2019-09-14T19:28:48.2330000Z sysloghost CylancePROTECT - - - Event Type: AuditLog, Event Name:LoginSuccess, Message: Provider: CylancePROTECT, Source IP: 0.0.0.0, User: xxxx (xxxx@xxxx.com)
+Event Type:ScriptControl
+Sep 16 05:02:49 x-00-0-0-0 1 2019-09-16T05:02:48.4470000Z sysloghost CylancePROTECT - - - Event Type: ScriptControl, Event Name: Blocked, Device Name: xxx-xxx-xxxx, File Path: c:\windows\temp\xxxx\xxxx\xxxx.vbs, Interpreter: ActiveScript, Interpreter Version: 0.0.0.0, Zone Names:(User), User Name: SYSTEM, Device Id: xx23-xx23-xx23-xx23-xx23, Policy Name: P4_AQT+MP_Block+SC_Block - PS Console Allow
+Event Type: AppControl
+Sep 14 02:43:41 x-00-0-0-0 1 2019-09-14T02:43:41.8100000Z sysloghost CylancePROTECT - - - Event Type: AppControl, Event Name: executionfromexternaldrives, Device Name: xxx-xxx23, IP Address: (0.0.0.0), Action: PEFileChange, Action Type: Allow, File Path: \\shared1\xxxx.exe, SHA256: xxxxxxxxxxxxxxxxxxxxxxxx12345xxxxxxxxx
+Event Type: Threat
+Sep 14 05:05:35 x-00-0-0-0 1 2019-09-14T02:48:13.1440000Z sysloghost CylancePROTECT - - - Event Type: Threat, Event Name: threat_changed, Device Name: xxxx-xxxx-xxxx, IP Address: (0.0.0.0), File Name: xxxx.tmp, Path: D:\xxx\xxxx\xxxx\xxxx\xxxx\, Drive Type: Internal Hard Drive, SHA256: xxxxxxxxxxxxxxxxxxxxxxxxx12345xxxxx,MD5: xxxxxxxxxxxxxxxxxxxx12345xxxxxx, Status: Quarantined, Cylance Score: 99, Found Date: 9/14/2019 2:48:13 AM, File Type: Executable, Is Running: False, Auto Run: False, Detected By: BackgroundThreatDetection, Zone Names: (User), Is Malware: False,Is Unique To Cylance: False, Threat Classification: UNCLASSIFIED,Device Id: xxx213-xxx123-xxx123-xxx123-xxxx123, Policy Name: P4_AQT+MP_Block+SC_Block - PS Console Allow
+Event Type: ThreatClassification
+Sep 14 02:43:41 x-00-0-0-0 1 2019-09-14T02:43:41.8100000Z sysloghost CylancePROTECT - - - Event Type: ThreatClassification,Event Name: ResearchSaved, Threat Class: Malware, Threat Subclass: Worm, SHA256: xxxxxxxxxxxxxxxxxxxxxxx12345 xxx12345
+-->
+
+#### BASIC FIELD TYPES #####
+
+<decoder name="CylancePROTECT_2.0">
+    <prematch>CylancePROTECT\s\w\s\w\s\w\s</prematch>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Event Type: (\w+)</regex>
+    <order>CylancePROTECT.Event.Type</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Event Name: (\w+)</regex>
+    <order>CylancePROTECT.Event.Name</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Device Name: (\.+),</regex>
+    <order>CylancePROTECT.Device.Name</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">IP Address: \p(\d+.\d+.\d+.\d+)\p</regex>
+    <order>CylancePROTECT.IP.Address</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Zone Names: \((\w*)\)</regex>
+    <order>CylancePROTECT.Zone.Names</order>
+</decoder>
+<!--
+#### EVENT TYPE: Device ####
+-->
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Agent Version: (\d.\d.\d+.\d)</regex>
+    <order>CylancePROTECT.Agent.Version</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">MAC Address: \p(\w+)\p</regex>
+    <order>CylancePROTECT.MAC.Address</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Logged On Users: \((\.+)\),</regex>
+    <order>CylancePROTECT.Username</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">OS: (\.+),</regex>
+    <order>CylancePROTECT.OS</order>
+</decoder>
+##### EVENT TYPE: ExploitAttempt
+<decoder name="CylancePROTECT_2.0-fields">
+<parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Action: (\w+)</regex>
+    <order>CylancePROTECT.Action</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Process ID: (\d+)</regex>
+    <order>CylancePROTECT.Process.ID</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Process Name: (\S+),</regex>
+    <order>CylancePROTECT.Process.Name</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">User Name: (\.+),</regex>
+    <order>CylancePROTECT.Username</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Device ID: (\.+),</regex>
+    <order>CylancePROTECT.Device.ID</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Policy Name: (\.+)</regex>
+    <order>CylancePROTECT.Policy.Name</order>
+</decoder>
+##### EVENT TYPE: AuditLog #####
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Message: (\.+),</regex>
+    <order>CylancePROTECT.Message</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Source IP: (\d+.\d+.\d+.\d+)</regex>
+    <order>CylancePROTECT.Source.IP</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">User: (\.+)</regex>
+    <order>CylancePROTECT.Username</order>
+</decoder>
+####### EVENT TYPE: ScriptControl
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">File Path: (\.+),</regex>
+    <order>CylancePROTECT.File.Path</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Interpreter: (\w+)</regex>
+    <order>CylancePROTECT.Interpreter</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Interpreter Version: (\S+)</regex>
+    <order>CylancePROTECT.Interpreter.Version</order>
+</decoder>
+###### EVENT TYPE: AppControl  ######
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Action Type: (\w+)</regex>
+    <order>CylancePROTECT.Action.Type</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">SHA256: (\.+)</regex>
+    <order>CylancePROTECT.SHA265</order>
+</decoder>
+###### EVENT TYPE: Memory Protection ######
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Violation Type: (\w*\s*\w*\s*\w*\s*\w*\s*\w*\s*\w*\s*\w*\s*\w*\s*\w*\s*\w*)</regex>
+    <order>CylancePROTECT.Violation.Type</order>
+</decoder>
+###### EVENT TYPE: Threat ######
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">File Name: (\.+),</regex>
+    <order>CylancePROTECT.File.Name</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Path: (\.+),</regex>
+    <order>CylancePROTECT.File.Path</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Drive Type: (\w+\s\w+\s\w+),</regex>
+    <order>CylancePROTECT.Drive.Type</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">SHA256: (\.+),</regex>
+    <order>CylancePROTECT.SHA265</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">MD5: (\S+),</regex>
+    <order>CylancePROTECT.MD5</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Status: (\w+)</regex>
+    <order>CylancePROTECT.Status</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Cylance Score: (\d+)</regex>
+    <order>CylancePROTECT.Cylance.Score</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Found Date: (\.+),</regex>
+    <order>CylancePROTECT.Found.Date</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">File Type: (\w+)</regex>
+    <order>CylancePROTECT.File.Type</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Is Running: (\w+)</regex>
+    <order>CylancePROTECT.Is.Running</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Auto Run: (\w+)</regex>
+    <order>CylancePROTECT.Auto.Run</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Detected By: (\w+)</regex>
+    <order>CylancePROTECT.Detected.By</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Is Malware: (\w+)</regex>
+    <order>CylancePROTECT.Is.Malware</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Is Unique To Cylance: (\w+)</regex>
+    <order>CylancePROTECT.Is.Unique.To.Cylance</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_regex">Threat Classification: (\w+)</regex>
+    <order>CylancePROTECT.Threat.Classification</order>
+</decoder>
+######### EVENT TYPE: Threat Classificationi ########
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Threat Class: (\w+)</regex>
+    <order>CylancePROTECT.Threat.Class</order>
+</decoder>
+<decoder name="CylancePROTECT_2.0-fields">
+    <parent>CylancePROTECT_2.0</parent>
+    <regex offset="after_parent">Threat Subclass: (\w*\s*\w*\s*\w*)</regex>
+    <order>CylancePROTECT.Threat.Subclass</order>
+</decoder>

@@ -1,6 +1,6 @@
 /*
  * SQL Schema for upgrading databases
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -25,10 +25,11 @@ CREATE INDEX IF NOT EXISTS hotfix_id ON sys_hotfixes (scan_id);
 
 CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_SCAN INTEGER,
-    WAZUH_VERSION TEXT
+    WAZUH_VERSION TEXT,
+    HOTFIX_SCAN_ID TEXT
 );
-INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION)
-    SELECT '0', '0' WHERE NOT EXISTS (
+INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION, HOTFIX_SCAN_ID)
+    SELECT '0', '0', '0' WHERE NOT EXISTS (
         SELECT * FROM vuln_metadata
     );
 

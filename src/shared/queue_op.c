@@ -1,6 +1,6 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 2, 2017
  *
  * This program is free software; you can redistribute it
@@ -90,7 +90,6 @@ void * queue_pop(w_queue_t * queue) {
         return NULL;
     } else {
         data = queue->data[queue->end];
-        queue->data[queue->begin] = data;
         queue->end = (queue->end + 1) % queue->size;
         queue->elements--;
         return data;
@@ -104,6 +103,24 @@ void * queue_pop_ex(w_queue_t * queue) {
 
     while (data = queue_pop(queue), !data) {
         w_cond_wait(&queue->available, &queue->mutex);
+    }
+
+    w_cond_signal(&queue->available_not_empty);
+    w_mutex_unlock(&queue->mutex);
+
+    return data;
+}
+
+void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime) {
+    void * data;
+
+    w_mutex_lock(&queue->mutex);
+
+    while (data = queue_pop(queue), !data) {
+        if (pthread_cond_timedwait(&queue->available, &queue->mutex, abstime) != 0) {
+            w_mutex_unlock(&queue->mutex);
+            return NULL;
+        }
     }
 
     w_cond_signal(&queue->available_not_empty);

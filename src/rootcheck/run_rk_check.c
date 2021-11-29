@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -43,12 +43,12 @@ int notify_rk(int rk_type, const char *msg)
     if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
         mterror(ARGV0, QUEUE_SEND);
 
-        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        if ((rootcheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
     }
 #endif
@@ -77,7 +77,7 @@ void run_rk_check()
         free(rootcheck.basedir);
         rootcheck.basedir = strdup(basedir);
     } else {
-        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == PATH_SEP) {
+        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == '/') {
             rootcheck.basedir[strlen(rootcheck.basedir)-1] = '\0';
         }
     }
@@ -297,19 +297,20 @@ void run_rk_check()
     return;
 }
 
+#ifdef WIN32
+DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void * args){
+#else
 void * w_rootcheck_thread(__attribute__((unused)) void * args) {
-
+#endif
     time_t curr_time = 0;
     time_t prev_time_rk = 0;
     syscheck_config *syscheck = args;
-
-    sleep(syscheck->tsleep * 10);
 
     while (1) {
         int run_now = 0;
 
         /* Check if syscheck should be restarted */
-        run_now = os_check_restart_syscheck();
+        run_now = os_check_restart_rootcheck();
         curr_time = time(0);
 
         /* If time elapsed is higher than the rootcheck_time, run it */
@@ -323,7 +324,9 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
         sleep(1);
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void log_realtime_status_rk(int next) {
@@ -355,4 +358,3 @@ void log_realtime_status_rk(int next) {
         }
     }
 }
-

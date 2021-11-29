@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 12, 2018.
  *
  * This program is free software; you can redistribute it
@@ -12,6 +12,7 @@
 #include "logcollector.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+#include "state.h"
 
 
 size_t lccom_dispatch(char * command, char ** output){
@@ -28,16 +29,35 @@ size_t lccom_dispatch(char * command, char ** output){
         // getconfig section
         if (!rcv_args){
             mdebug1("LCCOM getconfig needs arguments.");
-            *output = strdup("err LCCOM getconfig needs arguments");
+            os_strdup("err LCCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return lccom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "getstate") == 0) {
+        return lccom_getstate(output);
     } else {
         mdebug1("LCCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
+}
+
+size_t lccom_getstate(char ** output) {
+    cJSON * state_json = NULL;
+    cJSON * w_packet = cJSON_CreateObject();
+    if (state_json = w_logcollector_state_get(), state_json == NULL) {
+        cJSON_AddNumberToObject(w_packet, "error", 1);
+        cJSON_AddObjectToObject(w_packet, "data");
+        cJSON_AddStringToObject(w_packet, "message", "Statistics unavailable");
+        mdebug1("At LCCOM getstate: Statistics unavailable");
+    } else {
+        cJSON_AddNumberToObject(w_packet, "error", 0);
+        cJSON_AddItemToObject(w_packet, "data", state_json);
+    }
+    *output = cJSON_PrintUnformatted(w_packet);
+    cJSON_Delete(w_packet);
+    return strlen(*output);
 }
 
 size_t lccom_getconfig(const char * section, char ** output) {
@@ -47,7 +67,7 @@ size_t lccom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "localfile") == 0){
         if (cfg = getLocalfileConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -58,7 +78,7 @@ size_t lccom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "socket") == 0){
         if (cfg = getSocketConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -69,7 +89,7 @@ size_t lccom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal") == 0){
         if (cfg = getLogcollectorInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -83,7 +103,7 @@ size_t lccom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At LCCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
@@ -99,7 +119,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", LC_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }

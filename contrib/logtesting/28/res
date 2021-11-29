@@ -1,8 +1,0 @@
-**Phase 1: Completed pre-decoding.
-       full event: 'Feb 4 10:43:02 niban sudo: dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/bin/ls'
-       hostname: 'melancia'
-       program_name: '(null)'
-       log: 'Feb 4 10:43:02 niban sudo: dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/bin/ls'
-
-**Phase 2: Completed decoding.
-       No decoder matched.

@@ -1,5 +1,0 @@
-
- - Najpierw musisz dodać tego agenta do serwera aby
-   umożliwić komunikację między nimi. Jeśli zakończyłeś
-   możesz uruchomić narzędzie 'manage_agents' aby
-   zaimportować klucz autoryzacyjny z serwera.

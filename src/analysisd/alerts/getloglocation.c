@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -215,18 +215,18 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
 FILE * rotate_logs(rotation_list *list, char *log_file, int today, int counter, FILE *_flog, const char *month,
                  int year, const char *folder, const char *log_daily, int compress, const char *ext, const char *tag,
                  time_t *last_rot, int maxage, rotation_list *other_list, int rotate_op) {
-    char compress_file[OS_FLSIZE + 1];
-    char path[PATH_MAX];
+    char compress_file[OS_FLSIZE + 1] = {0};
+    char path[PATH_MAX] = {0};
     char *previous_log = NULL;
     int last_counter, rotate, remove_tag = 0, json = 0;
     char *logfile;
     struct tm last_day;
 
     if (strcmp(tag, "alerts") == 0) {
-        snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGALERTS);
+        snprintf(path, PATH_MAX, "%s", LOGALERTS);
         remove_tag = 0;
     } else if (strcmp(tag, "archive") == 0) {
-        snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGARCHIVES);
+        snprintf(path, PATH_MAX, "%s", LOGARCHIVES);
         remove_tag = 1;
     }
 

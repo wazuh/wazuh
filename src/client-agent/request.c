@@ -1,5 +1,5 @@
 /* Remote request manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 2, 2017.
  *
  * This program is free software; you can redistribute it
@@ -20,6 +20,7 @@
 #include "../syscheckd/syscheck.h"
 #include "../wazuh_modules/wmodules.h"
 #include "../logcollector/logcollector.h"
+#include "../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
 #endif
 
 static OSHash * req_table;
@@ -148,7 +149,7 @@ int req_push(char * buffer, size_t length) {
 
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
-            snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
+            snprintf(sockname, PATH_MAX, "queue/sockets/%s", target);
 
             if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                 switch (errno) {
@@ -259,11 +260,13 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         } else if (strncmp(node->target, "logcollector", 12) == 0) {
             length = lccom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "com", 3) == 0) {
-            length = wcom_dispatch(node->buffer, node->length, &buffer);
+            length = wcom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "syscheck", 8) == 0) {
             length = syscom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "wmodules", 8) == 0) {
             length = wmcom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "upgrade", 7) == 0) {
+            length = wm_agent_upgrade_process_command(node->buffer, &buffer);
         } else {
             os_strdup("err Could not get requested section", buffer);
             length = strlen(buffer);

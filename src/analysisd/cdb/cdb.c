@@ -1,5 +1,5 @@
 /* Public domain */
-/* Copyright (C) 2015-2019, Wazuh Inc. */
+/* Copyright (C) 2015-2021, Wazuh Inc. */
 /* Adapted from DJB's original cdb-0.75 package */
 
 #include <sys/types.h>
@@ -15,7 +15,6 @@
 #ifndef EPROTO
 #define EPROTO -15  /* cdb 0.75's default for PROTOless systems */
 #endif
-
 
 void cdb_free(struct cdb *c)
 {

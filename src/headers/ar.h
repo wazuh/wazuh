@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -31,11 +31,5 @@
 /* AR Queues to use */
 #define REMOTE_AR       00001
 #define LOCAL_AR        00002
-
-/* Expected values */
-#define FILENAME    0000010
-#define SRCIP       0000004
-#define DSTIP       0000002
-#define USERNAME    0000001
 
 #endif /* AR_H */

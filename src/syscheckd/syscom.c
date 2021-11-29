@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 14, 2018.
  *
  * This program is free software; you can redistribute it
@@ -14,8 +14,18 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifdef WAZUH_UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
 
 size_t syscom_dispatch(char * command, char ** output){
+    assert(command != NULL);
+    assert(output != NULL);
 
     char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -28,27 +38,39 @@ size_t syscom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1(FIM_SYSCOM_ARGUMENTS);
-            *output = strdup("err SYSCOM getconfig needs arguments");
+            mdebug1(FIM_SYSCOM_ARGUMENTS, "getconfig");
+            os_strdup("err SYSCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
+    } else if (strcmp(rcv_comm, "dbsync") == 0) {
+        if (rcv_args == NULL) {
+            mdebug1(FIM_SYSCOM_ARGUMENTS, "dbsync");
+        } else {
+            fim_sync_push_msg(rcv_args);
+        }
 
+        return 0;
+    } else if (strcmp(rcv_comm, "restart") == 0) {
+        os_set_restart_syscheck();
+        return 0;
     } else {
         mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
 
 size_t syscom_getconfig(const char * section, char ** output) {
+    assert(section != NULL);
+    assert(output != NULL);
 
     cJSON *cfg;
     char *json_str;
 
     if (strcmp(section, "syscheck") == 0){
         if (cfg = getSyscheckConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -59,7 +81,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "rootcheck") == 0){
         if (cfg = getRootcheckConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -70,7 +92,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal") == 0){
         if (cfg = getSyscheckInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -84,11 +106,11 @@ size_t syscom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1(FIM_SYSCOM_FAIL_GETCONFIG, section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
-
+// LCOV_EXCL_START
 #ifndef WIN32
 void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
@@ -100,7 +122,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
     mdebug1(FIM_SYSCOM_REQUEST_READY);
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror(FIM_ERROR_SYSCOM_BIND_SOCKET, SYS_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -153,8 +175,12 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         default:
             length = syscom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
-            free(response);
+
+            if (length > 0) {
+                OS_SendSecureTCP(peer, length, response);
+            }
+            os_free(response);
+
             close(peer);
         }
         free(buffer);
@@ -167,3 +193,4 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 }
 
 #endif
+// LCOV_EXCL_STOP

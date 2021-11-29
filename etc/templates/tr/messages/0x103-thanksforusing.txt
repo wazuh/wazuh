@@ -8,7 +8,6 @@
 
     Daha fazla bilgi şu adresten bulunabilir:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
          --- Bitirmek için ENTER'a basın. ---
       --- (Belki daha fazla bilgi aşağıda). ---

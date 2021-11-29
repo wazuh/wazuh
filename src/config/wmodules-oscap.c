@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 27, 2016.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,6 @@ static const char *XML_XCCDF = "xccdf";
 static const char *XML_OVAL = "oval";
 static const char *XML_PATH = "path";
 static const char *XML_TIMEOUT = "timeout";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_XCCDF_ID = "xccdf-id";
@@ -42,7 +41,8 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     os_calloc(1, sizeof(wm_oscap), oscap);
     oscap->flags.enabled = 1;
     oscap->flags.scan_on_start = 1;
-    oscap->interval = WM_OSCAP_DEF_INTERVAL;
+    sched_scan_init(&(oscap->scan_config));
+    oscap->scan_config.interval = WM_DEF_INTERVAL;
     module->context = &WM_OSCAP_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = oscap;
@@ -213,32 +213,6 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
-        } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            oscap->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if (oscap->interval <= 0 || oscap->interval >= UINT_MAX) {
-                merror("Invalid interval at module '%s'", WM_OSCAP_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'd':
-                oscap->interval *= 86400;
-                break;
-            case 'h':
-                oscap->interval *= 3600;
-                break;
-            case 'm':
-                oscap->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid interval at module '%s'", WM_OSCAP_CONTEXT.name);
-                return OS_INVALID;
-            }
         } else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 oscap->flags.scan_on_start = 1;
@@ -257,10 +231,17 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSCAP_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_OSCAP_CONTEXT.name);
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_OSCAP_CONTEXT.name);	
             return OS_INVALID;
         }
+    }
+
+    const int sched_read = sched_scan_read(&(oscap->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
+        return OS_INVALID;
     }
 
     return 0;

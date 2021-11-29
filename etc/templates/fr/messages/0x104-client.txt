@@ -1,5 +1,0 @@
-
- - Vous devez d'abord ajouter cet agent sur le serveur pour
-   qu'ils communiquent entre eux. Quand cela sera fait,
-   vous pourrez lancer l'outil 'manage_agents' pour
-   importer la clef d'authentification depuis le serveur.

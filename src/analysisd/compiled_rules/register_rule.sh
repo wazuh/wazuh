@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Variables - do not modify them
 CHF="compiled_rules.h"
 
@@ -33,30 +33,32 @@ if [ "x$1" = "xlist" ]; then
     exit 0;
 
 elif [ "x$1" = "xsave" ]; then
-    ls -la /etc/ossec-init.conf > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to save rules. You must have OSSEC installed to do so."
+    if [ "X${2}" = "X" ]; then
+        echo "ERROR: You must specify the installation path. i.e.: ${0} $1 WAZUH_HOME"
+        exit 1;
+    fi    
+    WAZUH_HOME=${2}
+
+    eval $(${WAZUH_HOME}/bin/wazuh-control info 2>/dev/null)    
+    if [ "X$WAZUH_TYPE" = "X" ]; then
+        echo "ERROR: Unable to save rules. You must have Wazuh installed to do so."
+        exit 1;
+    fi
+    if [ "$WAZUH_TYPE" = "agent" ]; then
+        echo "ERROR: You must execute this script on Wazuh Manager"
         exit 1;
     fi
 
-    cat /etc/ossec-init.conf > /dev/null 2>&1
+    ls ${WAZUH_HOME}/compiled_rules > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to save rules. You must be root to do so."
-        exit 1;
-    fi
-
-    . /etc/ossec-init.conf
-
-    ls ${DIRECTORY}/compiled_rules > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        mkdir ${DIRECTORY}/compiled_rules > /dev/null 2>&1
+        mkdir ${WAZUH_HOME}/compiled_rules > /dev/null 2>&1
         if [ ! $? = 0 ]; then
             echo "ERROR: Unable to save rules. You must be root to do so."
             exit 1;
         fi
     fi
 
-    cp .function_list ${DIRECTORY}/compiled_rules/function_list > /dev/null 2>&1
+    cp .function_list ${WAZUH_HOME}/compiled_rules/function_list > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "ERROR: Unable to save rules. You must be root to do so."
         exit 1;
@@ -64,46 +66,47 @@ elif [ "x$1" = "xsave" ]; then
 
     for i in `ls *.c`; do
         if [ ! "x$i" = "xgeneric_samples.c" ]; then
-            cp $i ${DIRECTORY}/compiled_rules/ > /dev/null 2>&1
+            cp $i ${WAZUH_HOME}/compiled_rules/ > /dev/null 2>&1
         fi
     done
-    echo "*Save completed at ${DIRECTORY}/compiled_rules/";
+    echo "*Save completed at ${WAZUH_HOME}/compiled_rules/";
     exit 0;
 
 elif [ "x$1" = "xrestore" ]; then
-
-    ls -la /etc/ossec-init.conf > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to restore rules. You must have OSSEC installed to do so."
+    if [ "X${2}" = "X" ]; then
+        echo "ERROR: You must specify the installation path. i.e.: ${0} $1 WAZUH_HOME"
+        exit 1;
+    fi    
+    WAZUH_HOME=${2}
+    
+    eval $(${WAZUH_HOME}/bin/wazuh-control info 2>/dev/null)    
+    if [ "X$WAZUH_TYPE" = "X" ]; then
+        echo "ERROR: Unable to save rules. You must have Wazuh installed to do so."
+        exit 1;
+    fi
+    if [ "$WAZUH_TYPE" = "agent" ]; then
+        echo "ERROR: You must execute this script on Wazuh Manager"
         exit 1;
     fi
 
-    cat /etc/ossec-init.conf > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to restore rules. You must be root to do so."
-        exit 1;
-    fi
-
-    . /etc/ossec-init.conf
-
-    ls ${DIRECTORY}/compiled_rules/function_list > /dev/null 2>&1
+    ls ${WAZUH_HOME}/compiled_rules/function_list > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "*No local compiled rules available to restore."
         exit 0;
     fi
 
-    cat  ${DIRECTORY}/compiled_rules/function_list >> .function_list
+    cat  ${WAZUH_HOME}/compiled_rules/function_list >> .function_list
     if [ ! $? = 0 ]; then
         echo "ERROR: Unable to restore rules. Function list not present."
         exit 1;
     fi
 
-    for i in `ls ${DIRECTORY}/compiled_rules/*.c`; do
+    for i in `ls ${WAZUH_HOME}/compiled_rules/*.c`; do
         if [ ! "x$i" = "xgeneric_samples.c" ]; then
             cp $i ./ > /dev/null 2>&1
         fi
     done
-    echo "*Restore completed from ${DIRECTORY}/compiled_rules/";
+    echo "*Restore completed from ${WAZUH_HOME}/compiled_rules/";
     exit 0;
 
 elif [ "x$1" = "xbuild" ]; then

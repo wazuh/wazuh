@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -14,7 +14,7 @@
 #include "mail_list.h"
 
 #ifndef ARGV0
-#define ARGV0 "ossec-maild"
+#define ARGV0 "wazuh-maild"
 #endif
 
 /* Global variables */
@@ -24,13 +24,13 @@ char _g_subject[SUBJECT_SIZE + 2];
 
 /* Prototypes */
 static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
-static void help_maild(void) __attribute__((noreturn));
+static void help_maild(char *home_path) __attribute__((noreturn));
 
 /* Mail Structure */
 MailConfig mail;
 
 /* Print help statement */
-static void help_maild()
+static void help_maild(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -41,11 +41,12 @@ static void help_maild()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -54,10 +55,10 @@ int main(int argc, char **argv)
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
-    const char *dir  = DEFAULTDIR;
-    const char *user = MAILUSER;
+    char *home_path = w_homedir(argv[0]);
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -68,7 +69,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_maild();
+                help_maild(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -92,7 +93,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -104,24 +106,28 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_maild();
+                help_maild(home_path);
                 break;
         }
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Read configuration */
     if (MailConf(test_config, cfg, &mail) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, OSSECCONF);
     }
 
     /* Read internal options */
@@ -183,11 +189,11 @@ int main(int argc, char **argv)
         free(aux_smtp_server);
 
         /* chroot */
-        if (Privsep_Chroot(dir) < 0) {
-            merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+        if (Privsep_Chroot(home_path) < 0) {
+            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
         }
         nowChroot();
-        mdebug1(PRIVSEP_MSG, dir, user);
+        mdebug1(PRIVSEP_MSG, home_path, user);
     }
 
     /* Change user */
@@ -195,7 +201,8 @@ int main(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     // Start com request thread
     w_create_thread(mailcom_main, NULL);
@@ -213,6 +220,8 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     OS_Run(&mail);
+
+    return (0);
 }
 
 /* Read the queue and send the appropriate alerts
@@ -225,7 +234,7 @@ static void OS_Run(MailConfig *mail)
     MailMsg *msg_sms = NULL;
 
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     int i = 0;
     int mailtosend = 0;
@@ -238,8 +247,8 @@ static void OS_Run(MailConfig *mail)
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
-    thishour = p->tm_hour;
+    localtime_r(&tm, &tm_result);
+    thishour = tm_result.tm_hour;
 
     /* Initialize file queue */
     os_calloc(1, sizeof(file_queue), fileq);
@@ -247,7 +256,7 @@ static void OS_Run(MailConfig *mail)
     switch (mail->source) {
     case MAIL_SOURCE_LOGS:
         minfo("Getting alerts in log format.");
-        Init_FileQueue(fileq, p, CRALERT_MAIL_SET);
+        Init_FileQueue(fileq, &tm_result, CRALERT_MAIL_SET);
         break;
 
     case MAIL_SOURCE_JSON:
@@ -276,7 +285,7 @@ static void OS_Run(MailConfig *mail)
 
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         /* SMS messages are sent without delay */
         if (msg_sms) {
@@ -289,7 +298,7 @@ static void OS_Run(MailConfig *mail)
                 sleep(30);
                 continue;
             } else if (pid == 0) {
-                if (OS_Sendsms(mail, p, msg_sms) < 0) {
+                if (OS_Sendsms(mail, &tm_result, msg_sms) < 0) {
                     merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
@@ -307,13 +316,13 @@ static void OS_Run(MailConfig *mail)
         /* If mail_timeout == NEXTMAIL_TIMEOUT, we will try to get
          * more messages, before sending anything
          */
-        if ((mail_timeout == NEXTMAIL_TIMEOUT) && (p->tm_hour == thishour)) {
+        if ((mail_timeout == NEXTMAIL_TIMEOUT) && (tm_result.tm_hour == thishour)) {
             /* Get more messages */
         }
 
         /* Hour changed: send all suppressed mails */
         else if (((mailtosend < mail->maxperhour) && (mailtosend != 0)) ||
-                 ((p->tm_hour != thishour) && (childcount < MAXCHILDPROCESS))) {
+                 ((tm_result.tm_hour != thishour) && (childcount < MAXCHILDPROCESS))) {
             MailNode *mailmsg;
             pid_t pid;
 
@@ -330,7 +339,7 @@ static void OS_Run(MailConfig *mail)
                 sleep(30);
                 continue;
             } else if (pid == 0) {
-                if (OS_Sendmail(mail, p) < 0) {
+                if (OS_Sendmail(mail, &tm_result) < 0) {
                     merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
@@ -367,8 +376,8 @@ static void OS_Run(MailConfig *mail)
 
 snd_check_hour:
             /* If we sent everything */
-            if (p->tm_hour != thishour) {
-                thishour = p->tm_hour;
+            if (tm_result.tm_hour != thishour) {
+                thishour = tm_result.tm_hour;
 
                 mailtosend = 0;
             }
@@ -395,7 +404,7 @@ snd_check_hour:
         }
 
         /* Receive message from queue */
-        if (msg = mail->source == MAIL_SOURCE_LOGS ? OS_RecvMailQ(fileq, p, mail, &msg_sms) : OS_RecvMailQ_JSON(fileq, mail, &msg_sms), msg) {
+        if (msg = mail->source == MAIL_SOURCE_LOGS ? OS_RecvMailQ(fileq, &tm_result, mail, &msg_sms) : OS_RecvMailQ_JSON(fileq, mail, &msg_sms), msg) {
             /* If the e-mail priority is do_not_group,
              * flush all previous entries and then send it.
              * Use s_msg to hold the pointer to the message while we flush it.

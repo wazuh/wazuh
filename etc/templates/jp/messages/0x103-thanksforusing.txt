@@ -7,6 +7,5 @@
 
      詳しい情報は次の場所にあります：
            - http://www.wazuh.com
-           - http://www.ossec.net
 
      --- ENTERを押して終了します（以下の情報が必要です）。 ---

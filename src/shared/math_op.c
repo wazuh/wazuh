@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,9 +11,6 @@
 #include "shared.h"
 
 
-/* Get the first available prime after the provided value
- * Returns 0 on error
- */
 unsigned int os_getprime(unsigned int val)
 {
     unsigned int i;
@@ -46,4 +43,3 @@ unsigned int os_getprime(unsigned int val)
 
     return (0);
 }
-

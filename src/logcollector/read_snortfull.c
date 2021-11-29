@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read snort_full files */
@@ -27,9 +28,19 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    /* Obtain context to calculate hash */
+    SHA_CTX context;
+    int64_t current_position = w_ftell(lf->fp);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
+
+    while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
+
+        if (is_valid_context_file) {
+            OS_SHA1_Stream(&context, NULL, str);
+        }
+
         /* Remove \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL) {
             *q = '\0';
@@ -109,6 +120,12 @@ file_error:
         *rc = -1;
         return (NULL);
 
+    }
+
+    current_position = w_ftell(lf->fp);
+
+    if (is_valid_context_file) {
+        w_update_file_status(lf->file, current_position, &context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);

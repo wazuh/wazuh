@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * June 12, 2017.
  *
  * This program is free software; you can redistribute it
@@ -40,7 +40,7 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
     char new_path_json[PATH_MAX];
     char compressed_path[PATH_MAX];
     char tag[OS_FLSIZE];
-    struct tm tm;
+    struct tm tm  = { .tm_sec = 0 };
     time_t now;
     int counter = 0;
 
@@ -48,9 +48,9 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
         minfo("Running daily rotation of log files.");
     else {
         if (rotate_json)
-            minfo("Rotating 'ossec.json' file.");
+            minfo("Rotating '%s' file.", LOGJSONFILE);
         else
-            minfo("Rotating 'ossec.log' file.");
+            minfo("Rotating '%s' file.", LOGFILE);
     }
 
 
@@ -74,13 +74,14 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
     strcpy(log_dir, base_dir);
     snprintf(tag, OS_FLSIZE, "logs");
 #else
-    char *base_dir;
+    // TODO: Review this logic
+    char *base_dir = NULL;
     char log_dir[PATH_MAX] = "\0";
     os_strdup(old_file, dir);
     base_dir = dirname(dir);
     if(!strncmp(old_file, LOGFILE, strlen(LOGFILE)) || !strncmp(old_file, LOGJSONFILE, strlen(LOGJSONFILE))){
         snprintf(tag, OS_FLSIZE, "logs");
-        snprintf(log_dir, PATH_MAX, "%s/ossec", base_dir);
+        snprintf(log_dir, PATH_MAX, "%s/wazuh", base_dir);
     } else if(!strncmp(old_file, ALERTS_DAILY, strlen(ALERTS_DAILY)) || !strncmp(old_file, ALERTSJSON_DAILY, strlen(ALERTSJSON_DAILY))){
         snprintf(tag, OS_FLSIZE, "alerts");
     } else if(!strncmp(old_file, EVENTS_DAILY, strlen(EVENTS_DAILY)) || !strncmp(old_file, EVENTSJSON_DAILY, strlen(EVENTSJSON_DAILY))){
@@ -88,17 +89,15 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
     }
 
 #endif
-    if(!strncmp(base_dir, "/logs", strlen(base_dir))){
-        snprintf(year_dir, PATH_MAX, "%s/ossec/%d", base_dir, tm.tm_year + 1900);
+    // TODO: Review this condition
+    if(!strncmp(base_dir, "logs", strlen(base_dir))){
+        os_snprintf(year_dir, PATH_MAX, "%s/wazuh/%d", base_dir, tm.tm_year + 1900);
     } else {
-        snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
+        os_snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
     }
-    snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
-    snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
-    snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
-
-    snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
-
+    os_snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
+    os_snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
+    os_snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
 
      // Create folders
 
@@ -112,24 +111,18 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
         merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
-
     if (!rotate_json) {
-
         /* If we have a previous log of the same day, create the next one. */
         if(last_counter != -1) {
             counter = last_counter + 1;
-            snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
-            snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
+            os_snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
         }
-
         if (!IsFile(old_file)) {
             if (rename_ex(old_file, new_path) == 0) {
                 if (compress) {
-                    char compress_file[OS_FLSIZE + 1];
-                    memset(compress_file, '\0', OS_FLSIZE + 1);
-                    snprintf(compress_file, OS_FLSIZE, "%s.gz", new_path);
+                    os_snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
                     if (!IsFile(new_path)) {
-                        w_compress_gzfile(new_path, compress_file, 1);
+                        w_compress_gzfile(new_path, compressed_path, 1);
                     }
                 }
             } else {
@@ -137,27 +130,19 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
             }
         }
 
-    }
-
-    else {
-
-        snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
-
+    } else {
        /* If we have a previous log of the same day, create the next one. */
         if(last_counter != -1) {
             counter = last_counter + 1;
-            snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
-            snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
+            os_snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
         }
 
         if (!IsFile(old_file)) {
             if (rename_ex(old_file, new_path_json) == 0) {
                 if (compress) {
-                    char compress_file[OS_FLSIZE + 1];
-                    memset(compress_file, '\0', OS_FLSIZE + 1);
-                    snprintf(compress_file, OS_FLSIZE, "%s.gz", new_path_json);
+                    os_snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
                     if (!IsFile(new_path_json)) {
-                        w_compress_gzfile(new_path_json, compress_file, 1);
+                        w_compress_gzfile(new_path_json, compressed_path, 1);
                     }
                 }
             } else {
@@ -170,8 +155,6 @@ char *w_rotate_log(char *old_file, int compress, int maxage, int new_day, int ro
     // Remove old compressed files
     remove_old_logs(log_dir, maxage, "logs", list_log, list_json);
     os_free(dir);
-    if(rotate_json)
-        return strdup(new_path_json);
-    else
-        return strdup(new_path);
+
+    return strdup(rotate_json ? new_path_json : new_path);
 }

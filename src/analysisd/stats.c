@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -430,56 +430,20 @@ int Start_Hour(int t_id, int threads_number)
     return (0);
 }
 
-/* Check if the message received is repeated to avoid
- * floods of the same message
- */
-int LastMsg_Stats(const char *log, int t_id)
-{
-    if (strcmp(log, _lastmsg[t_id]) == 0) {
-        return (1);
-    }
-
-    else if (strcmp(log, _prevlast[t_id]) == 0) {
-        return (1);
-    }
-
-    else if (strcmp(log, _pprevlast[t_id]) == 0) {
-        return (1);
-    }
-
-    return (0);
-}
-
-/* If the message is not repeated, rearrange the last
- * received messages
- */
-void LastMsg_Change(const char *log, int t_id)
-{
-    /* Remove the last one */
-    free(_pprevlast[t_id]);
-
-    /* Move the second to third and the last to second */
-    _pprevlast[t_id] = _prevlast[t_id];
-    _prevlast[t_id] = _lastmsg[t_id];
-
-    os_strdup(log, _lastmsg[t_id]);
-    return;
-}
-
 void Start_Time(){
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     /* Current time */
-    p = localtime(&c_time);
+    localtime_r(&c_time, &tm_result);
 
     /* Other global variables */
     _fired = 0;
     _cignorehour = 0;
 
-    today = p->tm_mday;
-    thishour = p->tm_hour;
-    prev_year = p->tm_year + 1900;
-    strncpy(prev_month, l_month[p->tm_mon], 3);
+    today = tm_result.tm_mday;
+    thishour = tm_result.tm_hour;
+    prev_year = tm_result.tm_year + 1900;
+    strncpy(prev_month, l_month[tm_result.tm_mon], 3);
     prev_month[3] = '\0';
 
 }

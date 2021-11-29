@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent control
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January, 2019
  *
  * This program is free software; you can redistribute it
@@ -9,149 +9,210 @@
  * Foundation.
  */
 
-#ifdef CLIENT
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
-#include "syscollector/syscollector.h"
+#include "sysInfo.h"
+#include "sym_load.h"
 #include "external/cJSON/cJSON.h"
 #include "file_op.h"
 #include "../os_net/os_net.h"
-#include <ifaddrs.h>
 
 static void *wm_control_main();
 static void wm_control_destroy();
-cJSON *wm_control_dump(void);
+cJSON *wm_control_dump();
 
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
     (wm_routine)wm_control_main,
-    (wm_routine)wm_control_destroy,
-    (cJSON * (*)(const void *))wm_control_dump
+    (wm_routine)(void *)wm_control_destroy,
+    (cJSON * (*)(const void *))wm_control_dump,
+    NULL,
+    NULL
 };
+void *sysinfo_module = NULL;
+sysinfo_networks_func sysinfo_network_ptr = NULL;
+sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
+#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
+#include <ifaddrs.h>
+#elif defined sun
+#include <net/if.h>
+#include <sys/sockio.h>
+
+/**
+ * @brief Get the number of available network interfaces
+ *
+ * @return Number of network interfaces in the system.
+ */
+static int get_if_num() {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (fd == -1) {
+        return -1;
+    }
+
+    struct lifnum ifn = { .lifn_family = AF_INET };
+
+    int retval = ioctl(fd, SIOCGLIFNUM, &ifn);
+    close(fd);
+
+    if (retval == -1) {
+        return -1;
+    }
+
+    return ifn.lifn_count;
+}
+
+#endif
+
+/**
+ * @brief Get the Primary IP address
+ *
+ * Resolve the host's IP as the IP address of the default route interface,
+ * or the first non-loopback available interface.
+ *
+ * @return Pointer to a string holding the host's IP.
+ * @post The user must free the returned pointer.
+ */
 char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
-    char **ifaces_list;
-    struct ifaddrs *ifaddr = NULL, *ifa;
-    int size;
-    int i = 0;
-#ifdef __linux__
-    int min_metric = INT_MAX;
-#endif
 
-    if (getifaddrs(&ifaddr) == -1) {
-        if (ifaddr) {
-            freeifaddrs(ifaddr);
-        }
-        mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
-        return agent_ip;
-    }
-
-    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
-        i++;
-    }
-
-    if(i == 0){
-        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
-        return agent_ip;
-    }
-
-    os_calloc(i, sizeof(char *), ifaces_list);
-
-    /* Create interfaces list */
-    size = getIfaceslist(ifaces_list, ifaddr);
-
-    if(!ifaces_list[0]){
-        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
-        os_free(ifaces_list);
-        freeifaddrs(ifaddr);
-        return agent_ip;
-    }
-
-#ifdef __MACH__
-    OSHash *gateways = OSHash_Create();
-    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
-    if (getGatewayList(gateways) < 0){
-        mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
-        OSHash_Free(gateways);
-        os_free(ifaces_list);
-        freeifaddrs(ifaddr);
-        return agent_ip;
-    }
-    gateway *gate;
-#endif
-
-    for (i=0; i<size; i++) {
-        cJSON *object = cJSON_CreateObject();
-#ifdef __linux__
-        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
-#elif defined __MACH__
-        if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
-            if(!gate->isdefault){
-                cJSON_Delete(object);
-                continue;
-            }
-            if(gate->addr[0]=='l'){
-                cJSON_Delete(object);
-                continue;
-            }
-            getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
-        }
-#endif
-        cJSON *interface = cJSON_GetObjectItem(object, "iface");
-        cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
-        if(ipv4){
-#ifdef __linux__
-            cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
-            if (gateway) {
-                cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-                if (metric && metric->valueint < min_metric) {
-                    cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                    cJSON *address = cJSON_GetArrayItem(addresses,0);
-                    if(agent_ip != NULL){
-                        free(agent_ip);
+#if defined __linux__ || defined __MACH__ || defined(FreeBSD) || defined(OpenBSD)
+    cJSON *object;
+    if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
+        const int error_code = sysinfo_network_ptr(&object);
+        if (error_code == 0) {
+            if (object) {
+                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+                if (iface) {
+                    const int size_ids = cJSON_GetArraySize(iface);
+                    for (int i = 0; i < size_ids; i++){
+                        const cJSON *element = cJSON_GetArrayItem(iface, i);
+                        if(!element) {
+                            continue;
+                        }
+                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring," ")) {
+                            const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                            if (!ipv4) {
+                                continue;
+                            }
+                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
+                                if(!element_ipv4) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                                if (address && cJSON_GetStringValue(address))
+                                {
+                                    os_strdup(address->valuestring, agent_ip);
+                                    break;
+                                }
+                            }
+                            if (agent_ip) {
+                                break;
+                            }
+                        }
                     }
-                    os_strdup(address->valuestring, agent_ip);
-                    min_metric = metric->valueint;
                 }
+                sysinfo_free_result_ptr(&object);
             }
-#elif defined __MACH__
-            cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-            cJSON *address = cJSON_GetArrayItem(addresses,0);
-            os_strdup(address->valuestring, agent_ip);
-            cJSON_Delete(object);
-            break;
-#endif
-
         }
-        cJSON_Delete(object);
+        else {
+            mterror(WM_CONTROL_LOGTAG, "Unable to get system network information. Error code: %d.", error_code);
+        }
     }
-#if defined __MACH__
-    OSHash_Free(gateways);
+#elif defined sun
+
+    // Get number of interfaces
+
+    int if_count = get_if_num();
+
+    if (if_count == -1) {
+        return NULL;
+    }
+
+    // Initialize configuration structure
+
+    struct lifconf if_conf = { .lifc_family = AF_INET, .lifc_len = if_count * sizeof(struct lifreq) };
+    if_conf.lifc_buf = malloc(if_conf.lifc_len);
+    assert(if_conf.lifc_buf != NULL);
+
+    // Create helper socket
+
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (fd == -1) {
+        goto end;
+    }
+
+    // Get interfaces
+
+    if (ioctl(fd, SIOCGLIFCONF, &if_conf) == -1) {
+        goto end;
+    }
+
+    // Scan interfaces
+
+    int i;
+    for (i = 0; i < if_count; i++) {
+        struct lifreq * if_req = if_conf.lifc_req + i;
+
+        // Get flags
+
+        if (ioctl(fd, SIOCGLIFFLAGS, if_req) == -1) {
+            goto end;
+        }
+
+        // Get the first interface that is up and is not loopback
+
+        int flags = if_req->lifr_flags;
+
+        if ((flags & IFF_UP) && (flags & IFF_LOOPBACK) == 0) {
+            // Get IP address
+
+            if (ioctl(fd, SIOCGLIFADDR, if_req) == -1) {
+                goto end;
+            }
+
+            struct sockaddr_in * addr = (struct sockaddr_in *)&if_req->lifr_addr;
+            agent_ip = strdup(inet_ntoa(addr->sin_addr));
+            break;
+        }
+    }
+
+end:
+    if (fd != -1) {
+        close(fd);
+    }
+
+    free(if_conf.lifc_buf);
 #endif
-
-    freeifaddrs(ifaddr);
-    for (i=0; ifaces_list[i]; i++){
-        free(ifaces_list[i]);
-    }
-
-    free(ifaces_list);
 
     return agent_ip;
 }
 
 
 void *wm_control_main(){
-
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
+    if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
+    {
+        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
+        sysinfo_network_ptr = so_get_function_sym(sysinfo_module, "sysinfo_networks");
+    }
 
     send_ip();
 
     return NULL;
 }
 
-void wm_control_destroy(){}
+void wm_control_destroy(){
+    if (sysinfo_module){
+        so_free_library(sysinfo_module);
+    }
+}
 
 wmodule *wm_control_read(){
     wmodule * module;
@@ -163,7 +224,7 @@ wmodule *wm_control_read(){
     return module;
 }
 
-cJSON *wm_control_dump(void) {
+cJSON *wm_control_dump() {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
     cJSON_AddStringToObject(wm_wd,"enabled","yes");
@@ -179,7 +240,7 @@ void *send_ip(){
     ssize_t length;
     fd_set fdset;
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -243,5 +304,5 @@ void *send_ip(){
     close(sock);
     return NULL;
 }
-#endif
+
 #endif

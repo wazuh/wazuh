@@ -1,0 +1,62 @@
+<!-- Reference: https://help.eset.com/protect_admin/81/en-US/events-exported-to-json-format.html -->
+<group name="eset,">
+
+  <rule id="42001" level="0">
+      <decoded_as>eset-bsd</decoded_as>
+      <description>Eset Console Logs</description>
+  </rule>
+
+  <rule id="42002" level="3">
+      <if_sid>42001</if_sid>
+      <field name="event_type">^Threat_Event$</field>
+      <description>Eset: Threat Event rules Group</description>
+      <group>threat_event,</group>
+  </rule>
+
+  <rule id="42003" level="3">
+      <if_sid>42001</if_sid>
+      <field name="event_type">^FirewallAggregated_Event$</field>
+      <description>Eset: Firewall Aggregated rules Group</description>
+      <group>firewallaggregated_event,</group>
+  </rule>
+
+  <rule id="42004" level="3">
+      <if_sid>42001</if_sid>
+      <field name="event_type">^HipsAggregated_Event$</field>
+      <description>Eset: HIPS Aggregated rules Group</description>
+      <group>hipsaggregated_event,</group>
+  </rule>
+
+  <rule id="42005" level="2">
+      <if_sid>42001</if_sid>
+      <field name="event_type">^Audit_Event$</field>
+      <description>Eset: Audit rules Group</description>
+      <group>audit_event,</group>
+  </rule>
+
+  <rule id="42006" level="3">
+      <if_sid>42001</if_sid>
+      <field name="event_type">^EnterpriseInspectorAlert_Event$</field>
+      <description>Eset: Enterprise Inspector Alert rules Group</description>
+      <group>enterpriseinspectoralert_event,</group>
+  </rule>
+
+  <rule id="42007" level="5">
+      <if_sid>42001</if_sid>
+      <field name="severity">^Warning$</field>
+      <description>Eset: Warning message was logged from $(hostname)</description>
+  </rule>
+
+  <rule id="42008" level="7">
+      <if_sid>42001</if_sid>
+      <field name="severity">^Error$</field>
+      <description>Eset: Error message was logged from $(hostname)</description>
+  </rule>
+
+  <rule id="42009" level="9">
+      <if_sid>42001</if_sid>
+      <field name="severity">^Critical$</field>
+      <description>Eset: Critical message was logged from $(hostname)</description>
+  </rule>
+
+</group>

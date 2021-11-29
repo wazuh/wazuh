@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 26, 2018.
  *
  * This program is free software; you can redistribute it
@@ -27,14 +27,14 @@ size_t intgcom_dispatch(char * command, char ** output) {
         // getconfig section
         if (!rcv_args){
             mdebug1("INTGCOM getconfig needs arguments.");
-            *output = strdup("err INTGCOM getconfig needs arguments");
+            os_strdup("err INTGCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return intgcom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("INTGCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +46,7 @@ size_t intgcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "integration") == 0){
         if (cfg = getIntegratorConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -60,7 +60,7 @@ size_t intgcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At INTGCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
@@ -75,7 +75,7 @@ void * intgcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR INTG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(INTG_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", INTG_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }

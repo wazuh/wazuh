@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Contributed by Dan Parriott (@ddpbsd)
  *
  * This program is free software; you can redistribute it
@@ -38,7 +38,7 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
     /* Copy content before first match, if any */
     if (inx_start > 0) {
         total_bytes_allocated = inx_start + 1;
-        tmp = (char *) malloc(sizeof(char) * total_bytes_allocated);
+        os_malloc(sizeof(char) * total_bytes_allocated, tmp);
         strncpy(tmp, orig, inx_start);
         tmp_offset = inx_start;
     }
@@ -102,7 +102,7 @@ char *escape_newlines(const char *orig)
         ptr++;
     }
 
-    ret = (char *) malloc (size);
+    os_malloc (size, ret);
     ptr = orig;
     retptr = ret;
     while (*ptr) {

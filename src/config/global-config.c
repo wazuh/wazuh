@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,6 +13,7 @@
 #include "global-config.h"
 #include "mail-config.h"
 #include "config.h"
+#include "string_op.h"
 
 
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
@@ -150,6 +151,9 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_custom_alert_output = "custom_alert_output";
     const char *xml_rotate_interval = "rotate_interval";
     const char *xml_max_output_size = "max_output_size";
+    const char *xml_agents_disconnection_time = "agents_disconnection_time";
+    const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
+
 
     const char *xml_emailto = "email_to";
     const char *xml_emailfrom = "email_from";
@@ -362,6 +366,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* Compress alerts */
         else if (strcmp(node[i]->element, xml_compress_alerts) == 0) {
             /* removed from here -- compatibility issues only */
+            minfo("Deprecated option '%s'. Use the '%s' block instead.", xml_compress_alerts, "<logging>");
         }
         /* Integrity */
         else if (strcmp(node[i]->element, xml_integrity) == 0) {
@@ -568,6 +573,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
 #endif
         else if (strcmp(node[i]->element, xml_rotate_interval) == 0) {
+            minfo("Deprecated option '%s'. Use the '%s' block instead.", xml_rotate_interval, "<logging>");
             if (Config) {
                 char c;
 
@@ -606,6 +612,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         } else if (strcmp(node[i]->element, xml_max_output_size) == 0) {
+            minfo("Deprecated option '%s'. Use the '%s' block instead.", xml_max_output_size, "<logging>");
             if (Config) {
                 char c;
 
@@ -653,6 +660,32 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return OS_INVALID;
                 }
 
+            }
+        }
+        /* Agent's disconnection time parameter */
+        else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
+            if (Config) {
+                long time = w_parse_time(node[i]->content);
+
+                if (time < 1) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                } else {
+                    Config->agents_disconnection_time = time;
+                }
+            }
+        }
+        /* Agent's disconnection alert time parameter */
+        else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
+            if (Config) {
+                long time = w_parse_time(node[i]->content);
+
+                if (time < 0) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                } else {
+                    Config->agents_disconnection_alert_time = time;
+                }
             }
         } else {
             merror(XML_INVELEM, node[i]->element);

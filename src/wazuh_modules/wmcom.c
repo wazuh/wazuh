@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 14, 2018.
  *
  * This program is free software; you can redistribute it
@@ -15,26 +15,27 @@
 
 size_t wmcom_dispatch(char * command, char ** output){
 
-    char *rcv_comm = command;
-    char *rcv_args = NULL;
 
-    if ((rcv_args = strchr(rcv_comm, ' '))){
-        *rcv_args = '\0';
-        rcv_args++;
-    }
+    if (strncmp(command, "getconfig", 9) == 0){
+        char *rcv_comm = command;
+        char *rcv_args = NULL;
 
-    if (strcmp(rcv_comm, "getconfig") == 0){
+        if ((rcv_args = strchr(rcv_comm, ' '))){
+            *rcv_args = '\0';
+            rcv_args++;
+        }
         // getconfig section
         if (!rcv_args){
             mdebug1("WMCOM getconfig needs arguments.");
-            *output = strdup("err WMCOM getconfig needs arguments");
+            os_strdup("err WMCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
-
+    } else if (wmcom_sync(command) == 0) {
+        return 0;
     } else {
-        mdebug1("WMCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        mdebug1("WMCOM Unrecognized command '%s'.", command);
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +47,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "wmodules") == 0){
         if (cfg = getModulesConfig(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -57,7 +58,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal_options") == 0){
         if (cfg = getModulesInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -71,11 +72,45 @@ size_t wmcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At WMCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 
-#ifndef WIN32
+int wmcom_sync(char * buffer) {
+    const int ret = modulesSync(buffer);
+    if(ret) {
+        mdebug1("At WMCOM sync: Could not sync '%s' buffer", buffer);
+    }
+    return ret;
+}
+
+#ifdef WIN32
+void wmcom_send(char * message)
+{
+    wmcom_sync(message);
+}
+#else
+
+void wmcom_send(char * message)
+{
+    int sock;
+    if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        switch (errno) {
+            case ECONNREFUSED:
+                mdebug1("Target wmodules refused connection. The component might be disabled");
+                break;
+
+            default:
+                mdebug1("Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
+        }
+    }
+    else
+    {
+        OS_SendSecureTCP(sock, strlen(message), message);
+        close(sock);
+    }
+}
+
 void * wmcom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
@@ -86,7 +121,7 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -139,11 +174,13 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         default:
             length = wmcom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
-            free(response);
+            if (length) {
+                OS_SendSecureTCP(peer, length, response);
+            }
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
     }
 
     mdebug1("Local server thread finished.");

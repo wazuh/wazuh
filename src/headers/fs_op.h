@@ -1,7 +1,4 @@
-/* @(#) $Id: ./src/headers/dirtree_op.h, 2011/09/08 dcid Exp $
- */
-
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
@@ -33,21 +30,24 @@
 
 struct file_system_type {
     const char *name;
-#ifdef WIN32
-    const unsigned __int32 f_type;
-#elif defined(Linux) || defined(FreeBSD)
-    // Same type as statfs.f_type
-    const typeof(((struct statfs *)0)->f_type) f_type;
-#else
-	const int f_type;
-#endif
-    const int flag;
+    long f_type;
+    int flag;
 };
 
+typedef struct fs_set {
+    unsigned nfs:1;
+    unsigned dev:1;
+    unsigned sys:1;
+    unsigned proc:1;
+} fs_set;
+
 extern const struct file_system_type network_file_systems[];
+extern const struct file_system_type skip_file_systems[];
 
 short IsNFS(const char *file)  __attribute__((nonnull));
 short skipFS(const char *file)  __attribute__((nonnull));
+
+bool HasFilesystem(const char * path, fs_set set);
 
 #endif /* OS_FS */
 
