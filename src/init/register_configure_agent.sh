@@ -8,9 +8,6 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-# Load ossec-init variables
-# . /etc/ossec-init.conf
-
 # Global variables
 INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
@@ -284,6 +281,24 @@ main () {
 
     get_deprecated_vars
 
+    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ]; then
+        add_auto_enrollment
+        set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
+        set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
+        set_auto_enrollment_tag_value "server_ca_path" ${WAZUH_REGISTRATION_CA}
+        set_auto_enrollment_tag_value "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE}
+        set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
+        set_auto_enrollment_tag_value "agent_name" ${WAZUH_AGENT_NAME}
+        set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
+        delete_blank_lines ${TMP_ENROLLMENT}
+        concat_conf
+    fi
+
+            
+    if [ ! -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
+        echo ${WAZUH_REGISTRATION_PASSWORD} > "${INSTALLDIR}/etc/authd.pass"
+    fi
+
     if [ ! -z ${WAZUH_MANAGER} ]; then
         if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
             touch -f ${INSTALLDIR}/logs/ossec.log
@@ -308,27 +323,12 @@ main () {
                 WAZUH_REGISTRATION_SERVER="${WAZUH_MANAGER}"
             fi
         fi
-        
-        if [ -z ${WAZUH_REGISTRATION_PASSWORD} ]; then
-            echo ${WAZUH_REGISTRATION_PASSWORD} > "${INSTALLDIR}/etc/authd.pass"
-        fi
 
         # Options to be modified in ossec.conf
         edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
         edit_value_tag "port" ${WAZUH_MANAGER_PORT}
         edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
-
-        add_auto_enrollment
-        set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
-        set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
-        set_auto_enrollment_tag_value "server_ca_path" ${WAZUH_REGISTRATION_CA}
-        set_auto_enrollment_tag_value "agent_certificate_path" ${WAZUH_REGISTRATION_CERTIFICATE}
-        set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
-        set_auto_enrollment_tag_value "agent_name" ${WAZUH_AGENT_NAME}
-        set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
-        delete_blank_lines ${TMP_ENROLLMENT}
-        concat_conf
     fi
 
     if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
