@@ -444,7 +444,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             # Reset integrity permissions if False for more than "max_locked_integrity_time" seconds
             if not self.sync_integrity_free[0] and (datetime.utcnow() - self.sync_integrity_free[1]).total_seconds() > \
                     self.cluster_items['intervals']['master']['max_locked_integrity_time']:
+                self.logger.warning(f'Automatically releasing Integrity check permissions flag ({sync_type}) after '
+                                    f'being locked out for more than '
+                                    f'{self.cluster_items["intervals"]["master"]["max_locked_integrity_time"]}s.')
                 self.sync_integrity_free = (True, datetime.utcnow())
+
             permission = self.sync_integrity_free[0]
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
