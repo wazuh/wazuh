@@ -250,7 +250,7 @@ def update_cluster_control_with_failed(failed_files, ko_files):
             ko_files['shared'].pop(f, None)
 
 
-def compress_files(name, list_path, cluster_control_json=None):
+def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None):
     """Create a zip with cluster_control.json and the files listed in list_path.
 
     Iterate the list of files and groups them in the zip. If a file does not
@@ -264,28 +264,40 @@ def compress_files(name, list_path, cluster_control_json=None):
         List of file paths to be zipped.
     cluster_control_json : dict
         KO files (path-metadata) to be zipped as a json.
+    max_zip_size : int
+        Maximum size of the zip in bytes. No more files are added to the zip when this limit is reached. The final zip
+        size can be bigger than the one specified here.
 
     Returns
     -------
     zip_file_path : str
         Path where the zip file has been saved.
     """
-    failed_files = list()
-    zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
+    failed_files = []
+    exceeded_size = False
+    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
+
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
+
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
-        # write files
-        if list_path:
-            for f in list_path:
+        for f in list_path:
+            if not exceeded_size:
                 try:
                     zf.write(filename=path.join(common.WAZUH_PATH, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
-                    logger.debug(f"[Cluster] {str(WazuhException(3001, str(e)))}")
+                    logger.debug(f'[Cluster] {str(WazuhException(3001, str(e)))}')
                     failed_files.append(f)
+                if max_zip_size and zf.start_dir > max_zip_size:
+                    logger.warning(f'Maximum allowed zip size was exceeded so no more files will be compressed '
+                                   f'during this iteration.')
+                    exceeded_size = True
+            # Remove from the metadata dict all those files that did not fit in the zip
+            elif not cluster_control_json['missing'].pop(f, None):
+                cluster_control_json['shared'].pop(f, None)
         try:
             if cluster_control_json and failed_files:
                 update_cluster_control_with_failed(failed_files, cluster_control_json)
