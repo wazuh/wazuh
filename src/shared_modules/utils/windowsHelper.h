@@ -333,7 +333,7 @@ namespace Utils
                     }
                 }
 
-                // inet_ntoa with in6_addr for Windows XP is not supported
+                // IPv6 in Windows XP is not supported
                 return retVal;
             }
 

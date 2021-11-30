@@ -2,6 +2,7 @@
 test_name: GET OS SYSCOLLECTOR RBAC
 
 marks:
+  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - rbac_tests
 
 stages:
@@ -56,6 +57,9 @@ stages:
 ---
 test_name: GET HARDWARE SYSCOLLECTOR RBAC
 
+marks:
+  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
+
 stages:
 
   - name: Get hardware from an agent (Allow)
@@ -99,6 +103,9 @@ stages:
 ---
 test_name: GET NETADDR SYSCOLLECTOR RBAC
 
+marks:
+  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
+
 stages:
 
   - name: Get netaddr from an agent (Allow)
@@ -135,6 +142,9 @@ stages:
 
 ---
 test_name: GET NETIFACE SYSCOLLECTOR RBAC
+
+marks:
+  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 

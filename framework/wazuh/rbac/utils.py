@@ -5,6 +5,7 @@
 from functools import wraps
 
 from cachetools import TTLCache, cached
+from wazuh.core.common import cache_event
 
 from api.configuration import security_conf
 
@@ -14,7 +15,7 @@ tokens_cache = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'
 
 def clear_cache():
     """This function clear the authorization tokens cache."""
-    tokens_cache.clear()
+    cache_event.set()
 
 
 def token_cache(cache):
@@ -33,6 +34,10 @@ def token_cache(cache):
         @wraps(func)
         def wrapper(*args, **kwargs):
             origin_node_type = kwargs.pop('origin_node_type')
+
+            if cache_event.is_set():
+                cache.clear()
+                cache_event.clear()
 
             @cached(cache=cache)
             def f(*_args, **_kwargs):

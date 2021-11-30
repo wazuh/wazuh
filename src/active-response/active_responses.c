@@ -565,7 +565,7 @@ int get_ip_version(const char *ip) {
 
     memset(&hint, '\0', sizeof hint);
 
-    hint.ai_family = PF_UNSPEC;
+    hint.ai_family = AF_UNSPEC;
     hint.ai_flags = AI_NUMERICHOST;
 
     ret = getaddrinfo(ip, NULL, &hint, &res);

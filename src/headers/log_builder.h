@@ -26,7 +26,7 @@
  */
 typedef struct {
     char host_name[LOG_BUILDER_HOSTNAME_LEN];   ///< Host name
-    char host_ip[INET6_ADDRSTRLEN];             ///< Host's primary IP
+    char host_ip[IPSIZE];                       ///< Host's primary IP
     pthread_rwlock_t rwlock;                    ///< Mutex
 } log_builder_t;
 

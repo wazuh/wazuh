@@ -21,6 +21,7 @@ from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove
 from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
+from signal import signal, alarm, SIGALRM
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
 
@@ -935,6 +936,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+
     def check_date_format(element):
         """Check if a given field is a date. If so, transform the date to the standard API format (ISO 8601).
         If not, return the field.
@@ -1449,8 +1451,8 @@ class WazuhDBQuery(object):
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
             self.query += "{0} IS NOT NULL AND {0} {1}" \
                           " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
-                                                                   query_operator,
-                                                                   date_filter['field'])
+                                                                  query_operator,
+                                                                  date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):
             self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
                 self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
@@ -1531,7 +1533,7 @@ class WazuhDBQuery(object):
             return self.general_run()
 
         rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
-        return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
+        return self.general_run() if len(','.join(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
             self.oversized_run()
 
     def reset(self):
@@ -1854,5 +1856,27 @@ def temporary_cache():
                 return f(*args, **kwargs)
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
+
+
+class Timeout:
+    """
+    Raise TimeoutError after n seconds.
+    """
+
+    def __init__(self, seconds, error_message=''):
+        self.seconds = seconds
+        self.error_message = error_message
+
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+
+    def __enter__(self):
+        signal(SIGALRM, self.handle_timeout)
+        alarm(self.seconds)
+
+    def __exit__(self, type, value, traceback):
+        alarm(0)

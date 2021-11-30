@@ -46,7 +46,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
 
     if (result < 0) {
         rem_msgfree(message);
-        mdebug2("Discarding event from host '%s'", inet_ntoa(addr->sin_addr));
+        mdebug2("Discarding event from host.");
         rem_inc_discarded();
         if (!reported) {
             mwarn("Message queue is full (%zu). Events may be lost.", queue->size);

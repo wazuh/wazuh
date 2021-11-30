@@ -75,8 +75,7 @@ void HandleSyslog()
         }
 
         /* Set the source IP */
-        strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
-        srcip[IPSIZE] = '\0';
+        get_ipv4_string(peer_info.sin_addr, srcip, IPSIZE - 1);
 
         /* Remove syslog header */
         if (buffer[0] == '<') {

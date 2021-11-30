@@ -12,6 +12,7 @@
 #define SOCKET_WRAPPERS_H
 
 #include <sys/socket.h>
+#include <netdb.h>
 
 int __wrap_socket(__attribute__((unused))int __domain,__attribute__((unused))int __type,__attribute__((unused))int __protocol);
 
@@ -35,6 +36,6 @@ int __wrap_recvfrom(__attribute__((unused))int __fd, __attribute__((unused))void
 
 int __wrap_fcntl(__attribute__((unused))int __fd, __attribute__((unused))int __cmd, ...);
 
-struct hostent *__wrap_gethostbyname(__attribute__((unused))const char *__name);
+int __wrap_getaddrinfo(const char *node, __attribute__((unused))const char *service, __attribute__((unused))const struct addrinfo *hints, struct addrinfo **res);
 
 #endif

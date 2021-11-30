@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <string.h>
+#include <stdlib.h>
 #include "../common.h"
 
 #define BUFFERSIZE 1024
@@ -106,6 +107,14 @@ int __wrap_fcntl(int __fd, int __cmd, ...) {
     return mock();
 }
 
-struct hostent *__wrap_gethostbyname(__attribute__((unused))const char *__name) {
-    return mock_type(struct hostent *);
+int __wrap_getaddrinfo(const char *node, __attribute__((unused))const char *service, __attribute__((unused))const struct addrinfo *hints, struct addrinfo **res) {
+    struct addrinfo* addr;
+    check_expected(node);
+
+    addr = mock_type(struct addrinfo*);
+    if (addr != NULL) {
+        *res = calloc(1, sizeof(struct addrinfo));
+        memcpy(*res, addr, sizeof(struct addrinfo));
+    }
+    return mock();
 }

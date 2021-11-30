@@ -121,7 +121,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
             size_t tableSize { 0 };
-            int mib[] = { CTL_NET, PF_ROUTE, 0, PF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
 
             if (sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
             {
@@ -145,8 +145,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
                             if (sock && AF_INET == sock->sa_family)
                             {
-                                char gateway[MAXHOSTNAMELEN] = { 0 };
-                                retVal = inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr.s_addr, gateway, sizeof(gateway) - 1);
+                                retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr);
                             }
 
                             break;

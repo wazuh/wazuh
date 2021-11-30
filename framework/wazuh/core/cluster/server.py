@@ -306,7 +306,7 @@ class AbstractServer:
             select = default_fields
         else:
             if not set(select).issubset(default_fields):
-                raise exception.WazuhError(code=1724, extra_message=', '.join(set(select) - default_fields),
+                raise exception.WazuhError(1724, extra_message=', '.join(set(select) - default_fields),
                                            extra_remediation=', '.join(default_fields))
 
         if filter_type != 'all' and filter_type not in {'worker', 'master'}:

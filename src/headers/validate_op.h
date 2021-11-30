@@ -29,10 +29,10 @@ int getNetmask(unsigned int mask, char *strmask, size_t size) __attribute__((non
  * @brief Convert the netmask from an integer value, valid from 0 to 64.
  *
  * @param[in] netnumb Integer value of the netmask.
- * @return Returns netmask value on success or -1 on failure.
+ * @param[out] nmask6 structure that include value of the netmask.
+ * @return Returns 0 on success or -1 on failure.
  */
-uint64_t convertNetmask(int netnumb);
-
+int convertNetmask(int netnumb, struct in6_addr *nmask6);
 
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));

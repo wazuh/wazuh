@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import concurrent.futures
 from json import JSONDecodeError
 from logging import getLogger
 from time import time
@@ -21,7 +20,6 @@ from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
 
 logger = getLogger('wazuh-api')
-pool = concurrent.futures.ThreadPoolExecutor()
 
 
 def _cleanup_detail_field(detail):

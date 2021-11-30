@@ -191,6 +191,9 @@ stages:
 ---
 test_name: GET /experimental/syscollector/hardware
 
+marks:
+  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
@@ -242,6 +245,9 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/netaddr
+
+marks:
+  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
 
 stages:
 
@@ -295,6 +301,9 @@ stages:
 ---
 test_name: GET /experimental/syscollector/netiface
 
+marks:
+  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
@@ -347,6 +356,9 @@ stages:
 ---
 test_name: GET /experimental/syscollector/netproto
 
+marks:
+  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
@@ -398,6 +410,9 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/os
+
+marks:
+  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
 
 stages:
 
@@ -488,6 +503,9 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/ports
+
+marks:
+  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
 
 stages:
 

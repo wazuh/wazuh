@@ -29,6 +29,7 @@
 #include <ctype.h>
 
 #include "shared.h"
+#include "os_net/os_net.h"
 #include "check_cert.h"
 
 
@@ -191,23 +192,15 @@ int check_ipaddr(const ASN1_STRING *cert_astr, const char *manager)
     memset(&iptest, 0, sizeof(iptest));
     memset(&iptest6, 0, sizeof(iptest6));
 
-#ifdef WIN32
-    iptest.sin_addr.s_addr = inet_addr(manager);
-
-    if (cert_astr->length == 4 && !memcmp(cert_astr->data, (const void *)&iptest.sin_addr, 4)) {
-        return VERIFY_TRUE;
-    }
-#else
-    if (inet_pton(AF_INET, manager, &iptest.sin_addr) == 1) {
+    if (OS_SUCCESS == get_ipv4_numeric(manager, &iptest.sin_addr)) {
         if (cert_astr->length == 4 && !memcmp(cert_astr->data, (const void *)&iptest.sin_addr, 4)) {
             return VERIFY_TRUE;
         }
-    } else if (inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1) {
+    } else if (OS_SUCCESS == get_ipv6_numeric(manager, &iptest6.sin6_addr)) {
         if (cert_astr->length == 16 && !memcmp(cert_astr->data, (const void *)&iptest6.sin6_addr, 16)) {
             return VERIFY_TRUE;
         }
     }
-#endif
 
     return VERIFY_FALSE;
 }
