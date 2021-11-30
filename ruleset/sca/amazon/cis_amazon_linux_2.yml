@@ -981,37 +981,37 @@ checks:
     rules:
       - 'c:rpm -q dovecot -> r:package dovecot is not installed'
 
-# 2.1.11 Ensure Samba is not enabled (Automated)
+# 2.1.11 Ensure Samba is not installed (Automated)
   - id: 20553
-    title: "Ensure Samba is not enabled"
+    title: "Ensure Samba is not installed"
     description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this package can be removed to reduce the potential attack surface."
-    remediation: "Run the following command to disable smb: # systemctl disable samba"
+    remediation: "Run the following command to remove smb: # yum remove samba"
     compliance:
       - cis: ["2.1.11"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'p:Samba'
+      - 'c:rpm -q samba -> r:package samba is not installed'
 
-# 2.1.12 Ensure HTTP Proxy Server is not enabled (Automated)
+# 2.1.12 Ensure HTTP Proxy Server is not installed (Automated)
   - id: 20554
-    title: "Ensure HTTP Proxy Server is not enabled"
+    title: "Ensure HTTP Proxy Server is not installed"
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "If there is no need for a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface."
-    remediation: "Run the following command to disable squid: # systemctl disable squid"
+    remediation: "Run the following command to remove squid: # yum remove squid"
     compliance:
       - cis: ["2.1.12"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
-    rules:
-      - 'p:squid'
+    condition: all
+      rules:
+        - 'c:rpm -q squid -> r:package squid is not installed'
 
 # 2.1.13 Ensure net-snmp is not enabled (Automated)
   - id: 20555
