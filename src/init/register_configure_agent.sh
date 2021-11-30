@@ -323,13 +323,13 @@ main () {
                 WAZUH_REGISTRATION_SERVER="${WAZUH_MANAGER}"
             fi
         fi
-
-        # Options to be modified in ossec.conf
-        edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
-        edit_value_tag "port" ${WAZUH_MANAGER_PORT}
-        edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
-        edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
     fi
+
+    # Options to be modified in ossec.conf
+    edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
+    edit_value_tag "port" ${WAZUH_MANAGER_PORT}
+    edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
+    edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
     if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
         # Options to be used in register time.
