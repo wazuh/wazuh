@@ -120,7 +120,6 @@
   <order>audit.file.name, audit.file.inode, audit.file.mode</order>
 </decoder>
 
-
 <!--
   type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule" key="audit-wazuh-w" list=4 res=1
 -->
@@ -154,7 +153,6 @@
   <regex offset="after_regex">res=(\S+)</regex>
   <order>audit.res</order>
 </decoder>
-
 
 <!--
   type=ANOM_PROMISCUOUS msg=audit(1390181243.575:738): dev=vethDvSeyL prom=0 old_prom=256 auid=4294967295 uid=0 gid=0 ses=4294967295
@@ -200,7 +198,6 @@
   <regex offset="after_regex">subj=(\S+)</regex>
   <order>audit.subj</order>
 </decoder>
-
 
 <!--
   type=USER_ACCT msg=audit(1480087217.108:6042): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:accounting acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
