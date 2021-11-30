@@ -82,9 +82,7 @@ checks:
       - 'c:modprobe -n -v udf -> r:install /bin/true|Module udf not found'
       - 'not c:lsmod -> r:udf'
 
-
-
-  # 1.1.2 /tmp: partition
+# 1.1.2 /tmp: partition
   - id: 20503
     title: "Ensure /tmp is configured"
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
@@ -471,6 +469,7 @@ checks:
 ###############################################
 # 1.5 Additional Process Hardening
 ###############################################
+
 # 1.5.1 Restrict Core Dumps (Scored)
   - id: 20525
     title: "Ensure core dumps are restricted"
@@ -527,8 +526,6 @@ checks:
 ###############################################
 # 1.6.1 Configure SELinux
 ###############################################
-
-
 
 # 1.6.1.2 SELinux not disabled
   - id: 20528
@@ -631,6 +628,7 @@ checks:
 ###############################################
 # 1.7  Warning Banners
 ###############################################
+
 # 1.7.1 Configure message of the day (Scored)
   - id: 20534
     title: "Ensure message of the day is configured properly"
@@ -713,6 +711,7 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
 # 1.7.6 Configure /etc/issue.net permissions (Not Scored)
   - id: 20539
     title: "Ensure permissions on /etc/issue.net are configured"
@@ -731,7 +730,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
 
 # 1.8 Ensure updates, patches, and additional security software are installed
   - id: 20540
@@ -755,7 +753,6 @@ checks:
 ###############################################
 # 2 OS Services
 ###############################################
-
 ###############################################
 # 2.1.1 Time Synchronization
 ###############################################
@@ -846,7 +843,6 @@ checks:
     rules:
       - 'c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed'
       - 'c:rpm -q avahi -> r:package avahi is not installed'
-
 
 # 2.1.4 Ensure CUPS is not enabled (Automated)
   - id: 20545
@@ -1170,7 +1166,6 @@ checks:
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
       - 'c:grep -RhEs "^\s*net\.ipv6\.conf\.all\.forwarding\s*=\s*0" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf ->  r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
 
-
 # 3.2.2 Ensure packet redirect sending is disabled (Automated)
   - id: 20563
     title: "Ensure packet redirect sending is disabled"
@@ -1217,7 +1212,6 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0'
 
-
 # 3.3.2 Ensure ICMP redirects are not accepted (Automated)
   - id: 20565
     title: "Ensure ICMP redirects are not accepted"
@@ -1237,7 +1231,6 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0'
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-
 
 # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated)
   - id: 20566
@@ -1372,6 +1365,7 @@ checks:
 ###############################################
 # 3.4 Uncommon Network Protocols
 ###############################################
+
 # 3.4.1 Ensure DCCP is disabled (Automated)
   - id: 20573
     title: "Ensure DCCP is disabled"
@@ -1431,6 +1425,7 @@ checks:
     condition: all
     rules:
       - 'c:rpm -q iptables -> r:iptables-'
+
 ###############################################
 # 3.5.3.3 Configure IPv6 ip6tables
 ###############################################
@@ -1735,7 +1730,6 @@ checks:
     rules:
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
 
-
 # 4.1.13 Ensure file deletion events by users are collected (Scored)
   - id: 20592
     title: "Ensure file deletion events by users are collected"
@@ -1827,11 +1821,9 @@ checks:
     rules:
       - 'f:/etc/audit/audit.rules -> r:^-e 2'
 
-
 ###############################################
 # 4.2 Configure Logging
 ###############################################
-
 
 # 4.2.1.2 Ensure rsyslog Service is enabled (Scored)
   - id: 20597
@@ -1884,6 +1876,7 @@ checks:
 ####################################################
 # 5.1 Configure time-based job schedulers
 ####################################################
+
 # 5.1.1 Ensure cron daemon is enabled(Automated)
   - id: 20600
     title: "Ensure cron daemon is enabled"
@@ -1964,7 +1957,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
 
 # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 20605
@@ -2073,7 +2065,6 @@ checks:
       - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-
 # 5.3.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 20611
     title: "Ensure SSH LogLevel is appropriate"
@@ -2091,7 +2082,6 @@ checks:
     rules:
       - 'f:$sshd_file -> r:^# && r:LogLevel\s*\t*INFO'
       - 'f:$sshd_file -> r:^# && r:LogLevel\s*\t*VERBOSE'
-
 
 # 5.3.6 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 20612
@@ -2358,6 +2348,7 @@ checks:
 ###############################################
 # 5.5.1 Set Shadow Password Suite Parameters
 ###############################################
+
 # 5.5.1.1 Ensure password expiration is 365 days or less (Automated)
   - id: 20628
     title: "Ensure password expiration is 365 days or less"
@@ -2452,7 +2443,6 @@ checks:
       - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && n:umask 0\d(\d) compare <= 7'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask 0(\d) compare <= 2'
 
-
 # 5.5.5 Ensure default user shell timeout is configured (Automated)
   - id: 20634
     title: " Ensure default user shell timeout is 900 seconds or less"
@@ -2486,7 +2476,6 @@ checks:
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
-
 
 ###############################################
 # 6 System Maintenance
@@ -2623,8 +2612,6 @@ checks:
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-
-
 ###############################################
 # 6.2 Review User and Group Settings
 ###############################################
@@ -2662,7 +2649,6 @@ checks:
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
-
 
 # 6.2.4 Ensure shadow group is empty (Automated)
   - id: 20646
