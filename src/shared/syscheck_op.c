@@ -850,18 +850,24 @@ static int process_ace_info(void *ace, cJSON *acl_json) {
     }
 
     if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
+        os_free(account_name);
+        os_free(domain_name);
         mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
+        return 1;
     }
 
     if (!ConvertSidToStringSid(sid, &sid_str)) {
         mdebug2("Could not extract the SID.");
-        free(account_name);
-        free(domain_name);
+        os_free(account_name);
+        os_free(domain_name);
         return 1;
     }
 
     add_ace_to_json(acl_json, sid_str, account_name, ace_type ? "denied" : "allowed", mask);
+
     LocalFree(sid_str);
+    os_free(account_name);
+    os_free(domain_name);
 
     return 0;
 }
@@ -995,8 +1001,6 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
     os_calloc(a_domain_size, sizeof(char), *account_domain);
 
     if (error = LookupAccountSid(0, sid, *account_name, &a_name_size, *account_domain, &a_domain_size, &snu), !error) {
-        os_free(*account_name);
-        os_free(*account_domain);
         return GetLastError();
     }
 
