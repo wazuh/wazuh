@@ -42,7 +42,6 @@
   <order>audit.exe</order>
 </decoder>
 
-
 <!-- SYSCALL - key -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
@@ -202,22 +201,15 @@
 <!--
   type=USER_ACCT msg=audit(1480087217.108:6042): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:accounting acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
   type=USER_ACCT msg=audit(1480087533.041:1424): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:accounting grantors=pam_unix,pam_localuser acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
-
   type=CRED_ACQ msg=audit(1480087217.108:6043): pid=6013 uid=0 auid=4294967295 ses=4294967295 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.100 addr=10.10.10.100 terminal=ssh res=success'
   type=CRED_ACQ msg=audit(1480087533.043:1427): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=hostname.net addr=10.10.10.100 terminal=ssh res=success'
-
   type=USER_START msg=audit(1480087217.108:6045): pid=6013 uid=0 auid=0 ses=107 msg='op=PAM:session_open acct="root" exe="/usr/sbin/sshd" hostname=10.1.0.1 addr=10.1.0.1 terminal=ssh res=success'
   type=USER_START msg=audit(1480087533.127:1435): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:session_open grantors=pam_selinux,pam_loginuid,pam_selinux,pam_namespace,pam_keyinit,pam_keyinit,pam_limits,pam_systemd,pam_unix,pam_lastlog acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.1.0.1 terminal=ssh res=success'
-
   type=CRED_REFR msg=audit(1480087217.656:6050): pid=6017 uid=0 auid=0 ses=108 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=10.10.10.10 addr=10.10.10.10 terminal=ssh res=success'
   type=CRED_REFR msg=audit(1480087533.572:1453): pid=4891 uid=0 auid=0 ses=15 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='op=PAM:setcred grantors=pam_env,pam_unix acct="root" exe="/usr/sbin/sshd" hostname=HOST.NET addr=10.10.10.10 terminal=ssh res=success'
-
   type=CRYPTO_KEY_USER msg=audit(1480087530.909:1417): pid=4886 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=a3:61:6f:52:83:ca:1e:0f:1f:6d:78:68:0d:37:3c:01 direction=? spid=4886 suid=0  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
-
   type=CRYPTO_SESSION msg=audit(1480087530.910:1420): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=start direction=from-server cipher=chacha20-poly1305@openssh.com ksize=512 mac= pfs=diffie-hellman-group-exchange-sha256 spid=4886 suid=74 rport=57989 laddr=10.0.0.74 lport=22  exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
-
   type=USER_AUTH msg=audit(1480087533.036:1422): pid=4885 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=pubkey_auth rport=57989 acct="root" exe="/usr/sbin/sshd" hostname=? addr=101.10.10.10 terminal=? res=success'
-
   type=USER_ROLE_CHANGE msg=audit(1480087533.108:1432): pid=4885 uid=0 auid=0 ses=14 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe="/usr/sbin/sshd" hostname=host.net addr=101.10.10.10 terminal=ssh res=success'
 -->
 <decoder name="auditd-user_and_cred">
@@ -254,7 +246,7 @@
 <decoder name="auditd-user_and_cred">
   <parent>auditd</parent>
   <regex offset="after_regex">addr=(\S+)</regex>
-  <order>audit.srcip</order>
+  <order>srcip</order>
 </decoder>
 
 <!--
@@ -347,7 +339,7 @@
 <decoder name="auditd-generic">
   <parent>auditd</parent>
   <regex>addr=(\S+)</regex>
-  <order>audit.srcip</order>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="auditd-generic">
