@@ -605,7 +605,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q mcstrans -> r:package mcstrans is not installed'
 
