@@ -157,6 +157,7 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS modules' log file filtering when there are logs with and without a prefix mixed in a bucket. ([#10718](https://github.com/wazuh/wazuh/pull/10718))
 - Fixed a bug on the installation script that made upgrades not to update the code of the external integration modules. ([#10884](https://github.com/wazuh/wazuh/pull/10884))
 - Fixed issue with AWS integration module trying to parse manually created folders as if they were files. ([#10921](https://github.com/wazuh/wazuh/pull/10921))
+- Fixed installation errors in OS with no subversion. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
