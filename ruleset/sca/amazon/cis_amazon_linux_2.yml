@@ -365,7 +365,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:autofs'
+      - 'c:# systemctl show "autofs.service" | grep -i unitfilestate=enabled -> r:^$'
 
 ###############################################
 # 1.2 Configure Software Updates
@@ -842,9 +842,11 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'p: avahi-daemon'
+      - 'c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed'
+      - 'c:rpm -q avahi -> r:package avahi is not installed'
+
 
 # 2.1.4 Ensure CUPS is not enabled (Automated)
   - id: 20545
