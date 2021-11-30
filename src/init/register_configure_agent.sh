@@ -113,7 +113,7 @@ add_adress_block() {
         echo "    <server>" >> ${CONF_FILE}
         echo "      <address>$i</address>" >> ${CONF_FILE}
         echo "      <port>1514</port>" >> ${CONF_FILE}
-        echo "      <protocol>udp</protocol>" >> ${CONF_FILE}
+        echo "      <protocol>tcp</protocol>" >> ${CONF_FILE}
         echo "    </server>" >> ${CONF_FILE}
     done
 
