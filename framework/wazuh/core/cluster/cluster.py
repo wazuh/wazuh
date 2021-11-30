@@ -256,7 +256,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     name : str
         Name of the node to which the zip will be sent.
     list_path : list
-        List of file paths to be zipped.
+        File paths to be zipped.
     cluster_control_json : dict
         KO files (path-metadata) to be zipped as a json.
 
@@ -265,22 +265,32 @@ def compress_files(name, list_path, cluster_control_json=None):
     zip_file_path : str
         Path where the zip file has been saved.
     """
-    failed_files = list()
+    failed_files = []
+    exceeded_size = False
+    max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{str(random())[2:]}.zip')
+
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
+
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
-        # write files
-        if list_path:
-            for f in list_path:
+        for f in list_path:
+            if not exceeded_size:
                 try:
                     zf.write(filename=path.join(common.wazuh_path, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
-                    logger.debug(f"[Cluster] {str(WazuhException(3001, str(e)))}")
+                    logger.debug(f'[Cluster] {str(WazuhException(3001, str(e)))}')
                     failed_files.append(f)
+                if zf.start_dir >= max_zip_size:
+                    logger.warning(f'Maximum allowed zip size was exceeded so not all files will be compressed '
+                                   f'during this iteration.')
+                    exceeded_size = True
+            # Remove from the metadata dict all those files that did not fit in the zip
+            elif not cluster_control_json['missing'].pop(f, None):
+                cluster_control_json['shared'].pop(f, None)
         try:
             if cluster_control_json and failed_files:
                 update_cluster_control_with_failed(failed_files, cluster_control_json)
