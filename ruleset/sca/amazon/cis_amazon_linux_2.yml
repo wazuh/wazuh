@@ -917,12 +917,12 @@ checks:
       - 'c:rpm -q nfs-utils -> r:package nfs-utils is not installed'
       - 'c:systemctl is-enabled nfs-server -> r:masked'
 
-# 2.1.7 Ensure DNS Server is not enabled (Automate)
+# 2.1.7 Ensure DNS Server is not installed (Automate)
   - id: 20549
-    title: " Ensure DNS Server is not enabled "
+    title: " Ensure DNS Server is not installed "
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable named: # systemctl disable bind"
+    remediation: "Run the following command to disable named: # yum remove bind"
     compliance:
       - cis: ["2.1.7"]
       - cis_csc: ["9.2"]
@@ -931,7 +931,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'p:named'
+      - 'c:rpm -q bind -> r:package bind is not installed'
 
 # 2.1.8 Ensure FTP Server is not enabled (Automated)
   - id: 20550
