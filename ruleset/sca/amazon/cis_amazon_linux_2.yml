@@ -929,57 +929,57 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q bind -> r:package bind is not installed'
 
-# 2.1.8 Ensure FTP Server is not enabled (Automated)
+# 2.1.8 Ensure FTP Server is not installed (Automated)
   - id: 20550
-    title: "Ensure FTP Server is not enabled"
+    title: "Ensure FTP Server is not installed"
     description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)"
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be removed to reduce the potential attack surface."
-    remediation: "Run the following command to disable vsftpd: # systemctl disable vsftpd"
+    remediation: "Run the following command to remove vsftpd: # yum remove vsftpd"
     compliance:
       - cis: ["2.1.8"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'p:vsftdp'
+      - 'c:rpm -q vsftpd -> r:package vsftpd is not installed'
 
-# 2.1.9 Ensure HTTP server is not enabled (Automated)
+# 2.1.9 Ensure HTTP server is not installed (Automated)
   - id: 20551
-    title: "Ensure HTTP server is not enabled"
+    title: "Ensure HTTP server is not installed"
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be removed to reduce the potential attack surface."
-    remediation: "Run the following command to disable httpd: # systemctl disable httpd"
+    remediation: "Run the following command to remove httpd: # yum remove httpd"
     compliance:
       - cis: ["2.1.9"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'p:httpd'
+      - 'c:rpm -q httpd -> r:package httpd is not installed'
 
-# 2.1.10 Ensure IMAP and POP3 server is not enabled (Automated)
+# 2.1.10 Ensure IMAP and POP3 server is not installed (Automated)
   - id: 20552
-    title: "Ensure IMAP and POP3 server is not enabled"
+    title: "Ensure IMAP and POP3 server is not installed"
     description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
-    remediation: "Run the following command to disable dovecot: # systemctl disable dovecot"
+    remediation: "Run the following command to remove dovecot: # yum remove dovecot"
     compliance:
       - cis: ["2.1.10"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'p:dovecat'
+      - 'c:rpm -q dovecot -> r:package dovecot is not installed'
 
 # 2.1.11 Ensure Samba is not enabled (Automated)
   - id: 20553
