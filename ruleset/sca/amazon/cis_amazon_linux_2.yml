@@ -902,21 +902,20 @@ checks:
 
 # 2.1.17 Ensure nfs-utils is not installed or the nfs-server service is masked (Automated)
   - id: 20548
-    title: "Ensure NFS and RPC are not enabled"
+    title: "Ensure nfs-utils is not installed or the nfs-server service is masked"
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
-    remediation: "Run the following commands to disable nfs, nfs-serverand rpcbind: # systemctl disable nfs # systemctl disable nfs-server # systemctl disable rpcbind"
+    remediation: "Run the following command to remove nfs-utils: # yum remove nfs-utils OR If the nfs-package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server"
     compliance:
       - cis: ["2.1.17"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: any
     rules:
-      - 'p:nfs'
-      - 'p:nfs-server'
-      - 'p:rpcbind'
+      - 'c:rpm -q nfs-utils -> r:package nfs-utils is not installed'
+      - 'c:systemctl is-enabled nfs-server -> r:masked'
 
 # 2.1.7 Ensure DNS Server is not enabled (Automate)
   - id: 20549
