@@ -30,7 +30,7 @@
     <field name="win.system.severityValue">^ERROR$</field>
     <options>no_full_log</options>
     <description>Windows application error event.</description>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>gdpr_IV_35.7.d,gpg13_4.3,system_error,</group>
   </rule>
 
   <!--  Chrome remote desktop  -->
@@ -40,7 +40,7 @@
     <field name="win.system.message">\.*Access denied for client</field>
     <options>no_full_log</options>
     <description>Chrome remote desktop attempt - access denied $(win.eventdata.data).</description>
-    <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="60604" level="5">
@@ -3455,7 +3455,7 @@
   <rule id="61071" level="5">
     <if_sid>61069</if_sid>
     <field name="win.system.eventID">^18456$</field>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.1,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <options>no_full_log</options>
     <description>MS SQL server logon failure.</description>
   </rule>
@@ -3469,7 +3469,7 @@
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_success,gdpr_IV_32.2,gpg13_7.1,gpg13_7.2,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 </group>
 
