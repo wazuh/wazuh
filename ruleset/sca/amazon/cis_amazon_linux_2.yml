@@ -1010,24 +1010,24 @@ checks:
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
-      rules:
-        - 'c:rpm -q squid -> r:package squid is not installed'
+    rules:
+      - 'c:rpm -q squid -> r:package squid is not installed'
 
-# 2.1.13 Ensure net-snmp is not enabled (Automated)
+# 2.1.13 Ensure net-snmp is not installed (Automated)
   - id: 20555
-    title: "Ensure SNMP Server is not enabled"
+    title: "Ensure SNMP Server is not installed"
     description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
     rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3replaces the simple/clear text password sharing used in SNMPv2with more securely encoded parameters. If the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system."
-    remediation: "Run the following command to disable snmpd: # # systemctl disable snmpd"
+    remediation: "Run the following command to remove snmpd: # yum remove snmpd"
     compliance:
       - cis: ["2.1.13"]
       - cis_csc: ["2.6",9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'p:snmpd'
+      - 'c:rpm -q snmpd -> r:package snmpd is not installed'
 
 # 2.1.16 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 20556
@@ -1424,7 +1424,7 @@ checks:
     rationale: "iptables is required for firewall management and configuration."
     remediation: "Run the following command to install iptables: # yum install iptables"
     compliance:
-      - cis: ["3.5.3"]
+      - cis: ["3.5.3.1"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
