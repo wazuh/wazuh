@@ -12,6 +12,7 @@
 #include "wdb_global_helpers.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
+#include "headers/time_op.h"
 
 #ifdef WIN32
 #define chown(x, y, z) 0
@@ -1421,10 +1422,11 @@ time_t get_agent_date_added(int agent_id) {
                 fclose(fp);
                 return 0;
             }
+
             t.tm_year -= 1900;
             t.tm_mon -= 1;
             t.tm_isdst = -1;
-            t_of_sec = mktime(&t);
+            t_of_sec = w_mktime_utc(&t);
 
             free(date);
             fclose(fp);

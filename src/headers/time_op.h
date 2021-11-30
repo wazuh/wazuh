@@ -88,4 +88,13 @@ long long int get_windows_file_time_epoch(FILETIME ft);
  */
 bool is_leap_year(int year);
 
+/**
+ * @brief Method to obtain the UNIX timestamp from a time structure in UTC format.
+ *        It internally uses mktime() and TZ environemnt variable, to mimic the non-standard timegm() function.
+ *
+ * @param t Time structure to obtain timestamp from.
+ * @return time_t UNIX timestamp in UTC format.
+ */
+time_t w_mktime_utc (struct tm* t);
+
 #endif // TIME_OP_H

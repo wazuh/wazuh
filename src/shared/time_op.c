@@ -139,3 +139,25 @@ bool is_leap_year(int year) {
 
     return result;
 }
+
+time_t w_mktime_utc (struct tm* t) {
+    char *tz = NULL;
+    time_t result = {0};
+
+#ifndef WIN32
+    // The environment variable is needed to avoid the non-standard method timegm()
+    tz = getenv("TZ");
+    setenv("TZ", "", 1);
+    tzset();
+
+    result = mktime(t);
+
+    if (tz)
+        setenv("TZ", tz, 1);
+    else
+        unsetenv("TZ");
+    tzset();
+#endif
+
+    return result;
+}

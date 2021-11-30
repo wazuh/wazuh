@@ -803,7 +803,7 @@ int OS_WriteTimestamps(keystore * keys) {
         char cidr[20];
         struct tm tm_result = { .tm_sec = 0 };
 
-        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
+        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", gmtime_r(&entry->time_added, &tm_result));
 
         if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp) < 0) {
             merror(FWRITE_ERROR, file.name, errno, strerror(errno));
