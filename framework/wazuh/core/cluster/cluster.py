@@ -268,6 +268,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     failed_files = []
     exceeded_size = False
     max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
+    # max_zip_size = 5000000
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{str(random())[2:]}.zip')
 

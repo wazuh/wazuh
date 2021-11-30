@@ -124,6 +124,7 @@ async def test_SyncTask(create_log, caplog):
 
 
 @pytest.mark.asyncio
+@patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={'intervals': {'communication': {'max_zip_size': 9}}})
 async def test_SyncWorker(create_log, caplog):
     worker_handler = get_worker_handler()
     sync_worker = worker.SyncFiles(cmd=b'testing', logger=logger, worker=worker_handler)
