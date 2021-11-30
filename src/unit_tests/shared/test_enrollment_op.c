@@ -478,7 +478,7 @@ void test_w_enrollment_connect_could_not_setup(void **state) {
     expect_value(__wrap_os_ssl_keys, auto_method, 0);
     will_return(__wrap_os_ssl_keys, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "Could not set up SSL connection! Check ceritification configuration.");
+    expect_string(__wrap__merror, formatted_msg, "Could not set up SSL connection! Check certification configuration.");
     int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
     assert_int_equal(ret, ENROLLMENT_WRONG_CONFIGURATION);
 }
