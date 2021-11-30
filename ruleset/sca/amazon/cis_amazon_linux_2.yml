@@ -1668,7 +1668,6 @@ checks:
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: "Add the following lines to the /etc/audit/rules.d/audit.rules file: -w /var/run/utmp -p wa -k session, -w /var/log/wtmp -p wa -k logins, -w /var/log/btmp -p wa -k logins"
     compliance:
-    compliance:
       - cis: ["4.1.8"]
       - cis_csc: ["4.9","16.11","16.13"]
       - pci_dss: ["10.3"]
