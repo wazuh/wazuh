@@ -1,22 +1,22 @@
 <!--
-  Copyright (C) 2015-2021, Wazuh Inc.
+  -  Sophos Anti-Virus decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!--
-  Decoders for: 
-    Sophos Anti-Virus.
--->
+Sophos Anti-Virus
+SAV.txt
+https://community.sophos.com/kb/en-us/43391
 
-<!--
-  Sophos Anti-Virus
-  SAV.txt
-  https://community.sophos.com/kb/en-us/43391
-  20160806 050000	Scan 'Sophos Cloud Scheduled Scan' started.
-  20160806 052043	Scan 'Sophos Cloud Scheduled Scan' completed.
-  20160805 175034	User (NT AUTHORITY\SYSTEM) has stopped on-access scanning for this machine.
-  20160805 175143	Using detection data version 5.29 (detection engine 3.65.2). This version can detect 11628132 items.
--->
-<decoder name="sophos">
+20160806 050000	Scan 'Sophos Cloud Scheduled Scan' started.
+20160806 052043	Scan 'Sophos Cloud Scheduled Scan' completed.
+20160805 175034	User (NT AUTHORITY\SYSTEM) has stopped on-access scanning for this machine.
+20160805 175143	Using detection data version 5.29 (detection engine 3.65.2). This version can detect 11628132 items.
+ -->
+
+ <decoder name="sophos">
   <prematch>^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tScan|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUser|^\d\d\d\d\d\d\d\d \d\d\d\d\d\d\tUsing</prematch>
 </decoder>
 
@@ -35,11 +35,10 @@
 </decoder>
 
 <!--
-  Sophos Anti-Virus Windows.
-  <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SAVSCAN-DETAILS %s %s %s %s %s %s</msg><time>1558570140</time><arg>0</arg><arg>0</arg><arg>108267</arg><arg>131</arg><arg>0</arg><arg>0</arg></log>
-  <log><category>update.check</category><level>INFO</level><domain>savupdate</domain><msg>NO_UPDATED_FROM %s</msg><time>1558572421</time><arg>http://10.11.12.13/SophosUpdate/CIDs/S000/EESAVUNIX/SUNOS_9_SPARC</arg></log>
-  <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>NOTIFY_ONDEMANDTHREAT_INFECTED %s</msg><time>1558572421</time><arg>path_file</arg></log>
-  <log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>  
+<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SAVSCAN-DETAILS %s %s %s %s %s %s</msg><time>1558570140</time><arg>0</arg><arg>0</arg><arg>108267</arg><arg>131</arg><arg>0</arg><arg>0</arg></log>
+<log><category>update.check</category><level>INFO</level><domain>savupdate</domain><msg>NO_UPDATED_FROM %s</msg><time>1558572421</time><arg>http://10.11.12.13/SophosUpdate/CIDs/S000/EESAVUNIX/SUNOS_9_SPARC</arg></log>
+<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>NOTIFY_ONDEMANDTHREAT_INFECTED %s</msg><time>1558572421</time><arg>path_file</arg></log>
+<log><category>savscan.log</category><level>INFO</level><domain>savscan</domain><msg>SCANNER_DIED_KILLED</msg><time>1558572421</time></log>  
 -->
 <decoder name="sophos-win">
   <prematch>\<log>\.+\</log></prematch>
