@@ -52,6 +52,10 @@ edit_value_tag() {
             unix_sed "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         fi
     fi
+    
+    if [ "$?" != "0" ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> ${INSTALLDIR}/logs/ossec.log
+    fi
 }
 
 delete_blank_lines() {
