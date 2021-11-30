@@ -13,18 +13,18 @@ class FIMDBHelpersMock {
             return mock;
         }
 
-        MOCK_METHOD(void, initDBMock, (unsigned int, unsigned int,
+        MOCK_METHOD(void, initDB, (unsigned int, unsigned int,
                                 fim_sync_callback_t, logging_callback_t,
                                 std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
-        MOCK_METHOD(void, initDBMock, (unsigned int, unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
+        MOCK_METHOD(void, initDB, (unsigned int, unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
                                 std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
-        MOCK_METHOD(int, removeFromDBMock, (const std::string&, const nlohmann::json&), ());
-        MOCK_METHOD(int, getCountMock, (const std::string&, int&), ());
-        MOCK_METHOD(int, insertItemMock, (const std::string&, const nlohmann::json&), ());
-        MOCK_METHOD(int, updateItemMock, (const std::string&, const nlohmann::json&), ());
-        MOCK_METHOD(int, getDBItemMock, (nlohmann::json&, const nlohmann::json&), ());
-        MOCK_METHOD(int, removeItemMock, (const std::string&, const nlohmann::json&), ());
-        MOCK_METHOD(int, executeQueryMock, (nlohmann::json&, const nlohmann::json&), ());
+        MOCK_METHOD(void, removeFromDB, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, getCount, (const std::string&, int&), ());
+        MOCK_METHOD(void, insertItem, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, updateItem, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, getDBItem, (nlohmann::json&, const nlohmann::json&), ());
+        MOCK_METHOD(void, removeItem, (const std::string&, const nlohmann::json&), ());
+        MOCK_METHOD(void, executeQuery, (nlohmann::json&, const nlohmann::json&), ());
 };
 
 #endif

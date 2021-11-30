@@ -38,34 +38,34 @@ namespace FIMDBHelper
 #endif
 
     template<typename T>
-    int removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
     {
-        return FIMDBHelpersUTInterface::removeFromDB(tableName, filter);
+        FIMDBHelpersUTInterface::removeFromDB(tableName, filter);
     }
 
     template<typename T>
-    int getCount(const std::string & tableName, int & count)
+    void getCount(const std::string & tableName, int & count)
     {
 
-        return FIMDBHelpersUTInterface::getCount(tableName, count);
+        FIMDBHelpersUTInterface::getCount(tableName, count);
     }
 
     template<typename T>
-    int insertItem(const std::string & tableName, const nlohmann::json & item)
+    void insertItem(const std::string & tableName, const nlohmann::json & item)
     {
-        return FIMDBHelpersUTInterface::insertItem(tableName, item);
+        FIMDBHelpersUTInterface::insertItem(tableName, item);
     }
 
     template<typename T>
-    int updateItem(const std::string & tableName, const nlohmann::json & item)
+    void updateItem(const std::string & tableName, const nlohmann::json & item)
     {
-        return FIMDBHelpersUTInterface::updateItem(tableName, item);
+        FIMDBHelpersUTInterface::updateItem(tableName, item);
     }
 
     template<typename T>
-    int getDBItem(nlohmann::json & item, const nlohmann::json & query)
+    void getDBItem(nlohmann::json & item, const nlohmann::json & query)
     {
-        return FIMDBHelpersUTInterface::getDBItem(item, query);
+        FIMDBHelpersUTInterface::getDBItem(item, query);
     }
 }
 
