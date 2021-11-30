@@ -101,7 +101,7 @@ checks:
     condition: any
     rules:
       - 'c:mount -> r:\s/tmp\s'
-      - 'p:tmp.mount'
+      - 'c:systemctl show "tmp.mount" | grep -i unitfilestate -> r:UnitFileState=enabled'
 
 # 1.1.4 /tmp: nodev
   - id: 20504
@@ -880,7 +880,6 @@ checks:
     rules:
       - 'p:dhcp'
 
-
 # 2.1.6  Ensure LDAP server is not enabled (Automated)
   - id: 20547
     title: "Ensure LDAP Server is not enabled"
@@ -898,8 +897,6 @@ checks:
     condition: none
     rules:
       - 'p:slapd'
-
-
 
 # 2.1.17 Ensure nfs-utils is not installed or the nfs-server service is masked (Automated)
   - id: 20548
