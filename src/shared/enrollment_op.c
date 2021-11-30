@@ -210,7 +210,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     SSL_CTX *ctx = os_ssl_keys(0, NULL, cfg->cert_cfg->ciphers,
         cfg->cert_cfg->agent_cert, cfg->cert_cfg->agent_key, cfg->cert_cfg->ca_cert, cfg->cert_cfg->auto_method);
     if (!ctx) {
-        merror("Could not set up SSL connection! Check ceritification configuration.");
+        merror("Could not set up SSL connection! Check certification configuration.");
         os_free(ip_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
     }
@@ -467,7 +467,7 @@ static int w_enrollment_process_agent_key(char *buffer) {
 /**
  * Verifies the manager's ca certificate. Displays a warning message if it does not match
  * @param ssl SSL connection established with the manager
- * @param ca_cert cerificate to verify
+ * @param ca_cert certificate to verify
  * @param hostname
  * */
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname) {
