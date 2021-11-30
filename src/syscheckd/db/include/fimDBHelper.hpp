@@ -196,6 +196,7 @@ namespace FIMDBHelper
 
         T::getInstance().executeQuery(query, callback);
     }
+
     /**
     * @brief Create a new query to database
     *

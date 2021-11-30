@@ -10,18 +10,11 @@
 #define DB_COMMONDEFS_H
 #include "logging_helper.h"
 
-enum dbQueryResult
-{
-    SUCCESS,
-    MAX_ROWS_ERROR,
-    DBSYNC_ERROR
-};
-
 enum FIMDBErrorCodes
 {
+    FIMDB_OK = 0,
     FIMDB_ERR = -1,
-    FIMDB_OK,
-    FIMDB_FULL
+    FIMDB_FULL = -2
 };
 
 typedef void((*fim_sync_callback_t)(const char *tag, const char* buffer));

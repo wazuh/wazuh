@@ -104,10 +104,10 @@ package "FIMDB" <<Folder>> #DDDDDD{
         + void init()
         + void registerRsync()
         + void loopRsync(lock)
-        + dbQueryResult insertItem(json)
-        + dbQueryResult removeItem(json)
-        + dbQueryResult updateItem(json, callback)
-        + dbQueryResult executeQuery(json, callback)
+        + void insertItem(json)
+        + void removeItem(json)
+        + void updateItem(json, callback)
+        + void executeQuery(json, callback)
         + FimDB getInstance()
     }
     interface FIMDBHelper {

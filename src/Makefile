@@ -273,8 +273,8 @@ endif # Linux
 else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		OSSEC_CFLAGS+=-pthread -static-libgcc -static-libstdc++ --enable-sjlj-exceptions
-		OSSEC_LDFLAGS+=-pthread -static-libgcc -static-libstdc++ --enable-sjlj-exceptions
+		OSSEC_CFLAGS+=-pthread -static-libgcc -static-libstdc++
+		OSSEC_LDFLAGS+=-pthread -static-libgcc -static-libstdc++
 		AR_LDFLAGS+=-pthread
 		PRECOMPILED_OS:=windows
 endif # winagent
