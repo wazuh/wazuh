@@ -1840,7 +1840,7 @@ checks:
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'p:rsyslog'
+      - 'c:systemctl is-enabled rsyslog -> r:^enabled$'
 
 # 4.2.1.3 Ensure rsyslog default file permissions configured (Scored)
   - id: 20599
