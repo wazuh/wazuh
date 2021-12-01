@@ -43,6 +43,7 @@ EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
 ifeq (${uname_S},Linux)
+EXTERNAL_RPM=external/rpm/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBMAGIC=external/libmagic/
@@ -327,7 +328,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -807,6 +808,7 @@ ZSTD_LIB = $(EXTERNAL_ZSTD)build/cmake/build/lib/libzstd.a
 LIBMAGIC_LIB = $(EXTERNAL_LIBMAGIC)build/output/src/.libs/libmagic.a
 POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/output/src/liblzma/.libs/liblzma.a
+RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
@@ -826,7 +828,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB}
+EXTERNAL_LIBS += ${RPM_LIB} ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB} ${ZLIB_LIB}
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
@@ -1135,6 +1137,20 @@ $(LIBMAGIC_LIB): $(LIBMAGIC_BUILD_DIR)Makefile
 $(LIBMAGIC_BUILD_DIR)Makefile: $(ZLIB_LIB)
 	mkdir -p $(LIBMAGIC_BUILD_DIR) && cd $(LIBMAGIC_BUILD_DIR) && cmake .. $(LIBMAGIC_BUILD_FLAGS)
 
+### rpm lib ###
+
+RPM_BUILD_DIR = ${EXTERNAL_RPM}/builddir
+RPM_DEPS =  ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB} ${OPENSSL_LIB} ${OPENSSL_LIB} ${ZLIB_LIB}
+RPM_INC_PATHS = -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include -I${ROUTE_PATH}/${EXTERNAL_ZLIB} -I${EXTERNAL_POPT}/build/src -I${EXTERNAL_LIBMAGIC}/src -I${EXTERNAL_LZMA}/src/liblzma/api -L${EXTERNAL_ZSTD}/lib
+RPM_LIB_PATHS = -L${EXTERNAL_OPENSSL} -L${EXTERNAL_ZLIB} -L${EXTERNAL_POPT}/build/output/src/.libs/ -L${EXTERNAL_LIBMAGIC}/build/output/src/.libs/ -L${EXTERNAL_LZMA}/build/output/src/liblzma/.libs/ -L${EXTERNAL_ZSTD}/build/cmake/build/lib/
+
+${RPM_LIB}: ${RPM_BUILD_DIR}Makefile
+	cd ${RPM_BUILD_DIR} && ${MAKE}
+
+${RPM_BUILD_DIR}Makefile: ${RPM_DEPS}
+	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="-fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}" cmake .. ${LIBMAGIC_BUILD_FLAGS}
+
+
 ################################
 #### External dependencies  ####
 ################################
@@ -1187,7 +1203,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive lzma libmagic zstd popt
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive lzma libmagic zstd popt rpm
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -2348,6 +2364,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf ${ZSTD_BUILD_DIR}
 	rm -rf ${LZMA_BUILD_DIR}
 	rm -rf ${POPT_BUILD_DIR}
+	rm -rf ${RPM_BUILD_DIR}
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
