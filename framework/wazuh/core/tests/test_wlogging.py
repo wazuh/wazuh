@@ -81,7 +81,7 @@ def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_nam
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
         w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir,
-                                        tag='{test} {test}: {test}',
+                                        tag='%(test)s %(test)s: %(test)s',
                                         debug_level=[0, 'test'])
     w_logger.setup_logger()
     mock_fh.assert_called_with(filename=ANY, when='midnight')
@@ -150,7 +150,7 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
     tmp_dir = tempfile.TemporaryDirectory
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
-        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir, tag='{test} {test}: {test}',
+        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir, tag='%(test)s %(test)s: %(test)s',
                                         debug_level=[0, 'test'], logger_name='test')
     w_logger.setup_logger()
 

@@ -27,7 +27,8 @@ custom_api_configuration = {
         "ssl_ciphers": ""
     },
     "logs": {
-        "level": "info"
+        "level": "info",
+        "format": "plain"
     },
     "cors": {
         "enabled": False,
@@ -113,7 +114,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'https': {'invalid_subkey': 'value'}},
     {'logs': {'level': 12345}},
     {'logs': {'path': 12345}},
-    {'logs': {'invalid_subkey': 'value'}},
+    {'logs': {'format': 12345}},
     {'cors': {'enabled': 'invalid_type'}},
     {'cors': {'source_route': 12345}},
     {'cors': {'expose_headers': 12345}},

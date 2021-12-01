@@ -149,28 +149,28 @@ def test_get_cluster_items():
 
     items = utils.get_cluster_items()
     assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
-                                         'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
-                                         'extra_valid': False, 'description': 'client keys file database'},
+                                        'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
+                                        'extra_valid': False, 'description': 'client keys file database'},
                                'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
-                                                'extra_valid': False, 'description': 'shared configuration files'},
+                                               'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
+                                               'extra_valid': False, 'description': 'shared configuration files'},
                                'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
-                                                     'recursive': True, 'restart': False,
-                                                     'remove_subdirs_if_empty': True, 'extra_valid': False,
-                                                     'description': 'shared configuration files'},
+                                                    'recursive': True, 'restart': False,
+                                                    'remove_subdirs_if_empty': True, 'extra_valid': False,
+                                                    'description': 'shared configuration files'},
                                'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                               'extra_valid': False, 'description': 'user rules'},
+                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                              'extra_valid': False, 'description': 'user rules'},
                                'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                  'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                                  'extra_valid': False, 'description': 'user decoders'},
+                                                 'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                                 'extra_valid': False, 'description': 'user decoders'},
                                'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                               'extra_valid': False, 'description': 'user CDB lists'},
+                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                              'extra_valid': False, 'description': 'user CDB lists'},
                                'queue/agent-groups/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                        'recursive': True, 'restart': False,
-                                                        'remove_subdirs_if_empty': False, 'extra_valid': True,
-                                                        'description': 'agents group configuration'},
+                                                       'recursive': True, 'restart': False,
+                                                       'remove_subdirs_if_empty': False, 'extra_valid': True,
+                                                       'description': 'agents group configuration'},
                                'excluded_files': ['ar.conf', 'ossec.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_info_ko_retry': 1,
@@ -201,7 +201,8 @@ def test_ClusterLogger():
     """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
     current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
     cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path=current_logger_path,
-                                         tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
+                                         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
+                                         debug_level=1)
     cluster_logger.setup_logger()
 
     assert cluster_logger.logger.level == logging.DEBUG
