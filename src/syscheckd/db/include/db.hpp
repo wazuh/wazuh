@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-// #define fim_db_decode_registry_value_full_row(stmt) _fim_db_decode_registry_value(stmt, 11)
-
 
 #define FIM_DB_MEMORY_PATH  ":memory:"
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
@@ -33,8 +31,11 @@ extern "C" {
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  */
-enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
-                                 logging_callback_t log_callback);
+void fim_db_init(int storage,
+                 int sync_interval,
+                 int file_limit,
+                 fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback);
 #else
 /**
  * @brief Initialize the FIM database.
@@ -46,8 +47,12 @@ enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit,
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  */
-enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, int value_limit,
-                             fim_sync_callback_t sync_callback, logging_callback_t log_callback);
+void fim_db_init(int storage,
+                 int sync_interval,
+                 int file_limit,
+                 int value_limit,
+                 fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback);
 #endif
 
 #ifdef __cplusplus

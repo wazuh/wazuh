@@ -34,15 +34,20 @@ const char * CreateStatement()
 }
 
 #ifndef WIN32
-enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, fim_sync_callback_t sync_callback,
-                                  logging_callback_t log_callback)
+void fim_db_init(int storage,
+                 int sync_interval,
+                 int file_limit,
+                 fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback)
 #else
-enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit, int value_limit,
-                                 fim_sync_callback_t sync_callback, logging_callback_t log_callback)
+void fim_db_init(int storage,
+                 int sync_interval,
+                 int file_limit,
+                 int value_limit,
+                 fim_sync_callback_t sync_callback,
+                 logging_callback_t log_callback)
 #endif
 {
-    auto retVal {FIMDB_OK};
-
     try
     {
         auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
@@ -60,14 +65,9 @@ enum FIMDBErrorCodes fim_db_init(int storage, int sync_interval, int file_limit,
     catch (const DbSync::dbsync_error& ex)
     {
         auto errorMessage = "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
-        log_callback(LOG_ERROR, errorMessage.c_str());
-
-        retVal = FIMDB_ERR;
+        log_callback(LOG_ERROR_EXIT, errorMessage.c_str());
     }
-
-    return retVal;
 }
-
 
 #ifdef __cplusplus
 }

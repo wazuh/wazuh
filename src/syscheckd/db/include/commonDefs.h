@@ -10,12 +10,12 @@
 #define DB_COMMONDEFS_H
 #include "logging_helper.h"
 
-enum FIMDBErrorCodes
+typedef enum FIMDBErrorCodes
 {
     FIMDB_OK = 0,
     FIMDB_ERR = -1,
     FIMDB_FULL = -2
-};
+} FIMDBErrorCodes;
 
 typedef void((*fim_sync_callback_t)(const char *tag, const char* buffer));
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));
