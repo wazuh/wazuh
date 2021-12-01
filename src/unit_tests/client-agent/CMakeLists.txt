@@ -51,7 +51,7 @@ if(${TARGET} STREQUAL "winagent")
                                 -Wl,--wrap,cJSON_AddItemToObject@12 -Wl,--wrap,cJSON_AddStringToObject@12 \
                                 -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime \
                                 -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
-                                -Wl,--wrap,cJSON_AddBoolToObject@12 ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                 -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \

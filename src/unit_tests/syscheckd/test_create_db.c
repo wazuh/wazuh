@@ -3110,8 +3110,6 @@ void test_fim_delete_file_event_remove_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    char buffer[OS_SIZE_128] = {0};
-
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3192,7 +3190,6 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     fim_data_t *fim_data = *state;
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    char buffer[OS_SIZE_128] = {0};
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
