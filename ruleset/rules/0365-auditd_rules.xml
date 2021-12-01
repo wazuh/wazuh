@@ -20,7 +20,7 @@
     <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
     <field name="audit.res">success</field>
     <description>Auditd: Daemon Start / Resume.</description>
-    <group>gpg13_4.14,gpg13_10.1,gdpr_IV_30.1.g,</group>
+    <group>gdpr_IV_30.1.g,gpg13_4.14,gpg13_10.1,</group>
   </rule>
 
   <rule id="80702" level="10">
@@ -28,7 +28,7 @@
     <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
     <field name="audit.res">failed</field>
     <description>Auditd: Daemon Start / Resume FAILED.</description>
-    <group>audit_daemon,service_availability,pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>audit_daemon,gpg13_10.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,gpg13_4.14,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80703" level="10">
@@ -50,7 +50,7 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">CONFIG_CHANGE|DAEMON_CONFIG</field>
     <description>Auditd: Configuration changed.</description>
-    <group>audit_configuration,gpg13_10.1,gdpr_IV_30.1.g,</group>
+    <group>audit_configuration,gdpr_IV_30.1.g,gpg13_10.1,</group>
   </rule>
 
   <rule id="80710" level="10">
@@ -89,11 +89,11 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">ANOM_ACCESS_FS</field>
     <description>Auditd: File or a directory access ended abnormally.</description>
-    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1203</id>
       <id>T1492</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80715" level="8">
@@ -165,10 +165,10 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">ANOM_LOGIN_FAILURES</field>
     <description>Auditd: Limit of failed login attempts reached.</description>
-    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.5,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.5,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80724" level="5">
@@ -321,10 +321,10 @@
     <if_group>audit_watch_write</if_group>
     <match>type=DELETE</match>
     <description>Audit: Deleted: $(audit.file.name).</description>
-    <group>audit_watch_delete,audit_watch_write,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
     <mitre>
       <id>T1107</id>
     </mitre>
+    <group>audit_watch_delete,audit_watch_write,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
   </rule>
 
   <!-- System call rules -->
