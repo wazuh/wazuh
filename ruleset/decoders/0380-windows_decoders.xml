@@ -1,10 +1,6 @@
 <!--
-  -  Windows decoders
-  -  Author: Daniel Cid.
-  -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  Copyright (C) 2009 Trend Micro Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  Windows decoders
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
 
@@ -139,9 +135,10 @@
 -->
 
 <decoder name="ms-dhcp-ipv4">
-  <prematch type="pcre2">^\d{2},\d{2}\/\d{2}\/\d{2,4},\d{2}:\d{2}:\d+,</prematch>
-  <regex type="pcre2">^(\d{2}),(\d{2}\/\d{2}\/\d{2,4},\d{2}:\d{2}:\d+),([^,]+),([^,]+),([^,]+)</regex>
-  <order>id,timestamp,action,srcip,hostname</order>
+  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
+  <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\S+)</regex>
+  <order>id,extra_data,srcip</order>
 </decoder>
 
 <!--
