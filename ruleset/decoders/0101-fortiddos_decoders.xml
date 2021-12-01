@@ -11,7 +11,7 @@
     https://help.fortinet.com/fddos/4-3-0/FortiDDoS/log_ref.htm
   
   Sample logs:
-    2021-05-27T23:59:59.998837-03:00 12.34.56.78 devid=XXXXXXXXX date=2021-05-28 time=00:00:00 tz=ART type=attack spp=4 evecode=2 evesubcode=27 description="TCP invalid flag combination " dir=1 protocol=6 sip=0.0.0.0 dip=12.34.56.79 dropcount=30 subnetid=95 facility=Local0 level=Notice direction=inbound spp_name="YYYYY" subnet_name="ZZZZZ" sppoperatingmode=detection
+    device_id=FI200B3914000081 date=2017-10-18 time=11:10:00 tz=PDT.type=attack spp=1 evecode=2 evesubcode=18 description="UDP.port.flood" dir=1 protocol=17 sip=0.0.0.0 dip=61.255.0.253 dport=19160 dropcount=188 subnetid=61 facility=Local0 level=Notice
 -->
 
 <decoder name="fortiddos-like">
