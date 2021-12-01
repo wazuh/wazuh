@@ -66,12 +66,12 @@
   <rule id="64508" level="6">
     <if_sid>64505</if_sid>
     <field name="content_type" type="pcre2">^(?:drop|deny)$</field>
-    <description>Palo Alto Traffic: Session dropped  on $(device_name) from $(source_address) to $(destination_address). Reason: $(session_end_reason). Action: $(action)..</description>
-    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.b,pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+    <description>Palo Alto Traffic: Session dropped  on $(device_name) from $(source_address) to $(destination_address). Reason: $(session_end_reason). Action: $(action).</description>
     <mitre>
       <id>T1072</id>
       <id>T1190</id>
     </mitre>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.b,pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
 </group>
