@@ -23,12 +23,16 @@ JSON_FORMAT = api_conf['logs']['format'] == 'json'
 
 
 class AccessLogger(AbstractAccessLogger):
+    """
+    Defines the log writter used by aiohttp
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.custom_logging = self.setup_custom_logging()
 
     def setup_custom_logging(self):
+        """Provides the log entry structure depending on the logging format"""
         def plain_log(user, remote, method, path, query, body, time, status):
             self.logger.info(f'{user} '
                              f'{remote} '
@@ -115,6 +119,9 @@ class APILogger(WazuhLogger):
 
 
 class WazuhJsonFormatter(jsonlogger.JsonFormatter):
+    """
+    Defines the custom JSON log formatter used by wlogging
+    """
     def add_fields(self, log_record, record, message_dict):
         if record.message is None:
             record.message = message_dict
