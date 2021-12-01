@@ -292,7 +292,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                     logger.debug(f'[Cluster] {str(WazuhException(3001, str(e)))}')
                     failed_files.append(f)
                 if max_zip_size and zf.start_dir > max_zip_size:
-                    logger.warning(f'Maximum allowed zip size was exceeded so no more files will be compressed '
+                    logger.warning(f'Maximum allowed zip size was exceeded so not all files will be compressed '
                                    f'during this iteration.')
                     exceeded_size = True
             # Remove from the metadata dict all those files that did not fit in the zip
