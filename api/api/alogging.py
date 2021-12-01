@@ -116,7 +116,7 @@ class APILogger(WazuhLogger):
 
 class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
-        if not record.message:
+        if record.message is None:
             record.message = message_dict
             message_dict = {}
         super().add_fields(log_record, record, message_dict)

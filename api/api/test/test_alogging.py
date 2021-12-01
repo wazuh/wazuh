@@ -17,10 +17,11 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 
 @pytest.mark.parametrize('json_format', [
-    (False),
-    (True)
+    False,
+    True
 ])
 def test_accesslogger_log_credentials(json_format):
+    """Check AccessLogger is hiding confidential data from logs"""
     class MockedRequest(dict):
         query = {'password': 'password_value'
                  }
@@ -91,6 +92,10 @@ def test_accesslogger_log(mock_dumps, side_effect, user, json_format):
                 assert mock_logger_info.call_args.args[0].split(" ")[0] == user
 
 
+@pytest.mark.parametrize('json_format', [
+    False,
+    True
+])
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')
 def test_apilogger_init(mock_wazuhlogger, json_format):
     """Check parameters are as expected when calling __init__ method"""
@@ -98,7 +103,7 @@ def test_apilogger_init(mock_wazuhlogger, json_format):
     with patch('api.alogging.JSON_FORMAT', json_format):
         current_logger_path = os.path.join(os.path.dirname(__file__), 'testing')
         alogging.APILogger(log_path=current_logger_path, foreground_mode=False, debug_level='info',
-                  logger_name='wazuh')
+                           logger_name='wazuh')
 
         assert mock_wazuhlogger.call_args.kwargs['log_path'] == current_logger_path
         assert not mock_wazuhlogger.call_args.kwargs['foreground_mode']
@@ -135,9 +140,11 @@ def test_apilogger_setup_logger(mock_logger, debug_level, expected_level):
 
 
 def test_wazuhjsonformatter():
+    """Check wazuh json formatter is working as expected"""
     with patch('api.alogging.logging.LogRecord') as mock_record:
         mock_record.message = None
         wjf = alogging.WazuhJsonFormatter()
         log_record = {}
         wjf.add_fields(log_record, mock_record, {})
         assert 'timestamp' in log_record.keys()
+        assert isinstance(log_record, dict)
