@@ -310,7 +310,7 @@ class WazuhDBConnection:
             except IndexError:
                 total = 0
 
-            limit = lim if lim != 0 else total
+            limit = lim if lim != 0 and lim < total else total
 
             response = []
             if ':limit' not in query_lower:
