@@ -18,8 +18,12 @@
 #include "../../headers/shared.h"
 #include "../../headers/validate_op.h"
 #include "../wrappers/wazuh/shared/expression_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../shared/validate_op.c"
+
 /* tests */
+
+#define TEST_MOCKED
 
 void w_validate_bytes_non_number (void **state)
 {
@@ -82,7 +86,7 @@ void OS_IsValidIP_not_valid_ip(void **state)
 {
 #ifdef TEST_MOCKED
     unsigned int i = 0;
-    while (ip_address_regex[i] != NULL) {    
+    while (ip_address_regex[i] != NULL) {
         expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
         will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, 0);
@@ -119,16 +123,17 @@ void OS_IsValidIP_valid_multi_ipv4(void **state)
 #ifdef TEST_MOCKED
         expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
         will_return(__wrap_w_expression_compile, 1);
-        will_return(__wrap_w_expression_match, 1);
+        will_return(__wrap_w_expression_match, -1);
+        will_return(__wrap_w_expression_match, ip_to_test);
+
+        will_return(__wrap_get_ipv4_numeric, 0);
 #endif
         ret = OS_IsValidIP(ip_to_test[i], ret_ip);
         assert_string_equal(ip_to_test[i], ret_ip->ip);
         assert_int_equal(ret, 1);
         assert_int_equal(ret_ip->is_ipv6, FALSE);
 
-        free(ret_ip->ipv4);
-        free(ret_ip->ip);
-        free(ret_ip);
+        w_free_os_ip(ret_ip);
     }
 }
 
@@ -177,7 +182,7 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
 
 #ifdef TEST_MOCKED
         unsigned int a = 0;
-        while (ip_address_regex[a] != NULL) {    
+        while (ip_address_regex[a] != NULL) {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
             will_return(__wrap_w_expression_compile, 1);
             will_return(__wrap_w_expression_match, 0);
@@ -188,9 +193,7 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
         assert_string_equal(ip_to_test[i], ret_ip->ip);
         assert_int_equal(ret, 0);
 
-        free(ret_ip->ipv4);
-        free(ret_ip->ip);
-        free(ret_ip);
+        w_free_os_ip(ret_ip);
     }
 }
 
@@ -204,7 +207,11 @@ void OS_IsValidIP_valid_ipv4_CIDR(void **state)
 #ifdef TEST_MOCKED
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
-    will_return(__wrap_w_expression_match, 1);
+    will_return(__wrap_w_expression_match, -2);
+    will_return(__wrap_w_expression_match, "192.168.10.12");
+    will_return(__wrap_w_expression_match, "32");
+
+    will_return(__wrap_get_ipv4_numeric, 0);
 #endif
 
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
@@ -212,9 +219,7 @@ void OS_IsValidIP_valid_ipv4_CIDR(void **state)
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, FALSE);
 
-    free(ret_ip->ipv4);
-    free(ret_ip->ip);
-    free(ret_ip);
+    w_free_os_ip(ret_ip);
 }
 
 void OS_IsValidIP_valid_ipv4_netmask(void **state)
@@ -227,19 +232,22 @@ void OS_IsValidIP_valid_ipv4_netmask(void **state)
 #ifdef TEST_MOCKED
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
-    will_return(__wrap_w_expression_match, 1);
+    will_return(__wrap_w_expression_match, -2);
+    will_return(__wrap_w_expression_match, "32.32.32.32");
+    will_return(__wrap_w_expression_match, "255.255.255.255");
+
+    will_return(__wrap_get_ipv4_numeric, 0);
+    will_return(__wrap_get_ipv4_numeric, 0);
 #endif
 
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
     assert_string_equal(ip_to_test, ret_ip->ip);
-    assert_int_equal(0x20202020, ret_ip->ipv4->ip_address);
-    assert_int_equal(0xFFFFFFFF, ret_ip->ipv4->netmask);
+    //assert_int_equal(0x20202020, ret_ip->ipv4->ip_address);
+    //assert_int_equal(0xFFFFFFFF, ret_ip->ipv4->netmask);
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, FALSE);
 
-    free(ret_ip->ipv4);
-    free(ret_ip->ip);
-    free(ret_ip);
+    w_free_os_ip(ret_ip);
 }
 
 void OS_IsValidIP_valid_ipv4_0_netmask(void **state)
@@ -252,19 +260,22 @@ void OS_IsValidIP_valid_ipv4_0_netmask(void **state)
 #ifdef TEST_MOCKED
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
-    will_return(__wrap_w_expression_match, 1);
+    will_return(__wrap_w_expression_match, -2);
+    will_return(__wrap_w_expression_match, "0.0.0.0");
+    will_return(__wrap_w_expression_match, "255.255.255.255");
+
+    will_return(__wrap_get_ipv4_numeric, 0);
+    will_return(__wrap_get_ipv4_numeric, 0);
 #endif
 
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
     assert_string_equal(ip_to_test, ret_ip->ip);
-    assert_int_equal(0x0, ret_ip->ipv4->ip_address);
-    assert_int_equal(0xFFFFFFFF, ret_ip->ipv4->netmask);
+    //assert_int_equal(0x0, ret_ip->ipv4->ip_address);
+    //assert_int_equal(0xFFFFFFFF, ret_ip->ipv4->netmask);
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, FALSE);
 
-    free(ret_ip->ipv4);
-    free(ret_ip->ip);
-    free(ret_ip);
+    w_free_os_ip(ret_ip);
 }
 
 void OS_IsValidIP_valid_ipv4_netmask_0(void **state)
@@ -277,19 +288,37 @@ void OS_IsValidIP_valid_ipv4_netmask_0(void **state)
 #ifdef TEST_MOCKED
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
-    will_return(__wrap_w_expression_match, 1);
+    will_return(__wrap_w_expression_match, -2);
+    will_return(__wrap_w_expression_match, "16.16.16.16");
+    will_return(__wrap_w_expression_match, "255.255.255.0");
+
+
+    will_return(__wrap_get_ipv4_numeric, 0);
+    will_return(__wrap_get_ipv4_numeric, 0);
 #endif
 
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
     assert_string_equal(ip_to_test, ret_ip->ip);
-    assert_int_equal(0xFFFFFF, ret_ip->ipv4->netmask);
-    assert_int_equal(0x101010, ret_ip->ipv4->ip_address);
+    //assert_int_equal(0xFFFFFF, ret_ip->ipv4->netmask);
+    //assert_int_equal(0x101010, ret_ip->ipv4->ip_address);
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, FALSE);
 
-    free(ret_ip->ipv4);
-    free(ret_ip->ip);
-    free(ret_ip);
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IsValidIP_valid_ipv4_netmask_0_NULL_struct(void **state)
+{
+    char ip_to_test[] = {"16.16.16.16/255.255.255.0"};
+
+#ifdef TEST_MOCKED
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+#endif
+
+    int ret = OS_IsValidIP(ip_to_test, NULL);
+    assert_int_equal(ret, 1);
 }
 
 void OS_IsValidIP_valid_multi_ipv6(void **state)
@@ -351,7 +380,10 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
         /* Second call to __wrap_w_expression_match pass */
         expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
         will_return(__wrap_w_expression_compile, 1);
-        will_return(__wrap_w_expression_match, 1);
+        will_return(__wrap_w_expression_match, -1);
+        will_return(__wrap_w_expression_match, ip_to_test);
+
+        will_return(__wrap_get_ipv6_numeric, 0);
 #endif
 
         ret = OS_IsValidIP(ip_to_test[i], ret_ip);
@@ -360,9 +392,7 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
         assert_int_equal(ret_ip->is_ipv6, TRUE);
         assert_non_null(ret_ip->ipv6->ip_address);
 
-        free(ret_ip->ipv6);
-        free(ret_ip->ip);
-        free(ret_ip);
+        w_free_os_ip(ret_ip);
     }
 }
 
@@ -376,6 +406,7 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
         "::11AA:11AA:11AA:11AA:::",
         "::11AA::11AA:11AA::11AA:11AA:11AA::11AA",
         "11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA",
+        "GGAA:11AA:11AA:11AA:11AA:11AA:11AA:11AA",
         NULL,
     };
 
@@ -388,7 +419,7 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
 
 #ifdef TEST_MOCKED
         int a = 0;
-        while (ip_address_regex[a] != NULL) {    
+        while (ip_address_regex[a] != NULL) {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
             will_return(__wrap_w_expression_compile, 1);
             will_return(__wrap_w_expression_match, 0);
@@ -399,8 +430,7 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
         assert_string_equal(ip_to_test[i], ret_ip->ip);
         assert_int_equal(ret, 0);
 
-        free(ret_ip->ip);
-        free(ret_ip);
+        w_free_os_ip(ret_ip);
     }
 }
 
@@ -421,18 +451,39 @@ void OS_IsValidIP_valid_ipv6_prefix(void **state)
     /* Second call to __wrap_w_expression_match pass */
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
-    will_return(__wrap_w_expression_match, 1);
+    will_return(__wrap_w_expression_match, -2);
+    will_return(__wrap_w_expression_match, "2001:db8:abcd:0012:0000:0000:0000:0000");
+    will_return(__wrap_w_expression_match, "64");
+
+    will_return(__wrap_get_ipv6_numeric, 0);
 #endif
 
     ret = OS_IsValidIP(ip_to_test, ret_ip);
     assert_string_equal(ip_to_test, ret_ip->ip);
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, TRUE);
-    //assert_int_equal(ret_ip.ipv6->ipv6_netmask, 0xFFFFFFFFFFFFFFFF);
 
-    free(ret_ip->ipv6);
-    free(ret_ip->ip);
-    free(ret_ip);
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IsValidIP_valid_ipv6_prefix_NULL_struct(void **state)
+{
+    char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
+
+#ifdef TEST_MOCKED
+    /* First call to __wrap_w_expression_match fail */
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 0);
+
+    /* Second call to __wrap_w_expression_match pass */
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+#endif
+
+    int ret = OS_IsValidIP(ip_to_test, NULL);
+    assert_int_equal(ret, 1);
 }
 
 int main(void) {
@@ -454,9 +505,11 @@ int main(void) {
         cmocka_unit_test(OS_IsValidIP_valid_ipv4_netmask),
         cmocka_unit_test(OS_IsValidIP_valid_ipv4_0_netmask),
         cmocka_unit_test(OS_IsValidIP_valid_ipv4_netmask_0),
+        cmocka_unit_test(OS_IsValidIP_valid_ipv4_netmask_0_NULL_struct),
         cmocka_unit_test(OS_IsValidIP_valid_multi_ipv6),
         cmocka_unit_test(OS_IsValidIP_not_valid_multi_ipv6),
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_prefix),
+        cmocka_unit_test(OS_IsValidIP_valid_ipv6_prefix_NULL_struct),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

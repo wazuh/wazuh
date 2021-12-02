@@ -34,5 +34,15 @@ int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);
     check_expected(final_ip);
 
-    return mock_type(int);
+    int ret = mock();
+    if(ret < 0){
+        ret *= (-1);
+        os_strdup(ip_address, final_ip->ip);
+        if (ret == 2) {
+            os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
+            ret = 1;
+        }
+    }
+
+    return ret;
 }

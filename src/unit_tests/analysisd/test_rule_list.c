@@ -159,7 +159,14 @@ void test_os_remove_ruleinfo_OK(void **state)
     os_calloc(2, sizeof(char*), ruleinfo->ckignore_fields);
     os_strdup("test_ckignore_felds", ruleinfo->ckignore_fields[0]);
 
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
     w_expression_add_osip(&ruleinfo->srcip, "0.0.0.0");
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
     w_expression_add_osip(&ruleinfo->dstip, "0.0.0.0");
 
     os_calloc(2, sizeof(FieldInfo*), ruleinfo->fields);
@@ -228,7 +235,16 @@ void test_os_remove_rules_list_OK(void **state)
     os_calloc(2, sizeof(char*), node->ruleinfo->ckignore_fields);
     os_strdup("test_ckignore_felds", node->ruleinfo->ckignore_fields[0]);
 
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
     w_expression_add_osip(&node->ruleinfo->srcip, "0.0.0.0");
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
     w_expression_add_osip(&node->ruleinfo->dstip, "0.0.0.0");
 
     os_calloc(2, sizeof(FieldInfo*), node->ruleinfo->fields);
