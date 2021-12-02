@@ -850,10 +850,7 @@ static int process_ace_info(void *ace, cJSON *acl_json) {
     }
 
     if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
-        os_free(account_name);
-        os_free(domain_name);
         mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
-        return 1;
     }
 
     if (!ConvertSidToStringSid(sid, &sid_str)) {
