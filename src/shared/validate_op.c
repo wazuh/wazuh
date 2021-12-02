@@ -486,6 +486,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
     else {
         /* any case */
         if (final_ip) {
+            os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
             final_ip->ipv4->ip_address = 0;
             final_ip->ipv4->netmask = 0;
         }
