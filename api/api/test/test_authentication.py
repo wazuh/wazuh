@@ -3,10 +3,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import re
 import sys
 from copy import deepcopy
+from datetime import datetime
 from unittest.mock import patch, MagicMock, ANY, call
 
+from freezegun import freeze_time
 from werkzeug.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -123,7 +126,6 @@ def test_get_security_conf():
     assert all(x in result.keys() for x in ('auth_token_exp_timeout', 'rbac_mode'))
 
 
-@patch('api.authentication.time', return_value=0)
 @patch('api.authentication.jwt.encode', return_value='test_token')
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
@@ -132,10 +134,11 @@ def test_get_security_conf():
 @patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
 def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_keypair,
-                        mock_encode, mock_time):
+                        mock_encode):
     """Verify if result is as expected"""
     mock_raise_if_exc.return_value = security_conf
-    result = authentication.generate_token('001', {'roles': [1]})
+    with freeze_time("1970-01-01"):
+        result = authentication.generate_token('001', {'roles': [1]})
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
@@ -144,8 +147,8 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
     mock_generate_keypair.assert_called_once()
-    mock_encode.assert_called_once_with(original_payload, '-----BEGIN PRIVATE KEY-----',
-                                        algorithm='ES512')
+    mock_encode.assert_called_once_with(original_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES512')
+
 
 
 @patch('api.authentication.TokenManager')

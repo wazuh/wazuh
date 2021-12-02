@@ -4,7 +4,7 @@
 
 import json
 import os
-from time import time
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -75,7 +75,7 @@ def test_get_all_token_rules(db_setup):
 
 def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
-    current_timestamp = int(time())
+    current_timestamp = int(datetime.utcnow().timestamp())
     users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:
