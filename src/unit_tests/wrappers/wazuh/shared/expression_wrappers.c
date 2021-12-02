@@ -18,18 +18,23 @@ bool __wrap_w_expression_match(__attribute__((unused))w_expression_t * expressio
     int ret = mock();
 
     if(ret < 0) {
-        ret *= (-1);
-
-        regex_match->d_size.prts_str_alloc_size = ret *sizeof(char *);
-        os_calloc(1, sizeof(char *) * (ret + 1), regex_match->sub_strings);
-
-        regex_match->sub_strings[0] = w_strndup((char*)mock(), 128);
-
-        if (ret > 1) {
-            regex_match->sub_strings[1] = w_strndup((char*)mock(), 128);
-            regex_match->sub_strings[2] = NULL;
+        if (ret == -3) {
+            regex_match->d_size.prts_str_alloc_size = 0;
+            ret = 1;
         } else {
-            regex_match->sub_strings[1] = NULL;
+            ret *= (-1);
+
+            regex_match->d_size.prts_str_alloc_size = ret *sizeof(char *);
+            os_calloc(1, sizeof(char *) * (ret + 1), regex_match->sub_strings);
+
+            regex_match->sub_strings[0] = w_strndup((char*)mock(), 128);
+
+            if (ret > 1) {
+                regex_match->sub_strings[1] = w_strndup((char*)mock(), 128);
+                regex_match->sub_strings[2] = NULL;
+            } else {
+                regex_match->sub_strings[1] = NULL;
+            }
         }
     }
     return ret;
