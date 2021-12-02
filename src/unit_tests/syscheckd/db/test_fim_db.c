@@ -39,6 +39,8 @@
 
 extern const char *SQL_STMT[];
 
+#define FIMDB_RM_MAX_LOOP 10 // Max number of loop iterations
+#define FIMDB_RM_DEFAULT_TIME 100 //miliseconds
 
 int fim_db_process_get_query(fdb_t *fim_sql,
                              int type,

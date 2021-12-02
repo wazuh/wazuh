@@ -162,7 +162,7 @@ void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
     EVP_DigestInit(ctx, EVP_sha1());
 
     w_mutex_lock(mutex);
-
+/* DEPRECATED CODE
     if (fim_db_get_first_path(syscheck.database, type, &start) != FIMDB_OK) {
         merror(FIM_DB_ERROR_GET_ROW_PATH, "FIRST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
         w_mutex_unlock(mutex);
@@ -180,7 +180,7 @@ void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
         w_mutex_unlock(mutex);
         goto end;
     }
-
+*/
     w_mutex_unlock(mutex);
 
     fim_sync_cur_id = time(NULL);
@@ -226,19 +226,21 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         type = FIM_TYPE_FILE;
         component = FIM_COMPONENT_FILE;
     }
-
+    /* DEPRECATED CODE
     if (fim_db_get_count_range(syscheck.database, type, start, top, &range_size) != FIMDB_OK) {
         merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
         range_size = 0;
     }
+    */
 
     switch (range_size) {
     case 0:
         return;
 
     case 1:
+       /* DEPRECATED CODE
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, start);
-
+        */
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, start);
             return;
@@ -253,10 +255,10 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
         EVP_DigestInit(ctx_left, EVP_sha1());
         EVP_DigestInit(ctx_right, EVP_sha1());
-
+        /* DEPRECATED CODE
         result = fim_db_get_checksum_range(syscheck.database, type, start, top, range_size, ctx_left, ctx_right,
                                             &str_pathlh, &str_pathuh);
-
+        */
         if (result == FIMDB_OK) {
             unsigned char digest[EVP_MAX_MD_SIZE] = {0};
             unsigned int digest_size = 0;
@@ -299,7 +301,7 @@ void fim_sync_send_list(const char *start, const char *top) {
         type = FIM_TYPE_FILE;
         component = FIM_COMPONENT_FILE;
     }
-
+    /* DEPRECATED CODE
     if (fim_db_get_path_range(syscheck.database, type, start, top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
         if (file != NULL) {
@@ -307,11 +309,12 @@ void fim_sync_send_list(const char *start, const char *top) {
         }
         return;
     }
+    */
 
     if (file == NULL) {
         return;
     }
-
+    /* DEPRECATED CODE
     if (file->elements == 0) {
         fim_db_clean_file(&file, syscheck.database_store);
         return;
@@ -334,6 +337,7 @@ void fim_sync_send_list(const char *start, const char *top) {
     }
 
     fim_db_clean_file(&file, syscheck.database_store);
+    */
 }
 
 void fim_sync_dispatch(char * payload) {

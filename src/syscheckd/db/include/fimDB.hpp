@@ -264,17 +264,15 @@ class FIMDB
          * @brief Insert a given item into the database
          *
          * @param item json item that represent the fim_entry data
-         * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        dbQueryResult insertItem(const nlohmann::json& item);
+        void insertItem(const nlohmann::json& item);
 
         /**
          * @brief Remove a given item from the database
          *
          * @param item json item that represent the fim_entry data
-         * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        dbQueryResult removeItem(const nlohmann::json& item);
+        void removeItem(const nlohmann::json& item);
 
         /**
          * @brief Update a given item in the database, or insert a new one if not exists,
@@ -282,18 +280,16 @@ class FIMDB
          *
          * @param item json item that represent the fim_entry data
          * @param callbackData Pointer to the callback used after update rows
-         * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        dbQueryResult updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
+        void updateItem(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
          * @brief Execute a query given and uses the callbackData in these rows
          *
          * @param item json item that represent the query to execute
          * @param callbackData Pointer to the callback used after execute query
-         * @return 0 if the execution was ok, 1 for max_rows_error, 2 for another errors
          */
-        dbQueryResult executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
+        void executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
         * @brief Create the loop with the configured interval to do the periodical synchronization

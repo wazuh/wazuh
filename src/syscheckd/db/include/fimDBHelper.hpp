@@ -26,9 +26,9 @@ namespace FIMDBHelper
     * @param sync_callback Synchronization callback.
     * @param logCallback Logging callback.
     */
-    void initDB(unsigned int sync_interval, unsigned int file_limit,
-                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    void initDB(const unsigned int sync_interval, const unsigned int file_limit,
+                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
     }
@@ -42,9 +42,9 @@ namespace FIMDBHelper
     * @param sync_callback Synchronization callback.
     * @param logCallback Logging callback.
     */
-    void initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
-                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    void initDB(const unsigned int sync_interval, const unsigned int file_limit, const unsigned int registry_limit,
+                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
                               handler_RSync);
@@ -57,10 +57,9 @@ namespace FIMDBHelper
     * @param tableName a string with the table name
     * @param query a json with a filter to delete an element to the database
     *
-    * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
@@ -75,7 +74,7 @@ namespace FIMDBHelper
         deleteJson["table"] = tableName;
         deleteJson["query"]["data"] = {filter};
 
-        return T::getInstance().removeItem(deleteJson);
+        T::getInstance().removeItem(deleteJson);
     }
     /**
     * @brief Get count of all entries in a table
@@ -83,10 +82,9 @@ namespace FIMDBHelper
     * @param tableName a string with the table name
     * @param count a int with count values
     *
-    * @return amount of entries on success, 0 otherwise.
     */
     template<typename T>
-    int getCount(const std::string & tableName, int & count)
+    void getCount(const std::string& tableName, int& count)
     {
         const auto countQueryStatement = R"({
                                                 "table":"",
@@ -98,16 +96,17 @@ namespace FIMDBHelper
         })";
         auto countQuery = nlohmann::json::parse(countQueryStatement);
         countQuery["table"] = tableName;
-        auto callback {
+        auto callback
+        {
             [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
-                if(type == ReturnTypeCallback::SELECTED)
+                if (type == ReturnTypeCallback::SELECTED)
                 {
-                   count = jsonResult["query"]["count"];
+                    count = jsonResult["query"]["count"];
                 }
             }
         };
-        return T::getInstance().executeQuery(countQuery, callback);
+        T::getInstance().executeQuery(countQuery, callback);
     }
 
     /**
@@ -116,10 +115,9 @@ namespace FIMDBHelper
     * @param tableName a string with the table name
     * @param item a RegistryKey, RegistryValue or File with their parameters
     *
-    * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int insertItem(const std::string & tableName, const nlohmann::json & item)
+    void insertItem(const std::string& tableName, const nlohmann::json& item)
     {
         const auto insertStatement = R"(
                                             {
@@ -134,7 +132,7 @@ namespace FIMDBHelper
         insert["table"] = tableName;
         insert["data"] = {item};
 
-        return T::getInstance().insertItem(insert);
+        T::getInstance().insertItem(insert);
     }
 
     /**
@@ -146,7 +144,7 @@ namespace FIMDBHelper
     * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int updateItem(const std::string & tableName, const nlohmann::json & item)
+    void updateItem(const std::string& tableName, const nlohmann::json& item)
     {
         const auto updateStatement = R"(
                                             {
@@ -159,10 +157,11 @@ namespace FIMDBHelper
         )";
         auto update = nlohmann::json::parse(updateStatement);
         update["table"] = tableName;
-        update["data"] = {item};
+        update["data"] = nlohmann::json::array({item});
         bool error = false;
-        auto callback {
-            [&error](ReturnTypeCallback type, const nlohmann::json &)
+        const auto callback
+        {
+            [&error](ReturnTypeCallback type, const nlohmann::json&)
             {
                 if (type == ReturnTypeCallback::DB_ERROR)
                 {
@@ -170,12 +169,8 @@ namespace FIMDBHelper
                 }
             }
         };
-        if(error)
-        {
-            return static_cast<int>(dbQueryResult::DBSYNC_ERROR);
-        }
 
-        return T::getInstance().updateItem(update, callback);
+        T::getInstance().updateItem(update, callback);
     }
 
     /**
@@ -184,12 +179,12 @@ namespace FIMDBHelper
     * @param item a json object where will be saved the query information
     * @param query a json with a query to the database
     *
-    * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    int getDBItem(nlohmann::json & item, const nlohmann::json & query)
+    void getDBItem(nlohmann::json& item, const nlohmann::json& query)
     {
-        auto callback {
+        const auto callback
+        {
             [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
                 if (type == ReturnTypeCallback::SELECTED)
@@ -199,7 +194,31 @@ namespace FIMDBHelper
             }
         };
 
-        return T::getInstance().executeQuery(query, callback);
+        T::getInstance().executeQuery(query, callback);
+    }
+
+    /**
+    * @brief Create a new query to database
+    *
+    * @param tableName a string with table name
+    * @param columnList an array with the column list
+    * @param filter a string with a filter to a table
+    * @param order a string with the column to order in result
+    *
+    * @return a nlohmann::json with a database query
+    */
+    nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
+                           const std::string & order)
+    {
+        nlohmann::json query;
+        query["table"] = tableName;
+        query["query"]["column_list"] = columnList["column_list"];
+        query["query"]["row_filter"] = filter;
+        query["query"]["distinct_opt"] = false;
+        query["query"]["order_by_opt"] = order;
+        query["query"]["count_opt"] = 100;
+
+        return query;
     }
 }
 
