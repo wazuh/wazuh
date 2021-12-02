@@ -59,11 +59,7 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-<<<<<<< HEAD
     void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
-=======
-    int removeFromDB(const std::string & tableName, const nlohmann::json & filter)
->>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
@@ -78,11 +74,7 @@ namespace FIMDBHelper
         deleteJson["table"] = tableName;
         deleteJson["query"]["data"] = {filter};
 
-<<<<<<< HEAD
         T::getInstance().removeItem(deleteJson);
-=======
-        return queryError(T::getInstance().removeItem(deleteJson));
->>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
     /**
     * @brief Get count of all entries in a table
@@ -114,12 +106,7 @@ namespace FIMDBHelper
                 }
             }
         };
-<<<<<<< HEAD
         T::getInstance().executeQuery(countQuery, callback);
-=======
-
-        return queryError(T::getInstance().executeQuery(countQuery, callback));
->>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 
     /**
@@ -145,11 +132,7 @@ namespace FIMDBHelper
         insert["table"] = tableName;
         insert["data"] = {item};
 
-<<<<<<< HEAD
         T::getInstance().insertItem(insert);
-=======
-        return queryError(T::getInstance().insertItem(insert));
->>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 
     /**
@@ -187,11 +170,7 @@ namespace FIMDBHelper
             }
         };
 
-<<<<<<< HEAD
         T::getInstance().updateItem(update, callback);
-=======
-        return queryError(T::getInstance().updateItem(update, callback));
->>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
     }
 
     /**
@@ -215,7 +194,6 @@ namespace FIMDBHelper
             }
         };
 
-<<<<<<< HEAD
         T::getInstance().executeQuery(query, callback);
     }
 
@@ -241,9 +219,30 @@ namespace FIMDBHelper
         query["query"]["count_opt"] = 100;
 
         return query;
-=======
-        return queryError(T::getInstance().executeQuery(query, callback));
->>>>>>> acae8720db... Add changes to integrate c++ code in c code inside file.cpp
+    }
+
+    /**
+    * @brief Create a new query to database
+    *
+    * @param tableName a string with table name
+    * @param columnList an array with the column list
+    * @param filter a string with a filter to a table
+    * @param order a string with the column to order in result
+    *
+    * @return a nlohmann::json with a database query
+    */
+    nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
+                           const std::string & order)
+    {
+        nlohmann::json query;
+        query["table"] = tableName;
+        query["query"]["column_list"] = columnList["column_list"];
+        query["query"]["row_filter"] = filter;
+        query["query"]["distinct_opt"] = false;
+        query["query"]["order_by_opt"] = order;
+        query["query"]["count_opt"] = 100;
+
+        return query;
     }
 }
 
