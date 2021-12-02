@@ -8,6 +8,7 @@
 
   Sample logs:
     2021-07-08T13:45:20.966330-03:00 10.132.128.10 date=2021-07-08 time=13:45:21.846 device_id=XXXXXXXX log_id=0200027993 type=statistics pri=information  session_id="168GjLEk027992-16027992" client_name="" client_ip="11.22.33.44" client_cc="ZZ" dst_ip="12.34.56.78" from="noreply@domain.com" hfrom="noreply@domain.com" to="user@gmail.com" polid="2:2:5:SYSTEM" domain="HHHHHHHH" mailer="mta" resolved="FAIL" src_type="int" direction="out" virus="" disposition="Accept" classifier="Not Spam" message_length="23951" subject="Subject of the message" message_id="896710244.116204.16257.Mail@lnk2489" recv_time="" notif_delay="0" scan_time="0.008128" xfer_time="0.005643" srcfolder="" read_status=""
+
 -->
 
 <decoder name="fortimail-like">
@@ -78,6 +79,24 @@
   <parent>fortimail-like</parent>
   <regex>mailer="(\.*)"</regex>
   <order>mailer</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+  <parent>fortimail-like</parent>
+  <regex>type=(\w+)|type="(\.+)"</regex>
+  <order>type</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+  <parent>fortimail-like</parent>
+  <regex>msg="(\.*)"|msg=(\.*)\s|msg=(\.*)$</regex>
+  <order>msg</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+  <parent>fortimail-like</parent>
+  <regex>subtype="(\.*)"|subtype=(\.*)\s|subtype=(\.*)$</regex>
+  <order>subtype</order>
 </decoder>
 
 <decoder name="fortimail-like-child">
