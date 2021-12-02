@@ -10,7 +10,7 @@
 
 CREATE TABLE IF NOT EXISTS _belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER REFERENCES `group`(id),
+    id_group INTEGER REFERENCES `group`(id) ON DELETE CASCADE,
     PRIMARY KEY (id_agent, id_group)
 );
 
