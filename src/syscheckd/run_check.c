@@ -803,6 +803,9 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
         }
     }
 */
+
+    fim_db_delete_range(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store,
+                        &evt_data, configuration);
 }
 
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {
