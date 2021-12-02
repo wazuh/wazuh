@@ -1,9 +1,5 @@
 <!--
-  -  Fortigate decoders
-  -  Author: Tom Hancock <t.m.h.a.ncoc.k+wazuh@gmail.com>
-  -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
 <!-- 
@@ -133,8 +129,8 @@
 -->
 
 <decoder name="fortigate-firewall-v5">
-    <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
-    <type>syslog</type>
+  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
+  <type>syslog</type>
 </decoder>
 
 <decoder name="fortigate-firewall-v5">
