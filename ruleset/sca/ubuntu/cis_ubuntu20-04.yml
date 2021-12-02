@@ -512,7 +512,7 @@ checks:
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
-    condition: all
+    condition: any
     rules:
       - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:\.+'
       - 'c:crontab -u root -l -> r:aide'
@@ -2239,7 +2239,7 @@ checks:
       - 'd:/etc/audit'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
-      - 'c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete'
+      - 'c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink,rename,unlinkat,renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete'
 
   - id: 19131
     title: "Ensure changes to system administration scope (sudoers) is collected"
@@ -2259,11 +2259,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
-      - 'c: auditctl -l -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
 
   - id: 19132
     title: "Ensure system administrator command executions (sudo) are collected"
-    description: "sudoprovides users with temporary elevated privileges to perform operations. Monitor the administrator with temporary elevated privileges and the operation(s) they performed."
+    description: "sudo provides users with temporary elevated privileges to perform operations. Monitor the administrator with temporary elevated privileges and the operation(s) they performed."
     rationale: "Creating an audit log of administrators with temporary elevated privileges and the operation(s) they performed is essential to reporting. Administrators will want to correlate the events written to the audit trail with the records written to sudo logfile to verify if unauthorized commands have been executed."
     compliance:
       - cis: ["4.1.15"]
@@ -2278,8 +2278,8 @@ checks:
     rules:
       - 'd:/etc/audit'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w \.+ && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
-      - 'c:auditctl -l -> r:^-w \.+ && r:always,exit|exit,always && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-S execve && r:-k actions'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S execve && r:-C uid!=euid && r:-F euid=0 && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
 
   - id: 19133
     title: "Ensure kernel module loading and unloading is collected"
@@ -2479,7 +2479,7 @@ checks:
     condition: all
     rules:
       - 'c:systemctl is-enabled cron -> enabled'
-      - 'c:systemctl status cron -> r:Active: active (running)'
+      - 'c:systemctl status cron -> r:Active: active \(running\)'
 
 
 
@@ -3268,7 +3268,7 @@ checks:
     title: "Ensure permissions on /etc/passwd- are configured"
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following command to set permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-rwx /etc/passwd-"
+    remediation: "Run the following command to set permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-wx /etc/passwd-"
     compliance:
       - cis: ["6.1.3"]
       - cis_csc: ["16.4"]
@@ -3277,7 +3277,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.7 Ensure permissions on /etc/shadow- are configured (Scored)
   - id: 19192
@@ -3300,7 +3300,7 @@ checks:
     title: "Ensure permissions on /etc/group- are configured"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run the following command to set permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-rwx /etc/group-"
+    remediation: "Run the following command to set permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-wx /etc/group-"
     compliance:
       - cis: ["6.1.5"]
       - cis_csc: ["16.4"]
@@ -3309,7 +3309,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.8 Ensure permissions on /etc/gshadow are configured (Scored)
   - id: 19194
