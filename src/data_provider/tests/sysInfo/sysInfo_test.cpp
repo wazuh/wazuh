@@ -31,7 +31,6 @@ auto PACKAGES_EXPECTED
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;
-using ::testing::DoAll;
 
 std::string SysInfo::getSerialNumber() const
 {
@@ -166,7 +165,7 @@ TEST_F(SysInfoTest, packages_cb)
             wrapper.callbackMock(data);
         }
     };
-    EXPECT_CALL(info, getPackages(_)).WillOnce(testing::DoAll(
+    EXPECT_CALL(info, getPackages(_)).WillOnce(DoAll(
                                                    testing::InvokeArgument<0>(expectedValue1),
                                                    testing::InvokeArgument<0>(expectedValue2)));
     EXPECT_CALL(wrapper, callbackMock(expectedValue1)).Times(1);
@@ -204,7 +203,7 @@ TEST_F(SysInfoTest, processes_cb)
             wrapper.callbackMock(data);
         }
     };
-    EXPECT_CALL(info, getProcessesInfo(_)).WillOnce(testing::DoAll(
+    EXPECT_CALL(info, getProcessesInfo(_)).WillOnce(DoAll(
                                                         testing::InvokeArgument<0>(expectedValue1),
                                                         testing::InvokeArgument<0>(expectedValue2)));
     EXPECT_CALL(wrapper, callbackMock(expectedValue1)).Times(1);
