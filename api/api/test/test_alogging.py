@@ -139,12 +139,22 @@ def test_apilogger_setup_logger(mock_logger, debug_level, expected_level):
     os.path.exists(current_logger_path) and os.remove(current_logger_path)
 
 
-def test_wazuhjsonformatter():
+@pytest.mark.parametrize('message, dkt', [
+    (None, {'k1': 'v1'}),
+    ('message_value', {'exc_info': 'traceback_value'}),
+    ('message_value', {})
+])
+def test_wazuhjsonformatter(message, dkt):
     """Check wazuh json formatter is working as expected"""
     with patch('api.alogging.logging.LogRecord') as mock_record:
-        mock_record.message = None
+        mock_record.message = message
         wjf = alogging.WazuhJsonFormatter()
         log_record = {}
-        wjf.add_fields(log_record, mock_record, {})
+        wjf.add_fields(log_record, mock_record, dkt)
         assert 'timestamp' in log_record.keys()
+        tb = dkt.get('exc_info')
+        if tb is not None:
+            assert log_record['message'] == f"{message}. {tb}"
+        if message is None:
+            assert log_record['message'] == dkt
         assert isinstance(log_record, dict)

@@ -123,13 +123,14 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     Defines the custom JSON log formatter used by wlogging
     """
     def add_fields(self, log_record, record, message_dict):
-        # Traceback handling
-        traceback = message_dict.get('exc_info')
-        if traceback is not None:
-            record.message = f"{record.message}. {traceback}"
         # Request handling
         if record.message is None:
             record.message = message_dict
+        else:
+            # Traceback handling
+            traceback = message_dict.get('exc_info')
+            if traceback is not None:
+                record.message = f"{record.message}. {traceback}"
         message_dict = {}
         super().add_fields(log_record, record, message_dict)
         log_record['timestamp'] = self.formatTime(record, self.datefmt)
