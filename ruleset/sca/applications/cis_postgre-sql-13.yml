@@ -212,7 +212,7 @@ checks:
       - cis_csc: ["6.2", "6.3"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
-    conditions: all
+    condition: all
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_directory\" | grep $log_directory$" -> r:\.+'
 
@@ -460,7 +460,7 @@ checks:
     references:
       - https://tools.ietf.org/html/rfc3164#section-4.1.3
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
-    conditions: all
+    condition: all
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_ident\" | grep $syslog_ident" -> r:\.+'
 
@@ -551,7 +551,7 @@ checks:
       - cis_csc: ["6", "5.1"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
-    conditions: all
+    condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "show debug_print_parse" -> r:\soff'
 
@@ -671,6 +671,7 @@ checks:
 
   ## 3.1.19 Ensure 'log_disconnections' is enabled (Automated)
   - id: 24018
+    title: Ensure 'log_disconnections' is enabled (Automated)
     description: >
       Enabling the log_disconnections setting logs the end of each session, including session
       duration. This parameter cannot be changed after session start.
