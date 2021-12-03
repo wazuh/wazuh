@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -31,6 +32,11 @@ namespace Utils
     {
         struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
+    }
+    static bool existsRegular(const std::string& path)
+    {
+        struct stat info {};
+        return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
     struct DirSmartDeleter
     {
