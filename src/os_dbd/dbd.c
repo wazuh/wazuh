@@ -39,7 +39,7 @@ void OS_DBD(DBConfig *db_config)
     db_config->alert_id++;
 
     /* Infinite loop reading the alerts and inserting them */
-    while (running) {
+    while (1) {
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
 
