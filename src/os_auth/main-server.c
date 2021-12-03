@@ -787,7 +787,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
             case AF_INET:
                 new_client->is_ipv6 = FALSE;
                 os_calloc(1, sizeof(struct in_addr), new_client->addr4);
-                new_client->addr4 = &((struct sockaddr_in *)&_nc)->sin_addr;
+                memcpy(new_client->addr4, &((struct sockaddr_in *)&_nc)->sin_addr, sizeof(struct in_addr));
                 break;
             case AF_INET6:
                 new_client->is_ipv6 = TRUE;
