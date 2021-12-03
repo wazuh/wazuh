@@ -3,8 +3,8 @@
 -->
 
 <!-- 
-  PaloAlto v8.X - v10.X rules
-    PaloAlto rules ID:           64500 - 64508
+  Palo Alto v8.X - v10.X rules
+    Palo Alto rules ID:           64500 - 64508
 -->
 
 <group name="paloalto,">
