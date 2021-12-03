@@ -8,7 +8,7 @@
 
 #ifndef FIMDB_H
 #define FIMDB_H
-#include "commonDefs.h"
+#include "fimCommonDefs.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -13,7 +13,7 @@
 #define _FIMDB_HPP
 #include "dbsync.hpp"
 #include "rsync.hpp"
-#include "commonDefs.h"
+#include "fimCommonDefs.h"
 #include <condition_variable>
 #include <mutex>
 

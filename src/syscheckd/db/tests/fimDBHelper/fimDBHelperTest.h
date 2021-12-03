@@ -13,7 +13,7 @@
 #define _FIMHELPER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "commonDefs.h"
+#include "fimCommonDefs.h"
 
 class FIMDBMOCK final
 {

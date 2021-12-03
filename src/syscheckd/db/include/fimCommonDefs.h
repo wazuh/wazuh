@@ -1,5 +1,5 @@
 /**
- * @file commonDefs.h
+ * @file fimCommonDefs.h
  * @brief Common definitions for FIM
  * @date 2021-09-06
  *
