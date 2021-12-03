@@ -316,7 +316,7 @@
     <if_sid>80450</if_sid>
     <field name="aws.log_info.log_file">\.+ConfigHistory</field>
     <options>no_full_log</options>
-    <description>AWS Config - History.</description>
+    <description>AWS config - history.</description>
     <group>aws_config,aws_config_history,</group>
   </rule>
 
@@ -324,7 +324,7 @@
     <if_sid>80450</if_sid>
     <field name="aws.log_info.log_file">\.+ConfigSnapshot</field>
     <options>no_full_log</options>
-    <description>AWS Config - Snapshot.</description>
+    <description>AWS config - snapshot.</description>
     <group>aws_config,aws_config_snapshot,</group>
   </rule>
 
@@ -333,7 +333,7 @@
     <if_sid>80451</if_sid>
     <field name="aws.configurationItemStatus">OK</field>
     <options>no_full_log</options>
-    <description>AWS Config - History [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
+    <description>AWS config - history [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
     <group>aws_config,aws_config_history,</group>
   </rule>
 
@@ -341,7 +341,7 @@
     <if_sid>80451</if_sid>
     <field name="aws.configurationItemStatus">ResourceDiscovered</field>
     <options>no_full_log</options>
-    <description>The resource was newly discovered. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
+    <description>The resource was newly discovered. AWS config - history:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
     <group>aws_config,aws_config_history,</group>
   </rule>
 
@@ -349,7 +349,7 @@
     <if_sid>80451</if_sid>
     <field name="aws.configurationItemStatus">ResourceNotRecorded</field>
     <options>no_full_log</options>
-    <description>The resource was discovered but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
+    <description>The resource was discovered but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS config - history:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
     <group>aws_config,aws_config_history,</group>
   </rule>
 
@@ -357,7 +357,7 @@
     <if_sid>80451</if_sid>
     <field name="aws.configurationItemStatus">ResourceDeleted</field>
     <options>no_full_log</options>
-    <description>The resource was deleted. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
+    <description>The resource was deleted. AWS config - history:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
     <group>aws_config,aws_config_history,</group>
   </rule>
 
@@ -365,7 +365,7 @@
     <if_sid>80451</if_sid>
     <field name="aws.configurationItemStatus">ResourceDeletedNotRecorded</field>
     <options>no_full_log</options>
-    <description>The resource was deleted but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
+    <description>The resource was deleted but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS config - history:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
     <group>aws_config,aws_config_history,</group>
   </rule>
 
@@ -373,7 +373,7 @@
   <rule id="80475" level="3">
     <if_sid>80452</if_sid>
     <options>no_full_log</options>
-    <description>AWS Config - Snapshot [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
+    <description>AWS config - snapshot [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus)).</description>
     <group>aws_config,aws_config_snapshot,</group>
   </rule>
 
@@ -381,7 +381,7 @@
     <if_sid>80475</if_sid>
     <field name="aws.configuration.complianceType">\.+</field>
     <options>no_full_log</options>
-    <description>AWS Config - Snapshot compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType).</description>
+    <description>AWS config - snapshot compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType).</description>
     <group>aws_config,aws_config_snapshot,aws_config_snapshot_compliance,</group>
   </rule>
 
@@ -391,7 +391,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">trustedadvisor</field>
     <options>no_full_log</options>
-    <description>AWS Trusted Advisor alert.</description>
+    <description>AWS trusted advisor alert.</description>
     <group>aws_trusted_advisor,</group>
   </rule>
 
@@ -399,7 +399,7 @@
     <if_sid>80480</if_sid>
     <field name="aws.status">ERROR</field>
     <options>no_full_log</options>
-    <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status).</description>
+    <description>AWS trusted advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status).</description>
     <group>aws_trusted_advisor,</group>
   </rule>
 
@@ -407,7 +407,7 @@
     <if_sid>80480</if_sid>
     <field name="aws.status">WARN</field>
     <options>no_full_log</options>
-    <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status).</description>
+    <description>AWS trusted advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status).</description>
     <group>aws_trusted_advisor,</group>
   </rule>
 
@@ -415,7 +415,7 @@
     <if_sid>80480</if_sid>
     <field name="aws.status">OK</field>
     <options>no_full_log</options>
-    <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status).</description>
+    <description>AWS trusted advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status).</description>
     <group>aws_trusted_advisor,</group>
   </rule>
 
@@ -467,7 +467,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">inspector</field>
     <options>no_full_log</options>
-    <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -475,7 +475,7 @@
     <if_sid>80495</if_sid>
     <field name="aws.severity">High</field>
     <options>no_full_log</options>
-    <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -483,7 +483,7 @@
     <if_sid>80495</if_sid>
     <field name="aws.severity">Medium</field>
     <options>no_full_log</options>
-    <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -491,7 +491,7 @@
     <if_sid>80495</if_sid>
     <field name="aws.severity">Low</field>
     <options>no_full_log</options>
-    <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
@@ -499,7 +499,7 @@
     <if_sid>80495</if_sid>
     <field name="aws.severity">Informational</field>
     <options>no_full_log</options>
-    <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
   </rule>
 
