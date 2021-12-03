@@ -732,15 +732,6 @@ int w_update_sacl(const char *obj_path);
 
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
-#endif
-
-/**
- * @brief Thread that performs the syscheck data synchronization
- *
- * @param args To be used with NULL value
- */
-#ifdef WIN32
-DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
 
 /**
  * @brief Get the number of realtime watches opened by FIM.
@@ -748,9 +739,6 @@ DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
  * @return Number of realtime watches.
  */
 unsigned int get_realtime_watches();
-
-#else
-void *fim_run_integrity(void *args);
 #endif
 
 /**
@@ -786,13 +774,6 @@ void fim_sync_send_list(const char *start, const char *top);
  * @param payload The message to dispatch
  */
 void fim_sync_dispatch(char *payload);
-
-/**
- * @brief Push a message to the syscheck queue
- *
- * @param msg The specific message to be pushed
- */
-void fim_sync_push_msg(const char *msg);
 
 /**
  * @brief Create file attribute set JSON from a FIM entry structure

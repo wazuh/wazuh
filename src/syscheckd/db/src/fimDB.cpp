@@ -152,3 +152,34 @@ void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callback
 {
     m_dbsyncHandler->selectRows(item, callbackData);
 }
+
+void FIMDB::fimRunIntegrity()
+{
+    std::unique_lock<std::mutex> lock{m_fimSyncMutex};
+
+    registerRSync();
+    loopRSync(lock);
+}
+
+void FIMDB::fimSyncPushMsg(const std::string& data)
+{
+    std::unique_lock<std::mutex> lock{m_fimSyncMutex};
+
+    if (!m_stopping)
+    {
+        auto rawData{data};
+        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+
+        try
+        {
+            m_rsyncHandler->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
+            m_loggingFunction(LOG_DEBUG_VERBOSE, "Message pushed: " + data);
+        }
+        // LCOV_EXCL_START
+        catch (const std::exception& ex)
+        {
+            m_loggingFunction(LOG_ERROR, ex.what());
+        }
+    }
+    // LCOV_EXCL_STOP
+}

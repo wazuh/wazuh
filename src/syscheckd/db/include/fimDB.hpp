@@ -310,8 +310,8 @@ class FIMDB
         void executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
-        * @brief Create the loop with the configured interval to do the periodical synchronization
-        */
+         * @brief Create the loop with the configured interval to do the periodical synchronization
+         */
         void loopRSync(std::unique_lock<std::mutex>& lock);
 
         /**
@@ -319,6 +319,21 @@ class FIMDB
          */
         void registerRSync();
 
+        /**
+         * @brief Push a syscheck synchronization message to the rsync queue
+         *
+         * @param data Message to push
+         */
+        void fimSyncPushMsg(const std::string& data);
+
+        /**
+         * @brief Function in chage of run synchronization integrity
+         */
+        void fimRunIntegrity();
+
+        /**
+         * @brief Its the function in charge of stopping the sync flow
+         */
         inline void stopSync()
         {
             m_stopping = true;
@@ -331,6 +346,7 @@ class FIMDB
         unsigned int                                                            m_max_rows_registry;
         unsigned int                                                            m_interval_synchronization;
         bool                                                                    m_stopping;
+        std::mutex                                                              m_fimSyncMutex;
         std::condition_variable                                                 m_cv;
         std::shared_ptr<DBSync>                                                 m_dbsyncHandler;
         std::shared_ptr<RemoteSync>                                             m_rsyncHandler;

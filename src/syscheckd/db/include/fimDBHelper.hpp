@@ -220,19 +220,6 @@ namespace FIMDBHelper
 
         return query;
     }
-
-    /**
-    * @brief Start the synchronization module of FIM
-    */
-    template<typename T>
-    void fimSyncStart()
-    {
-        std::mutex sync_mutex;
-        std::unique_lock<std::mutex> lock{sync_mutex};
-
-        T::getInstance().registerRSync();
-        T::getInstance().loopRSync(lock);
-    }
 }
 
 #endif //_FIMDBHELPER_H

@@ -175,8 +175,7 @@ TEST_F(FimDBFixture, registerSyncIDSuccess)
 
     EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 #ifdef WIN32
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_value_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
 #endif
 
     fimDBMock.registerRSync();
@@ -185,7 +184,7 @@ TEST_F(FimDBFixture, registerSyncIDSuccess)
 
 TEST_F(FimDBFixture, registerSyncIDError)
 {
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 
     fimDBMock.registerRSync();
 
@@ -201,7 +200,6 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
 #ifdef WIN32
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_VALUE_START_CONFIG_STATEMENT), testing::_));
 #endif
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
 
