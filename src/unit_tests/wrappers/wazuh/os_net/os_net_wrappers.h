@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
+#include "../../headers/shared.h"
 
 #ifdef WIN32
 typedef uint16_t u_int16_t;

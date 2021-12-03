@@ -515,6 +515,8 @@ void w_expression_match_osregex(void ** state)
     os_calloc(1, sizeof(w_expression_t), expression);
     expression->exp_type = EXP_TYPE_OSREGEX;
 
+    os_calloc(1, sizeof(OSRegex), expression->regex);
+
     const char* end_match = "test_end_match";
 
     char * str_test = NULL;
@@ -527,6 +529,7 @@ void w_expression_match_osregex(void ** state)
     assert_true(ret);
 
     os_free(str_test);
+    os_free(expression->regex);
     os_free(expression);
 }
 
