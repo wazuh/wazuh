@@ -16,7 +16,7 @@
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
 #include "db/include/db.hpp"
-#include "db/include/commonDefs.h"
+#include "db/include/fimCommonDefs.h"
 // Global variables
 syscheck_config syscheck;
 

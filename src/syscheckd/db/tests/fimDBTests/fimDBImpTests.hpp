@@ -6,7 +6,7 @@
 #include "fimDB.hpp"
 #include "dbItem.hpp"
 #include "syscheck-config.h"
-#include "commonDefs.h"
+#include "fimCommonDefs.h"
 
 class MockDBSyncHandler: public DBSync
 {
