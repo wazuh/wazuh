@@ -14,7 +14,7 @@
     <decoded_as>json</decoded_as>
     <field name="integration">aws</field>
     <options>no_full_log</options>
-    <description>AWS alert..</description>
+    <description>AWS alert.</description>
   </rule>
 
   <!-- Cloudtrail -->
@@ -25,8 +25,8 @@
     <field name="aws.source">cloudtrail</field>
     <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName)..</description>
-    <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
+    <group>aws_cloudtrail,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- If there is an error code: increase the level and change description -->
@@ -34,8 +34,8 @@
     <if_sid>80202</if_sid>
     <field name="aws.errorCode">\.+</field>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode)..</description>
-    <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
+    <group>amazon-error,aws_cloudtrail,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Specific rules -->
@@ -45,8 +45,8 @@
     <if_sid>80203</if_sid>
     <field name="aws.errorCode">AccessDenied</field>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode)..</description>
-    <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
+    <group>aws_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Events with no errors -->
@@ -54,18 +54,18 @@
     <if_sid>80202</if_sid>
     <field name="aws.eventName">DeleteObjects</field>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName)..</description>
-    <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
+    <group>aws_cloudtrail,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80252" level="10" frequency="22" timeframe="600">
     <if_matched_sid>80251</if_matched_sid>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted object..</description>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted objects.</description>
     <mitre>
-        <id>T1485</id>
+      <id>T1485</id>
     </mitre>
-    <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>aws_cloudtrail,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Logins -->
@@ -73,29 +73,29 @@
     <if_sid>80202</if_sid>
     <field name="aws.eventName">ConsoleLogin</field>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success..</description>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User login success.</description>
     <mitre>
-        <id>T1078</id>
+      <id>T1078</id>
     </mitre>
-    <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_success,aws_cloudtrail,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80254" level="5">
     <if_sid>80253</if_sid>
     <field name="aws.responseElements.ConsoleLogin">Failure</field>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login failed..</description>
-    <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User login failed.</description>
+    <group>authentication_failed,aws_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80255" level="10" frequency="6" timeframe="360">
     <if_matched_sid>80254</if_matched_sid>
     <options>no_full_log</options>
-    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts)..</description>
+    <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible break in attempt (high number of login attempts).</description>
     <mitre>
-        <id>T1110</id>
+      <id>T1110</id>
     </mitre>
-    <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_failures,aws_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_SI.4,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Guard Duty -->
@@ -104,7 +104,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">guardduty</field>
     <options>no_full_log</options>
-    <description>AWS GuardDuty alert..</description>
+    <description>AWS GuardDuty alert.</description>
     <group>aws_guardduty,</group>
   </rule>
 
@@ -161,35 +161,35 @@
   <!-- AWS ELB -->
   <!-- Documentation: https://docs.aws.amazon.com/elasticloadbalancing/index.html -->
   <rule id="80325" level="0">
-  <if_sid>80200</if_sid>
-  <field name="aws.source">alb</field>
-  <options>no_full_log</options>
-  <description>AWS ALB alert..</description>
-  <group>aws_alb,</group>
+    <if_sid>80200</if_sid>
+    <field name="aws.source">alb</field>
+    <options>no_full_log</options>
+    <description>AWS ALB alert.</description>
+    <group>aws_alb,</group>
   </rule>
 
   <rule id="80326" level="3">
-  <if_sid>80325</if_sid>
-  <field name="aws.elb_status_code">500</field>
-  <options>no_full_log</options>
-  <description>AWS ALB: Status error: $(data.aws.error_reason) - $(aws.action_executed) [ELB: $(aws.elb)].</description>
-  <group>aws_alb,</group>
+    <if_sid>80325</if_sid>
+    <field name="aws.elb_status_code">500</field>
+    <options>no_full_log</options>
+    <description>AWS ALB: Status error: $(data.aws.error_reason) - $(aws.action_executed) [ELB: $(aws.elb)].</description>
+    <group>aws_alb,</group>
   </rule>
 
   <rule id="80327" level="3">
-  <if_sid>80325</if_sid>
-  <field name="aws.elb_status_code">503</field>
-  <options>no_full_log</options>
-  <description>AWS ALB: Status error: $(data.aws.error_reason) - $(aws.action_executed) [ELB: $(aws.elb)].</description>
-  <group>aws_alb,</group>
+    <if_sid>80325</if_sid>
+    <field name="aws.elb_status_code">503</field>
+    <options>no_full_log</options>
+    <description>AWS ALB: Status error: $(data.aws.error_reason) - $(aws.action_executed) [ELB: $(aws.elb)].</description>
+    <group>aws_alb,</group>
   </rule>
 
   <rule id="80328" level="5">
-  <if_sid>80325</if_sid>
-  <field name="aws.elb_status_code">403</field>
-  <options>no_full_log</options>
-  <description>AWS ALB: Status error: $(data.aws.error_reason) - $(aws.action_executed) - $(aws.user_agent) [ELB: $(aws.elb)].</description>
-  <group>aws_alb,</group>
+    <if_sid>80325</if_sid>
+    <field name="aws.elb_status_code">403</field>
+    <options>no_full_log</options>
+    <description>AWS ALB: Status error: $(data.aws.error_reason) - $(aws.action_executed) - $(aws.user_agent) [ELB: $(aws.elb)].</description>
+    <group>aws_alb,</group>
   </rule>
 
   <!-- Macie Alerts -->
@@ -198,7 +198,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">macie</field>
     <options>no_full_log</options>
-    <description>AWS Macie alert..</description>
+    <description>AWS Macie alert.</description>
     <group>aws_macie,</group>
   </rule>
 
@@ -248,7 +248,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">vpc</field>
     <options>no_full_log</options>
-    <description>AWS VPC Flow alert..</description>
+    <description>AWS VPC flow alert.</description>
     <group>aws_vpcflow,</group>
   </rule>
 
@@ -274,7 +274,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">waf</field>
     <options>no_full_log</options>
-    <description>AWS WAF alert..</description>
+    <description>AWS WAF alert.</description>
     <group>aws_waf,</group>
   </rule>
 
@@ -282,7 +282,7 @@
     <if_sid>80440</if_sid>
     <field name="aws.action">ALLOW</field>
     <options>no_full_log</options>
-    <description>AWS WAF - Allowed request..</description>
+    <description>AWS WAF - Allowed request.</description>
     <group>aws_waf,aws_waf_allow,</group>
   </rule>
 
@@ -290,7 +290,7 @@
     <if_sid>80440</if_sid>
     <field name="aws.action">BLOCK</field>
     <options>no_full_log</options>
-    <description>AWS WAF - Blocked request..</description>
+    <description>AWS WAF - Blocked request.</description>
     <group>aws_waf,aws_waf_block,</group>
   </rule>
 
@@ -298,7 +298,7 @@
     <if_matched_sid>80442</if_matched_sid>
     <same_field>aws.httpRequest.clientIp</same_field>
     <options>no_full_log</options>
-    <description>AWS WAF - Multiple Blocked request..</description>
+    <description>AWS WAF - Multiple blocked requests.</description>
   </rule>
 
   <!-- AWS Config -->
@@ -307,7 +307,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">config</field>
     <options>no_full_log</options>
-    <description>AWS Config alert..</description>
+    <description>AWS config alert.</description>
     <group>aws_config,</group>
   </rule>
 
@@ -381,7 +381,7 @@
     <if_sid>80475</if_sid>
     <field name="aws.configuration.complianceType">\.+</field>
     <options>no_full_log</options>
-    <description>AWS Config - Snapshot Compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType).</description>
+    <description>AWS Config - Snapshot compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType).</description>
     <group>aws_config,aws_config_snapshot,aws_config_snapshot_compliance,</group>
   </rule>
 
@@ -391,7 +391,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">trustedadvisor</field>
     <options>no_full_log</options>
-    <description>AWS Trusted Advisor alert..</description>
+    <description>AWS Trusted Advisor alert.</description>
     <group>aws_trusted_advisor,</group>
   </rule>
 
@@ -425,7 +425,7 @@
     <if_sid>80200</if_sid>
     <field name="aws.source">kms</field>
     <options>no_full_log</options>
-    <description>AWS KMS alert..</description>
+    <description>AWS KMS alert.</description>
     <group>aws_kms,</group>
   </rule>
 
@@ -503,15 +503,15 @@
     <group>aws_inspector,</group>
   </rule>
 
-  </group>
+</group>
 
-  <!-- S3 Access rules -->
-  <group name="amazon, aws, s3">
+<!-- S3 Access rules -->
+<group name="amazon, aws, s3">
 
   <rule id="80360" level="0">
     <if_sid>80200</if_sid>
     <field name="aws.source">s3_server_access</field>
-    <description>AWS S3 Access Log events group.</description>
+    <description>AWS S3 access log events group.</description>
   </rule>
 
   <!-- Error events -->
@@ -531,7 +531,7 @@
   <rule id="80369" level="10" frequency="10" timeframe="60">
     <if_matched_sid>80368</if_matched_sid>
     <same_field>aws.error_code</same_field>
-    <description>AWS S3 Error: Multiple Access Denied.</description>
+    <description>AWS S3 Error: Multiple access denied.</description>
   </rule>
 
   <!-- Authentication failure -->
@@ -543,9 +543,9 @@
 
   <rule id="80371" level="10" frequency="10" timeframe="60">
     <if_matched_sid>80370</if_matched_sid>
-    <description>AWS S3 Multiple Authentication Failures.</description>
+    <description>AWS S3 multiple authentication failures.</description>
     <mitre>
-        <id>T1110</id>
+      <id>T1110</id>
     </mitre>
   </rule>
 
