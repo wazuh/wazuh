@@ -336,6 +336,11 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 
 void OS_FreeKey(keyentry *key) {
     if (key->ip) {
+        if (key->ip->is_ipv6) {
+            free(key->ip->ipv6);
+        } else {
+            free(key->ip->ipv4);
+        }
         free(key->ip->ip);
         free(key->ip);
     }
