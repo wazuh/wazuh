@@ -184,8 +184,8 @@ typedef struct _os_ipv4 {
 
 /* IPv6 structure */
 typedef struct _os_ipv6 {
-    uint32_t ip_address[4];
-    uint32_t netmask[4];
+    uint16_t ip_address[8];
+    uint16_t netmask[8];
 } os_ipv6;
 
 /* IP structure */

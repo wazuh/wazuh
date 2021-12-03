@@ -182,20 +182,29 @@ int convertNetmask(int netnumb, struct in6_addr *nmask6)
 
     uint32_t aux = 0;
     uint32_t index = 0;
-    for (int i = 0; i < 4; i++) {
-        nmask6->__in6_u.__u6_addr32[i] = 0;
+    for (int i = 0; i < 8; i++) {
 
-        if (netnumb > 32) {
-            index = 32;
-            netnumb -= 32;
+#ifndef WIN32
+        nmask6->__in6_u.__u6_addr16[i] = 0;
+#else
+        nmask6->u.Word[i] = 0;
+#endif
+        if (netnumb > 16) {
+            index = 16;
+            netnumb -= 16;
         } else {
             index = netnumb;
             netnumb = 0;
         }
 
         for(uint32_t a = 0; a < index; a++) {
-            aux = 32 - a -1;
-            nmask6->__in6_u.__u6_addr32[i] += UINT32_C(1) << aux;
+            aux = 16 - a -1;
+#ifndef WIN32
+            nmask6->__in6_u.__u6_addr16[i] += UINT32_C(1) << aux;
+#else
+            nmask6->u.Word[i] += UINT32_C(1) << aux;
+#endif
+
         }
     }
     return 0;
@@ -408,8 +417,14 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                 break;
                             }
 
+#ifndef WIN32
                             memcpy(final_ip->ipv6->ip_address, net6.__in6_u.__u6_addr32, sizeof(final_ip->ipv6->ip_address));
                             memcpy(final_ip->ipv6->netmask, nmask6.__in6_u.__u6_addr32, sizeof(final_ip->ipv6->netmask));
+#else
+                            memcpy(final_ip->ipv6->ip_address, nmask6.u.Word, sizeof(final_ip->ipv6->ip_address));
+                            memcpy(final_ip->ipv6->netmask, nmask6.u.Word, sizeof(final_ip->ipv6->netmask));
+#endif
+
 
                         } else {
                             ret = 0;
