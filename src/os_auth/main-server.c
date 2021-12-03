@@ -795,7 +795,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                 memcpy(new_client->addr6, &((struct sockaddr_in6 *)&_nc)->sin6_addr, sizeof(struct in6_addr));
                 break;
             default:
-                merror("Unknown IP protocol from new connection. Rejecting.");
+                merror("IP address family not supported. Rejecting.");
                 os_free(new_client);
                 close(client_sock);
             }

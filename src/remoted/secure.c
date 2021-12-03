@@ -32,8 +32,8 @@ size_t global_counter;
 
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
-STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info);
-STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * peer_info);
+STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
+STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -42,7 +42,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
+STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -81,8 +81,8 @@ void HandleSecure()
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
-    struct sockaddr_in peer_info;
-    memset(&peer_info, 0, sizeof(struct sockaddr_in));
+    struct sockaddr_storage peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_storage));
 
     /* Initialize manager */
     manager_init();
@@ -229,7 +229,7 @@ void HandleSecure()
     manager_free();
 }
 
-STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * peer_info)
+STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info)
 {
     int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
@@ -256,7 +256,7 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * p
     }
 }
 
-STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info)
+STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info)
 {
     char buffer[OS_MAXSTR + 1];
     memset(buffer, '\0', OS_MAXSTR + 1);
@@ -414,7 +414,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
+STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
     const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -427,7 +427,17 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    get_ipv4_string(peer_info->sin_addr, srcip, IPSIZE - 1);
+    switch (peer_info->ss_family) {
+    case AF_INET:
+        get_ipv4_string(((struct sockaddr_in *)peer_info)->sin_addr, srcip, IPSIZE - 1);
+        break;
+    case AF_INET6:
+        get_ipv6_string(((struct sockaddr_in6 *)peer_info)->sin6_addr, srcip, IPSIZE - 1);
+        break;
+    default:
+        merror("IP address family not supported.");
+        return;
+    }
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
