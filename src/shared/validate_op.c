@@ -182,29 +182,38 @@ int convertNetmask(int netnumb, struct in6_addr *nmask6)
 
     uint32_t aux = 0;
     uint32_t index = 0;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
 
-#ifndef WIN32
-        nmask6->__in6_u.__u6_addr16[i] = 0;
+#ifdef SOLARIS
+        nmask6->s6_addr[i] = 0;
 #else
+#ifdef WIN32
         nmask6->u.Word[i] = 0;
+#else
+        nmask6->__in6_u.__u6_addr8[i] = 0;
 #endif
-        if (netnumb > 16) {
-            index = 16;
-            netnumb -= 16;
+#endif
+
+        if (netnumb > 8) {
+            index = 8;
+            netnumb -= 8;
         } else {
             index = netnumb;
             netnumb = 0;
         }
 
         for(uint32_t a = 0; a < index; a++) {
-            aux = 16 - a -1;
-#ifndef WIN32
-            nmask6->__in6_u.__u6_addr16[i] += UINT32_C(1) << aux;
-#else
-            nmask6->u.Word[i] += UINT32_C(1) << aux;
-#endif
+            aux = 8 - a -1;
 
+#ifdef SOLARIS
+            nmask6->s6_addr[i] += UINT32_C(1) << aux;
+#else
+#ifdef WIN32
+            nmask6->u.Word[i] += UINT32_C(1) << aux;
+#else
+            nmask6->__in6_u.__u6_addr8[i] += UINT32_C(1) << aux;
+#endif
+#endif
         }
     }
     return 0;
@@ -417,14 +426,18 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                 break;
                             }
 
-#ifndef WIN32
-                            memcpy(final_ip->ipv6->ip_address, net6.__in6_u.__u6_addr32, sizeof(final_ip->ipv6->ip_address));
-                            memcpy(final_ip->ipv6->netmask, nmask6.__in6_u.__u6_addr32, sizeof(final_ip->ipv6->netmask));
+#ifdef SOLARIS
+                            memcpy(final_ip->ipv6->ip_address, net6.s6_addr, sizeof(final_ip->ipv6->ip_address));
+                            memcpy(final_ip->ipv6->netmask, nmask6.s6_addr, sizeof(final_ip->ipv6->netmask));
 #else
+#ifdef WIN32
                             memcpy(final_ip->ipv6->ip_address, nmask6.u.Word, sizeof(final_ip->ipv6->ip_address));
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Word, sizeof(final_ip->ipv6->netmask));
+#else
+                            memcpy(final_ip->ipv6->ip_address, net6.__in6_u.__u6_addr32, sizeof(final_ip->ipv6->ip_address));
+                            memcpy(final_ip->ipv6->netmask, nmask6.__in6_u.__u6_addr32, sizeof(final_ip->ipv6->netmask));
 #endif
-
+#endif
 
                         } else {
                             ret = 0;
