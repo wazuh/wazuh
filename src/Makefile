@@ -828,7 +828,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += ${RPM_LIB} ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB} ${ZLIB_LIB}
+EXTERNAL_LIBS += ${RPM_LIB} ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB} ${SQLITE_LIB}
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
@@ -1115,21 +1115,11 @@ $(POPT_LIB): $(POPT_BUILD_DIR)Makefile
 $(POPT_BUILD_DIR)Makefile:
 	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
 
-### zstd lib ###
-
-ZSTD_CMAKE_DIR = $(EXTERNAL_ZSTD)/build/cmake/
-ZSTD_BUILD_DIR = $(ZSTD_CMAKE_DIR)/build
-
-$(ZSTD_LIB): $(ZSTD_BUILD_DIR)Makefile
-	cd $(ZSTD_BUILD_DIR) && $(MAKE)
-
-$(ZSTD_BUILD_DIR)Makefile:
-	mkdir -p $(ZSTD_BUILD_DIR) && cd $(ZSTD_BUILD_DIR) && cmake ..
-
 ### libmagic lib ###
 
 LIBMAGIC_BUILD_FLAGS += -DZLIB_INC_PATH=$(ROUTE_PATH)/$(EXTERNAL_ZLIB) -DZLIB_LIB_PATH=$(ROUTE_PATH)/$(ZLIB_LIB)
 LIBMAGIC_BUILD_DIR = $(EXTERNAL_LIBMAGIC)build/
+
 
 $(LIBMAGIC_LIB): $(LIBMAGIC_BUILD_DIR)Makefile
 	cd $(LIBMAGIC_BUILD_DIR) && $(MAKE)
@@ -1137,18 +1127,46 @@ $(LIBMAGIC_LIB): $(LIBMAGIC_BUILD_DIR)Makefile
 $(LIBMAGIC_BUILD_DIR)Makefile: $(ZLIB_LIB)
 	mkdir -p $(LIBMAGIC_BUILD_DIR) && cd $(LIBMAGIC_BUILD_DIR) && cmake .. $(LIBMAGIC_BUILD_FLAGS)
 
+### zstd lib ###
+
+ZSTD_CMAKE_DIR = $(EXTERNAL_ZSTD)/build/cmake/
+ZSTD_BUILD_DIR = $(ZSTD_CMAKE_DIR)/build/
+
+$(ZSTD_LIB): $(ZSTD_BUILD_DIR)/Makefile
+	cd $(ZSTD_BUILD_DIR) && $(MAKE)
+
+$(ZSTD_BUILD_DIR)/Makefile:
+	mkdir -p $(ZSTD_BUILD_DIR) && cd $(ZSTD_BUILD_DIR) && cmake ..
+
 ### rpm lib ###
 
 RPM_BUILD_DIR = ${EXTERNAL_RPM}/builddir
-RPM_DEPS =  ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB} ${OPENSSL_LIB} ${OPENSSL_LIB} ${ZLIB_LIB}
-RPM_INC_PATHS = -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include -I${ROUTE_PATH}/${EXTERNAL_ZLIB} -I${EXTERNAL_POPT}/build/src -I${EXTERNAL_LIBMAGIC}/src -I${EXTERNAL_LZMA}/src/liblzma/api -L${EXTERNAL_ZSTD}/lib
-RPM_LIB_PATHS = -L${EXTERNAL_OPENSSL} -L${EXTERNAL_ZLIB} -L${EXTERNAL_POPT}/build/output/src/.libs/ -L${EXTERNAL_LIBMAGIC}/build/output/src/.libs/ -L${EXTERNAL_LZMA}/build/output/src/liblzma/.libs/ -L${EXTERNAL_ZSTD}/build/cmake/build/lib/
 
-${RPM_LIB}: ${RPM_BUILD_DIR}Makefile
+RPM_INC_PATHS = -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
+				-I${ROUTE_PATH}/${EXTERNAL_ZLIB} \
+				-I${ROUTE_PATH}/${EXTERNAL_POPT}/src \
+				-I${ROUTE_PATH}/${EXTERNAL_LIBMAGIC}/build/output/src \
+				-I${ROUTE_PATH}/${EXTERNAL_LZMA}/src/liblzma/api \
+				-I${ROUTE_PATH}/${EXTERNAL_ZSTD}/lib \
+				-I${ROUTE_PATH}/${EXTERNAL_SQLITE}
+
+
+RPM_LIB_PATHS = -L${ROUTE_PATH}/${EXTERNAL_OPENSSL} \
+				-L${ROUTE_PATH}/${EXTERNAL_ZLIB} \
+				-L${ROUTE_PATH}/${EXTERNAL_POPT}/build/output/src/.libs/ \
+				-L${ROUTE_PATH}/${EXTERNAL_LIBMAGIC}/build/output/src/.libs/ \
+				-L${ROUTE_PATH}/${EXTERNAL_LZMA}/build/output/src/liblzma/.libs/ \
+				-L${ROUTE_PATH}/${EXTERNAL_ZSTD}/build/cmake/build/lib/ \
+				-L${ROUTE_PATH}/${EXTERNAL_SQLITE}
+
+RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}
+RPM_CC = gcc
+
+${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
 	cd ${RPM_BUILD_DIR} && ${MAKE}
 
-${RPM_BUILD_DIR}Makefile: ${RPM_DEPS}
-	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="-fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}" cmake .. ${LIBMAGIC_BUILD_FLAGS}
+${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${LIBMAGIC_LIB} ${LZMA_LIB} ${ZSTD_LIB} ${SQLITE_LIB}
+	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="${RPM_CFLAGS}" CC=${RPM_CC} cmake ..
 
 
 ################################
