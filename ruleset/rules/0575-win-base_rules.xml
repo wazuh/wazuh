@@ -6,7 +6,7 @@
   Powershell Rules 60000 - 60099
 -->
 
-<!-- Group of parent rules for the Windows eventchannel -->
+<!-- Windows event channel rules. -->
 
 <group name="windows,">
 
