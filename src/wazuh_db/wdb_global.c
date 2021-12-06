@@ -599,6 +599,113 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
     }
 }
 
+int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
+    cJSON* j_agent_info = NULL;
+    char truncated_groups_hash[9] = {0};
+    os_sha256 groups_hash;
+    int result = OS_INVALID;
+
+    // If the comma separated groups string is not send, read it from 'group' column
+    if (groups_string) {
+	    OS_SHA256_String(groups_string, groups_hash);
+	} else {
+	    cJSON* j_agent_info = wdb_global_get_agent_info(wdb, agent_id);
+	    if (j_agent_info) {
+	        char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
+	        if (agent_groups) {
+	            OS_SHA256_String(agent_groups, groups_hash);
+	        }
+	        cJSON_Delete(j_agent_info);
+
+	        if (!agent_groups) {
+	            mdebug2("Empty group column for agent '%d'. The groups_hash column won't be updated", agent_id);
+	            return OS_SUCCESS;
+	        }
+	    } else {
+	        mdebug1("Unable to get the agent's '%d' info to update the groups_hash column", agent_id);
+	        return OS_INVALID;
+	    }
+	}
+
+	/* We'll use only the first 8 bytes to keep the same legacy format */
+	groups_hash[8] = '\0';
+	strncpy(truncated_groups_hash, groups_hash, 8);
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH];
+    if (sqlite3_bind_text(stmt, 1, truncated_groups_hash, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    if (sqlite3_bind_int(stmt, 2, agent_id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_DONE:
+        result = OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        result = OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_global_update_all_agents_groups_hash(wdb_t* wdb) {
+    int step_result = -1;
+    int update_result = OS_SUCCESS;
+    int result = OS_INVALID;
+    int agent_id = -1;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
+
+    if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    do {
+        step_result = wdb_step(stmt);
+        switch (step_result) {
+        case SQLITE_ROW:
+            agent_id = sqlite3_column_int(stmt, 0);
+            update_result = wdb_global_update_agent_groups_hash(wdb, agent_id, NULL);
+            break;
+        case SQLITE_DONE:
+            result = OS_SUCCESS;
+            break;
+        default:
+            mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+            result = OS_INVALID;
+        }
+    } while(step_result == SQLITE_ROW && update_result == OS_SUCCESS);
+
+    return result;
+}
+
 cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
     sqlite3_stmt *stmt = NULL;
     cJSON * result = NULL;
