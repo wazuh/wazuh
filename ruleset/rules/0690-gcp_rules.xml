@@ -7,7 +7,7 @@ ID: 65000 - 65499
 -->
 
 <group name="gcp,">
-  <!-- GCP wodle -->
+  <!-- GCP Wodle -->
   <rule id="65000" level="0">
     <decoded_as>json</decoded_as>
     <field name="integration">gcp</field>
@@ -282,7 +282,7 @@ ID: 65000 - 65499
   </rule>
 
   <!-- Mitre detection rules  -->
-  <!-- collection gcp_pub_sub subscription creation -->
+  <!-- Collection gcp_pub_sub subscription creation -->
   <rule id="65051" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.CreateSubscription$</field>
@@ -293,7 +293,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- collection gcp_pub_sub topic creation -->
+  <!-- Collection gcp_pub_sub topic creation -->
   <rule id="65052" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.CreateTopic$</field>
@@ -304,7 +304,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_firewall_rule created -->
+  <!-- Defense evasion gcp_firewall_rule created -->
   <rule id="65053" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.insert$</field>
@@ -314,7 +314,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_firewall_rule deleted -->
+  <!-- Defense evasion gcp_firewall_rule deleted -->
   <rule id="65054" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.delete$</field>
@@ -324,7 +324,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_firewall_rule modified -->
+  <!-- Defense evasion gcp_firewall_rule modified -->
   <rule id="65055" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.patch$</field>
@@ -334,7 +334,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_logging_bucket deletion -->
+  <!-- Defense evasion gcp_logging_bucket deletion -->
   <rule id="65056" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\d*\.DeleteBucket$</field>
@@ -345,7 +345,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_logging_sink deletion -->
+  <!-- Defense evasion gcp_logging_sink deletion -->
   <rule id="65057" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\*\.DeleteSink$</field>
@@ -356,7 +356,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_pub_sub_subscription deletion -->
+  <!-- Defense evasion gcp_pub_sub_subscription deletion -->
   <rule id="65058" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.DeleteSubscription$</field>
@@ -367,7 +367,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_pub_sub_topic deletion -->
+  <!-- Defense evasion gcp_pub_sub_topic deletion -->
   <rule id="65059" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.DeleteTopic$</field>
@@ -378,7 +378,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_storage_bucket_configuration modified -->
+  <!-- Defense evasion gcp_storage_bucket_configuration modified -->
   <rule id="65060" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.update$</field>
@@ -389,7 +389,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- defense evasion gcp_storage_bucket_permissions modified -->
+  <!-- Defense evasion gcp_storage_bucket_permissions modified -->
   <rule id="65061" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage\.setIamPermissions$</field>
@@ -400,7 +400,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- exfiltration gcp_logging_sink modification -->
+  <!-- Exfiltration gcp_logging_sink modification -->
   <rule id="65062" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.logging\.v\d*\.ConfigServiceV\d*\.UpdateSink$</field>
@@ -411,7 +411,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- impact gcp_iam_role deletion -->
+  <!-- Impact gcp_iam_role deletion -->
   <rule id="65063" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteRole$</field>
@@ -422,7 +422,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- impact gcp_service_account deleted -->
+  <!-- Impact gcp_service_account deleted -->
   <rule id="65064" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteServiceAccount$</field>
@@ -433,7 +433,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- impact gcp_service_account disabled -->
+  <!-- Impact gcp_service_account disabled -->
   <rule id="65065" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DisableServiceAccount$</field>
@@ -444,7 +444,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- impact gcp_storage_bucket deleted -->
+  <!-- Impact gcp_storage_bucket deleted -->
   <rule id="65066" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.delete$</field>
@@ -455,7 +455,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- impact gcp_virtual_private_cloud_network deleted -->
+  <!-- Impact gcp_virtual_private_cloud_network deleted -->
   <rule id="65067" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.networks\.delete$</field>
@@ -463,7 +463,7 @@ ID: 65000 - 65499
     <description>GCP virtual private cloud (VPC) network deleted.</description>
   </rule>
 
-  <!-- impact gcp_virtual_private_cloud_route created -->
+  <!-- Impact gcp_virtual_private_cloud_route created -->
   <rule id="65068" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.insert$|^beta\.compute\.routes\.insert$</field>
@@ -471,7 +471,7 @@ ID: 65000 - 65499
     <description>GCP virtual private cloud (VPC) route created.</description>
   </rule>
 
-  <!-- impact gcp_virtual_private_cloud_route deleted -->
+  <!-- Impact gcp_virtual_private_cloud_route deleted -->
   <rule id="65069" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.delete$</field>
@@ -479,7 +479,7 @@ ID: 65000 - 65499
     <description>GCP virtual private cloud (VPC) route deleted.</description>
   </rule>
 
-  <!-- persistence gcp_service_account created -->
+  <!-- Persistence gcp_service_account created -->
   <rule id="65070" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.CreateServiceAccount$</field>
@@ -490,7 +490,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- persistence gcp_key_created_for_service_account -->
+  <!-- Persistence gcp_key_created_for_service_account -->
   <rule id="65071" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateServiceAccountKey$</field>
@@ -501,7 +501,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- persistence gcp_iam_service_account_key deletion -->
+  <!-- Persistence gcp_iam_service_account_key deletion -->
   <rule id="65072" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.DeleteServiceAccountKey$</field>
@@ -512,7 +512,7 @@ ID: 65000 - 65499
     </mitre>
   </rule>
 
-  <!-- initial access gcp_iam_custom_role creation -->
+  <!-- Initial access gcp_iam_custom_role creation -->
   <rule id="65073" level="3">
     <if_sid>65000</if_sid>
     <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
