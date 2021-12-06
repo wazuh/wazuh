@@ -3,19 +3,15 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import errno
-import glob
-import itertools
 import json
 import os
-import re
 import shutil
 import time
-from typing import Tuple, Dict, Callable, List, TextIO, KeysView
+from typing import Tuple, Dict, Callable, List
 from typing import Union
 
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
-from wazuh.core.agent import Agent
 from wazuh.core.cluster import client, common as c_common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.dapi import dapi
@@ -227,135 +223,6 @@ class SyncWazuhdb(SyncTask):
         else:
             self.logger.info(f"Finished in {(time.time() - start_time):.3f}s (0 chunks sent).")
         return True
-
-
-class RetrieveAndSendToMaster:
-    """
-    Define methods to send information to self.daemon in the master through sendsync protocol.
-    """
-
-    def __init__(self, worker, destination_daemon, data_retriever: callable, logger=None, msg_format='{payload}',
-                 n_retries=3, retry_time=0.2, max_retry_time_allowed=10, cmd=None, expected_res='ok'):
-        """Class constructor.
-
-        Parameters
-        ----------
-        worker : WorkerHandler object
-            Instance of worker object.
-        destination_daemon : str
-            Daemon name on the master node to which send information.
-        cmd : bytes
-            Command to inform the master when the synchronization process starts and ends.
-        data_retriever : Callable
-            Function to be called to obtain chunks of data. It must return a list of chunks.
-        logger : Logger object, optional
-             Logger to use during synchronization process.
-        msg_format : str, optional
-            Format of the message to be executed in the master's daemon. It must
-            contain the label '{payload}', which will be replaced with every chunk of data.
-            I. e: 'global sync-agent-info-set {payload}'
-        n_retries : int, optional
-            Number of times a chunk has to be resent when it fails.
-        retry_time : float, optional
-            Time between resend attempts. It is multiplied by the number of retries carried out.
-        max_retry_time_allowed : float, optional
-            Maximum total time allowed to retry failed requests. If this time has already been
-            elapsed, no new attempts will be made to resend all the chunks which response
-            does not begin with {expected_res}.
-        expected_res : str, optional
-            Master's response that will be interpreted as correct. If it doesn't match,
-            send retries will be made.
-        """
-        self.worker = worker
-        self.daemon = destination_daemon
-        self.msg_format = msg_format
-        self.data_retriever = data_retriever
-        self.logger = logger if logger is not None else self.worker.setup_task_logger('Default logger')
-        self.n_retries = n_retries
-        self.retry_time = retry_time
-        self.max_retry_time_allowed = max_retry_time_allowed
-        self.cmd = cmd
-        self.expected_res = expected_res
-        self.lc = local_client.LocalClient()
-
-    async def retrieve_and_send(self, *args, **kwargs):
-        """Start synchronization process with the master and send necessary information.
-
-        This method retrieves a list of payloads/chunks from self.data_retriever(*args, **kwargs).
-        The chunks are sent one by one through sendsync command.
-
-        Parameters
-        ----------
-        args, optional
-            Variable length argument list to be sent as parameter to data_retriever callable.
-        kwargs, optional
-            Arbitrary keyword arguments to be sent as parameter to data_retriever callable.
-
-        Returns
-        -------
-        chunks_sent : int
-            Number of successfully sent chunks.
-        """
-        before = time.time()
-        self.logger.debug(f"Obtaining data to be sent to master's {self.daemon}.")
-        try:
-            chunks_to_send = self.data_retriever(*args, **kwargs)
-            self.logger.debug(f"Obtained {len(chunks_to_send)} chunks of data to be sent.")
-        except exception.WazuhException as e:
-            self.logger.error(f"Error obtaining data: {e}")
-            return
-
-        if self.cmd:
-            # Send command to master so it knows when the task starts.
-            result = await self.worker.send_request(command=self.cmd + b'_s', data=b'')
-            self.logger.debug(f"Master response for {self.cmd+b'_s'} command: {result}")
-
-        chunks_sent = 0
-        start_time = time.time()
-
-        self.logger.debug(f"Starting to send information to {self.daemon}.")
-        for chunk in chunks_to_send:
-            data = json.dumps({
-                'daemon_name': self.daemon,
-                'message': self.msg_format.format(payload=chunk)
-            }).encode()
-
-            try:
-                # Send chunk of data to self.daemon of the master.
-                result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
-                self.logger.debug(f"Master's {self.daemon} response: {result}.")
-
-                # Retry self.n_retries if result was not ok.
-                if not result.startswith(self.expected_res):
-                    for i in range(self.n_retries):
-                        if (time.time() - start_time) < self.max_retry_time_allowed:
-                            await asyncio.sleep(i * self.retry_time)
-                            self.logger.error(f"Error sending chunk to master's {self.daemon}. Response does not start "
-                                              f"with {self.expected_res} (Response: {result}). Retrying... {i}.")
-                            result = await self.lc.execute(command=b'sendasync', data=data, wait_for_complete=False)
-                            self.logger.debug(f"Master's {self.daemon} response: {result}.")
-                            if result.startswith(self.expected_res):
-                                chunks_sent += 1
-                                break
-                        else:
-                            self.logger.error(f"Error sending chunk to master's {self.daemon}. Response does not start "
-                                              f"with {self.expected_res}. Not retrying because total time exceeded "
-                                              f"{self.max_retry_time_allowed} seconds.")
-                            break
-                else:
-                    chunks_sent += 1
-
-            except exception.WazuhException as e:
-                self.logger.error(f"Error sending information to {self.daemon}: {e}")
-
-        if self.cmd:
-            # Send command to master so it knows when the task ends.
-            result = await self.worker.send_request(command=self.cmd + b'_e', data=str(chunks_sent).encode())
-            self.logger.debug(f"Master response for {self.cmd+b'_e'} command: {result}")
-
-        self.logger.debug(f"Finished sending information to {self.daemon} in {(time.time() - before):.3f}s.")
-
-        return chunks_sent
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
@@ -636,7 +503,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         logger = self.task_loggers["Agent-info sync"]
         wdb_conn = WazuhDBConnection()
-        synced = True
         agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_a_w_m', data_retriever=wdb_conn.run_wdb_command,
                                  get_data_command='global sync-agent-info-get ',
                                  set_data_command='global sync-agent-info-set')
@@ -653,7 +519,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.error(f"Error synchronizing agent info: {e}")
 
             await asyncio.sleep(
-                self.cluster_items['intervals']['worker']['sync_agent_info' if synced else 'sync_agent_info_ko_retry'])
+                self.cluster_items['intervals']['worker']['sync_agent_info'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.
