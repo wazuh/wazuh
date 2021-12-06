@@ -22,7 +22,7 @@ void rem_msginit(size_t size) {
 }
 
 // Push message into queue
-int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * addr, int sock) {
+int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
     message_t * message;
     int result;
     static int reported = 0;
@@ -31,7 +31,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
     os_malloc(size, message->buffer);
     memcpy(message->buffer, buffer, size);
     message->size = size;
-    memcpy(&message->addr, addr, sizeof(struct sockaddr_in));
+    memcpy(&message->addr, addr, sizeof(struct sockaddr_storage));
     message->sock = sock;
 
     w_mutex_lock(&mutex);

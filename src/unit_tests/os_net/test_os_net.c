@@ -144,6 +144,7 @@ void test_accept_TCP(void **state) {
     char ipbuffer[BUFFERSIZE];
 
     data->server_root_socket = 0;
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, 0);
 
     data->server_client_socket = OS_AcceptTCP(data->server_root_socket, ipbuffer, BUFFERSIZE);
@@ -155,6 +156,7 @@ void test_accept_TCP(void **state) {
 void test_invalid_accept_TCP(void **state) {
     char buffer[BUFFERSIZE];
 
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, -1);
 
     assert_int_equal(OS_AcceptTCP(-1, buffer, BUFFERSIZE), -1);
@@ -249,6 +251,7 @@ void test_recv_secure_TCP(void **state) {
 
 void test_tcp_invalid_sockets(void **state) {
     char buffer[BUFFERSIZE];
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, -1);
 
     assert_int_equal(OS_AcceptTCP(-1, buffer, BUFFERSIZE), -1);

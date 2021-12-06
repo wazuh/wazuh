@@ -37,7 +37,7 @@ extern wnotify_t * notify;
 
 /* Forward declarations */
 void * close_fp_main(void * args);
-void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
+void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client, int *wdb_sock);
 
 /* Setup/teardown */
 
@@ -426,7 +426,7 @@ void test_HandleSecureMessage_unvalid_message(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
-    HandleSecureMessage(buffer, recv_b, &peer_info, sock_client, &wdb_sock);
+    HandleSecureMessage(buffer, recv_b, (struct sockaddr_storage *)&peer_info, sock_client, &wdb_sock);
 }
 
 void test_handle_new_tcp_connection_success(void **state)
@@ -437,13 +437,14 @@ void test_handle_new_tcp_connection_success(void **state)
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, sock_client);
 
     // nb_open
     expect_value(__wrap_nb_open, sock, sock_client);
-    expect_value(__wrap_nb_open, peer_info, &peer_info);
+    expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage *)&peer_info);
     expect_value(__wrap_nb_open, sock, sock_client);
-    expect_value(__wrap_nb_open, peer_info, &peer_info);
+    expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage *)&peer_info);
 
     expect_function_call(__wrap_rem_inc_tcp);
 
@@ -455,7 +456,7 @@ void test_handle_new_tcp_connection_success(void **state)
     expect_value(__wrap_wnotify_add, op, WO_READ);
     will_return(__wrap_wnotify_add, 0);
 
-    handle_new_tcp_connection(notify, &peer_info);
+    handle_new_tcp_connection(notify, (struct sockaddr_storage *)&peer_info);
 }
 
 void test_handle_new_tcp_connection_wnotify_fail(void **state)
@@ -466,13 +467,14 @@ void test_handle_new_tcp_connection_wnotify_fail(void **state)
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, sock_client);
 
     // nb_open
     expect_value(__wrap_nb_open, sock, sock_client);
-    expect_value(__wrap_nb_open, peer_info, &peer_info);
+    expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage *)&peer_info);
     expect_value(__wrap_nb_open, sock, sock_client);
-    expect_value(__wrap_nb_open, peer_info, &peer_info);
+    expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage *)&peer_info);
 
     expect_function_call(__wrap_rem_inc_tcp);
 
@@ -507,7 +509,7 @@ void test_handle_new_tcp_connection_wnotify_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [12]");
 
-    handle_new_tcp_connection(notify, &peer_info);
+    handle_new_tcp_connection(notify, (struct sockaddr_storage *)&peer_info);
 }
 
 void test_handle_new_tcp_connection_socket_fail(void **state)
@@ -518,11 +520,12 @@ void test_handle_new_tcp_connection_socket_fail(void **state)
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, -1);
     errno = -1;
     expect_string(__wrap__merror, formatted_msg, "(1242): Couldn't accept TCP connections: Unknown error -1 (-1)");
 
-    handle_new_tcp_connection(notify, &peer_info);
+    handle_new_tcp_connection(notify, (struct sockaddr_storage *)&peer_info);
 }
 
 void test_handle_new_tcp_connection_socket_fail_err(void **state)
@@ -533,11 +536,12 @@ void test_handle_new_tcp_connection_socket_fail_err(void **state)
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = 0x0A00A8C0;
 
+    will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, -1);
     errno = ECONNABORTED;
     expect_string(__wrap__mdebug1, formatted_msg, "(1242): Couldn't accept TCP connections: Software caused connection abort (103)");
 
-    handle_new_tcp_connection(notify, &peer_info);
+    handle_new_tcp_connection(notify, (struct sockaddr_storage *)&peer_info);
 }
 
 void test_handle_incoming_data_from_udp_socket_0(void **state)
@@ -550,7 +554,7 @@ void test_handle_incoming_data_from_udp_socket_0(void **state)
 
     will_return(__wrap_recvfrom, 0);
 
-    handle_incoming_data_from_udp_socket(&peer_info);
+    handle_incoming_data_from_udp_socket((struct sockaddr_storage *)&peer_info);
 }
 
 void test_handle_incoming_data_from_udp_socket_success(void **state)
@@ -564,14 +568,14 @@ void test_handle_incoming_data_from_udp_socket_success(void **state)
     will_return(__wrap_recvfrom, 10);
 
     expect_value(__wrap_rem_msgpush, size, 10);
-    expect_value(__wrap_rem_msgpush, addr, &peer_info);
+    expect_value(__wrap_rem_msgpush, addr, (struct sockaddr_storage *)&peer_info);
     expect_value(__wrap_rem_msgpush, sock, USING_UDP_NO_CLIENT_SOCKET);
     will_return(__wrap_rem_msgpush, 0);
 
     expect_value(__wrap_rem_add_recv, bytes, 10);
     expect_function_call(__wrap_rem_add_recv);
 
-    handle_incoming_data_from_udp_socket(&peer_info);
+    handle_incoming_data_from_udp_socket((struct sockaddr_storage *)&peer_info);
 }
 
 void test_handle_incoming_data_from_tcp_socket_too_big_message(void **state)

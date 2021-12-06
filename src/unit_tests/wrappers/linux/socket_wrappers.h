@@ -26,7 +26,7 @@ int __wrap_listen(__attribute__((unused))int __fd, __attribute__((unused))int __
 
 int __wrap_connect(__attribute__((unused))int __fd, __attribute__((unused))__CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len);
 
-int __wrap_accept(__attribute__((unused))int __fd, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len);
+int __wrap_accept(__attribute__((unused))int __fd, struct sockaddr * __addr, __attribute__((unused))socklen_t *__restrict __addr_len);
 
 ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags);
 

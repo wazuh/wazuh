@@ -366,7 +366,7 @@ int OS_SendUDPbySize(int socket, int size, const char *msg)
 int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
 {
     int clientsocket;
-    struct sockaddr_in _nc;
+    struct sockaddr_storage _nc;
     socklen_t _ncl;
 
     memset(&_nc, 0, sizeof(_nc));
@@ -377,7 +377,16 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         return (-1);
     }
 
-    get_ipv4_string(_nc.sin_addr, srcip, addrsize - 1);
+    switch (_nc.ss_family) {
+    case AF_INET:
+        get_ipv4_string(((struct sockaddr_in *)&_nc)->sin_addr, srcip, addrsize - 1);
+        break;
+    case AF_INET6:
+        get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, addrsize - 1);
+        break;
+    default:
+        return (-1);
+    }
 
     return (clientsocket);
 }

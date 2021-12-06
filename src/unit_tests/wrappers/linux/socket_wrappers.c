@@ -48,7 +48,8 @@ int __wrap_connect(__attribute__((unused))int __fd, __attribute__((unused))__CON
     return mock();
 }
 
-int __wrap_accept(__attribute__((unused))int __fd, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
+int __wrap_accept(__attribute__((unused))int __fd, struct sockaddr * __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
+    __addr->sa_family = mock();
     return mock();
 }
 

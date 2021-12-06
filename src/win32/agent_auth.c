@@ -77,7 +77,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         merror_exit("Could not resolve manager's hostname");
 
     // Connect via TCP
-    *socket = OS_ConnectTCP(port, manager, 0);
+    *socket = OS_ConnectTCP(port, manager, strchr(manager, ':') != NULL);
     if (*socket < 0)
         merror_exit("Unable to connect to %s:%d", manager, port);
 

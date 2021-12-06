@@ -39,7 +39,7 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
         if (keyid >= 0 && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
-            memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
+            memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_storage));
 
             snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[keyid]->sock);
             rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[keyid]);
