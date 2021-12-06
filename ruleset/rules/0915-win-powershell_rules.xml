@@ -28,28 +28,28 @@
     <if_sid>91802</if_sid>
     <field name="win.system.message" type="pcre2">CopyFromScreen</field>
     <options>no_full_log</options>
-    <mitre>
+    <description>Screen capture method invoked from PowerShell script.</description>
+     <mitre>
       <id>T1113</id>
     </mitre>
-    <description>Screen capture method invoked from PowerShell script.</description>
   </rule>
 
   <rule id="91805" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ADComputer</field>
+    <description>Executed Powershell script "Get-ADComputer" executed.</description>
     <mitre>
       <id>T1018</id>
     </mitre>
-    <description>Executed Powershell script "Get-ADComputer" executed.</description>
   </rule>
 
   <rule id="91806" level="3">
     <if_sid>91802</if_sid>
     <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-NetUser</field>
+    <description>Powershell script "Get-NetUser executed".</description>
     <mitre>
       <id>T1087.002</id>>
     </mitre>
-    <description>Powershell script "Get-NetUser executed".</description>
   </rule>
 
 </group>
