@@ -828,7 +828,9 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
+ifneq ($(CHECK_CENTOS5),YES)
 EXTERNAL_LIBS += ${RPM_LIB} ${ZSTD_LIB} ${LIBMAGIC_LIB} ${POPT_LIB} ${LZMA_LIB} ${SQLITE_LIB}
+endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
@@ -1149,7 +1151,6 @@ RPM_INC_PATHS = -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
 				-I${ROUTE_PATH}/${EXTERNAL_LZMA}/src/liblzma/api \
 				-I${ROUTE_PATH}/${EXTERNAL_ZSTD}/lib \
 				-I${ROUTE_PATH}/${EXTERNAL_SQLITE}
-
 
 RPM_LIB_PATHS = -L${ROUTE_PATH}/${EXTERNAL_OPENSSL} \
 				-L${ROUTE_PATH}/${EXTERNAL_ZLIB} \
