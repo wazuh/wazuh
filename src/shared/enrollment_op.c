@@ -216,7 +216,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     }
 
     /* Connect via TCP */
-    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, 0);
+    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, strchr(ip_address, ':') != NULL);
     if (sock < 0) {
         merror("Unable to connect to %s:%d", ip_address, cfg->target_cfg->port);
         os_free(ip_address);

@@ -16,9 +16,11 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
+
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
         import wazuh.core.cluster.cluster
         import wazuh.core.cluster.utils
         from wazuh import WazuhException

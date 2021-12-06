@@ -12,7 +12,6 @@ from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
-from subprocess import check_output
 from time import time
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -29,17 +28,6 @@ agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
 #
 # Cluster
 #
-
-
-def get_localhost_ips():
-    """Get all localhost IPs addresses.
-
-    Returns
-    -------
-    set
-        All IP addresses.
-    """
-    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -86,39 +74,6 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
-
-
-def get_cluster_items_master_intervals():
-    """Get master's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Master's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['master']
-
-
-def get_cluster_items_communication_intervals():
-    """Get communication's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Communication's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['communication']
-
-
-def get_cluster_items_worker_intervals():
-    """Get worker's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Worker's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['worker']
 
 
 def get_node():
