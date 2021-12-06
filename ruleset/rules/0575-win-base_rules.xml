@@ -2,6 +2,10 @@
   Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
+<!--
+  Powershell Rules 60000 - 60099
+-->
+
 <!-- Group of parent rules for the Windows eventchannel -->
 
 <group name="windows,">
