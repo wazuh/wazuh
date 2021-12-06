@@ -601,35 +601,35 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
 
 int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
     cJSON* j_agent_info = NULL;
-    char* agent_groups = NULL;
     char truncated_groups_hash[9] = {0};
     os_sha256 groups_hash;
     int result = OS_INVALID;
 
     // If the comma separated groups string is not send, read it from 'group' column
-    if(!groups_string) {
-        j_agent_info = wdb_global_get_agent_info(wdb, agent_id);
-        if(!j_agent_info) {
-            mdebug1("Unable to get the agent's '%d' info to update the groups_hash column", agent_id);
-            return OS_INVALID;
-        }
+    if (groups_string) {
+	    OS_SHA256_String(groups_string, groups_hash);
+	} else {
+	    cJSON* j_agent_info = wdb_global_get_agent_info(wdb, agent_id);
+	    if (j_agent_info) {
+	        char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
+	        if (agent_groups) {
+	            OS_SHA256_String(agent_groups, groups_hash);
+	        }
+	        cJSON_Delete(j_agent_info);
 
-        agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
-        if(!agent_groups) {
-            mdebug2("Empty group column for agent '%d'. The groups_hash column won't be updated", agent_id);
-            cJSON_Delete(j_agent_info);
-            return OS_SUCCESS;
-        }
-    } else {
-        agent_groups = groups_string;
-    }
+	        if (!agent_groups) {
+	            mdebug2("Empty group column for agent '%d'. The groups_hash column won't be updated", agent_id);
+	            return OS_SUCCESS;
+	        }
+	    } else {
+	        mdebug1("Unable to get the agent's '%d' info to update the groups_hash column", agent_id);
+	        return OS_INVALID;
+	    }
+	}
 
-    OS_SHA256_String(agent_groups, groups_hash);
-    /* We'll use only the first 8 bytes to keep the same legacy format */
-    groups_hash[8] = '\0';
-    strncpy(truncated_groups_hash, groups_hash, 8);
-
-    cJSON_Delete(j_agent_info);
+	/* We'll use only the first 8 bytes to keep the same legacy format */
+	groups_hash[8] = '\0';
+	strncpy(truncated_groups_hash, groups_hash, 8);
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
