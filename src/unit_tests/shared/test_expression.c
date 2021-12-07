@@ -19,6 +19,7 @@
 #include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
+
 void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type);
 bool w_expression_add_osip(w_expression_t ** var, char * ip);
 void w_free_expression_t(w_expression_t ** var);
@@ -27,6 +28,7 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
 void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_test, pcre2_match_data * match_data,
                                          regex_matching * regex_match);
 const char * w_expression_get_regex_pattern(w_expression_t * expression);
+
 
 /* setup/teardown */
     
@@ -513,6 +515,8 @@ void w_expression_match_osregex(void ** state)
     os_calloc(1, sizeof(w_expression_t), expression);
     expression->exp_type = EXP_TYPE_OSREGEX;
 
+    os_calloc(1, sizeof(OSRegex), expression->regex);
+
     const char* end_match = "test_end_match";
 
     char * str_test = NULL;
@@ -525,6 +529,7 @@ void w_expression_match_osregex(void ** state)
     assert_true(ret);
 
     os_free(str_test);
+    os_free(expression->regex);
     os_free(expression);
 }
 

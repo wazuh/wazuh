@@ -43,7 +43,8 @@ static int setup_config(void **state)
     keys->keyentries[0]->id = "001";
     keys->keyentries[0]->name = "agent1";
     os_calloc(1, sizeof(os_ip), keys->keyentries[0]->ip);
-    keys->keyentries[0]->ip->netmask = 0xFFFFFFFF;
+    os_calloc(1, sizeof(os_ipv4), keys->keyentries[0]->ip->ipv4);
+    keys->keyentries[0]->ip->ipv4->netmask = 0xFFFFFFFF;
     keys->keyentries[0]->ip->ip = "1.1.1.1";
 
     os_calloc(3, sizeof(keyentry), keys->keyentries[1]);
@@ -51,7 +52,8 @@ static int setup_config(void **state)
     keys->keyentries[1]->id = "002";
     keys->keyentries[1]->name = "agent2";
     os_calloc(1, sizeof(os_ip), keys->keyentries[1]->ip);
-    keys->keyentries[1]->ip->netmask = 0xFFFFFFFF;
+    os_calloc(1, sizeof(os_ipv4), keys->keyentries[1]->ip->ipv4);
+    keys->keyentries[1]->ip->ipv4->netmask = 0xFFFFFFFF;
     keys->keyentries[1]->ip->ip = "2.2.2.2";
     keys->keyentries[1]->time_added = 1628683533;
 
@@ -66,6 +68,7 @@ static int teardown_config(void **state)
     keystore *keys = *(keystore **)state;
 
     for (int i = 0; i < keys->keysize; i++) {
+        free(keys->keyentries[i]->ip->ipv4);
         free(keys->keyentries[i]->ip);
         free(keys->keyentries[i]);
     }
@@ -97,11 +100,11 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
 // Test OS_IsAllowedID
 void test_OS_IsAllowedID_id_NULL(void **state)
 {
-    keystore *keys = NULL;
+    keystore keys;
 
     const char * id = NULL;
 
-    int ret = OS_IsAllowedID(keys, id);
+    int ret = OS_IsAllowedID(&keys, id);
 
     assert_int_equal(ret, -1);
 

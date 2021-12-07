@@ -11,26 +11,8 @@
 #ifndef VALIDATE_H
 #define VALIDATE_H
 
-#define w_free_os_ip(x) if (x) {os_free(x->ip);os_free(x)}
 
-/* IP structure */
-typedef struct _os_ip {
-    char *ip;
-    unsigned int ip_address;
-    unsigned int netmask;
-} os_ip;
-
-
-/**
- * @brief Get the netmask based on the integer value.
- *
- * @param[in] mask Integer value of the netmask.
- * @param[out] strmask Pointer to array where the value will be stored.
- * @param[in] size Size of the array.
- * @return Returns 1.
- */
-int getNetmask(unsigned int mask, char *strmask, size_t size) __attribute__((nonnull));
-
+#define w_free_os_ip(x) if(x){if(x->is_ipv6){os_free(x->ipv6)}else{os_free(x->ipv4)};os_free(x->ip);os_free(x)}
 
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
@@ -185,6 +167,7 @@ long long w_validate_bytes(const char *content);
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
-#define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
+#define isSingleHost(x) ((x->is_ipv6) ? false : (x->ipv4->netmask == 0xFFFFFFFF))
+
 
 #endif /* VALIDATE_H */

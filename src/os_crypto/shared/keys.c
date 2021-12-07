@@ -336,6 +336,11 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 
 void OS_FreeKey(keyentry *key) {
     if (key->ip) {
+        if (key->ip->is_ipv6) {
+            free(key->ip->ipv6);
+        } else {
+            free(key->ip->ipv4);
+        }
         free(key->ip->ip);
         free(key->ip);
     }
@@ -669,8 +674,16 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     if (key->ip) {
         os_calloc(1, sizeof(os_ip), copy->ip);
         copy->ip->ip = strdup(key->ip->ip);
-        copy->ip->ip_address = key->ip->ip_address;
-        copy->ip->netmask = key->ip->netmask;
+        if (key->ip->is_ipv6) {
+            os_calloc(1, sizeof(os_ipv6), copy->ip->ipv6);
+            memcpy(copy->ip->ipv6->ip_address, key->ip->ipv6->ip_address, sizeof(copy->ip->ipv6->ip_address));
+            memcpy(copy->ip->ipv6->netmask, key->ip->ipv6->netmask, sizeof(copy->ip->ipv6->netmask));
+
+        } else {
+            os_calloc(1, sizeof(os_ipv4), copy->ip->ipv4);
+            copy->ip->ipv4->ip_address = key->ip->ipv4->ip_address;
+            copy->ip->ipv4->netmask = key->ip->ipv4->netmask;
+        }
     }
 
     copy->sock = key->sock;

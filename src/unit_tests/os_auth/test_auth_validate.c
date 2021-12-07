@@ -101,6 +101,13 @@ extern struct keynode * volatile *remove_tail;
 
 /* setup/teardowns */
 static int setup_group(void **state) {
+
+    for (unsigned int a = 0; a < 3; a++) {
+        expect_any(__wrap_OS_IsValidIP, ip_address);
+        expect_any(__wrap_OS_IsValidIP, final_ip);
+        will_return(__wrap_OS_IsValidIP, -1);
+    }
+
     keys_init(&keys, 0, !config.flags.clear_removed);
     OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT1, EXISTENT_IP1, NULL);
     OS_AddNewAgent(&keys, NULL, EXISTENT_AGENT2, EXISTENT_IP2, NULL);

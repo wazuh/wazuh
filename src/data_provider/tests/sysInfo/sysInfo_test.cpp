@@ -31,7 +31,6 @@ auto PACKAGES_EXPECTED
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;
-using ::testing::DoAll;
 
 std::string SysInfo::getSerialNumber() const
 {
