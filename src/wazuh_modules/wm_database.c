@@ -283,7 +283,7 @@ void wm_sync_agents() {
             continue;
         }
 
-        if (get_agent_group(entry->id, group, OS_SIZE_65536 + 1) < 0) {
+        if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1) < 0) {
             *group = 0;
         }
 
@@ -330,7 +330,6 @@ void wm_sync_agents() {
                 // Remove agent-related files
                 OS_RemoveCounter(id);
                 OS_RemoveAgentTimestamp(id);
-                OS_RemoveAgentGroup(id);
 
                 if (name == NULL || *name == '\0') {
                     os_free(name);
@@ -462,7 +461,7 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, OS_SIZE_65536);
+    get_agent_group(atoi(fname), group, OS_SIZE_65536);
 
     if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
