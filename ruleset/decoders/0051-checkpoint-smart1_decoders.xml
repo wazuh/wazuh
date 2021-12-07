@@ -272,7 +272,7 @@
 </decoder>
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <regex>Transform:"(\.*)";|Transform:"(\.*)"$|Transform:(\.*);|Transform:(\.*)$</regex>
+  <regex>Transform:"(\.*)";|Transform:"(\.*)"$|Transform:(\.*);|Transform:(\.*)$|Transform:(\S*)</regex>
   <order>Transform</order>
 </decoder>
 <decoder name="checkpoint-smart1">
