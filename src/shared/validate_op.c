@@ -182,29 +182,30 @@ int convertNetmask(int netnumb, struct in6_addr *nmask6)
 
     uint32_t aux = 0;
     uint32_t index = 0;
+    uint8_t variable_size = 8;
     for (int i = 0; i < 16; i++) {
 
 #ifndef WIN32
         nmask6->s6_addr[i] = 0;
 #else
-        nmask6->u.Word[i] = 0;
+        nmask6->u.Byte[i] = 0;
 #endif
 
-        if (netnumb > 8) {
-            index = 8;
-            netnumb -= 8;
+        if (netnumb > variable_size) {
+            index = variable_size;
+            netnumb -= variable_size;
         } else {
             index = netnumb;
             netnumb = 0;
         }
 
-        for (uint32_t a = 0; a < index; a++) {
-            aux = 8 - a -1;
+        for (uint8_t a = 0; a < index; a++) {
+            aux = variable_size - a -1;
 
 #ifndef WIN32
-            nmask6->s6_addr[i] += UINT32_C(1) << aux;
+            nmask6->s6_addr[i] += UINT8_C(1) << aux;
 #else
-            nmask6->u.Word[i] += UINT32_C(1) << aux;
+            nmask6->u.Byte[i] += UINT8_C(1) << aux;
 #endif
         }
     }
@@ -293,10 +294,16 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 int OS_IPFound(const char *ip_address, const os_ip *that_ip)
 {
     int _true = 1;
+    bool is_ipv6 = false;
     struct in_addr net;
+    struct in6_addr net6;
 
     /* Extract IP address */
-    if (OS_INVALID == get_ipv4_numeric(ip_address, &net)) {
+    if (OS_SUCCESS == get_ipv4_numeric(ip_address, &net)) {
+        is_ipv6 = false;
+    } else if (OS_SUCCESS == get_ipv6_numeric(ip_address, &net6)) {
+        is_ipv6 = true;
+    } else {
         return (!_true);
     }
 
@@ -306,8 +313,22 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     }
 
     /* Check if IP is in thatip & netmask */
-    if ((net.s_addr & that_ip->ipv4->netmask) == that_ip->ipv4->ip_address) {
-        return (_true);
+    if (is_ipv6) {
+        for(unsigned int i = 0; i < 16; i++) {
+#ifndef WIN32
+            if ((net6.s6_addr[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i]) {
+#else
+            if ((net6.u.Byte[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i]) {
+#endif
+                break;
+            } else if (i >= (16 - 1)) {
+                return (_true);
+            }
+        }
+    } else {
+        if ((net.s_addr & that_ip->ipv4->netmask) == that_ip->ipv4->ip_address) {
+            return (_true);
+        }
     }
 
     /* Didn't match */
@@ -417,13 +438,16 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                 ret = 0;
                                 break;
                             }
-
 #ifndef WIN32
-                            memcpy(final_ip->ipv6->ip_address, net6.s6_addr, sizeof(final_ip->ipv6->ip_address));
+                            for(unsigned int i = 0; i < 16; i++) {
+                                final_ip->ipv6->ip_address[i] = net6.s6_addr[i] & nmask6.s6_addr[i];
+                            }
                             memcpy(final_ip->ipv6->netmask, nmask6.s6_addr, sizeof(final_ip->ipv6->netmask));
 #else
-                            memcpy(final_ip->ipv6->ip_address, nmask6.u.Word, sizeof(final_ip->ipv6->ip_address));
-                            memcpy(final_ip->ipv6->netmask, nmask6.u.Word, sizeof(final_ip->ipv6->netmask));
+                            for(unsigned int i = 0; i < 16; i++) {
+                                final_ip->ipv6->ip_address[i] = net6.u.Byte[i] & nmask6.u.Byte[i];
+                            }
+                            memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
 
                         } else {
