@@ -767,7 +767,7 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name) {
     }
 }
 
-int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent) {
+int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -787,6 +787,10 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent) {
         return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 2, id_agent) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 3, priority) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
