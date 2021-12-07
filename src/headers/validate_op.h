@@ -167,7 +167,7 @@ long long w_validate_bytes(const char *content);
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
-#define isSingleHost(x) (x->is_ipv6) ? false : (x->ipv4->netmask == 0xFFFFFFFF)
+#define isSingleHost(x) ((x->is_ipv6) ? false : (x->ipv4->netmask == 0xFFFFFFFF))
 
 
 #endif /* VALIDATE_H */
