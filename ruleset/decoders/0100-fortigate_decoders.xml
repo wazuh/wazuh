@@ -91,6 +91,60 @@
 
 <decoder name="fortigate-firewall-v3-fields">
   <parent>fortigate-firewall-v3</parent>
+  <regex>date="(\.*)"|date=(\.*)\s|date=(\.*)$</regex>
+  <order>date</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>time=(\.*\p\s\.*\p\.*)\s</regex>
+  <order>time</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>device_id="(\.*)"|device_id=(\.*)\s|device_id=(\.*)$</regex>
+  <order>devid</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>devname="(\.*)"|devname=(\.*)\s|devname=(\.*)$</regex>
+  <order>devname</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>log_id="(\d+)"|log_id=(\d+)</regex>
+  <order>log_id</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>type="(\.*)"|type=(\.*)\s|type=(\.*)$</regex>
+  <order>type</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>subtype="(\.*)"|subtype=(\.*)\s|subtype=(\.*)$</regex>
+  <order>subtype</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>pri="(\.*)"|pri=(\.*)\s|pri=(\.*)$</regex>
+  <order>pri</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
+  <regex>vd="(\.*)"|vd=(\.*)\s|vd=(\.*)$</regex>
+  <order>vd</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v3-fields">
+  <parent>fortigate-firewall-v3</parent>
   <regex offset="after_parent">proto=\d+ service=(\S+) \.+ status=(\S+) src=(\S+) \.+ dst=(\S+) </regex>
   <order>protocol,action,srcip,dstip</order>
 </decoder>
@@ -107,6 +161,60 @@
 <decoder name="fortigate-firewall-v4">
   <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
   <type>syslog</type>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>date="(\.*)"|date=(\.*)\s|date=(\.*)$</regex>
+  <order>date</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>time=(\.*\p\s\.*\p\.*)\s</regex>
+  <order>time</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>device_id="(\.*)"|device_id=(\.*)\s|device_id=(\.*)$</regex>
+  <order>devid</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>devname="(\.*)"|devname=(\.*)\s|devname=(\.*)$</regex>
+  <order>devname</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>log_id="(\d+)"|log_id=(\d+)</regex>
+  <order>log_id</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>type="(\.*)"|type=(\.*)\s|type=(\.*)$</regex>
+  <order>type</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>subtype="(\.*)"|subtype=(\.*)\s|subtype=(\.*)$</regex>
+  <order>subtype</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>pri="(\.*)"|pri=(\.*)\s|pri=(\.*)$</regex>
+  <order>pri</order>
+</decoder>
+
+<decoder name="fortigate-firewall-v4-fields">
+  <parent>fortigate-firewall-v4</parent>
+  <regex>vd="(\.*)"|vd=(\.*)\s|vd=(\.*)$</regex>
+  <order>vd</order>
 </decoder>
 
 <decoder name="fortigate-firewall-v4-fields">
