@@ -1659,9 +1659,10 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
  * @param [in] wdb The Global struct database.
  * @param [in] id_group The group id.
  * @param [in] id_agent The agent id.
+ * @param [in] priority The group priority.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
 
 /**
  * @brief Function to delete a group from belongs table using the group name.
