@@ -320,7 +320,7 @@ w_err_t w_auth_validate_data(char *response,
     return result;
 }
 
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key) {
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, char **id, char **key) {
 
     /* Add the new agent */
     int index;
