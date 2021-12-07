@@ -329,6 +329,7 @@ extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
+extern char *schema_global_upgrade_v4_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -1636,9 +1637,10 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
  * @param [in] wdb The Global struct database.
  * @param [in] id_group The group id.
  * @param [in] id_agent The agent id.
+ * @param [in] priority The group priority.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
 
 /**
  * @brief Function to delete a group from belongs table using the group name.
