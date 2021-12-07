@@ -565,8 +565,37 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
 }
 
 int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
-    int result = OS_INVALID;
+    int result = OS_SUCCESS;
     sqlite3_stmt *stmt = NULL;
+    char* individual_group = NULL;
+    char* temp = NULL;
+    char* initial_temp = NULL;
+    cJSON* j_find_group_result = NULL;
+    cJSON* j_group_id = NULL;
+    int id_group = -1;
+
+    // Making a copy to avoid modifying the original string
+    os_strdup(group, temp);
+    initial_temp = temp;
+
+    while (temp && (individual_group = strtok_r(temp, ",", &temp))) {
+        j_find_group_result = wdb_global_find_group(wdb, individual_group);
+        j_group_id = cJSON_GetObjectItem(j_find_group_result->child, "id");
+        id_group = cJSON_IsNumber(j_group_id) ? j_group_id->valueint : OS_INVALID;
+        // Updating belongs table
+        if(id_group != OS_INVALID) {
+           result = wdb_global_insert_agent_belong(wdb, id_group, id);
+        }
+        cJSON_Delete(j_find_group_result);
+        if(result == OS_INVALID) {
+            break;
+        }
+    }
+
+    os_free(initial_temp);
+    if(result == OS_INVALID) {
+        return result;
+    }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -596,26 +625,7 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
         break;
     default:
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-    }
-
-    // Updating belongs table
-    char* individual_group;
-    char* temp = group;
-    cJSON* j_find_group_result = NULL;
-    cJSON* j_group_id = NULL;
-    int id_group = -1;
-
-    while (temp && (individual_group = strtok_r(temp, ",", &temp))) {
-        if(result == OS_INVALID) {
-            break;
-        }
-        j_find_group_result = wdb_global_find_group(wdb, individual_group);
-        j_group_id = cJSON_GetObjectItem(j_find_group_result->child, "id");
-        id_group = cJSON_IsNumber(j_group_id) ? j_group_id->valueint : OS_INVALID;
-        if(id_group != OS_INVALID) {
-           result = wdb_global_insert_agent_belong(wdb, id_group, id);
-        }
-        cJSON_Delete(j_find_group_result);
+        result = OS_INVALID;
     }
 
     return result;
