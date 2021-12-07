@@ -637,7 +637,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             else {
                 w_mutex_lock(&mutex_keys);
                 if (OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group, key_hash)) {
-                    if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)) {
+                    if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, &new_id, &new_key)) {
                         enrollment_ok = TRUE;
                     }
                 }
