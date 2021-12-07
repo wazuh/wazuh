@@ -748,7 +748,7 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
         return NULL;
     }
 
-    result = wdb_exec_stmt_single_array(stmt);
+    result = wdb_exec_stmt(stmt);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -809,7 +809,7 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt_single_array(stmt);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
