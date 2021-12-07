@@ -610,7 +610,7 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
             break;
         }
         j_find_group_result = wdb_global_find_group(wdb, individual_group);
-        j_group_id = cJSON_GetObjectItem(j_find_group_result, "id");
+        j_group_id = cJSON_GetObjectItem(j_find_group_result->child, "id");
         id_group = cJSON_IsNumber(j_group_id) ? j_group_id->valueint : OS_INVALID;
         if(id_group != OS_INVALID) {
            result = wdb_global_insert_agent_belong(wdb, id_group, id);

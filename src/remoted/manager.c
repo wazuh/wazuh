@@ -782,15 +782,14 @@ static void c_files()
     closedir(dp);
 
     int *agents_array = wdb_get_all_agents(false, NULL);
-    int *temp_agents_array = agents_array;
-    while (temp_agents_array && *temp_agents_array != -1) {
-        if (get_agent_group(*temp_agents_array, groups_info, OS_SIZE_65536 + 1) == OS_SUCCESS) {
+    for(int i = 0; agents_array && agents_array[i] != -1; i++ ) {
+        if (get_agent_group(agents_array[i], groups_info, OS_SIZE_65536 + 1) == OS_SUCCESS) {
             // If it's not a multigroup, skip it
             if (!strstr(groups_info, ",")) {
                 continue;
             }
 
-            OS_SHA256_String(groups_info,multi_group_hash);
+            OS_SHA256_String(groups_info, multi_group_hash);
 
             os_calloc(9, sizeof(char), _hash);
             snprintf(_hash, 9, "%.8s", multi_group_hash);
@@ -800,7 +799,6 @@ static void c_files()
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
-        temp_agents_array++;
     }
     os_free(agents_array);
 
