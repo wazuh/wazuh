@@ -151,7 +151,7 @@ int wdb_insert_group(const char *name, int *sock) {
     return result;
 }
 
-int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
+int wdb_update_agent_belongs(int id_group, int id_agent, int priority, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -167,6 +167,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
 
     cJSON_AddNumberToObject(data_in, "id_group", id_group);
     cJSON_AddNumberToObject(data_in, "id_agent", id_agent);
+    cJSON_AddNumberToObject(data_in, "priority", priority);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     cJSON_Delete(data_in);
@@ -1275,6 +1276,7 @@ int wdb_remove_agent_db(int id, const char * name) {
 int wdb_update_agent_multi_group(int id, char *group, int *sock) {
     int aux_sock = -1;
     int* query_sock = sock?sock:&aux_sock;
+    int priority = 0;
 
     /* Wipe out the agent multi groups relation for this agent */
     if (wdb_delete_agent_belongs(id, query_sock) < 0) {
@@ -1302,7 +1304,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
                     id_group = wdb_find_group(multi_group, query_sock);
                 }
 
-                if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, query_sock)) {
+                if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, priority, query_sock)) {
                     if (!sock) {
                         wdbc_close(&aux_sock);
                     }
@@ -1310,6 +1312,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
                 }
 
                 multi_group = strtok_r(NULL, delim, &save_ptr);
+                ++priority;
             }
         } else {
             /* Update de groups table */
@@ -1319,7 +1322,7 @@ int wdb_update_agent_multi_group(int id, char *group, int *sock) {
                 id_group = wdb_find_group(group, query_sock);
             }
 
-            if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, query_sock)) {
+            if (OS_SUCCESS != wdb_update_agent_belongs(id_group, id, priority, query_sock)) {
                 if (!sock) {
                     wdbc_close(&aux_sock);
                 }
