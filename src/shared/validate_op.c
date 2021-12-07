@@ -198,7 +198,7 @@ int convertNetmask(int netnumb, struct in6_addr *nmask6)
             netnumb = 0;
         }
 
-        for(uint32_t a = 0; a < index; a++) {
+        for (uint32_t a = 0; a < index; a++) {
             aux = 8 - a -1;
 
 #ifndef WIN32
@@ -375,7 +375,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         regex_matching * regex_match = NULL;
         os_calloc(1, sizeof(regex_matching), regex_match);
 
-        while(ip_address_regex[i] != NULL) {
+        while (ip_address_regex[i] != NULL) {
 
             w_calloc_expression_t(&exp, EXP_TYPE_PCRE2);
             if (w_expression_compile(exp, ip_address_regex[i], 0) &&
@@ -463,7 +463,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                     }
                                     nmask.s_addr = _netmasks[cidr];
                                     nmask.s_addr = htonl(nmask.s_addr);
-                                } else if(OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[1], &nmask)) {
+                                } else if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[1], &nmask)) {
                                     ret = 0;
                                     break;
                                 }
@@ -489,7 +489,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
         if (regex_match) {
             if (regex_match->sub_strings) {
-                for(unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
+                for (unsigned int a = 0; regex_match->sub_strings[a] != NULL; a++) {
                     os_free(regex_match->sub_strings[a]);
                 }
                 os_free(regex_match->sub_strings);
