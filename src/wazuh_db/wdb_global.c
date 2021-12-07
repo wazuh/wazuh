@@ -622,7 +622,6 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
 }
 
 int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
-    cJSON* j_agent_info = NULL;
     char truncated_groups_hash[9] = {0};
     os_sha256 groups_hash;
     int result = OS_INVALID;
