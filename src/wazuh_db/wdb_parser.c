@@ -5179,6 +5179,7 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
     const char *error = NULL;
     cJSON *j_id_group = NULL;
     cJSON *j_id_agent = NULL;
+    cJSON *j_priority = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5189,13 +5190,15 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
     } else {
         j_id_group = cJSON_GetObjectItem(agent_data, "id_group");
         j_id_agent = cJSON_GetObjectItem(agent_data, "id_agent");
+        j_priority = cJSON_GetObjectItem(agent_data, "priority");
 
-        if (cJSON_IsNumber(j_id_group) && cJSON_IsNumber(j_id_agent)) {
+        if (cJSON_IsNumber(j_id_group) && cJSON_IsNumber(j_id_agent) && cJSON_IsNumber(j_priority)) {
             // Getting each field
             int id_group = j_id_group->valueint;
             int id_agent = j_id_agent->valueint;
+            int priority = j_priority->valueint;
 
-            if (OS_SUCCESS != wdb_global_insert_agent_belong(wdb, id_group, id_agent)) {
+            if (OS_SUCCESS != wdb_global_insert_agent_belong(wdb, id_group, id_agent, priority)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);

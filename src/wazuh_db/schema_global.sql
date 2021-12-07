@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS agent (
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
+    group_source TEXT NOT NULL CHECK (group_source IN ('manual', 'remote')) DEFAULT 'manual',
+    group_sync_with_master TEXT NOT NULL CHECK (group_sync_with_master IN ('synced', 'syncreq')) DEFAULT 'synced',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
     disconnection_time INTEGER DEFAULT 0,
@@ -64,7 +66,9 @@ CREATE TABLE IF NOT EXISTS `group` (
 
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER REFERENCES `group`(id) ON DELETE CASCADE,
+    id_group INTEGER REFERENCES `group` (id) ON DELETE CASCADE,    
+    priority INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (id_agent, priority),
     PRIMARY KEY (id_agent, id_group)
 );
 
