@@ -15,6 +15,9 @@
 #define FIMDB_FILE_TXN_TABLE "{\"table\": \"file_entry\"}"
 #define FILE_PRIMARY_KEY "path"
 
+#define FIMDB_REGISTRY_KEY_TABLENAME "registry_key"
+#define FIMDB_REGISTRY_VALUE_TABLENAME "registry_value"
+
 typedef enum FIMDBErrorCodes
 {
     FIMDB_OK = 0,
