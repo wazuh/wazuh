@@ -331,18 +331,6 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
         return OS_INVALID;
     }
 
-    /* Add the agent to the centralized configuration group */
-    if (groups) {
-        char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
-            OS_RemoveAgent(keys.keyentries[index]->id);
-            merror("Unable to set agent centralized group: %s (internal error)", groups);
-            snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s", groups);
-            return OS_INVALID;
-        }
-    }
-
     os_strdup(keys.keyentries[index]->id, *id);
     os_strdup(keys.keyentries[index]->raw_key, *key);
 
