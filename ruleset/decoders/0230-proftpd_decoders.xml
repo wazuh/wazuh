@@ -25,17 +25,17 @@
 
 <decoder name="proftpd-success">
   <parent>proftpd</parent>
-  <prematch>: Login successful</prematch>
   <regex>^\S+ \(\S+[(\S+)]\)\s*\S \w+ (\S+): </regex>
   <regex>Login successful</regex>
+  <prematch>: Login successful</prematch>
   <order>srcip, user</order>
   <fts>name, user, srcip, location</fts>
 </decoder>
 
 <decoder name="proftpd-login failed">
   <parent>proftpd</parent>
-  <prematch>Login failed</prematch>
   <regex>^[\.+]: \S+ \(\S+[(\S+)]\) \w+ USER (\S*)</regex>
+  <prematch>Login failed</prematch>
   <order>srcip, user</order>
 </decoder>
 
