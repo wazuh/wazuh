@@ -565,6 +565,7 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
 }
 
 int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
+    int result = OS_INVALID;
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -591,12 +592,33 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
-        return OS_SUCCESS;
+        result = OS_SUCCESS;
         break;
     default:
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
     }
+
+    // Updating belongs table
+    char* individual_group;
+    char* temp = group;
+    cJSON* j_find_group_result = NULL;
+    cJSON* j_group_id = NULL;
+    int id_group = -1;
+
+    while (temp && (individual_group = strtok_r(temp, ",", &temp))) {
+        if(result == OS_INVALID) {
+            break;
+        }
+        j_find_group_result = wdb_global_find_group(wdb, individual_group);
+        j_group_id = cJSON_GetObjectItem(j_find_group_result, "id");
+        id_group = cJSON_IsNumber(j_group_id) ? j_group_id->valueint : OS_INVALID;
+        if(id_group != OS_INVALID) {
+           result = wdb_global_insert_agent_belong(wdb, id_group, id);
+        }
+        cJSON_Delete(j_find_group_result);
+    }
+
+    return result;
 }
 
 int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {

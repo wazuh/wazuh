@@ -156,7 +156,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH] = "UPDATE agent SET groups_hash = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT INTO `group` (name) VALUES(?);",
     [WDB_STMT_GLOBAL_SELECT_GROUP_BELONG] = "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ?  order by belongs.rowid;",
-    [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT INTO belongs (id_group, id_agent, priority) VALUES(?,?,?);",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT OR IGNORE INTO belongs (id_group, id_agent, priority) VALUES(?,?,?);",
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_GROUP_BELONG] = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
@@ -1161,8 +1161,8 @@ cJSON * wdb_exec_stmt_single_array(sqlite3_stmt * stmt) {
         status = sqlite3_step(stmt);
         if (SQLITE_ROW == status) {
             int count = sqlite3_column_count(stmt);
-            // Every step should return only one element
-            if (count == 1) {
+            // Every step should return only one element. Extra columns will be ignored
+            if (count > 0) {
                 switch (sqlite3_column_type(stmt, 0)) {
                 case SQLITE_INTEGER:
                 case SQLITE_FLOAT:
@@ -1178,8 +1178,6 @@ cJSON * wdb_exec_stmt_single_array(sqlite3_stmt * stmt) {
                 default:
                     ;
                 }
-            } else if(count > 1) {
-                mdebug2("Ignoring extra columns in the query step");
             }
         }
     } while (status == SQLITE_ROW);

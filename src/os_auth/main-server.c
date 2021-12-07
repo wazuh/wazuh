@@ -843,9 +843,9 @@ void* run_writer(__attribute__((unused)) void *arg) {
             next = cur->next;
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
-
+            gettime(&t0);
             if (cur->group) {
-                if (set_agent_group(cur->id,cur->group) == -1) {
+                if (wdb_update_agent_group(atoi(cur->id),cur->group, &wdb_sock) == -1) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
 
@@ -853,7 +853,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             }
 
             gettime(&t1);
-            mdebug2("[Writer] set_agent_group(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            mdebug2("[Writer] wdb_update_agent_group(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             free(cur->id);
             free(cur->name);
@@ -880,11 +880,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveCounter(cur->id);
             gettime(&t1);
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            gettime(&t0);
-            OS_RemoveAgentGroup(cur->id);
-            gettime(&t1);
-            mdebug2("[Writer] OS_RemoveAgentGroup(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
             if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
