@@ -562,6 +562,28 @@ class AWSBucket(WazuhIntegration):
             # if DB is empty for a region
             return None
 
+    def _get_formatted_last_key_query(self, aws_region: str, aws_account_id: str) -> str:
+        """
+        Return the query used to fetch the last log key processed from the database formatted.
+
+        Parameters
+        ----------
+        aws_region : str
+            The region of the bucket.
+        aws_account_id : str
+            The AWS account ID used to collect the logs.
+
+        Returns
+        -------
+        str
+            The query formatted depending on the object's attributes.
+        """
+        return self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
+                                                        table_name=self.db_table_name,
+                                                        aws_region=aws_region,
+                                                        prefix=self.prefix,
+                                                        aws_account_id=aws_account_id)
+
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
             bucket_path=self.bucket_path,
@@ -751,12 +773,7 @@ class AWSBucket(WazuhIntegration):
             else:
                 filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
-            query_last_key = self.db_connector.execute(
-                self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
-                                                        table_name=self.db_table_name,
-                                                        aws_account_id=aws_account_id,
-                                                        aws_region=aws_region,
-                                                        prefix=self.prefix))
+            query_last_key = self.db_connector.execute(self._get_formatted_last_key_query(aws_region, aws_account_id))
             try:
                 filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError):
@@ -1993,6 +2010,27 @@ class AWSCustomBucket(AWSBucket):
                                     bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}';"""
 
+    def _get_formatted_last_key_query(self, aws_region: str, aws_account_id: str) -> str:
+        """
+        Return the query used to fetch the last log key processed from the database formatted.
+
+        Parameters
+        ----------
+        aws_region : str
+            The region of the bucket.
+        aws_account_id : str
+            The AWS account ID used to collect the logs.
+
+        Returns
+        -------
+        str
+            The query formatted depending on the object's attributes.
+        """
+        return self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
+                                                        table_name=self.db_table_name,
+                                                        prefix=self.prefix,
+                                                        aws_account_id=self.aws_account_id)
+
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
             while data:
@@ -2282,6 +2320,24 @@ class AWSLBBucket(AWSCustomBucket):
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
         AWSBucket.mark_complete(self, aws_account_id, aws_region, log_file)
+
+    def _get_formatted_last_key_query(self, aws_region: str, aws_account_id: str) -> str:
+        """
+        Return the query used to fetch the last log key processed from the database formatted.
+
+        Parameters
+        ----------
+        aws_region : str
+            The region of the bucket.
+        aws_account_id : str
+            The AWS account ID used to collect the logs.
+
+        Returns
+        -------
+        str
+            The query formatted depending on the object's attributes.
+        """
+        return AWSBucket._get_formatted_last_key_query(self, aws_region, aws_account_id)
 
 
 class AWSALBBucket(AWSLBBucket):
