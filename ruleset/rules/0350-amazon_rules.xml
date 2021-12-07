@@ -506,7 +506,7 @@
 </group>
 
 <!-- S3 Access rules -->
-<group name="amazon, aws, s3">
+<group name="amazon,aws,s3,">
 
   <rule id="80360" level="0">
     <if_sid>80200</if_sid>
