@@ -44,7 +44,6 @@
   <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S*:error] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:info] </prematch>
 </decoder>
 
-
 <decoder name="apache24-errorlog-ip-port">
   <parent>apache-errorlog</parent>
   <prematch offset="after_parent">[client \S+:\d+] \S+:</prematch>
@@ -58,7 +57,6 @@
   <regex offset="after_parent">[client (\S+)] (\S+): </regex>
   <order>srcip,id</order>
 </decoder>
-
 
 <decoder name="apache-errorlog-ip">
   <parent>apache-errorlog</parent>
