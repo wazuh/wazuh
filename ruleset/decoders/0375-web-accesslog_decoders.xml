@@ -63,4 +63,3 @@
   <regex>^(\S+) \S+ \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
   <order>srcip, protocol, url, id</order>
 </decoder>
-
