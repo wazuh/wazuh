@@ -909,7 +909,10 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
     int imask;
     uint32_t hmask;
 
-    if (ip->ipv4->netmask != 0xFFFFFFFF && strcmp(ip->ip, "any")) {
+    if ((ip->is_ipv6 == false) &&
+        (ip->ipv4->netmask != 0xFFFFFFFF) &&
+            strcmp(ip->ip, "any")) {
+
         if (_mask_inited) {
             _init_masks();
         }
