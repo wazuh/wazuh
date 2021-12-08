@@ -663,8 +663,6 @@ static void c_files()
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char *key = NULL;
     char *data = NULL;
-    os_sha256 multi_group_hash;
-    char * _hash = NULL;
     mdebug2("Updating shared files sums.");
 
     /* Lock mutex */
@@ -782,22 +780,21 @@ static void c_files()
     closedir(dp);
 
     int *agents_array = wdb_get_all_agents(false, NULL);
+
     for(int i = 0; agents_array && agents_array[i] != -1; i++ ) {
-        if (get_agent_group(agents_array[i], groups_info, OS_SIZE_65536 + 1) == OS_SUCCESS) {
+        cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
+        if(j_agent_info) {
+            char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
+            char* agent_groups_hash = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "groups_hash"));
+
             // If it's not a multigroup, skip it
-            if (!strstr(groups_info, ",")) {
-                continue;
+            if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
+                if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
+                    mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
+                }
             }
 
-            OS_SHA256_String(groups_info, multi_group_hash);
-
-            os_calloc(9, sizeof(char), _hash);
-            snprintf(_hash, 9, "%.8s", multi_group_hash);
-
-            if (OSHash_Add_ex(m_hash, groups_info, _hash) != 2) {
-                os_free(_hash);
-                mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
-            }
+            cJSON_Delete(j_agent_info);
         }
     }
     os_free(agents_array);
