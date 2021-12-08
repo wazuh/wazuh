@@ -103,11 +103,9 @@ checks:
 
 #3 Access Control
 #3.1 - Requires mongo shell commands, currently not supported
-#  - id: 23504
-#    title: "Ensure that Role-based access control (RBAC) is enabled and configured"
 
 #3.2
-  - id: 23505
+  - id: 23504
     title: "Ensure that MongoDB only listens for network connections on authorized interfaces"
     description: "Ensuring that MongoDB runs in a trusted network environment involves limiting the network interfaces on which MongoDB instances listen for incoming connections. Any untrusted network connections should be dropped by MongoDB. Firewalls allow administrators to filter and control access to a system by providing granular control over network communications. For administrators of MongoDB, the following capabilities are important: 1. Limiting incoming traffic on a specific port to specific systems, 2. Limiting incoming traffic from untrusted hosts. On Linux systems, the iptables interface provides access to the underlying netfilter firewall. On Windows systems, netsh command line interface provides access to the underlying Windows Firewall."
     rationale: "This configuration blocks connections from untrusted networks, leaving only systems on authorized and trusted networks able to attempt to connect to the MongoDB. If not configured, this may lead to unauthorized connections from untrusted networks to MongoDB."
@@ -124,7 +122,7 @@ checks:
       - 'c:cat /etc/mongod.conf | grep \-A12 "net:" -> r:bindIp'
 
 #3.3
-  - id: 23506
+  - id: 23505
     title: "Ensure that MongoDB is run using a Least Privileges, dedicated service account"
     description: "The MongoDB service should not be run using a privileged account such as 'root' because this unnecessarily exposes the operating system to high risk. This setting ensures that the monogd service runs as a least-privileged user."
     rationale: "Using a non-privileged, dedicated service account restricts the database from accessing the critical areas of the operating system which are not required by MongoDB. This will also mitigate the potential for unauthorized access via a compromised, privileged account on the operating system. Anyone who has been a victim of viruses, worms, and other malicious software (malware) will appreciate the security principle of “least privilege.” If all processes ran with the minial set of privileges needed to perform the user's tasks, it would be more difficult for malware to infect a machine and propagate to other machines."
@@ -152,7 +150,7 @@ checks:
 
 #4 Data Encryption
 #4.1
-  - id: 23510
+  - id: 23506
     title: "Ensure Encryption of Data in Transit TLS/SSL (Transport Encryption)"
     description: "Use TLS or SSL to protect all incoming and outgoing connections. This should include using TLS or SSL to encrypt communication between the mongod and mongos components of a MongoDB client as well as between all applications and MongoDB. MongoDB supports TLS/SSL (Transport Layer Security/Secure Sockets Layer) to encrypt all of MongoDB’s network traffic. TLS/SSL ensures that MongoDB network traffic is only readable by the intended client."
     rationale: "This prevents sniffing of cleartext traffic between MongoDB components or performing a man-in-the-middle attack for MongoDB."
@@ -171,7 +169,7 @@ checks:
       - 'c:cat /etc/mongod.conf | grep \-A12 "ssl:" -> r:mode: "requireSSL"'
 
 #4.2
-  - id: 23511
+  - id: 23507
     title: "Ensure Federal Information Processing Standard (FIPS) is enabled"
     description: "The Federal Information Processing Standard (FIPS) is a computer security standard used to certify software modules and libraries that encrypt and decrypt data securely. You can configure MongoDB to run with a FIPS 140-2 certified library for OpenSSL. FIPS is a property of the encryption system and not the access control system. However, the environment requires FIPS compliant encryption and access control. Organizations must ensure that the access control system uses only FIPS-compliant encryption."
     rationale: "FIPS is an industry standard which dictates how data should be encrypted at rest and during transmission."
@@ -191,7 +189,7 @@ checks:
 
 #5 Auditing
 #5.1
-  - id: 23513
+  - id: 23508
     title: "Ensure that system activity is audited"
     description: "Track access and changes to database configurations and data. MongoDB Enterprise includes a system auditing facility that can record system events (e.g. user operations, connection events) on a MongoDB instance. These audit records permit forensic analysis and allow administrators to verify proper controls."
     rationale: "System level logs can be handy while troubleshooting an operational problem or handling a security incident."
@@ -206,7 +204,7 @@ checks:
       - 'c:cat /etc/mongod.conf | grep \-A4 "auditLog" -> r:destination'
 
 #5.2
-  - id: 23514
+  - id: 23509
     title: "Ensure that system activity is audited"
     description: "MongoDB Enterprise supports auditing of various operations. When enabled, the audit facility, by default, records all auditable operations as detailed in Audit Event Actions, Details, and Results. To specify which events to record, the audit feature includes the --auditFilter option. This check is only for Enterprise editions."
     rationale: "All operations carried out on the database are logged. This helps in backtracking and tracing any incident that occurs."
@@ -222,7 +220,7 @@ checks:
       - 'c:cat /etc/mongod.conf | grep \-A10 "auditLog" -> r:filter'
 
 #5.3
-  - id: 23515
+  - id: 23510
     title: "Ensure that audit filters are configured properly"
     description: "The SystemLog.quiet option stops logging of information such as:connection events, authentication events, replication sync activitie, evidence of some potentially impactful commands being run (eg: drop , dropIndexes , validate ). This information should be logged whenever possible. This check is only for Enterprise editions."
     rationale: "The use of SystemLog.quiet makes troubleshooting problems and investigating possible security incidents much more difficult."
@@ -237,7 +235,7 @@ checks:
       - 'f:$main-conf -> r:quiet: 0|false'
 
 #5.4
-  - id: 23516
+  - id: 23511
     title: "Ensure that new entries are appended to the end of the log file"
     description: "By default, new log entries will overwrite old entries after a restart of the mongod or mongos service. Enabling the systemLog.logAppend setting causes new entries to be appended to the end of the log file rather than overwriting the existing content of the log when the mongod or mongos instance restarts."
     rationale: "Allowing old entries to be overwritten by new entries instead of appending new entries to the end of the log may destroy old log data that is needed for a variety of purposes."
@@ -253,7 +251,7 @@ checks:
 
 #6 Operating System Hardening
 #6.1
-  - id: 23517
+  - id: 23512
     title: "Ensure that MongoDB uses a non-default port"
     description: "Changing the default port used by MongoDB makes it harder for attackers to find the database and target it."
     rationale: "Standard ports are used in automated attacks and by attackers to verify which applications are running on a server."
@@ -272,7 +270,7 @@ checks:
 #    title: "Ensure that operating system resource limits are set for MongoDB"
 
 #6.3
-  - id: 23519
+  - id: 23513
     title: "Ensure that server-side scripting is disabled if not needed"
     description: "MongoDB supports the execution of JavaScript code for certain server-side operations: mapReduce , group , and $where . If you do not use these operations, server-side scripting should be disabled."
     rationale: "If server-side scripting is not needed and is not disabled, this introduces unnecessary risk which may allow an attacker to take advantage of insecure coding."
