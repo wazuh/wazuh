@@ -3,14 +3,13 @@
   Copyright (C) 2015-2021, Wazuh Inc.
 
   Products:
-  MS IIS
-  MS Firewall
-  MS Exchange
-  Sysmon
-  Defender
-  Terminal Services
+    MS IIS
+    MS Firewall
+    MS Exchange
+    Sysmon
+    Defender
+    Terminal Services
 -->
-
 
 <!--
   Windows date format.
@@ -22,8 +21,6 @@
 <decoder name="windows-date-format">
   <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d </prematch>
 </decoder>
-
-
 
 <!--
   Windows firewall decoder.
@@ -44,7 +41,6 @@
   <order>action, protocol, srcip, dstip, srcport, dstport</order>
 </decoder>
 
-
 <!--
   IIS 5 WWW W3C log format.
   #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status cs-host cs(User-Agent) cs(Referer)
@@ -60,7 +56,6 @@
   <regex>\d+ \S+ (\S+ \S+) (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
-
 
 <!--
   IIS6 WWW W3C log format.
@@ -80,7 +75,6 @@
   <regex>\S+ \S+ \S+ \S+ \S+ (\d+) </regex>
   <order>url, srcip, id</order>
 </decoder>
-
 
 <!--
   Windows IIS decoder for default settings
@@ -103,7 +97,6 @@
   <order>action, url, srcport, srcip, user_agent, id</order>
 </decoder>
 
-
 <!--
   IIS 5 W3C FTP log format.
   Examples:
@@ -119,7 +112,6 @@
   <regex>\d+ [\d+](\S+) \S+ \S+ (\d+) </regex>
   <order>srcip,user,action,id</order>
 </decoder>
-
 
 <!--
   IIS 5 W3C SMTP log format (Exchange).
@@ -354,7 +346,6 @@
     <order>sysmon.image, sysmon.imageLoaded, sysmon.hashes, sysmon.signed, sysmon.signature</order>
 </decoder>
 
-
 <!--
   Event ID 8: CreateRemoteThread
 
@@ -465,7 +456,6 @@
 	<order>defender.processname, defender.action</order>
 </decoder>
 
-
 <!--
   Terminal Services
 
@@ -529,9 +519,6 @@
     <regex offset="after_regex">error occurred: "(\.*)"</regex>
 	<order>error_code</order>
 </decoder>
-
-
-
 
 <!--
   Windows generic
@@ -645,7 +632,6 @@
   <regex>^(\w+)[(\w+)] (\d+) </regex>
   <order>extra_data, status, id</order>
 </decoder>
-
 
 <!--
   Windows decoder - Snare format.
