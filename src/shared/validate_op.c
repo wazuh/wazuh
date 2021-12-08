@@ -341,11 +341,17 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
  */
 int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
 {
-    struct in_addr net;
     int _true = 1;
+    bool is_ipv6 = false;
+    struct in_addr net;
+    struct in6_addr net6;
 
     /* Extract IP address */
-    if (OS_INVALID == get_ipv4_numeric(ip_address, &net)) {
+    if (OS_SUCCESS == get_ipv4_numeric(ip_address, &net)) {
+        is_ipv6 = false;
+    } else if (OS_SUCCESS == get_ipv6_numeric(ip_address, &net6)) {
+        is_ipv6 = true;
+    } else {
         return (!_true);
     }
 
@@ -356,9 +362,25 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
             _true = 0;
         }
 
-        if ((net.s_addr & l_ip->ipv4->netmask) == l_ip->ipv4->ip_address) {
-            return (_true);
+        /* Check if IP is in thatip & netmask */
+        if (is_ipv6) {
+            for(unsigned int i = 0; i < 16; i++) {
+#ifndef WIN32
+                if ((net6.s6_addr[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i]) {
+#else
+                if ((net6.u.Byte[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i]) {
+#endif
+                    break;
+                } else if (i >= (16 - 1)) {
+                    return (_true);
+                }
+            }
+        } else {
+            if ((net.s_addr & l_ip->ipv4->netmask) == l_ip->ipv4->ip_address) {
+                return (_true);
+            }
         }
+
         list_of_ips++;
     }
 
