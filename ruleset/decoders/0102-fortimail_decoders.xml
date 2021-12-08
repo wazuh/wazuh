@@ -35,7 +35,7 @@
 <decoder name="fortimail-like-child">
   <parent>fortimail-like</parent>
   <regex>client_ip=(\S+)</regex>
-  <order>client.ip</order>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="fortimail-like-child">
