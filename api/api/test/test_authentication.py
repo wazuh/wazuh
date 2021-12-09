@@ -3,13 +3,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import re
 import sys
 from copy import deepcopy
 from datetime import datetime
 from unittest.mock import patch, MagicMock, ANY, call
 
-from freezegun import freeze_time
 from werkzeug.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -136,8 +134,13 @@ def test_get_security_conf():
 def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_keypair,
                         mock_encode):
     """Verify if result is as expected"""
+
+    class NewDatetime(datetime):
+        def timestamp(self) -> float:
+            return 0
+
     mock_raise_if_exc.return_value = security_conf
-    with freeze_time("1970-01-01"):
+    with patch('api.authentication.datetime', NewDatetime):
         result = authentication.generate_token('001', {'roles': [1]})
     assert result == 'test_token', 'Result is not as expected'
 
@@ -148,7 +151,6 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
     mock_raise_if_exc.assert_called_once()
     mock_generate_keypair.assert_called_once()
     mock_encode.assert_called_once_with(original_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES512')
-
 
 
 @patch('api.authentication.TokenManager')
