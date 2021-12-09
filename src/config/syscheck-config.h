@@ -348,6 +348,14 @@ typedef struct fdb_transaction_t
     time_t interval;
 } fdb_transaction_t;
 
+typedef struct fdb_t {
+    sqlite3 *db;
+    sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
+    fdb_transaction_t transaction;
+    volatile bool full;
+    pthread_mutex_t mutex;
+} fdb_t;
+
 typedef struct _config {
     int rootcheck;                                     /* set to 0 when rootcheck is disabled */
     int disabled;                                      /* is syscheck disabled? */
@@ -424,6 +432,7 @@ typedef struct _config {
     pthread_mutex_t fim_symlink_mutex;
 #endif
     rtfim *realtime;
+    fdb_t *database;
     int database_store;
 
     char *prefilter_cmd;

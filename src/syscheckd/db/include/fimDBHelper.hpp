@@ -81,6 +81,7 @@ namespace FIMDBHelper
     *
     * @param tableName a string with the table name
     * @param count a int with count values
+    * @param query a json to modify the query
     *
     */
     template<typename T>

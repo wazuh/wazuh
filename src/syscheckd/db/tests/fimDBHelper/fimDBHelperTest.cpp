@@ -71,8 +71,9 @@ TEST_F(FIMHelperTest, executeGetCountSuccess)
 {
     std::string tableName;
     int count = 0;
+    nlohmann::json query;
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
-    FIMDBHelper::getCount<FIMDBMOCK>(tableName, count, nullptr);
+    FIMDBHelper::getCount<FIMDBMOCK>(tableName, count, query);
 }
 
 TEST_F(FIMHelperTest, createANewQuery)
