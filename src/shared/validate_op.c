@@ -321,7 +321,7 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
             if ((net6.u.Byte[i] & that_ip->ipv6->netmask[i]) != that_ip->ipv6->ip_address[i]) {
 #endif
                 break;
-            } else if (i >= (16 - 1)) {
+            } else if (i >= (15)) {
                 return (_true);
             }
         }
@@ -371,7 +371,7 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
                 if ((net6.u.Byte[i] & l_ip->ipv6->netmask[i]) != l_ip->ipv6->ip_address[i]) {
 #endif
                     break;
-                } else if (i >= (16 - 1)) {
+                } else if (i >= (15)) {
                     return (_true);
                 }
             }
