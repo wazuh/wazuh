@@ -1013,13 +1013,17 @@ class Master(server.AbstractServer):
         dict
             Dict object containing nodes information.
         """
+        self.logger.info("get_health function in master.py")
+        start = time()
         workers_info = {key: val.to_dict() for key, val in self.clients.items()
                         if filter_node is None or filter_node == {} or key in filter_node}
         n_connected_nodes = len(workers_info)
         if filter_node is None or self.configuration['node_name'] in filter_node:
             workers_info.update({self.configuration['node_name']: self.to_dict()})
+        self.logger.info(f"Time spent getting workers information: {time()-start}s")
 
         # Get active agents by node and format last keep alive date format
+        start = time()
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"] = \
                 Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
@@ -1027,6 +1031,7 @@ class Master(server.AbstractServer):
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
                                            ).strftime(decimals_date_format))
+        self.logger.info(f"Time spent getting agents information: {time() - start}s")
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
 
