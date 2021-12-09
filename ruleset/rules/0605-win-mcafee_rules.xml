@@ -3,7 +3,8 @@
 -->
 
 <!--
-  Windows McAfee rules ID: 62600 - 63099
+  Rules for:
+    Windows McAfee rules ID: 62600 - 63099
 -->
 
 <var name="MCAFEE_INFO">^257$|^5000$|^5026$|^5052$|^5055$</var>
