@@ -121,14 +121,21 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     result : dict
         Basic information of each node and synchronization process related information.
     """
+    import logging
+    import time
+    logger = logging.getLogger('wazuh-api')
+    start = time.time()
     response = await lc.execute(command=b'get_health',
                                 data=json.dumps(filter_node).encode(),
                                 wait_for_complete=False)
+    logger.info(f"Time spent in lc.execute function: {time.time()-start}s")
 
+    start = time.time()
     try:
         result = json.loads(response, object_hook=as_wazuh_object)
     except json.JSONDecodeError as e:
         raise WazuhClusterError(3020) if 'timeout' in response else e
+    logger.info(f"Time spent loading response as json: {time.time() - start}s")
 
     if isinstance(result, Exception):
         raise result
