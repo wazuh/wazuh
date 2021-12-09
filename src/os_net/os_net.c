@@ -385,6 +385,7 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, addrsize - 1);
         break;
     default:
+        close(clientsocket);
         return (-1);
     }
 
