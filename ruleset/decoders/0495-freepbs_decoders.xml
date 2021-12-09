@@ -34,7 +34,7 @@
 <decoder name="FreePBX_child">
   <parent>FreePBX</parent>
   <regex>[(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d)] (\w+)[(\d+)] (\w+).c: (\.+)</regex>
-  <order>timestamp,msg_type,code,origin,msg</order>n
+  <order>timestamp,msg_type,code,origin,msg</order>
 </decoder>
 
 <decoder name="FreePBX_child">
