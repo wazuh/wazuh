@@ -1,12 +1,9 @@
 <!--
-  -  Windows Event Channel ruleset for the McAfee channel 
-  -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
 <!--
-  -  ID range: 62600 - 63099
+  Windows McAfee rules ID: 62600 - 63099
 -->
 
 
@@ -22,23 +19,23 @@
   <rule id="62600" level="0">
     <if_sid>60006</if_sid>
     <field name="win.system.severityValue">^INFORMATION$</field>
-    <description>Windows McAfee informational event</description>
     <options>no_full_log</options>
+    <description>Windows McAfee informational event</description>
   </rule>
 
   <rule id="62601" level="0">
     <if_sid>60006</if_sid>
     <field name="win.system.severityValue">^WARNING$</field>
-    <description>Windows McAfee warning event</description>
     <options>no_full_log</options>
+    <description>Windows McAfee warning event</description>
     <group>gpg13_4.12,</group>
   </rule>
 
   <rule id="62602" level="5">
     <if_sid>60006</if_sid>
     <field name="win.system.severityValue">^ERROR$</field>
-    <description>Windows McAfee error event</description>
     <options>no_full_log</options>
+    <description>Windows McAfee error event</description>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -67,22 +64,22 @@
   <rule id="62606" level="12">
     <if_sid>62600,62601,62602</if_sid>
     <field name="win.system.message">$MCAFEE_VIRUS</field>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>McAfee Windows AV - Virus detected and not removed</description>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="62607" level="7">
     <if_sid>62606</if_sid>
     <field name="win.system.message">$MCAFEE_VIRUS_OK</field>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>McAfee Windows AV - Virus detected and properly removed</description>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="62608" level="7">
     <if_sid>62606</if_sid>
     <field name="win.system.message">Will be deleted</field>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>McAfee Windows AV - Virus detected and file will be deleted</description>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
   <rule id="62609" level="3">
