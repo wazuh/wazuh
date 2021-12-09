@@ -530,7 +530,7 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
 
 void OS_IsValidIP_valid_ipv6_prefix(void **state)
 {
-    char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
+    char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/60"};
 
     int ret = 0;
     os_ip *ret_ip;
@@ -546,7 +546,7 @@ void OS_IsValidIP_valid_ipv6_prefix(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "2001:db8:abcd:0012:0000:0000:0000:0000");
-    will_return(__wrap_w_expression_match, "64");
+    will_return(__wrap_w_expression_match, "60");
 
     will_return(__wrap_get_ipv6_numeric, 0);
 
@@ -655,6 +655,124 @@ void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
     w_free_os_ip(ret_ip);
 }
 
+void OS_IPFound_not_valid_ip(void **state)
+{
+    char ip_to_test[] = {"2001::db8:abcd::0012/64"};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+
+    will_return(__wrap_get_ipv4_numeric, -1);
+    will_return(__wrap_get_ipv6_numeric, -1);
+
+    ret = OS_IPFound(ip_to_test, ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IPFound_valid_ipv4(void **state)
+{
+    char ip_to_test[] = {"255.255.255.255"};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+    os_strdup("255.255.255.255", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
+
+    ret_ip->ipv4->ip_address = 0xFFFFFFFF;
+    ret_ip->ipv4->netmask = 0xFFFFFFFF;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0xFFFFFFFF);
+
+    ret = OS_IPFound(ip_to_test, ret_ip);
+    assert_int_equal(ret, 1);
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IPFound_valid_ipv4_negated(void **state)
+{
+    //char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
+    char ip_to_test[] = {"16.16.16.16"};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+    os_strdup("!16.16.16.16", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv4), ret_ip->ipv4);
+
+    ret_ip->ipv4->ip_address = 0x10101010;
+    ret_ip->ipv4->netmask = 0xFFFFFFFF;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x10101010);
+
+    ret = OS_IPFound(ip_to_test, ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IPFound_valid_ipv6(void **state)
+{
+    char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+    os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+
+    unsigned int a = 0;
+    for(a = 0; a < 16; a++) {
+        ret_ip->ipv6->ip_address[a] = 0x10;
+    }
+    for(a = 0; a < 16; a++) {
+        ret_ip->ipv6->netmask[a] = 0xFF;
+    }
+
+    will_return(__wrap_get_ipv4_numeric, -1);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x10);
+
+    ret = OS_IPFound(ip_to_test, ret_ip);
+    assert_int_equal(ret, 1);
+
+    w_free_os_ip(ret_ip);
+}
+
+void OS_IPFound_valid_ipv6_fail(void **state)
+{
+    char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
+
+    int ret = 0;
+    os_ip *ret_ip;
+    os_calloc(1, sizeof(os_ip), ret_ip);
+    os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
+    os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+
+    unsigned int a = 0;
+    for(a = 0; a < 16; a++) {
+        ret_ip->ipv6->ip_address[a] = 0x10;
+    }
+    for(a = 0; a < 16; a++) {
+        ret_ip->ipv6->netmask[a] = 0xFF;
+    }
+
+    will_return(__wrap_get_ipv4_numeric, -1);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    ret = OS_IPFound(ip_to_test, ret_ip);
+    assert_int_equal(ret, 0);
+
+    w_free_os_ip(ret_ip);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -664,7 +782,7 @@ int main(void) {
         cmocka_unit_test(w_validate_bytes_kilobytes),
         cmocka_unit_test(w_validate_bytes_megabytes),
         cmocka_unit_test(w_validate_bytes_gigabytes),
-        // OS_IsValidIP
+        // Test OS_IsValidIP
         cmocka_unit_test(OS_IsValidIP_null),
         cmocka_unit_test(OS_IsValidIP_any),
         cmocka_unit_test(OS_IsValidIP_any_struct),
@@ -688,6 +806,12 @@ int main(void) {
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_numeric_fail),
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_converNetmask_fail),
         cmocka_unit_test(OS_IsValidIP_valid_ipv6_sub_string_0),
+        // Test OS_IPFound
+        cmocka_unit_test(OS_IPFound_not_valid_ip),
+        cmocka_unit_test(OS_IPFound_valid_ipv4),
+        cmocka_unit_test(OS_IPFound_valid_ipv4_negated),
+        cmocka_unit_test(OS_IPFound_valid_ipv6),
+        cmocka_unit_test(OS_IPFound_valid_ipv6_fail),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
