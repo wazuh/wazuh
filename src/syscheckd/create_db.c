@@ -68,8 +68,11 @@ void fim_generate_delete_event(char *entry,
 
     // Remove path from the DB.
     w_mutex_lock(mutex);
-
     fim_db_remove_path(entry);
+    if (evt_data->report_event) {
+        json_event = fim_json_event(entry, NULL, original_configuration, evt_data, NULL);
+    }
+    w_mutex_unlock(mutex);
     /* DEPRECATED CODE
     w_mutex_lock(mutex);
     if (fim_db_remove_path(entry->file_entry.path) == FIMDB_ERR) {
@@ -81,7 +84,6 @@ void fim_generate_delete_event(char *entry,
         json_event = fim_json_event(entry, NULL, original_configuration, evt_data, NULL);
     }
     */
-    w_mutex_unlock(mutex);
 
     if (json_event != NULL) {
         send_syscheck_msg(json_event);
@@ -123,7 +125,7 @@ void fim_delete_file_event(char *entry,
         break;
     }
 
-    fim_generate_delete_event(fim_sql, entry, mutex, evt_data, configuration, NULL);
+    fim_generate_delete_event(entry, mutex, evt_data, configuration, NULL);
 }
 
 
@@ -314,7 +316,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
 
         if (saved_entry) {
             evt_data->type = FIM_DELETE;
-            fim_delete_file_event(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
+            fim_delete_file_event(saved_entry, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
             free_entry(saved_entry);
             saved_entry = NULL;
         } else if (configuration->options & CHECK_SEECHANGES) {
@@ -446,7 +448,13 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
         mdebug1(FIM_GET_ATTRIBUTES, path);
         return NULL;
     }
+    /* DEPRECATED CODE
+    if (fim_db_file_update(syscheck.database, path, new.file_entry.data, &saved) != FIMDB_OK) {
+        free_file_data(new.file_entry.data);
+        free_entry(saved);
+    */
     if (fim_db_file_update(&new, &saved) != FIMDB_OK) {
+        free_file_data(new.file_entry.data);
         return NULL;
     }
 
@@ -548,11 +556,14 @@ void fim_whodata_event(whodata_evt * w_evt) {
 void fim_process_wildcard_removed(directory_t *configuration) {
     fim_tmp_file *files = NULL;
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
+    /* DEPRECATED CODE
+    fim_entry *entry = fim_db_get_path(syscheck.database, configuration->path);
+    */
 
     fim_entry *entry = fim_db_get_path(configuration->path);
 
     if (entry != NULL) {
-        fim_generate_delete_event(syscheck.database, entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+        fim_generate_delete_event(entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
         free_entry(entry);
         return;
     }
@@ -580,6 +591,7 @@ void fim_process_wildcard_removed(directory_t *configuration) {
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     fim_entry *saved_data = NULL;
     fim_tmp_file *files = NULL;
+    event_data_t evt_data;
 
     // Search path in DB.
     /* DEPRECATED CODE
@@ -950,6 +962,20 @@ void fim_get_checksum (fim_file_data * data) {
     free(checksum);
 }
 
+/* DEPRECATED CODE
+void check_deleted_files() {
+    fim_tmp_file *file = NULL;
+    if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_NOT_SCANNED);
+    }
+
+    if (file && file->elements) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
+        w_rwlock_unlock(&syscheck.directories_lock);
+    }
+}
+*/
 cJSON *fim_json_event(const fim_entry *new_data,
                       const fim_file_data *old_data,
                       const directory_t *configuration,
@@ -1399,6 +1425,10 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
+    /* DEPRECATED CODE
+    inode_items = fim_db_get_count_file_inode(syscheck.database);
+    inode_paths = fim_db_get_count_file_entry(syscheck.database);
+    */
 
     inode_items = fim_db_get_count_file_inode();
     inode_paths = fim_db_get_count_file_entry();
