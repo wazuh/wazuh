@@ -53,8 +53,9 @@ TEST_F(FIMHelperTest, updateItemToDatabaseSuccess)
 {
     std::string tableName;
     nlohmann::json updateItem;
+    bool updated = true;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
-    FIMDBHelper::updateItem<FIMDBMOCK>(tableName, updateItem);
+    FIMDBHelper::updateItem<FIMDBMOCK>(updateItem, updated);
 }
 
 TEST_F(FIMHelperTest, executeQuerySuccess)
@@ -71,7 +72,7 @@ TEST_F(FIMHelperTest, executeGetCountSuccess)
     std::string tableName;
     int count = 0;
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
-    FIMDBHelper::getCount<FIMDBMOCK>(tableName, count);
+    FIMDBHelper::getCount<FIMDBMOCK>(tableName, count, nullptr);
 }
 
 TEST_F(FIMHelperTest, createANewQuery)

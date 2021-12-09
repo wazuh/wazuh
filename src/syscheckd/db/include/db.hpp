@@ -14,11 +14,15 @@
 extern "C" {
 #endif
 
+#include <openssl/evp.h>
+#include "syscheck.h"
 
 #define FIM_DB_MEMORY_PATH  ":memory:"
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
 
 #define EVP_MAX_MD_SIZE 64
+
+#define FILE_PRIMARY_KEY "path"
 
 #ifndef WIN32
 /**

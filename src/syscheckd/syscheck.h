@@ -268,11 +268,6 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
  */
 void fim_rt_delay();
 
-/**
- * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
- */
-void check_deleted_files();
-
 
 /**
  * @brief Produce a file change JSON event
@@ -928,7 +923,6 @@ char *fim_get_real_path(const directory_t *dir);
 /**
  * @brief Create a delete event and removes the entry from the database.
  *
- * @param fim_sql  FIM database struct.
  * @param entry Entry data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param _evt_data Information associated to the triggered event.
@@ -936,8 +930,7 @@ char *fim_get_real_path(const directory_t *dir);
  * @param _unused_field_2 Unused field, required to use this function as a callback.
  *
  */
-void fim_delete_file_event(fdb_t *fim_sql,
-                           fim_entry *entry,
+void fim_delete_file_event(char *entry,
                            pthread_mutex_t *mutex,
                            void *_evt_data,
                            void *_unused_field_1,
@@ -946,7 +939,6 @@ void fim_delete_file_event(fdb_t *fim_sql,
 /**
  * @brief Create a delete event and removes the entry from the database.
  *
- * @param fim_sql  FIM database struct.
  * @param entry Entry data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param evt_data Information associated to the triggered event.
@@ -954,8 +946,7 @@ void fim_delete_file_event(fdb_t *fim_sql,
  * @param _unused_field Unused field, required to use this function as a callback.
  *
  */
-void fim_generate_delete_event(fdb_t *fim_sql,
-                               fim_entry *entry,
+void fim_generate_delete_event(char *entry,
                                pthread_mutex_t *mutex,
                                void *evt_data,
                                void *configuration,

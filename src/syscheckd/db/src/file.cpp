@@ -1,7 +1,7 @@
 /**
- * @file fim_db_files.c
+ * @file file.cpp
  * @brief Definition of FIM database for files library.
- * @date 2020-09-9
+ * @date 2021-09-9
  *
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
@@ -13,43 +13,42 @@
 extern "C" {
 #endif
 
-#include "db.hpp"
-
-#ifdef WAZUH_UNIT_TESTING
-/* Remove static qualifier when unit testing */
-#define static
-
-/* Replace assert with mock_assert */
-extern void mock_assert(const int result, const char* const expression, const char* const file, const int line);
-#undef assert
-#define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
-#endif
-
 const auto fileColumnList = R"({"column_list":"[path, mode, last_event, scanned, options, checksum, dev, inode, size,
                                                 perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1,
                                                 hash_sha256, mtime]"})"_json;
 
+/**
+ * @brief Get path list using the sqlite LIKE operator using @pattern. (stored in @file).
+ * @param pattern Pattern that will be used for the LIKE operation.
+ *
+ * @return a vector with every paths on success, a empty vector otherwise.
+ */
+std::vector<std::string> fim_db_get_path_from_pattern(const char *pattern);
 
-void check_deleted_files()
-{
-    //TODO: This function should query in database every unscanned files and delete them
-    // this function used fim_db_get_not_scanned and fim_db_delete_not_scanned before this change
-}
-
-int fim_db_delete_range(fdb_t* fim_sql,
-                        fim_tmp_file* file,
+int fim_db_delete_range(const char* pattern,
                         pthread_mutex_t* mutex,
-                        int storage,
                         event_data_t* evt_data,
-                        directory_t* configuration)
+                        const directory_t* configuration)
 {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_validated_path, storage,
-                                    evt_data, configuration, NULL);
+    auto paths = fim_db_get_path_from_pattern(pattern);
+    if (paths.empty())
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No entry found with that pattern");
+        return FIMDB_ERR;
+    }
+    for (auto& path : paths)
+    {
+        char* entry = const_cast<char*>(path.c_str());
+        directory_t *validated_configuration = fim_configuration_directory(entry);
+        if (validated_configuration == configuration) {
+            fim_delete_file_event(entry, mutex, evt_data, NULL, NULL);
+        }
+    }
+
+    return FIMDB_OK;
 }
 
-int fim_db_process_missing_entry(fdb_t* fim_sql,
-                                 fim_tmp_file* file,
-                                 pthread_mutex_t* mutex,
+int fim_db_process_missing_entry(pthread_mutex_t* mutex,
                                  int storage,
                                  event_data_t* evt_data)
 {
@@ -57,9 +56,7 @@ int fim_db_process_missing_entry(fdb_t* fim_sql,
                                     NULL);
 }
 
-int fim_db_remove_wildcard_entry(fdb_t* fim_sql,
-                                 fim_tmp_file* file,
-                                 pthread_mutex_t* mutex,
+int fim_db_remove_wildcard_entry(pthread_mutex_t* mutex,
                                  int storage,
                                  event_data_t* evt_data,
                                  directory_t* configuration)
@@ -153,48 +150,70 @@ void fim_db_bind_path(fdb_t* fim_sql, int index, const char* path)
 
 int fim_db_remove_path(const char* path)
 {
-    nlohmann::json removeFile;
-    removeFile["path"] = path;
+    int res = 0;
+    auto removeFile = std::string("WHERE path=") + std::string(path);
+    FIMDBHelper::removeFromDB<FIMDB>(FIMBD_FILE_TABLE_NAME, removeFile);
 
-    return FIMDBHelper::removeFromDB<FIMDB>(FIMBD_FILE_TABLE_NAME, removeFile);
+    return res;
 }
 
 int fim_db_get_count_file_inode()
 {
-    int res = 0;
+    int count = 0;
     nlohmann::json inodeQuery;
     inodeQuery["column_list"] = "count(DISTINCT (inode || ',' || dev)) AS count";
     auto countQuery = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "");
-    FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, res, countQuery);
+    FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, count, countQuery);
 
-    return res;
+    return count;
 }
 
 int fim_db_get_count_file_entry(fdb_t* fim_sql)
 {
-    int res = 0;
-    FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, res, nullptr);
+    int count = 0;
+    nlohmann::json query;
+    FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, count, query);
 
-    return res;
+    return count;
 }
 
-int fim_db_get_path_from_pattern(fdb_t* fim_sql, const char* pattern, fim_tmp_file** file, int storage)
+std::vector<std::string>  fim_db_get_path_from_pattern(const char* pattern)
 {
-    int ret = 0;
+    std::vector<std::string> paths;
     auto filter = std::string("WHERE path LIKE") + std::string(pattern);
     auto queryFromPattern = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
     nlohmann::json resultQuery;
-    FIMDBHelper::getDBItem<FIMDB>(resultQuery, queryFromPattern);
-    
-    return resultQuery;
+    try
+    {
+        FIMDBHelper::getDBItem<FIMDB>(resultQuery, queryFromPattern);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        return paths;
+    }
+    for (auto& item : resultQuery["path"].items())
+    {
+        paths.push_back(item.value());
+    }
+
+    return paths;
 }
 
-int fim_db_file_update(fdb_t* fim_sql, const char* path, const fim_file_data* data, fim_entry** saved)
+int fim_db_file_update(const fim_entry* data, bool* updated)
 {
-    int retval;
-    /* TODO: Add c++ code to update a file in DB, We should add a logic to add a new entry if this entry doesn't exists
-    */
-    return retval;
+    std::unique_ptr<FileItem> file(new FileItem(const_cast<fim_entry*>(data)));
+    try
+    {
+        FIMDBHelper::updateItem<FIMDB>(*file->toJSON(), *updated);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        return FIMDB_ERR;
+    }
+
+    return FIMDB_OK;
 }
 #ifdef __cplusplus
 }

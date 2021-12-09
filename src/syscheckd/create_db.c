@@ -53,8 +53,7 @@ static const char *FIM_EVENT_MODE[] = {
 void update_wildcards_config();
 
 
-void fim_generate_delete_event(fdb_t *fim_sql,
-                               fim_entry *entry,
+void fim_generate_delete_event(char *entry,
                                pthread_mutex_t *mutex,
                                void *_evt_data,
                                void *configuration,
@@ -64,13 +63,13 @@ void fim_generate_delete_event(fdb_t *fim_sql,
     event_data_t *evt_data = (event_data_t *)_evt_data;
 
     if (original_configuration->options & CHECK_SEECHANGES) {
-        fim_diff_process_delete_file(entry->file_entry.path);
+        fim_diff_process_delete_file(entry);
     }
 
     // Remove path from the DB.
     w_mutex_lock(mutex);
 
-    fim_db_remove_path(entry->file_entry.path);
+    fim_db_remove_path(entry);
     /* DEPRECATED CODE
     w_mutex_lock(mutex);
     if (fim_db_remove_path(entry->file_entry.path) == FIMDB_ERR) {
@@ -91,8 +90,7 @@ void fim_generate_delete_event(fdb_t *fim_sql,
     cJSON_Delete(json_event);
 }
 
-void fim_delete_file_event(fdb_t *fim_sql,
-                           fim_entry *entry,
+void fim_delete_file_event(char *entry,
                            pthread_mutex_t *mutex,
                            void *_evt_data,
                            __attribute__((unused)) void *_unused_field_1,
@@ -100,7 +98,7 @@ void fim_delete_file_event(fdb_t *fim_sql,
     event_data_t *evt_data = (event_data_t *)_evt_data;
     directory_t *configuration = NULL;
 
-    configuration = fim_configuration_directory(entry->file_entry.path);
+    configuration = fim_configuration_directory(entry);
 
     if (configuration == NULL) {
         return;
@@ -158,6 +156,8 @@ time_t fim_scan() {
     */
     w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
         char *path = fim_get_real_path(dir_it);
 
         fim_checker(path, &evt_data, dir_it);
@@ -185,7 +185,9 @@ time_t fim_scan() {
         */
     }
 
+    /* DEPRECATED CODE
     check_deleted_files();
+    */
 
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
@@ -430,7 +432,7 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
 static cJSON *
 _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
     fim_entry new;
-    fim_entry *saved = NULL;
+    bool saved;
     cJSON *json_event = NULL;
     char *diff = NULL;
 
@@ -444,13 +446,9 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
         mdebug1(FIM_GET_ATTRIBUTES, path);
         return NULL;
     }
-    /* DEPRECATED CODE
-    if (fim_db_file_update(syscheck.database, path, new.file_entry.data, &saved) != FIMDB_OK) {
-        free_file_data(new.file_entry.data);
-        free_entry(saved);
+    if (fim_db_file_update(&new, &saved) != FIMDB_OK) {
         return NULL;
     }
-    */
 
     if (!saved) {
         evt_data->type = FIM_ADD; // New entry
@@ -462,11 +460,10 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
         diff = fim_file_diff(path, configuration);
     }
 
-    json_event = fim_json_event(&new, saved ? saved->file_entry.data : NULL, configuration, evt_data, diff);
+    json_event = fim_json_event(&new, saved ? new.file_entry.data : NULL, configuration, evt_data, diff);
 
     os_free(diff);
     free_file_data(new.file_entry.data);
-    free_entry(saved);
 
     return json_event;
 }
@@ -576,7 +573,7 @@ void fim_process_wildcard_removed(directory_t *configuration) {
     }
     */
 
-    fim_db_remove_wildcard_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store,
+    fim_db_remove_wildcard_entry(&syscheck.fim_entry_mutex, syscheck.database_store,
                                  &evt_data, configuration);
 }
 

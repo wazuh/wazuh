@@ -12,7 +12,6 @@
 #ifndef _FIMDBHELPER_HPP
 #define _FIMDBHELPER_HPP
 #include "fimDB.hpp"
-#include "dbItem.hpp"
 
 namespace FIMDBHelper
 {
@@ -21,7 +20,7 @@ namespace FIMDBHelper
     /**
     * @brief Init the FIM DB instance.
     *
-    * @param sync_interval Interval when the sync is performed-
+    * @param sync_interval Interval when the sync is performed
     * @param file_limit Max number of files.
     * @param sync_callback Synchronization callback.
     * @param logCallback Logging callback.
@@ -36,7 +35,7 @@ namespace FIMDBHelper
     /**
     * @brief Init the FIM DB instance.
     *
-    * @param sync_interval Interval when the sync is performed-
+    * @param sync_interval Interval when the sync is performed
     * @param file_limit Max number of files.
     * @param registry_limit Max number of registries.
     * @param sync_callback Synchronization callback.
@@ -55,11 +54,11 @@ namespace FIMDBHelper
     * @brief Delete a row from a table
     *
     * @param tableName a string with the table name
-    * @param query a json with a filter to delete an element to the database
+    * @param filter a string with a filter to delete an element to the database
     *
     */
     template<typename T>
-    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
+    void removeFromDB(const std::string& tableName, const std::string& filter)
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
@@ -72,10 +71,11 @@ namespace FIMDBHelper
         })";
         auto deleteJson = nlohmann::json::parse(deleteJsonStatement);
         deleteJson["table"] = tableName;
-        deleteJson["query"]["data"] = {filter};
+        deleteJson["query"]["where_filter_opt"] = filter;
 
         T::getInstance().removeItem(deleteJson);
     }
+
     /**
     * @brief Get count of all entries in a table
     *
@@ -84,23 +84,32 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    void getCount(const std::string& tableName, int& count)
+    void getCount(const std::string & tableName, int & count, const nlohmann::json & query)
     {
-        const auto countQueryStatement = R"({
-                                                "table":"",
-                                                "query":{"column_list":["count(*) AS count"],
-                                                "row_filter":"",
-                                                "distinct_opt":false,
-                                                "order_by_opt":"",
-                                                "count_opt":100}
-        })";
-        auto countQuery = nlohmann::json::parse(countQueryStatement);
-        countQuery["table"] = tableName;
+        nlohmann::json countQuery;
+        if (!query.empty())
+        {
+            countQuery = query;
+        }
+        else
+        {
+            const auto countQueryStatement = R"({
+                                                    "table":"",
+                                                    "query":{"column_list":["count(*) AS count"],
+                                                    "row_filter":"",
+                                                    "distinct_opt":false,
+                                                    "order_by_opt":"",
+                                                    "count_opt":100}
+            })";
+            countQuery = nlohmann::json::parse(countQueryStatement);
+            countQuery["table"] = tableName;
+
+        }
         auto callback
         {
             [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
-                if (type == ReturnTypeCallback::SELECTED)
+                if (ReturnTypeCallback::SELECTED == type)
                 {
                     count = jsonResult["query"]["count"];
                 }
@@ -138,39 +147,28 @@ namespace FIMDBHelper
     /**
     * @brief Update a row from a table.
     *
-    * @param tableName a string with the table name
-    * @param item a RegistryKey, RegistryValue or File with their parameters
+    * @param item a json with a RegistryKey, RegistryValue or File with their parameters
     *
-    * @return 0 on success, another value otherwise.
     */
     template<typename T>
-    void updateItem(const std::string& tableName, const nlohmann::json& item)
+    void updateItem(const nlohmann::json& item, bool& updated)
     {
-        const auto updateStatement = R"(
-                                            {
-                                                "table": "",
-                                                "data":[
-                                                    {
-                                                    }
-                                                ]
-                                            }
-        )";
-        auto update = nlohmann::json::parse(updateStatement);
-        update["table"] = tableName;
-        update["data"] = nlohmann::json::array({item});
-        bool error = false;
         const auto callback
         {
-            [&error](ReturnTypeCallback type, const nlohmann::json&)
+            [&updated](ReturnTypeCallback type, const nlohmann::json&)
             {
-                if (type == ReturnTypeCallback::DB_ERROR)
+                if (ReturnTypeCallback::MODIFIED == type)
                 {
-                    error = true;
+                    updated = true;
+                }
+                else
+                {
+                    updated = false;
                 }
             }
         };
 
-        T::getInstance().updateItem(update, callback);
+        T::getInstance().updateItem(item, callback);
     }
 
     /**
@@ -207,8 +205,8 @@ namespace FIMDBHelper
     *
     * @return a nlohmann::json with a database query
     */
-    nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
-                           const std::string & order)
+    inline nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
+                                  const std::string & order)
     {
         nlohmann::json query;
         query["table"] = tableName;
@@ -222,27 +220,16 @@ namespace FIMDBHelper
     }
 
     /**
-    * @brief Create a new query to database
+    * @brief Create a log message
     *
-    * @param tableName a string with table name
-    * @param columnList an array with the column list
-    * @param filter a string with a filter to a table
-    * @param order a string with the column to order in result
+    * @param modules_log_level_t a string with table name
+    * @param msg an array with the column list
     *
-    * @return a nlohmann::json with a database query
     */
-    nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
-                           const std::string & order)
+    template<typename T>
+    void logErr(const modules_log_level_t logLevel, const std::string& msg)
     {
-        nlohmann::json query;
-        query["table"] = tableName;
-        query["query"]["column_list"] = columnList["column_list"];
-        query["query"]["row_filter"] = filter;
-        query["query"]["distinct_opt"] = false;
-        query["query"]["order_by_opt"] = order;
-        query["query"]["count_opt"] = 100;
-
-        return query;
+        T::getInstance().logErr(logLevel, msg);
     }
 }
 

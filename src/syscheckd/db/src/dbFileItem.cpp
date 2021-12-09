@@ -43,26 +43,29 @@ void FileItem::createFimEntry()
 
 void FileItem::createJSON()
 {
-    nlohmann::json conf = {};
+    nlohmann::json conf;
+    nlohmann::json data;
 
-    conf.push_back(nlohmann::json::object_t::value_type("path", m_identifier));
-    conf.push_back(nlohmann::json::object_t::value_type("mode", m_mode));
-    conf.push_back(nlohmann::json::object_t::value_type("last_event", m_lastEvent));
-    conf.push_back(nlohmann::json::object_t::value_type("scanned", m_scanned));
-    conf.push_back(nlohmann::json::object_t::value_type("options", m_options));
-    conf.push_back(nlohmann::json::object_t::value_type("checksum", m_checksum));
-    conf.push_back(nlohmann::json::object_t::value_type("dev", m_dev));
-    conf.push_back(nlohmann::json::object_t::value_type("inode", m_inode));
-    conf.push_back(nlohmann::json::object_t::value_type("size", m_size));
-    conf.push_back(nlohmann::json::object_t::value_type("perm", m_perm));
-    conf.push_back(nlohmann::json::object_t::value_type("attributes", m_attributes));
-    conf.push_back(nlohmann::json::object_t::value_type("uid", m_uid));
-    conf.push_back(nlohmann::json::object_t::value_type("gid", m_gid));
-    conf.push_back(nlohmann::json::object_t::value_type("user_name", m_username));
-    conf.push_back(nlohmann::json::object_t::value_type("group_name", m_groupname));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_md5", m_md5));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_sha1", m_sha1));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_sha256", m_sha256));
-    conf.push_back(nlohmann::json::object_t::value_type("mtime", m_time));
+    conf["table"] = FIMBD_FILE_TABLE_NAME;
+    data.push_back(nlohmann::json::object_t::value_type("path", m_identifier));
+    data.push_back(nlohmann::json::object_t::value_type("mode", m_mode));
+    data.push_back(nlohmann::json::object_t::value_type("last_event", m_lastEvent));
+    data.push_back(nlohmann::json::object_t::value_type("scanned", m_scanned));
+    data.push_back(nlohmann::json::object_t::value_type("options", m_options));
+    data.push_back(nlohmann::json::object_t::value_type("checksum", m_checksum));
+    data.push_back(nlohmann::json::object_t::value_type("dev", m_dev));
+    data.push_back(nlohmann::json::object_t::value_type("inode", m_inode));
+    data.push_back(nlohmann::json::object_t::value_type("size", m_size));
+    data.push_back(nlohmann::json::object_t::value_type("perm", m_perm));
+    data.push_back(nlohmann::json::object_t::value_type("attributes", m_attributes));
+    data.push_back(nlohmann::json::object_t::value_type("uid", m_uid));
+    data.push_back(nlohmann::json::object_t::value_type("gid", m_gid));
+    data.push_back(nlohmann::json::object_t::value_type("user_name", m_username));
+    data.push_back(nlohmann::json::object_t::value_type("group_name", m_groupname));
+    data.push_back(nlohmann::json::object_t::value_type("hash_md5", m_md5));
+    data.push_back(nlohmann::json::object_t::value_type("hash_sha1", m_sha1));
+    data.push_back(nlohmann::json::object_t::value_type("hash_sha256", m_sha256));
+    data.push_back(nlohmann::json::object_t::value_type("mtime", m_time));
+    conf["data"] = nlohmann::json::array({data});
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 }
