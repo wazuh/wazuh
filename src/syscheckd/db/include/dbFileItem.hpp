@@ -13,6 +13,7 @@
 #define _FILEITEM_HPP
 #include "json.hpp"
 #include "dbItem.hpp"
+#define FIMBD_FILE_TABLE_NAME "file_entry"
 
 struct FimFileDataDeleter
 {
@@ -66,46 +67,7 @@ class FileItem final : public DBItem
             m_username = std::string(fim->file_entry.data->user_name);
             createJSON();
             createFimEntry();
-        }
-
-        FileItem(const std::string& path,
-                 const std::string& checksum,
-                 const time_t& lastEvent,
-                 const fim_event_mode& mode,
-                 const unsigned int& scanned,
-                 const int& options,
-                 const int& uid,
-                 const int& gid,
-                 const unsigned int& time,
-                 const unsigned int& size,
-                 const unsigned long& dev,
-                 const unsigned long int& inode,
-                 const std::string& attributes,
-                 const std::string& groupname,
-                 const std::string& md5,
-                 const std::string& perm,
-                 const std::string& sha1,
-                 const std::string& sha256,
-                 const std::string& username)
-            : DBItem(path, scanned, lastEvent, checksum, mode)
-            , m_options( options )
-            , m_gid ( gid )
-            , m_uid( uid )
-            , m_size( size )
-            , m_dev( dev )
-            , m_inode( inode )
-            , m_time( time )
-            , m_attributes( attributes )
-            , m_groupname( groupname )
-            , m_md5( md5 )
-            , m_perm( perm )
-            , m_sha1( sha1)
-            , m_sha256( sha256 )
-            , m_username( username )
-        {
-            createFimEntry();
-            createJSON();
-        }
+        };
 
         FileItem(const nlohmann::json& fim)
             : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
