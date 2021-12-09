@@ -144,7 +144,7 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(sysinfo wazuhext rpm rpmio popt)
+target_link_libraries(sysinfo wazuhext)
 
 
 if(APPLE)
