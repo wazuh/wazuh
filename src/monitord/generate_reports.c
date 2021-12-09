@@ -12,119 +12,132 @@
 #include "monitord.h"
 #include "os_maild/maild.h"
 
-static const char *(monthss[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                                 };
-
-
-void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
+void generate_reports(time_t starting_time)
 {
-    int s = 0;
-    int i;
-
-    if (!mond.smtpserver) {
+    if (mond.reports == 0 || !mond.smtpserver) {
         return;
     }
 
-    if (mond.reports) {
-        int twait = 0;
-        int childcount = 0;
-
-        while (mond.reports[s]) {
-            pid_t pid;
-            if (mond.reports[s]->emailto == NULL) {
-                s++;
-                continue;
-            }
-
-            /* We create a new process to run the report and send the email.
-             * To avoid crashing monitord if something goes wrong.
-             */
-            pid = fork();
-            if (pid < 0) {
-                merror("Fork failed. cause: %d - %s", errno, strerror(errno));
-                s++;
-                continue;
-            } else if (pid == 0) {
-                char fname[256];
-                char aname[256];
-                fname[255] = '\0';
-                aname[255] = '\0';
-                snprintf(fname, 255, "/logs/.report-%d.log", (int)getpid());
-
-                minfo("Starting daily reporting for '%s'", mond.reports[s]->title);
-                mond.reports[s]->r_filter.fp = fopen(fname, "w+");
-                if (!mond.reports[s]->r_filter.fp) {
-                    merror("Unable to open temporary reports file.");
-                    s++;
-                    continue;
-                }
-
-                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
-
-                for (i = 1; !IsFile(aname); i++) {
-                    /* Open the log file */
-                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
-                    os_strdup(aname, mond.reports[s]->r_filter.filename);
-
-                    /* Start report */
-                    os_ReportdStart(&mond.reports[s]->r_filter);
-                    fflush(mond.reports[s]->r_filter.fp);
-
-                    if (ftell(mond.reports[s]->r_filter.fp) < 10) {
-                        minfo("Report '%s' empty.", mond.reports[s]->title);
-                    } else if (OS_SendCustomEmail(mond.reports[s]->emailto,
-                                                  mond.reports[s]->title,
-                                                  mond.smtpserver,
-                                                  mond.emailfrom,
-                                                  NULL,
-                                                  mond.emailidsname,
-                                                  mond.reports[s]->r_filter.fp,
-                                                  p)
-                               != 0) {
-                        mwarn("Unable to send report email.");
-                    }
-
-                    fclose(mond.reports[s]->r_filter.fp);
-                    unlink(fname);
-                    free(mond.reports[s]->r_filter.filename);
-                    mond.reports[s]->r_filter.filename = NULL;
-
-                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d-%.3d.log", ALERTS, cyear, monthss[cmon], "alerts", cday, i);
-                }
-
-                exit(0);
-            } else {
-                /* Sleep between each report. Time is not important in here. */
-                sleep(20);
-                childcount++;
-            }
-
-            s++;
+    int reports_in_flight = 0;
+    for(report_config* current_report = *mond.reports; current_report; current_report++)
+    {
+        if (*current_report->emailto == NULL) {
+            minfo("Report <%s> does not have a mailto set. Skipping...", current_report->title);
+            continue;
         }
 
-        while (childcount) {
-            int wp;
-            wp = waitpid((pid_t) - 1, NULL, WNOHANG);
-            if (wp < 0) {
-                merror(WAITPID_ERROR, errno, strerror(errno));
-            } else if (wp == 0) {
-                /* If there is still any report left, sleep 5 and try again */
-                sleep(5);
-                twait++;
+        /* We create a new process to run the report and send the email.
+         * To avoid crashing monitord if something goes wrong.
+         */
+        pid_t pid = fork();
 
-                if (twait > 2) {
-                    mwarn("Report taking too long to complete. Waiting for it to finish...");
-                    sleep(10);
-                    if (twait > 10) {
-                        mwarn("Report took too long. Moving on...");
-                        break;
-                    }
-                }
-            } else {
-                childcount--;
+        if (pid < 0) {
+            merror("Fork failed. cause: %d - %s", errno, strerror(errno));
+            continue;
+        } else if (pid == 0) {
+
+            char report_path[OS_FLSIZE] = {0};
+            snprintf(report_path, OS_FLSIZE, "/logs/.report-%d.log", (int)getpid());
+
+            minfo("Starting daily reporting for '%s'", current_report->title);
+
+            FILE* report_file = fopen(report_path, "w+");
+            if (report_file == 0) {
+                merror("Unable to open temporary reports file.");
+                continue;
             }
+
+            current_report->r_filter.fp = report_file;
+
+            int additional_logs_sufix = 0;
+            char log_path[OS_FLSIZE] = {0};
+
+            struct tm translated_time = {0};
+            localtime_r(&starting_time, &translated_time);
+
+            time_t now = time(0);
+            struct tm translated_now = {0};
+            localtime_r(&now, &translated_now);
+
+            do{
+                snprintf(log_path, OS_FLSIZE,
+                        additional_logs_sufix == 0 ? "%s/%d/%s/ossec-alerts-%02d.log" :
+                        "%s/%d/%s/ossec-alerts-%02d-%.3d.log",
+                        ALERTS,
+                        translated_time.tm_year + 1900,
+                        get_short_month_name(translated_time.tm_mon),
+                        translated_time.tm_mday,
+                        additional_logs_sufix);
+
+                additional_logs_sufix++;
+
+                if(IsFile(log_path) != 0)
+                {
+                    /* No more logs to process */
+                    break;
+                }
+
+                os_strdup(log_path, current_report->r_filter.filename);
+
+                os_ReportdStart(&current_report->r_filter);
+                fflush(current_report->r_filter.fp);
+
+                if (ftell(current_report->r_filter.fp) < 10) {
+                    minfo("Report '%s' empty.", current_report->title);
+                } else if (OS_SendCustomEmail(current_report->emailto,
+                            current_report->title,
+                            mond.smtpserver,
+                            mond.emailfrom,
+                            NULL,
+                            mond.emailidsname,
+                            current_report->r_filter.fp,
+                            &translated_now)
+                        != 0) {
+                    mwarn("Unable to send report email.");
+                }
+
+                free(current_report->r_filter.filename);
+                current_report->r_filter.filename = NULL;
+
+            }while(1);
+
+            fclose(current_report->r_filter.fp);
+            unlink(report_path);
+
+            exit(0);
+        } else {
+            /* Sleep between each report. Time is not important in here. */
+            sleep(20);
+            reports_in_flight++;
         }
     }
-    return;
+
+
+    int retries = 0;
+    while (reports_in_flight) {
+        int wp = waitpid((pid_t) - 1, NULL, WNOHANG);
+
+        if (wp < 0) {
+
+            merror(WAITPID_ERROR, errno, strerror(errno));
+
+        } else if (wp == 0) {
+            /* If there is still any report left, sleep 5 and try again */
+            sleep(5);
+            retries++;
+
+            if (retries > 2) {
+                mwarn("Report taking too long to complete. Waiting for it to finish...");
+
+                sleep(10);
+
+                if (retries > 10) {
+                    mwarn("Report took too long. Moving on...");
+                    break;
+                }
+            }
+        } else {
+            reports_in_flight--;
+        }
+    }
 }

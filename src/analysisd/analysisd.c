@@ -234,12 +234,6 @@ pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
-/* To translate between month (int) to month (char) */
-static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                  };
-
 /* CPU Info*/
 static int cpu_cores;
 
@@ -2176,7 +2170,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
         localtime_r(&c_time, &tm_result);
         day = tm_result.tm_mday;
         year = tm_result.tm_year + 1900;
-        strncpy(mon, month[tm_result.tm_mon], 3);
+        strncpy(mon, get_short_month_name(tm_result.tm_mon), 3);
 
         /* Set the global hour/weekday */
         __crt_hour = tm_result.tm_hour;

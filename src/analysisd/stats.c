@@ -25,10 +25,6 @@ static const char *(weekdays[]) = {"Sunday", "Monday", "Tuesday", "Wednesday", "
                       "Friday", "Saturday"
                      };
 
-static const char *(l_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
-                     "Sep", "Oct", "Nov", "Dec"
-                    };
-
 /* Global variables */
 
 /* Hour 25 is internally used */
@@ -443,7 +439,7 @@ void Start_Time(){
     today = tm_result.tm_mday;
     thishour = tm_result.tm_hour;
     prev_year = tm_result.tm_year + 1900;
-    strncpy(prev_month, l_month[tm_result.tm_mon], 3);
+    strncpy(prev_month, get_short_month_name(tm_result.tm_mon), 3);
     prev_month[3] = '\0';
 
 }

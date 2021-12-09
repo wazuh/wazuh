@@ -161,9 +161,7 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
                 // If format is not speficied, use RFC3164
 #ifdef WIN32
                 // strfrime() does not allow %e in Windows
-                const char * MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
+                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", get_short_month_name(tm.tm_mon), tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
                     field = _timestamp;
                 }
 #else

@@ -18,12 +18,6 @@ static void file_sleep(void);
 static void GetFile_Queue(file_queue *fileq) __attribute__((nonnull));
 static int Handle_Queue(file_queue *fileq, int flags) __attribute__((nonnull));
 
-/* To translate between month (int) to month (char) */
-static const char *(s_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                                 };
-
-
 static void file_sleep() {
 
     struct timeval fp_timeout;
@@ -110,7 +104,7 @@ int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year + 1900;
 
-    strncpy(fileq->mon, s_month[p->tm_mon], 3);
+    strncpy(fileq->mon, get_short_month_name(p->tm_mon), 3);
     memset(fileq->file_name, '\0', MAX_FQUEUE + 1);
 
     /* Set the supplied flags */
@@ -151,7 +145,7 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
 
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year + 1900;
-    strncpy(fileq->mon, s_month[p->tm_mon], 3);
+    strncpy(fileq->mon, get_short_month_name(p->tm_mon), 3);
 
     /* Get latest file */
     GetFile_Queue(fileq);

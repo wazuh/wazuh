@@ -25,12 +25,26 @@
 #define CHECK_LOGS_SIZE TRUE
 
 /* Prototypes */
+typedef enum log_extension
+{
+    LE_LOG = 1 << 0,
+    LE_JSON= 1 << 1
+}log_extension_t;
+
+typedef struct {
+    time_t log_creation_time;
+    int configured_daily_rotations;
+    int compress;
+    log_extension_t log_extension;
+}rotate_log_config_t;
+void w_rotate_log(const rotate_log_config_t* config);
+void remove_old_logs(int keep_log_days); 
+
 void Monitord(void) __attribute__((noreturn));
-void manage_files(int cday, int cmon, int cyear);
-void generate_reports(int cday, int cmon, int cyear, const struct tm *p);
+void compress_and_sign_logs(time_t starting_time);
+void generate_reports(time_t starting_time);
 void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext);
 void OS_CompressLog(const char *logfile);
-void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 int delete_old_agent(const char *agent_id);
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait);
 
@@ -154,16 +168,6 @@ cJSON *getReportsOptions(void);
 size_t moncom_dispatch(char * command, char ** output);
 size_t moncom_getconfig(const char * section, char ** output);
 void * moncom_main(__attribute__((unused)) void * arg);
-
-typedef struct _monitor_time_control {
-    long disconnect_counter;
-    long alert_counter;
-    long delete_counter;
-    struct tm current_time;
-    int today;
-    int thismonth;
-    int thisyear;
-} monitor_time_control;
 
 /* Global variables */
 extern monitor_config mond;

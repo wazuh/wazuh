@@ -18,6 +18,15 @@
 
 #include <time.h>
 
+#define DAY_IN_SECONDS 86400
+
+/**
+ * @brief Get the current short month name (ex "Jan")
+ *
+ * @param month Month number starting at 0
+ */
+const char* get_short_month_name(unsigned month);
+
 /**
  * @brief Get the current calendar time
  *

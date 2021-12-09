@@ -53,7 +53,7 @@ void monitor_agents_disconnection(){
     //The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time,
                                          "synced", &sock);
-    if (mond.monitor_agents != 0 && agents_array) {
+    if (agents_array) {
         for (int i = 0; agents_array[i] != -1; i++) {
             snprintf(str_agent_id, 12, "%d", agents_array[i]);
             if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
@@ -157,34 +157,6 @@ void monitor_agents_deletion(){
             }
         }
         os_free(agents_array);
-    }
-}
-
-void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH_MAX]) {
-    struct stat buf;
-    off_t size;
-
-    if (check_logs_size == FALSE && mond.rotate_log) {
-        sleep(mond.day_wait);
-        /* Daily rotation and compression of ossec.log/ossec.json */
-        w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
-
-    } else if (check_logs_size == TRUE && mond.rotate_log && mond.size_rotate > 0){
-        if (stat(path, &buf) == 0) {
-            size = buf.st_size;
-            /* If log file reachs maximum size, rotate ossec.log */
-            if ( (unsigned long) size >= mond.size_rotate) {
-                w_rotate_log(mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
-            }
-        }
-
-        if (stat(path_json, &buf) == 0) {
-            size = buf.st_size;
-            /* If log file reachs maximum size, rotate ossec.json */
-            if ( (unsigned long) size >= mond.size_rotate) {
-                w_rotate_log(mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
-            }
-        }
     }
 }
 

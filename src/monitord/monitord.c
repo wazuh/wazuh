@@ -18,33 +18,28 @@
 #include "string_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "time.h"
+#include "math.h"
 
 /* Global variables */
 monitor_config mond;
 bool worker_node;
 OSHash* agents_to_alert_hash;
-monitor_time_control mond_time_control;
+
+static void get_min_sleep_time(long *current_sleep_time, long time_setting, long current_counter_time)
+{
+    long delta = time_setting - current_counter_time;
+    *current_sleep_time = MIN(*current_sleep_time, delta > 0 ? delta : 0);
+}
 
 void Monitord()
 {
-    char path[PATH_MAX];
-    char path_json[PATH_MAX];
-
     /* Wait a few seconds to settle */
     sleep(10);
 
-    /* Set internal log path to rotate them */
-#ifdef WIN32
-    /* ossec.log */
-    snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* ossec.json */
-    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#else
-    /* /var/ossec/logs/ossec.log */
-    snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* /var/ossec/logs/ossec.json */
-    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#endif
+    char log_file_path[PATH_MAX];
+    char json_log_file_path[PATH_MAX];
+    snprintf(log_file_path, PATH_MAX, "%s", LOGFILE);
+    snprintf(json_log_file_path, PATH_MAX, "%s", LOGJSONFILE);
 
     /* Connect to the message queue or exit */
     monitor_queue_connect();
@@ -61,42 +56,123 @@ void Monitord()
         merror(MEM_ERROR, errno, strerror(errno));
     }
 
-    /* Get current time and initiate counters */
-    monitor_init_time_control();
+    //TODO should we move this time to the start of the day(00:00) ?
+    time_t day_old_time = time(0);
+    long check_disconnection_timer = 0;
+    long check_alert_timer = 0;
+    long delete_agents_timer = 0;
+    long daily_log_rotate_timer = 0;
+
+    time_t loop_time = time(0);
 
     /* Main monitor loop */
     while (1) {
-        monitor_step_time();
+        long loop_sleep_time = LONG_MAX;
+        time_t now = time(0);
+        double delta_time = difftime(now, loop_time);
+        loop_time = now;
 
-        /* In a local installation, there is no need to check agents */
+        check_disconnection_timer += delta_time;
+        check_alert_timer += delta_time;
+        delete_agents_timer += delta_time;
+        daily_log_rotate_timer += delta_time;
+
 #ifndef LOCAL
         if (mond.a_queue < 0) {
-            /* Connecting to the message queue */
             monitor_queue_connect();
         }
-        if(check_disconnection_trigger()){
-            monitor_agents_disconnection();
-        }
-        if(check_alert_trigger()){
-            monitor_agents_alert();
-        }
-        if(check_deletion_trigger()){
-            monitor_agents_deletion();
+
+        if(mond.monitor_agents != 0){
+
+            get_min_sleep_time(&loop_sleep_time, mond.global.agents_disconnection_time, check_disconnection_timer);
+            if(check_disconnection_timer >= mond.global.agents_disconnection_time){
+                check_disconnection_timer = 0;
+                monitor_agents_disconnection();
+            }
+
+            if(mond.global.agents_disconnection_alert_time != 0){
+                get_min_sleep_time(&loop_sleep_time, mond.global.agents_disconnection_alert_time, check_alert_timer);
+            }
+
+            if(check_alert_timer >= mond.global.agents_disconnection_alert_time){
+                check_alert_timer = 0;
+                monitor_agents_alert();
+            }
+
+            if(mond.delete_old_agents != 0){
+                get_min_sleep_time(&loop_sleep_time, mond.delete_old_agents, - delete_agents_timer);
+
+                if(delete_agents_timer >= (mond.delete_old_agents * 60u)){
+                    delete_agents_timer = 0;
+                    monitor_agents_deletion();
+                }
+            }
         }
 #endif
 
-        if(check_logs_time_trigger()){
-            monitor_logs(!CHECK_LOGS_SIZE, path, path_json);
-            /* Generating reports */
-            generate_reports(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear, &mond_time_control.current_time);
-            manage_files(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear);
-            monitor_update_date();
+        get_min_sleep_time(&loop_sleep_time, DAY_IN_SECONDS, daily_log_rotate_timer);
 
-        } else{
-            monitor_logs(CHECK_LOGS_SIZE, path, path_json);
+        if(daily_log_rotate_timer >= DAY_IN_SECONDS) {
+            if (mond.rotate_log) {
+
+                //TODO find why is this delay needed
+                sleep(mond.day_wait);
+
+                minfo("Running daily rotation of log files.");
+                rotate_log_config_t config = {0};
+                config.log_creation_time = day_old_time;
+                config.configured_daily_rotations = mond.daily_rotations;
+                config.compress = mond.compress;
+                config.log_extension = LE_JSON;
+                w_rotate_log(&config);
+
+                config.log_extension = LE_LOG;
+                w_rotate_log(&config);
+
+                remove_old_logs(mond.keep_log_days);
+            }
+
+            generate_reports(day_old_time);
+            compress_and_sign_logs(day_old_time);
+            day_old_time = now;
+            daily_log_rotate_timer = 0;
+        }
+        else
+        {
+            if (mond.rotate_log && mond.size_rotate > 0) {
+                struct stat buf;
+                if (stat(log_file_path, &buf) == 0) {
+                    off_t size = buf.st_size;
+                    if ((unsigned long) size >= mond.size_rotate) {
+                        minfo("Rotating '%s' file: Maximum size reached.", LOGFILE);
+                        rotate_log_config_t config = {0};
+                        config.log_creation_time = time(0);
+                        config.configured_daily_rotations = mond.daily_rotations;
+                        config.compress = mond.compress;
+                        config.log_extension = LE_LOG;
+                        w_rotate_log(&config);
+                        remove_old_logs(mond.keep_log_days);
+                    }
+                }
+
+                if (stat(json_log_file_path, &buf) == 0) {
+                    off_t size = buf.st_size;
+                    /* If log file reachs maximum size, rotate ossec.json */
+                    if ( (unsigned long) size >= mond.size_rotate) {
+                        minfo("Rotating '%s' file: Maximum size reached.", LOGJSONFILE);
+                        rotate_log_config_t config = {0};
+                        config.log_creation_time = time(0);
+                        config.configured_daily_rotations = mond.daily_rotations;
+                        config.compress = mond.compress;
+                        config.log_extension = LE_JSON;
+                        w_rotate_log(&config);
+                        remove_old_logs(mond.keep_log_days);
+                    }
+                }
+            }
         }
 
-        sleep(1);
+        sleep(loop_sleep_time);
     }
 }
 
@@ -192,7 +268,7 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     modules |= CREPORTS;
 
     if (ReadConfig(modules, cfg, mond, NULL) < 0 ||
-        ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
+            ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
@@ -207,71 +283,4 @@ void monitor_queue_connect() {
             merror(QUEUE_SEND);
         }
     }
-}
-
-void monitor_init_time_control() {
-    time_t tm;
-
-    mond_time_control.current_time.tm_sec = 0;
-    mond_time_control.disconnect_counter = 0;
-    mond_time_control.alert_counter = 0;
-    mond_time_control.delete_counter = 0;
-
-    tm = time(NULL);
-    localtime_r(&tm, &mond_time_control.current_time);
-
-    mond_time_control.today = mond_time_control.current_time.tm_mday;
-    mond_time_control.thismonth = mond_time_control.current_time.tm_mon;
-    mond_time_control.thisyear = mond_time_control.current_time.tm_year + 1900;
-}
-
-void monitor_step_time() {
-    time_t tm;
-    tm = time(NULL);
-    localtime_r(&tm, &mond_time_control.current_time);
-
-    mond_time_control.disconnect_counter++;
-    if (mond.monitor_agents != 0) {
-        mond_time_control.alert_counter++;
-    }
-    if(mond.delete_old_agents != 0 && mond.monitor_agents != 0){
-        mond_time_control.delete_counter++;
-    }
-}
-
-void monitor_update_date() {
-    mond_time_control.today = mond_time_control.current_time.tm_mday;
-    mond_time_control.thismonth = mond_time_control.current_time.tm_mon;
-    mond_time_control.thisyear = mond_time_control.current_time.tm_year + 1900;
-}
-
-int check_disconnection_trigger() {
-    if (mond_time_control.disconnect_counter >= mond.global.agents_disconnection_time) {
-        mond_time_control.disconnect_counter = 0;
-        return 1;
-    }
-    return 0;
-}
-
-int check_alert_trigger() {
-    if (mond.monitor_agents != 0 && mond_time_control.alert_counter >= mond.global.agents_disconnection_alert_time) {
-        mond_time_control.alert_counter = 0;
-        return 1;
-    }
-    return 0;
-}
-
-int check_deletion_trigger() {
-    if (mond.monitor_agents != 0 && mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
-        mond_time_control.delete_counter = 0;
-        return 1;
-    }
-    return 0;
-}
-
-int check_logs_time_trigger() {
-    if ( mond_time_control.today != mond_time_control.current_time.tm_mday) {
-        return 1;
-    }
-    return 0;
 }

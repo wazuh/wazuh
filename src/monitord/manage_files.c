@@ -11,49 +11,53 @@
 #include "shared.h"
 #include "monitord.h"
 
-static const char *(months[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                                };
-
-static void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext);
-
-void manage_files(int cday, int cmon, int cyear)
+static void manage_log(const char * logdir, const struct tm* current_time, const struct tm * day_old_time, const char * tag, const char * ext)
 {
-    time_t tm;
-    struct tm tm_result;
+    char logfile[OS_FLSIZE];
+    char logfile_old[OS_FLSIZE];
 
-    /* Get time from the day before (for log signing) */
-    tm = time(NULL);
-    tm -= 93500;
-
-    localtime_r(&tm, &tm_result);
-
-    manage_log(EVENTS, cday, cmon, cyear, &tm_result, "archive", "log");
-    manage_log(EVENTS, cday, cmon, cyear, &tm_result, "archive", "json");
-    manage_log(ALERTS, cday, cmon, cyear, &tm_result, "alerts", "log");
-    manage_log(ALERTS, cday, cmon, cyear, &tm_result, "alerts", "json");
-    manage_log(FWLOGS, cday, cmon, cyear, &tm_result, "firewall", "log");
-}
-
-void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext) {
-    int i;
-    char logfile[OS_FLSIZE + 1];
-    char logfile_r[OS_FLSIZE + 1];
-    char logfile_old[OS_FLSIZE + 1];
-
-    snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, cyear, months[cmon], tag, cday);
-    snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, pp_old->tm_year + 1900, months[pp_old->tm_mon], tag, pp_old->tm_mday);
+    snprintf(logfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d", logdir, current_time->tm_year, get_short_month_name(current_time->tm_mon), tag, current_time->tm_mday);
+    snprintf(logfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d", logdir, day_old_time->tm_year + 1900, get_short_month_name(day_old_time->tm_mon), tag, day_old_time->tm_mday);
 
     OS_SignLog(logfile, logfile_old, ext);
 
     if (mond.compress) {
-        os_snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-        OS_CompressLog(logfile_r);
-
-        for (i = 1; !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
-            if (os_snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext) < OS_FLSIZE + 1) {
-                OS_CompressLog(logfile_r);
+        int additional_logs = 0;
+        do
+        {
+            char log_file_path[OS_FLSIZE];
+            if(additional_logs++)
+            {
+                os_snprintf(log_file_path, OS_FLSIZE, "%s.%s", logfile, ext);
             }
-        }
+            else
+            {
+                os_snprintf(log_file_path, OS_FLSIZE, "%s-%.3d.%s", logfile, additional_logs, ext);
+            }
+
+            if(0 != IsFile(log_file_path))
+            {
+                break;
+            }
+
+            OS_CompressLog(log_file_path);
+
+        }while(1);
     }
+}
+
+void compress_and_sign_logs(time_t starting_time)
+{
+    struct tm translated_yesterday;
+    localtime_r(&starting_time, &translated_yesterday);
+
+    struct tm translated_now;
+    time_t now = time(0);
+    localtime_r(&now, &translated_now);
+
+    manage_log(EVENTS, &translated_now, &translated_yesterday, "archive", "log");
+    manage_log(EVENTS, &translated_now, &translated_yesterday, "archive", "json");
+    manage_log(ALERTS, &translated_now, &translated_yesterday, "alerts", "log");
+    manage_log(ALERTS, &translated_now, &translated_yesterday, "alerts", "json");
+    manage_log(FWLOGS, &translated_now, &translated_yesterday, "firewall", "log");
 }

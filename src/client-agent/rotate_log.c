@@ -42,26 +42,28 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     localtime_r(&now, &tm);
     today = tm.tm_mday;
 
-#ifdef WIN32
-    // ossec.log
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // ossec.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#else
-    // /var/ossec/logs/ossec.log
-    snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // /var/ossec/logs/ossec.json
-    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
-#endif
 
     while (1) {
         now = time(NULL);
         localtime_r(&now, &tm);
 
+        rotate_log_config_t config = {0};
+        config.configured_daily_rotations = daily_rotations;
+        config.compress = log_compress;
+
         if (today != tm.tm_mday) {
             sleep(day_wait);
             /* Daily rotation and compression of ossec.log/ossec.json */
-            w_rotate_log(log_compress, keep_log_days, 1, 0, daily_rotations);
+            config.log_creation_time = time(0) - DAY_IN_SECONDS;
+            config.log_extension = LE_LOG;
+            w_rotate_log(&config);
+
+            config.log_extension = LE_JSON;
+            w_rotate_log(&config);
+
+            remove_old_logs(keep_log_days);
             today = tm.tm_mday;
         }
 
@@ -69,16 +71,23 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
             if (stat(path, &buf) == 0) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.log */
+                config.log_extension = LE_LOG;
+                config.log_creation_time = time(0);
+
                 if ( (unsigned long) size >= size_rotate) {
-                    w_rotate_log(log_compress, keep_log_days, 0, 0, daily_rotations);
+                    w_rotate_log(&config);
+                    remove_old_logs(keep_log_days);
                 }
             }
 
             if (stat(path_json, &buf) == 0) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.json */
+                config.log_extension = LE_JSON;
+                config.log_creation_time = time(0);
                 if ( (unsigned long) size >= size_rotate) {
-                    w_rotate_log(log_compress, keep_log_days, 0, 1, daily_rotations);
+                    w_rotate_log(&config);
+                    remove_old_logs(keep_log_days);
                 }
             }
         }else

@@ -15,10 +15,6 @@
 #include "os_crypto/sha1/sha1_op.h"
 
 
-/* To translate between month (int) to month (char) */
-static const char *(djb_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                                   };
 static char djb_host[512 + 1];
 
 
@@ -156,7 +152,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
 
                 /* Syslog time: Apr 27 14:50:32  */
                 snprintf(buffer, OS_MAXSTR, "%s %02d %02d:%02d:%02d %s %s: %s",
-                         djb_month[tm_result.tm_mon],
+                         get_short_month_name(tm_result.tm_mon),
                          tm_result.tm_mday,
                          tm_result.tm_hour,
                          tm_result.tm_min,

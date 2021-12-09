@@ -22,6 +22,18 @@
 #include <mach/mach.h>
 #endif
 
+#define LAST_MONTH_INDEX 11
+const char* get_short_month_name(unsigned month)
+{
+    if(month > LAST_MONTH_INDEX) return "NULL";
+
+    static const char * Months[] = { "Jan", "Feb", "Mar", "Apr",
+                                     "May", "Jun", "Jul", "Aug",
+                                     "Sep", "Oct", "Nov", "Dec"};
+
+    return Months[month];
+}
+
 // Get the current calendar time
 
 void gettime(struct timespec *ts) {

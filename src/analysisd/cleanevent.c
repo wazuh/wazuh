@@ -16,12 +16,6 @@
 #include "fts.h"
 #include "config.h"
 
-/* To translate between month (int) to month (char) */
-static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                  };
-
-
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
@@ -590,7 +584,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Assign hour, day, year and month values */
     lf->day = p.tm_mday;
     lf->year = p.tm_year + 1900;
-    strncpy(lf->mon, month[p.tm_mon], 3);
+    strncpy(lf->mon, get_short_month_name(p.tm_mon), 3);
     snprintf(lf->hour, 9, "%02d:%02d:%02d",
              p.tm_hour,
              p.tm_min,
