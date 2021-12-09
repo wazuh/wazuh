@@ -3,7 +3,7 @@
 -->
 
 <!-- 
-  Proftpd rules ID:           11200 - 11300
+  ProFTPD rules ID:           11200 - 11300
 -->
 
 <group name="syslog,proftpd,">
