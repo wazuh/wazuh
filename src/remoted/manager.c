@@ -660,7 +660,6 @@ static void c_files()
     char path[PATH_MAX + 1];
     int oldmask;
     int retval;
-    char groups_info[OS_SIZE_65536 + 1] = {0};
     char *key = NULL;
     char *data = NULL;
     mdebug2("Updating shared files sums.");
@@ -786,11 +785,14 @@ static void c_files()
         if(j_agent_info) {
             char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
             char* agent_groups_hash = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "groups_hash"));
+            char* agent_groups_hash_for_table = NULL;
 
             // If it's not a multigroup, skip it
             if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
-                if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
-                    mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
+                os_strdup(agent_groups_hash, agent_groups_hash_for_table);
+                if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash_for_table) != 2) {
+                    os_free(agent_groups_hash_for_table);
+                    mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
                 }
             }
 
