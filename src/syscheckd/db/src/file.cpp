@@ -25,6 +25,17 @@ const auto fileColumnList = R"({"column_list":"[path, mode, last_event, scanned,
  */
 std::vector<std::string> fim_db_get_path_from_pattern(const char *pattern);
 
+/**
+ * @brief Get all the paths asociated to an inode
+ *
+ * @param inode Inode.
+ * @param dev Device.
+ *
+ * @return a vector with paths asociated to the inode.
+ */
+std::vector<std::string> fim_db_get_paths_from_inode(unsigned long int inode, unsigned long int dev);
+
+
 int fim_db_delete_range(const char* pattern,
                         pthread_mutex_t* mutex,
                         event_data_t* evt_data,
@@ -100,33 +111,61 @@ fim_entry* fim_db_get_path(const char* file_path)
     return file->toFimEntry();
 }
 
-char** fim_db_get_paths_from_inode(unsigned long int inode, unsigned long int dev)
+std::vector<std::string> fim_db_get_paths_from_inode(unsigned long int inode, unsigned long int dev)
 {
-    char** paths = NULL;
-    auto filter = std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev);
-    auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
+    std::vector<std::string> paths;
     nlohmann::json resultQuery;
-    FIMDBHelper::getDBItem<FIMDB>(resultQuery, query);
+
+    try
+    {
+        auto filter = std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev);
+        auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
+        FIMDBHelper::getDBItem<FIMDB>(resultQuery, query);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        return paths;
+    }
+    for (auto& item : resultQuery["path"].items())
+    {
+        paths.push_back(item.value());
+    }
 
     return paths;
 }
 
 int fim_db_remove_path(const char* path)
 {
-    int res = 0;
-    auto removeFile = std::string("WHERE path=") + std::string(path);
-    FIMDBHelper::removeFromDB<FIMDB>(FIMBD_FILE_TABLE_NAME, removeFile);
+    try
+    {
+        auto removeFile = std::string("WHERE path=") + std::string(path);
+        FIMDBHelper::removeFromDB<FIMDB>(FIMBD_FILE_TABLE_NAME, removeFile);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        return FIMDB_ERR;
+    }
 
-    return res;
+    return FIMDB_OK;
 }
 
 int fim_db_get_count_file_inode()
 {
     int count = 0;
-    nlohmann::json inodeQuery;
-    inodeQuery["column_list"] = "count(DISTINCT (inode || ',' || dev)) AS count";
-    auto countQuery = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "");
-    FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, count, countQuery);
+
+    try
+    {
+        nlohmann::json inodeQuery;
+        inodeQuery["column_list"] = "count(DISTINCT (inode || ',' || dev)) AS count";
+        auto countQuery = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "");
+        FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, count, countQuery);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+    }
 
     return count;
 }
@@ -134,20 +173,27 @@ int fim_db_get_count_file_inode()
 int fim_db_get_count_file_entry()
 {
     int count = 0;
-    nlohmann::json query;
-    FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, count, query);
+
+    try
+    {
+        FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, count);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+    }
 
     return count;
 }
 
-std::vector<std::string>  fim_db_get_path_from_pattern(const char* pattern)
+std::vector<std::string> fim_db_get_path_from_pattern(const char* pattern)
 {
     std::vector<std::string> paths;
-    auto filter = std::string("WHERE path LIKE") + std::string(pattern);
-    auto queryFromPattern = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
     nlohmann::json resultQuery;
     try
     {
+        auto filter = std::string("WHERE path LIKE") + std::string(pattern);
+        auto queryFromPattern = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
         FIMDBHelper::getDBItem<FIMDB>(resultQuery, queryFromPattern);
     }
     catch (DbSync::dbsync_error& err)
@@ -178,6 +224,24 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
 
     return FIMDB_OK;
 }
+
+void create_windows_who_data_events(unsigned long int inode, unsigned long int dev, whodata_evt* w_evt)
+{
+    auto paths = fim_db_get_paths_from_inode(inode, dev);
+    if (paths.empty())
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No paths found with these inode and dev");
+        return;
+    }
+    for (auto& path : paths)
+    {
+        char* entry = const_cast<char*>(path.c_str());
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        fim_process_missing_entry(entry, FIM_WHODATA, w_evt);
+        w_rwlock_unlock(&syscheck.directories_lock);
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
