@@ -77,7 +77,7 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
 
             if (Utils::existsDir(RPM_PATH))
             {
-                getRpmInfoLegacy(callback);
+                getRpmInfo(callback);
             }
         }
 };
@@ -96,7 +96,7 @@ class FactoryPackagesCreator<LinuxType::LEGACY> final
 
             if (Utils::existsDir(RPM_PATH))
             {
-                getRpmInfo(callback);
+                getRpmInfoLegacy(callback);
             }
         }
 };
