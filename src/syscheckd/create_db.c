@@ -538,10 +538,6 @@ void fim_whodata_event(whodata_evt * w_evt) {
         const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
         /* DEPRECATED CODE
         paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
-        */
-
-        paths = fim_db_get_paths_from_inode(inode, dev);
-
         if(paths) {
             for(int i = 0; paths[i]; i++) {
                 w_rwlock_rdlock(&syscheck.directories_lock);
@@ -551,6 +547,9 @@ void fim_whodata_event(whodata_evt * w_evt) {
             }
             os_free(paths);
         }
+        */
+        create_windows_who_data_events(inode, dev, w_evt);
+        
 #endif
     }
 }

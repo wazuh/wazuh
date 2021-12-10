@@ -85,7 +85,7 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    void getCount(const std::string & tableName, int & count, const nlohmann::json & query)
+    void getCount(const std::string & tableName, int & count, const nlohmann::json & query={})
     {
         nlohmann::json countQuery;
         if (!query.empty())

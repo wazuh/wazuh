@@ -69,16 +69,6 @@ void fim_db_init(int storage,
 fim_entry* fim_db_get_path(const char* file_path);
 
 /**
- * @brief Get all the paths asociated to an inode
- *
- * @param inode Inode.
- * @param dev Device.
- *
- * @return char** An array of the paths asociated to the inode.
- */
-char** fim_db_get_paths_from_inode(unsigned long int inode, unsigned long int dev);
-
-/**
  * @brief Delete entry from the DB using file path.
  *
  * @param path Path of the entry to be removed.
@@ -163,6 +153,11 @@ int fim_db_get_count_file_entry();
  * @retval Returns any of the values returned by fim_db_set_scanned and fim_db_insert_entry.
  */
 int fim_db_file_update(const fim_entry* data, bool* updated);
+
+/**
+ * @brief 
+ */
+void create_windows_who_data_events(unsigned long int inode, unsigned long int dev, whodata_evt* w_evt);
 
 #ifdef __cplusplus
 }
