@@ -1753,7 +1753,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
         if self.reparse:
-            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
+            if self.already_processed(log_file['Key'], aws_account_id, aws_region, flow_log_id):
                 debug(
                     '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
                     2)
