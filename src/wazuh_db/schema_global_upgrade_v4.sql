@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS _agent (
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
-    group_source TEXT NOT NULL CHECK (group_source IN ('manual', 'remote')) DEFAULT 'manual',
+    group_source TEXT NOT NULL CHECK (group_source IN ('manual', 'remote', 'undefined')) DEFAULT 'undefined',
     group_sync_with_master TEXT NOT NULL CHECK (group_sync_with_master IN ('synced', 'syncreq')) DEFAULT 'synced',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
@@ -61,7 +61,6 @@ CREATE TABLE IF NOT EXISTS _agent (
 BEGIN;
 
 INSERT INTO _agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add, last_keepalive, `group`, sync_status, connection_status) SELECT id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add, last_keepalive, `group`, sync_status, connection_status FROM agent;
-UPDATE _agent SET group_source = 'manual', group_sync_with_master = 'synced';
 
 END;
 
