@@ -27,6 +27,8 @@
 #include "packages/packagesLinuxParserHelper.h"
 #include "packages/berkeleyRpmDbHelper.h"
 
+#include "linuxProcessHelper.h"
+
 struct ProcTableDeleter
 {
     void operator()(PROCTAB* proc)
@@ -68,39 +70,6 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
         }
     }
     return ret;
-}
-
-static uint64_t getBootTime(void)
-{
-    static uint64_t btime = 0UL;
-
-    if (0UL == btime)
-    {
-        auto file { Utils::getFileContent("/proc/stat") };
-        auto offset { file.rfind("btime ") };
-        sscanf(file.c_str() + offset, "btime %lu", &btime);
-    }
-
-    return btime;
-}
-
-static uint64_t getClockTick(void)
-{
-   static uint64_t tick = 0UL;
-
-   if (0UL == tick)
-   {
-       tick = (uint64_t)sysconf(_SC_CLK_TCK);
-   }
-
-   return tick;
-}
-
-static uint64_t timeTick2unixTime(uint64_t startTime)
-{
-    auto btime { getBootTime()  };
-    auto tick  { getClockTick() };
-    return (startTime / tick) + btime;
 }
 
 static nlohmann::json getProcessInfo(const SysInfoProcess& process)
@@ -148,7 +117,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["vm_size"]    = process->vm_size;
     jsProcessInfo["resident"]   = process->resident;
     jsProcessInfo["share"]      = process->share;
-    jsProcessInfo["start_time"] = timeTick2unixTime(process->start_time);
+    jsProcessInfo["start_time"] = Utils::timeTick2unixTime(process->start_time);
     jsProcessInfo["pgrp"]       = process->pgrp;
     jsProcessInfo["session"]    = process->session;
     jsProcessInfo["tgid"]       = process->tgid;
