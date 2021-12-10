@@ -48,29 +48,49 @@ int fim_db_delete_range(const char* pattern,
     return FIMDB_OK;
 }
 
-int fim_db_process_missing_entry(pthread_mutex_t* mutex,
-                                 int storage,
+int fim_db_process_missing_entry(const char* pattern,
+                                 pthread_mutex_t* mutex,
                                  event_data_t* evt_data)
 {
-    /* TODO: Add c++ code to delete files from DB if these don't have a specific monitoring mode
-    */
+    auto paths = fim_db_get_path_from_pattern(pattern);
+    if (paths.empty())
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No entry found with that pattern");
+        return FIMDB_ERR;
+    }
+    for (auto& path : paths)
+    {
+        char* entry = const_cast<char*>(path.c_str());
+        fim_delete_file_event(entry, mutex, evt_data, NULL, NULL);
+    }
+
     return FIMDB_OK;
 }
 
-int fim_db_remove_wildcard_entry(pthread_mutex_t* mutex,
-                                 int storage,
+int fim_db_remove_wildcard_entry(const char* pattern,
+                                 pthread_mutex_t* mutex,
                                  event_data_t* evt_data,
                                  directory_t* configuration)
 {
-    /* TODO: Add c++ code to remove wildcard directory from DB
-    */
+    auto paths = fim_db_get_path_from_pattern(pattern);
+    if (paths.empty())
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No entry found with that pattern");
+        return FIMDB_ERR;
+    }
+    for (auto& path : paths)
+    {
+        char* entry = const_cast<char*>(path.c_str());
+        fim_generate_delete_event(entry, mutex, evt_data, configuration, NULL);
+        
+    }
+
     return FIMDB_OK;
 }
 // LCOV_EXCL_STOP
 
 fim_entry* fim_db_get_path(const char* file_path)
 {
-    fim_entry* entry = NULL;
     auto filter = std::string("WHERE path=") + std::string(file_path);
     auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
     nlohmann::json entry_from_path;
