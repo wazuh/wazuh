@@ -2,6 +2,11 @@
   Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
+<!--
+  Decoders for:
+    Microsoft exchange.
+-->
+
 <decoder name="ECPServerLog">
   <prematch type="pcre2">,ECP\.Request,</prematch>
 </decoder>
