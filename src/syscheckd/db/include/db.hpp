@@ -118,8 +118,8 @@ int fim_db_delete_range(const char* pattern,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_missing_entry(pthread_mutex_t* mutex,
-                                 int storage,
+int fim_db_process_missing_entry(const char* pattern,
+                                 pthread_mutex_t* mutex,
                                  event_data_t* evt_data);
 
 /**
@@ -134,8 +134,8 @@ int fim_db_process_missing_entry(pthread_mutex_t* mutex,
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_remove_wildcard_entry(pthread_mutex_t* mutex,
-                                 int storage,
+int fim_db_remove_wildcard_entry(const char* pattern,
+                                 pthread_mutex_t* mutex,
                                  event_data_t* evt_data,
                                  directory_t* configuration);
 

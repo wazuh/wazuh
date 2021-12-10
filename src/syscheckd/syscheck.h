@@ -958,7 +958,7 @@ void fim_delete_file_event(char *entry,
 /**
  * @brief Create a delete event and removes the entry from the database.
  *
- * @param entry Entry data to be removed.
+ * @param entry path data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param evt_data Information associated to the triggered event.
  * @param configuration Directory configuration to be deleted.

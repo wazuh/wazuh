@@ -68,9 +68,13 @@ void fim_generate_delete_event(char *entry,
 
     // Remove path from the DB.
     w_mutex_lock(mutex);
-    fim_db_remove_path(entry);
+    fim_entry *new_entry = fim_db_get_path(entry);
+    if (fim_db_remove_path(entry) == FIMDB_ERR) {
+        w_mutex_unlock(mutex);
+        return;
+    }
     if (evt_data->report_event) {
-        json_event = fim_json_event(entry, NULL, original_configuration, evt_data, NULL);
+        json_event = fim_json_event(new_entry, NULL, original_configuration, evt_data, NULL);
     }
     w_mutex_unlock(mutex);
     /* DEPRECATED CODE
@@ -316,9 +320,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
 
         if (saved_entry) {
             evt_data->type = FIM_DELETE;
-            fim_delete_file_event(saved_entry, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
-            free_entry(saved_entry);
-            saved_entry = NULL;
+            fim_delete_file_event(saved_entry->file_entry.path, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
         } else if (configuration->options & CHECK_SEECHANGES) {
             fim_diff_process_delete_file(path);
         }
@@ -554,17 +556,16 @@ void fim_whodata_event(whodata_evt * w_evt) {
 }
 
 void fim_process_wildcard_removed(directory_t *configuration) {
-    fim_tmp_file *files = NULL;
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
     /* DEPRECATED CODE
     fim_entry *entry = fim_db_get_path(syscheck.database, configuration->path);
     */
-
     fim_entry *entry = fim_db_get_path(configuration->path);
-
     if (entry != NULL) {
-        fim_generate_delete_event(entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+        fim_generate_delete_event(configuration->path, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+        /* DEPRECATED CODE
         free_entry(entry);
+        */
         return;
     }
 
@@ -573,6 +574,7 @@ void fim_process_wildcard_removed(directory_t *configuration) {
 
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
+    fim_db_remove_wildcard_entry(pattern, &syscheck.fim_entry_mutex, &evt_data, configuration);
     /* DEPRECATED CODE
     fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
 
@@ -583,15 +585,11 @@ void fim_process_wildcard_removed(directory_t *configuration) {
         }
     }
     */
-
-    fim_db_remove_wildcard_entry(&syscheck.fim_entry_mutex, syscheck.database_store,
-                                 &evt_data, configuration);
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     fim_entry *saved_data = NULL;
-    fim_tmp_file *files = NULL;
-    event_data_t evt_data;
+    event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true };
 
     // Search path in DB.
     /* DEPRECATED CODE
@@ -601,7 +599,6 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     // Exists, create event.
     if (saved_data) {
-        event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true };
         fim_checker(pathname, &evt_data, NULL);
         free_entry(saved_data);
         return;
@@ -612,18 +609,20 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
+    evt_data.type = FIM_DELETE;
+    fim_db_process_missing_entry(pattern, &syscheck.fim_entry_mutex, &evt_data);
+
     /* DEPRECATED CODE
     fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
-    */
     if (files && files->elements) {
         event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true, .type = FIM_DELETE };
-        /* DEPRECATED CODE
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store,
                                          &evt_data) != FIMDB_OK) {
             merror(FIM_DB_ERROR_RM_PATTERN, pattern);
         }
-        */
+       
     }
+    */
 }
 
 // Checks the DB state, sends a message alert if necessary
@@ -976,6 +975,7 @@ void check_deleted_files() {
     }
 }
 */
+
 cJSON *fim_json_event(const fim_entry *new_data,
                       const fim_file_data *old_data,
                       const directory_t *configuration,
