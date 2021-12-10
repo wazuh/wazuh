@@ -1,8 +1,5 @@
 <!--
-  -  AWS Eks Authenticator decoder
-  -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <decoder name="aws-eks-authenticator">
@@ -98,3 +95,4 @@
   <regex type="pcre2">accesskeyid=(\S+)</regex>
   <order>accesskeyid</order>
 </decoder>
+
