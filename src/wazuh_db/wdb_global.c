@@ -568,28 +568,23 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
     int result = OS_SUCCESS;
     sqlite3_stmt *stmt = NULL;
     char* individual_group = NULL;
-    char* temp = NULL;
+    char* temp_group = NULL;
     char* initial_temp = NULL;
     cJSON* j_find_group_result = NULL;
     cJSON* j_group_id = NULL;
     int id_group = -1;
 
     // Making a copy to avoid modifying the original string
-    os_strdup(group, temp);
-    initial_temp = temp;
+    os_strdup(group, temp_group);
+    initial_temp = temp_group;
 
-    while (temp && (individual_group = strtok_r(temp, ",", &temp))) {
+    while (result == OS_SUCCESS && temp_group && (individual_group = strtok_r(temp_group, ",", &temp_group))) {
         j_find_group_result = wdb_global_find_group(wdb, individual_group);
         j_group_id = cJSON_GetObjectItem(j_find_group_result->child, "id");
         id_group = cJSON_IsNumber(j_group_id) ? j_group_id->valueint : OS_INVALID;
-        // Updating belongs table
-        if(id_group != OS_INVALID) {
-           result = wdb_global_insert_agent_belong(wdb, id_group, id);
-        }
         cJSON_Delete(j_find_group_result);
-        if(result == OS_INVALID) {
-            break;
-        }
+        // Updating belongs table, an invalid group will be rejected by the FOREIGN KEY constraint
+        result = wdb_global_insert_agent_belong(wdb, id_group, id);
     }
 
     os_free(initial_temp);
