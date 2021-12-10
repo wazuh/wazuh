@@ -1530,7 +1530,7 @@ checks:
       - cis_csc: ["8.3"]
     condition: all
     rules:
-      - 'c:journalctl -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
+      - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
 
   - id: 7564
     title: Ensure prelink is disabled
