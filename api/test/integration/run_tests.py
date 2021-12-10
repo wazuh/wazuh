@@ -227,7 +227,6 @@ def get_script_arguments():
 
 
 if __name__ == '__main__':
-    os.makedirs(os.path.join(TESTS_PATH, RESULTS_FOLDER), exist_ok=True)
     os.makedirs(os.path.join(TESTS_PATH, RESULTS_FOLDER, 'html_reports'), exist_ok=True)
     options = get_script_arguments()
     key = options.keyword
