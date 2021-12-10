@@ -15,18 +15,18 @@ from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError,
     WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
 
 
-def generate_deprecation_headers(link=None):
-    """Generates a dictionary with deprecation related entries.
+def generate_deprecation_headers(link: str = '') -> dict:
+    """Generate a dictionary with deprecation related entries.
 
     Parameters
     ----------
     link : str, optional
-        documentation related with this deprecation, by default None
+        Documentation related with this deprecation.
 
     Returns
     -------
     dict
-        deprecation related entries.
+        Deprecation related entries.
     """
     headers = {'Deprecated': 'true'
                }
