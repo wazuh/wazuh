@@ -22,6 +22,7 @@ CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
 BEGIN;
 
 INSERT INTO _belongs (id_agent, id_group, priority) SELECT id_agent, id_group, belongs.rowid FROM belongs WHERE id_agent IN (SELECT id FROM agent) AND id_group IN (SELECT id FROM `group`);
+UPDATE _belongs SET priority=(SELECT temp.r_num - 1 FROM (SELECT *, row_number() OVER(PARTITION BY id_agent ORDER BY belongs.rowid) r_num FROM belongs) temp WHERE _belongs.id_agent = temp.id_agent AND _belongs.id_group = temp.id_group);
 
 END;
 
@@ -51,7 +52,7 @@ CREATE TABLE IF NOT EXISTS _agent (
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
-    group_source TEXT NOT NULL CHECK (group_source IN ('manual', 'remote', 'undefined')) DEFAULT 'undefined',
+    group_source TEXT NOT NULL CHECK (group_source IN ('manual', 'remote', 'unknown')) DEFAULT 'unknown',
     group_sync_with_master TEXT NOT NULL CHECK (group_sync_with_master IN ('synced', 'syncreq')) DEFAULT 'synced',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
