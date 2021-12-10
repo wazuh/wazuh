@@ -28,6 +28,7 @@ from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
 
 from azure.common import AzureException, AzureHttpError
 from azure.storage.blob import BlockBlobService
+from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
 from pytz import UTC
 from requests import get, post, HTTPError
@@ -51,10 +52,14 @@ def set_logger():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        logging.getLogger('azure').setLevel(logging.DEBUG)
+
     else:
         log_path = f"{find_wazuh_path()}/logs/azure_logs.log"
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        logging.getLogger('azure').setLevel(logging.ERROR)
+        logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
 def get_script_arguments():
@@ -602,11 +607,23 @@ def start_storage():
         logging.error("Storage: No parameters have been provided for authentication.")
         sys.exit(1)
 
+    # Authenticate
+    block_blob_service = BlockBlobService(account_name=name, account_key=key)
     try:
-        # Authenticate
-        block_blob_service = BlockBlobService(account_name=name, account_key=key)
+        # Disable max retry value before attempting to validate the credentials
+        old_retry_value = block_blob_service.retry
+        block_blob_service.retry = no_retry
+        # Verify credentials
+        block_blob_service.list_blobs(args.container, num_results=1)
+        # Restore the default max retry value
+        block_blob_service.retry = old_retry_value
         logging.info("Storage: Authenticated.")
+    except AzureException:
+        container_str = f"containers." if args.container == "*" else f"'{args.container}' container."
+        logging.error(f"Storage: Invalid credentials for accessing the {container_str}")
+        sys.exit(1)
 
+    try:
         # Get containers from the storage account or the configuration file
         logging.info("Storage: Getting containers.")
         containers = block_blob_service.list_containers() if args.container == '*' else [args.container]
@@ -626,7 +643,7 @@ def start_storage():
                       min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
         save_dates_json(dates_json)
     except AzureException as e:
-        logging.error(f"Storage: The containers could not be obtained. '{e}'.")
+        logging.error(f"Storage: The containers could not be processed. '{e}'.")
         sys.exit(1)
 
     logging.info("Storage: End")
