@@ -56,6 +56,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *osreports = "reports";                  /* Server Config */
+    const char *delete_agents = "delete_agents";
 #endif
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
@@ -155,6 +156,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         }
 #ifndef WIN32
+        else if (chld_node && (strcmp(node[i]->element, delete_agents) == 0)) {
+            if ((modules & CAGENTDEL) && (Read_AgentDeletion(chld_node, d1) < 0)) {
+                goto fail;
+            }
+        }
         else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
                 goto fail;

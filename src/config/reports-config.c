@@ -182,3 +182,73 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
     return (0);
 }
 #endif
+
+
+int Read_AgentDeletion(XML_NODE node, void *d1)
+{
+    int i = 0;
+
+    /* XML definitions */
+    const char *xml_interval_tag = "interval";
+    const char *xml_enabled_tag = "enabled";
+    const char *xml_status_tag = "status";
+    const char *xml_os_name_tag = "os-name";
+    const char *xml_older_than_tag = "older_than";
+
+    monitor_config *mondc = (monitor_config *)d1;
+    delete_agents_t * config = &mondc->delete_agents;
+    memset(config, 0, sizeof(delete_agents_t));
+
+    for (i = 0; node[i]; i++) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_interval_tag) == 0) {
+            if(get_time_interval(node[i]->content, &config->interval) != 0) {
+                merror("Invalid interval for '%s' option", node[i]->element);
+            }
+        } else if (strcmp(node[i]->element, xml_enabled_tag) == 0) {
+            if(strcmp(node[i]->content, "yes") == 0) {
+                config->enabled = 1;
+            }
+            else if(strcmp(node[i]->content, "no") == 0){
+                config->enabled = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[i]->element, xml_status_tag) == 0) {
+            char* token = strtok(node[i]->content, ",");
+            int i = 0;
+            for(; token != 0; ++i) {
+                //We need space for the item and a null-item terminator
+                config->status_list = realloc(config->status_list, sizeof(char*) * (i + 2));
+                config->status_list[i] = strdup(token);
+                token = strtok(NULL, ",");
+            }
+            config->status_list[i] = 0;
+        } else if (strcmp(node[i]->element, xml_os_name_tag) == 0) {
+            char* token = strtok(node[i]->content, ",");
+            int i = 0;
+            for(; token != 0; ++i) {
+                //We need space for the item and a null-item terminator
+                config->os_name_list = realloc(config->os_name_list, sizeof(char*) * (i + 2));
+                config->os_name_list[i] = strdup(token);
+                token = strtok(NULL, ",");
+            }
+            config->os_name_list[i] = 0;
+        } else if (strcmp(node[i]->element, xml_older_than_tag) == 0) {
+            if(get_time_interval(node[i]->content, &config->older_than) != 0) {
+                merror("Invalid interval for '%s' option", node[i]->element);
+            }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+    }
+
+    return (0);
+}

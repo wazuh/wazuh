@@ -11,29 +11,30 @@
 #ifndef HCONFIG_H
 #define HCONFIG_H
 
-#define CGLOBAL       000000001
-#define CRULES        000000002
-#define CSYSCHECK     000000004
-#define CROOTCHECK    000000010
-#define CALERTS       000000020
-#define CLOCALFILE    000000040
-#define CREMOTE       000000100
-#define CCLIENT       000000200
-#define CMAIL         000000400
-#define CAR           000001000
-#define CDBD          000002000
-#define CSYSLOGD      000004000
-#define CAGENT_CONFIG 000010000
-#define CAGENTLESS    000020000
-#define CREPORTS      000040000
-#define CINTEGRATORD  000100000
-#define CWMODULE      000200000
-#define CLABELS       000400000
-#define CAUTHD        001000000
-#define CBUFFER       002000000
-#define CCLUSTER      004000000
-#define CSOCKET       010000000
-#define CLOGTEST      020000000
+#define CGLOBAL       (1 << 0)
+#define CRULES        (1 << 1)
+#define CSYSCHECK     (1 << 2)
+#define CROOTCHECK    (1 << 3)
+#define CALERTS       (1 << 4)
+#define CLOCALFILE    (1 << 5)
+#define CREMOTE       (1 << 6)
+#define CCLIENT       (1 << 7)
+#define CMAIL         (1 << 8)
+#define CAR           (1 << 9)
+#define CDBD          (1 << 10)
+#define CSYSLOGD      (1 << 11)
+#define CAGENT_CONFIG (1 << 12)
+#define CAGENTLESS    (1 << 13)
+#define CREPORTS      (1 << 14)
+#define CINTEGRATORD  (1 << 15)
+#define CWMODULE      (1 << 16)
+#define CLABELS       (1 << 17)
+#define CAUTHD        (1 << 18)
+#define CBUFFER       (1 << 19)
+#define CCLUSTER      (1 << 20)
+#define CSOCKET       (1 << 21)
+#define CLOGTEST      (1 << 22)
+#define CAGENTDEL     (1 << 23)
 
 #define MAX_NEEDED_TAGS 4
 
@@ -65,6 +66,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
+int Read_AgentDeletion(XML_NODE node, void *config1);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);

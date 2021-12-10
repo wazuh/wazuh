@@ -189,7 +189,7 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->global.agents_disconnection_time = 600;
     mond->global.agents_disconnection_alert_time = 0;
 
-    modules |= CREPORTS;
+    modules |= CREPORTS | CAGENTDEL;
 
     if (ReadConfig(modules, cfg, mond, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
@@ -262,7 +262,7 @@ int check_alert_trigger() {
 }
 
 int check_deletion_trigger() {
-    if (mond.monitor_agents != 0 && mond.delete_old_agents != 0 && mond_time_control.delete_counter >= mond.delete_old_agents * 60 ) {
+    if (mond.delete_agents.enabled && mond_time_control.delete_counter >= mond.delete_agents.interval ) {
         mond_time_control.delete_counter = 0;
         return 1;
     }
