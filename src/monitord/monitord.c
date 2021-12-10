@@ -113,7 +113,6 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"rotate_log",mond.rotate_log);
     cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
-    cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
 
     cJSON_AddItemToObject(root,"monitord",monconf);
 
@@ -178,7 +177,6 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     mond->size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
     mond->daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
-    mond->delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
 
     mond->agents = NULL;
     mond->smtpserver = NULL;
@@ -234,7 +232,7 @@ void monitor_step_time() {
     if (mond.monitor_agents != 0) {
         mond_time_control.alert_counter++;
     }
-    if(mond.delete_old_agents != 0 && mond.monitor_agents != 0){
+    if(mond.delete_agents.enabled){
         mond_time_control.delete_counter++;
     }
 }

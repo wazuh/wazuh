@@ -38,7 +38,6 @@ typedef struct _monitor_config {
     unsigned int sign:1;
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
-    unsigned int delete_old_agents;
     int a_queue;
     int keep_log_days;
     unsigned long size_rotate;
