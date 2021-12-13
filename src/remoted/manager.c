@@ -52,7 +52,7 @@ static OSHash *invalid_files;
  * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
  * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
  */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int *sock);
 static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
@@ -238,7 +238,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             os_strdup(msg, data->message);
 
             os_free(data->group);
-            if (OS_SUCCESS != lookfor_agent_group(key->id, data->message, &data->group)) {
+            if (OS_SUCCESS != lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
                 mdebug1("Error getting agent group for agent: '%s'", key->id);
             }
 
@@ -780,26 +780,28 @@ static void c_files()
 
     int *agents_array = wdb_get_all_agents(false, NULL);
 
-    for(int i = 0; agents_array && agents_array[i] != -1; i++ ) {
-        cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
-        if(j_agent_info) {
-            char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
-            char* agent_groups_hash = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "groups_hash"));
-            char* agent_groups_hash_for_table = NULL;
+    if(agents_array) {
+        for(int i = 0; agents_array[i] != -1; i++ ) {
+            cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
+            if(j_agent_info) {
+                char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
+                char* agent_groups_hash = cJSON_GetStringValue(cJSON_DetachItemFromObject(j_agent_info->child, "groups_hash"));
 
-            // If it's not a multigroup, skip it
-            if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
-                os_strdup(agent_groups_hash, agent_groups_hash_for_table);
-                if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash_for_table) != 2) {
-                    os_free(agent_groups_hash_for_table);
-                    mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
+                // If it's not a multigroup, skip it
+                if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
+                    if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
+                        os_free(agent_groups_hash);
+                        mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
+                    }
+                } else {
+                    os_free(agent_groups_hash);
                 }
-            }
 
-            cJSON_Delete(j_agent_info);
+                cJSON_Delete(j_agent_info);
+            }
         }
+        os_free(agents_array);
     }
-    os_free(agents_array);
 
     OSHashNode *my_node;
     unsigned int i;
@@ -988,7 +990,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 }
 
 /* look for agent group */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock)
 {
     char group[OS_SIZE_65536];
     file_sum **f_sum = NULL;
@@ -1003,7 +1005,7 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         strncpy(group, agt_group->group, OS_SIZE_65536);
         group[OS_SIZE_65536 - 1] = '\0';
         wdb_update_agent_group(atoi(agent_id), group, NULL);
-    } else if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536) < 0) {
+    } else if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536, wdb_sock) < 0) {
         group[0] = '\0';
     }
     mdebug2("Agent '%s' group is '%s'", agent_id, group);

@@ -814,7 +814,7 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
         return NULL;
     }
 
-    result = wdb_exec_stmt_single_array(stmt);
+    result = wdb_exec_stmt_single_column(stmt);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
