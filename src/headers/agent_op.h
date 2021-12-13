@@ -59,7 +59,7 @@ int os_write_agent_info(const char *agent_name, const char *agent_ip, const char
 
 #ifndef CLIENT
 /* Read agent group. Returns 0 on success or -1 on failure. */
-int get_agent_group(int id, char *group, size_t size);
+int get_agent_group(int id, char *group, size_t size, int* wdb_sock);
 
 /* Create multigroup dir. Returns 0 on success or -1 on failure. */
 int create_multigroup_dir(const char * multigroup);

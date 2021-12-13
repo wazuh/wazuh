@@ -5184,7 +5184,6 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
 
 int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) {
     int agent_id = atoi(input);
-    char *out = NULL;
     cJSON *agent_groups = NULL;
 
     if (agent_groups = wdb_global_select_group_belong(wdb, agent_id), !agent_groups) {
@@ -5193,6 +5192,7 @@ int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) 
         return OS_INVALID;
     }
 
+    char *out = NULL;
     out = cJSON_PrintUnformatted(agent_groups);
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
