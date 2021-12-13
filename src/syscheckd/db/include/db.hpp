@@ -22,8 +22,6 @@ extern "C" {
 
 #define EVP_MAX_MD_SIZE 64
 
-#define FILE_PRIMARY_KEY "path"
-
 #ifndef WIN32
 /**
  * @brief Initialize the FIM database.

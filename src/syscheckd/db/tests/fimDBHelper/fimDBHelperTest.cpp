@@ -100,11 +100,3 @@ TEST_F(FIMHelperTest, createANewQuery)
     auto returnStatement = FIMDBHelper::dbQuery("file_entry", columnList, filter, "path");
     ASSERT_TRUE(expectedReturn == returnStatement);
 }
-
-TEST_F(FIMHelperTest, logANewError)
-{
-    std::string error = "This is a error";
-    nlohmann::json query;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), logErr(testing::_, testing::_));
-    FIMDBHelper::logErr<FIMDBMOCK>(LOG_ERROR, error);
-}

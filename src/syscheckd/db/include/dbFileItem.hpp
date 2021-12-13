@@ -13,7 +13,7 @@
 #define _FILEITEM_HPP
 #include "json.hpp"
 #include "dbItem.hpp"
-#define FIMBD_FILE_TABLE_NAME "file_entry"
+#include "fimCommonDefs.h"
 
 struct FimFileDataDeleter
 {

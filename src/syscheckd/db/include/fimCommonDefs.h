@@ -10,6 +10,9 @@
 #define DB_COMMONDEFS_H
 #include "logging_helper.h"
 
+#define FIMBD_FILE_TABLE_NAME "file_entry"
+#define FILE_PRIMARY_KEY "path"
+
 typedef enum FIMDBErrorCodes
 {
     FIMDB_OK = 0,
