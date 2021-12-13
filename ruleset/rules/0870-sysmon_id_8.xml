@@ -6,7 +6,7 @@
     Sysmon Event ID 8 rules
 -->
 
-<group name="sysmon_eid8_detections,">
+<group name="sysmon_eid8_detections,windows,">
 
   <rule id="92400" level="12">
     <if_group>sysmon_event8</if_group>
