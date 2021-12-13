@@ -275,7 +275,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 /* Read group. Returns 0 on success or -1 on failure. */
 int get_agent_group(int id, char *group, size_t size, int* wdb_sock) {
     cJSON* j_agent_info = NULL;
-    char* group = NULL;
+    char* agent_group = NULL;
     int result = OS_INVALID;
 
     j_agent_info = wdb_get_agent_info(id, wdb_sock);
@@ -285,10 +285,10 @@ int get_agent_group(int id, char *group, size_t size, int* wdb_sock) {
         return OS_INVALID;
     }
 
-    group = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info,"group"));
+    agent_group = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child,"group"));
 
-    if(group) {
-        snprintf(group, size, "%s", group);
+    if(agent_group) {
+        snprintf(group, size, "%s", agent_group);
         result = OS_SUCCESS;
     } else {
         result = OS_INVALID;
