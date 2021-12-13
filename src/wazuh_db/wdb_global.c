@@ -573,6 +573,7 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
     cJSON* j_find_group_result = NULL;
     cJSON* j_group_id = NULL;
     int id_group = -1;
+    int group_priority = 0;
 
     // Making a copy to avoid modifying the original string
     os_strdup(group, temp_group);
@@ -584,7 +585,8 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
         id_group = cJSON_IsNumber(j_group_id) ? j_group_id->valueint : OS_INVALID;
         cJSON_Delete(j_find_group_result);
         // Updating belongs table, an invalid group will be rejected by the FOREIGN KEY constraint
-        result = wdb_global_insert_agent_belong(wdb, id_group, id);
+        result = wdb_global_insert_agent_belong(wdb, id_group, id, group_priority);
+        group_priority++;
     }
 
     os_free(initial_temp);
