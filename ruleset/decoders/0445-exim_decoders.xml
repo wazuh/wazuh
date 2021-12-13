@@ -1,14 +1,8 @@
 <!--
-  -  Exim decoders
-  -  Author: Alexandr Garaga.
-  -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  Copyright (C) 2009 Trend Micro Inc.
-  -  This program is a free software; you can redistribute it and/or modif$
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
-
-<!-- Exim
+<!-- Exim decoders
   - Examples:
   - 2017-01-23 03:44:14 dovecot_login authenticator failed for (hydra) [10.101.1.18]:35686: 535 Incorrect authentication data (set_id=user)
   - 2017-01-24 05:22:29 dovecot_plain authenticator failed for (test) [::1]:39454: 535 Incorrect authentication data (set_id=test)
