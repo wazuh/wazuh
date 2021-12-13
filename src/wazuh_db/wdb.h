@@ -59,6 +59,13 @@
 #define VULN_CVES_TYPE_OS         "OS"
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
+/// Enumeration of agent groups sync conditions
+typedef enum wdb_groups_sync_condition {
+        WDB_GROUP_SYNC_STATUS,     ///< Get groups by their sync status
+        WDB_GROUP_CKS_MISMATCH,    ///< Get groups by their CKS status
+        WDB_GROUP_INVALID,         ///< Invalid condition
+} wdb_groups_sync_condition;
+
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 #define WDB_RESPONSE_OK_SIZE     3
 
@@ -192,6 +199,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_CKS_GET,
+    WDB_STMT_GLOBAL_AGENT_GROUPS_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -1234,6 +1244,16 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse sync-agent-groups-get command data.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input Strimg in json format with last_id and sync_condition.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output);
+
+/**
  * @brief Function to parse the disconnect-agents command data.
  *
  * @param [in] wdb The global struct database.
@@ -1764,6 +1784,27 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
  * @return 0 On success. -1 On error.
  */
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
+
+cJSON* wdb_global_get_agent_groups(wdb_t *wdb, int id);
+
+/**
+ * @brief Gets each agent matching the sync condition and all their groups.
+ *        Response is prepared in one chunk,
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents and groups.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] condition The condition of the agents to be requested.
+ *              WDB_GROUP_SYNC_STATUS for agents tagged as sync_req,
+ *              WDB_GROUP_CKS_MISMATCH for agents with difference between the CKS in the master and the worker.
+ * @param [in] last_agent_id ID where to start querying.
+ * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained.
+ */
+wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb,
+                                             wdb_groups_sync_condition condition,
+                                             int last_agent_id,
+                                             char **output);
 
 /**
  * @brief Function to get the information of a particular agent stored in Wazuh DB.
