@@ -52,8 +52,10 @@ CREATE TABLE IF NOT EXISTS _agent (
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
+    group_local_hash TEXT default NULL,
+    group_sync_hash TEXT default NULL,
     group_source TEXT NOT NULL CHECK (group_source IN ('manual', 'remote', 'unknown')) DEFAULT 'unknown',
-    group_sync_with_master TEXT NOT NULL CHECK (group_sync_with_master IN ('synced', 'syncreq')) DEFAULT 'synced',
+    group_sync_status TEXT NOT NULL CHECK (group_sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
     disconnection_time INTEGER DEFAULT 0
@@ -67,9 +69,9 @@ END;
 
 DROP TABLE IF EXISTS agent;
 ALTER TABLE _agent RENAME TO agent;
-ALTER TABLE agent ADD COLUMN groups_hash TEXT default NULL;
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
-CREATE INDEX IF NOT EXISTS agent_groups_hash ON agent (groups_hash);
+CREATE INDEX IF NOT EXISTS agent_group_local_hash ON agent (group_local_hash);
+CREATE INDEX IF NOT EXISTS agent_group_sync_hash ON agent (group_sync_hash);
 
 UPDATE metadata SET value = '4' where key = 'db_version';
