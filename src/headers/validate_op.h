@@ -48,6 +48,8 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips);// __attribute__
 int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
 
 
+int OS_GetIPv4FromIPv6(const char *ip_address, char *ipv4);
+
 /**
  * @brief Validate if a time is in an acceptable format.
  *

@@ -54,22 +54,25 @@ static unsigned int _netmasks[33];
 *             example: "2001:db8:abcd:0012:0000:0000:0000:0000" or "11AA::11AA" or "::11AA:11AA:11AA:11AA/64"
 */
 
+
 #define IPV4_ADDRESS "(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\x5c.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 #define IPV6_PREFIX "12[0-8]|1[0-1][0-9]|[0-9]?[0-9]"
 
+#define IPV4_MASK_IPV6 "^::[fF]{4}:("IPV4_ADDRESS"(?:\x2F(?:(?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?)$"
+
 static  char *ip_address_regex[] = {
 // IPv4
-"^("IPV4_ADDRESS")(?:\x2F((?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?$",
+"^(?:::[fF]{4}:)?("IPV4_ADDRESS")(?:\x2F((?:3[0-2]|[1-2]?[0-9])|"IPV4_ADDRESS"))?$",
 // IPv6
-"^((?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,6}(?::[0-9a-fA-F]{1,4}){1})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1}(?::[0-9a-fA-F]{1,4}){1,6})(?:[\x2F]("IPV6_PREFIX"))?$",
-"^((?:[0-9a-fA-F]{1,4}:){1,7}:)(?:[\x2F]("IPV6_PREFIX"))?$",
-"^(:(?::[0-9a-fA-F]{1,4}){1,7})(?:[\x2F]("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,6}(?::[0-9a-fA-F]{1,4}){1})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1}(?::[0-9a-fA-F]{1,4}){1,6})(?:\x2F("IPV6_PREFIX"))?$",
+"^((?:[0-9a-fA-F]{1,4}:){1,7}:)(?:\x2F("IPV6_PREFIX"))?$",
+"^(:(?::[0-9a-fA-F]{1,4}){1,7})(?:\x2F("IPV6_PREFIX"))?$",
 "^(::)$",
 NULL,
 };
@@ -344,6 +347,37 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
     return (!_true);
 }
 
+int OS_GetIPv4FromIPv6(const char *ip_address, char *ipv4) {
+
+    w_expression_t * exp;
+    int ret = 0;
+
+    regex_matching * regex_match = NULL;
+    os_calloc(1, sizeof(regex_matching), regex_match);
+
+    w_calloc_expression_t(&exp, EXP_TYPE_PCRE2);
+    if (w_expression_compile(exp, IPV4_MASK_IPV6, 0) &&
+         w_expression_match(exp, ip_address, NULL, regex_match)) {
+
+        /* number of regex captures */
+        if (regex_match->d_size.prts_str_alloc_size/sizeof(char*)) {
+            ret = 1;
+            strcpy(ipv4, regex_match->sub_strings[0]);
+        }
+    }
+
+    if (regex_match) {
+        if (regex_match->sub_strings) {
+            os_free(regex_match->sub_strings[0]);
+            os_free(regex_match->sub_strings);
+        }
+        os_free(regex_match);
+    }
+    w_free_expression_t(&exp);
+
+    return ret;
+}
+
 /* Validate if an IP address is in the right format
  * Returns 0 if doesn't match or 1 if it is an IP or 2 an IP with CIDR.
  * WARNING: On success this function may modify the value of ip_address
@@ -360,7 +394,12 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
     /* Assign the IP address */
     if (final_ip) {
         memset(final_ip, 0, sizeof(os_ip));
-        os_strdup(ip_address, final_ip->ip);
+
+        char aux_ip[IPSIZE + 1] = {0};
+        if (!OS_GetIPv4FromIPv6(ip_address, aux_ip)) {
+            strcpy(aux_ip, ip_address);
+        }
+        os_strdup(aux_ip, final_ip->ip);
     }
 
     if (*ip_address == '!') {

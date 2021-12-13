@@ -551,6 +551,7 @@ int main(int argc, char **argv)
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
     char ip[IPSIZE + 1];
+    char aux_ip[IPSIZE + 1];
     int ret;
     char* buf = NULL;
     SSL *ssl;
@@ -561,6 +562,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
+    memset(aux_ip, '\0', IPSIZE + 1);
 
     mdebug1("Dispatch thread ready.");
 
@@ -574,6 +576,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         if (client->is_ipv6) {
             get_ipv6_string(*client->addr6, ip, IPSIZE - 1);
+            if (OS_GetIPv4FromIPv6(ip, aux_ip)) {
+                strcpy(ip, aux_ip);
+            }
         } else {
             get_ipv4_string(*client->addr4, ip, IPSIZE - 1);
         }
