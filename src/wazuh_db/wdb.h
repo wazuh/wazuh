@@ -182,6 +182,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
+    WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP_BELONG,
@@ -827,6 +828,15 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
 cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
 
 /**
+ * @brief Function to execute a SQL statement and save the result in a single JSON array without column name like:
+ *        ["column_value_1","column_value_2", ...]. The query should return only one column in every step.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+cJSON * wdb_exec_stmt_single_column(sqlite3_stmt * stmt);
+
+/**
  * @brief Function to execute a SQL query and save the result in a JSON array.
  *
  * @param [in] db The SQL database to be queried.
@@ -1133,6 +1143,17 @@ int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the select group from belongs table request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the agent id in JSON format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
  * @brief Function to parse the insert agent to belongs table request.
@@ -1652,6 +1673,15 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
+
+/**
+ * @brief Function to get groups of a specified agent from the belongs table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id_agent The agent id.
+ * @return JSON with agent groups on success. NULL on error.
+ */
+cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
 
 /**
  * @brief Function to insert an agent to the belongs table.

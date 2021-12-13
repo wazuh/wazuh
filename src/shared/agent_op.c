@@ -16,6 +16,7 @@
 #include "syscheckd/syscheck.h"
 #include "config/authd-config.h"
 #include "os_auth/auth.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -272,76 +273,29 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 
 #ifndef CLIENT
 /* Read group. Returns 0 on success or -1 on failure. */
-int get_agent_group(const char *id, char *group, size_t size) {
-    char path[PATH_MAX];
-    int result = 0;
-    FILE *fp;
+int get_agent_group(int id, char *group, size_t size, int* wdb_sock) {
+    cJSON* j_agent_info = NULL;
+    char* agent_group = NULL;
+    int result = OS_INVALID;
 
-    if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("At get_agent_group(): file path too large for agent '%s'.", id);
-        return -1;
+    j_agent_info = wdb_get_agent_info(id, wdb_sock);
+
+    if(!j_agent_info) {
+        mdebug1("Unable to get agent info of agent '%d'", id);
+        return OS_INVALID;
     }
 
-    if (!(fp = fopen(path, "r"))) {
-        mdebug2("At get_agent_group(): file '%s' not found.", path);
-        return -1;
-    }
+    agent_group = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child,"group"));
 
-    if (fgets(group, size, fp)) {
-        char *endl = strchr(group, '\n');
-
-        if (endl) {
-            *endl = '\0';
-        }
+    if(agent_group) {
+        snprintf(group, size, "%s", agent_group);
+        result = OS_SUCCESS;
     } else {
-        mwarn("Empty group for agent ID '%s'.", id);
-        result = -1;
+        result = OS_INVALID;
     }
 
-    fclose(fp);
+    cJSON_Delete(j_agent_info);
     return result;
-}
-
-/* Set agent group. Returns 0 on success or -1 on failure. */
-int set_agent_group(const char * id, const char * group) {
-    char path[PATH_MAX];
-    FILE *fp;
-    mode_t oldmask;
-    int r = 0;
-
-    if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
-        merror("At set_agent_group(): file path too large for agent '%s'.", id);
-        return -1;
-    }
-
-    oldmask = umask(0006);
-    fp = fopen(path, "w");
-    umask(oldmask);
-
-    if (!fp) {
-        merror("At set_agent_group(): open(%s): %s", path, strerror(errno));
-        return -1;
-    }
-
-    if (fchmod(fileno(fp), 0660) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-    }
-
-    if (fprintf(fp, "%s\n", group) < 0) {
-        merror(FWRITE_ERROR, path, errno, strerror(errno));
-        r = -1;
-    }
-
-    if (fclose(fp) != 0) {
-        merror(FCLOSE_ERROR, path, errno, strerror(errno));
-        r = -1;
-    }
-
-    if (r == -1) {
-        unlink(path);
-    }
-
-    return r;
 }
 
 int set_agent_multigroup(char * group) {

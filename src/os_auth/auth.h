@@ -160,14 +160,12 @@ w_err_t w_auth_replace_agent(keyentry *key,
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
- * @param groups New enrollment groups
  * @param id Pointer where new Agent ID will be allocated
  * @param key Pointer where new Agent key will be allocated
  * */
 w_err_t w_auth_add_agent(char *response,
                          const char *ip,
                          const char *agentname,
-                         const char *groups,
                          char **id,
                          char **key);
 

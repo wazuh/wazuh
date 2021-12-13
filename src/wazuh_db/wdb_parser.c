@@ -808,6 +808,15 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_insert_agent_group(wdb, next, output);
             }
+        } else if (strcmp(query, "select-group-belong") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for select-group-belong.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_select_group_belong(wdb, next, output);
+            }
         } else if (strcmp(query, "insert-agent-belong") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for insert-agent-belong.");
@@ -5092,7 +5101,6 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
     cJSON *agent_data = NULL;
     const char *error = NULL;
     cJSON *j_id = NULL;
-    cJSON *j_group = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5102,12 +5110,11 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
         return OS_INVALID;
     } else {
         j_id = cJSON_GetObjectItem(agent_data, "id");
-        j_group = cJSON_GetObjectItem(agent_data, "group");
+        char *group = cJSON_GetStringValue(cJSON_GetObjectItem(agent_data, "group"));
 
-        if (cJSON_IsNumber(j_id)) {
+        if (cJSON_IsNumber(j_id) && group) {
             // Getting each field
             int id = j_id->valueint;
-            char *group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_group(wdb, id, group)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
@@ -5169,6 +5176,25 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
     }
 
     snprintf(output, OS_MAXSTR + 1, "ok");
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) {
+    int agent_id = atoi(input);
+    cJSON *agent_groups = NULL;
+
+    if (agent_groups = wdb_global_select_group_belong(wdb, agent_id), !agent_groups) {
+        mdebug1("Error getting agent information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent groups information from global.db.");
+        return OS_INVALID;
+    }
+
+    char *out = NULL;
+    out = cJSON_PrintUnformatted(agent_groups);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agent_groups);
 
     return OS_SUCCESS;
 }

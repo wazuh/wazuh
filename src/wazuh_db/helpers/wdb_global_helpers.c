@@ -38,6 +38,7 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_DELETE_GROUP] = "global delete-group %s",
+    [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
@@ -966,6 +967,27 @@ int wdb_remove_group_db(const char *name, int *sock) {
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
+    }
+
+    return result;
+}
+
+cJSON* wdb_select_group_belong(int id, int *sock) {
+    cJSON *result = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_GROUP_BELONG], id);
+    result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    if (!result) {
+        merror("Error querying Wazuh DB to get groups from agent %d.", id);
+        return NULL;
     }
 
     return result;

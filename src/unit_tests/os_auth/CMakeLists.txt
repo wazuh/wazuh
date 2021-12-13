@@ -30,7 +30,7 @@ list(APPEND os_auth_names "test_auth_parse")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_auth_validate")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
-                           -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_remove \
+                           -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,add_remove \
                            -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,difftime")
 list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
