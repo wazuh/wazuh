@@ -286,6 +286,38 @@ void wm_check_agents() {
     }
 }
 
+int wm_truncate_groups_file(const char *id, char *groups) {
+    char *temp_groups;
+    os_strdup(groups, temp_groups);
+    char *group;
+    int groups_number = 0;
+    int multigroup_length = 0;
+    bool groups_number_exceeded = true;
+
+    for(groups_number = 0; groups_number < MAX_GROUPS_PER_MULTIGROUP; ++groups_number) {
+        if (group = strrchr(temp_groups, MULTIGROUP_SEPARATOR), group) {
+            multigroup_length += strlen(group);
+            temp_groups[(strlen(temp_groups)-strlen(group))] = '\0';
+        } else {
+            multigroup_length += strlen(temp_groups) + 1;
+            ++groups_number;
+            groups_number_exceeded = false;
+            break;
+        }
+    }
+
+    if (groups_number_exceeded) {
+        mwarn("Groups file for agent %s will be truncated since it exceeds the permitted maximum group number", id);
+    }
+
+    memmove(groups, groups+(strlen(groups) - multigroup_length + 1), strlen(groups));
+    set_agent_group(id, groups);
+
+    os_free(temp_groups);
+
+    return 0;
+}
+
 // Synchronize agents
 void wm_sync_agents() {
     keystore keys = KEYSTORE_INITIALIZER;
@@ -339,6 +371,8 @@ void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
         if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1, NULL) < 0) {
             *group = 0;
         }
+
+        wm_truncate_groups_file(entry->id, group);
 
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
                              entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, wdb_sock)) {
