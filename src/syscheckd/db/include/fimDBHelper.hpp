@@ -219,19 +219,6 @@ namespace FIMDBHelper
 
         return query;
     }
-
-    /**
-    * @brief Create a log message
-    *
-    * @param modules_log_level_t a string with table name
-    * @param msg an array with the column list
-    *
-    */
-    template<typename T>
-    void logErr(const modules_log_level_t logLevel, const std::string& msg)
-    {
-        T::getInstance().logErr(logLevel, msg);
-    }
 }
 
 #endif //_FIMDBHELPER_H

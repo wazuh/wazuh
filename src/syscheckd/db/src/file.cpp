@@ -44,7 +44,7 @@ int fim_db_delete_range(const char* pattern,
     auto paths = fim_db_get_path_from_pattern(pattern);
     if (paths.empty())
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No entry found with that pattern");
+        FIMDB::getInstance().logErr(LOG_ERROR, "No entry found with that pattern");
         return FIMDB_ERR;
     }
     for (auto& path : paths)
@@ -66,7 +66,7 @@ int fim_db_process_missing_entry(const char* pattern,
     auto paths = fim_db_get_path_from_pattern(pattern);
     if (paths.empty())
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No entry found with that pattern");
+        FIMDB::getInstance().logErr(LOG_ERROR, "No entry found with that pattern");
         return FIMDB_ERR;
     }
     for (auto& path : paths)
@@ -86,7 +86,7 @@ int fim_db_remove_wildcard_entry(const char* pattern,
     auto paths = fim_db_get_path_from_pattern(pattern);
     if (paths.empty())
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No entry found with that pattern");
+        FIMDB::getInstance().logErr(LOG_ERROR, "No entry found with that pattern");
         return FIMDB_ERR;
     }
     for (auto& path : paths)
@@ -110,7 +110,7 @@ fim_entry* fim_db_get_path(const char* file_path)
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         return nullptr;
     }
     std::unique_ptr<FileItem> file(new FileItem(entry_from_path));
@@ -131,7 +131,7 @@ std::vector<std::string> fim_db_get_paths_from_inode(unsigned long int inode, un
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         return paths;
     }
     for (auto& item : resultQuery["path"].items())
@@ -151,7 +151,7 @@ int fim_db_remove_path(const char* path)
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         return FIMDB_ERR;
     }
 
@@ -171,7 +171,7 @@ int fim_db_get_count_file_inode()
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
     }
 
     return count;
@@ -187,7 +187,7 @@ int fim_db_get_count_file_entry()
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
     }
 
     return count;
@@ -205,7 +205,7 @@ std::vector<std::string> fim_db_get_path_from_pattern(const char* pattern)
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         return paths;
     }
     for (auto& item : resultQuery["path"].items())
@@ -225,7 +225,7 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
     }
     catch (DbSync::dbsync_error& err)
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         return FIMDB_ERR;
     }
 
@@ -237,7 +237,7 @@ void create_windows_who_data_events(unsigned long int inode, unsigned long int d
     auto paths = fim_db_get_paths_from_inode(inode, dev);
     if (paths.empty())
     {
-        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, "No paths found with these inode and dev");
+        FIMDB::getInstance().logErr(LOG_ERROR, "No paths found with these inode and dev");
         return;
     }
     for (auto& path : paths)
