@@ -42,10 +42,11 @@ class AccessLogger(AbstractAccessLogger):
 
         def json_log(user, remote, method, path, query, body, time, status):
             self.logger.info({'user': user,
-                              'remote_ip': remote,
-                              'request_method': f'{method} {path}',
-                              'request_parameters': query,
-                              'request_body': body,
+                              'ip': remote,
+                              'http_method': f'{method}',
+                              'uri': f'{method} {path}',
+                              'parameters': query,
+                              'body': body,
                               'time': f'{time:.3f}s',
                               'status_code': status
                               }
@@ -92,7 +93,7 @@ class APILogger(WazuhLogger):
         Constructor
         """
         super().__init__(*args, **kwargs,
-                         tag=f"%({'timestamp' if JSON_FORMAT else 'asctime'})s %(levelname)s: %(message)s",
+                         tag=None if JSON_FORMAT else '%(asctime)s %(levelname)s: %(message)s',
                          custom_formatter=WazuhJsonFormatter if JSON_FORMAT else None)
 
     def setup_logger(self):
@@ -125,12 +126,24 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
         # Request handling
         if record.message is None:
-            record.message = message_dict
+            record.message = {
+                'type': 'request',
+                'payload': message_dict
+                }
         else:
             # Traceback handling
             traceback = message_dict.get('exc_info')
             if traceback is not None:
-                record.message = f"{record.message}. {traceback}"
-        message_dict = {}
-        super().add_fields(log_record, record, message_dict)
+                record.message = {
+                    'type': 'error',
+                    'payload': f'{record.message}. {traceback}'
+                    }
+            else:
+                # Plain text messages
+                record.message = {
+                    'type': 'informative',
+                    'payload': record.message
+                    }
         log_record['timestamp'] = self.formatTime(record, self.datefmt)
+        log_record['levelname'] = record.levelname
+        log_record['data'] = record.message
