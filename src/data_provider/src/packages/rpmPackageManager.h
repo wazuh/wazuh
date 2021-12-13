@@ -10,11 +10,13 @@
 #include <rpm/rpmlib.h>
 #include <rpm/rpmts.h>
 
+#include "rpmlibWrapper.h"
+
 // Provides an iterable abstraction for retrieving installed RPM packages.
 class RpmPackageManager final
 {
 public:
-    RpmPackageManager();
+    RpmPackageManager(std::unique_ptr<IRpmLibWrapper> &&wrapper);
     ~RpmPackageManager();
     struct Package
     {
@@ -60,6 +62,8 @@ public:
     {
         return END_ITERATOR;
     }
+private:
+    std::unique_ptr<IRpmLibWrapper> rpmlib;
 };
 
 #endif // RPM_PACKAGE_MANAGER_H

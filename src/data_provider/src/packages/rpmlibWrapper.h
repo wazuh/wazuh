@@ -8,6 +8,7 @@
 
 class IRpmLibWrapper {
 public:
+    virtual ~IRpmLibWrapper() = default;
     virtual int rpmReadConfigFiles(const char * file, const char * target) = 0;
     virtual void rpmFreeRpmrc() = 0;
     virtual rpmtd rpmtdNew(void) = 0;

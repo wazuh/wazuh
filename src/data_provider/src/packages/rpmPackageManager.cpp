@@ -10,7 +10,8 @@
 
 static bool instantiated = false;
 
-RpmPackageManager::RpmPackageManager()
+RpmPackageManager::RpmPackageManager(std::unique_ptr<IRpmLibWrapper> &&wrapper)
+: rpmlib{std::move(wrapper)}
 {
     if (instantiated) {
         throw std::runtime_error("there is another RPM instance already created");
