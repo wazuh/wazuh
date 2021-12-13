@@ -1146,7 +1146,7 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     return result;
 }
 
-cJSON * wdb_exec_stmt_single_array(sqlite3_stmt * stmt) {
+cJSON * wdb_exec_stmt_single_column(sqlite3_stmt * stmt) {
     cJSON* j_result = NULL;
 
     if (!stmt) {
