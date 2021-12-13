@@ -73,26 +73,31 @@
 </decoder>
 
 <!--
+  Comment:
+    In example logs with [- -], the braces should be removed and the hyphens joined together. 
+    They were put in this format to prevent XML comment from overwriting the whole document.
+
   gitlab_shell.log
-    I, [2015-02-13T06:17:00.671315 #9291]  INFO -/- : Adding project root/example.git at </var/opt/gitlab/git-data/repositories/root/dcdcdcdcd.git>.
+    I, [2015-02-13T06:17:00.671315 #9291]  INFO [- -] : Adding project root/example.git at </var/opt/gitlab/git-data/repositories/root/dcdcdcdcd.git>.
 
   unicorn_stderr.log
-    I, [2015-02-13T06:14:46.680381 #9047]  INFO -/- : Refreshing Gem list
-    W, [2015-02-13T07:16:01.313000 #9094]  WARN -/- : Unicorn::WorkerKiller send SIGQUIT (pid: 9094) alive: 3621 sec (trial 1)
+    I, [2015-02-13T06:14:46.680381 #9047]  INFO [- -] : Refreshing Gem list
+    W, [2015-02-13T07:16:01.313000 #9094]  WARN [- -] : Unicorn::WorkerKiller send SIGQUIT (pid: 9094) alive: 3621 sec (trial 1)
 -->
 <decoder name="gitlab_shell_stderr">
-<prematch>\w, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]  \w+ -- :</prematch>
+  <prematch>\w, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]  \w+ -- :</prematch>
 </decoder>
+
 <decoder name="gitlab_shell_stderr_info">
-<parent>gitlab_shell_stderr</parent>
-<prematch>I, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
-<regex>I, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (INFO) -- : (\.+)</regex>
-<order>timestamp, severity, message</order>
+  <parent>gitlab_shell_stderr</parent>
+  <prematch>I, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
+  <regex>I, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (INFO) -- : (\.+)</regex>
+  <order>timestamp, severity, message</order>
 </decoder>
 
 <decoder name="gitlab_shell_stderr_warn">
-<parent>gitlab_shell_stderr</parent>
-<prematch>W, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
-<regex>W, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (WARN) -- : (\.+)</regex>
-<order>timestamp, severity, message</order>
+  <parent>gitlab_shell_stderr</parent>
+  <prematch>W, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
+  <regex>W, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (WARN) -- : (\.+)</regex>
+  <order>timestamp, severity, message</order>
 </decoder>
