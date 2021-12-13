@@ -1,4 +1,4 @@
-#include "rpm.h"
+#include "rpmPackageManager.h"
 
 #include <exception>
 #include <map>

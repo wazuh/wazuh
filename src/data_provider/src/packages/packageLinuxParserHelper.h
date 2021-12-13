@@ -18,7 +18,7 @@
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
-#include "rpm.h"
+#include "rpmPackageManager.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

@@ -1,4 +1,3 @@
-#include "rpm.h"
 #include "packageLinuxDataRetriever.h"
 #include "iberkeleyDbWrapper.h"
 #include "sharedDefs.h"

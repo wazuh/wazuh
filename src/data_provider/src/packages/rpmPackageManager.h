@@ -1,5 +1,5 @@
-#ifndef LIB_RPM_WRAPPER_H
-#define LIB_RPM_WRAPPER_H
+#ifndef RPM_PACKAGE_MANAGER_H
+#define RPM_PACKAGE_MANAGER_H
 
 #include <string>
 #include <vector>
@@ -62,4 +62,4 @@ public:
     }
 };
 
-#endif // LIB_RPM_WRAPPER_H
+#endif // RPM_PACKAGE_MANAGER_H
