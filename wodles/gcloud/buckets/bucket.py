@@ -53,7 +53,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.bucket = None
         self.client = storage.client.Client.from_service_account_json(credentials_file)
         self.project_id = self.client.project
-        self.prefix = prefix if not prefix or prefix[-1] == '/' else prefix + '/'
+        self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
         self.only_logs_after = only_logs_after
 
