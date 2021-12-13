@@ -273,31 +273,29 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 
 #ifndef CLIENT
 /* Read group. Returns 0 on success or -1 on failure. */
-int get_agent_group(int id, char *group, size_t size) {
-    cJSON* j_string = NULL;
-    cJSON* j_groups = NULL;
-    char* concatenated_groups = NULL;
+int get_agent_group(int id, char *group, size_t size, int* wdb_sock) {
+    cJSON* j_agent_info = NULL;
+    char* group = NULL;
+    int result = OS_INVALID;
 
-    j_groups = wdb_select_group_belong(id, NULL);
+    j_agent_info = wdb_get_agent_info(id, wdb_sock);
 
-    if(!j_groups) {
-        mdebug1("Unable to get groups of agent '%d'", id);
+    if(!j_agent_info) {
+        mdebug1("Unable to get agent info of agent '%d'", id);
         return OS_INVALID;
     }
 
-    cJSON_ArrayForEach(j_string, j_groups) {
-        wm_strcat(&concatenated_groups, cJSON_GetStringValue(j_string), MULTIGROUP_SEPARATOR);
-    }
+    group = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info,"group"));
 
-    cJSON_Delete(j_groups);
-
-    if(concatenated_groups) {
-        snprintf(group, size, "%s", concatenated_groups);
-        os_free(concatenated_groups);
-        return OS_SUCCESS;
+    if(group) {
+        snprintf(group, size, "%s", group);
+        result = OS_SUCCESS;
     } else {
-        return OS_INVALID;
+        result = OS_INVALID;
     }
+
+    cJSON_Delete(j_agent_info);
+    return result;
 }
 
 int set_agent_multigroup(char * group) {
