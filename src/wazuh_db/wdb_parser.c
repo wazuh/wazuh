@@ -5102,7 +5102,6 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
     cJSON *agent_data = NULL;
     const char *error = NULL;
     cJSON *j_id = NULL;
-    cJSON *j_group = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5112,12 +5111,11 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
         return OS_INVALID;
     } else {
         j_id = cJSON_GetObjectItem(agent_data, "id");
-        j_group = cJSON_GetObjectItem(agent_data, "group");
+        char *group = cJSON_GetStringValue(cJSON_GetObjectItem(agent_data, "group"));
 
-        if (cJSON_IsNumber(j_id)) {
+        if (cJSON_IsNumber(j_id) && group) {
             // Getting each field
             int id = j_id->valueint;
-            char *group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_group(wdb, id, group)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
