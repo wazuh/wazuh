@@ -236,4 +236,27 @@ TEST_F(FimDBFixture, executeQueryFailException)
     fimDBMock.executeQuery(itemJson, callback);
 }
 
+TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
+{
+    const std::string& data = "testing msg";
+    auto rawData{data};
+    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+
+    EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()}));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "Message pushed: " + data));
+
+    fimDBMock.fimSyncPushMsg(data);
+}
+
+TEST_F(FimDBFixture, fimSyncPushMsgException)
+{
+    const std::string& data = "testing msg";
+    auto rawData{data};
+    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+
+    EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()})).WillOnce(testing::Throw(std::exception()));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
+
+    fimDBMock.fimSyncPushMsg(data);
+}
 #endif
