@@ -42,8 +42,8 @@ TEST_F(FIMHelperTest, insertItemToDatabase)
 
 TEST_F(FIMHelperTest, deleteItemToDatabase)
 {
-    std::string tableName;
-    nlohmann::json filter;
+    std::string tableName = "test";
+    nlohmann::json filter = "";
     EXPECT_CALL(FIMDBMOCK::getInstance(), removeItem(testing::_));
     FIMDBHelper::removeFromDB<FIMDBMOCK>(tableName, filter);
 }
@@ -71,6 +71,14 @@ TEST_F(FIMHelperTest, executeGetCountSuccess)
 {
     std::string tableName;
     int count = 0;
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
+    FIMDBHelper::getCount<FIMDBMOCK>(tableName, count);
+}
+
+TEST_F(FIMHelperTest, executeGetCountSuccessCustomQuery)
+{
+    std::string tableName;
+    int count = 0;
     nlohmann::json query;
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
     FIMDBHelper::getCount<FIMDBMOCK>(tableName, count, query);
@@ -91,4 +99,12 @@ TEST_F(FIMHelperTest, createANewQuery)
     auto filter = "WHERE path=/tmp/fakeFile";
     auto returnStatement = FIMDBHelper::dbQuery("file_entry", columnList, filter, "path");
     ASSERT_TRUE(expectedReturn == returnStatement);
+}
+
+TEST_F(FIMHelperTest, logANewError)
+{
+    std::string error = "This is a error";
+    nlohmann::json query;
+    EXPECT_CALL(FIMDBMOCK::getInstance(), logErr(testing::_, testing::_));
+    FIMDBHelper::logErr<FIMDBMOCK>(LOG_ERROR, error);
 }
