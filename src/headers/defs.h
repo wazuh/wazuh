@@ -315,7 +315,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MULTIGROUPS_DIR   "var/multigroups"
 #define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
-#define MAX_GROUPS_PER_MULTIGROUP 256
+#define MAX_GROUPS_PER_MULTIGROUP 128
 
 // Incoming directory
 #ifndef WIN32
