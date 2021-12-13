@@ -83,10 +83,8 @@ int fim_db_remove_path(const char* path);
  * The paths are alphabetically ordered.
  * The range is given by start and top parameters.
  *
- * @param fim_sql FIM database struct.
- * @param file Structure of the file which contains all the paths.
+ * @param pattert Path pattern to find delete a range of paths from database.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param evt_data Information on how the event was triggered.
  * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
  *
@@ -100,10 +98,8 @@ int fim_db_delete_range(const char* pattern,
 /**
  * @brief Remove a range of paths from database if they have a specific monitoring mode.
  *
- * @param fim_sql FIM database struct.
- * @param file Structure of the file which contains all the paths.
+ * @param pattern Path pattern to find delete a range of paths from database.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param evt_data Information on how the event was triggered.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
@@ -115,10 +111,8 @@ int fim_db_process_missing_entry(const char* pattern,
 /**
  * @brief Remove a wildcard directory that were not expanded from the configuration
  *
- * @param fim_sql FIM database struct.
- * @param file Structure of the file which contains all the paths.
+ * @param pattern Path pattern to find delete a range of paths from database.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param storage 1 Store database in memory, disk otherwise.
  * @param evt_data Information on how the event was triggered.
  * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
  *
@@ -155,7 +149,11 @@ int fim_db_get_count_file_entry();
 int fim_db_file_update(const fim_entry* data, bool* updated);
 
 /**
- * @brief 
+ * @brief Create a who data event from a file deleted or a directory moved (or renamed).
+ *
+ * @param inode Inode.
+ * @param dev Device.
+ * @param w_evt Whodata event
  */
 void create_windows_who_data_events(unsigned long int inode, unsigned long int dev, whodata_evt* w_evt);
 

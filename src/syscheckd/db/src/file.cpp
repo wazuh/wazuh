@@ -93,7 +93,6 @@ int fim_db_remove_wildcard_entry(const char* pattern,
     {
         char* entry = const_cast<char*>(path.c_str());
         fim_generate_delete_event(entry, mutex, evt_data, configuration, NULL);
-        
     }
 
     return FIMDB_OK;
@@ -102,10 +101,18 @@ int fim_db_remove_wildcard_entry(const char* pattern,
 
 fim_entry* fim_db_get_path(const char* file_path)
 {
+    nlohmann::json entry_from_path;
     auto filter = std::string("WHERE path=") + std::string(file_path);
     auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
-    nlohmann::json entry_from_path;
-    FIMDBHelper::getDBItem<FIMDB>(entry_from_path, query);
+    try
+    {
+        FIMDBHelper::getDBItem<FIMDB>(entry_from_path, query);
+    }
+    catch (DbSync::dbsync_error& err)
+    {
+        FIMDBHelper::logErr<FIMDB>(LOG_ERROR, err.what());
+        return nullptr;
+    }
     std::unique_ptr<FileItem> file(new FileItem(entry_from_path));
 
     return file->toFimEntry();
