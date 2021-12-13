@@ -226,9 +226,9 @@ class LinuxPortWrapper final : public IPortWrapper
 
             return retVal;
         }
-        int32_t inode() const override
+        int64_t inode() const override
         {
-            return std::stoi(m_fields.at(INODE));
+            return static_cast<int64_t>(std::stoll(m_fields.at(INODE)));
         }
         std::string state() const override
         {
