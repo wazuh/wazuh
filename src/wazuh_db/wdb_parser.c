@@ -947,6 +947,16 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
             }
         }
+        else if (strcmp(query, "backup") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for backup.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_backup(wdb, next, output);
+            }
+        }
         else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -5719,6 +5729,71 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
+int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output) {
+    int result = OS_INVALID;
+    char * next;
+    const char delim[] = " ";
+    char *tail = NULL;
+
+    next = strtok_r(input, delim, &tail);
+
+    if (!next){
+        snprintf(output, OS_MAXSTR + 1, "err Missing backup action");
+    }
+    else if (strcmp(next, "create") == 0) {
+        result = wdb_parse_global_create_backup(wdb, output);
+    }
+    else if (strcmp(next, "get") == 0) {
+        result = wdb_parse_global_get_backup(wdb, output);
+    }
+    else if (strcmp(next, "restore") == 0) {
+        result = wdb_parse_global_restore_backup(wdb, tail, output);
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
+    }
+
+    return result;
+}
+
+int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
+    int ret = wdb_global_create_backup(wdb);
+    if (OS_SUCCESS != ret) {
+        mdebug1("DB(%s) Cannot execute backup create command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup create command; SQL err: %s", sqlite3_errmsg(wdb->db));
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+    return ret;
+}
+
+int wdb_parse_global_get_backup(wdb_t* wdb, char* output) {
+    cJSON* j_backups = wdb_global_get_backup(wdb);
+    if (j_backups) {
+        char* out = cJSON_PrintUnformatted(j_backups);
+        snprintf(output, OS_MAXSTR + 1, out);
+        os_free(out);
+        return OS_SUCCESS;
+    } else {
+        mdebug1("DB(%s) Cannot execute backup get command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command; SQL err: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+}
+
+int wdb_parse_global_restore_backup(wdb_t* wdb, char* input, char* output) {
+    int ret = wdb_global_restore_backup(wdb, input);
+    if (OS_SUCCESS != ret) {
+        mdebug1("DB(%s) Cannot execute backup restore command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup restore command; SQL err: %s", sqlite3_errmsg(wdb->db));
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+    return ret;
+}
+
 bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, const char *data, char *output)
 {
     bool ret_val = false;
@@ -5740,7 +5815,6 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
     }
     return ret_val;
 }
-
 
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     int ret_val = OS_INVALID;
