@@ -702,7 +702,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             # Compress data: master files (only KO shared and missing).
             logger.debug("Compressing files to be synced in worker.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
-            compressed_data = wazuh.core.cluster.cluster.compress_files(self.name, master_files_paths, worker_files_ko)
+
+            # Create and add the file synchronization task to the process pool
+            task = self.loop.run_in_executor(
+                self.server.task_pool,
+                partial(wazuh.core.cluster.cluster.compress_files, self.name, master_files_paths, worker_files_ko)
+            )
+            compressed_data = await asyncio.wait_for(task, timeout=None)
 
             logger.debug("Zip with files to be synced sent to worker.")
             try:
