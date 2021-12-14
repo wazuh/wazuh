@@ -1336,7 +1336,7 @@ checks:
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv6.conf.all.disable_ipv6=1
       # sysctl -w net.ipv6.conf.default.disable_ipv6=1 
-      # sysctl -w net.ipv6.route.flush=1"
+      # sysctl -w net.ipv6.route.flush=1
     compliance:
       - cis: ["3.1.1"]
       - cis_csc: ["2.6"]
@@ -1349,8 +1349,8 @@ checks:
     condition: any
     rules:
       - 'not f:/boot/grub2/grub.cfg -> r:ipv6.disable\s*=\s*1'
-      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6 = 1'
-      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6 = 1'
+      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net\.ipv6\.conf\.default\.disable_ipv6\s*=\s*1'
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net\.ipv6\.conf\.all\.disable_ipv6\s*=\s*1'
 
 # 3.1.2 Ensure wireless interfaces are disabled -> Not implemented, requires manual action.
 
@@ -1478,8 +1478,8 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
       - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1'
+      - 'not c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:0'
+      - 'not c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:0'
 
 # 3.3.5 Ensure broadcast ICMP requests are ignored.
   - id: 20579
@@ -1496,7 +1496,7 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1'
+      - 'not c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:0'
 
 # 3.3.6 Ensure bogus ICMP responses are ignored.
   - id: 20580
@@ -1513,7 +1513,7 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1'
+      - 'not c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:0'
 
 # 3.3.7 Ensure Reverse Path Filtering is enabled.
   - id: 20581
@@ -1531,8 +1531,8 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
       - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1'
+      - 'not c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:0'
+      - 'not c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:0'
 
 # 3.3.8 Ensure TCP SYN Cookies is enabled.
   - id: 20582
@@ -1549,7 +1549,7 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1'
+      - 'not c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:0'
 
 # 3.3.9 Ensure IPv6 router advertisements are not accepted.
   - id: 20583
@@ -1570,8 +1570,8 @@ checks:
     rules:
       - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
       - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0'
+      - 'not c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:1'
+      - 'not c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:1'
 
 ############################################################
 # 3.4 Uncommon Network Protocols.
@@ -1637,23 +1637,25 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:rpm -q iptables firewalld -> r:iptables-|firewalld-'
+      - 'c:rpm -q firewalld -> r:firewalld-'
 
 # 3.5.1.2 Ensure iptables-services not installed with firewalld.
 # 3.5.2.3 Ensure iptables-services not installed with nftables.
   - id: 20587
-    title: "Ensure iptables-services not installed with firewalld."
+    title: "Ensure iptables-services not installed with firewalld or nftables."
     description: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package." 
     rationale: "The iptables-services package contains the iptables.service and ip6tables.service. These services allow for management of the Host Based Firewall provided by the iptables package." 
     remediation: "Run the following commands to stop the services included in the iptables-services package and remove the iptables-services package # systemctl stop iptables # systemctl stop ip6tables # yum remove iptables-services"
     compliance:
-      - cis: ["3.5.1.2"]
+      - cis: ["3.5.1.2","3.5.2.3"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
-    condition: any
+    condition: all
     rules:
-      - 'c:rpm -q iptables-services -> r:^package iptables-services is not installed'
+      - 'c:rpm -q iptables-services -> r:^iptables-services-'
+      - 'not c:rpm -q firewalld -> r:firewalld-'
+      - 'not c:rpm -q nftables -> r:nftables-'
 
 # 3.5.1.3 Ensure nftables either not installed or masked with firewalld.
   - id: 20588
@@ -1666,10 +1668,11 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
-    condition: any
+    condition: all
     rules:
-      - 'c:systemctl is-enabled nftables -> r:masked'
+      - 'not c:systemctl is-enabled nftables -> r:enabled'
       - 'c:rpm -q nftables -> r:^package nftables is not installed'
+      - 'c:rpm -q firewalld -> r:firewalld-'
 
 # 3.5.1.4 Ensure firewalld service enabled and running.
   - id: 20589
@@ -1793,7 +1796,7 @@ checks:
       - 'c:nft list ruleset -> r:input'
       - 'c:nft list ruleset -> r:forward'
       - 'c:nft list ruleset -> r:output'
-      - 'c:rpm -q nftables -> r:^nftables-'
+      - 'c:rpm -q nftables -> r:nftables-'
 
 # 3.5.2.7 Ensure nftables loopback traffic is configured - Not implemented, SCA limitation.
 # 3.5.2.8 Ensure nftables outbound and established connections are configured - Not implemented, SCA limitation.
@@ -1861,11 +1864,11 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
-    condition: any
+    condition: all
     rules:
-      - 'not c:iptables -L INPUT   ->  r:policy DROP'
-      - 'not c:iptables -L FORWARD ->  r:policy DROP'
-      - 'not c:iptables -L OUTPUT  ->  r:policy DROP'
+      - 'c:iptables -L INPUT   ->  r:policy DROP'
+      - 'c:iptables -L FORWARD ->  r:policy DROP'
+      - 'c:iptables -L OUTPUT  ->  r:policy DROP'
 
 # 3.5.3.2.5 Ensure iptables rules are saved - Not implemented, requires manual operation.
 
@@ -1883,7 +1886,7 @@ checks:
     condition: all
     rules:
       - 'c:systemctl is-enabled iptables->  r:enabled'
-      - 'c:systemctl status iptables ->  r:active && r:running|exited'
+      - 'c:systemctl status iptables ->  r:active && r:running'
 
 ############################################################
 # 3.5.3.3 Configure IPv6 iptables.
@@ -1922,9 +1925,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L ->  r:Chain INPUT (policy DROP)'
-      - 'c:ip6tables -L ->  r:Chain FORWARD (policy DROP)'
-      - 'c:ip6tables -L ->  r:Chain OUTPUT (policy DROP)'
+      - 'c:ip6tables -L INPUT ->  r:policy DROP'
+      - 'c:ip6tables -L FORWARD ->  r:policy DROP'
+      - 'c:ip6tables -L OUTPUT ->  r:policy DROP'
 
 # 3.5.3.3.5 Ensure ip6tables rules are saved - Not implemented, requires manual operation.
 
@@ -1999,9 +2002,9 @@ checks:
       - gpg_13: ["7.9"]
       - gdpr_IV: ["35.7.d","32.2"]
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && r:audit=1'
 
 ############################################################
 # 4.1.2 Configure Data Retention
@@ -2836,7 +2839,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: none
     rules:
-      - 'c:sshd -T -> r:ciphers && r:3des-cbc|aes192-cbc|aes256-cbc|arcfour|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
+      - 'c:sh -c "sshd -T | grep ciphers"-> r:3des-cbc|aes192-cbc|aes256-cbc|arcfour|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
 
 # 5.3.14 Ensure only strong MAC algorithms are used.
   - id: 20654
@@ -2850,7 +2853,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: none
     rules:
-      - 'c:sshd -T -> r:macs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
+      - 'c:sh -c "sshd -T | grep macs"-> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
 
 # 5.3.15 Ensure only strong Key Exchange algorithms are used.
   - id: 20655
@@ -2864,7 +2867,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: none
     rules:
-      - 'c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
+      - 'sh -c "c:sshd -T | grep kexalgorithms"-> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
 
 # 5.3.16 Ensure SSH Idle Timeout Interval is configured.
   - id: 20656
@@ -2896,7 +2899,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
+      - 'f:$sshd_file -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
 
 # 5.3.18 Ensure SSH warning banner is configured.
   - id: 20658
