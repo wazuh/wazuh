@@ -10,28 +10,28 @@
 
 static bool instantiated = false;
 
-RpmPackageManager::RpmPackageManager(std::unique_ptr<IRpmLibWrapper> &&wrapper)
-: rpmlib{std::move(wrapper)}
+RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper> &&wrapper)
+: m_rpmlib{wrapper}
 {
     if (instantiated) {
         throw std::runtime_error("there is another RPM instance already created");
     }
-    rpmReadConfigFiles(nullptr, nullptr);
+    m_rpmlib->rpmReadConfigFiles(nullptr, nullptr);
     instantiated = true;
 }
 
 RpmPackageManager::~RpmPackageManager() {
-    rpmFreeRpmrc();
+    m_rpmlib->rpmFreeRpmrc();
     instantiated = false;
 }
 
 std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag)
 {
-    if (headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT) == 0)
+    if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT) == 0)
     {
         return "";
     }
-    auto cstr = rpmtdGetString(m_dataContainer);
+    auto cstr = m_rpmlib->rpmtdGetString(m_dataContainer);
     if (!cstr)
     {
         return "";
@@ -41,40 +41,44 @@ std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag)
 
 uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag)
 {
-    if (headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT) == 0)
+    if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT) == 0)
     {
         return 0;
     }
-    return rpmtdGetNumber(m_dataContainer);
+    return m_rpmlib->rpmtdGetNumber(m_dataContainer);
 }
 
-const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR{true};
+const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR{};
 
-RpmPackageManager::Iterator::Iterator(bool end)
-: m_end{end}
+RpmPackageManager::Iterator::Iterator()
+: m_end{true}
 {
-    if (end) {
-        return;
-    }
-    m_transactionSet = rpmtsCreate();
+
+}
+
+RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper> &rpmlib)
+: m_end{false},
+  m_rpmlib{rpmlib}
+{
+    m_transactionSet = rpmlib->rpmtsCreate();
     if (nullptr == m_transactionSet)
     {
         throw std::runtime_error("rpmtsCreate failed");
     }
-    if (rpmtsOpenDB(m_transactionSet, O_RDONLY))
+    if (rpmlib->rpmtsOpenDB(m_transactionSet, O_RDONLY))
     {
         throw std::runtime_error("rpmtsOpenDB failed");
     }
-    if (rpmtsRun(m_transactionSet, NULL, 0))
+    if (rpmlib->rpmtsRun(m_transactionSet, NULL, 0))
     {
         throw std::runtime_error("rpmtsRun failed");
     }
-    m_dataContainer = rpmtdNew();
+    m_dataContainer = rpmlib->rpmtdNew();
     if (nullptr == m_dataContainer)
     {
         throw std::runtime_error("rpmtdNew failed");
     }
-    m_matches = rpmtsInitIterator(m_transactionSet, RPMTAG_NAME, nullptr, 0);
+    m_matches = rpmlib->rpmtsInitIterator(m_transactionSet, RPMTAG_NAME, nullptr, 0);
     // Prepare for first call to dereference (*) operator.
     ++(*this);
 }
@@ -83,22 +87,22 @@ RpmPackageManager::Iterator::~Iterator()
 {
     if (m_transactionSet)
     {
-        rpmtsCloseDB(m_transactionSet);
-        rpmtsFree(m_transactionSet);
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
     }
     if (m_dataContainer)
     {
-        rpmtdFree(m_dataContainer);
+        m_rpmlib->rpmtdFree(m_dataContainer);
     }
     if (m_matches)
     {
-        rpmdbFreeIterator(m_matches);
+        m_rpmlib->rpmdbFreeIterator(m_matches);
     }
 }
 
 void RpmPackageManager::Iterator::operator++()
 {
-    m_header = rpmdbNextIterator(m_matches);
+    m_header = m_rpmlib->rpmdbNextIterator(m_matches);
     if (!m_header)
     {
         m_end = true;

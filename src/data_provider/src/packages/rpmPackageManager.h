@@ -16,7 +16,7 @@
 class RpmPackageManager final
 {
 public:
-    RpmPackageManager(std::unique_ptr<IRpmLibWrapper> &&wrapper);
+    RpmPackageManager(std::shared_ptr<IRpmLibWrapper> &&wrapper);
     ~RpmPackageManager();
     struct Package
     {
@@ -25,7 +25,7 @@ public:
         std::string release;
         std::string epoch;
         std::string summary;
-        std::string installTime;
+        uint64_t installTime;
         uint64_t size;
         std::string vendor;
         std::string group;
@@ -43,10 +43,14 @@ public:
         Package operator*();
         ~Iterator();
     private:
-        Iterator(bool end = false);
+        // Used for end iterator
+        Iterator();
+        // Used for regular iterator
+        Iterator(std::shared_ptr<IRpmLibWrapper> &rpmlib);
         std::string getAttribute(rpmTag tag);
         uint64_t getAttributeNumber(rpmTag tag);
         bool m_end = false;
+        std::shared_ptr<IRpmLibWrapper> m_rpmlib;
         rpmts m_transactionSet = nullptr;
         rpmdbMatchIterator m_matches = nullptr;
         rpmtd m_dataContainer = nullptr;
@@ -56,14 +60,14 @@ public:
     static const Iterator END_ITERATOR;
     Iterator begin()
     {
-        return Iterator{};
+        return Iterator{m_rpmlib};
     }
     const Iterator &end()
     {
         return END_ITERATOR;
     }
 private:
-    std::unique_ptr<IRpmLibWrapper> rpmlib;
+    std::shared_ptr<IRpmLibWrapper> m_rpmlib;
 };
 
 #endif // RPM_PACKAGE_MANAGER_H
