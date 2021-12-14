@@ -577,7 +577,7 @@ int OS_WriteKeys(const keystore *keys) {
 
     unsigned int i;
     File file;
-    char cidr[20];
+    char cidr[IPSIZE];
 
     if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
@@ -585,7 +585,7 @@ int OS_WriteKeys(const keystore *keys) {
    for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
 
-        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key) < 0) {
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ? entry->ip->ip : cidr, entry->raw_key) < 0) {
             merror(FWRITE_ERROR, file.name, errno, strerror(errno));
             fclose(file.fp);
             goto error;
@@ -814,12 +814,12 @@ int OS_WriteTimestamps(keystore * keys) {
         }
 
         char timestamp[40];
-        char cidr[20];
+        char cidr[IPSIZE];
         struct tm tm_result = { .tm_sec = 0 };
 
         strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
 
-        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp) < 0) {
+        if (fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ? entry->ip->ip : cidr, timestamp) < 0) {
             merror(FWRITE_ERROR, file.name, errno, strerror(errno));
             r = -1;
             break;

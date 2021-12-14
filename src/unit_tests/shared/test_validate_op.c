@@ -531,7 +531,7 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
 
 void OS_IsValidIP_valid_ipv6_prefix(void **state)
 {
-    char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
+    char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/60"};
 
     int ret = 0;
     os_ip *ret_ip;
@@ -547,7 +547,7 @@ void OS_IsValidIP_valid_ipv6_prefix(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "2001:db8:abcd:0012:0000:0000:0000:0000");
-    will_return(__wrap_w_expression_match, "64");
+    will_return(__wrap_w_expression_match, "60");
 
     will_return(__wrap_get_ipv6_numeric, 0);
 
@@ -656,8 +656,6 @@ void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
     w_free_os_ip(ret_ip);
 }
 
-<<<<<<< Updated upstream
-=======
 void OS_IPFound_not_valid_ip(void **state)
 {
     char ip_to_test[] = {"2001::db8:abcd::0012/64"};
@@ -1097,7 +1095,7 @@ int main(void) {
         cmocka_unit_test(w_validate_bytes_kilobytes),
         cmocka_unit_test(w_validate_bytes_megabytes),
         cmocka_unit_test(w_validate_bytes_gigabytes),
-        // OS_IsValidIP
+        // Test OS_IsValidIP
         cmocka_unit_test(OS_IsValidIP_null),
         cmocka_unit_test(OS_IsValidIP_any),
         cmocka_unit_test(OS_IsValidIP_any_struct),
@@ -1142,7 +1140,6 @@ int main(void) {
         cmocka_unit_test(OS_CIDRtoStr_valid_ipv4_CIDR_0),
         // Test OS_GetIPv4FromIPv6
         cmocka_unit_test(OS_GetIPv4FromIPv6_success),
-
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
