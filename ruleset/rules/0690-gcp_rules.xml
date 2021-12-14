@@ -1,8 +1,5 @@
 <!--
-  -  Google Cloud Pub/Sub rules
-  -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+    Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
 <!--
@@ -283,7 +280,94 @@ ID: 65000 - 65499
         <description>GCP: Bad/missing Server Cookie with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity).</description>
     </rule>
 
-    <!-- Mitre detection rules  -->
+    <!-- GCP Generic Events -->
+    <rule id="65039" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^DEFAULT$</field>
+        <options>no_full_log</options>
+        <description>A GCP event with no severity information happened on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65040" level="2">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^INFO$</field>
+        <options>no_full_log</options>
+        <description>GCP: information event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65041" level="5">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^WARNING$</field>
+        <options>no_full_log</options>
+        <description>GCP: warning event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65042" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^NOTICE$</field>
+        <options>no_full_log</options>
+        <description>GCP: notice event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65043" level="7">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^ERROR$</field>
+        <options>no_full_log</options>
+        <description>GCP: error event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65044" level="9">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^CRITICAL$</field>
+        <options>no_full_log</options>
+        <description>GCP: critical event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65045" level="11">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^ALERT$</field>
+        <options>no_full_log</options>
+        <description>GCP: alert event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <rule id="65046" level="12">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^EMERGENCY$</field>
+        <options>no_full_log</options>
+        <description>GCP: emergency event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
+    </rule>
+
+    <!-- VPC Firewall rules -->
+    <rule id="65047" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.jsonPayload.rule_details.reference" type="pcre2">^(?!^$).*</field>
+        <options>no_full_log</options>
+        <description>GCP: VPC Firewall event.</description>
+    </rule>
+
+    <rule id="65048" level="5">
+        <if_sid>65047</if_sid>
+        <field name="gcp.jsonPayload.rule_details.action">DENY</field>
+        <options>no_full_log</options>
+        <description>GCP: VPC Firewall: DENY rule triggered.</description>
+    </rule>
+
+    <rule id="65049" level="3">
+        <if_sid>65047</if_sid>
+        <field name="gcp.jsonPayload.rule_details.action">ALLOW</field>
+        <options>no_full_log</options>
+        <description>GCP: VPC Firewall: ALLOW rule triggered.</description>
+    </rule>
+
+    <!-- GCP VPC Flow -->
+    <rule id="65050" level="2">
+        <if_sid>65000</if_sid>
+        <field name="gcp.jsonPayload.reporter" type="pcre2">^(?!^$).*</field>
+        <options>no_full_log</options>
+        <description>GCP: VPC Flow event.</description>
+    </rule>
+
+        <!-- Mitre detection rules  -->
     <!-- collection gcp_pub_sub subscription creation -->
     <rule id="65051" level="3">
         <if_sid>65000</if_sid>
@@ -523,93 +607,6 @@ ID: 65000 - 65499
         <mitre>
             <id>T1098.001</id>
         </mitre>
-    </rule>
-
-    <!-- GCP Generic Events -->
-    <rule id="65039" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^DEFAULT$</field>
-        <options>no_full_log</options>
-        <description>A GCP event with no severity information happened on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65040" level="2">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^INFO$</field>
-        <options>no_full_log</options>
-        <description>GCP: information event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65041" level="5">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^WARNING$</field>
-        <options>no_full_log</options>
-        <description>GCP: warning event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65042" level="3">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^NOTICE$</field>
-        <options>no_full_log</options>
-        <description>GCP: notice event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65043" level="7">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^ERROR$</field>
-        <options>no_full_log</options>
-        <description>GCP: error event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65044" level="9">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^CRITICAL$</field>
-        <options>no_full_log</options>
-        <description>GCP: critical event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65045" level="11">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^ALERT$</field>
-        <options>no_full_log</options>
-        <description>GCP: alert event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <rule id="65046" level="12">
-        <if_sid>65000</if_sid>
-        <field name="gcp.severity">^EMERGENCY$</field>
-        <options>no_full_log</options>
-        <description>GCP: emergency event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type).</description>
-    </rule>
-
-    <!-- VPC Firewall rules -->
-    <rule id="65047" level="3">
-        <if_sid>65000</if_sid>
-        <field name="gcp.jsonPayload.rule_details.reference" type="pcre2">^(?!^$).*</field>
-        <options>no_full_log</options>
-        <description>GCP: VPC Firewall event.</description>
-    </rule>
-
-    <rule id="65048" level="5">
-        <if_sid>65047</if_sid>
-        <field name="gcp.jsonPayload.rule_details.action">DENY</field>
-        <options>no_full_log</options>
-        <description>GCP: VPC Firewall: DENY rule triggered.</description>
-    </rule>
-
-    <rule id="65049" level="3">
-        <if_sid>65047</if_sid>
-        <field name="gcp.jsonPayload.rule_details.action">ALLOW</field>
-        <options>no_full_log</options>
-        <description>GCP: VPC Firewall: ALLOW rule triggered.</description>
-    </rule>
-
-    <!-- GCP VPC Flow -->
-    <rule id="65050" level="2">
-        <if_sid>65000</if_sid>
-        <field name="gcp.jsonPayload.reporter" type="pcre2">^(?!^$).*</field>
-        <options>no_full_log</options>
-        <description>GCP: VPC Flow event.</description>
     </rule>
 
     <!-- GCP VPC Usage rules-->
