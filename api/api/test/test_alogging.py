@@ -40,8 +40,8 @@ def test_accesslogger_log_credentials(json_format):
             test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
 
             if json_format:
-                assert mock_logger_info.call_args.args[0]['request_parameters'] == {"password": "****"}
-                assert mock_logger_info.call_args.args[0]['request_body'] == {"password": "****", "key": "****"}
+                assert mock_logger_info.call_args.args[0]['parameters'] == {"password": "****"}
+                assert mock_logger_info.call_args.args[0]['body'] == {"password": "****", "key": "****"}
             else:
                 assert 'parameters {"password": "****"} and body {"password": "****", "key": "****"}' \
                     in mock_logger_info.call_args.args[0]
@@ -110,7 +110,7 @@ def test_apilogger_init(mock_wazuhlogger, json_format):
         assert mock_wazuhlogger.call_args.kwargs['debug_level'] == 'info'
         assert mock_wazuhlogger.call_args.kwargs['logger_name'] == 'wazuh'
         if json_format:
-            assert mock_wazuhlogger.call_args.kwargs['tag'] == '%(timestamp)s %(levelname)s: %(message)s'
+            assert mock_wazuhlogger.call_args.kwargs['tag'] is None
             assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] == alogging.WazuhJsonFormatter
         else:
             assert mock_wazuhlogger.call_args.kwargs['tag'] == '%(asctime)s %(levelname)s: %(message)s'
@@ -152,9 +152,13 @@ def test_wazuhjsonformatter(message, dkt):
         log_record = {}
         wjf.add_fields(log_record, mock_record, dkt)
         assert 'timestamp' in log_record.keys()
+        assert 'data' in log_record.keys()
+        assert 'levelname' in log_record.keys()
         tb = dkt.get('exc_info')
         if tb is not None:
-            assert log_record['message'] == f"{message}. {tb}"
-        if message is None:
-            assert log_record['message'] == dkt
+            assert log_record['data']['payload'] == f'{message}. {tb}'
+        elif message is None:
+            assert log_record['data']['payload'] == dkt
+        else:
+            assert log_record['data']['payload'] == message
         assert isinstance(log_record, dict)
