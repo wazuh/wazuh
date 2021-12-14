@@ -113,7 +113,7 @@ RpmPackageManager::Package RpmPackageManager::Iterator::operator*()
     p.release = getAttribute(RPMTAG_RELEASE);
     p.epoch = getAttribute(RPMTAG_EPOCH);
     p.summary = getAttribute(RPMTAG_SUMMARY);
-    p.installTime = getAttribute(RPMTAG_INSTALLTIME);
+    p.installTime = getAttributeNumber(RPMTAG_INSTALLTIME);
     p.size = getAttributeNumber(RPMTAG_SIZE);
     p.vendor = getAttribute(RPMTAG_VENDOR);
     p.group = getAttribute(RPMTAG_GROUP);
