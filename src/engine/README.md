@@ -8,6 +8,7 @@
     1. [CMake and c++](#CMAKECPP)
     1. [Astyle formatter](#astyle)
     1. [Gtest integration](#gtest)
+    1. [Debugging main with gdb](#debug)
 1. [Documentation generation](#docxygen)
 1. [Building manually](#buildmanual)
 
@@ -136,6 +137,41 @@ Installing the [google test and benchmark integration](https://marketplace.visua
 ![](docs/img/left_menu_tests.png)
 
 Further configuration will be provided to enhance testing functionality through this plugin.
+
+<a name="debug"></a>
+## Debugging main with gdb
+Add a `launch.json` to `vscode` folder:
+```
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "main",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/main",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}
+```
+Once added target can be selected through run and debug(Crtl+Shift+D).
 
 <a name="docxygen"></a>
 ## Documentation generation
