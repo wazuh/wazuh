@@ -627,7 +627,7 @@ def start_storage():
     else:
         try:
             logging.info("Storage: Getting containers.")
-            containers = block_blob_service.list_containers()
+            containers = [container.name for container in block_blob_service.list_containers()]
         except AzureSigningError:
             logging.error("Storage: Unable to list the containers. Invalid credentials.")
             sys.exit(1)
@@ -651,9 +651,8 @@ def start_storage():
         min_datetime = parse(min_str, fuzzy=True)
         max_datetime = parse(max_str, fuzzy=True)
         desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-        name = container.name if args.container == '*' else args.container
         try:
-            get_blobs(container_name=name, blob_service=block_blob_service, md5_hash=md5_hash,
+            get_blobs(container_name=container, blob_service=block_blob_service, md5_hash=md5_hash,
                       min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
         except AzureException:
             if not md5_exists:
@@ -683,6 +682,11 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
         md5 value used to search the container in the file containing the dates.
     next_marker : str
         Token used as a marker to continue from previous iteration.
+
+    Raises
+    ------
+    AzureException
+        If it was not possible to list the blobs for the given container.
     """
     try:
         # Get the blob list
