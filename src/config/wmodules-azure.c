@@ -412,7 +412,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             merror(XML_ELEMNULL);
             return OS_INVALID;
 
-        } else if (!nodes[i]->content && strcmp(nodes[i]->element, XML_CONTAINER)) {
+        } else if (!nodes[i]->content && (strcmp(nodes[i]->element, XML_CONTAINER) != 0)) {
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
@@ -440,7 +440,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 storage->container = container;
             }
 
-
             // Read name attribute
             if (nodes[i]->attributes) {
                 if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME) && *nodes[i]->values[0] != '\0') {
@@ -454,7 +453,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                     } else {
                         storage->container = container = NULL;
                     }
-                    OS_ClearNode(children);
                     continue;
                 }
             } else {
@@ -466,11 +464,10 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 } else {
                     storage->container = container = NULL;
                 }
-                OS_ClearNode(children);
                 continue;
             }
 
-            if ((children = OS_GetElementsbyNode(xml, nodes[i]))){
+            if ((children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 if (wm_azure_container_read(children, container) < 0) {
                     wm_clean_container(container);
                     if (container_prev) {

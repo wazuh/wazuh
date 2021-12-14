@@ -149,7 +149,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         wm_strcat(&command, "--workspace", ' ');
         wm_strcat(&command, curr_request->workspace, ' ');
 
-        if(curr_request->time_offset){
+        if (curr_request->time_offset) {
             wm_strcat(&command, "--la_time_offset", ' ');
             wm_strcat(&command, curr_request->time_offset, ' ');
         }
@@ -227,7 +227,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         snprintf(query, OS_SIZE_1024 - 1, "\'%s\'", curr_request->query);
         wm_strcat(&command, query, ' ');
 
-        if(curr_request->time_offset){
+        if (curr_request->time_offset) {
             wm_strcat(&command, "--graph_time_offset", ' ');
             wm_strcat(&command, curr_request->time_offset, ' ');
         }
@@ -301,7 +301,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         wm_strcat(&command, name, ' ');
 
         wm_strcat(&command, "--blobs", ' ');
-        if(curr_container->blobs)
+        if (curr_container->blobs)
             snprintf(blobs, OS_SIZE_256 - 1, "\"%s\"", curr_container->blobs);
         else
             snprintf(blobs, OS_SIZE_256 -1, "\"*\"");
@@ -310,7 +310,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         wm_strcat(&command, "--storage_tag", ' ');
         wm_strcat(&command, storage->tag, ' ');
 
-        if(curr_container->content_type){
+        if (curr_container->content_type) {
             if (!strncmp(curr_container->content_type, "json_file", 9)) {
                 wm_strcat(&command, "--json_file", ' ');
             } else if (!strncmp(curr_container->content_type, "json_inline", 11)) {
@@ -318,7 +318,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
             }
         }
 
-        if(curr_container->time_offset){
+        if (curr_container->time_offset) {
             wm_strcat(&command, "--storage_time_offset", ' ');
             wm_strcat(&command, curr_container->time_offset, ' ');
         }
