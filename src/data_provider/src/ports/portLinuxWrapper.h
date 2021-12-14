@@ -228,7 +228,16 @@ class LinuxPortWrapper final : public IPortWrapper
         }
         int64_t inode() const override
         {
-            return static_cast<int64_t>(std::stoll(m_fields.at(INODE)));
+            int64_t retVal { -1 };
+
+            try
+            {
+                retVal = static_cast<int64_t>(std::stoll(m_fields.at(INODE)));
+            }
+            catch (...)
+            {}
+
+            return retVal;
         }
         std::string state() const override
         {
