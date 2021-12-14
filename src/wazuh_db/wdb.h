@@ -1247,7 +1247,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
  * @brief Function to parse sync-agent-groups-get command data.
  *
  * @param [in] wdb The global struct database.
- * @param [in] input Strimg in json format with last_id and sync_condition.
+ * @param [in] input String in json format with last_id and sync_condition.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
@@ -1784,8 +1784,6 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
  * @return 0 On success. -1 On error.
  */
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
-
-cJSON* wdb_global_get_agent_groups(wdb_t *wdb, int id);
 
 /**
  * @brief Gets each agent matching the sync condition and all their groups.
