@@ -1723,6 +1723,18 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
     return result;
 }
 
+int wdb_global_create_backup(wdb_t* wdb) {
+    return OS_SUCCESS;
+}
+
+cJSON* wdb_global_get_backup(wdb_t* wdb) {
+    return NULL;
+}
+
+int wdb_global_restore_backup(wdb_t* wdb, char* input) {
+    return OS_SUCCESS;
+}
+
 sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
     sqlite3_stmt * ret_val = NULL;
     if (NULL != wdb && NULL != query) {

@@ -1319,6 +1319,76 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+/**
+ * @brief Function to parse the global backup request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the backup command.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains the value.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse the global create backup.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains 'ok'.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_create_backup(wdb_t* wdb, char* output);
+
+/**
+ * @brief Function to parse the global get backup.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains a list of the available backups.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_get_backup(wdb_t* wdb, char* output);
+
+/**
+ * @brief Function to parse the global restore request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the snapshot to restore. If not present, the more recent will be used.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains 'ok'.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_restore_backup(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to create a backup of the global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @retval  0 Success: Backup created successfully.
+ * @retval -1 On error: The backup creation failed.
+ */
+int wdb_global_create_backup(wdb_t* wdb);
+
+/**
+ * @brief Function to get a list of the available backups of global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @retval cJSON* Success: The list of all snapshots found, or empty if none was found.
+ * @retval NULL On error: The list of snapshots couldn't be retrieved.
+ */
+cJSON* wdb_global_get_backup(wdb_t* wdb);
+
+/**
+ * @brief Function restore a backup of global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input The snapshot name to be restored. If not present, the last one will be used.
+ * @retval  0 Success: Backup restored successfully.
+ * @retval -1 On error: The backup couldn't be restored.
+ */
+int wdb_global_restore_backup(wdb_t* wdb, char* input);
+
 // Functions for database integrity
 
 int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);
