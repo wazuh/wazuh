@@ -41,6 +41,7 @@ EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
+EXTERNAL_JEMALLOC=external/jemalloc-5.2.1/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
@@ -797,6 +798,7 @@ LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
+JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -835,6 +837,12 @@ external: test_external $(EXTERNAL_LIBS)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 external: build_gtest
+endif
+
+ifeq (${uname_S},Linux)
+ifneq ($(CHECK_CENTOS5),YES)
+external: $(JEMALLOC_LIB)
+endif
 endif
 
 ifneq (${TARGET},winagent)
@@ -885,6 +893,11 @@ endif
 endif
 endif
 endif
+
+#### libjemalloc ##########
+
+${JEMALLOC_LIB}:
+	cd ${EXTERNAL_JEMALLOC} && ./configure && ${MAKE}
 
 #### libplist ##########
 
@@ -1133,7 +1146,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive jemalloc
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -2030,7 +2043,7 @@ wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
 wazuh-modulesd: ${wmodulesd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ $(JEMALLOC_LIB) ${OSSEC_LIBS} -o $@
 
 ### wazuh-gtest-gmock ###
 
