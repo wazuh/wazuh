@@ -19,37 +19,80 @@
 
 void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 {
+
+    const auto rpmDefaultQuery
+    {
+        [](std::function<void(nlohmann::json&)> cb)
+        {
+            auto rawRpmPackagesInfo{ Utils::exec("rpm -qa --qf '%{name}\t%{size}\t%{installtime:date}\t%{group}\t%{version}\t%{arch}\t%{vendor}\t%{summary}\t%{release}\t%{epoch}\t\n'") };
+
+            if (!rawRpmPackagesInfo.empty())
+            {
+                auto rows { Utils::split(rawRpmPackagesInfo, '\n') };
+
+                for (auto row : rows)
+                {
+                    auto package{ PackageLinuxHelper::parseRpm(row) };
+
+                    if (!package.empty())
+                    {
+                        cb(package);
+                    }
+                }
+            }
+        }
+    };
+
     if (!Utils::existsRegular(RPM_DATABASE))
     {
         // We are probably using RPM >= 4.16 – get the packages from librpm.
-        RpmPackageManager rpm{std::make_shared<RpmLib>()};
-
-        for (const auto& p : rpm)
+        try
         {
-            auto packageJson = PackageLinuxHelper::parseRpm(p);
+            RpmPackageManager rpm{std::make_shared<RpmLib>()};
 
-            if (!packageJson.empty())
+            for (const auto& p : rpm)
             {
-                callback(packageJson);
+                auto packageJson = PackageLinuxHelper::parseRpm(p);
+
+                if (!packageJson.empty())
+                {
+                    callback(packageJson);
+                }
             }
         }
+        catch (...)
+        {
+            rpmDefaultQuery(callback);
+        }
+
     }
     else
     {
-        BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
-        auto row {db.getNext()};
-
-        // Get the packages from the Berkeley DB.
-        while (!row.empty())
+        try
         {
-            auto package = PackageLinuxHelper::parseRpm(row);
+            BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
+            auto row = db.getNext();
 
-            if (!package.empty())
+            // Get the packages from the Berkeley DB.
+            while (!row.empty())
             {
-                callback(package);
-            }
+                auto package = PackageLinuxHelper::parseRpm(row);
 
-            row = db.getNext();
+                if (!package.empty())
+                {
+                    callback(package);
+                }
+
+                row = db.getNext();
+            }
         }
+        catch (...)
+        {
+            rpmDefaultQuery(callback);
+        }
+
     }
+
+
+
 }
