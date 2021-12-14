@@ -1158,36 +1158,6 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
     return status;
 }
 
-cJSON* wdb_global_get_agent_groups(wdb_t *wdb, int id) {
-    sqlite3_stmt *stmt = NULL;
-    cJSON * result = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return NULL;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_AGENT_GROUPS_GET) < 0) {
-        mdebug1("Cannot cache statement");
-        return NULL;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_AGENT_GROUPS_GET];
-
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-
-    result = wdb_exec_stmt(stmt);
-
-    if (!result) {
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
-    }
-
-    return result;
-}
-
 wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_condition condition, int last_agent_id, char **output) {
     sqlite3_stmt* sync_stmt = NULL;
     unsigned response_size = 2;     //Starts with "[]" size
@@ -1237,36 +1207,41 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
         }
 
         //Get agents to sync
-        cJSON* j_agent = wdb_exec_stmt(sync_stmt);
-        if (j_agent && j_agent->child) {
-            cJSON* j_id = cJSON_GetObjectItem(j_agent->child,"id");
+        cJSON* j_agent_stmt = wdb_exec_stmt(sync_stmt);
+        if (j_agent_stmt && j_agent_stmt->child) {
+            cJSON* j_agent = j_agent_stmt->child;
+            cJSON* j_id = cJSON_GetObjectItem(j_agent,"id");
             if (cJSON_IsNumber(j_id)) {
                 //Get agent ID
                 last_agent_id = j_id->valueint;
-                //Get groups of the agent
-                // JJP: Here we should use Matias method, to receive an array of clean elements
-                cJSON* json_groups = wdb_global_get_agent_groups(wdb, last_agent_id);
+                //Get the groups of the agent
+                cJSON* json_groups = wdb_global_select_group_belong(wdb, last_agent_id);
                 if (json_groups) {
-                    cJSON_AddItemToObject(j_agent, "groups", json_groups);
-                    //Print Agent groups
-                    char *agent_str = cJSON_PrintUnformatted(j_agent);
-                    unsigned agent_len = strlen(agent_str);
+                    if (json_groups->child) {
+                        cJSON_AddItemToObject(j_agent, "groups", json_groups);
+                        //Print Agent groups
+                        char *agent_str = cJSON_PrintUnformatted(j_agent);
+                        unsigned agent_len = strlen(agent_str);
 
-                    //Check if new agent fits in response
-                    if (response_size+agent_len+1 < WDB_MAX_RESPONSE_SIZE) {
-                        //Add new agent
-                        memcpy(response_aux, agent_str, agent_len);
-                        response_aux+=agent_len;
-                        //Add separator
-                        *response_aux++ = ',';
-                        //Save size
-                        response_size += agent_len+1;
+                        //Check if new agent fits in response
+                        if (response_size+agent_len+1 < WDB_MAX_RESPONSE_SIZE) {
+                            //Add new agent
+                            memcpy(response_aux, agent_str, agent_len);
+                            response_aux+=agent_len;
+                            //Add separator
+                            *response_aux++ = ',';
+                            //Save size
+                            response_size += agent_len+1;
+                        }
+                        else {
+                            //Pending agents but buffer is full
+                            status = WDBC_DUE;
+                        }
+                        os_free(agent_str);
                     }
                     else {
-                        //Pending agents but buffer is full
-                        status = WDBC_DUE;
+                        cJSON_Delete(json_groups);
                     }
-                    os_free(agent_str);
                 }
             }
             else {
@@ -1278,7 +1253,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             //All agents have been obtained
             status = WDBC_OK;
         }
-        cJSON_Delete(j_agent);
+        cJSON_Delete(j_agent_stmt);
     }
 
     if (status != WDBC_ERROR) {
