@@ -262,11 +262,11 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:nodev'
+      - 'c:mount -> r:\s/var/tmp\s && r:noexec'
 
-# 1.1.13 Ensure nodev option set on /var/tmp partition.
+# 1.1.13 Ensure /var/tmp partition includes the nodev option.
   - id: 20514
-    title: "Ensure nodev option set on /var/tmp partition."
+    title: "Ensure /var/tmp partition includes the nodev option."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nodev /var/tmp"
@@ -280,9 +280,9 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:nodev'
 
-# 1.1.14 Ensure nosuid option set on /var/tmp partition.
+# 1.1.14 Ensure /var/tmp partition includes the nosuid option.
   - id: 20515
-    title: "Ensure nosuid option set on /var/tmp partition."
+    title: "Ensure /var/tmp partition includes the nosuid option."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid /var/tmp"
@@ -350,9 +350,9 @@ checks:
     rules:
       - 'c:mount -> r:\s/home\s'
 
-# 1.1.18 Ensure nodev option set on /home partition.
+# 1.1.18 Ensure /home partition includes the nodev option.
   - id: 20519
-    title: "Ensure nodev option set on /home partition."
+    title: "Ensure /home partition includes the nodev option."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. # mount -o remount,nodev /home"
@@ -398,7 +398,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: none
     rules:
       - 'not c:systemctl show autofs.service -> r:unitfilestate=enabled'
 
@@ -450,7 +450,7 @@ checks:
 # 1.3 Filesystem Integrity Checking.
 ############################################################
 
-# 1.3.1 install AIDE.
+# 1.3.1 Ensure AIDE is installed.
   - id: 20524
     title: "Ensure AIDE is installed."
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
@@ -461,12 +461,13 @@ checks:
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
       - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
-    references: "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
+    references: 
+      - "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
     condition: all
     rules:
-      - 'c:rpm -q aide -> r:aide-\S*'
+      - 'c:rpm -q aide -> r:aide-'
 
-# 1.3.2 AIDE regular checks.
+# 1.3.2 Ensure filesystem integrity is regularly checked.
   - id: 20525
     title: "Ensure filesystem integrity is regularly checked."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
@@ -489,7 +490,7 @@ checks:
 # 1.4 Secure Boot Settings.
 ############################################################
 
-# 1.4.1 Configure bootloader.
+# 1.4.1 Ensure permissions on bootloader config are configured.
   - id: 20526
     title: "Ensure permissions on bootloader config are configured."
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options. The grub configuration is usually located at /boot/grub2/grub.cfg and linked as /etc/grub2.cfg .  On newer grub2 systems the encrypted bootloader password is contained in /boot/grub2/user.cfg"
@@ -506,7 +507,7 @@ checks:
       - 'c:stat -L /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat -L /boot/grub2/user.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|cannot stat'
 
-# 1.4.2 Single user mode authentication.
+# 1.4.2 Ensure authentication required for single user mode.
   - id: 20527
     title: "Ensure authentication required for single user mode."
     description: "Single user mode (rescue mode) is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
@@ -527,7 +528,7 @@ checks:
 # 1.5 Additional Process Hardening.
 ############################################################
 
-# 1.5.1 Restrict Core Dumps.
+# 1.5.1 Ensure core dumps are restricted.
   - id: 20528
     title: "Ensure core dumps are restricted."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
@@ -559,10 +560,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: any
     rules:
-      - 'c:journalctl -> r:protection: active'
+      - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:protection: active'
       - 'c:sh -c "[[ -n $(grep noexec[0-9]*=off /proc/cmdline) || -z $(grep -E -i \" (pae|nx) \" /proc/cpuinfo) || -n $(grep \"\\sNX\\s.*\\sprotection:\\s\" /var/log/dmesg | grep -v active) ]] && echo \"NX Protection is not active\"" -> r:^$'
 
-# 1.5.3 Enable Randomized Virtual Memory Region Placement.
+# 1.5.3 Ensure address space layout randomization (ASLR) is enabled.
   - id: 20530
     title: "Ensure address space layout randomization (ASLR) is enabled."
     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
@@ -579,9 +580,9 @@ checks:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
 
-# 1.5.4 Disable prelink.
+# 1.5.4 Ensure prelink is not installed.
   - id: 20531
-    title: "Ensure prelink is disabled."
+    title: "Ensure prelink is not installed."
     description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
     remediation: "Run the following commands to restore binaries to normal: # prelink -ua     Run the following command to uninstall prelink: # yum remove prelink"
@@ -601,7 +602,7 @@ checks:
 # 1.6.1 Configure SELinux.
 ############################################################
 
-# 1.6.1.1 SELinux installed.
+# 1.6.1.1 Ensure SELinux is installed.
   - id: 20532
     title: "Ensure SELinux is installed."
     description: "SELinux provides Mandatory Access Controls."
@@ -617,7 +618,7 @@ checks:
     rules:
       - 'c:rpm -q libselinux -> r:libselinux-\S+'
 
-# 1.6.1.2 SELinux not disabled.
+# 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration.
   - id: 20533
     title: "Ensure SELinux is not disabled in bootloader configuration."
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
@@ -633,7 +634,7 @@ checks:
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*linux\.+selinux=0|linux\.+enforcing=0'
 
-# 1.6.1.3 Set selinux policy.
+# 1.6.1.3 Ensure SELinux policy is configured.
   - id: 20534
     title: "Ensure SELinux policy is configured."
     description: "Configure SELinux to meet or exceed the default targeted policy, which constrains daemons and system software only."
@@ -667,7 +668,7 @@ checks:
       - 'c:getenforce -> r:Enforcing|Permisive'
       - 'f:/etc/selinux/config -> r:^SELINUX=enforcing|^SELINUX=Permisive'
 
-# 1.6.1.5 Set selinux mode.
+# 1.6.1.5 Ensure the SELinux mode is enforcing.
   - id: 20536
     title: "Ensure the SELinux mode is enforcing."
     description: "Set SELinux to enable when the system is booted"
@@ -681,10 +682,12 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sestatus -> r:^SELinux\s*status:\s*enabled'
+      - 'c:getenforce -> r:Enforcing'
       - 'f:/etc/selinux/config -> r:^SELINUX=enforcing'
 
-# 1.6.1.7 Remove SETroubleshoot.
+# 1.6.1.6 Ensure no unconfined services exist - Not implemented
+
+# 1.6.1.7 Ensure SETroubleshoot is not installed.
   - id: 20537
     title: "Ensure SETroubleshoot is not installed."
     description: "The SETroubleshoot service notifies desktop users of SELinux denials through a user-friendly interface. The service provides important information around configuration errors, unauthorized intrusions, and other potential errors."
@@ -720,7 +723,7 @@ checks:
 # 1.7  Warning Banners.
 ############################################################
 
-# 1.7.1 Configure message of the day.
+# 1.7.1 Ensure message of the day is configured properly.
   - id: 20539
     title: "Ensure message of the day is configured properly."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
@@ -735,7 +738,7 @@ checks:
     rules:
       - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s|Amazon'
 
-# 1.7.2 Configure local login warning banner.
+# 1.7.2 Ensure local login warning banner is configured properly.
   - id: 20540
     title: "Ensure local login warning banner is configured properly."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version -or the operating system's name."
@@ -750,7 +753,7 @@ checks:
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Amazon'
 
-# 1.7.3 Configure remote login warning banner.
+# 1.7.3 "Ensure remote login warning banner is configured properly.
   - id: 20541
     title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
@@ -765,7 +768,7 @@ checks:
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Amazon'
 
-# 1.7.4 Configure /etc/motd permissions.
+# 1.7.4 Ensure permissions on /etc/motd are configured.
   - id: 20542
     title: "Ensure permissions on /etc/motd are configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
@@ -784,7 +787,7 @@ checks:
     rules:
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 1.7.5 Configure /etc/issue permissions.
+# 1.7.5 Ensure permissions on /etc/issue are configured.
   - id: 20543
     title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
@@ -803,7 +806,7 @@ checks:
     rules:
       - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 1.7.6 Configure /etc/issue.net permissions
+# 1.7.6 Ensure permissions on /etc/issue.net are configured.
   - id: 20544
     title: "Ensure permissions on /etc/issue.net are configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
@@ -839,7 +842,7 @@ checks:
       - tsc: ["A1.2"]
     condition: all
     rules:
-      - 'c:yum check-update -> r:No packages needed for security'
+      - 'c:sh -c "yum check-updates --security -q &>/dev/null; echo $?" -> r:100'
 
 ############################################################
 # 2 OS Services.
@@ -1097,7 +1100,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q snmpd -> r:package snmpd is not installed'
+      - 'c:rpm -q net-snmp -> r:package net-snmp is not installed'
 
 # 2.1.14 Ensure NIS server is not installed.
   - id: 20561
@@ -1129,7 +1132,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q ypserv -> r:package ypserv is not installed'
+      - 'c:rpm -q telnet-server -> r:package telnet-server is not installed'
 
 # 2.1.16 Ensure mail transfer agent is configured for local-only mode.
   - id: 20563
@@ -1197,7 +1200,7 @@ checks:
     condition: any
     rules:
       - 'c:rpm -q rsync -> r:package rsync is not installed'
-      - 'c:systemctl is-enabled rsync -> r:masked'
+      - 'c:systemctl is-enabled rsyncd -> r:masked'
 
 ############################################################
 # 2.2 Service Clients.
@@ -1298,6 +1301,8 @@ checks:
     rules:
       - 'c:rpm -q openldap-clients -> r:^package openldap-clients is not installed'
 
+# 2.3 Ensure nonessential services are removed or masked - Not implemented
+
 #######################################################
 # 3 Network Configuration.
 #######################################################
@@ -1307,10 +1312,31 @@ checks:
 
 # 3.1.1 Disable IPv6.
   - id: 20572
-    title: "Ensure LDAP client is not installed."
-    description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
-    rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
-    remediation: "Run the following command to uninstall openldap-clients: # yum remove openldap-clients"
+    title: "Disable IPv6."
+    description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
+    rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
+    remediation: > 
+      Use one of the two following methods to disable IPv6 on the system:
+      
+      To disable IPv6 through the GRUB2 config:
+      
+      Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters:
+      GRUB_CMDLINE_LINUX="ipv6.disable=1"
+      
+      Run the following command to update the grub2 configuration:
+      # grub2-mkconfig -o /boot/grub2/grub.cfg
+      
+      OR
+      
+      To disable IPv6 through sysctl settings:
+      
+      Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
+      net.ipv6.conf.all.disable_ipv6 = 1 net.ipv6.conf.default.disable_ipv6 = 1
+      
+      Run the following commands to set the active kernel parameters:
+      # sysctl -w net.ipv6.conf.all.disable_ipv6=1
+      # sysctl -w net.ipv6.conf.default.disable_ipv6=1 
+      # sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.1.1"]
       - cis_csc: ["2.6"]
@@ -1326,7 +1352,7 @@ checks:
       - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6 = 1'
       - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6 = 1'
 
-# 3.1.2 Ensure wireless interfaces are disabled -> Not implemented, requires manual operation.
+# 3.1.2 Ensure wireless interfaces are disabled -> Not implemented, requires manual action.
 
 #######################################################
 # 3.2 Network Parameters (Host Only).
@@ -1347,9 +1373,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'c:grep -RhEs "^\s*net\.ipv4\.ip_forward\s*=\s*0" /etc/sysctl.conf /etc/sysctl.d/*.conf -> r:net.ipv4.ip_forward\s*=\s*0'
+      - 'not c:grep -RhEs "net\.ipv4\.ip_forward" /etc/sysctl.conf /etc/sysctl.d/*.conf -> r:1'
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
-      - 'c:grep -RhEs "^\s*net\.ipv6\.conf\.all\.forwarding\s*=\s*0" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf ->  r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
+      - 'not c:grep -RhEs "net\.ipv6\.conf\.all\.forwarding" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf ->  r:1'
 
 # 3.2.2 Ensure packet redirect sending is disabled.
   - id: 20574
@@ -1367,8 +1393,8 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0'
+      - 'not c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:1'
+      - 'not c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:1'
 
 ##################################################
 # 3.3 Network Parameters (Host and Router).
@@ -1390,12 +1416,12 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0'
+      - 'not c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:1'
+      - 'not c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:1'
       - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
       - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0'
+      - 'not c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:1'
+      - 'not c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/* -> r:1'
 
 # 3.3.2 Ensure ICMP redirects are not accepted.
   - id: 20576
@@ -1413,8 +1439,8 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0'
+      - 'not c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:1'
+      - 'not c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:1'
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
 
 # 3.3.3 Ensure secure ICMP redirects are not accepted.
@@ -1433,8 +1459,8 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0'
+      - 'not c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:1'
+      - 'not c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:1'
 
 # 3.3.4 Ensure suspicious packets are logged.
   - id: 20578
