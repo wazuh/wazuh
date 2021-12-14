@@ -27,7 +27,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    char *avoid_ipv6;
+    char *arrow;
     struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
@@ -38,16 +38,23 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Ignore the id of the message in here */
     msg += 2;
 
-    /* Avoid ipv6 ':' message */
-    avoid_ipv6 = strchr(msg, '>');
-    if (!avoid_ipv6) {
-        avoid_ipv6 = msg;
-    }
-
-    pieces = strchr(avoid_ipv6, ':');
+    pieces = strchr(msg, ':');
     if (!pieces) {
         merror(FORMAT_ERROR);
         return (-1);
+    }
+
+    /* Avoid ipv6 ':', pointing to first ":" after "->" */
+    arrow = strstr(msg, "->");
+    if (arrow) {
+        while(pieces && arrow > pieces) {
+            pieces = strchr(pieces, ':');
+            if (!pieces) {
+                mwarn("%s", msg);
+                merror(FORMAT_ERROR);
+                return (-1);
+            }
+        }
     }
 
     *pieces = '\0';
