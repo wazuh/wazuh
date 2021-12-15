@@ -23,8 +23,8 @@ extern "C"
 }
 #endif
 
-const auto FIM_COMPONENT_FILE{"fim_file"};
-const auto FIM_COMPONENT_REGISTRY{"fim_registry"};
+const auto FIM_COMPONENT_FILE {"fim_file"};
+const auto FIM_COMPONENT_REGISTRY {"fim_registry"};
 
 constexpr auto CREATE_FILE_DB_STATEMENT
 {

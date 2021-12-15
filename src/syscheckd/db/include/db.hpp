@@ -60,7 +60,7 @@ void fim_db_init(int storage,
  *
  * @param msg The specific message to be pushed
  */
-void fim_sync_push_msg(const char *msg);
+void fim_sync_push_msg(const char* msg);
 
 /**
  * @brief Thread that performs the syscheck data synchronization

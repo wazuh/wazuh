@@ -23,7 +23,7 @@ extern "C" {
  *
  * @return std::string Contains the dbsync's schema for FIM db.
  */
-const char * CreateStatement()
+const char* CreateStatement()
 {
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
@@ -70,11 +70,13 @@ void fim_db_init(int storage,
     }
 }
 
-void fim_run_integrity() {
+void fim_run_integrity()
+{
     std::thread syncThread(&FIMDB::fimRunIntegrity, &FIMDB::getInstance());
 }
 
-void fim_sync_push_msg(const char * msg) {
+void fim_sync_push_msg(const char* msg)
+{
     FIMDB::getInstance().fimSyncPushMsg(msg);
 }
 

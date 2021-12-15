@@ -180,6 +180,7 @@ void FIMDB::fimSyncPushMsg(const std::string& data)
         {
             m_loggingFunction(LOG_ERROR, ex.what());
         }
+
         // LCOV_EXCL_STOP
     }
 }
