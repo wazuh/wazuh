@@ -3137,7 +3137,7 @@ checks:
 # 5.5.5 Ensure default user umask is configured.
   - id: 20672
     title: "Ensure default user umask is 027 or more restrictive."
-    description: "The default umaskdetermines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umaskcommand into the standard shell configuration files ( .profile, .bashrc, etc.) in their home directories."
+    description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umaskcommand into the standard shell configuration files ( .profile, .bashrc, etc.) in their home directories."
     rationale: "Setting a very secure default value for umaskensures that users make a conscious choice about their file permissions. A default umasksetting of 077causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umaskof 022would make files readable by every user on the system."
     remediation: "Edit the /etc/bashrc, /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: umask 027"
     compliance:
@@ -3147,8 +3147,8 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/bash -> !r:^\s*\t*# && n:umask 0(\d) compare <= 2'
-      - 'f:/etc/bash -> !r:^\s*\t*# && n:umask 0\d(\d) compare <= 7'
+      - 'f:/etc/bashrc -> !r:^\s*\t*# && n:umask 0(\d) compare <= 2'
+      - 'f:/etc/bashrc -> !r:^\s*\t*# && n:umask 0\d(\d) compare <= 7'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && n:umask 0\d(\d) compare <= 7'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask 0(\d) compare <= 2'
 
@@ -3352,7 +3352,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not f:/etc/shadow -> !r:^# && r:^shadow:\.+:\.+:\.+:\.+'
+      - 'not f:/etc/shadow -> r:^shadow:\.+:\.+:\.+:\.+'
 
 # 6.2.5 Ensure no duplicate user names exist - Not implemented, requires manual operation.
 # 6.2.6 Ensure no duplicate group names exist - Not implemented, requires manual operation.
@@ -3376,7 +3376,7 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
 # 6.2.10 Ensure root PATH Integrity - Not implemented, requires manual operation.
 # 6.2.11 Ensure all users' home directories exist - Not implemented, requires manual operation.
