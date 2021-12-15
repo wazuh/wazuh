@@ -2,7 +2,7 @@
 name: External integrations issue. 
 about: Report a bug or make a feature request.
 title: ''
-labels: 'external_integrations, framework'
+labels: 'external_integrations'
 assignees: ''
 
 ---
