@@ -27,6 +27,8 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 
+#include "linuxProcessHelper.h"
+
 struct ProcTableDeleter
 {
     void operator()(PROCTAB* proc)
@@ -122,7 +124,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["vm_size"]    = process->vm_size;
     jsProcessInfo["resident"]   = process->resident;
     jsProcessInfo["share"]      = process->share;
-    jsProcessInfo["start_time"] = process->start_time;
+    jsProcessInfo["start_time"] = Utils::timeTick2unixTime(process->start_time);
     jsProcessInfo["pgrp"]       = process->pgrp;
     jsProcessInfo["session"]    = process->session;
     jsProcessInfo["tgid"]       = process->tgid;
