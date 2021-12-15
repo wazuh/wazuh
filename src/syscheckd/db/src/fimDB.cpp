@@ -32,15 +32,15 @@ void FIMDB::setValueLimit()
 
 void FIMDB::registerRSync()
 {
-    m_rsyncHandler->registerSyncID("fim_file",
-                                    m_dbsyncHandler->handle(),
-                                    nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                    m_syncFileMessageFunction);
+    m_rsyncHandler->registerSyncID(FIM_COMPONENT_FILE,
+                                   m_dbsyncHandler->handle(),
+                                   nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                   m_syncFileMessageFunction);
 #ifdef WIN32
-    m_rsyncHandler->registerSyncID("fim_registry",
-                                    m_dbsyncHandler->handle(),
-                                    nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                    m_syncRegistryMessageFunction);
+    m_rsyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
+                                   m_dbsyncHandler->handle(),
+                                   nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
+                                   m_syncRegistryMessageFunction);
 #endif
 }
 
@@ -180,6 +180,6 @@ void FIMDB::fimSyncPushMsg(const std::string& data)
         {
             m_loggingFunction(LOG_ERROR, ex.what());
         }
+        // LCOV_EXCL_STOP
     }
-    // LCOV_EXCL_STOP
 }

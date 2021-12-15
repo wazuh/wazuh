@@ -13,19 +13,18 @@
 #define _FIMDB_HPP
 #include "dbsync.hpp"
 #include "rsync.hpp"
-#include "fimCommonDefs.h"
 #include <condition_variable>
 #include <mutex>
 
 #ifdef __cplusplus
 extern "C"
 {
-#include "commonDefs.h"
+#include "fimCommonDefs.h"
 }
 #endif
 
-const auto FIM_COMPONENT_FILE = "fim_file";
-const auto FIM_COMPONENT_REGISTRY = "fim_registry";
+const auto FIM_COMPONENT_FILE{"fim_file"};
+const auto FIM_COMPONENT_REGISTRY{"fim_registry"};
 
 constexpr auto CREATE_FILE_DB_STATEMENT
 {

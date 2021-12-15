@@ -11,6 +11,7 @@
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBHelper.hpp"
+#include <thread>
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,15 +70,8 @@ void fim_db_init(int storage,
     }
 }
 
-#ifdef WIN32
-DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args) {
-#else
-void * fim_run_integrity(void * args) {
-#endif
-    FIMDB::getInstance().fimRunIntegrity();
-#ifndef WIN32
-    return args;
-#endif
+void fim_run_integrity() {
+    std::thread syncThread(&FIMDB::fimRunIntegrity, &FIMDB::getInstance());
 }
 
 void fim_sync_push_msg(const char * msg) {

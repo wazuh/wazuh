@@ -66,11 +66,7 @@ void fim_sync_push_msg(const char *msg);
  * @brief Thread that performs the syscheck data synchronization
  *
  */
-#ifdef WIN32
-DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
-#else
-void *fim_run_integrity(void *args);
-#endif
+void fim_run_integrity();
 
 #ifdef __cplusplus
 }
