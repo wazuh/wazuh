@@ -277,12 +277,6 @@ class FIMDB
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler);
 #endif
-        /**
-         * @brief Insert a given item into the database
-         *
-         * @param item json item that represent the fim_entry data
-         */
-        void insertItem(const nlohmann::json& item);
 
         /**
          * @brief Remove a given item from the database

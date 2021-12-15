@@ -85,10 +85,11 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    int getCount(const std::string & tableName, const nlohmann::json & query={})
+    int getCount(const std::string& tableName, const nlohmann::json& query = {})
     {
         auto count { 0 };
         nlohmann::json countQuery;
+
         if (!query.empty())
         {
             countQuery = query;
@@ -107,6 +108,7 @@ namespace FIMDBHelper
             countQuery["table"] = tableName;
 
         }
+
         auto callback
         {
             [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
@@ -118,40 +120,16 @@ namespace FIMDBHelper
             }
         };
         T::getInstance().executeQuery(countQuery, callback);
+
         return count;
     }
 
     /**
-    * @brief Insert a new row from a table.
-    *
-    * @param tableName a string with the table name
-    * @param item a RegistryKey, RegistryValue or File with their parameters
-    *
-    */
-    template<typename T>
-    void insertItem(const std::string& tableName, const nlohmann::json& item)
-    {
-        const auto insertStatement = R"(
-                                            {
-                                                "table": "",
-                                                "data":[
-                                                    {
-                                                    }
-                                                ]
-                                            }
-        )";
-        auto insert =  nlohmann::json::parse(insertStatement);
-        insert["table"] = tableName;
-        insert["data"] = {item};
-
-        T::getInstance().insertItem(insert);
-    }
-
-    /**
-    * @brief Update a row from a table.
+    * @brief Insert or update a row from a table.
     *
     * @param item a json with a RegistryKey, RegistryValue or File with their parameters
     *
+    * @return true if this operation was a update, false otherwise.
     */
     template<typename T>
     bool updateItem(const nlohmann::json& item)
@@ -208,8 +186,8 @@ namespace FIMDBHelper
     *
     * @return a nlohmann::json with a database query
     */
-    inline nlohmann::json dbQuery(const std::string & tableName, const nlohmann::json & columnList, const std::string & filter,
-                                  const std::string & order)
+    inline nlohmann::json dbQuery(const std::string& tableName, const nlohmann::json& columnList, const std::string& filter,
+                                  const std::string& order)
     {
         nlohmann::json query;
         query["table"] = tableName;

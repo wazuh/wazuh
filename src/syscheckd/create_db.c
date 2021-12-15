@@ -13,7 +13,7 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
-#include "db/include/db.hpp"
+#include "db/include/db.h"
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -52,31 +52,23 @@ static const char *FIM_EVENT_MODE[] = {
  */
 void update_wildcards_config();
 
+struct get_data_ctx {
+    event_data_t *event;
+    const directory_t *config;
+    pthread_mutex_t *mutex;
+    const char *path;
+};
 
-void fim_generate_delete_event(char *entry,
-                               pthread_mutex_t *mutex,
-                               void *_evt_data,
-                               void *configuration,
-                               __attribute__((unused)) void *_unused_field) {
+void process_delete_event(void * data, void * ctx)
+{
     cJSON *json_event = NULL;
-    const directory_t *original_configuration = (const directory_t *)configuration;
-    event_data_t *evt_data = (event_data_t *)_evt_data;
+    fim_entry *new_entry = (fim_entry *)data;
+    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
 
-    if (original_configuration->options & CHECK_SEECHANGES) {
-        fim_diff_process_delete_file(entry);
+    if (ctx_data->event->report_event) {
+        json_event = fim_json_event(new_entry, NULL, ctx_data->config, ctx_data->event, NULL);
     }
-
-    // Remove path from the DB.
-    w_mutex_lock(mutex);
-    fim_entry *new_entry = fim_db_get_path(entry);
-    if (fim_db_remove_path(entry) == FIMDB_ERR) {
-        w_mutex_unlock(mutex);
-        return;
-    }
-    if (evt_data->report_event) {
-        json_event = fim_json_event(new_entry, NULL, original_configuration, evt_data, NULL);
-    }
-    w_mutex_unlock(mutex);
+    w_mutex_unlock(ctx_data->mutex);
 
     if (json_event != NULL) {
         send_syscheck_msg(json_event);
@@ -85,42 +77,35 @@ void fim_generate_delete_event(char *entry,
     cJSON_Delete(json_event);
 }
 
-void fim_delete_file_event(char *entry,
-                           pthread_mutex_t *mutex,
-                           void *_evt_data,
-                           __attribute__((unused)) void *_unused_field_1,
-                           __attribute__((unused)) void *_unused_field_2) {
-    event_data_t *evt_data = (event_data_t *)_evt_data;
-    directory_t *configuration = NULL;
+void fim_generate_delete_event(char *file_path,
+                               pthread_mutex_t *mutex,
+                               void *_evt_data,
+                               void *configuration,
+                               __attribute__((unused)) void *_unused_field) {
+    const directory_t *original_configuration = (const directory_t *)configuration;
+    struct get_data_ctx ctx = {
+        .event = (event_data_t *)_evt_data,
+        .config = original_configuration,
+        .mutex = mutex,
+        .path = file_path
+    };
+    callback_context_t callback_data;
+    callback_data.callback = process_delete_event;
+    callback_data.context = &ctx;
 
-    configuration = fim_configuration_directory(entry);
+    if (original_configuration->options & CHECK_SEECHANGES) {
+        fim_diff_process_delete_file(file_path);
+    }
 
-    if (configuration == NULL) {
+    // Remove path from the DB.
+    w_mutex_lock(mutex);
+    if (fim_db_remove_path(file_path) == FIMDB_ERR) {
+        w_mutex_unlock(mutex);
         return;
     }
-    /* Don't send alert if received mode and mode in configuration aren't the same.
-       Scheduled mode events must always be processed to preserve the state of the agent's DB.
-    */
-    switch (evt_data->mode) {
-    case FIM_REALTIME:
-        if (!(configuration->options & REALTIME_ACTIVE)) {
-            return;
-        }
-        break;
+    fim_db_get_path(file_path, callback_data);
 
-    case FIM_WHODATA:
-        if (!(configuration->options & WHODATA_ACTIVE)) {
-            return;
-        }
-        break;
-
-    default:
-        break;
-    }
-
-    fim_generate_delete_event(entry, mutex, evt_data, configuration, NULL);
 }
-
 
 time_t fim_scan() {
     struct timespec start;
@@ -294,13 +279,30 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
         }
-        saved_entry = fim_db_get_path(path);
-
-        if (saved_entry) {
+        if(evt_data->mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE) ||
+           evt_data->mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE))
+        {
+            /* Don't send alert if received mode and mode in configuration aren't the same.
+            Scheduled mode events must always be processed to preserve the state of the agent's DB.
+            */
+            return;
+        }
+        else
+        {
             evt_data->type = FIM_DELETE;
-            fim_delete_file_event(saved_entry->file_entry.path, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
-        } else if (configuration->options & CHECK_SEECHANGES) {
-            fim_diff_process_delete_file(path);
+            struct get_data_ctx ctx = {
+                .event = (event_data_t *)evt_data,
+                .config = configuration,
+                .mutex = &syscheck.fim_entry_mutex,
+                .path = path
+            };
+            callback_context_t callback_data;
+            callback_data.callback = process_delete_event;
+            callback_data.context = &ctx;
+            if (fim_db_get_path(path, callback_data) != FIMDB_OK && configuration->options & CHECK_SEECHANGES)
+            {
+                fim_diff_process_delete_file(path);
+            }
         }
 
         return;
@@ -507,17 +509,16 @@ void fim_whodata_event(whodata_evt * w_evt) {
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
         w_rwlock_unlock(&syscheck.directories_lock);
 #ifndef WIN32
-        char **paths = NULL;
         const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
         const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
-        create_windows_who_data_events(inode, dev, w_evt);
+        //create_windows_who_data_events(inode, dev, w_evt);
 #endif
     }
 }
 
 void fim_process_wildcard_removed(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-    fim_entry *entry = fim_db_get_path(configuration->path);
+    fim_entry *entry = NULL;//fim_db_get_path(configuration->path, NULL);
     if (entry != NULL) {
         fim_generate_delete_event(configuration->path, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
         return;
@@ -528,14 +529,14 @@ void fim_process_wildcard_removed(directory_t *configuration) {
 
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
-    fim_db_remove_wildcard_entry(pattern, &syscheck.fim_entry_mutex, &evt_data, configuration);
+    //fim_db_remove_wildcard_entry(pattern, &syscheck.fim_entry_mutex, &evt_data, configuration);
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     fim_entry *saved_data = NULL;
     event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true };
 
-    saved_data = fim_db_get_path(pathname);
+    saved_data = NULL;//fim_db_get_path(pathname);
 
     // Exists, create event.
     if (saved_data) {
@@ -550,7 +551,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
     evt_data.type = FIM_DELETE;
-    fim_db_process_missing_entry(pattern, &syscheck.fim_entry_mutex, &evt_data);
+    //fim_db_process_missing_entry(pattern, &syscheck.fim_entry_mutex, &evt_data);
 }
 
 // Checks the DB state, sends a message alert if necessary

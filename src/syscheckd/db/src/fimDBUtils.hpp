@@ -1,5 +1,5 @@
 /**
- * @file fimActions.hpp
+ * @file fimDBUtils.hpp
  * @brief Definition of FIM custom actions.
  * @date 2021-12-15
  *
@@ -9,7 +9,8 @@
 #include "fimDBHelper.hpp"
 
 
-namespace FimDBUtils {
+namespace FimDBUtils
+{
 
     /**
      * @brief Get all the paths asociated to an inode
@@ -40,6 +41,7 @@ namespace FimDBUtils {
         {
             FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         }
+
         return paths;
     }
 
@@ -51,7 +53,7 @@ namespace FimDBUtils {
      */
 
 
-    static std::vector<std::string> getPathsFromPattern(const std::string & pattern)
+    static std::vector<std::string> getPathsFromPattern(const std::string& pattern)
     {
         std::vector<std::string> paths;
         nlohmann::json resultQuery;
@@ -72,6 +74,7 @@ namespace FimDBUtils {
         {
             FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         }
+
         return paths;
     }
 };

@@ -32,13 +32,17 @@ int fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
             char* entry = const_cast<char*>(path.c_str());
             callback.callback(entry, callback.context);
         }
+
         retVal = FIMDB_OK;
     }
+
     return retVal;
 }
 
-void fim_db_get_path(const char* file_path, callback_context_t callback)
+int fim_db_get_path(const char* file_path, callback_context_t callback)
 {
+    auto retVal { FIMDB_ERR };
+
     if (!file_path || !callback.callback)
     {
         FIMDB::getInstance().logErr(LOG_ERROR, "Invalid parameters");
@@ -56,14 +60,25 @@ void fim_db_get_path(const char* file_path, callback_context_t callback)
         {
             nlohmann::json entry_from_path;
             FIMDBHelper::getDBItem<FIMDB>(entry_from_path, query);
-            const auto file { std::make_unique<FileItem>(entry_from_path) };
-            callback.callback(file->toFimEntry(), callback.context);
+
+            if (entry_from_path.empty())
+            {
+                FIMDB::getInstance().logErr(LOG_ERROR, "No entry found with that path");
+            }
+            else
+            {
+                const auto file { std::make_unique<FileItem>(entry_from_path) };
+                callback.callback(file->toFimEntry(), callback.context);
+                retVal = FIMDB_OK;
+            }
         }
         catch (const DbSync::dbsync_error& err)
         {
             FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         }
     }
+
+    return retVal;
 }
 
 
@@ -88,6 +103,7 @@ int fim_db_remove_path(const char* path)
             FIMDB::getInstance().logErr(LOG_ERROR, err.what());
         }
     }
+
     return retVal;
 }
 
@@ -147,12 +163,14 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
             retVal = FIMDB_OK;
         }
     }
+
     return retVal;
 }
 
 void fim_db_file_inode_search(const unsigned long inode, const unsigned long dev, callback_context_t callback)
 {
     const auto paths { FimDBUtils::getPathsFromINode(inode, dev) };
+
     if (paths.empty())
     {
         FIMDB::getInstance().logErr(LOG_ERROR, "No paths found with these inode and dev");
