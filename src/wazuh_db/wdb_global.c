@@ -1724,7 +1724,65 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
 }
 
 int wdb_global_create_backup(wdb_t* wdb) {
-    return OS_SUCCESS;
+    sqlite3_stmt *stmt = NULL;
+    char path[PATH_MAX-3] = {0};
+    char path_compressed[PATH_MAX] = {0};
+    DIR* dp = NULL;
+    int result = OS_INVALID;
+
+    dp = opendir(WDB_BACKUP_FOLDER);
+
+    if(!dp) {
+        // Try to create it
+        mkdir(WDB_BACKUP_FOLDER, 0750);
+        dp = opendir(WDB_BACKUP_FOLDER);
+        if(!dp) {
+            mdebug1("Unable to create backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
+            return OS_INVALID;
+        }
+    }
+    closedir(dp);
+    snprintf(path, PATH_MAX-3, "%s/global.db-backup-%ld", WDB_BACKUP_FOLDER, (long int)time(NULL));
+
+    // We can't run a VACUUM withing a transaction
+    if (wdb->transaction) {
+        if(wdb_commit2(wdb) == OS_INVALID) {
+            mdebug1("Cannot commit current transaction to create backup");
+            return OS_INVALID;
+        }
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_VACUUM_INTO) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_VACUUM_INTO];
+
+    if (sqlite3_bind_text(stmt, 1, path , -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        result = OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        result = OS_INVALID;
+    }
+
+    if(OS_SUCCESS == result) {
+        snprintf(path_compressed, PATH_MAX, "%s.gz", path);
+        result = w_compress_gzfile(path, path_compressed);
+        if(OS_SUCCESS == result) {
+            unlink(path);
+        }
+    }
+
+    return result;
 }
 
 cJSON* wdb_global_get_backup(wdb_t* wdb) {
