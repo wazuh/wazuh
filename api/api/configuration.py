@@ -99,8 +99,7 @@ def append_wazuh_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
     """
     for section, subsection in path_fields:
         try:
-            dictionary[section][subsection] = os.path.join(common.wazuh_path,
-                                                           dictionary[section][subsection].lstrip('/'))
+            dictionary[section][subsection] = os.path.join(common.wazuh_path, dictionary[section][subsection])
         except KeyError:
             pass
 

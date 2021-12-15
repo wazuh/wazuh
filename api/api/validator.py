@@ -47,6 +47,7 @@ _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
 _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
+_api_schema_path = r'^\w[\w\/]*(?!.*?\.\.)'
 
 security_config_schema = {
     "type": "object",
@@ -79,10 +80,13 @@ api_config_schema = {
             "additionalProperties": False,
             "properties": {
                 "enabled": {"type": "boolean"},
-                "key": {"type": "string"},
-                "cert": {"type": "string"},
+                "key": {"type": "string",
+                        "pattern": _api_schema_path},
+                "cert": {"type": "string",
+                         "pattern": _api_schema_path},
                 "use_ca": {"type": "boolean"},
-                "ca": {"type": "string"},
+                "ca": {"type": "string",
+                       "pattern": _api_schema_path},
                 "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
                                                             "TLSv1", "TLSv1.1", "TLSv1.2"]},
                 "ssl_ciphers": {"type": "string"}
@@ -93,7 +97,8 @@ api_config_schema = {
             "additionalProperties": False,
             "properties": {
                 "level": {"type": "string"},
-                "path": {"type": "string"},
+                "path": {"type": "string",
+                         "pattern": _api_schema_path},
             },
         },
         "cors": {
