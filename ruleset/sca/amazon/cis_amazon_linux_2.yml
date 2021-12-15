@@ -400,7 +400,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not c:systemctl show autofs.service -> r:unitfilestate=enabled'
+      - 'c:systemctl show autofs.service -> r:unitfilestate=enabled'
 
 # 1.1.24  Disable USB Storage.
   - id: 20522
@@ -1886,7 +1886,7 @@ checks:
     condition: all
     rules:
       - 'c:systemctl is-enabled iptables->  r:enabled'
-      - 'c:systemctl status iptables ->  r:active && r:running'
+      - 'c:systemctl status iptables ->  r:active && r:running|exited'
 
 ############################################################
 # 3.5.3.3 Configure IPv6 iptables.
@@ -3352,7 +3352,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not f:/etc/shadow -> r:^shadow:\.+:\.+:\.+:\.+'
+      - 'f:/etc/shadow -> r:^shadow:\.+:\.+:\.+:\.+'
 
 # 6.2.5 Ensure no duplicate user names exist - Not implemented, requires manual operation.
 # 6.2.6 Ensure no duplicate group names exist - Not implemented, requires manual operation.
