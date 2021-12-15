@@ -215,6 +215,8 @@ int json_example_main()
     // serialize the JSON booleans
     std::cout << j_truth << '\n';
     std::cout << j_falsity << '\n';
+
+    return 0;
 }
 
 #include <glog/logging.h>
@@ -228,4 +230,6 @@ int main(int argc, char* argv[])
     LOG(INFO) << "Found " << 10 << " cookies";
 
     json_example_main();
+
+    return 0;
 }
