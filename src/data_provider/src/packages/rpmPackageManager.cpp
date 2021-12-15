@@ -8,7 +8,7 @@
 // For O_RDONLY
 #include <fcntl.h>
 
-static bool instantiated = false;
+bool instantiated = false;
 
 RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper> &&wrapper)
 : m_rpmlib{wrapper}
@@ -16,7 +16,10 @@ RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper> &&wrapper)
     if (instantiated) {
         throw std::runtime_error("there is another RPM instance already created");
     }
-    m_rpmlib->rpmReadConfigFiles(nullptr, nullptr);
+    if (m_rpmlib->rpmReadConfigFiles(nullptr, nullptr))
+    {
+        throw std::runtime_error("rpmReadConfigFiles failed");
+    }
     instantiated = true;
 }
 
