@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# CIS Benchmark for SUSE Linux Enterprise 15 v1.0.0 - 06-30-2020
+# CIS Benchmark for SUSE Linux Enterprise 15 v1.1.0 - 09-17-2021
 
 policy:
   id: "cis_sles15_linux"
@@ -31,71 +31,66 @@ variables:
 checks:
 
 # Section 1.1 - Filesystem Configuration
+
+# 1.1.1.1 Ensure mounting of squashfs filesystems is disabled
   - id: 7500
-    title: Ensure nodev option set on /tmp partition
-    description: The nodev mount option specifies that the filesystem cannot contain special devices.
+    title: Ensure mounting of squashfs filesystems is disabled.
+    description: >
+      The squashfs filesystem type is a compressed read-only Linux filesystem embedded in
+      small footprint systems (similar to cramfs ). A squashfs image can be used without having
+      to first decompress the image.
     rationale: >
-      Since the /tmp filesystem is not intended to support devices, set this option to ensure that
-      users cannot attempt to create block or character special devices in /tmp .
+      Removing support for unneeded filesystem types reduces the local attack surface of the
+      system. If this filesystem type is not needed, disable it.
     remediation: >
-      Edit the /etc/fstab file OR the /etc/systemd/system/localfs.target.wants/tmp.mount file:
-      IF /etc/fstab is used to mount /tmp:
-      Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp
-      partition. See the fstab(5) manual page for more information.
-      Run the following command to remount /tmp :
-      # mount -o remount,nodev /tmp
-      OR
-      IF systemd is used to mount /tmp:
-      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp
-      mount options:
-      [Mount]
-      Options=mode=1777,strictatime,noexec,nodev,nosuid
-      Run the following command to restart the systemd daemon:
-      # systemctl daemon-reload
+      Edit or create a file in the /etc/modprobe.d/ directory ending in .conf
+      Example: vi /etc/modprobe.d/squashfs.conf
+      and add the following line:
+      install squashfs /bin/true
 
-      Run the following command to restart tmp.mount
-      # systemctl restart tmp.mount
+      Run the following command to unload the squashfs module:
+      # modprobe -r squashfs
     compliance:
-      - cis: ["1.1.4"]
+      - cis: ["1.1.1.1"]
       - cis_csc: ["5.1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:mount -> r:\s/tmp\s && r:nodev'
+      - 'c:modprobe -n -v squashfs -> r:install'
+      - 'c:modprobe -n -v squashfs -> r:squashfs'
 
+# 1.1.1.2 Ensure mounting of udf filesystems is disabled
   - id: 7501
-    title: Ensure nosuid option set on /tmp partition
-    description: The nosuid mount option specifies that the filesystem cannot contain setuid files.
+    title: Ensure mounting of udf filesystems is disabled.
+    description: >
+      The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and
+      ECMA-167 specifications. This is an open vendor filesystem type for data storage on a
+      broad range of media. This filesystem type is necessary to support writing DVDs and newer
+      optical disc formats.
     rationale: >
-      Since the /tmp filesystem is only intended for temporary file storage, set this option to
-      ensure that users cannot create setuid files in /tmp.
+      Removing support for unneeded filesystem types reduces the local attack surface of the
+      system. If this filesystem type is not needed, disable it.
     remediation: >
-      IF /etc/fstab is used to mount /tmp
-      Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp
-      partition. See the fstab(5) manual page for more information.
-      Run the following command to remount /tmp :
-      # mount -o remount,nosuid /tmp
+      Edit or create a file in the /etc/modprobe.d/ directory ending in .conf
+      Example: vi /etc/modprobe.d/udf.conf
+      and add the following line:
+      install udf /bin/true
 
-      OR
-      IF systemd is used to mount /tmp:
-      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp
-      mount options:
-      [Mount]
-      Options=mode=1777,strictatime,noexec,nodev,nosuid
-
-      Run the following command to restart the systemd daemon:
-      # systemctl daemon-reload
-
-      Run the following command to restart tmp.mount:
-      # systemctl restart tmp.mount
+      Run the following command to unload the udf module:
+      # modprobe -r udf
     compliance:
-      - cis: ["1.1.5"]
-      - cis_csc: ["5.1","13"]
-    condition: all
+      - cis: ["1.1.1.2"]
+      - cis_csc: ["5.1"]
+    condition: any
     rules:
-      - 'c:mount -> r:\s/tmp\s && r:nosuid'
+      - 'c:modprobe -n -v udf -> r:install'
+      - 'c:modprobe -n -v udf -> r:udf'
 
+# 1.1.1.3 Ensure mounting of FAT filesystems is limited - Not implemented
+# 1.1.2 Ensure /tmp is configured - Not implemented  
+
+# 1.1.3 Ensure noexec option set on /tmp partition - Not implemented
   - id: 7502
-    title: Ensure noexec option set on /tmp partition
+    title: Ensure noexec option set on /tmp partition.
     description: The noexec mount option specifies that the filesystem cannot contain executable binaries.
     rationale: >
       Since the /tmp filesystem is only intended for temporary file storage, set this option to
@@ -130,8 +125,159 @@ checks:
     rules:
       - 'c:mount -> r:\s/tmp\s && r:noexec'
 
+# 1.1.4 Ensure nodev option set on /tmp partition
   - id: 7503
-    title: Ensure separate partition exists for /var
+    title: Ensure nodev option set on /tmp partition.
+    description: The nodev mount option specifies that the filesystem cannot contain special devices.
+    rationale: >
+      Since the /tmp filesystem is not intended to support devices, set this option to ensure that
+      users cannot attempt to create block or character special devices in /tmp .
+    remediation: >
+      Edit the /etc/fstab file OR the /etc/systemd/system/localfs.target.wants/tmp.mount file:
+      IF /etc/fstab is used to mount /tmp:
+      Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp
+      partition. See the fstab(5) manual page for more information.
+      Run the following command to remount /tmp :
+      # mount -o remount,nodev /tmp
+      OR
+      IF systemd is used to mount /tmp:
+      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp
+      mount options:
+      [Mount]
+      Options=mode=1777,strictatime,noexec,nodev,nosuid
+      Run the following command to restart the systemd daemon:
+      # systemctl daemon-reload
+
+      Run the following command to restart tmp.mount
+      # systemctl restart tmp.mount
+    compliance:
+      - cis: ["1.1.4"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/tmp\s && r:nodev'
+
+# 1.1.5 Ensure nosuid option set on /tmp partition
+  - id: 7504
+    title: Ensure nosuid option set on /tmp partition.
+    description: The nosuid mount option specifies that the filesystem cannot contain setuid files.
+    rationale: >
+      Since the /tmp filesystem is only intended for temporary file storage, set this option to
+      ensure that users cannot create setuid files in /tmp.
+    remediation: >
+      IF /etc/fstab is used to mount /tmp
+      Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp
+      partition. See the fstab(5) manual page for more information.
+      Run the following command to remount /tmp :
+      # mount -o remount,nosuid /tmp
+
+      OR
+      IF systemd is used to mount /tmp:
+      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp
+      mount options:
+      [Mount]
+      Options=mode=1777,strictatime,noexec,nodev,nosuid
+
+      Run the following command to restart the systemd daemon:
+      # systemctl daemon-reload
+
+      Run the following command to restart tmp.mount:
+      # systemctl restart tmp.mount
+    compliance:
+      - cis: ["1.1.5"]
+      - cis_csc: ["5.1","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/tmp\s && r:nosuid'
+
+# 1.1.6 Ensure /dev/shm is configured
+  - id: 7505
+    title: Ensure /dev/shm is configured.
+    description: >
+      /dev/shm is a traditional shared memory concept. One program will create a memory
+      portion, which other processes (if permitted) can access. If /dev/shm is not configured,
+      tmpfs will be mounted to /dev/shm by systemd.
+
+      Notes:
+        - An entry for /dev/shm in /etc/fstab will take precedence.
+        - tmpfs can be resized using the size={size} parameter in /etc/fstab. If we don't specify
+          the size, it will be half the RAM.
+
+      Resize tmpfs example:
+      tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid,size=2G 0 0
+    rationale: >
+      Any user can upload and execute files inside the /dev/shm similar to the /tmp partition.
+      Configuring /dev/shm allows an administrator to set the noexec option on the mount,
+      making /dev/shm useless for an attacker to install executable code. It would also prevent an
+      attacker from establishing a hardlink to a system setuid program and wait for it to be
+      updated. Once the program was updated, the hardlink would be broken and the attacker
+      would have his own copy of the program. If the program happened to have a security
+      vulnerability, the attacker could continue to exploit the known flaw.
+    remediation: >
+      Edit /etc/fstab and add or edit the following line:
+      tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid 0 0
+
+      Run the following command to remount /dev/shm:
+      # mount -o remount,noexec,nodev,nosuid /dev/shm
+    compliance:
+      - cis: ["1.1.6"]
+      - cis_csc: ["5.1","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\.+\s+/dev/shm\s+'
+      - 'f:/etc/fstab -> r:\.+\s+/dev/shm\s+'
+
+# 1.1.7 Ensure noexec option set on /dev/shm partition
+  - id: 7506
+    title: Ensure noexec option set on /dev/shm partition.
+    description: >
+      The noexec mount option specifies that the filesystem cannot contain executable binaries.
+      Note: /dev/shm is mounted automatically by systemd. /dev/shm needs to be added to
+      /etc/fstab to add mount options even though it is already being mounted on boot.
+    rationale: >
+      Setting this option on a file system prevents users from executing programs from shared
+      memory. This deters users from introducing potentially malicious software on the system.
+    remediation: >
+      Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the
+      /dev/shm partition. See the fstab(5) manual page for more information.
+
+      Run the following command to remount /dev/shm:
+      # mount -o remount,noexec,nodev,nosuid /dev/shm
+    compliance:
+      - cis: ["1.1.7"]
+      - cis_csc: ["2.6","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/dev/shm\s && r:noexec'
+
+# 1.1.8 Ensure nodev option set on /dev/shm partition - Not implemented
+
+# 1.1.9 Ensure nosuid option set on /dev/shm partition
+  - id: 7507
+    title: Ensure nosuid option set on /dev/shm partition.
+    description: >
+      The nosuid mount option specifies that the filesystem cannot contain setuid files.
+      Note: /dev/shm is mounted automatically by systemd. /dev/shm needs to be added to
+      /etc/fstab to add mount options even though it is already being mounted on boot.
+    rationale: >
+      Setting this option on a file system prevents users from introducing privileged programs
+      onto the system and allowing non-root users to execute them.
+    remediation: >
+      Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the
+      /dev/shm partition. See the fstab(5) manual page for more information.
+
+      Run the following command to remount /dev/shm:
+      # mount -o remount,noexec,nodev,nosuid /dev/shm
+    compliance:
+      - cis: ["1.1.9"]
+      - cis_csc: ["5.1","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
+
+# 1.1.10 Ensure separate partition exists for /var
+  - id: 7508
+    title: Ensure separate partition exists for /var.
     description: >
       The /var directory is used by daemons and other system services to temporarily store
       dynamic data. Some directories created by these processes may be world-writable.
@@ -156,8 +302,100 @@ checks:
     rules:
       - 'c:mount -> r:\s/var\s'
 
-  - id: 7504
-    title: Ensure separate partition exists for /var/log
+# 1.1.11 Ensure separate partition exists for /var/tmp 
+  - id: 7509
+    title: Ensure separate partition exists for /var/tmp.
+    description: >
+      The /var/tmp directory is a world-writable directory used for temporary storage by all
+      users and some applications and is intended for temporary files that are preserved across
+      reboots.
+
+      Note: tmpfs should not be used for /var/tmp/. tmpfs is a temporary filesystem that resides in
+      memory and/or swap partition(s). Files in tmpfs are automatically cleared at each bootup.
+    rationale: >
+      Since the /var/tmp directory is intended to be world-writable, there is a risk of resource
+      exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own
+      file system allows an administrator to set the noexec option on the mount, making
+      /var/tmp useless for an attacker to install executable code. It would also prevent an
+      attacker from establishing a hardlink to a system setuid program and wait for it to be
+      updated. Once the program was updated, the hardlink would be broken and the attacker
+      would have his own copy of the program. If the program happened to have a security
+      vulnerability, the attacker could continue to exploit the known flaw.
+    remediation: >
+      For new installations, during installation create a custom partition setup and specify a
+      separate partition for /var/tmp .
+      For systems that were previously installed, create a new partition and configure
+      /etc/fstab as appropriate.
+    compliance:
+      - cis: ["1.1.11"]
+      - cis_csc: ["5.1","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/var/tmp\s'
+
+# 1.1.12 Ensure noexec option set on /var/tmp partition 
+  - id: 7510
+    title: Ensure noexec option set on /var/tmp partition.
+    description: The noexec mount option specifies that the filesystem cannot contain executable binaries.
+    rationale: >
+      Since the /var/tmp filesystem is only intended for temporary file storage, set this option to
+      ensure that users cannot run executable binaries from /var/tmp .
+    remediation: >
+      Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the
+      /var/tmp partition. See the fstab(5) manual page for more information.
+
+      Run the following command to remount /var/tmp :
+      # mount -o remount,noexec /var/tmp
+    compliance:
+      - cis: ["1.1.12"]
+      - cis_csc: ["2.6"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/var/tmp\s && r:noexec'
+
+# 1.1.13 Ensure nodev option set on /var/tmp partition 
+  - id: 7511
+    title: Ensure nodev option set on /var/tmp partition.
+    description: The nodev mount option specifies that the filesystem cannot contain special devices.
+    rationale: >
+      Since the /var/tmp filesystem is not intended to support devices, set this option to ensure
+      that users cannot attempt to create block or character special devices in /var/tmp .
+    remediation: >
+      Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the
+      /var/tmp partition. See the fstab(5) manual page for more information.
+
+      Run the following command to remount /var/tmp :
+      # mount -o remount,nodev /var/tmp
+    compliance:
+      - cis: ["1.1.13"]
+      - cis_csc: ["5.1","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s+/var/tmp\s+ && r:nodev'
+
+# 1.1.14 Ensure nosuid option set on /var/tmp partition
+  - id: 7512
+    title: Ensure nosuid option set on /var/tmp partition.
+    description: The nosuid mount option specifies that the filesystem cannot contain setuid files.
+    rationale: >
+      Since the /var/tmp filesystem is only intended for temporary file storage, set this option to
+      ensure that users cannot create setuid files in /var/tmp
+    remediation: >
+      Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the
+      /var/tmp partition. See the fstab(5) manual page for more information.
+
+      Run the following command to remount /var/tmp :
+      # mount -o remount,nosuid /var/tmp
+    compliance:
+      - cis: ["1.1.14"]
+      - cis_csc: ["5.1","13"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s+/var/tmp\s+ && r:nosuid'
+
+# 1.1.15 Ensure separate partition exists for /var/log
+  - id: 7513
+    title: Ensure separate partition exists for /var/log.
     description: The /var/log directory is used by system services to store log data.
     rationale: >
       There are two important reasons to ensure that system logs are stored on a separate
@@ -181,8 +419,9 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/log\s'
 
-  - id: 7505
-    title: Ensure separate partition exists for /var/log/audit
+# 1.1.16 Ensure separate partition exists for /var/log/audit
+  - id: 7514
+    title: Ensure separate partition exists for /var/log/audit.
     description: >
       The auditing daemon, auditd , stores log data in the /var/log/audit directory.
 
@@ -209,8 +448,9 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/log/audit\s'
 
-  - id: 7506
-    title: Ensure separate partition exists for /home
+# 1.1.17 Ensure separate partition exists for /home
+  - id: 7515
+    title: Ensure separate partition exists for /home.
     description: The /home directory is used to support disk storage needs of local users.
     rationale: >
       If the system is intended to support local users, create a separate partition for the /home
@@ -230,8 +470,9 @@ checks:
     rules:
       - 'c:mount -> r:\s/home\s'
 
-  - id: 7507
-    title: Ensure nodev option set on /home partition
+# 1.1.18 Ensure nodev option set on /home partition 
+  - id: 7516
+    title: Ensure nodev option set on /home partition.
     description: >
       The nodev mount option specifies that the filesystem cannot contain special devices.
       Note: The actions in this recommendation refer to the /home partition, which is the default
@@ -253,52 +494,266 @@ checks:
     rules:
       - 'c:mount -> r:\s/home\s && r:nodev'
 
-  - id: 7508
-    title: Ensure nosuid option set on /dev/shm partition
-    description: >
-      The nosuid mount option specifies that the filesystem cannot contain setuid files.
-      Note: /dev/shm is mounted automatically by systemd. /dev/shm needs to be added to
-      /etc/fstab to add mount options even though it is already being mounted on boot.
-    rationale: >
-      Setting this option on a file system prevents users from introducing privileged programs
-      onto the system and allowing non-root users to execute them.
-    remediation: >
-      Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the
-      /dev/shm partition. See the fstab(5) manual page for more information.
+# 1.1.19 Ensure noexec option set on removable media partitions - Not implemented
+# 1.1.20 Ensure nodev option set on removable media partitions - Not implemented
+# 1.1.21 Ensure nosuid option set on removable media partitions - Not implemented
+# 1.1.22 Ensure sticky bit is set on all world-writable directories - Not implemented
 
-      Run the following command to remount /dev/shm:
-      # mount -o remount,noexec,nodev,nosuid /dev/shm
+# 1.1.23 Disable Automounting 
+  - id: 7517
+    title: Disable Automounting.
+    description: >
+      autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives.
+      Notes:
+        - Additional methods of disabling a service exist. Consult your distribution
+          documentation for appropriate methods.
+        - This control should align with the tolerance of the use of portable drives and optical
+          media in the organization.
+          - On a server requiring an admin to manually mount media can be part of
+            defense-in-depth to reduce the risk of unapproved software or information
+            being introduced or proprietary software or information being exfiltrated.
+          - If admins commonly use flash drives and Server access has sufficient physical
+            controls, requiring manual mounting may not increase security.
+    rationale: >
+      With automounting enabled anyone with physical access could attach a USB drive or disc
+      and have its contents available in system even if they lacked permissions to mount it
+      themselves.
+    remediation: >
+      Run the following command to mask autofs:
+      # systemctl --now mask autofs
     compliance:
-      - cis: ["1.1.9"]
-      - cis_csc: ["5.1","13"]
+      - cis: ["1.1.23"]
+      - cis_csc: ["8.4","8.5"]
+    condition: none
+    rules:
+      - 'c:systemctl is-enabled autofs -> r:enabled'
+
+# 1.2.1 Ensure GPG keys are configured - Not implemented
+# 1.2.2 Ensure package manager repositories are configured - Not implemented
+# 1.2.3 Ensure gpgcheck is globally activated - Not implemented
+
+# 1.3.1 Ensure sudo is installed
+  - id: 7518
+    title: Ensure sudo is installed.
+    description: >
+      sudo allows a permitted user to execute a command as the superuser or another user, as
+      specified by the security policy. The invoking user's real (not effective) user ID is used to
+      determine the user name with which to query the security policy.
+    rationale: >
+      sudo supports a plugin architecture for security policies and input/output logging. Third
+      parties can develop and distribute their own policy and I/O logging plugins to work
+      seamlessly with the sudo front end. The default security policy is sudoers, which is
+      configured via the file /etc/sudoers.
+
+      The security policy determines what privileges, if any, a user has to run sudo. The policy
+      may require that users authenticate themselves with a password or another authentication
+      mechanism. If authentication is required, sudo will exit if the user's password is not
+      entered within a configurable time limit. This limit is policy-specific.
+    remediation: >
+      Run the following command to install sudo.
+      # zypper install sudo
+    compliance:
+      - cis: ["1.3.1"]
+      - cis_csc: ["4"]
+    references:
+      - SUDO(8)
+    condition: none
+    rules:
+      - 'c:rpm -q sudo -> r:not installed'
+
+# 1.3.2 Ensure sudo commands use pty
+  - id: 7519
+    title: Ensure sudo commands use pty.
+    description: >
+      sudo can be configured to run only from a pseudo-pty
+
+      Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the
+      sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for
+      parse errors. If the sudoers file is currently being edited you will receive a message to try
+      again later. The -f option allows you to tell visudo which file to edit.
+    rationale: >
+      Attackers can run a malicious program using sudo, which would again fork a background
+      process that remains even when the main program has finished executing.
+      This can be mitigated by configuring sudo to run other commands only from a pseudo-pty,
+      whether I/O logging is turned on or not.
+    remediation: >
+      Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH
+      TO FILE> and add the following line:
+
+      Defaults use_pty
+    compliance:
+      - cis: ["1.3.2"]
+      - cis_csc: ["4"]
+    references:
+      - SUDO(8)
     condition: all
     rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
+      - 'c:grep -REsih "^Defaults" /etc/sudoers /etc/sudoers.d -> r:^\wefaults\s+use_pty'
 
-  - id: 7509
-    title: Ensure noexec option set on /dev/shm partition
+# 1.3.3 Ensure sudo log file exists
+  - id: 7520
+    title: Ensure sudo log file exists.
     description: >
-      The noexec mount option specifies that the filesystem cannot contain executable binaries.
-      Note: /dev/shm is mounted automatically by systemd. /dev/shm needs to be added to
-      /etc/fstab to add mount options even though it is already being mounted on boot.
-    rationale: >
-      Setting this option on a file system prevents users from executing programs from shared
-      memory. This deters users from introducing potentially malicious software on the system.
-    remediation: >
-      Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the
-      /dev/shm partition. See the fstab(5) manual page for more information.
+      sudo can use a custom log file
 
-      Run the following command to remount /dev/shm:
-      # mount -o remount,noexec,nodev,nosuid /dev/shm
+      Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the
+      sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks
+      for parse errors. If the sudoers file is currently being edited you will receive a message to
+      try again later. The -f option allows you to tell visudo which file to edit.
+    rationale: A sudo log file simplifies auditing of sudo commands
+    remediation: >
+      edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH
+      TO FILE> and add the following line:
+      Defaults logfile="<PATH TO CUSTOM LOG FILE>"
+
+      Example
+      Defaults logfile="/var/log/sudo.log"
     compliance:
-      - cis: ["1.1.7"]
-      - cis_csc: ["2.6","13"]
+      - cis: ["1.3.3"]
+      - cis_csc: ["6.3"]
+    references:
+      - SUDO(8)
+      - VISUDO(8)
     condition: all
     rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:noexec'
+      - 'c:grep -REsih "^Defaults" /etc/sudoers /etc/sudoers.d -> r:^\wefaults\s+logfile="\.+"'
 
-  - id: 7510
-    title: Ensure core dumps are restricted
+# 1.4.1 Ensure AIDE is installed
+  - id: 7521
+    title: Ensure AIDE is installed.
+    description: >
+      AIDE takes a snapshot of filesystem state including modification times, permissions, and
+      file hashes which can then be used to compare against the current state of the filesystem to
+      detect modifications to the system.
+
+      Note: The prelinking feature can interfere with AIDE because it alters binaries to speed up
+      their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus
+      avoiding false positives from AIDE.
+    rationale: >
+      By monitoring the filesystem state compromised files can be detected to prevent or limit
+      the exposure of accidental or malicious misconfigurations or modified binaries.
+    remediation: >
+      Configure AIDE as appropriate for your environment. Consult the AIDE documentation for
+      options.
+      Run the following command to install AIDE:
+      # zypper install aide
+
+      Run the following commands to initialize AIDE:
+      # aide --init
+      # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_csc: ["14.9"]
+    references:
+      - AIDE stable manual: http://aide.sourceforge.net/stable/manual.html
+    condition: none
+    rules:
+      - 'c:rpm -q aide -> r:not installed'
+
+# 1.4.2 Ensure filesystem integrity is regularly checked - Not implemented
+
+# 1.5.1 Ensure bootloader password is set
+  - id: 7522
+    title: Ensure bootloader password is set.
+    description: >
+      Setting the boot loader password will require that anyone rebooting the system must enter
+      a password before being able to set command line boot parameters
+
+      Notes:
+        - This recommendation is designed around the grub2 bootloader, if LILO or another
+          bootloader is in use in your environment enact equivalent settings. Replace
+          `/boot/grub2/grub.cfg with the appropriate grub configuration file for your
+          environment
+        - The information can be placed in any /etc/grub.d file as long as that file is
+          incorporated into grub.cfg
+          - The superuser/user information and password should not be contained in the
+            /etc/grub.d/00_header file.
+          - A custom file, such as /etc/grub.d/40_custom should be used so it is not
+            overwritten should the Grub package be updated.
+    rationale: >
+      Requiring a boot password upon execution of the boot loader will prevent an unauthorized
+      user from entering boot parameters or changing the boot partition. This prevents users
+      from weakening security (e.g. turning off SELinux at boot time).
+    remediation: >
+      Create an encrypted password with grub2-mkpasswd-pbkdf2:
+        # grub2-mkpasswd-pbkdf2
+        Enter password: <password>
+        Reenter password: <password>
+        Your PBKDF2 is <encrypted-password>
+
+      Add the following into /etc/grub.d/40_custom
+        set superusers="<username>"
+        password_pbkdf2 <username> <encrypted-password>
+
+      Run the following command to update the grub2 configuration:
+        # grub2-mkconfig -o /boot/grub2/grub.cfg
+    compliance:
+      - cis: ["1.5.1"]
+      - cis_csc: ["5.1"]
+    references:
+      - https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-grub2.html
+    condition: all
+    rules:
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*set superusers'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*password'
+
+# 1.5.2 Ensure permissions on bootloader config are configured
+  - id: 7523
+    title: Ensure permissions on bootloader config are configured.
+    description: >
+      The grub configuration file contains information on boot settings and passwords for
+      unlocking boot options. The grub2 configuration is usually grub.cfg stored in
+      /boot/grub2/.
+
+      Notes:
+        - This recommendation is designed around the grub2 bootloader.
+        - If LILO or another bootloader is in use in your environment:
+          - Enact equivalent settings
+          - Replace /boot/grub2/grub.cfg and /boot/grub2/user.cfg with the
+            appropriate boot configuration files for your environment
+    rationale: >
+      Setting the permissions to read and write for root only prevents non-root users from
+      seeing the boot parameters or changing them. Non-root users who read the boot
+      parameters may be able to identify weaknesses in security upon boot and be able to exploit
+      them.
+    remediation: >
+      Run the following commands to set ownership and permissions on your grub
+      configuration:
+      # chown root:root /boot/grub2/grub.cfg
+      # chmod og-rwx /boot/grub2/grub.cfg
+    compliance:
+      - cis: ["1.5.2"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'c:stat -L /boot/grub2/grub.cfg -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+
+# 1.5.3 Ensure authentication required for single user mode
+  - id: 7524
+    title: Ensure authentication required for single user mode.
+    description: >
+      Single user mode (rescue mode) is used for recovery when the system detects an issue
+      during boot or by manual selection from the bootloader.
+    rationale: >
+      Requiring authentication in single user mode (rescue mode) prevents an unauthorized user
+      from rebooting the system into single user to gain root privileges without credentials.
+    remediation: >
+      Edit /usr/lib/systemd/system/rescue.service and add/modify the following line:
+      ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue
+
+      Edit /usr/lib/systemd/system/emergency.service and add/modify the following line:
+      ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency
+    compliance:
+      - cis: ["1.5.3"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'f:/usr/lib/systemd/system/rescue.service -> r:^ExecStart=\.*/systemd/systemd-sulogin-shell\s+rescue'
+      - 'f:/usr/lib/systemd/system/emergency.service -> r:^ExecStart=\.*/systemd/systemd-sulogin-shell\s+emergency'
+
+# 1.6.1 Ensure core dumps are restricted
+  - id: 7525
+    title: Ensure core dumps are restricted.
     description: >
       A core dump is the memory of an executable program. It is generally used to determine
       why a program aborted. It can also be used to glean confidential information from a core
@@ -336,8 +791,39 @@ checks:
       - 'c:sysctl fs.suid_dumpable -> r:\s0$'
       - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
 
-  - id: 7511
-    title: Ensure address space layout randomization (ASLR) is enabled
+# 1.6.2 Ensure XD/NX support is enabled 
+  - id: 7526
+    title: Ensure XD/NX support is enabled.
+    description: >
+      Recent processors in the x86 family support the ability to prevent code execution on a per
+      memory page basis. Generically and on AMD processors, this ability is called No Execute
+      (NX), while on Intel processors it is called Execute Disable (XD). This ability can help
+      prevent exploitation of buffer overflow vulnerabilities and should be activated whenever
+      possible. Extra steps must be taken to ensure that this protection is enabled, particularly on
+      32-bit x86 systems. Other processors, such as Itanium and POWER, have included such
+      support since inception and the standard kernel for those platforms supports the feature.
+    rationale: >
+      Enabling any feature that can protect against buffer overflow attacks enhances the security
+      of the system.
+
+      Note: Ensure your system supports the XD or NX bit and has PAE support before implementing
+      this recommendation as this may prevent it from booting if these are not supported by your
+      hardware.
+    remediation: >
+      On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit
+      systems:
+      If necessary configure your bootloader to load the new kernel and reboot the system.
+      You may need to enable NX or XD support in your bios.
+    compliance:
+      - cis: ["1.6.2"]
+      - cis_csc: ["8.3"]
+    condition: all
+    rules:
+      - 'c:journalctl -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
+
+# 1.6.3 Ensure address space layout randomization (ASLR) is enabled
+  - id: 7527
+    title: Ensure address space layout randomization (ASLR) is enabled.
     description: >
       Address space layout randomization (ASLR) is an exploit mitigation technique which
       randomly arranges the address space of key data areas of a process.
@@ -357,6 +843,256 @@ checks:
     rules:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:\s2$|\t2$'
+
+# 1.6.4 Ensure prelink is disabled
+  - id: 7528
+    title: Ensure prelink is disabled.
+    description: >
+      prelinkis a program that modifies ELF shared libraries and ELF dynamically linked
+      binaries in such a way that the time needed for the dynamic linker to perform relocations
+      at startup significantly decreases.
+    rationale: >
+      The prelinking feature can interfere with the operation of AIDE, because it changes
+      binaries. Prelinking can also increase the vulnerability of the system if a malicious user is
+      able to compromise a common library such as libc.
+    remediation: >
+      Run the following command to restore binaries to normal:
+      # prelink -ua
+
+      Run the following command to uninstall prelink:
+      # zypper remove prelink
+    compliance:
+      - cis: ["1.6.4"]
+      - cis_csc: ["14.9"]
+    condition: all
+    rules:
+      - 'c:rpm -q prelink -> r:not installed'
+
+# 1.7.1.1 Ensure AppArmor is installed
+  - id: 7529
+    title: Ensure AppArmor is installed.
+    description: AppArmor provides Mandatory Access Controls.
+    rationale: >
+      Without a Mandatory Access Control system installed only the default Discretionary Access
+      Control system will be available.
+    remediation: >
+      Run the following command to install AppArmor:
+      # zypper install -t pattern apparmor
+    compliance:
+      - cis: ["1.7.1.1"]
+      - cis_csc: ["14.6"]
+    condition: none
+    rules:
+      - 'c:rpm -q apparmor-docs -> r:not installed'
+      - 'c:rpm -q apparmor-parser -> r:not installed'
+      - 'c:rpm -q apparmor-profiles -> r:not installed'
+      - 'c:rpm -q apparmor-utils -> r:not installed'
+      - 'c:rpm -q libapparmor1 -> r:not installed'
+
+# 1.7.1.2 Ensure AppArmor is enabled in the bootloader configuration - Not implemented
+# 1.7.1.3 Ensure all AppArmor Profiles are in enforce or complain mode - Not implemented
+# 1.7.1.4 Ensure all AppArmor Profiles are enforcing - Not implemented
+
+# 1.8.1.1 Ensure message of the day is configured properly
+  - id: 7530
+    title: Ensure message of the day is configured properly.
+    description: >
+      The contents of the /etc/motd file are displayed to users after login and function as a
+      message of the day for authenticated users.
+
+      Unix-based systems have typically displayed information about the OS release and patch
+      level upon logging in to the system. This information can be useful to developers who are
+      developing software for a particular OS platform. If mingetty(8) supports the following
+      options, they display operating system information: \m - machine architecture \r -
+      operating system release \s - operating system name \v - operating system version
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of their legal
+      status regarding the system and must include the name of the organization that owns the
+      system and any monitoring policies that are in place. Displaying OS and patch level
+      information in login banners also has the side effect of providing detailed system
+      information to attackers attempting to target specific exploits of a system. Authorized users
+      can easily get this information by running the " uname -a " command once they have logged
+      in.
+    remediation: >
+      Edit the /etc/motd file with the appropriate contents according to your site policy, remove
+      any instances of \m , \r , \s , \v or references to the OS platform
+
+      OR
+
+      If the motd is not used, this file can be removed.
+      Run the following command to remove the motd file:
+      # rm /etc/motd
+    compliance:
+      - cis: ["1.8.1.1"]
+      - cis_csc: ["5.1"]
+    condition: none
+    rules:
+      - 'f:/etc/motd -> r:\\m'
+      - 'f:/etc/motd -> r:\\r'
+      - 'f:/etc/motd -> r:\\s'
+      - 'f:/etc/motd -> r:\\v'
+
+# 1.8.1.2 Ensure local login warning banner is configured properly
+  - id: 7531
+    title: Ensure local login warning banner is configured properly.
+    description: >
+      The contents of the /etc/issue file are displayed to users prior to login for local terminals.
+      Unix-based systems have typically displayed information about the OS release and patch
+      level upon logging in to the system. This information can be useful to developers who are
+      developing software for a particular OS platform. If mingetty(8) supports the following
+      options, they display operating system information: \m - machine architecture \r -
+      operating system release \s - operating system name \v - operating system version - or the
+      operating system's name
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of their legal
+      status regarding the system and must include the name of the organization that owns the
+      system and any monitoring policies that are in place. Displaying OS and patch level
+      information in login banners also has the side effect of providing detailed system
+      information to attackers attempting to target specific exploits of a system. Authorized users
+      can easily get this information by running the " uname -a " command once they have logged
+      in.
+    remediation: >
+      Edit the /etc/issue file with the appropriate contents according to your site policy,
+      remove any instances of \m , \r , \s , \v or references to the OS platform
+      # echo "Authorized uses only. All activity may be monitored and reported." >
+      /etc/issue
+    compliance:
+      - cis: ["1.8.1.2"]
+      - cis_csc: ["5.1"]
+    condition: none
+    rules:
+      - 'f:/etc/issue -> r:\\m'
+      - 'f:/etc/issue -> r:\\r'
+      - 'f:/etc/issue -> r:\\s'
+      - 'f:/etc/issue -> r:\\v'
+
+# 1.8.1.3 Ensure remote login warning banner is configured properly
+  - id: 7532
+    title: Ensure remote login warning banner is configured properly.
+    description: >
+      The contents of the /etc/issue.net file are displayed to users prior to login for remote
+      connections from configured services.
+      Unix-based systems have typically displayed information about the OS release and patch
+      level upon logging in to the system. This information can be useful to developers who are
+      developing software for a particular OS platform. If mingetty(8) supports the following
+      options, they display operating system information: \m - machine architecture \r -
+      operating system release \s - operating system name \v - operating system version
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of their legal
+      status regarding the system and must include the name of the organization that owns the
+      system and any monitoring policies that are in place. Displaying OS and patch level
+      information in login banners also has the side effect of providing detailed system
+      information to attackers attempting to target specific exploits of a system. Authorized users
+      can easily get this information by running the " uname -a " command once they have logged
+      in.
+    remediation: >
+      Edit the /etc/issue.net file with the appropriate contents according to your site policy,
+      remove any instances of \m , \r , \s , \v or references to the OS platform
+      # echo "Authorized uses only. All activity may be monitored and reported." >
+      /etc/issue.net
+    compliance:
+      - cis: ["1.8.1.3"]
+      - cis_csc: ["5.1"]
+    condition: none
+    rules:
+      - 'f:/etc/issue.net -> r:\\m'
+      - 'f:/etc/issue.net -> r:\\r'
+      - 'f:/etc/issue.net -> r:\\s'
+      - 'f:/etc/issue.net -> r:\\v'
+
+# 1.8.1.4 Ensure permissions on /etc/motd are configured
+  - id: 7533
+    title: Ensure permissions on /etc/motd are configured.
+    description: >
+      The contents of the /etc/motd file are displayed to users after login and function as a
+      message of the day for authenticated users.
+    rationale: >
+      If the /etc/motd file does not have the correct ownership it could be modified by
+      unauthorized users with incorrect or misleading information.
+    remediation: >
+      Run the following commands to set permissions on /etc/motd :
+      # chown root:root /etc/motd
+      # chmod u-x,go-wx /etc/motd
+    compliance:
+      - cis: ["1.8.1.4"]
+      - cis_csc: ["14.6"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/motd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+
+# 1.8.1.5 Ensure permissions on /etc/issue are configured
+  - id: 7534
+    title: Ensure permissions on /etc/issue are configured.
+    description: >
+      The contents of the /etc/issue file are displayed to users prior to login for local terminals.
+    rationale: >
+      If the /etc/issue file does not have the correct ownership it could be modified by
+      unauthorized users with incorrect or misleading information.
+    remediation: >
+      Run the following commands to set permissions on /etc/issue:
+      # chown root:root /etc/issue
+      # chmod u-x,go-wx /etc/issue
+    compliance:
+      - cis: ["1.8.1.5"]
+      - cis_csc: ["14.6"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/issue -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+
+# 1.8.1.6 Ensure permissions on /etc/issue.net are configured
+  - id: 7535
+    title: Ensure permissions on /etc/issue.net are configured.
+    description: >
+      The contents of the /etc/issue.net file are displayed to users prior to login for remote
+      connections from configured services.
+    rationale: >
+      If the /etc/issue.net file does not have the correct ownership it could be modified by
+      unauthorized users with incorrect or misleading information.
+    remediation: >
+      Run the following commands to set permissions on /etc/issue.net:
+      # chown root:root /etc/issue.net
+      # chmod u-x,go-wx /etc/issue.net
+    compliance:
+      - cis: ["1.8.1.6"]
+      - cis_csc: ["14.6"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/issue.net -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+
+# 1.9 Ensure updates, patches, and additional security software are installed - Not implemented
+# 1.10 Ensure GDM is removed or login is configured - Not implemented
+
+# 2.1.1 Ensure xinetd is not installed
+  - id: 7536
+    title: Ensure xinetd is not installed.
+    description: >
+      The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced
+      the original inetd daemon. The xinetd daemon listens for well known services and
+      dispatches the appropriate daemon to properly respond to service requests.
+    rationale: >
+      If there are no xinetd services required, it is recommended that the package be removed to
+      reduce the attack surface are of the system.
+
+      Note: If an xinetd service or services are required, ensure that any xinetd service not required
+      is stopped and disabled
+    remediation: >
+      Run the following command to remove xinetd:
+      # zypper remove xinetd
+    compliance:
+      - cis: ["2.1.1"]
+      - cis_csc: ["2.6","9.2"]
+    condition: all
+    rules:
+      - 'c:rpm -q xinetd -> r:not installed'
+
+# 2.2.1.1 Ensure time synchronization is in use - Not implemented
+# 2.2.1.2 Ensure systemd-timesyncd is configured - Not implemented
+
+
+
+
+
+
 
   - id: 7512
     title: Ensure rsh client is not installed
@@ -465,27 +1201,7 @@ checks:
       - 'c:rpm -q rsync -> r:not installed'
       - 'c:systemctl is-enabled rsyncd -> r:^masked'
 
-  - id: 7517
-    title: Ensure xinetd is not installed
-    description: >
-      The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced
-      the original inetd daemon. The xinetd daemon listens for well known services and
-      dispatches the appropriate daemon to properly respond to service requests.
-    rationale: >
-      If there are no xinetd services required, it is recommended that the package be removed to
-      reduce the attack surface are of the system.
 
-      Note: If an xinetd service or services are required, ensure that any xinetd service not required
-      is stopped and disabled
-    remediation: >
-      Run the following command to remove xinetd:
-      # zypper remove xinetd
-    compliance:
-      - cis: ["2.1.1"]
-      - cis_csc: ["2.6","9.2"]
-    condition: all
-    rules:
-      - 'c:rpm -q xinetd -> r:not installed'
 
   - id: 7518
     title: Ensure X11 Server components are not installed
@@ -1090,649 +1806,30 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
-  - id: 7544
-    title: Ensure mounting of squashfs filesystems is disabled
-    description: >
-      The squashfs filesystem type is a compressed read-only Linux filesystem embedded in
-      small footprint systems (similar to cramfs ). A squashfs image can be used without having
-      to first decompress the image.
-    rationale: >
-      Removing support for unneeded filesystem types reduces the local attack surface of the
-      system. If this filesystem type is not needed, disable it.
-    remediation: >
-      Edit or create a file in the /etc/modprobe.d/ directory ending in .conf
-      Example: vi /etc/modprobe.d/squashfs.conf
-      and add the following line:
-      install squashfs /bin/true
 
-      Run the following command to unload the squashfs module:
-      # modprobe -r squashfs
-    compliance:
-      - cis: ["1.1.1.1"]
-      - cis_csc: ["5.1"]
-    condition: any
-    rules:
-      - 'c:modprobe -n -v squashfs -> r:install'
-      - 'c:modprobe -n -v squashfs -> r:squashfs'
 
-  - id: 7545
-    title: Ensure mounting of udf filesystems is disabled
-    description: >
-      The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and
-      ECMA-167 specifications. This is an open vendor filesystem type for data storage on a
-      broad range of media. This filesystem type is necessary to support writing DVDs and newer
-      optical disc formats.
-    rationale: >
-      Removing support for unneeded filesystem types reduces the local attack surface of the
-      system. If this filesystem type is not needed, disable it.
-    remediation: >
-      Edit or create a file in the /etc/modprobe.d/ directory ending in .conf
-      Example: vi /etc/modprobe.d/udf.conf
-      and add the following line:
-      install udf /bin/true
 
-      Run the following command to unload the udf module:
-      # modprobe -r udf
-    compliance:
-      - cis: ["1.1.1.2"]
-      - cis_csc: ["5.1"]
-    condition: any
-    rules:
-      - 'c:modprobe -n -v udf -> r:install'
-      - 'c:modprobe -n -v udf -> r:udf'
 
-  - id: 7546
-    title: Ensure /dev/shm is configured
-    description: >
-      /dev/shm is a traditional shared memory concept. One program will create a memory
-      portion, which other processes (if permitted) can access. If /dev/shm is not configured,
-      tmpfs will be mounted to /dev/shm by systemd.
 
-      Notes:
-        - An entry for /dev/shm in /etc/fstab will take precedence.
-        - tmpfs can be resized using the size={size} parameter in /etc/fstab. If we don't specify
-          the size, it will be half the RAM.
 
-      Resize tmpfs example:
-      tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid,size=2G 0 0
-    rationale: >
-      Any user can upload and execute files inside the /dev/shm similar to the /tmp partition.
-      Configuring /dev/shm allows an administrator to set the noexec option on the mount,
-      making /dev/shm useless for an attacker to install executable code. It would also prevent an
-      attacker from establishing a hardlink to a system setuid program and wait for it to be
-      updated. Once the program was updated, the hardlink would be broken and the attacker
-      would have his own copy of the program. If the program happened to have a security
-      vulnerability, the attacker could continue to exploit the known flaw.
-    remediation: >
-      Edit /etc/fstab and add or edit the following line:
-      tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid 0 0
 
-      Run the following command to remount /dev/shm:
-      # mount -o remount,noexec,nodev,nosuid /dev/shm
-    compliance:
-      - cis: ["1.1.6"]
-      - cis_csc: ["5.1","13"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\.+\s+/dev/shm\s+'
-      - 'f:/etc/fstab -> r:\.+\s+/dev/shm\s+'
 
-  - id: 7547
-    title: Ensure separate partition exists for /var/tmp
-    description: >
-      The /var/tmp directory is a world-writable directory used for temporary storage by all
-      users and some applications and is intended for temporary files that are preserved across
-      reboots.
+ 
 
-      Note: tmpfs should not be used for /var/tmp/. tmpfs is a temporary filesystem that resides in
-      memory and/or swap partition(s). Files in tmpfs are automatically cleared at each bootup.
-    rationale: >
-      Since the /var/tmp directory is intended to be world-writable, there is a risk of resource
-      exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own
-      file system allows an administrator to set the noexec option on the mount, making
-      /var/tmp useless for an attacker to install executable code. It would also prevent an
-      attacker from establishing a hardlink to a system setuid program and wait for it to be
-      updated. Once the program was updated, the hardlink would be broken and the attacker
-      would have his own copy of the program. If the program happened to have a security
-      vulnerability, the attacker could continue to exploit the known flaw.
-    remediation: >
-      For new installations, during installation create a custom partition setup and specify a
-      separate partition for /var/tmp .
-      For systems that were previously installed, create a new partition and configure
-      /etc/fstab as appropriate.
-    compliance:
-      - cis: ["1.1.11"]
-      - cis_csc: ["5.1","13"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/tmp\s'
 
-  - id: 7548
-    title: Ensure noexec option set on /var/tmp partition
-    description: The noexec mount option specifies that the filesystem cannot contain executable binaries.
-    rationale: >
-      Since the /var/tmp filesystem is only intended for temporary file storage, set this option to
-      ensure that users cannot run executable binaries from /var/tmp .
-    remediation: >
-      Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the
-      /var/tmp partition. See the fstab(5) manual page for more information.
 
-      Run the following command to remount /var/tmp :
-      # mount -o remount,noexec /var/tmp
-    compliance:
-      - cis: ["1.1.12"]
-      - cis_csc: ["2.6"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:noexec'
 
-  - id: 7549
-    title: Ensure nodev option set on /var/tmp partition
-    description: The nodev mount option specifies that the filesystem cannot contain special devices.
-    rationale: >
-      Since the /var/tmp filesystem is not intended to support devices, set this option to ensure
-      that users cannot attempt to create block or character special devices in /var/tmp .
-    remediation: >
-      Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the
-      /var/tmp partition. See the fstab(5) manual page for more information.
 
-      Run the following command to remount /var/tmp :
-      # mount -o remount,nodev /var/tmp
-    compliance:
-      - cis: ["1.1.13"]
-      - cis_csc: ["5.1","13"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s+/var/tmp\s+ && r:nodev'
 
-  - id: 7550
-    title: Ensure nosuid option set on /var/tmp partition
-    description: The nosuid mount option specifies that the filesystem cannot contain setuid files.
-    rationale: >
-      Since the /var/tmp filesystem is only intended for temporary file storage, set this option to
-      ensure that users cannot create setuid files in /var/tmp
-    remediation: >
-      Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the
-      /var/tmp partition. See the fstab(5) manual page for more information.
 
-      Run the following command to remount /var/tmp :
-      # mount -o remount,nosuid /var/tmp
-    compliance:
-      - cis: ["1.1.14"]
-      - cis_csc: ["5.1","13"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s+/var/tmp\s+ && r:nosuid'
 
-  - id: 7551
-    title: Disable Automounting
-    description: >
-      autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives.
-      Notes:
-        - Additional methods of disabling a service exist. Consult your distribution
-          documentation for appropriate methods.
-        - This control should align with the tolerance of the use of portable drives and optical
-          media in the organization.
-          - On a server requiring an admin to manually mount media can be part of
-            defense-in-depth to reduce the risk of unapproved software or information
-            being introduced or proprietary software or information being exfiltrated.
-          - If admins commonly use flash drives and Server access has sufficient physical
-            controls, requiring manual mounting may not increase security.
-    rationale: >
-      With automounting enabled anyone with physical access could attach a USB drive or disc
-      and have its contents available in system even if they lacked permissions to mount it
-      themselves.
-    remediation: >
-      Run the following command to mask autofs:
-      # systemctl --now mask autofs
-    compliance:
-      - cis: ["1.1.23"]
-      - cis_csc: ["8.4","8.5"]
-    condition: none
-    rules:
-      - 'c:systemctl is-enabled autofs -> r:enabled'
 
-  - id: 7552
-    title: Ensure sudo is installed
-    description: >
-      sudo allows a permitted user to execute a command as the superuser or another user, as
-      specified by the security policy. The invoking user's real (not effective) user ID is used to
-      determine the user name with which to query the security policy.
-    rationale: >
-      sudo supports a plugin architecture for security policies and input/output logging. Third
-      parties can develop and distribute their own policy and I/O logging plugins to work
-      seamlessly with the sudo front end. The default security policy is sudoers, which is
-      configured via the file /etc/sudoers.
 
-      The security policy determines what privileges, if any, a user has to run sudo. The policy
-      may require that users authenticate themselves with a password or another authentication
-      mechanism. If authentication is required, sudo will exit if the user's password is not
-      entered within a configurable time limit. This limit is policy-specific.
-    remediation: >
-      Run the following command to install sudo.
-      # zypper install sudo
-    compliance:
-      - cis: ["1.3.1"]
-      - cis_csc: ["4"]
-    references:
-      - SUDO(8)
-    condition: none
-    rules:
-      - 'c:rpm -q sudo -> r:not installed'
 
-  - id: 7553
-    title: Ensure sudo commands use pty
-    description: >
-      sudo can be configured to run only from a pseudo-pty
 
-      Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the
-      sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for
-      parse errors. If the sudoers file is currently being edited you will receive a message to try
-      again later. The -f option allows you to tell visudo which file to edit.
-    rationale: >
-      Attackers can run a malicious program using sudo, which would again fork a background
-      process that remains even when the main program has finished executing.
-      This can be mitigated by configuring sudo to run other commands only from a pseudo-pty,
-      whether I/O logging is turned on or not.
-    remediation: >
-      Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH
-      TO FILE> and add the following line:
 
-      Defaults use_pty
-    compliance:
-      - cis: ["1.3.2"]
-      - cis_csc: ["4"]
-    references:
-      - SUDO(8)
-    condition: all
-    rules:
-      - 'c:grep -REsih "^Defaults" /etc/sudoers /etc/sudoers.d -> r:^\wefaults\s+use_pty'
 
-  - id: 7554
-    title: Ensure sudo log file exists
-    description: >
-      sudo can use a custom log file
-
-      Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the
-      sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks
-      for parse errors. If the sudoers file is currently being edited you will receive a message to
-      try again later. The -f option allows you to tell visudo which file to edit.
-    rationale: A sudo log file simplifies auditing of sudo commands
-    remediation: >
-      edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH
-      TO FILE> and add the following line:
-      Defaults logfile="<PATH TO CUSTOM LOG FILE>"
-
-      Example
-      Defaults logfile="/var/log/sudo.log"
-    compliance:
-      - cis: ["1.3.3"]
-      - cis_csc: ["6.3"]
-    references:
-      - SUDO(8)
-      - VISUDO(8)
-    condition: all
-    rules:
-      - 'c:grep -REsih "^Defaults" /etc/sudoers /etc/sudoers.d -> r:^\wefaults\s+logfile="\.+"'
-
-  - id: 7555
-    title: Ensure AIDE is installed
-    description: >
-      AIDE takes a snapshot of filesystem state including modification times, permissions, and
-      file hashes which can then be used to compare against the current state of the filesystem to
-      detect modifications to the system.
-
-      Note: The prelinking feature can interfere with AIDE because it alters binaries to speed up
-      their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus
-      avoiding false positives from AIDE.
-    rationale: >
-      By monitoring the filesystem state compromised files can be detected to prevent or limit
-      the exposure of accidental or malicious misconfigurations or modified binaries.
-    remediation: >
-      Configure AIDE as appropriate for your environment. Consult the AIDE documentation for
-      options.
-      Run the following command to install AIDE:
-      # zypper install aide
-
-      Run the following commands to initialize AIDE:
-      # aide --init
-      # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
-    compliance:
-      - cis: ["1.4.1"]
-      - cis_csc: ["14.9"]
-    references:
-      - AIDE stable manual: http://aide.sourceforge.net/stable/manual.html
-    condition: none
-    rules:
-      - 'c:rpm -q aide -> r:not installed'
-
-  - id: 7556
-    title: Ensure bootloader password is set
-    description: >
-      Setting the boot loader password will require that anyone rebooting the system must enter
-      a password before being able to set command line boot parameters
-
-      Notes:
-        - This recommendation is designed around the grub2 bootloader, if LILO or another
-          bootloader is in use in your environment enact equivalent settings. Replace
-          `/boot/grub2/grub.cfg with the appropriate grub configuration file for your
-          environment
-        - The information can be placed in any /etc/grub.d file as long as that file is
-          incorporated into grub.cfg
-          - The superuser/user information and password should not be contained in the
-            /etc/grub.d/00_header file.
-          - A custom file, such as /etc/grub.d/40_custom should be used so it is not
-            overwritten should the Grub package be updated.
-    rationale: >
-      Requiring a boot password upon execution of the boot loader will prevent an unauthorized
-      user from entering boot parameters or changing the boot partition. This prevents users
-      from weakening security (e.g. turning off SELinux at boot time).
-    remediation: >
-      Create an encrypted password with grub2-mkpasswd-pbkdf2:
-        # grub2-mkpasswd-pbkdf2
-        Enter password: <password>
-        Reenter password: <password>
-        Your PBKDF2 is <encrypted-password>
-
-      Add the following into /etc/grub.d/40_custom
-        set superusers="<username>"
-        password_pbkdf2 <username> <encrypted-password>
-
-      Run the following command to update the grub2 configuration:
-        # grub2-mkconfig -o /boot/grub2/grub.cfg
-    compliance:
-      - cis: ["1.5.1"]
-      - cis_csc: ["5.1"]
-    references:
-      - https://documentation.suse.com/sles/15-SP1/html/SLES-all/cha-grub2.html
-    condition: all
-    rules:
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*set superusers'
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*password'
-
-  - id: 7557
-    title: Ensure permissions on bootloader config are configured
-    description: >
-      The grub configuration file contains information on boot settings and passwords for
-      unlocking boot options. The grub2 configuration is usually grub.cfg stored in
-      /boot/grub2/.
-
-      Notes:
-        - This recommendation is designed around the grub2 bootloader.
-        - If LILO or another bootloader is in use in your environment:
-          - Enact equivalent settings
-          - Replace /boot/grub2/grub.cfg and /boot/grub2/user.cfg with the
-            appropriate boot configuration files for your environment
-    rationale: >
-      Setting the permissions to read and write for root only prevents non-root users from
-      seeing the boot parameters or changing them. Non-root users who read the boot
-      parameters may be able to identify weaknesses in security upon boot and be able to exploit
-      them.
-    remediation: >
-      Run the following commands to set ownership and permissions on your grub
-      configuration:
-      # chown root:root /boot/grub2/grub.cfg
-      # chmod og-rwx /boot/grub2/grub.cfg
-    compliance:
-      - cis: ["1.5.2"]
-      - cis_csc: ["5.1"]
-    condition: all
-    rules:
-      - 'c:stat -L /boot/grub2/grub.cfg -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-
-  - id: 7558
-    title: Ensure authentication required for single user mode
-    description: >
-      Single user mode (rescue mode) is used for recovery when the system detects an issue
-      during boot or by manual selection from the bootloader.
-    rationale: >
-      Requiring authentication in single user mode (rescue mode) prevents an unauthorized user
-      from rebooting the system into single user to gain root privileges without credentials.
-    remediation: >
-      Edit /usr/lib/systemd/system/rescue.service and add/modify the following line:
-      ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue
-
-      Edit /usr/lib/systemd/system/emergency.service and add/modify the following line:
-      ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency
-    compliance:
-      - cis: ["1.5.3"]
-      - cis_csc: ["5.1"]
-    condition: all
-    rules:
-      - 'f:/usr/lib/systemd/system/rescue.service -> r:^ExecStart=\.*/systemd/systemd-sulogin-shell\s+rescue'
-      - 'f:/usr/lib/systemd/system/emergency.service -> r:^ExecStart=\.*/systemd/systemd-sulogin-shell\s+emergency'
-
-  - id: 7559
-    title: Ensure XD/NX support is enabled
-    description: >
-      Recent processors in the x86 family support the ability to prevent code execution on a per
-      memory page basis. Generically and on AMD processors, this ability is called No Execute
-      (NX), while on Intel processors it is called Execute Disable (XD). This ability can help
-      prevent exploitation of buffer overflow vulnerabilities and should be activated whenever
-      possible. Extra steps must be taken to ensure that this protection is enabled, particularly on
-      32-bit x86 systems. Other processors, such as Itanium and POWER, have included such
-      support since inception and the standard kernel for those platforms supports the feature.
-    rationale: >
-      Enabling any feature that can protect against buffer overflow attacks enhances the security
-      of the system.
-
-      Note: Ensure your system supports the XD or NX bit and has PAE support before implementing
-      this recommendation as this may prevent it from booting if these are not supported by your
-      hardware.
-    remediation: >
-      On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit
-      systems:
-      If necessary configure your bootloader to load the new kernel and reboot the system.
-      You may need to enable NX or XD support in your bios.
-    compliance:
-      - cis: ["1.6.2"]
-      - cis_csc: ["8.3"]
-    condition: all
-    rules:
-      - 'c:journalctl -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
-
-  - id: 7560
-    title: Ensure prelink is disabled
-    description: >
-      prelinkis a program that modifies ELF shared libraries and ELF dynamically linked
-      binaries in such a way that the time needed for the dynamic linker to perform relocations
-      at startup significantly decreases.
-    rationale: >
-      The prelinking feature can interfere with the operation of AIDE, because it changes
-      binaries. Prelinking can also increase the vulnerability of the system if a malicious user is
-      able to compromise a common library such as libc.
-    remediation: >
-      Run the following command to restore binaries to normal:
-      # prelink -ua
-
-      Run the following command to uninstall prelink:
-      # zypper remove prelink
-    compliance:
-      - cis: ["1.6.4"]
-      - cis_csc: ["14.9"]
-    condition: all
-    rules:
-      - 'c:rpm -q prelink -> r:not installed'
-
-  - id: 7561
-    title: Ensure AppArmor is installed
-    description: AppArmor provides Mandatory Access Controls.
-    rationale: >
-      Without a Mandatory Access Control system installed only the default Discretionary Access
-      Control system will be available.
-    remediation: >
-      Run the following command to install AppArmor:
-      # zypper install -t pattern apparmor
-    compliance:
-      - cis: ["1.7.1.1"]
-      - cis_csc: ["14.6"]
-    condition: none
-    rules:
-      - 'c:rpm -q apparmor-docs -> r:not installed'
-      - 'c:rpm -q apparmor-parser -> r:not installed'
-      - 'c:rpm -q apparmor-profiles -> r:not installed'
-      - 'c:rpm -q apparmor-utils -> r:not installed'
-      - 'c:rpm -q libapparmor1 -> r:not installed'
-
-  - id: 7562
-    title: Ensure message of the day is configured properly
-    description: >
-      The contents of the /etc/motd file are displayed to users after login and function as a
-      message of the day for authenticated users.
-
-      Unix-based systems have typically displayed information about the OS release and patch
-      level upon logging in to the system. This information can be useful to developers who are
-      developing software for a particular OS platform. If mingetty(8) supports the following
-      options, they display operating system information: \m - machine architecture \r -
-      operating system release \s - operating system name \v - operating system version
-    rationale: >
-      Warning messages inform users who are attempting to login to the system of their legal
-      status regarding the system and must include the name of the organization that owns the
-      system and any monitoring policies that are in place. Displaying OS and patch level
-      information in login banners also has the side effect of providing detailed system
-      information to attackers attempting to target specific exploits of a system. Authorized users
-      can easily get this information by running the " uname -a " command once they have logged
-      in.
-    remediation: >
-      Edit the /etc/motd file with the appropriate contents according to your site policy, remove
-      any instances of \m , \r , \s , \v or references to the OS platform
-
-      OR
-
-      If the motd is not used, this file can be removed.
-      Run the following command to remove the motd file:
-      # rm /etc/motd
-    compliance:
-      - cis: ["1.8.1.1"]
-      - cis_csc: ["5.1"]
-    condition: none
-    rules:
-      - 'f:/etc/motd -> r:\\m'
-      - 'f:/etc/motd -> r:\\r'
-      - 'f:/etc/motd -> r:\\s'
-      - 'f:/etc/motd -> r:\\v'
-
-  - id: 7563
-    title: Ensure local login warning banner is configured properly
-    description: >
-      The contents of the /etc/issue file are displayed to users prior to login for local terminals.
-      Unix-based systems have typically displayed information about the OS release and patch
-      level upon logging in to the system. This information can be useful to developers who are
-      developing software for a particular OS platform. If mingetty(8) supports the following
-      options, they display operating system information: \m - machine architecture \r -
-      operating system release \s - operating system name \v - operating system version - or the
-      operating system's name
-    rationale: >
-      Warning messages inform users who are attempting to login to the system of their legal
-      status regarding the system and must include the name of the organization that owns the
-      system and any monitoring policies that are in place. Displaying OS and patch level
-      information in login banners also has the side effect of providing detailed system
-      information to attackers attempting to target specific exploits of a system. Authorized users
-      can easily get this information by running the " uname -a " command once they have logged
-      in.
-    remediation: >
-      Edit the /etc/issue file with the appropriate contents according to your site policy,
-      remove any instances of \m , \r , \s , \v or references to the OS platform
-      # echo "Authorized uses only. All activity may be monitored and reported." >
-      /etc/issue
-    compliance:
-      - cis: ["1.8.1.2"]
-      - cis_csc: ["5.1"]
-    condition: none
-    rules:
-      - 'f:/etc/issue -> r:\\m'
-      - 'f:/etc/issue -> r:\\r'
-      - 'f:/etc/issue -> r:\\s'
-      - 'f:/etc/issue -> r:\\v'
-
-  - id: 7564
-    title: Ensure remote login warning banner is configured properly
-    description: >
-      The contents of the /etc/issue.net file are displayed to users prior to login for remote
-      connections from configured services.
-      Unix-based systems have typically displayed information about the OS release and patch
-      level upon logging in to the system. This information can be useful to developers who are
-      developing software for a particular OS platform. If mingetty(8) supports the following
-      options, they display operating system information: \m - machine architecture \r -
-      operating system release \s - operating system name \v - operating system version
-    rationale: >
-      Warning messages inform users who are attempting to login to the system of their legal
-      status regarding the system and must include the name of the organization that owns the
-      system and any monitoring policies that are in place. Displaying OS and patch level
-      information in login banners also has the side effect of providing detailed system
-      information to attackers attempting to target specific exploits of a system. Authorized users
-      can easily get this information by running the " uname -a " command once they have logged
-      in.
-    remediation: >
-      Edit the /etc/issue.net file with the appropriate contents according to your site policy,
-      remove any instances of \m , \r , \s , \v or references to the OS platform
-      # echo "Authorized uses only. All activity may be monitored and reported." >
-      /etc/issue.net
-    compliance:
-      - cis: ["1.8.1.3"]
-      - cis_csc: ["5.1"]
-    condition: none
-    rules:
-      - 'f:/etc/issue.net -> r:\\m'
-      - 'f:/etc/issue.net -> r:\\r'
-      - 'f:/etc/issue.net -> r:\\s'
-      - 'f:/etc/issue.net -> r:\\v'
-
-  - id: 7565
-    title: Ensure permissions on /etc/motd are configured
-    description: >
-      The contents of the /etc/motd file are displayed to users after login and function as a
-      message of the day for authenticated users.
-    rationale: >
-      If the /etc/motd file does not have the correct ownership it could be modified by
-      unauthorized users with incorrect or misleading information.
-    remediation: >
-      Run the following commands to set permissions on /etc/motd :
-      # chown root:root /etc/motd
-      # chmod u-x,go-wx /etc/motd
-    compliance:
-      - cis: ["1.8.1.4"]
-      - cis_csc: ["14.6"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/motd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-
-  - id: 7566
-    title: Ensure permissions on /etc/issue are configured
-    description: >
-      The contents of the /etc/issue file are displayed to users prior to login for local terminals.
-    rationale: >
-      If the /etc/issue file does not have the correct ownership it could be modified by
-      unauthorized users with incorrect or misleading information.
-    remediation: >
-      Run the following commands to set permissions on /etc/issue:
-      # chown root:root /etc/issue
-      # chmod u-x,go-wx /etc/issue
-    compliance:
-      - cis: ["1.8.1.5"]
-      - cis_csc: ["14.6"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/issue -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
-
-  - id: 7567
-    title: Ensure permissions on /etc/issue.net are configured
-    description: >
-      The contents of the /etc/issue.net file are displayed to users prior to login for remote
-      connections from configured services.
-    rationale: >
-      If the /etc/issue.net file does not have the correct ownership it could be modified by
-      unauthorized users with incorrect or misleading information.
-    remediation: >
-      Run the following commands to set permissions on /etc/issue.net:
-      # chown root:root /etc/issue.net
-      # chmod u-x,go-wx /etc/issue.net
-    compliance:
-      - cis: ["1.8.1.6"]
-      - cis_csc: ["14.6"]
-    condition: all
-    rules:
-      - 'c:stat -L /etc/issue.net -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+  
 
   - id: 7568
     title: Ensure chrony is configured
