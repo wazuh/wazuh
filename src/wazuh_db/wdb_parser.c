@@ -3420,7 +3420,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
     int remote_port;
     int tx_queue;
     int rx_queue;
-    int inode;
+    long long inode;
     char * state;
     int pid;
     char * process;
@@ -3580,14 +3580,14 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             inode = -1;
         else
-            inode = strtol(curr,NULL,10);
+            inode = strtoll(curr,NULL,10);
 
         *next++ = '\0';
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Port query syntax.");
-            mdebug2("Port query: %d", inode);
+            mdebug2("Port query: %lld", inode);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Port query syntax, near '%.32s'", curr);
             return -1;
         }
