@@ -89,6 +89,10 @@ void OS_IsValidIP_any_struct(void **state)
 
     os_calloc(1, sizeof(os_ip), ret_ip);
 
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
     ret = OS_IsValidIP("any", ret_ip);
     assert_int_equal(ret, 2);
     assert_int_equal(ret_ip->is_ipv6, FALSE);
@@ -131,6 +135,10 @@ void OS_IsValidIP_valid_multi_ipv4(void **state)
     for (int i = 0; ip_to_test[i] != NULL; i++) {
 
         os_calloc(1, sizeof(os_ip), ret_ip);
+
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+        will_return(__wrap_w_expression_match, 1);
 
         expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
         will_return(__wrap_w_expression_compile, 1);
@@ -187,12 +195,18 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
     int ret = 0;
     os_ip *ret_ip;
 
+
     for (int i = 0; ip_to_test[i] != NULL; i++) {
 
         os_calloc(1, sizeof(os_ip), ret_ip);
 
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+        will_return(__wrap_w_expression_match, 1);
+
         unsigned int a = 0;
         while (ip_address_regex[a] != NULL) {
+
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
             will_return(__wrap_w_expression_compile, 1);
             will_return(__wrap_w_expression_match, 0);
@@ -213,6 +227,10 @@ void OS_IsValidIP_valid_ipv4_CIDR(void **state)
 
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -239,6 +257,10 @@ void OS_IsValidIP_valid_ipv4_fail(void **state)
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "192.168.10.12");
     will_return(__wrap_w_expression_match, "32");
@@ -257,6 +279,10 @@ void OS_IsValidIP_valid_ipv4_zero_fail(void **state)
 
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -281,6 +307,10 @@ void OS_IsValidIP_valid_ipv4_zero_pass(void **state)
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "0.0.0.0");
     will_return(__wrap_w_expression_match, "32");
@@ -299,6 +329,10 @@ void OS_IsValidIP_valid_ipv4_netmask(void **state)
 
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -327,6 +361,10 @@ void OS_IsValidIP_valid_ipv4_0_netmask(void **state)
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "0.0.0.0");
     will_return(__wrap_w_expression_match, "255.255.255.255");
@@ -348,6 +386,10 @@ void OS_IsValidIP_valid_ipv4_netmask_0(void **state)
 
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -375,6 +417,10 @@ void OS_IsValidIP_valid_ipv4_netmask_fail(void **state)
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "32.32.32.32");
     will_return(__wrap_w_expression_match, "255.255.255.255");
@@ -395,6 +441,10 @@ void OS_IsValidIP_valid_ipv4_sub_string_0(void **state)
 
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -469,6 +519,10 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
 
         os_calloc(1, sizeof(os_ip), ret_ip);
 
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+        will_return(__wrap_w_expression_match, 1);
+
         /* First call to __wrap_w_expression_match fail */
         expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
         will_return(__wrap_w_expression_compile, 1);
@@ -513,6 +567,10 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
 
     os_calloc(1, sizeof(os_ip), ret_ip);
 
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
         int a = 0;
         while (ip_address_regex[a] != NULL) {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -536,6 +594,10 @@ void OS_IsValidIP_valid_ipv6_prefix(void **state)
     int ret = 0;
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     /* First call to __wrap_w_expression_match fail */
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -585,6 +647,10 @@ void OS_IsValidIP_valid_ipv6_numeric_fail(void **state)
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
 
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
+
     /* First call to __wrap_w_expression_match fail */
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -611,6 +677,10 @@ void OS_IsValidIP_valid_ipv6_converNetmask_fail(void **state)
     int ret = 0;
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     /* First call to __wrap_w_expression_match fail */
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -639,6 +709,10 @@ void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
     int ret = 0;
     os_ip *ret_ip;
     os_calloc(1, sizeof(os_ip), ret_ip);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 1);
 
     /* First call to __wrap_w_expression_match fail */
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
