@@ -842,7 +842,7 @@ checks:
       - tsc: ["A1.2"]
     condition: all
     rules:
-      - 'c:sh -c "yum check-updates --security -q &>/dev/null; echo $?" -> r:100'
+      - 'c:sh -c " yum check-updates --security | grep \"No packages\"" -> r:No packages needed for security'
 
 ############################################################
 # 2 OS Services.
