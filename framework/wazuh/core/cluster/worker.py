@@ -3,21 +3,16 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import errno
-import glob
-import itertools
 import json
 import os
-import re
 import shutil
 import time
-from typing import Tuple, Dict, Callable, List, TextIO, KeysView
+from concurrent.futures import ProcessPoolExecutor
+from typing import Tuple, Dict, Callable, List
 from typing import Union
 
-import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
-from wazuh.core.agent import Agent
-from wazuh.core.cluster import client, common as c_common
-from wazuh.core.cluster import local_client
+from wazuh.core.cluster import local_client, client, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.exception import WazuhClusterError
 from wazuh.core.utils import safe_move
@@ -33,6 +28,17 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
     def set_up_coro(self) -> Callable:
         """Set up the function to process the integrity files received from master."""
         return self.wazuh_common.process_files_from_master
+
+    def done_callback(self, future=None):
+        """Free the integrity sync lock and remove the task_id.
+
+        Parameters
+        ----------
+        future : asyncio.Future object
+            Synchronization process result.
+        """
+        self.wazuh_common.check_integrity_free = True
+        super().done_callback(future)
 
 
 class SyncTask:
@@ -130,8 +136,8 @@ class SyncFiles(SyncTask):
         self.logger.debug(
             f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
         )
-        compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
-                                                                         cluster_control_json=files_metadata)
+        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
+                                                      cluster_control_json=files_metadata)
 
         try:
             # Send zip file to the master into chunks.
@@ -381,6 +387,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # The self.client_data will be sent to the master when doing a hello request.
         self.client_data = f"{self.name} {cluster_name} {node_type} {version}".encode()
 
+        # Flag to prevent a new Integrity check if Integrity sync is in progress.
+        self.check_integrity_free = True
+
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
         # a log coming from the "Integrity" logger will look like this:
         # [Worker name] [Integrity] Log information
@@ -489,6 +498,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(f"Finished in {(time.time() - self.integrity_check_status['date_start']):.3f}s. "
                               f"Sync required.")
+        self.check_integrity_free = False
         return super().setup_receive_file(ReceiveIntegrityTask)
 
     def end_receiving_integrity(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
@@ -607,11 +617,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 if self.connected:
                     start_time = time.time()
-                    if await integrity_check.request_permission():
+                    if self.check_integrity_free and await integrity_check.request_permission():
                         logger.info("Starting.")
                         self.integrity_check_status['date_start'] = start_time
-                        await integrity_check.sync(files_metadata=wazuh.core.cluster.cluster.get_files_status(),
-                                                   files_to_sync={})
+                        files_metadata = await cluster.run_in_pool(self.loop, self.manager.task_pool,
+                                                                   cluster.get_files_status)
+                        await integrity_check.sync(files_metadata=files_metadata, files_to_sync={})
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
                 logger.error(f"Error synchronizing integrity: {e}")
@@ -674,8 +685,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, worker=self)
 
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
-            n_files, merged_file = wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', node_name=self.name,
-                                                                         files=extra_valid.keys())
+            n_files, merged_file = cluster.merge_info(merge_type='agent-groups', node_name=self.name,
+                                                      files=extra_valid.keys())
             files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
                                            'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
 
@@ -741,7 +752,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
               {'missing': {'<file_path>': {<MD5, merged, merged_name, etc>}, ...},
                'shared': {...}, 'extra': {...}, 'extra_valid': {...}}
             """
-            ko_files, zip_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+            ko_files, zip_path = await cluster.run_in_pool(self.loop, self.manager.task_pool, cluster.decompress_files,
+                                                           received_filename)
             logger.info("Files to create: {} | Files to update: {} | Files to delete: {} | Files to send: {}".format(
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid']))
             )
@@ -750,7 +762,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # Update or remove files in this worker node according to their status (missing, extra or shared).
                 logger.debug("Worker does not meet integrity checks. Actions required.")
                 logger.debug("Updating local files: Start.")
-                self.update_master_files_in_worker(ko_files, zip_path)
+                await cluster.run_in_pool(self.loop, self.manager.task_pool, self.update_master_files_in_worker,
+                                          ko_files, zip_path, self.cluster_items, self.task_loggers['Integrity sync'])
                 logger.debug("Updating local files: End.")
 
             # Send extra valid files to the master.
@@ -772,7 +785,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         finally:
             zip_path and shutil.rmtree(zip_path)
 
-    def update_master_files_in_worker(self, ko_files: Dict, zip_path: str):
+    @staticmethod
+    def update_master_files_in_worker(ko_files: Dict, zip_path: str, cluster_items: Dict, logger):
         """Iterate over received files and updates them locally.
 
         Parameters
@@ -781,6 +795,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             File metadata coming from the master.
         zip_path : str
             Pathname of the unzipped directory received from master and containing the files to update.
+        cluster_items : dict
+            Object containing cluster internal variables from the cluster.json file.
+        logger : Logger object
+            Logger to use.
         """
 
         def overwrite_or_create_files(filename: str, data: Dict):
@@ -802,13 +820,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if data['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<wazuh_path>/filename).
-                for name, content, _ in wazuh.core.cluster.cluster.unmerge_info('agent-groups', zip_path, filename):
+                for name, content, _ in cluster.unmerge_info('agent-groups', zip_path, filename):
                     full_unmerged_name = os.path.join(common.wazuh_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
                     safe_move(tmp_unmerged_path, full_unmerged_name,
-                              permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
+                              permissions=cluster_items['files'][data['cluster_item_key']]['permissions'],
                               ownership=(common.wazuh_uid(), common.wazuh_gid())
                               )
             else:
@@ -817,11 +835,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
                 safe_move(os.path.join(zip_path, filename), full_filename_path,
-                          permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
+                          permissions=cluster_items['files'][data['cluster_item_key']]['permissions'],
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
-        logger = self.task_loggers['Integrity sync']
         errors = {'shared': 0, 'missing': 0, 'extra': 0}
 
         for filetype, files in ko_files.items():
@@ -857,12 +874,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
         directories_to_check = (os.path.dirname(f) for f, data in ko_files['extra'].items()
-                                if self.cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
+                                if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
                 full_path = os.path.join(common.wazuh_path, directory)
                 dir_files = set(os.listdir(full_path))
-                if not dir_files or dir_files.issubset(set(self.cluster_items['files']['excluded_files'])):
+                if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)
             except Exception as e:
                 errors['extra'] += 1
@@ -907,6 +924,7 @@ class Worker(client.AbstractClientManager):
         self.version = metadata.__version__
         self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
+        self.task_pool = ProcessPoolExecutor(max_workers=1)
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
 
