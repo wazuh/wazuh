@@ -52,8 +52,8 @@ void fim_db_init(int storage,
     try
     {
         auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
-
-        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement());
+        char *createQuery =  CreateStatement();
+        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, createQuery);
         auto rsyncHandler = std::make_shared<RemoteSync>();
 
 #ifndef WIN32
@@ -62,6 +62,7 @@ void fim_db_init(int storage,
         FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, value_limit, sync_callback, log_callback, dbsyncHandler,
                                    rsyncHandler);
 #endif
+        free(createQuery);
     }
     catch (const DbSync::dbsync_error& ex)
     {
