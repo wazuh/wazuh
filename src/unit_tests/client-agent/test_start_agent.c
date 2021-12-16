@@ -134,12 +134,16 @@ static int setup_test(void **state) {
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
     /* Connected sock */
-    agt->sock=-1;
+    agt->sock = -1;
     /* Server */
     add_server_config("127.0.0.1", IPPROTO_UDP);
     add_server_config("127.0.0.2", IPPROTO_TCP);
     add_server_config("VALID_HOSTNAME/", IPPROTO_UDP);
     add_server_config("INVALID_HOSTNAME/", IPPROTO_UDP);
+
+    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+    will_return(__wrap_w_expression_compile, 1);
+    will_return(__wrap_w_expression_match, 0);
 
     /* Keys */
     keys_init(&keys);
