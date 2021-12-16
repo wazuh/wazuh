@@ -10,7 +10,7 @@ import operator
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import process, ProcessPoolExecutor
+from concurrent.futures import process, ProcessPoolExecutor, ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
 from operator import or_
@@ -31,8 +31,14 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-process_pool = ProcessPoolExecutor(max_workers=1)
-authentication_pool = ProcessPoolExecutor(max_workers=1)
+try:
+    process_pool = ProcessPoolExecutor(max_workers=1)
+    authentication_pool = ProcessPoolExecutor(max_workers=1)
+# Handle exception when the user running Wazuh cannot access /dev/shm
+except FileNotFoundError:
+    process_pool = None
+    threadpool = ThreadPoolExecutor(max_workers=1)
+
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 
 
@@ -272,7 +278,9 @@ class DistributedAPI:
 
                 else:
                     loop = asyncio.get_event_loop()
-                    if self.f.__name__ not in authentication_funcs:
+                    if process_pool is None:
+                        pool = threadpool
+                    elif self.f.__name__ not in authentication_funcs:
                         pool = process_pool
                     else:
                         pool = authentication_pool
