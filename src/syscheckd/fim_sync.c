@@ -15,7 +15,7 @@
 #include <openssl/evp.h>
 #include "syscheck.h"
 #include "integrity_op.h"
-#include "db/include/db.hpp"
+#include "db/include/db.h"
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING

@@ -22,5 +22,16 @@ typedef enum FIMDBErrorCodes
 
 typedef void((*fim_sync_callback_t)(const char *tag, const char* buffer));
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));
+typedef void((*callback_t)(void *return_data, void *user_data));
 
-#endif // DB_STATEMENT_H
+/**
+ * @brief callback context.
+ */
+typedef struct
+{
+    callback_t callback;
+    void *context;
+} callback_context_t;
+
+
+#endif // DB_COMMONDEFS_H
