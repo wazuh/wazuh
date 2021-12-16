@@ -135,14 +135,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         OS_ClearNode(children);
         return 0;
     }
-#endif
-else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
-    }
-#ifndef CLIENT
     else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
@@ -150,6 +142,12 @@ else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
         }
     }
 #endif
+else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
 #endif
     else {
         if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
