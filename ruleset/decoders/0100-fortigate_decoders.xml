@@ -1616,3 +1616,9 @@
   <regex>xid="(\.*)"|xid=(\.*)\s|xid=(\.*)$</regex>
   <order>xid</order>
 </decoder>
+
+<decoder name="fortigate-firewall-v6">
+  <parent>fortigate-firewall-v6</parent>
+  <regex>user="(\.*)"|user=(\.*)\s|user=(\.*)$</regex>
+  <order>dstuser</order>
+</decoder>
