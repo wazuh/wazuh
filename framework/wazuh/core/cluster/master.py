@@ -969,16 +969,13 @@ class Master(server.AbstractServer):
             self.task_pool = ProcessPoolExecutor(
                 max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
         # Handle exception when the user running Wazuh cannot access /dev/shm
-        except FileNotFoundError:
-            self.logger.warning("In order to take advantage of Wazuh 4.3.0 cluster and API improvements, the "
-                                "directory '/dev/shm' must be accessible by the 'wazuh' user. Opening this regular "
-                                "file could be disallowed for a non-root user if the fs.protected_regular sysctl "
-                                "setting has value 1 or 2. This setting may be activated if you use systemd version "
-                                "241 or higher with Linux kernel 4.19 or higher. To deactivate the setting, use "
-                                "'sysctl fs.protected_regular=0'")
+        except (FileNotFoundError, PermissionError):
             self.logger.warning(
-                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher "
-                "versions.")
+                "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
+                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "Changing the file permissions to 777 will solve this issue.")
+            self.logger.warning(
+                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
             self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
