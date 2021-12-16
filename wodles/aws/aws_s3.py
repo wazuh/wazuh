@@ -2917,7 +2917,7 @@ class AWSCloudWatchLogs(AWSService):
         self.remove_log_streams = remove_log_streams
         self.only_logs_after_millis = int(datetime.strptime(only_logs_after, '%Y%m%d').replace(
             tzinfo=timezone.utc).timestamp() * 1000) if only_logs_after else None
-        self.default_date_millis = int(self.default_date.timestamp()) * 1000
+        self.default_date_millis = int(self.default_date.timestamp() * 1000)
         debug("only logs: {}".format(self.only_logs_after_millis), 1)
 
     def get_alerts(self):
