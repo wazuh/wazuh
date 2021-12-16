@@ -1088,123 +1088,37 @@ checks:
 # 2.2.1.1 Ensure time synchronization is in use - Not implemented
 # 2.2.1.2 Ensure systemd-timesyncd is configured - Not implemented
 
-
-
-
-
-
-
-  - id: 7512
-    title: Ensure rsh client is not installed
-    description: The rsh package contains the client commands for the rsh services.
-    rationale: >
-      These legacy clients contain numerous security exposures and have been replaced with the
-      more secure SSH package. Even if the server is removed, it is best to ensure the clients are
-      also removed to prevent users from inadvertently attempting to use these commands and
-      therefore exposing their credentials. Note that removing the rsh package removes the
-      clients for rsh , rcp and rlogin.
-    remediation: >
-      Run the following command to remove the rsh package:
-      # zypper remove rsh
-    compliance:
-      - cis: ["2.3.2"]
-      - cis_csc: ["2.6"]
-    condition: all
-    rules:
-      - 'c:rpm -q rsh -> r:not installed'
-
-  - id: 7513
-    title: Ensure talk client is not installed
+# 2.2.1.3 Ensure chrony is configured
+  - id: 7537
+    title: Ensure chrony is configured.
     description: >
-      The talk software makes it possible for users to send and receive messages across systems
-      through a terminal session. The talk client, which allows initialization of talk sessions, is
-      installed by default.
+      chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to
+      synchronize system clocks across a variety of systems and use a source that is highly
+      accurate. More information on chrony can be found at: http://chrony.tuxfamily.org/.
+      chrony can be configured to be a client and/or a server.
     rationale: >
-      The software presents a security risk as it uses unencrypted protocols for communication.
+      If chrony is in use on the system proper configuration is vital to ensuring time
+      synchronization is working properly.
+
+      Note: This recommendation only applies if chrony is in use on the system. If another method of
+      time synchronization is in use on the system, this recommendation can be skipped.
     remediation: >
-      Run the following command to remove the talk package:
-      # zypper remove talk
+      Add or edit server or pool lines to /etc/chrony.conf as appropriate:
+      server <remote-server>
+
+      Add or edit the OPTIONS in /etc/sysconfig/chronyd to include '-u chrony':
+      OPTIONS="-u chrony"
     compliance:
-      - cis: ["2.3.3"]
-      - cis_csc: ["2.6"]
+      - cis: ["2.2.1.3"]
+      - cis_csc: ["6.1"]
     condition: all
     rules:
-      - 'c:rpm -q talk -> r:not installed'
+      - 'f:/etc/chrony.conf -> r:^\s*server\s+\.+'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*OPTIONS\s*=\s*"-u\s*chrony"'
 
-  - id: 7514
-    title: Ensure telnet-server is not installed
-    description: >
-      The telnet package contains the telnet daemon, which accepts connections from users
-      from other systems via the telnet protocol.
-    rationale: >
-      The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission
-      medium could allow a user with access to sniff network traffic the ability to steal
-      credentials. The ssh package provides an encrypted session and stronger security.
-    remediation: >
-      Run the following command to remove the telnet-server package:
-      # zypper remove telnet
-    compliance:
-      - cis: ["2.2.19"]
-      - cis_csc: ["2.6","9.2"]
-    condition: all
-    rules:
-      - 'c:rpm -q telnet -> r:not installed'
-
-  - id: 7515
-    title: Ensure FTP Server is not installed
-    description: >
-      FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring
-      files between a server and clients over a network, especially where no authentication is
-      necessary (permits anonymous users to connect to a server).
-    rationale: >
-      FTP does not protect the confidentiality of data or authentication credentials. It is
-      recommended SFTP be used if file transfer is required. Unless there is a need to run the
-      system as a FTP server (for example, to allow anonymous downloads), it is recommended
-      that the package be removed to reduce the potential attack surface.
-
-      Note: Additional FTP servers also exist and should be removed if not required.
-    remediation: >
-      Run the following command to remove vsftpd:
-      # zypper remove vsftpd
-    compliance:
-      - cis: ["2.2.10"]
-      - cis_csc: ["9.2"]
-    condition: all
-    rules:
-      - 'c:rpm -q vsftpd -> r:not installed'
-
-  - id: 7516
-    title: Ensure rsync is not installed or the rsyncd service is masked
-    description: The rsyncd service can be used to synchronize files between systems over network links.
-    rationale: >
-      Unless required, the rsync package should be removed to reduce the attack surface area of
-      the system.
-
-      The rsyncd service presents a security risk as it uses unencrypted protocols for
-      communication.
-
-      Note: If a required dependency exists for the rsync package, but the rsyncd service is not
-      required, the service should be masked.
-    remediation: >
-      Run the following command to remove the rsync package:
-      # zypper remove rsync
-
-      OR
-
-      Run the following command to mask the rsyncd service:
-      # systemctl --now mask rsyncd
-    compliance:
-      - cis: ["2.2.17"]
-      - cis_csc: ["9.2"]
-    condition: any
-    rules:
-      - 'c:rpm -q rsync -> r:not installed'
-      - 'c:systemctl is-enabled rsyncd -> r:^masked'
-
-
-
-  - id: 7518
-    title: Ensure X11 Server components are not installed
+# 2.2.2 Ensure X11 Server components are not installed
+  - id: 7538
+    title: Ensure X11 Server components are not installed.
     description: >
       The X Window System provides a Graphical User Interface (GUI) where users can have
       multiple windows in which to run programs and various add on. The X Windows system is
@@ -1223,8 +1137,9 @@ checks:
     rules:
       - 'c:rpm -qa -> r:^xorg-x11'
 
-  - id: 7519
-    title: Ensure Avahi Server is not installed
+# 2.2.3 Ensure Avahi Server is not installed
+  - id: 7539
+    title: Ensure Avahi Server is not installed.
     description: >
       Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD
       service discovery. Avahi allows programs to publish and discover services and hosts
@@ -1245,8 +1160,34 @@ checks:
     rules:
       - 'c:rpm -qa -> r:^avahi'
 
-  - id: 7520
-    title: Ensure DHCP Server is not installed
+# 2.2.4 Ensure CUPS is not installed
+  - id: 7540
+    title: Ensure CUPS is not installed.
+    description: >
+      The Common Unix Print System (CUPS) provides the ability to print to both local and
+      network printers. A system running CUPS can also accept print jobs from remote systems
+      and print them to local printers. It also provides a web based remote administration
+      capability.
+    rationale: >
+      If the system does not need to print jobs or accept print jobs from other systems, it is
+      recommended that CUPS be removed to reduce the potential attack surface.
+
+      Note: Removing CUPS will prevent printing from the system
+    remediation: >
+      Run the following command to remove cups:
+      # zypper remove cups
+    compliance:
+      - cis: ["2.2.4"]
+      - cis_csc: ["9.2"]
+    references:
+      - http://www.cups.org
+    condition: all
+    rules:
+      - 'c:rpm -q cups -> r:not installed'
+
+# 2.2.5 Ensure DHCP Server is not installed 
+  - id: 7541
+    title: Ensure DHCP Server is not installed.
     description: >
       The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be
       dynamically assigned IP addresses.
@@ -1265,8 +1206,34 @@ checks:
     rules:
       - 'c:rpm -q dhcp -> r:not installed'
 
-  - id: 7521
-    title: Ensure DNS Server is not installed
+# 2.2.6 Ensure LDAP server is not installed
+  - id: 7542
+    title: Ensure LDAP server is not installed
+    description: >
+      The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for
+      NIS/YP. It is a service that provides a method for looking up information from a central
+      database.
+    rationale: >
+      If the system will not need to act as an LDAP server, it is recommended that the software be
+      removed to reduce the potential attack surface.
+    remediation: >
+      Run the following command to remove openldap-servers:
+      # zypper remove openldap2
+    compliance:
+      - cis: ["2.2.6"]
+      - cis_csc: ["9.2"]
+    references:
+      - http://www.openldap.org
+    condition: all
+    rules:
+      - 'c:rpm -q openldap2 -> r:not installed'
+
+# 2.2.7 Ensure nfs-utils is not installed or the nfs-server service is masked - Not implemented
+# 2.2.8 Ensure rpcbind is not installed or the rpcbind services are masked - Not implemented
+
+# 2.2.9 Ensure DNS Server is not installed
+  - id: 7543
+    title: Ensure DNS Server is not installed.
     description: >
       The Domain Name System (DNS) is a hierarchical naming system that maps names to IP
       addresses for computers, services and other resources connected to a network.
@@ -1283,8 +1250,9 @@ checks:
     rules:
       - 'c:rpm -q bind -> r:not installed'
 
-  - id: 7522
-    title: Ensure FTP Server is not installed
+# 2.2.10 Ensure FTP Server is not installed
+  - id: 7544
+    title: Ensure FTP Server is not installed.
     description: >
       FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring
       files between a server and clients over a network, especially where no authentication is
@@ -1306,8 +1274,9 @@ checks:
     rules:
       - 'c:rpm -q vsftpd -> r:not installed'
 
-  - id: 7523
-    title: Ensure HTTP server is not installed
+# 2.2.11 Ensure HTTP server is not installed
+  - id: 7545
+    title: Ensure HTTP server is not installed.
     description: HTTP or web servers provide the ability to host web site content.
     rationale: >
       Unless there is a need to run the system as a web server, it is recommended that the
@@ -1327,8 +1296,9 @@ checks:
     rules:
       - 'c:rpm -q apache2 -> r:not installed'
 
-  - id: 7524
-    title: Ensure IMAP and POP3 server is not installed
+# 2.2.12 Ensure IMAP and POP3 server is not installed 
+  - id: 7546
+    title: Ensure IMAP and POP3 server is not installed.
     description: dovecot is an open source IMAP and POP3 server for Linux based systems.
     rationale: >
       Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended
@@ -1349,8 +1319,9 @@ checks:
     rules:
       - 'c:rpm -q dovecot -> r:not installed'
 
-  - id: 7525
-    title: Ensure Samba is not installed
+# 2.2.13 Ensure Samba is not installed
+  - id: 7547
+    title: Ensure Samba is not installed.
     description: >
       The Samba daemon allows system administrators to configure their Linux systems to share
       file systems and directories with Windows desktops. Samba will advertise the file systems
@@ -1369,8 +1340,9 @@ checks:
     rules:
       - 'c:rpm -q samba -> r:not installed'
 
-  - id: 7526
-    title: Ensure HTTP Proxy Server is not installed
+# 2.2.14 Ensure HTTP Proxy Server is not installed
+  - id: 7548
+    title: Ensure HTTP Proxy Server is not installed.
     description: Squid is a standard proxy server used in many distributions and environments.
     rationale: >
       Unless a system is specifically set up to act as a proxy server, it is recommended that the
@@ -1387,8 +1359,9 @@ checks:
     rules:
       - 'c:rpm -q squid -> r:not installed'
 
-  - id: 7527
-    title: Ensure net-snmp is not installed
+# 2.2.15 Ensure net-snmp is not installed
+  - id: 7549
+    title: Ensure net-snmp is not installed.
     description: >
       Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the
       health and welfare of network equipment, computer equipment and devices like UPSs.
@@ -1421,8 +1394,70 @@ checks:
     rules:
       - 'c:rpm -q net-snmp -> r:not installed'
 
-  - id: 7528
-    title: Ensure NIS server is not installed
+# 2.2.16 Ensure mail transfer agent is configured for local-only mode
+  - id: 7550
+    title: Ensure mail transfer agent is configured for local-only mode.
+    description: >
+      Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming
+      mail and transfer the messages to the appropriate user or mail server. If the system is not
+      intended to be a mail server, it is recommended that the MTA be configured to only process
+      local mail.
+    rationale: >
+      The software for all Mail Transfer Agents is complex and most have a long history of
+      security issues. While it is important to ensure that the system can process local mail
+      messages, it is not necessary to have the MTA's daemon listening on a port unless the
+      server is intended to be a mail server that receives and processes mail from other systems.
+      Notes:
+        - This recommendation is designed around the postfix mail server.
+        - Depending on your environment you may have an alternative MTA installed such as
+          sendmail. If this is the case consult the documentation for your installed MTA to
+          configure the recommended state.
+    remediation: >
+      Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If
+      the line already exists, change it to look like the line below:
+      inet_interfaces = loopback-only
+
+      Run the folloing command to restart postfix:
+      # systemctl restart postfix
+    compliance:
+      - cis: ["2.2.16"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'f:/etc/postfix/main.cf -> r:^\s*inet_interfaces\s*=\s*loopback-only'
+
+# 2.2.17 Ensure rsync is not installed or the rsyncd service is masked
+  - id: 7551
+    title: Ensure rsync is not installed or the rsyncd service is masked.
+    description: The rsyncd service can be used to synchronize files between systems over network links.
+    rationale: >
+      Unless required, the rsync package should be removed to reduce the attack surface area of
+      the system.
+
+      The rsyncd service presents a security risk as it uses unencrypted protocols for
+      communication.
+
+      Note: If a required dependency exists for the rsync package, but the rsyncd service is not
+      required, the service should be masked.
+    remediation: >
+      Run the following command to remove the rsync package:
+      # zypper remove rsync
+
+      OR
+
+      Run the following command to mask the rsyncd service:
+      # systemctl --now mask rsyncd
+    compliance:
+      - cis: ["2.2.17"]
+      - cis_csc: ["9.2"]
+    condition: any
+    rules:
+      - 'c:rpm -q rsync -> r:not installed'
+      - 'c:systemctl is-enabled rsyncd -> r:^masked'
+
+# 2.2.18 Ensure NIS server is not installed
+  - id: 7552
+    title: Ensure NIS server is not installed.
     description: >
       The ypserv package provides the Network Information Service (NIS). This service, formally
       known as Yellow Pages, is a client-server directory service protocol for distributing system
@@ -1444,8 +1479,29 @@ checks:
     rules:
       - 'c:rpm -q ypserv -> r:not installed'
 
-  - id: 7529
-    title: Ensure NIS Client is not installed
+# 2.2.19 Ensure telnet-server is not installed
+  - id: 7553
+    title: Ensure telnet-server is not installed.
+    description: >
+      The telnet package contains the telnet daemon, which accepts connections from users
+      from other systems via the telnet protocol.
+    rationale: >
+      The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission
+      medium could allow a user with access to sniff network traffic the ability to steal
+      credentials. The ssh package provides an encrypted session and stronger security.
+    remediation: >
+      Run the following command to remove the telnet-server package:
+      # zypper remove telnet
+    compliance:
+      - cis: ["2.2.19"]
+      - cis_csc: ["2.6","9.2"]
+    condition: all
+    rules:
+      - 'c:rpm -q telnet -> r:not installed'
+
+# 2.3.1 Ensure NIS Client is not installed
+  - id: 7554
+    title: Ensure NIS Client is not installed.
     description: >
       The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server
       directory service protocol used to distribute system configuration files. The NIS client (
@@ -1466,7 +1522,92 @@ checks:
     rules:
       - 'c:rpm -q ypbind -> r:not installed'
 
-  - id: 7530
+# 2.3.2 Ensure rsh client is not installed
+  - id: 7555
+    title: Ensure rsh client is not installed.
+    description: The rsh package contains the client commands for the rsh services.
+    rationale: >
+      These legacy clients contain numerous security exposures and have been replaced with the
+      more secure SSH package. Even if the server is removed, it is best to ensure the clients are
+      also removed to prevent users from inadvertently attempting to use these commands and
+      therefore exposing their credentials. Note that removing the rsh package removes the
+      clients for rsh , rcp and rlogin.
+    remediation: >
+      Run the following command to remove the rsh package:
+      # zypper remove rsh
+    compliance:
+      - cis: ["2.3.2"]
+      - cis_csc: ["2.6"]
+    condition: all
+    rules:
+      - 'c:rpm -q rsh -> r:not installed'
+
+# 2.3.3 Ensure talk client is not installed
+  - id: 7556
+    title: Ensure talk client is not installed.
+    description: >
+      The talk software makes it possible for users to send and receive messages across systems
+      through a terminal session. The talk client, which allows initialization of talk sessions, is
+      installed by default.
+    rationale: >
+      The software presents a security risk as it uses unencrypted protocols for communication.
+    remediation: >
+      Run the following command to remove the talk package:
+      # zypper remove talk
+    compliance:
+      - cis: ["2.3.3"]
+      - cis_csc: ["2.6"]
+    condition: all
+    rules:
+      - 'c:rpm -q talk -> r:not installed'
+
+# 2.3.4 Ensure telnet client is not installed
+  - id: 7557
+    title: Ensure telnet client is not installed.
+    description: >
+      The telnet package contains the telnet client, which allows users to start connections to
+      other systems via the telnet protocol.
+    rationale: >
+      The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission
+      medium could allow an unauthorized user to steal credentials. The ssh package provides
+      an encrypted session and stronger security and is included in most Linux distributions.
+    remediation: >
+      Run the following command to remove the telnet package:
+      # zypper remove telnet
+    compliance:
+      - cis: ["2.3.4"]
+      - cis_csc: ["2.6"]
+    condition: all
+    rules:
+      - 'c:rpm -q telnet -> r:not installed'
+
+# 2.3.5 Ensure LDAP client is not installed
+  - id: 7558
+    title: Ensure LDAP client is not installed.
+    description: >
+      The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for
+      NIS/YP. It is a service that provides a method for looking up information from a central
+      database.
+    rationale: >
+      If the system will not need to act as an LDAP client, it is recommended that the software be
+      removed to reduce the potential attack surface.
+    remediation: >
+      Run the following command to remove the openldap-clients package:
+      # zypper remove openldap2-clients
+    compliance:
+      - cis: ["2.3.5"]
+      - cis_csc: ["2.6"]
+    condition: all
+    rules:
+      - 'c:rpm -q openldap2-clients -> r:not installed'
+
+# 2.4 Ensure nonessential services are removed or masked - Not implemented
+# 3.1.1 Disable IPv6 - Not implemented
+# 3.1.2 Ensure wireless interfaces are disabled - Not implemented
+# 3.2.1 Ensure IP forwarding is disabled - Not implemented
+
+# 3.2.2 Ensure packet redirect sending is disabled
+  - id: 7559
     title: Ensure packet redirect sending is disabled
     description: >
       ICMP Redirects are used to send routing information to other hosts. As a host itself does
@@ -1494,8 +1635,12 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
 
-  - id: 7531
-    title: Ensure secure ICMP redirects are not accepted
+# 3.3.1 Ensure source routed packets are not accepted - Not implemented
+# 3.3.2 Ensure ICMP redirects are not accepted - Not implemented
+
+#3.3.3 Ensure secure ICMP redirects are not accepted
+  - id: 7560
+    title: Ensure secure ICMP redirects are not accepted.
     description: >
       Secure ICMP redirects are the same as ICMP redirects, except they come from gateways
       listed on the default gateway list. It is assumed that these gateways are known to your
@@ -1523,8 +1668,9 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
 
-  - id: 7532
-    title: Ensure suspicious packets are logged
+# 3.3.4 Ensure suspicious packets are logged
+  - id: 7561
+    title: Ensure suspicious packets are logged.
     description: >
       When enabled, this feature logs packets with un-routable source addresses to the kernel
       log.
@@ -1550,7 +1696,8 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
 
-  - id: 7533
+# 3.3.5 Ensure broadcast ICMP requests are ignored
+  - id: 7562
     title: Ensure broadcast ICMP requests are ignored
     description: >
       Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all
@@ -1578,8 +1725,9 @@ checks:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
-  - id: 7534
-    title: Ensure bogus ICMP responses are ignored
+# 3.3.6 Ensure bogus ICMP responses are ignored
+  - id: 7563
+    title: Ensure bogus ICMP responses are ignored.
     description: >
       Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus
       responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from
@@ -1602,8 +1750,9 @@ checks:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
-  - id: 7535
-    title: Ensure Reverse Path Filtering is enabled
+# 3.3.7 Ensure Reverse Path Filtering is enabled
+  - id: 7564
+    title: Ensure Reverse Path Filtering is enabled.
     description: >
       Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces
       the Linux kernel to utilize reverse path filtering on a received packet to determine if the
@@ -1635,7 +1784,8 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
 
-  - id: 7536
+# 3.3.8 Ensure TCP SYN Cookies is enabled 
+  - id: 7565
     title: Ensure TCP SYN Cookies is enabled
     description: >
       When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the
@@ -1668,311 +1818,8 @@ checks:
       - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
       - 'c:/sbin/sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
-  - id: 7537
-    title: Ensure SSH MaxAuthTries is set to 4 or less
-    description: >
-      The MaxAuthTries parameter specifies the maximum number of authentication attempts
-      permitted per connection. When the login failure count reaches half the number, error
-      messages will be written to the syslog file detailing the login failure.
-    rationale: >
-      Setting the MaxAuthTries parameter to a low number will minimize the risk of successful
-      brute force attacks to the SSH server. While the recommended setting is 4, set the number
-      based on site policy.
-    remediation: >
-      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-      MaxAuthTries 4
-    compliance:
-      - cis: ["5.2.7"]
-      - cis_csc: ["16.13"]
-    condition: all
-    rules:
-      - 'f:$sshd_file -> !r:^\s*\t*# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
-
-  - id: 7538
-    title: Ensure SSH IgnoreRhosts is enabled
-    description: >
-      The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in
-      RhostsRSAAuthentication or HostbasedAuthentication.
-    rationale: Setting this parameter forces users to enter a password when authenticating with ssh.
-    remediation: >
-      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-      IgnoreRhosts yes
-    compliance:
-      - cis: ["5.2.8"]
-      - cis_csc: ["9.2"]
-    condition: all
-    rules:
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:IgnoreRhosts\s*\t*yes'
-
-  - id: 7539
-    title: Ensure SSH HostbasedAuthentication is disabled
-    description: >
-      The HostbasedAuthentication parameter specifies if authentication is allowed through
-      trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public
-      key client host authentication. This option only applies to SSH Protocol Version 2.
-    rationale: >
-      Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf,
-      disabling the ability to use .rhosts files in SSH provides an additional layer of protection.
-    remediation: >
-      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-      HostbasedAuthentication no
-    compliance:
-      - cis: ["5.2.9"]
-      - cis_csc: ["16.3"]
-    condition: all
-    rules:
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:HostbasedAuthentication\s*\t*no'
-
-  - id: 7540
-    title: Ensure SSH root login is disabled
-    description: >
-      The PermitRootLogin parameter specifies if the root user can log in using ssh. The default
-      is no.
-    rationale: >
-      Disallowing root logins over SSH requires system admins to authenticate using their own
-      individual account, then escalating to root via sudo or su. This in turn limits opportunity for
-      non-repudiation and provides a clear audit trail in the event of a security incident.
-    remediation: >
-      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-      PermitRootLogin no
-    compliance:
-      - cis: ["5.2.10"]
-      - cis_csc: ["4.3"]
-    condition: all
-    rules:
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitRootLogin\s*\t*no'
-
-  - id: 7541
-    title: Ensure SSH PermitEmptyPasswords is disabled
-    description: >
-      The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts
-      with empty password strings.
-    rationale: >
-      Disallowing remote shell access to accounts that have an empty password reduces the
-      probability of unauthorized access to the system
-    remediation: >
-      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-      PermitEmptyPasswords no
-    compliance:
-      - cis: ["5.2.11"]
-      - cis_csc: ["16.3"]
-    condition: all
-    rules:
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitEmptyPasswords\s*\t*no'
-
-  - id: 7542
-    title: Ensure SSH LogLevel is appropriate
-    description: >
-      INFO level is the basic level that only records login activity of SSH users. In many situations,
-      such as Incident Response, it is important to determine when a particular user was active
-      on a system. The logout record can eliminate those users who disconnected, which helps
-      narrow the field.
-
-      VERBOSE level specifies that login and logout activity as well as the key fingerprint for any
-      SSH key used for login will be logged. This information is important for SSH key
-      management, especially in legacy environments.
-    rationale: >
-      SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically
-      not recommended other than strictly for debugging SSH communications since it provides
-      so much data that it is difficult to identify important security information.
-    remediation: >
-      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-      LogLevel VERBOSE
-      OR
-      LogLevel INFO
-    compliance:
-      - cis: ["5.2.5"]
-      - cis_csc: ["6.2","6.3"]
-    references:
-      - https://www.ssh.com/ssh/sshd_config/
-    condition: any
-    rules:
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*VERBOSE'
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*INFO'
-
-  - id: 7543
-    title: Ensure root is the only UID 0 account
-    description: Any account with UID 0 has superuser privileges on the system.
-    rationale: >
-      This access must be limited to only the default root account and only from the system
-      console. Administrative access must be through an unprivileged account using an approved
-      mechanism as noted in Item 5.6 Ensure access to the su command is restricted.
-    remediation: >
-      Remove any users other than root with UID 0 or assign them a new UID if appropriate.
-    compliance:
-      - cis: ["6.2.3"]
-      - cis_csc: ["5.1"]
-    condition: none
-    rules:
-      - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-  - id: 7568
-    title: Ensure chrony is configured
-    description: >
-      chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to
-      synchronize system clocks across a variety of systems and use a source that is highly
-      accurate. More information on chrony can be found at: http://chrony.tuxfamily.org/.
-      chrony can be configured to be a client and/or a server.
-    rationale: >
-      If chrony is in use on the system proper configuration is vital to ensuring time
-      synchronization is working properly.
-
-      Note: This recommendation only applies if chrony is in use on the system. If another method of
-      time synchronization is in use on the system, this recommendation can be skipped.
-    remediation: >
-      Add or edit server or pool lines to /etc/chrony.conf as appropriate:
-      server <remote-server>
-
-      Add or edit the OPTIONS in /etc/sysconfig/chronyd to include '-u chrony':
-      OPTIONS="-u chrony"
-    compliance:
-      - cis: ["2.2.1.3"]
-      - cis_csc: ["6.1"]
-    condition: all
-    rules:
-      - 'f:/etc/chrony.conf -> r:^\s*server\s+\.+'
-      - 'f:/etc/sysconfig/chronyd -> r:^\s*OPTIONS\s*=\s*"-u\s*chrony"'
-
-  - id: 7569
-    title: Ensure CUPS is not installed
-    description: >
-      The Common Unix Print System (CUPS) provides the ability to print to both local and
-      network printers. A system running CUPS can also accept print jobs from remote systems
-      and print them to local printers. It also provides a web based remote administration
-      capability.
-    rationale: >
-      If the system does not need to print jobs or accept print jobs from other systems, it is
-      recommended that CUPS be removed to reduce the potential attack surface.
-
-      Note: Removing CUPS will prevent printing from the system
-    remediation: >
-      Run the following command to remove cups:
-      # zypper remove cups
-    compliance:
-      - cis: ["2.2.4"]
-      - cis_csc: ["9.2"]
-    references:
-      - http://www.cups.org
-    condition: all
-    rules:
-      - 'c:rpm -q cups -> r:not installed'
-
-  - id: 7570
-    title: Ensure LDAP server is not installed
-    description: >
-      The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for
-      NIS/YP. It is a service that provides a method for looking up information from a central
-      database.
-    rationale: >
-      If the system will not need to act as an LDAP server, it is recommended that the software be
-      removed to reduce the potential attack surface.
-    remediation: >
-      Run the following command to remove openldap-servers:
-      # zypper remove openldap2
-    compliance:
-      - cis: ["2.2.6"]
-      - cis_csc: ["9.2"]
-    references:
-      - http://www.openldap.org
-    condition: all
-    rules:
-      - 'c:rpm -q openldap2 -> r:not installed'
-
-  - id: 7571
-    title: Ensure mail transfer agent is configured for local-only mode
-    description: >
-      Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming
-      mail and transfer the messages to the appropriate user or mail server. If the system is not
-      intended to be a mail server, it is recommended that the MTA be configured to only process
-      local mail.
-    rationale: >
-      The software for all Mail Transfer Agents is complex and most have a long history of
-      security issues. While it is important to ensure that the system can process local mail
-      messages, it is not necessary to have the MTA's daemon listening on a port unless the
-      server is intended to be a mail server that receives and processes mail from other systems.
-      Notes:
-        - This recommendation is designed around the postfix mail server.
-        - Depending on your environment you may have an alternative MTA installed such as
-          sendmail. If this is the case consult the documentation for your installed MTA to
-          configure the recommended state.
-    remediation: >
-      Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If
-      the line already exists, change it to look like the line below:
-      inet_interfaces = loopback-only
-
-      Run the folloing command to restart postfix:
-      # systemctl restart postfix
-    compliance:
-      - cis: ["2.2.16"]
-      - cis_csc: ["9.2"]
-    condition: all
-    rules:
-      - 'f:/etc/postfix/main.cf -> r:^\s*inet_interfaces\s*=\s*loopback-only'
-
-  - id: 7572
-    title: Ensure telnet client is not installed
-    description: >
-      The telnet package contains the telnet client, which allows users to start connections to
-      other systems via the telnet protocol.
-    rationale: >
-      The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission
-      medium could allow an unauthorized user to steal credentials. The ssh package provides
-      an encrypted session and stronger security and is included in most Linux distributions.
-    remediation: >
-      Run the following command to remove the telnet package:
-      # zypper remove telnet
-    compliance:
-      - cis: ["2.3.4"]
-      - cis_csc: ["2.6"]
-    condition: all
-    rules:
-      - 'c:rpm -q telnet -> r:not installed'
-
-  - id: 7573
-    title: Ensure LDAP client is not installed
-    description: >
-      The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for
-      NIS/YP. It is a service that provides a method for looking up information from a central
-      database.
-    rationale: >
-      If the system will not need to act as an LDAP client, it is recommended that the software be
-      removed to reduce the potential attack surface.
-    remediation: >
-      Run the following command to remove the openldap-clients package:
-      # zypper remove openldap2-clients
-    compliance:
-      - cis: ["2.3.5"]
-      - cis_csc: ["2.6"]
-    condition: all
-    rules:
-      - 'c:rpm -q openldap2-clients -> r:not installed'
-
-  - id: 7574
+# 3.3.9 Ensure IPv6 router advertisements are not accepted
+  - id: 7566
     title: Ensure IPv6 router advertisements are not accepted
     description: This setting disables the system's ability to accept IPv6 router advertisements.
     rationale: >
@@ -2001,7 +1848,8 @@ checks:
       - 'c:grep -Rh "net\.ipv6\.conf\.all\.accept_ra" /etc/sysctl.conf /etc/sysctl.d -> r:^\s*net.ipv6.conf.all.accept_ra\s*=\s*0'
       - 'c:grep -Rh "net\.ipv6\.conf\.default\.accept_ra" /etc/sysctl.conf /etc/sysctl.d -> r:^\s*net.ipv6.conf.default.accept_ra\s*=\s*0'
 
-  - id: 7575
+# 3.4.1 Ensure DCCP is disabled
+  - id: 7567
     title: Ensure DCCP is disabled
     description: >
       The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that
@@ -2024,7 +1872,8 @@ checks:
     rules:
       - 'c:grep -R dccp /etc/modprobe.d -> r:^/etc/modprobe.d/\.+.conf:\s*install\s+dccp\s+/bin/true'
 
-  - id: 7576
+# 3.4.2 Ensure SCTP is disabled 
+  - id: 7568
     title: Ensure SCTP is disabled
     description: >
       The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to
@@ -2048,7 +1897,8 @@ checks:
     rules:
       - 'c:grep -R sctp /etc/modprobe.d -> r:^/etc/modprobe.d/\.+.conf:\s*install\s+sctp\s+/bin/true'
 
-  - id: 7577
+# 3.5.1.1 Ensure FirewallD is installed
+  - id: 7569
     title: Ensure FirewallD is installed
     description: >
       firewalld is a firewall management tool for Linux operating systems. It provides firewall
@@ -2085,7 +1935,10 @@ checks:
       - 'c:rpm -q firewalld -> r:not installed'
       - 'c:rpm -q iptables -> r:not installed'
 
-  - id: 7578
+# 3.5.1.2 Ensure nftables is not installed or stopped and masked - Not implemented
+
+# 3.5.1.3 Ensure firewalld service is enabled and running
+  - id: 7570
     title: Ensure firewalld service is enabled and running
     description: >
       firewalld.service enables the enforcement of firewall rules configured through
@@ -2107,7 +1960,12 @@ checks:
       - 'c:systemctl is-enabled firewalld -> r:^enabled'
       - 'c:firewall-cmd --state -> r:^running'
 
-  - id: 7579
+# 3.5.1.4 Ensure default zone is set - Not implemented
+# 3.5.1.5 Ensure network interfaces are assigned to appropriate zone - Not implemented
+# 3.5.1.6 Ensure unnecessary services and ports are not accepted - Not implemented
+
+# 3.5.2.1 Ensure nftables is installed 
+  - id: 7571
     title: Ensure nftables is installed
     description: >
       nftables provides a new in-kernel packet classification framework that is based on a
@@ -2131,8 +1989,12 @@ checks:
     rules:
       - 'c:rpm -q nftables -> r:not installed'
 
-  - id: 7580
-    title: Ensure a table exists
+# 3.5.2.2 Ensure firewalld is not installed or stopped and masked - Not implemented
+# 3.5.2.3 Ensure iptables are flushed - Not implemented
+
+# 3.5.2.4 Ensure a table exists 
+  - id: 7572
+    title: Ensure a table exists.
     description: >
       Tables hold chains. Each table only has one address family and only applies to packets of
       this family. Tables can have one of five families.
@@ -2149,8 +2011,9 @@ checks:
     rules:
       - 'c:nft list tables -> r:^table inet\s+\.+'
 
-  - id: 7581
-    title: Ensure base chains exist
+# 3.5.2.5 Ensure base chains exist 
+  - id: 7573
+    title: Ensure base chains exist.
     description: >
       Chains are containers for rules. They exist in two kinds, base chains and regular chains. A
       base chain is an entry point for packets from the networking stack, a regular chain may be
@@ -2171,8 +2034,12 @@ checks:
       - 'c:nft list ruleset -> !r:^# && r:type hook forward\s+\.+'
       - 'c:nft list ruleset -> !r:^# && r:type hook output\s+\.+'
 
-  - id: 7582
-    title: Ensure default deny firewall policy
+# 3.5.2.6 Ensure loopback traffic is configured
+# 3.5.2.7 Ensure outbound and established connections are configured
+
+# 3.5.2.8 Ensure default deny firewall policy 
+  - id: 7574
+    title: Ensure default deny firewall policy.
     description: >
       Base chain policy is the default verdict that will be applied to packets reaching the end of
       the chain.
@@ -2204,7 +2071,8 @@ checks:
       - 'c:nft list ruleset -> !r:^# && r:type hook forward\s+\.+policy\s+drop'
       - 'c:nft list ruleset -> !r:^# && r:type hook output\s+\.+policy\s+drop'
 
-  - id: 7583
+# 3.5.2.9 Ensure nftables service is enabled 
+  - id: 7575
     title: Ensure nftables service is enabled
     description: >
       The nftables service allows for the loading of nftables rulesets during boot, or starting on
@@ -2222,28 +2090,11 @@ checks:
     rules:
       - 'c:systemctl is-enabled nftables -> r:^enabled'
 
-  - id: 7584
-    title: Ensure iptables package is installed
-    description: >
-      iptables is a utility program that allows a system administrator to configure the tables
-      provided by the Linux kernel firewall, implemented as different Netfilter modules, and the
-      chains and rules it stores. Different kernel modules and programs are used for different
-      protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to
-      Ethernet frames.
-    rationale: >
-      A method of configuring and maintaining firewall rules is necessary to configure a Host
-      Based Firewall.
-    remediation: >
-      Run the following command to install iptables
-      # zypper install iptables
-    compliance:
-      - cis: ["3.5.1.1"]
-      - cis_csc: ["9.4"]
-    condition: none
-    rules:
-      - 'c:rpm -q iptables -> r:not installed'
+# 3.5.2.10 Ensure nftables rules are permanent - Not implemented
+# 3.5.3.1.1 Ensure iptables package is installed - Not implemented
 
-  - id: 7585
+# 3.5.3.1.2 Ensure nftables is not installed - Not implemented
+  - id: 7576
     title: Ensure nftables is not installed
     description: >
       nftables is a subsystem of the Linux kernel providing filtering and classification of network
@@ -2260,7 +2111,10 @@ checks:
     rules:
       - 'c:rpm -q nftables -> r:not installed'
 
-  - id: 7586
+# 3.5.3.1.3 Ensure firewalld is not installed or stopped and masked - Not implemented
+
+# 3.5.3.2.1 Ensure default deny firewall policy
+  - id: 7577
     title: Ensure default deny firewall policy
     description: >
       A default deny all policy on connections ensures that any unconfigured network usage will
@@ -2285,7 +2139,8 @@ checks:
       - 'c:iptables -L -> r:^Chain FORWARD \(policy DROP\)'
       - 'c:iptables -L -> r:^Chain OUTPUT \(policy DROP\)'
 
-  - id: 7587
+# 3.5.3.2.2 Ensure loopback traffic is configured
+  - id: 7578
     title: Ensure loopback traffic is configured
     description: >
       Configure the loopback interface to accept traffic. Configure all other interfaces to deny
@@ -2312,7 +2167,15 @@ checks:
       - 'c:iptables -L INPUT -v -n -> r:^\s*\d+\s+\d+\s+DROP\s+all\s+--\s+*\s+*\s+127.0.0.0/8\s+0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:^\s*\d+\s+\d+\s+ACCEPT\s+all\s+--\s+*\s+lo\s+0.0.0.0/0\s+0.0.0.0/0'
 
-  - id: 7588
+# 3.5.3.2.3 Ensure outbound and established connections are configured - Not implemented
+# 3.5.3.2.4 Ensure firewall rules exist for all open ports - Not implemented
+# 3.5.3.3.1 Ensure IPv6 default deny firewall policy - Not implemented
+# 3.5.3.3.2 Ensure IPv6 loopback traffic is configured - Not implemented
+# 3.5.3.3.3 Ensure IPv6 outbound and established connections are configured - Not implemented
+# 3.5.3.3.4 Ensure IPv6 firewall rules exist for all open ports - Not implemented
+
+# 4.1.1.1 Ensure auditd is installed
+  - id: 7579
     title: Ensure auditd is installed
     description: >
       auditd is the userspace component to the Linux Auditing System. It's responsible for
@@ -2330,7 +2193,8 @@ checks:
     rules:
       - 'c:rpm -q audit -> r:not installed'
 
-  - id: 7589
+# 4.1.1.2 Ensure auditd service is enabled and running
+  - id: 7580
     title: Ensure auditd service is enabled and running
     description: Turn on the auditd daemon to record system events.
     rationale: >
@@ -2347,8 +2211,11 @@ checks:
       - 'c:systemctl is-enabled auditd -> r:^enabled'
       - 'c:systemctl status auditd -> r:^\s*Active: active \(running\) since \.+'
 
-  - id: 7590
-    title: Ensure audit log storage size is configured
+# 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled - Not implemented
+
+# 4.1.2.1 Ensure audit log storage size is configured 
+  - id: 7581
+    title: Ensure audit log storage size is configured.
     description: >
       Configure the maximum size of the audit log file. Once the log reaches the maximum size, it
       will be rotated and a new log file will be started.
@@ -2372,8 +2239,9 @@ checks:
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
 
-  - id: 7591
-    title: Ensure audit logs are not automatically deleted
+# 4.1.2.2 Ensure audit logs are not automatically deleted
+  - id: 7582
+    title: Ensure audit logs are not automatically deleted.
     description: >
       The max_log_file_action setting determines how to handle the audit log file reaching the
       max file size. A value of keep_logs will rotate the logs but never delete old logs.
@@ -2390,8 +2258,9 @@ checks:
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
 
-  - id: 7592
-    title: Ensure system is disabled when audit logs are full
+# 4.1.2.3 Ensure system is disabled when audit logs are full
+  - id: 7583
+    title: Ensure system is disabled when audit logs are full.
     description: The auditd daemon can be configured to halt the system when the audit logs are full.
     rationale: >
       In high security contexts, the risk of detecting unauthorized access or nonrepudiation
@@ -2410,8 +2279,12 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^\s*action_mail_acct\s*=\s*root'
       - 'f:/etc/audit/auditd.conf -> r:^\s*admin_space_left_action\s*=\s*halt'
 
-  - id: 7593
-    title: Ensure events that modify user/group information are collected
+# 4.1.2.4 Ensure audit_backlog_limit is sufficient - Not implemented
+# 4.1.3 Ensure events that modify date and time information are collected - Not implemented
+
+# 4.1.4 Ensure events that modify user/group information are collected
+  - id: 7584
+    title: Ensure events that modify user/group information are collected.
     description: >
       Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or
       /etc/security/opasswd (old passwords, based on remember parameter in the PAM
@@ -2450,8 +2323,11 @@ checks:
       - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity'
       - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity'
 
-  - id: 7594
-    title: Ensure events that modify the system's Mandatory Access Controls are collected
+# 4.1.5 Ensure events that modify the system's network environment are collected - Not implemented
+
+# 4.1.6 Ensure events that modify the system's Mandatory Access Controls are collected
+  - id: 7585
+    title: Ensure events that modify the system's Mandatory Access Controls are collected.
     description: >
       Monitor SELinux mandatory access controls. The parameters below monitor any write
       access (potential additional, deletion or modification of files in the directory) or attribute
@@ -2483,8 +2359,9 @@ checks:
       - 'c:auditctl -l | grep MAC-policy -> r:^\s*-w\s+/etc/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
       - 'c:auditctl -l | grep MAC-policy -> r:^\s*-w\s+/usr/share/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
 
-  - id: 7595
-    title: Ensure login and logout events are collected
+# 4.1.7 Ensure login and logout events are collected 
+  - id: 7586
+    title: Ensure login and logout events are collected.
     description: >
       Monitor login and logout events. The parameters below track changes to files associated
       with login/logout events.
@@ -2518,8 +2395,9 @@ checks:
       - 'c:auditctl -l | grep logins -> r:^\s*-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins'
       - 'c:auditctl -l | grep logins -> r:^\s*-w\s+/var/log/tallylog\s+-p\s+wa\s+-k\s+logins'
 
-  - id: 7596
-    title: Ensure session initiation information is collected
+# 4.1.8 Ensure session initiation information is collected
+  - id: 7587
+    title: Ensure session initiation information is collected.
     description: >
       Monitor session initiation events. The parameters in this section track changes to the files
       associated with session events. The file /var/run/utmp tracks all currently logged in users.
@@ -2557,7 +2435,14 @@ checks:
       - 'c:auditctl -l | grep -E "(session|logins)" -> r:^\s*-w\s+/var/log/wtmp\s+-p\s+wa\s+-k\s+logins'
       - 'c:auditctl -l | grep -E "(session|logins)" -> r:^\s*-w\s+/var/log/btmp\s+-p\s+wa\s+-k\s+logins'
 
-  - id: 7597
+# 4.1.9 Ensure discretionary access control permission modification events are collected - Not implemented
+# 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected - Not implemented
+# 4.1.11 Ensure use of privileged commands is collected - Not implemented
+# 4.1.12 Ensure successful file system mounts are collected - Not implemented
+# 4.1.13 Ensure file deletion events by users are collected - Not implemented
+
+# 4.1.14 Ensure changes to system administration scope (sudoers) is collected
+  - id: 7588
     title: Ensure changes to system administration scope (sudoers) is collected
     description: >
       Monitor scope changes for system administrators. If the system has been properly
@@ -2587,8 +2472,12 @@ checks:
       - 'c:auditctl -l | grep scope -> r:^\s*-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+scope'
       - 'c:auditctl -l | grep scope -> r:^\s*-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+scope'
 
-  - id: 7598
-    title: Ensure the audit configuration is immutable
+# 4.1.15 Ensure system administrator actions (sudolog) are collected - Not implemented
+# 4.1.16 Ensure kernel module loading and unloading is collected - Not implemented
+
+# 4.1.17 Ensure the audit configuration is immutable
+  - id: 7589
+    title: Ensure the audit configuration is immutable.
     description: >
       Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e
       2" forces audit to be put in immutable mode. Audit changes can only be made on system
@@ -2613,8 +2502,9 @@ checks:
     rules:
       - 'c:grep -R "^\s*[^#]" /etc/audit/rules.d/ | tail -1 -> r:^/etc/audit/rules.d/\.+.rules:\s*-e\s+2\s*$'
 
-  - id: 7599
-    title: Ensure rsyslog is installed
+# 4.2.1.1 Ensure rsyslog is installed
+  - id: 7590
+    title: Ensure rsyslog is installed.
     description: >
       The rsyslog software is a recommended replacement to the original syslogd daemon.
       rsyslog provides improvements over syslogd, including:
@@ -2635,8 +2525,9 @@ checks:
     rules:
       - 'c:rpm -q rsyslog -> r:not installed'
 
-  - id: 7600
-    title: Ensure rsyslog Service is enabled and running
+# 4.2.1.2 Ensure rsyslog Service is enabled and running
+  - id: 7591
+    title: Ensure rsyslog Service is enabled and running.
     description: rsyslog needs to be enabled and running to perform logging
     rationale: >
       If the rsyslog service is not activated the system may default to the syslogd service or lack
@@ -2652,8 +2543,9 @@ checks:
       - 'c:systemctl is-enabled rsyslog -> r:^enabled'
       - 'c:systemctl status rsyslog -> r:^\s*Active: active \(running\) since \.+'
 
-  - id: 7601
-    title: Ensure rsyslog default file permissions configured
+# 4.2.1.3 Ensure rsyslog default file permissions configured 
+  - id: 7592
+    title: Ensure rsyslog default file permissions configured.
     description: >
       rsyslog will create logfiles that do not already exist on the system. This setting controls
       what permissions will be applied to these newly created files.
@@ -2681,8 +2573,13 @@ checks:
     rules:
       - 'c:grep -Rh ^\$FileCreateMode /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$FileCreateMode\s+0640'
 
-  - id: 7602
-    title: Ensure journald is configured to send logs to rsyslog
+# 4.2.1.4 Ensure logging is configured - Not implemented
+# 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host - Not implemented
+# 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts - Not implemented
+
+# 4.2.2.1 Ensure journald is configured to send logs to rsyslog
+  - id: 7593
+    title: Ensure journald is configured to send logs to rsyslog.
     description: >
       Data from journald may be stored in volatile memory or persisted locally on the server.
       Utilities exist to accept remote export of journald logs, however, use of the rsyslog service
@@ -2718,8 +2615,9 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^ForwardToSyslog=yes'
 
-  - id: 7603
-    title: Ensure journald is configured to compress large log files
+# 4.2.2.2 Ensure journald is configured to compress large log files
+  - id: 7594
+    title: Ensure journald is configured to compress large log files.
     description: >
       The journald system includes the capability of compressing overly large files to avoid filling
       up the system with logs or making the log's size unmanageable.
@@ -2743,8 +2641,9 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^Compress=yes'
 
-  - id: 7604
-    title: Ensure journald is configured to write logfiles to persistent disk
+# 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk
+  - id: 7595
+    title: Ensure journald is configured to write logfiles to persistent disk.
     description: >
       Data from journald may be stored in volatile memory or persisted locally on the server.
       Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the
@@ -2769,7 +2668,11 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^Storage=persistent'
 
-  - id: 7605
+# 4.2.3 Ensure permissions on all logfiles are configured - Not implemented
+# 4.2.4 Ensure logrotate is configured - Not implemented
+
+# 5.1.1 Ensure cron daemon is enabled and running 
+  - id: 7596
     title: Ensure cron daemon is enabled and running
     description: The cron daemon is used to execute batch jobs on the system.
     rationale: >
@@ -2793,8 +2696,9 @@ checks:
       - 'c:systemctl is-enabled cron -> r:^enabled'
       - 'c:systemctl status cron -> r:^\s*Active: active \(running\) since \.+'
 
-  - id: 7606
-    title: Ensure permissions on /etc/crontab are configured
+# 5.1.2 Ensure permissions on /etc/crontab are configured
+  - id: 7597
+    title: Ensure permissions on /etc/crontab are configured.
     description: >
       The /etc/crontab file is used by cron to control its own jobs. The commands in this item
       make sure that root is the user and group owner of the file and that only the owner can
@@ -2820,8 +2724,9 @@ checks:
     rules:
       - 'c:stat -L /etc/crontab -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7607
-    title: Ensure permissions on /etc/cron.hourly are configured
+# 5.1.3 Ensure permissions on /etc/cron.hourly are configured
+  - id: 7598
+    title: Ensure permissions on /etc/cron.hourly are configured.
     description: >
       This directory contains system cron jobs that need to run on an hourly basis. The files in
       this directory cannot be manipulated by the crontab command, but are instead edited by
@@ -2850,8 +2755,9 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.hourly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7608
-    title: Ensure permissions on /etc/cron.daily are configured
+# 5.1.4 Ensure permissions on /etc/cron.daily are configured
+  - id: 7599
+    title: Ensure permissions on /etc/cron.daily are configured.
     description: >
       The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis.
       The files in this directory cannot be manipulated by the crontab command, but are instead
@@ -2880,8 +2786,9 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.daily/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7609
-    title: Ensure permissions on /etc/cron.weekly are configured
+# 5.1.5 Ensure permissions on /etc/cron.weekly are configured
+  - id: 7600
+    title: Ensure permissions on /etc/cron.weekly are configured.
     description: >
       The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly
       basis. The files in this directory cannot be manipulated by the crontab command, but are
@@ -2905,8 +2812,9 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.weekly -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7610
-    title: Ensure permissions on /etc/cron.monthly are configured
+# 5.1.6 Ensure permissions on /etc/cron.monthly are configured
+  - id: 7601
+    title: Ensure permissions on /etc/cron.monthly are configured.
     description: >
       The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly
       basis. The files in this directory cannot be manipulated by the crontab command, but are
@@ -2935,8 +2843,9 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.monthly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7611
-    title: Ensure permissions on /etc/cron.d are configured
+# 5.1.7 Ensure permissions on /etc/cron.d are configured 
+  - id: 7602
+    title: Ensure permissions on /etc/cron.d are configured.
     description: >
       The /etc/cron.d/ directory contains system cron jobs that need to run in a similar manner
       to the hourly, daily weekly and monthly jobs from /etc/crontab , but require more
@@ -2965,8 +2874,9 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.d -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7612
-    title: Ensure cron is restricted to authorized users
+# 5.1.8 Ensure cron is restricted to authorized users
+  - id: 7603
+    title: Ensure cron is restricted to authorized users.
     description: >
       If cron is installed in the system, configure /etc/cron.allow to allow specific users to use
       these services. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any
@@ -3004,8 +2914,9 @@ checks:
       - 'not f:/etc/cron.deny'
       - 'c:stat -L /etc/cron.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7613
-    title: Ensure at is restricted to authorized users
+# 5.1.9 Ensure at is restricted to authorized users
+  - id: 7604
+    title: Ensure at is restricted to authorized users.
     description: >
       If at is installed in the system, configure /etc/at.allow to allow specific users to use these
       services. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not
@@ -3043,6 +2954,7 @@ checks:
       - 'not f:/etc/at.deny'
       - 'c:stat -L /etc/at.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
+# 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured
   - id: 7614
     title: Ensure permissions on /etc/ssh/sshd_config are configured
     description: >
@@ -3062,8 +2974,12 @@ checks:
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
+# 5.2.2 Ensure permissions on SSH private host key files are configured - Not implemented
+# 5.2.3 Ensure permissions on SSH public host key files are configured - Not implemented
+
+# 5.2.4 Ensure SSH access is limited
   - id: 7615
-    title: Ensure SSH access is limited
+    title: Ensure SSH access is limited.
     description: >
       There are several options available to limit which users and group can access the system
       via SSH. It is recommended that at least one of the following options be leveraged:
@@ -3116,8 +3032,40 @@ checks:
       - 'c:sshd -T -> r:^\s*denyusers\s+\S+'
       - 'c:sshd -T -> r:^\s*denygroups\s+\S+'
 
+# 5.2.5 Ensure SSH LogLevel is appropriate
   - id: 7616
-    title: Ensure SSH X11 forwarding is disabled
+    title: Ensure SSH LogLevel is appropriate.
+    description: >
+      INFO level is the basic level that only records login activity of SSH users. In many situations,
+      such as Incident Response, it is important to determine when a particular user was active
+      on a system. The logout record can eliminate those users who disconnected, which helps
+      narrow the field.
+
+      VERBOSE level specifies that login and logout activity as well as the key fingerprint for any
+      SSH key used for login will be logged. This information is important for SSH key
+      management, especially in legacy environments.
+    rationale: >
+      SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically
+      not recommended other than strictly for debugging SSH communications since it provides
+      so much data that it is difficult to identify important security information.
+    remediation: >
+      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
+      LogLevel VERBOSE
+      OR
+      LogLevel INFO
+    compliance:
+      - cis: ["5.2.5"]
+      - cis_csc: ["6.2","6.3"]
+    references:
+      - https://www.ssh.com/ssh/sshd_config/
+    condition: any
+    rules:
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*VERBOSE'
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*INFO'
+
+# 5.2.6 Ensure SSH X11 forwarding is disabled 
+  - id: 7617
+    title: Ensure SSH X11 forwarding is disabled.
     description: >
       The X11Forwarding parameter provides the ability to tunnel X11 traffic through the
       connection to enable remote graphic connections.
@@ -3136,8 +3084,106 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*x11forwarding\s+no'
 
-  - id: 7617
-    title: Ensure SSH PermitUserEnvironment is disabled
+# 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less 
+  - id: 7618
+    title: Ensure SSH MaxAuthTries is set to 4 or less.
+    description: >
+      The MaxAuthTries parameter specifies the maximum number of authentication attempts
+      permitted per connection. When the login failure count reaches half the number, error
+      messages will be written to the syslog file detailing the login failure.
+    rationale: >
+      Setting the MaxAuthTries parameter to a low number will minimize the risk of successful
+      brute force attacks to the SSH server. While the recommended setting is 4, set the number
+      based on site policy.
+    remediation: >
+      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
+      MaxAuthTries 4
+    compliance:
+      - cis: ["5.2.7"]
+      - cis_csc: ["16.13"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^\s*\t*# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+
+# 5.2.8 Ensure SSH IgnoreRhosts is enabled 
+  - id: 7619
+    title: Ensure SSH IgnoreRhosts is enabled.
+    description: >
+      The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in
+      RhostsRSAAuthentication or HostbasedAuthentication.
+    rationale: Setting this parameter forces users to enter a password when authenticating with ssh.
+    remediation: >
+      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
+      IgnoreRhosts yes
+    compliance:
+      - cis: ["5.2.8"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:IgnoreRhosts\s*\t*yes'
+
+# 5.2.9 Ensure SSH HostbasedAuthentication is disabled
+  - id: 7620
+    title: Ensure SSH HostbasedAuthentication is disabled.
+    description: >
+      The HostbasedAuthentication parameter specifies if authentication is allowed through
+      trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public
+      key client host authentication. This option only applies to SSH Protocol Version 2.
+    rationale: >
+      Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf,
+      disabling the ability to use .rhosts files in SSH provides an additional layer of protection.
+    remediation: >
+      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
+      HostbasedAuthentication no
+    compliance:
+      - cis: ["5.2.9"]
+      - cis_csc: ["16.3"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:HostbasedAuthentication\s*\t*no'
+
+# 5.2.10 Ensure SSH root login is disabled
+  - id: 7521
+    title: Ensure SSH root login is disabled.
+    description: >
+      The PermitRootLogin parameter specifies if the root user can log in using ssh. The default
+      is no.
+    rationale: >
+      Disallowing root logins over SSH requires system admins to authenticate using their own
+      individual account, then escalating to root via sudo or su. This in turn limits opportunity for
+      non-repudiation and provides a clear audit trail in the event of a security incident.
+    remediation: >
+      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
+      PermitRootLogin no
+    compliance:
+      - cis: ["5.2.10"]
+      - cis_csc: ["4.3"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitRootLogin\s*\t*no'
+
+# 5.2.11 Ensure SSH PermitEmptyPasswords is disabled 
+  - id: 7522
+    title: Ensure SSH PermitEmptyPasswords is disabled.
+    description: >
+      The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts
+      with empty password strings.
+    rationale: >
+      Disallowing remote shell access to accounts that have an empty password reduces the
+      probability of unauthorized access to the system
+    remediation: >
+      Edit the /etc/ssh/sshd_config file to set the parameter as follows:
+      PermitEmptyPasswords no
+    compliance:
+      - cis: ["5.2.11"]
+      - cis_csc: ["16.3"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitEmptyPasswords\s*\t*no'
+
+# 5.2.12 Ensure SSH PermitUserEnvironment is disabled 
+  - id: 7623
+    title: Ensure SSH PermitUserEnvironment is disabled.
     description: >
       The PermitUserEnvironment option allows users to present environment options to the
       ssh daemon.
@@ -3155,8 +3201,9 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*permituserenvironment\s+no'
 
-  - id: 7618
-    title: Ensure only strong Ciphers are used
+# 5.2.13 Ensure only strong Ciphers are used
+  - id: 7624
+    title: Ensure only strong Ciphers are used.
     description: >
       This variable limits the ciphers that SSH can use during communication.
       Notes:
@@ -3228,8 +3275,9 @@ checks:
       - 'c:sshd -T -> r:^ciphers\s+ && r:aes192-cbc'
       - 'c:sshd -T -> r:^ciphers\s+ && r:aes256-cbc'
 
-  - id: 7619
-    title: Ensure only strong MAC algorithms are used
+# 5.2.14 Ensure only strong MAC algorithms are used
+  - id: 7625
+    title: Ensure only strong MAC algorithms are used.
     description: >
       This variable limits the types of MAC algorithms that SSH can use during communication.
       Notes:
@@ -3290,8 +3338,9 @@ checks:
       - 'c:sshd -T -> r:^macs\s+ && r:umac-64-etm@openssh.com'
       - 'c:sshd -T -> r:^macs\s+ && r:umac-128-etm@openssh.com'
 
-  - id: 7620
-    title: Ensure only strong Key Exchange algorithms are used
+# 5.2.15 Ensure only strong Key Exchange algorithms are used
+  - id: 7626
+    title: Ensure only strong Key Exchange algorithms are used.
     description: >
       Key exchange is any method in cryptography by which cryptographic keys are exchanged
       between two parties, allowing use of a cryptographic algorithm. If the sender and receiver
@@ -3339,7 +3388,8 @@ checks:
       - 'c:sshd -T -> r:^kexalgorithms\s+ && r:diffie-hellman-group14-sha1'
       - 'c:sshd -T -> r:^kexalgorithms\s+ && r:diffie-hellman-group-exchange-sha1'
 
-  - id: 7621
+# 5.2.16 Ensure SSH Idle Timeout Interval is configured
+  - id: 7627
     title: Ensure SSH Idle Timeout Interval is configured
     description: >
       The two options ClientAliveInterval and ClientAliveCountMax control the timeout of
@@ -3386,8 +3436,9 @@ checks:
       - 'c:sshd -T -> n:^clientaliveinterval\s+(\d+) compare <= 300'
       - 'c:sshd -T -> n:^ClientAliveCountMax\s+(\d+) compare <= 3'
 
-  - id: 7622
-    title: Ensure SSH LoginGraceTime is set to one minute or less
+# 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less
+  - id: 7628
+    title: Ensure SSH LoginGraceTime is set to one minute or less.
     description: >
       The LoginGraceTime parameter specifies the time allowed for successful authentication to
       the SSH server. The longer the Grace period is the more open unauthenticated connections
@@ -3409,8 +3460,9 @@ checks:
       - 'c:sshd -T -> n:^logingracetime\s+(\d+) compare >= 1'
       - 'c:sshd -T -> n:^logingracetime\s+(\d+) compare <= 60'
 
-  - id: 7623
-    title: Ensure SSH warning banner is configured
+# 5.2.18 Ensure SSH warning banner is configured
+  - id: 7629
+    title: Ensure SSH warning banner is configured.
     description: >
       The Banner parameter specifies a file whose contents must be sent to the remote user
       before authentication is permitted. By default, no banner is displayed.
@@ -3429,8 +3481,9 @@ checks:
     rules:
       - 'c:sshd -T -> r:^banner\s+/etc/issue.net'
 
-  - id: 7624
-    title: Ensure SSH PAM is enabled
+# 5.2.19 Ensure SSH PAM is enabled
+  - id: 7630
+    title: Ensure SSH PAM is enabled.
     description: >
       UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will
       enable PAM authentication using ChallengeResponseAuthentication and
@@ -3452,8 +3505,9 @@ checks:
     rules:
       - 'c:sshd -T -> r:^usepam\s+yes'
 
-  - id: 7625
-    title: Ensure SSH AllowTcpForwarding is disabled
+# 5.2.20 Ensure SSH AllowTcpForwarding is disabled
+  - id: 7631
+    title: Ensure SSH AllowTcpForwarding is disabled.
     description: >
       SSH port forwarding is a mechanism in SSH for tunneling application ports from the client
       to the server, or servers to clients. It can be used for adding encryption to legacy
@@ -3480,8 +3534,9 @@ checks:
     rules:
       - 'c:sshd -T -> r:^allowtcpforwarding\s+no'
 
-  - id: 7626
-    title: Ensure SSH MaxStartups is configured
+# 5.2.21 Ensure SSH MaxStartups is configured
+  - id: 7632
+    title: Ensure SSH MaxStartups is configured.
     description: >
       The MaxStartups parameter specifies the maximum number of concurrent unauthenticated
       connections to the SSH daemon.
@@ -3500,8 +3555,9 @@ checks:
     rules:
       - 'c:sshd -T -> r:^maxstartups\s+10:30:60\s*$'
 
-  - id: 7627
-    title: Ensure SSH MaxSessions is limited
+# 5.2.22 Ensure SSH MaxSessions is limited
+  - id: 7633
+    title: Ensure SSH MaxSessions is limited.
     description: >
       The MaxSessions parameter specifies the maximum number of open sessions permitted
       from a given connection.
@@ -3520,8 +3576,12 @@ checks:
     rules:
       - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10'
 
-  - id: 7628
-    title: Ensure password reuse is limited
+# 5.3.1 Ensure password creation requirements are configured - Not implemented
+# 5.3.2 Ensure lockout for failed password attempts is configured - Not implemented
+
+# 5.3.3 Ensure password reuse is limited
+  - id: 7634
+    title: Ensure password reuse is limited.
     description: >
       The /etc/security/opasswd file stores the users' old passwords and can be checked to
       ensure that users are not recycling recent passwords.
@@ -3550,8 +3610,9 @@ checks:
       - 'f:/etc/pam.d/common-password -> n:^\s*password\t+requisite\t+pam_pwhistory\.so\t+remember\s*=\s*(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> n:^\s*password\t+required\t+pam_pwhistory\.so\t+remember\s*=\s*(\d+) compare >= 5'
 
-  - id: 7629
-    title: Ensure password hashing algorithm is SHA-512
+# 5.4.1.1 Ensure password hashing algorithm is SHA-512 
+  - id: 7635
+    title: Ensure password hashing algorithm is SHA-512.
     description: >
       Login passwords are hashed and stored in the /etc/shadow file.
 
@@ -3580,7 +3641,15 @@ checks:
     rules:
       - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD\s+SHA512'
 
-  - id: 7630
+# 5.4.1.2 Ensure password expiration is 365 days or less - Not implemented
+# 5.4.1.3 Ensure minimum days between password changes is configured - Not implemented
+# 5.4.1.4 Ensure password expiration warning days is 7 or more - Not implemented
+# 5.4.1.5 Ensure inactive password lock is 30 days or less - Not implemented
+# 5.4.1.6 Ensure all users last password change date is in the past - Not implemented
+# 5.4.2 Ensure system accounts are secured - Not implemented
+
+# 5.4.3 Ensure default group for the root account is GID 0
+  - id: 7636
     title: Ensure default group for the root account is GID 0
     description: >
       The usermod command can be used to specify which group the root user belongs to. This
@@ -3598,8 +3667,15 @@ checks:
     rules:
       - 'f:/etc/passwd -> r:^root:\S+:\S+:0:'
 
-  - id: 7631
-    title: Ensure permissions on /etc/passwd are configured
+# 5.4.4 Ensure default user shell timeout is configured - Not implemented
+# 5.4.5 Ensure default user umask is configured - Not implemented
+# 5.5 Ensure root login is restricted to system console - Not implemented
+# 5.6 Ensure access to the su command is restricted - Not implemented
+# 6.1.1 Audit system file permissions 
+
+# 6.1.2 Ensure permissions on /etc/passwd are configured
+  - id: 7637
+    title: Ensure permissions on /etc/passwd are configured.
     description: >
       The /etc/passwd file contains user account information that is used by many system
       utilities and therefore must be readable for these utilities to operate.
@@ -3619,8 +3695,9 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7632
-    title: Ensure permissions on /etc/shadow are configured
+# 6.1.3 Ensure permissions on /etc/shadow are configured
+  - id: 7638
+    title: Ensure permissions on /etc/shadow are configured.
     description: >
       The /etc/shadow file is used to store the information about user accounts that is critical to
       the security of those accounts, such as the hashed password and other security
@@ -3642,8 +3719,9 @@ checks:
     rules:
       - 'c:stat -L /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
 
-  - id: 7633
-    title: Ensure permissions on /etc/group are configured
+# 6.1.4 Ensure permissions on /etc/group are configured 
+  - id: 7639
+    title: Ensure permissions on /etc/group are configured.
     description: >
       The /etc/group file contains a list of all the valid groups defined in the system. The
       command below allows read/write access for root and read access for everyone else.
@@ -3663,8 +3741,9 @@ checks:
     rules:
       - 'c:stat -L /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7634
-    title: Ensure permissions on /etc/passwd- are configured
+# 6.1.5 Ensure permissions on /etc/passwd- are configured
+  - id: 7640
+    title: Ensure permissions on /etc/passwd- are configured.
     description: The /etc/passwd- file contains backup user account information.
     rationale: >
       It is critical to ensure that the /etc/passwd- file is protected from unauthorized access.
@@ -3682,7 +3761,8 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7635
+# 6.1.6 Ensure permissions on /etc/shadow- are configured
+  - id: 7641
     title: Ensure permissions on /etc/shadow- are configured
     description: >
       The /etc/shadow- file is used to store backup information about user accounts that is
@@ -3704,8 +3784,9 @@ checks:
     rules:
       - 'c:stat -L /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
 
-  - id: 7636
-    title: Ensure permissions on /etc/group- are configured
+# 6.1.7 Ensure permissions on /etc/group- are configured 
+  - id: 7642
+    title: Ensure permissions on /etc/group- are configured.
     description: The /etc/group- file contains a backup list of all the valid groups defined in the system.
     rationale: >
       It is critical to ensure that the /etc/group- file is protected from unauthorized access.
@@ -3723,8 +3804,15 @@ checks:
     rules:
       - 'c:stat -L /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
-  - id: 7637
-    title: Ensure accounts in /etc/passwd use shadowed passwords
+# 6.1.8 Ensure no world writable files exist - Not implemented
+# 6.1.9 Ensure no unowned files or directories exist - Not implemented
+# 6.1.10 Ensure no ungrouped files or directories exist - Not implemented
+# 6.1.11 Audit SUID executables - Not implemented
+# 6.1.12 Audit SGID executables - Not implemented
+
+# 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords
+  - id: 7643
+    title: Ensure accounts in /etc/passwd use shadowed passwords.
     description: >
       Local accounts can uses shadowed passwords. With shadowed passwords, The passwords
       are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash.
@@ -3759,8 +3847,9 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^\.+:x:'
 
-  - id: 7638
-    title: Ensure /etc/shadow password fields are not empty
+# 6.2.2 Ensure /etc/shadow password fields are not empty
+  - id: 7644
+    title: Ensure /etc/shadow password fields are not empty.
     description: >
       An account with an empty password field means that anybody may log in as that user
       without providing a password.
@@ -3781,3 +3870,37 @@ checks:
     condition: none
     rules:
       - 'c:grep -E ^[^:]+:: /etc/shadow -> r:::'
+
+# 6.2.3 Ensure root is the only UID 0 account
+  - id: 7645
+    title: Ensure root is the only UID 0 account.
+    description: Any account with UID 0 has superuser privileges on the system.
+    rationale: >
+      This access must be limited to only the default root account and only from the system
+      console. Administrative access must be through an unprivileged account using an approved
+      mechanism as noted in Item 5.6 Ensure access to the su command is restricted.
+    remediation: >
+      Remove any users other than root with UID 0 or assign them a new UID if appropriate.
+    compliance:
+      - cis: ["6.2.3"]
+      - cis_csc: ["5.1"]
+    condition: none
+    rules:
+      - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+
+# 6.2.4 Ensure root PATH Integrity - Not implemented
+# 6.2.5 Ensure all users' home directories exist - Not implemented
+# 6.2.6 Ensure users' home directories permissions are 750 or more restrictive - Not implemented
+# 6.2.7 Ensure users own their home directories - Not implemented
+# 6.2.8 Ensure users' dot files are not group or world writable - Not implemented
+# 6.2.9 6.2.9 Ensure no users have .forward files - Not implemented
+# 6.2.10 Ensure no users have .netrc files - Not implemented
+# 6.2.11 Ensure users' .netrc Files are not group or world accessible - Not implemented
+# 6.2.12 Ensure no users have .rhosts files - Not implemented
+# 6.2.13 Ensure all groups in /etc/passwd exist in /etc/group - Not implemented
+# 6.2.14 Ensure no duplicate UIDs exist - Not implemented
+# 6.2.15 Ensure no duplicate GIDs exist - Not implemented
+# 6.2.16 Ensure no duplicate user names exist - Not implemented
+# 6.2.17 Ensure no duplicate group names exist - Not implemented
+# 6.2.18 Ensure shadow group is empty - Not implemented
+
