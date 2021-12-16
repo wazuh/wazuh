@@ -64,7 +64,7 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper> &rpmlib)
   m_rpmlib{rpmlib}
 {
     m_transactionSet = rpmlib->rpmtsCreate();
-    if (nullptr == m_transactionSet)
+    if (!m_transactionSet)
     {
         throw std::runtime_error("rpmtsCreate failed");
     }
@@ -72,16 +72,20 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper> &rpmlib)
     {
         throw std::runtime_error("rpmtsOpenDB failed");
     }
-    if (rpmlib->rpmtsRun(m_transactionSet, NULL, 0))
+    if (rpmlib->rpmtsRun(m_transactionSet, nullptr, 0))
     {
         throw std::runtime_error("rpmtsRun failed");
     }
     m_dataContainer = rpmlib->rpmtdNew();
-    if (nullptr == m_dataContainer)
+    if (!m_dataContainer)
     {
         throw std::runtime_error("rpmtdNew failed");
     }
     m_matches = rpmlib->rpmtsInitIterator(m_transactionSet, RPMTAG_NAME, nullptr, 0);
+    if (!m_matches)
+    {
+        throw std::runtime_error("rpmtsInitIterator failed");
+    }
     // Prepare for first call to dereference (*) operator.
     ++(*this);
 }

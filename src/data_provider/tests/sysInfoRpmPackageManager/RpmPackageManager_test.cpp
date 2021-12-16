@@ -12,16 +12,22 @@
 #include "RpmPackageManager_test.h"
 #include "packages/rpmlibWrapper.h"
 #include "packages/rpmPackageManager.h"
+#include <rpm/rpmtag.h>
+
+#include <fcntl.h>
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::DoAll;
 using ::testing::SetArgReferee;
 
+// We are using NiceMock to avoid having to use ON_CALL excessively.
+using ::testing::NiceMock;
+
 void RpmLibTest::SetUp() {};
 void RpmLibTest::TearDown() {};
 
-class RpmLibMock final : public IRpmLibWrapper
+class RpmLibMock : public IRpmLibWrapper
 {
     public:
         RpmLibMock() = default;
@@ -62,7 +68,7 @@ TEST_F(RpmLibTest, MissingConfFiles)
 
 TEST_F(RpmLibTest, MultipleInstances)
 {
-    auto mock {std::make_shared<RpmLibMock>()};
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
     RpmPackageManager otherRpm{mock};
     EXPECT_THROW({
         try {
@@ -74,4 +80,167 @@ TEST_F(RpmLibTest, MultipleInstances)
             throw;
         }
     }, std::runtime_error);
+}
+
+TEST_F(RpmLibTest, RAII)
+{
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    EXPECT_CALL(*mock, rpmReadConfigFiles(_, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmFreeRpmrc());
+    {
+        RpmPackageManager rpm{mock};
+    }
+}
+
+TEST_F(RpmLibTest, TransactionSetCreateFailure)
+{
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    std::vector<RpmPackageManager::Package> packages;
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(nullptr));
+
+    EXPECT_THROW({
+        try
+        {
+            RpmPackageManager rpm{mock};
+            for (const auto &p : rpm)
+            {
+            }
+        }
+        catch (const std::runtime_error &e)
+        {
+            EXPECT_STREQ(e.what(), "rpmtsCreate failed");
+            throw;
+        }
+    }, std::runtime_error);
+}
+
+TEST_F(RpmLibTest, OpenDatabaseFailure)
+{
+    const auto tsMock = reinterpret_cast<rpmts>(0x45);
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    std::vector<RpmPackageManager::Package> packages;
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
+    EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, _)).WillOnce(Return(-1));
+
+    EXPECT_THROW({
+        try
+        {
+            RpmPackageManager rpm{mock};
+            for (const auto &p : rpm)
+            {
+            }
+        }
+        catch (const std::runtime_error &e)
+        {
+            EXPECT_STREQ(e.what(), "rpmtsOpenDB failed");
+            throw;
+        }
+    }, std::runtime_error);
+}
+
+// Tests mostly the construction and destruction of RpmPackageManager::Iterator
+TEST_F(RpmLibTest, TransactionSetRunFailure)
+{
+    const auto tsMock = reinterpret_cast<rpmts>(0x45);
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    std::vector<RpmPackageManager::Package> packages;
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
+    EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(-1));
+
+    EXPECT_THROW({
+        try
+        {
+            RpmPackageManager rpm{mock};
+            for (const auto &p : rpm)
+            {
+            }
+        }
+        catch (const std::runtime_error &e)
+        {
+            EXPECT_STREQ(e.what(), "rpmtsRun failed");
+            throw;
+        }
+    }, std::runtime_error);
+}
+
+TEST_F(RpmLibTest, TagDataContainerCreateFailure)
+{
+    const auto tsMock = reinterpret_cast<rpmts>(0x45);
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    std::vector<RpmPackageManager::Package> packages;
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
+    EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtdNew()).WillOnce(nullptr);
+
+    EXPECT_THROW({
+        try
+        {
+            RpmPackageManager rpm{mock};
+            for (const auto &p : rpm)
+            {
+            }
+        }
+        catch (const std::runtime_error &e)
+        {
+            EXPECT_STREQ(e.what(), "rpmtdNew failed");
+            throw;
+        }
+    }, std::runtime_error);
+}
+
+TEST_F(RpmLibTest, IteratorInitFailure)
+{
+    const auto tsMock = reinterpret_cast<rpmts>(0x45);
+    const auto tdMock = reinterpret_cast<rpmtd>(0x4D);
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    std::vector<RpmPackageManager::Package> packages;
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
+    EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtdNew()).WillOnce(Return(tdMock));
+    EXPECT_CALL(*mock, rpmtsInitIterator(tsMock, 1000, _, _)).WillOnce(Return(nullptr));
+
+    EXPECT_THROW({
+        try
+        {
+            RpmPackageManager rpm{mock};
+            for (const auto &p : rpm)
+            {
+            }
+        }
+        catch (const std::runtime_error &e)
+        {
+            EXPECT_STREQ(e.what(), "rpmtsInitIterator failed");
+            throw;
+        }
+    }, std::runtime_error);
+}
+
+TEST_F(RpmLibTest, NoPackages)
+{
+    const auto tsMock = reinterpret_cast<rpmts>(0x45);
+    const auto tdMock = reinterpret_cast<rpmtd>(0x4D);
+    const auto tsIteratorMock = reinterpret_cast<rpmdbMatchIterator>(0x41);
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    std::vector<RpmPackageManager::Package> packages;
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
+    EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, O_RDONLY)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtdNew()).WillOnce(Return(tdMock));
+    EXPECT_CALL(*mock, rpmtsInitIterator(tsMock, 1000, _, _)).WillOnce(Return(tsIteratorMock));
+    EXPECT_CALL(*mock, rpmdbNextIterator(tsIteratorMock)).WillOnce(Return(nullptr));
+
+    EXPECT_CALL(*mock, rpmtsCloseDB(tsMock));
+    EXPECT_CALL(*mock, rpmtsFree(tsMock));
+    EXPECT_CALL(*mock, rpmtdFree(tdMock));
+    EXPECT_CALL(*mock, rpmdbFreeIterator(tsIteratorMock));
+
+    {
+        RpmPackageManager rpm{mock};
+        for (const auto &p : rpm)
+        {
+        }
+    }
 }
