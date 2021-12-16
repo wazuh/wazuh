@@ -13,7 +13,7 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
-#include "db/include/db.hpp"
+#include "db/include/db.h"
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -53,14 +53,46 @@ static const char *FIM_EVENT_MODE[] = {
 void update_wildcards_config();
 
 
+struct get_data_ctx {
+    event_data_t *event;
+    const directory_t *config;
+    pthread_mutex_t *mutex;
+    const char *path;
+};
+
+void process_delete_event(void * data, void * ctx)
+{
+    cJSON *json_event = NULL;
+    fim_entry *new_entry = (fim_entry *)data;
+    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+
+    if (ctx_data->event->report_event) {
+        json_event = fim_json_event(new_entry, NULL, ctx_data->config, ctx_data->event, NULL);
+    }
+    w_mutex_unlock(ctx_data->mutex);
+
+    if (json_event != NULL) {
+        send_syscheck_msg(json_event);
+    }
+
+    cJSON_Delete(json_event);
+}
+
 void fim_generate_delete_event(char *entry,
                                pthread_mutex_t *mutex,
                                void *_evt_data,
                                void *configuration,
                                __attribute__((unused)) void *_unused_field) {
-    cJSON *json_event = NULL;
     const directory_t *original_configuration = (const directory_t *)configuration;
-    event_data_t *evt_data = (event_data_t *)_evt_data;
+    struct get_data_ctx ctx = {
+        .event = (event_data_t *)_evt_data,
+        .config = original_configuration,
+        .mutex = mutex,
+        .path = entry
+    };
+    callback_context_t callback_data;
+    callback_data.callback = process_delete_event;
+    callback_data.context = &ctx;
 
     if (original_configuration->options & CHECK_SEECHANGES) {
         fim_diff_process_delete_file(entry);
@@ -68,21 +100,12 @@ void fim_generate_delete_event(char *entry,
 
     // Remove path from the DB.
     w_mutex_lock(mutex);
-    fim_entry *new_entry = fim_db_get_path(entry);
     if (fim_db_remove_path(entry) == FIMDB_ERR) {
         w_mutex_unlock(mutex);
         return;
     }
-    if (evt_data->report_event) {
-        json_event = fim_json_event(new_entry, NULL, original_configuration, evt_data, NULL);
-    }
-    w_mutex_unlock(mutex);
+    fim_db_get_path(entry, callback_data);
 
-    if (json_event != NULL) {
-        send_syscheck_msg(json_event);
-    }
-
-    cJSON_Delete(json_event);
 }
 
 void fim_delete_file_event(char *entry,
@@ -247,10 +270,20 @@ time_t fim_scan() {
     return end_of_scan;
 }
 
+void process_fim_checker(void * data, void * ctx) {
+    fim_entry *saved_entry = (fim_entry *)data;
+    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+
+    if (saved_entry) {
+        ctx_data->event->type = FIM_DELETE;
+        fim_delete_file_event(saved_entry->file_entry.path, ctx_data->mutex, ctx_data->event, NULL, NULL);
+    } else if (ctx_data->config->options & CHECK_SEECHANGES) {
+        fim_diff_process_delete_file(ctx_data->path);
+    }
+}
 void fim_checker(const char *path, event_data_t *evt_data, const directory_t *parent_configuration) {
     directory_t *configuration;
     int depth;
-    fim_entry *saved_entry = NULL;
 
 #ifdef WIN32
     // Ignore the recycle bin.
@@ -294,14 +327,17 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
         }
-        saved_entry = fim_db_get_path(path);
+        struct get_data_ctx ctx = {
+            .event = (event_data_t *)evt_data,
+            .config = configuration,
+            .mutex = &syscheck.fim_entry_mutex,
+            .path = path
+        };
+        callback_context_t callback_data;
+        callback_data.callback = process_delete_event;
+        callback_data.context = &ctx;
 
-        if (saved_entry) {
-            evt_data->type = FIM_DELETE;
-            fim_delete_file_event(saved_entry->file_entry.path, &syscheck.fim_entry_mutex, evt_data, NULL, NULL);
-        } else if (configuration->options & CHECK_SEECHANGES) {
-            fim_diff_process_delete_file(path);
-        }
+        fim_db_get_path(path, callback_data);
 
         return;
     }
