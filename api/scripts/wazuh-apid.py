@@ -26,28 +26,14 @@ def start(foreground, root, config_file):
     config_file : str
         Path to the API config file
     """
-    import asyncio
     import logging
     import os
-    import ssl
-
-    import connexion
-    import uvloop
-    from aiohttp_cache import setup_cache
     from api import alogging, configuration
-
-    import wazuh.security
-    from api import __path__ as api_path
-    # noinspection PyUnresolvedReferences
-    from api import validator
-    from api.api_exception import APIError
-    from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
-        set_secure_headers
-    from api.signals import modify_response_headers
-    from api.uri_parser import APIUriParser
-    from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
+
+    def spawn_child():
+        """Dummy task to force child process forking."""
+        return
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -56,6 +42,15 @@ def start(foreground, root, config_file):
                 debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
             )
             api_logger.setup_logger()
+
+    # Foreground/Daemon
+    utils.check_pid('wazuh-apid')
+    if not foreground:
+        pyDaemonModule.pyDaemon()
+    pid = os.getpid()
+    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    if foreground:
+        print(f"Starting API in foreground (pid: {pid})")
 
     if config_file is not None:
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
@@ -66,6 +61,23 @@ def start(foreground, root, config_file):
     # Set up logger
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
+
+    import asyncio
+    import ssl
+
+    import connexion
+    import uvloop
+    from aiohttp_cache import setup_cache
+    from api import __path__ as api_path
+    # noinspection PyUnresolvedReferences
+    from api import validator
+    from api.api_exception import APIError
+    from api.constants import CONFIG_FILE_PATH
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
+        set_secure_headers
+    from api.signals import modify_response_headers
+    from api.uri_parser import APIUriParser
+    from api.util import to_relative_path
 
     # `use_only_authd` deprecated on v4.3.0. To be removed
     if "use_only_authd" in api_conf:
@@ -137,17 +149,9 @@ def start(foreground, root, config_file):
     else:
         print(f"Starting API as root")
 
-    # Foreground/Daemon
-    utils.check_pid('wazuh-apid')
-    if not foreground:
-        pyDaemonModule.pyDaemon()
-    pid = os.getpid()
-    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
-    if foreground:
-        print(f"Starting API in foreground (pid: {pid})")
-
-    # Load the SPEC file into memory to use as a reference for future calls
-    wazuh.security.load_spec()
+    # Force child processes to fork
+    common.mp_pools.get()['process_pool'].submit(spawn_child)
+    common.mp_pools.get()['authentication_pool'].submit(spawn_child)
 
     # Set up API
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
