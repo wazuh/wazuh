@@ -85,8 +85,9 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    void getCount(const std::string & tableName, int & count, const nlohmann::json & query={})
+    int getCount(const std::string & tableName, const nlohmann::json & query={})
     {
+        auto count { 0 };
         nlohmann::json countQuery;
         if (!query.empty())
         {
@@ -117,6 +118,7 @@ namespace FIMDBHelper
             }
         };
         T::getInstance().executeQuery(countQuery, callback);
+        return count;
     }
 
     /**
@@ -152,24 +154,24 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    void updateItem(const nlohmann::json& item, bool& updated)
+    bool updateItem(const nlohmann::json& item)
     {
+        auto result { false };
+
         const auto callback
         {
-            [&updated](ReturnTypeCallback type, const nlohmann::json&)
+            [&result](ReturnTypeCallback type, const nlohmann::json&)
             {
                 if (ReturnTypeCallback::MODIFIED == type)
                 {
-                    updated = true;
-                }
-                else
-                {
-                    updated = false;
+                    result = true;
                 }
             }
         };
 
         T::getInstance().updateItem(item, callback);
+
+        return result;
     }
 
     /**

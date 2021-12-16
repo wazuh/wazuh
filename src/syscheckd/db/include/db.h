@@ -1,5 +1,5 @@
 /**
- * @file db.hpp
+ * @file db.h
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
@@ -61,10 +61,19 @@ void fim_db_init(int storage,
  * @brief Get entry data using path.
  *
  * @param file_path File path can be a pattern or a primary key
- *
- * @return FIM entry struct on success, NULL on error.
+ * @param data Pointer to the data structure where the callback context will be stored.
  */
-fim_entry* fim_db_get_path(const char* file_path);
+void fim_db_get_path(const char* file_path, callback_context_t data);
+
+/**
+ * @brief Find entries based on pattern search.
+ *
+ * @param pattern Pattern to be searched.
+ * @param data Pointer to the data structure where the callback context will be stored.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERROR on failure.
+ */
+int fim_db_file_pattern_search(const char* pattern, callback_context_t data);
 
 /**
  * @brief Delete entry from the DB using file path.
@@ -74,52 +83,6 @@ fim_entry* fim_db_get_path(const char* file_path);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_remove_path(const char* path);
-
-/**
- * @brief Removes a range of paths from the database.
- *
- * The paths are alphabetically ordered.
- * The range is given by start and top parameters.
- *
- * @param pattert Path pattern to find delete a range of paths from database.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param evt_data Information on how the event was triggered.
- * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_delete_range(const char* pattern,
-                        pthread_mutex_t* mutex,
-                        event_data_t* evt_data,
-                        const directory_t* configuration);
-
-/**
- * @brief Remove a range of paths from database if they have a specific monitoring mode.
- *
- * @param pattern Path pattern to find delete a range of paths from database.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param evt_data Information on how the event was triggered.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_process_missing_entry(const char* pattern,
-                                 pthread_mutex_t* mutex,
-                                 event_data_t* evt_data);
-
-/**
- * @brief Remove a wildcard directory that were not expanded from the configuration
- *
- * @param pattern Path pattern to find delete a range of paths from database.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param evt_data Information on how the event was triggered.
- * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_remove_wildcard_entry(const char* pattern,
-                                 pthread_mutex_t* mutex,
-                                 event_data_t* evt_data,
-                                 directory_t* configuration);
 
 /**
  * @brief Get count of all inodes in file_entry table.
@@ -147,13 +110,13 @@ int fim_db_get_count_file_entry();
 int fim_db_file_update(const fim_entry* data, bool* updated);
 
 /**
- * @brief Create a who data event from a file deleted or a directory moved (or renamed).
+ * @brief Find entries using the inode.
  *
  * @param inode Inode.
  * @param dev Device.
- * @param w_evt Whodata event
+ * @param data Pointer to the data structure where the callback context will be stored.
  */
-void create_windows_who_data_events(unsigned long int inode, unsigned long int dev, whodata_evt* w_evt);
+void fim_db_file_inode_search(unsigned long int inode, unsigned long int dev, callback_context_t data);
 
 #ifdef __cplusplus
 }

@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#include "db.hpp"
+#include "db.h"
 
 extern const char* SQL_STMT[];
 

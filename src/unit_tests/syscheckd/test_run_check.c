@@ -27,7 +27,7 @@
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
-#include "db/include/db.hpp"
+#include "db/include/db.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/windows/processthreadsapi_wrappers.h"
