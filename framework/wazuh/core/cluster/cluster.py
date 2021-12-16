@@ -7,7 +7,9 @@ import logging
 import os.path
 import shutil
 import zipfile
+from asyncio import wait_for
 from datetime import datetime
+from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
@@ -617,3 +619,33 @@ def unmerge_info(merge_type, path_file, filename):
             bytes_read += st_size
 
             yield path.join(dst_path, name), data, st_mtime
+
+
+async def run_in_pool(loop, pool, f, *args, **kwargs):
+    """Run function in process pool if it exists.
+
+    This function checks if the process pool exists. If it does, the function is run inside it and
+    the result is waited. Otherwise (the pool is None), the function is run in the parent process,
+    as usual.
+
+    Parameters
+    ----------
+    loop : uvloop.AbstractEventLoop
+        Asyncio loop.
+    pool : ProcessPoolExecutor or None
+        Process pool object in charge of running functions.
+    f : callable
+        Function to be executed.
+    *args
+        Arguments list to be passed to function `f`. Default `None`.
+    **kwargs
+        Keyword arguments to be passed to function `f`. Default `None`.
+    Returns
+    -------
+    Result of `f(*args, **kwargs)` function.
+    """
+    if pool:
+        task = loop.run_in_executor(pool, partial(f, *args, **kwargs))
+        return await wait_for(task, timeout=None)
+    else:
+        return f(*args, **kwargs)
