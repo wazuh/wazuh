@@ -6,7 +6,6 @@
 -->
 
 <!--
-
   Two log sources are valid for NextCloud rules:
 
   To use the NextCloud decoder paste the following in /var/ossec/etc/ossec.conf:
@@ -15,7 +14,6 @@
     <log_format>json</log_format>
     <label key="@source">NextCloud</label>
   </localfile>
-
 
   If you enabled audit in your Nextcloud system you may use those logs instead.
   Paste the following in /var/ossec/etc/ossec.conf:
@@ -63,10 +61,11 @@
     <if_matched_sid>88212</if_matched_sid>
     <options>no_full_log</options>
     <description>NextCloud brute force (multiple failed logins).</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1110</id>
     </mitre>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+
   </rule>
 
   <rule id="88204" level="6">
