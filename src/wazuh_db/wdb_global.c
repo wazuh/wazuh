@@ -1727,6 +1727,7 @@ int wdb_global_create_backup(wdb_t* wdb) {
     sqlite3_stmt *stmt = NULL;
     char path[PATH_MAX-3] = {0};
     char path_compressed[PATH_MAX] = {0};
+    char* timestamp = NULL;
     DIR* dp = NULL;
     int result = OS_INVALID;
 
@@ -1742,7 +1743,12 @@ int wdb_global_create_backup(wdb_t* wdb) {
         }
     }
     closedir(dp);
-    snprintf(path, PATH_MAX-3, "%s/global.db-backup-%ld", WDB_BACKUP_FOLDER, (long int)time(NULL));
+
+    timestamp = w_get_timestamp(time(NULL));
+    wchr_replace(timestamp, ' ', '-');
+    wchr_replace(timestamp, '/', '-');
+    snprintf(path, PATH_MAX-3, "%s/global.db-backup-%s", WDB_BACKUP_FOLDER, timestamp);
+    os_free(timestamp);
 
     // We can't run a VACUUM withing a transaction
     if (wdb->transaction) {
@@ -1785,8 +1791,29 @@ int wdb_global_create_backup(wdb_t* wdb) {
     return result;
 }
 
-cJSON* wdb_global_get_backup(wdb_t* wdb) {
-    return NULL;
+cJSON* wdb_global_get_backup() {
+    DIR* dp = NULL;
+    cJSON* j_backups = NULL;
+    struct dirent *entry = NULL;
+
+    dp = opendir(WDB_BACKUP_FOLDER);
+
+    if(!dp) {
+        mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
+        return NULL;
+    }
+
+    j_backups = cJSON_CreateArray();
+    while (entry = readdir(dp), entry) {
+        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        cJSON_AddItemToArray(j_backups, cJSON_CreateString(entry->d_name));
+    }
+
+    closedir(dp);
+    return j_backups;
 }
 
 int wdb_global_restore_backup(wdb_t* wdb, char* input) {
