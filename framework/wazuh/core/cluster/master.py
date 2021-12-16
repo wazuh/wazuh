@@ -966,6 +966,7 @@ class Master(server.AbstractServer):
         try:
             self.task_pool = ProcessPoolExecutor(
                 max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+            raise FileNotFoundError
         # Handle exception when the user running Wazuh cannot access /dev/shm
         except FileNotFoundError:
             self.logger.warning("In order to take advantage of Wazuh 4.3.0 cluster and API improvements, the "

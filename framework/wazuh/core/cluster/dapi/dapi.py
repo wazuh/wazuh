@@ -34,6 +34,7 @@ from wazuh.core.wazuh_socket import wazuh_sendsync
 try:
     process_pool = ProcessPoolExecutor(max_workers=1)
     authentication_pool = ProcessPoolExecutor(max_workers=1)
+    raise FileNotFoundError
 # Handle exception when the user running Wazuh cannot access /dev/shm
 except FileNotFoundError:
     process_pool = None
