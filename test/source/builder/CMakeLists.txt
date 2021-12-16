@@ -22,3 +22,9 @@ add_executable(processor_test ${BUILDER_TEST_SOURCE_DIR}/processor_test.cpp)
 target_include_directories(processor_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
 target_link_libraries(processor_test gtest_main)
 gtest_discover_tests(processor_test)
+
+# Registry test
+add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp)
+target_include_directories(registry_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
+target_link_libraries(registry_test gtest_main)
+gtest_discover_tests(registry_test)
