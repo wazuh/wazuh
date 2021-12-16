@@ -26,5 +26,4 @@ target_link_libraries(unit_tests gtest_main bechmark_main)
 include(GoogleTest)
 gtest_discover_tests(unit_tests)
 
-
-add_subdirectory(${TEST_SOURCE_DIR}/router)
+add_subdirectory(${TEST_SOURCE_DIR}/builder)
