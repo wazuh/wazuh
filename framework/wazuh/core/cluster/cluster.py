@@ -349,7 +349,7 @@ async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):
     zip_dir : str
         Full path to unzipped directory.
     """
-    decompress_files(zip_path, ko_files_name)
+    return decompress_files(zip_path, ko_files_name)
 
 
 def decompress_files(zip_path, ko_files_name="files_metadata.json"):
