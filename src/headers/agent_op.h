@@ -69,8 +69,6 @@ int create_multigroup_dir(const char * multigroup);
 
 int set_agent_multigroup(char * group);
 
-void w_remove_multigroup(const char *group);
-
 #endif
 
 /* Validates the group name

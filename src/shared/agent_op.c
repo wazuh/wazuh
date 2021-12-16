@@ -358,9 +358,6 @@ int set_agent_multigroup(char * group) {
         *endl = '\0';
     }
 
-    /* Remove multigroup if it's not used on any other agent */
-    w_remove_multigroup(group);
-
     /* Check if the multigroup dir is created */
     os_sha256 multi_group_hash;
     char multigroup_path[PATH_MAX + 1] = {0};
@@ -557,35 +554,6 @@ int w_validate_group_name(const char *group, char *response) {
     free(multi_group_cpy);
     return 0;
 }
-
-#ifndef CLIENT
-void w_remove_multigroup(const char *group) {
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char path[PATH_MAX + 1] = {0};
-
-    if (multigroup) {
-        sprintf(path, "%s", GROUPS_DIR);
-
-        if (wstr_find_in_folder(path,group,1) < 0) {
-            /* Remove the DIR */
-            os_sha256 multi_group_hash;
-            OS_SHA256_String(group,multi_group_hash);
-            char _hash[9] = {0};
-
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
-
-            strncpy(_hash,multi_group_hash,8);
-
-            sprintf(path, "%s/%s", MULTIGROUPS_DIR, _hash);
-
-            if (rmdir_ex(path) != 0) {
-                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
-            }
-        }
-    }
-}
-#endif
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect() {
