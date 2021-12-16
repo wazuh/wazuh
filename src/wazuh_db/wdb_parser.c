@@ -5744,7 +5744,7 @@ int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output) {
         result = wdb_parse_global_create_backup(wdb, output);
     }
     else if (strcmp(next, "get") == 0) {
-        result = wdb_parse_global_get_backup(wdb, output);
+        result = wdb_parse_global_get_backup(output);
     }
     else if (strcmp(next, "restore") == 0) {
         result = wdb_parse_global_restore_backup(wdb, tail, output);
@@ -5768,16 +5768,16 @@ int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
     return ret;
 }
 
-int wdb_parse_global_get_backup(wdb_t* wdb, char* output) {
-    cJSON* j_backups = wdb_global_get_backup(wdb);
+int wdb_parse_global_get_backup(char* output) {
+    cJSON* j_backups = wdb_global_get_backup();
     if (j_backups) {
         char* out = cJSON_PrintUnformatted(j_backups);
-        snprintf(output, OS_MAXSTR + 1, out);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
         os_free(out);
+        cJSON_Delete(j_backups);
         return OS_SUCCESS;
     } else {
-        mdebug1("DB(%s) Cannot execute backup get command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command; SQL err: %s", sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command; unable to open '%s' folder", WDB_BACKUP_FOLDER);
         return OS_INVALID;
     }
 }

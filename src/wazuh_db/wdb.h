@@ -1347,12 +1347,11 @@ int wdb_parse_global_create_backup(wdb_t* wdb, char* output);
 /**
  * @brief Function to parse the global get backup.
  *
- * @param [in] wdb The global struct database.
  * @param [out] output Response of the query in JSON format.
  * @retval  0 Success: Response contains a list of the available backups.
  * @retval -1 On error: Response contains details of the error.
  */
-int wdb_parse_global_get_backup(wdb_t* wdb, char* output);
+int wdb_parse_global_get_backup(char* output);
 
 /**
  * @brief Function to parse the global restore request.
@@ -1377,11 +1376,10 @@ int wdb_global_create_backup(wdb_t* wdb);
 /**
  * @brief Function to get a list of the available backups of global.db.
  *
- * @param [in] wdb The global struct database.
  * @retval cJSON* Success: The list of all snapshots found, or empty if none was found.
  * @retval NULL On error: The list of snapshots couldn't be retrieved.
  */
-cJSON* wdb_global_get_backup(wdb_t* wdb);
+cJSON* wdb_global_get_backup();
 
 /**
  * @brief Function restore a backup of global.db.
