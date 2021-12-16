@@ -386,11 +386,6 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
         return OS_INVALID;
     }
 
-    if (!request->time_offset) {
-        merror("At module '%s': No time offset defined. Skipping request block...", WM_AZURE_CONTEXT.name);
-        return OS_INVALID;
-    }
-
     if (!request->workspace && type == LOG_ANALYTICS) {
         merror("At module '%s': No Workspace ID defined. Skipping request block...", WM_AZURE_CONTEXT.name);
         return OS_INVALID;
@@ -417,7 +412,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             merror(XML_ELEMNULL);
             return OS_INVALID;
 
-        } else if (!nodes[i]->content) {
+        } else if (!nodes[i]->content && (strcmp(nodes[i]->element, XML_CONTAINER) != 0)) {
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
@@ -445,11 +440,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 storage->container = container;
             }
 
-            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                merror(XML_INVELEM, nodes[i]->element);
-                return OS_INVALID;
-            }
-
             // Read name attribute
             if (nodes[i]->attributes) {
                 if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME) && *nodes[i]->values[0] != '\0') {
@@ -463,7 +453,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                     } else {
                         storage->container = container = NULL;
                     }
-                    OS_ClearNode(children);
                     continue;
                 }
             } else {
@@ -475,21 +464,22 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 } else {
                     storage->container = container = NULL;
                 }
-                OS_ClearNode(children);
                 continue;
             }
 
-            if (wm_azure_container_read(children, container) < 0) {
-                wm_clean_container(container);
-                if (container_prev) {
-                    container = container_prev;
-                    container->next = NULL;
-                } else {
-                    storage->container = container = NULL;
+            if ((children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                if (wm_azure_container_read(children, container) < 0) {
+                    wm_clean_container(container);
+                    if (container_prev) {
+                        container = container_prev;
+                        container->next = NULL;
+                    } else {
+                        storage->container = container = NULL;
+                    }
                 }
+                OS_ClearNode(children);
             }
 
-            OS_ClearNode(children);
 
         } else {
             merror(XML_INVELEM, nodes[i]->element);
@@ -584,21 +574,6 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
         }
     }
 
-    /* Validation process */
-    if (!container->blobs) {
-        merror("At module '%s': No blobs defined. Skipping container block...", WM_AZURE_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    if (!container->time_offset) {
-        merror("At module '%s': No time offset defined. Skipping container block...", WM_AZURE_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    if (!container->content_type) {
-        merror("At module '%s': No content type defined. Skipping container block...", WM_AZURE_CONTEXT.name);
-        return OS_INVALID;
-    }
 
     return 0;
 }

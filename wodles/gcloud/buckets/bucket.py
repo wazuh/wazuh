@@ -53,7 +53,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.bucket = None
         self.client = storage.client.Client.from_service_account_json(credentials_file)
         self.project_id = self.client.project
-        self.prefix = prefix
+        self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
         self.only_logs_after = only_logs_after
 
@@ -211,8 +211,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
         processed_files = []
         try:
-            bucket_contents = self.bucket.list_blobs(prefix=self.prefix)
-
+            bucket_contents = self.bucket.list_blobs(prefix=self.prefix, delimiter='/')
             processed_messages = 0
             new_creation_time = datetime.min.replace(tzinfo=pytz.UTC)
 
