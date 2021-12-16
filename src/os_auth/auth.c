@@ -160,11 +160,16 @@ w_err_t w_auth_parse_data(const char* buf,
 
         /* If IP: != 'src' overwrite the provided ip */
         if (strncmp(client_source_ip,"src",3) != 0) {
-            if (!OS_IsValidIP(client_source_ip, NULL)) {
+            os_ip *aux_ip;
+            os_calloc(1, sizeof(os_ip), aux_ip);
+            if (!OS_IsValidIP(client_source_ip, aux_ip)) {
                 merror("Invalid IP: '%s'", client_source_ip);
                 snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
+                w_free_os_ip(aux_ip);
                 return OS_INVALID;
             }
+            strcpy(client_source_ip, aux_ip->ip);
+            w_free_os_ip(aux_ip);
             snprintf(ip, IPSIZE + 1, "%s", client_source_ip);
         }
 

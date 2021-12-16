@@ -23,7 +23,7 @@
 #define OSSEC_LDEFINES   "./local_internal_options.conf"
 #endif
 
-#define DEFAULT_IPV6_PREFIX  64
+#define DEFAULT_IPV6_PREFIX  128
 #define DEFAULT_IPV4_NETMASK 32
 
 
@@ -40,6 +40,7 @@ static const char *__gethour(const char *str, char *ossec_hour) __attribute__((n
  */
 static int convertNetmask(int netnumb, struct in6_addr *nmask6);
 
+int expandIPv6str(const char *ip, char *dst_ip, int cidr);
 
 /* Global variables */
 static int _mask_inited = 0;
@@ -434,6 +435,10 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         return (0);
     }
 
+    if (*ip_address == '!') {
+        ip_address++;
+    }
+
     /* Assign the IP address */
     if (final_ip) {
         memset(final_ip, 0, sizeof(os_ip));
@@ -443,10 +448,6 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
             strcpy(aux_ip, ip_address);
         }
         os_strdup(aux_ip, final_ip->ip);
-    }
-
-    if (*ip_address == '!') {
-        ip_address++;
     }
 
     if (strcmp(ip_address, "any") != 0) {
@@ -473,6 +474,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                     if (final_ip) {
                         os_calloc(1, sizeof(os_ipv6), final_ip->ipv6);
                         final_ip->is_ipv6 = TRUE;
+                        int cidr = 0;
 
                         /* At this point regex can capture 1 or 2 strings, first is the ip and second the prefix */
                         if (sub_strings_num > 0) {
@@ -489,8 +491,9 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
                             if (sub_strings_num == 2) {
                                 /* prefix */
+                                cidr = atoi(regex_match->sub_strings[1]);
                                 if ((strlen(regex_match->sub_strings[1]) > 3) ||
-                                      convertNetmask(atoi(regex_match->sub_strings[1]), &nmask6)) {
+                                      convertNetmask(cidr, &nmask6)) {
                                     ret = 0;
                                     break;
                                 }
@@ -510,6 +513,8 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
+                            os_realloc(final_ip->ip, IPSIZE, final_ip->ip);
+                            expandIPv6str(regex_match->sub_strings[0], final_ip->ip, cidr);
 
                         } else {
                             ret = 0;
@@ -596,6 +601,39 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
     return ret;
 }
+
+
+int expandIPv6str(const char *ip, char *dst_ip, int cidr) {
+
+    struct in6_addr net6;
+    memset(&net6, 0, sizeof(net6));
+
+    if (OS_INVALID == get_ipv6_numeric(ip, &net6)) {
+        return OS_INVALID;
+    }
+
+    uint8_t aux[16];
+    for(unsigned int i = 0; i < 16; i++) {
+#ifndef WIN32
+        aux[i] = net6.s6_addr[i];
+#else
+        aux[i] = net6.u.Byte[i];
+#endif
+    }
+
+    sprintf(dst_ip, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+         (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
+         (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
+         (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
+         (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15]);
+
+    if (cidr) {
+        char *aux_ip = dst_ip;
+        sprintf(dst_ip, "%s/%u", aux_ip, cidr);
+    }
+    return OS_SUCCESS;
+}
+
 
 
 /* Must be a valid string, called after OS_IsValidTime
@@ -948,7 +986,7 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
     int imask;
     uint32_t hmask;
 
-    if ((ip->is_ipv6 == false) &&
+    if ((strchr(ip->ip, ':') == NULL) &&
         (ip->ipv4->netmask != 0xFFFFFFFF) &&
             strcmp(ip->ip, "any")) {
 
@@ -959,6 +997,24 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
         hmask = ntohl(ip->ipv4->netmask);
         for (imask = 0; imask < 32 && _netmasks[imask] != hmask; imask++);
         return (imask < 32) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
+
+    } else if ((strchr(ip->ip, ':') != NULL) &&
+                strcmp(ip->ip, "any")) {
+
+        imask = 0;
+        uint8_t aux = 0;
+        for (uint8_t i = 0; i < 16; i++) {
+            aux = ip->ipv6->netmask[i];
+            for (uint8_t a = 0; a < 8; a++) {
+                if (0x01 & aux) {
+                    imask++;
+                }
+                aux = aux >> UINT8_C(1);
+            }
+        }
+
+        return (imask < 128) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
+
     } else {
         strncpy(string, ip->ip, size - 1);
         string[size - 1] = '\0';
