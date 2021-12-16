@@ -2,11 +2,11 @@
     Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
-<group name="f5_bigip,">
+<group name="f5-bigip,">
 
      <!-- F5 BigIP LTM decoded grouped rules -->
     <rule id="65260" level="0">
-        <decoded_as>f5_bigip</decoded_as>
+        <decoded_as>f5-bigip</decoded_as>
         <description>F5 Networks BigIP events</description>
     </rule>
 
@@ -280,7 +280,7 @@
 
     <!-- CEF decoded grouped rules -->
     <rule id="65293" level="0">
-        <decoded_as>f5_bigip_cef</decoded_as>
+        <decoded_as>f5-bigip-cef</decoded_as>
         <description>CEF decoded grouped alerts</description>
     </rule>
 
