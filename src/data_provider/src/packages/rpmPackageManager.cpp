@@ -4,6 +4,7 @@
 #include <map>
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 // For O_RDONLY
 #include <fcntl.h>
