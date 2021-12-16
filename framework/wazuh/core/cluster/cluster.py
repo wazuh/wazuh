@@ -7,7 +7,9 @@ import logging
 import os.path
 import shutil
 import zipfile
+from asyncio import wait_for
 from datetime import datetime
+from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
@@ -330,7 +332,27 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
+async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):
+    """Async wrapper for decompress_files() function.
+
+    Parameters
+    ----------
+    zip_path : str
+        Full path to the zip file.
+    ko_files_name : str
+        Name of the metadata json inside zip file.
+
+    Returns
+    -------
+    ko_files : dict
+        Paths (keys) and metadata (values) of the files listed in cluster.json.
+    zip_dir : str
+        Full path to unzipped directory.
+    """
+    return decompress_files(zip_path, ko_files_name)
+
+
+def decompress_files(zip_path, ko_files_name="files_metadata.json"):
     """Unzip files in a directory and load the files_metadata.json as a dict.
 
     Parameters
@@ -617,3 +639,34 @@ def unmerge_info(merge_type, path_file, filename):
             bytes_read += st_size
 
             yield path.join(dst_path, name), data, st_mtime
+
+
+async def run_in_pool(loop, pool, f, *args, **kwargs):
+    """Run function in process pool if it exists.
+
+    This function checks if the process pool exists. If it does, the function is run inside it and
+    the result is waited. Otherwise (the pool is None), the function is run in the parent process,
+    as usual.
+
+    Parameters
+    ----------
+    loop : uvloop.EventLoopPolicy
+        Asyncio loop.
+    pool : ProcessPoolExecutor or None
+        Process pool object in charge of running functions.
+    f : callable
+        Function to be executed.
+    *args
+        Arguments list to be passed to function `f`. Default `None`.
+    **kwargs
+        Keyword arguments to be passed to function `f`. Default `None`.
+
+    Returns
+    -------
+    Result of `f(*args, **kwargs)` function.
+    """
+    if pool:
+        task = loop.run_in_executor(pool, partial(f, *args, **kwargs))
+        return await wait_for(task, timeout=None)
+    else:
+        return f(*args, **kwargs)
