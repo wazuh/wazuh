@@ -79,7 +79,8 @@ async def master_main(args, cluster_config, cluster_items, logger):
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
     # Spawn pool processes
-    my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
+    if my_server.task_pool:
+        my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 

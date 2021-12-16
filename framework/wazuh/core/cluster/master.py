@@ -19,7 +19,7 @@ from uuid import uuid4
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
-from wazuh.core.cluster import server, common as c_common
+from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import decimals_date_format
@@ -591,11 +591,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Update chunks in local wazuh-db
         try:
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(self.send_data_to_wdb, data, self.cluster_items['intervals']['master']['timeout_agent_info'])
-            )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.send_data_to_wdb, data,
+                                               self.cluster_items['intervals']['master']['timeout_agent_info'])
         except Exception as e:
             await self.send_request(command=b'syn_m_a_err',
                                     data=f'error processing agent-info chunks in process pool: {str(e)}'.encode())
@@ -813,12 +810,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Create a child process to run the task.
         try:
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(self.process_files_from_worker, files_metadata, decompressed_files_path, self.cluster_items,
-                        self.name, self.cluster_items['intervals']['master']['timeout_extra_valid'])
-            )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.process_files_from_worker,
+                                               files_metadata, decompressed_files_path, self.cluster_items, self.name,
+                                               self.cluster_items['intervals']['master']['timeout_extra_valid'])
         except Exception as e:
             raise exception.WazuhClusterError(3038, extra_message=str(e))
         finally:
@@ -971,8 +965,21 @@ class Master(server.AbstractServer):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(
-            max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        try:
+            self.task_pool = ProcessPoolExecutor(
+                max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        # Handle exception when the user running Wazuh cannot access /dev/shm
+        except FileNotFoundError:
+            self.logger.warning("In order to take advantage of Wazuh 4.3.0 cluster and API improvements, the "
+                                "directory '/dev/shm' must be accessible by the 'wazuh' user. Opening this regular "
+                                "file could be disallowed for a non-root user if the fs.protected_regular sysctl "
+                                "setting has value 1 or 2. This setting may be activated if you use systemd version "
+                                "241 or higher with Linux kernel 4.19 or higher. To deactivate the setting, use "
+                                "'sysctl fs.protected_regular=0'")
+            self.logger.warning(
+                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher "
+                "versions.")
+            self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
@@ -1004,13 +1011,12 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                task = self.loop.run_in_executor(self.task_pool, partial(wazuh.core.cluster.cluster.get_files_status,
-                                                                         self.integrity_control))
-                # With this we avoid that each worker starts integrity_check more than once per local_integrity
-                self.integrity_control = await asyncio.wait_for(task, timeout=None)
+                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
+                                                                   wazuh.core.cluster.cluster.get_files_status)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:
+                # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_already_executed.clear()
 
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
