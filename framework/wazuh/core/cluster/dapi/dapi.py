@@ -31,8 +31,8 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-process_pool = ProcessPoolExecutor(max_workers=1)
-authentication_pool = ProcessPoolExecutor(max_workers=1)
+process_pool = common.mp_pools.get()['process_pool']
+authentication_pool = common.mp_pools.get()['authentication_pool']
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 
 
