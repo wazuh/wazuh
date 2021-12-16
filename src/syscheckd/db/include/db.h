@@ -1,5 +1,5 @@
 /**
- * @file db.hpp
+ * @file db.h
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *

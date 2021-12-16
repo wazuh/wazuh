@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "db/include/db.hpp"
+#include "db/include/db.h"
 
 extern int _base_line;
 

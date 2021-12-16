@@ -7,7 +7,7 @@
  */
 
 #include "dbsync.hpp"
-#include "db.hpp"
+#include "db.h"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBHelper.hpp"
