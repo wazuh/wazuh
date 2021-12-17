@@ -220,7 +220,6 @@ rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
-cluster_integrity_mtime: ContextVar[Dict] = ContextVar('cluster_integrity_mtime', default={})
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
     'process_pool': ProcessPoolExecutor(max_workers=1),
