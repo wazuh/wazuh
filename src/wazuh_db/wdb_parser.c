@@ -5757,19 +5757,21 @@ int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
-    int ret = wdb_global_create_backup(wdb);
-    if (OS_SUCCESS != ret) {
+    int result = wdb_global_create_backup(wdb);
+
+    if (OS_SUCCESS != result) {
         mdebug1("DB(%s) Cannot execute backup create command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
         snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup create command; SQL err: %s", sqlite3_errmsg(wdb->db));
-    }
-    else {
+    } else {
         snprintf(output, OS_MAXSTR + 1, "ok");
     }
-    return ret;
+
+    return result;
 }
 
 int wdb_parse_global_get_backup(char* output) {
     cJSON* j_backups = wdb_global_get_backup();
+
     if (j_backups) {
         char* out = cJSON_PrintUnformatted(j_backups);
         snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -5783,15 +5785,26 @@ int wdb_parse_global_get_backup(char* output) {
 }
 
 int wdb_parse_global_restore_backup(wdb_t* wdb, char* input, char* output) {
-    int ret = wdb_global_restore_backup(wdb, input);
-    if (OS_SUCCESS != ret) {
-        mdebug1("DB(%s) Cannot execute backup restore command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup restore command; SQL err: %s", sqlite3_errmsg(wdb->db));
+    cJSON *j_parameters = NULL;
+    const char *error = NULL;
+    int result = OS_INVALID;
+
+    j_parameters = cJSON_ParseWithOpts(input, &error, TRUE);
+
+    if (!j_parameters) {
+        mdebug1("Invalid backup JSON syntax when restoring snapshot.");
+        mdebug2("JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
+        cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
+        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : true;
+        result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
     }
-    else {
-        snprintf(output, OS_MAXSTR + 1, "ok");
-    }
-    return ret;
+
+    cJSON_Delete(j_parameters);
+    return result;
 }
 
 bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, const char *data, char *output)

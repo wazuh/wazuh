@@ -1747,7 +1747,7 @@ int wdb_global_create_backup(wdb_t* wdb) {
     timestamp = w_get_timestamp(time(NULL));
     wchr_replace(timestamp, ' ', '-');
     wchr_replace(timestamp, '/', '-');
-    snprintf(path, PATH_MAX-3, "%s/global.db-backup-%s", WDB_BACKUP_FOLDER, timestamp);
+    snprintf(path, PATH_MAX-3, "%s/%s.db-backup-%s", WDB_BACKUP_FOLDER, WDB_GLOB_NAME, timestamp);
     os_free(timestamp);
 
     // We can't run a VACUUM withing a transaction
@@ -1816,8 +1816,82 @@ cJSON* wdb_global_get_backup() {
     return j_backups;
 }
 
-int wdb_global_restore_backup(wdb_t* wdb, char* input) {
-    return OS_SUCCESS;
+int wdb_global_restore_backup(wdb_t* wdb, char* snapshot, bool save_pre_restore_state, char* output) {
+    bool backup_found = false;
+    DIR* dp = NULL;
+    struct dirent *entry = NULL;
+    struct stat backup_info = {0};
+    time_t last_access = -1;
+    char* most_recent_backup = NULL;
+    char global_path[OS_SIZE_256] = {0};
+    char global_tmp_path[OS_SIZE_256] = {0};
+    char global_pre_restore_path[OS_SIZE_256] = {0};
+    char backup_to_restore_path[OS_SIZE_256] = {0};
+
+    dp = opendir(WDB_BACKUP_FOLDER);
+
+    if(!dp) {
+        mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
+        return OS_INVALID;
+    }
+
+    while (entry = readdir(dp), entry) {
+        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        if(snapshot) {
+            if(!strcmp(entry->d_name, snapshot)) {
+                backup_found = true;
+                break;
+            }
+        } else {
+            if(!stat(entry->d_name, &backup_info)) {
+                if(backup_info.st_mtime >= last_access) {
+                    last_access = backup_info.st_mtime;
+                    most_recent_backup = entry->d_name;
+                }
+            }
+        }
+    }
+    closedir(dp);
+
+    if((snapshot && backup_found) || most_recent_backup) {
+        snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+        snprintf(global_tmp_path, OS_SIZE_256, "%s/%s.db.back", WDB2_DIR, WDB_GLOB_NAME);
+        snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s.db-backup-pre_restore.gz", WDB_BACKUP_FOLDER, WDB_GLOB_NAME);
+        snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, snapshot ? snapshot : most_recent_backup);
+
+        if(!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
+            wdb_commit2(wdb);
+            sqlite3_close_v2(wdb->db);
+
+            if(save_pre_restore_state) {
+                if(w_compress_gzfile(global_path, global_pre_restore_path)) {
+                    mdebug1("Unable to save pre-restore DB state");
+                    snprintf(output, OS_MAXSTR + 1, "err Unable to save pre-restore DB state");
+                    return OS_INVALID;
+                }
+            }
+
+            unlink(global_path);
+            rename(global_tmp_path, global_path);
+            if(sqlite3_open_v2(global_path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+                mdebug1("Failed opening global.db after backup restore");
+            }
+
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            return OS_SUCCESS;
+        } else {
+            mdebug1("Failed during backup decompression");
+            snprintf(output, OS_MAXSTR + 1, "err Failed during backup decompression");
+            return OS_INVALID;
+        }
+    } else {
+        mdebug1("Unable to found a snapshot to restore");
+        snprintf(output, OS_MAXSTR + 1, "err Unable to found a snapshot to restore");
+        return OS_INVALID;
+    }
 }
 
 sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
