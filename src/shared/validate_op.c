@@ -40,7 +40,9 @@ static const char *__gethour(const char *str, char *ossec_hour) __attribute__((n
  */
 static int convertNetmask(int netnumb, struct in6_addr *nmask6);
 
-int expandIPv6str(const char *ip, char *dst_ip, int cidr);
+static int expandIPv6str(const char *ip, char *dst_ip, int cidr);
+
+static int getCIDRipv6(uint8_t *netmask);
 
 /* Global variables */
 static int _mask_inited = 0;
@@ -178,7 +180,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 }
 
 /* convert to netmasks from number */
-int convertNetmask(int netnumb, struct in6_addr *nmask6)
+static int convertNetmask(int netnumb, struct in6_addr *nmask6)
 {
     if (netnumb < 0 || netnumb > 128) {
         return -1;
@@ -603,7 +605,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 }
 
 
-int expandIPv6str(const char *ip, char *dst_ip, int cidr) {
+static int expandIPv6str(const char *ip, char *dst_ip, int cidr) {
 
     struct in6_addr net6;
     memset(&net6, 0, sizeof(net6));
@@ -983,10 +985,20 @@ char *OS_IsValidDay(const char *day_str)
 
 // Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
 int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
-    int imask;
+    int imask = 0;
+    bool is_ipv6 = false;
     uint32_t hmask;
 
-    if ((strchr(ip->ip, ':') == NULL) &&
+    if (strchr(ip->ip, ':') != NULL) {
+        is_ipv6 = true;
+        imask = getCIDRipv6(ip->ipv6->netmask);
+    }
+
+    if (is_ipv6 && imask < 128) {
+
+        return ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1);
+
+    } else if (!is_ipv6 &&
         (ip->ipv4->netmask != 0xFFFFFFFF) &&
             strcmp(ip->ip, "any")) {
 
@@ -998,29 +1010,29 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
         for (imask = 0; imask < 32 && _netmasks[imask] != hmask; imask++);
         return (imask < 32) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
 
-    } else if ((strchr(ip->ip, ':') != NULL) &&
-                strcmp(ip->ip, "any")) {
-
-        imask = 0;
-        uint8_t aux = 0;
-        for (uint8_t i = 0; i < 16; i++) {
-            aux = ip->ipv6->netmask[i];
-            for (uint8_t a = 0; a < 8; a++) {
-                if (0x01 & aux) {
-                    imask++;
-                }
-                aux = aux >> UINT8_C(1);
-            }
-        }
-
-        return (imask < 128) ? ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1) : -1;
-
     } else {
         strncpy(string, ip->ip, size - 1);
         string[size - 1] = '\0';
         return 0;
     }
 }
+
+static int getCIDRipv6(uint8_t *netmask) {
+
+    int imask = 0;
+    uint8_t aux = 0;
+    for (uint8_t i = 0; i < 16; i++) {
+        aux = netmask[i];
+        for (uint8_t a = 0; a < 8 && aux > 0; a++) {
+            if (0x01 & aux) {
+                imask++;
+            }
+            aux = aux >> UINT8_C(1);
+        }
+    }
+    return imask;
+}
+
 
 /* Validate the day of the week set and retrieve its corresponding integer value.
    If not found, -1 is returned.
