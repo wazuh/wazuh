@@ -293,3 +293,67 @@ TEST(RpmLibTest, SinglePackage)
         }
     }
 }
+
+TEST(RpmLibTest, TwoPackages)
+{
+    auto tsMock = reinterpret_cast<rpmts>(0x45);
+    auto tdMock = reinterpret_cast<rpmtd>(0x4D);
+    auto headerMock = reinterpret_cast<Header>(0xFE);
+    auto tsIteratorMock = reinterpret_cast<rpmdbMatchIterator>(0x41);
+    auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
+    EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
+    EXPECT_CALL(*mock, rpmtdNew()).WillOnce(Return(tdMock));
+    EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmtsInitIterator(tsMock, 1000, _, _)).WillOnce(Return(tsIteratorMock));
+
+    EXPECT_CALL(*mock, rpmdbNextIterator(_)).WillOnce(Return(headerMock))
+                                            .WillOnce(Return(headerMock))
+                                            .WillOnce(nullptr);
+
+    EXPECT_CALL(*mock, headerGet(headerMock, _ , tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
+    EXPECT_CALL(*mock, rpmtdGetString(_)).Times(20).WillOnce(Return("name"))
+                                                   .WillOnce(Return("version"))
+                                                   .WillOnce(Return("release"))
+                                                   .WillOnce(Return("epoch"))
+                                                   .WillOnce(Return("summary"))
+                                                   .WillOnce(Return("vendor"))
+                                                   .WillOnce(Return("group"))
+                                                   .WillOnce(Return("source"))
+                                                   .WillOnce(Return("arch"))
+                                                   .WillOnce(Return("description"))
+                                                   .WillOnce(Return("name"))
+                                                   .WillOnce(Return("version"))
+                                                   .WillOnce(Return("release"))
+                                                   .WillOnce(Return("epoch"))
+                                                   .WillOnce(Return("summary"))
+                                                   .WillOnce(Return("vendor"))
+                                                   .WillOnce(Return("group"))
+                                                   .WillOnce(Return("source"))
+                                                   .WillOnce(Return("arch"))
+                                                   .WillOnce(Return("description"));
+    EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(4).WillOnce(Return(20))
+                                                  .WillOnce(Return(20))
+                                                  .WillOnce(Return(20))
+                                                  .WillOnce(Return(20));
+
+
+    std::vector<RpmPackageManager::Package> packages;
+    RpmPackageManager rpm{mock};
+    auto count = 0;
+    for (const auto &p : rpm)
+    {
+        EXPECT_EQ(p.name, "name");
+        EXPECT_EQ(p.release, "release");
+        EXPECT_EQ(p.epoch, "epoch");
+        EXPECT_EQ(p.summary, "summary");
+        EXPECT_EQ(p.installTime, uint64_t{20});
+        EXPECT_EQ(p.size, uint64_t{20});
+        EXPECT_EQ(p.vendor, "vendor");
+        EXPECT_EQ(p.group, "group");
+        EXPECT_EQ(p.source, "source");
+        EXPECT_EQ(p.architecture, "arch");
+        EXPECT_EQ(p.description, "description");
+        count++;
+    }
+    EXPECT_EQ(count, 2);
+}
