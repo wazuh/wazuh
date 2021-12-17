@@ -19,7 +19,7 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check that MongoDB is installed on the system.."
+  title: "Check that MongoDB is installed on the system."
   description: "Requirements for running the SCA scan against the MongoDB policy."
   condition: any
   rules:
@@ -47,7 +47,7 @@ checks:
       - https://docs.mongodb.com/v3.6/core/authentication/
     condition: all
     rules:
-      - 'c:sh -c "cat /etc/mongod.conf | grep \\-A4 \"security:\""" -> r:authorization: "enabled"'
+      - 'c:sh -c "cat /etc/mongod.conf | grep \\-A4 \"security:\"" -> r:authorization: "enabled"'
 
 #2.2
   - id: 23501
@@ -103,7 +103,7 @@ checks:
       - https://docs.mongodb.com/v3.6/core/security-network/
     condition: all
     rules:
-      - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 "net:" -> r:bindIp'
+      - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"net:\"" -> r:bindIp'
 
 #3.3
   - id: 23504
