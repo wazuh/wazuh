@@ -73,6 +73,7 @@ void fim_db_init(int storage,
 void fim_run_integrity()
 {
     std::thread syncThread(&FIMDB::fimRunIntegrity, &FIMDB::getInstance());
+    syncThread.detach();
 }
 
 void fim_sync_push_msg(const char* msg)
