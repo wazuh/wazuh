@@ -91,6 +91,12 @@ typedef struct diff_data {
     char *diff_file;
 } diff_data;
 
+typedef struct get_data_ctx {
+    event_data_t *event;
+    const directory_t *config;
+    const char *path;
+} get_data_ctx;
+
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -940,17 +946,13 @@ void fim_delete_file_event(char *entry,
  * @brief Create a delete event and removes the entry from the database.
  *
  * @param file_path path data to be removed.
- * @param mutex FIM database's mutex for thread synchronization.
  * @param evt_data Information associated to the triggered event.
  * @param configuration Directory configuration to be deleted.
- * @param _unused_field Unused field, required to use this function as a callback.
  *
  */
-void fim_generate_delete_event(char *file_path,
-                               pthread_mutex_t *mutex,
-                               void *evt_data,
-                               void *configuration,
-                               void *_unused_field);
+int fim_generate_delete_event(const char *file_path,
+                              const void *evt_data,
+                              const void *configuration);
 
 /**
  * @brief Send a state synchronization message.

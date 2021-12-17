@@ -613,6 +613,18 @@ void log_realtime_status(int next) {
     }
 }
 
+void fim_db_remove_validated_path(void * data, void * ctx)
+{
+    char *path = (char *)data;
+    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+
+    directory_t *validated_configuration = fim_configuration_directory(path);
+
+    if (validated_configuration == ctx_data->config)
+    {
+        fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
+    }
+}
 
 #ifndef WIN32
 // LCOV_EXCL_START
@@ -782,9 +794,26 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = false, .w_evt = NULL, .type = FIM_DELETE };
     char pattern[PATH_MAX] = {0};
 
+    if((evt_data.mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE)) ||
+      (evt_data.mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE)))
+    {
+        /* Don't send alert if received mode and mode in configuration aren't the same.
+        Scheduled mode events must always be processed to preserve the state of the agent's DB.
+        */
+        return;
+    }
+    get_data_ctx ctx = {
+        .event = (event_data_t *)&evt_data,
+        .config = configuration,
+        .path = configuration->path
+    };
     // Create the sqlite LIKE pattern.
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);
-    //fim_db_delete_range(pattern, &syscheck.fim_entry_mutex, &evt_data, configuration);
+    callback_context_t callback_data;
+    callback_data.callback = fim_db_remove_validated_path;
+    callback_data.context = &ctx;
+
+    fim_db_file_pattern_search(pattern, callback_data);
 }
 
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {

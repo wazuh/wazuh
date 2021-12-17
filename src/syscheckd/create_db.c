@@ -52,13 +52,6 @@ static const char *FIM_EVENT_MODE[] = {
  */
 void update_wildcards_config();
 
-struct get_data_ctx {
-    event_data_t *event;
-    const directory_t *config;
-    pthread_mutex_t *mutex;
-    const char *path;
-};
-
 void process_delete_event(void * data, void * ctx)
 {
     cJSON *json_event = NULL;
@@ -68,7 +61,6 @@ void process_delete_event(void * data, void * ctx)
     if (ctx_data->event->report_event) {
         json_event = fim_json_event(new_entry, NULL, ctx_data->config, ctx_data->event, NULL);
     }
-    w_mutex_unlock(ctx_data->mutex);
 
     if (json_event != NULL) {
         send_syscheck_msg(json_event);
@@ -77,16 +69,13 @@ void process_delete_event(void * data, void * ctx)
     cJSON_Delete(json_event);
 }
 
-void fim_generate_delete_event(char *file_path,
-                               pthread_mutex_t *mutex,
-                               void *_evt_data,
-                               void *configuration,
-                               __attribute__((unused)) void *_unused_field) {
+int fim_generate_delete_event(const char *file_path,
+                              const void *_evt_data,
+                              const void *configuration) {
     const directory_t *original_configuration = (const directory_t *)configuration;
-    struct get_data_ctx ctx = {
+    get_data_ctx ctx = {
         .event = (event_data_t *)_evt_data,
         .config = original_configuration,
-        .mutex = mutex,
         .path = file_path
     };
     callback_context_t callback_data;
@@ -98,13 +87,13 @@ void fim_generate_delete_event(char *file_path,
     }
 
     // Remove path from the DB.
-    w_mutex_lock(mutex);
-    if (fim_db_remove_path(file_path) == FIMDB_ERR) {
-        w_mutex_unlock(mutex);
-        return;
-    }
-    fim_db_get_path(file_path, callback_data);
+    int retVal = fim_db_remove_path(file_path);
 
+    if (retVal != FIMDB_ERR) {
+        retVal = fim_db_get_path(file_path, callback_data);
+    }
+
+    return retVal;
 }
 
 time_t fim_scan() {
@@ -235,7 +224,6 @@ time_t fim_scan() {
 void fim_checker(const char *path, event_data_t *evt_data, const directory_t *parent_configuration) {
     directory_t *configuration;
     int depth;
-    fim_entry *saved_entry = NULL;
 
 #ifdef WIN32
     // Ignore the recycle bin.
@@ -279,8 +267,8 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
         }
-        if(evt_data->mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE) ||
-           evt_data->mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE))
+        if((evt_data->mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE)) ||
+           (evt_data->mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE)))
         {
             /* Don't send alert if received mode and mode in configuration aren't the same.
             Scheduled mode events must always be processed to preserve the state of the agent's DB.
@@ -290,10 +278,9 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
         else
         {
             evt_data->type = FIM_DELETE;
-            struct get_data_ctx ctx = {
+            get_data_ctx ctx = {
                 .event = (event_data_t *)evt_data,
                 .config = configuration,
-                .mutex = &syscheck.fim_entry_mutex,
                 .path = path
             };
             callback_context_t callback_data;
@@ -489,6 +476,13 @@ void fim_realtime_event(char *file) {
         fim_process_missing_entry(file, FIM_REALTIME, NULL);
     }
 }
+void create_windows_who_data_events(void * data, void * ctx)
+{
+    char *path = (char *)data;
+    whodata_evt *w_evt = (whodata_evt *)ctx;
+
+    fim_process_missing_entry(path, FIM_WHODATA, w_evt);
+}
 
 void fim_whodata_event(whodata_evt * w_evt) {
 
@@ -511,16 +505,27 @@ void fim_whodata_event(whodata_evt * w_evt) {
 #ifndef WIN32
         const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
         const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
-        //create_windows_who_data_events(inode, dev, w_evt);
+        callback_context_t callback_data;
+        callback_data.callback = create_windows_who_data_events;
+        callback_data.context = w_evt;
+        fim_db_file_inode_search(inode, dev, callback_data);
 #endif
     }
 }
 
+void fim_db_remove_entry(void * data, void * ctx)
+{
+    char *path = (char *)data;
+    get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+
+    fim_generate_delete_event(path, ctx_data->event, ctx_data->config);
+}
+
 void fim_process_wildcard_removed(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-    fim_entry *entry = NULL;//fim_db_get_path(configuration->path, NULL);
-    if (entry != NULL) {
-        fim_generate_delete_event(configuration->path, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+
+    if (fim_generate_delete_event(configuration->path, &evt_data, configuration) == FIMDB_ERR)
+    {
         return;
     }
 
@@ -529,29 +534,67 @@ void fim_process_wildcard_removed(directory_t *configuration) {
 
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
-    //fim_db_remove_wildcard_entry(pattern, &syscheck.fim_entry_mutex, &evt_data, configuration);
+    get_data_ctx ctx = {
+        .event = (event_data_t *)&evt_data,
+        .config = configuration,
+        .path = configuration->path
+    };
+    callback_context_t callback_data;
+    callback_data.callback = fim_db_remove_entry;
+    callback_data.context = &ctx;
+    fim_db_file_pattern_search(pattern, callback_data);
+}
+
+void fim_db_process_missing_entry(void * data, void * ctx)
+{
+    fim_entry *new_entry = (fim_entry *)data;
+    struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
+
+    fim_checker(new_entry->file_entry.path, ctx_data->event, NULL);
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
-    fim_entry *saved_data = NULL;
     event_data_t evt_data = { .mode = mode, .w_evt = w_evt, .report_event = true };
+    directory_t *configuration = NULL;
 
-    saved_data = NULL;//fim_db_get_path(pathname);
-
-    // Exists, create event.
-    if (saved_data) {
-        fim_checker(pathname, &evt_data, NULL);
-        free_entry(saved_data);
+    configuration = fim_configuration_directory(pathname);
+    if (configuration == NULL) {
         return;
     }
 
+    get_data_ctx ctx = {
+        .event = (event_data_t *)&evt_data,
+        .config = configuration,
+        .path = pathname
+    };
+
+    callback_context_t callback_data;
+    callback_data.callback = fim_db_process_missing_entry;
+    callback_data.context = &ctx;
+
+    // Exists, create event.
+    if (fim_db_get_path(pathname, callback_data) == FIMDB_OK) {
+        return;
+    }
+
+    if((evt_data.mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE)) ||
+      (evt_data.mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE)))
+    {
+        /* Don't send alert if received mode and mode in configuration aren't the same.
+        Scheduled mode events must always be processed to preserve the state of the agent's DB.
+        */
+        return;
+    }
     // Since the file doesn't exist, research if it's directory and have files in DB.
     char pattern[PATH_MAX] = {0};
 
     // Create the sqlite LIKE pattern -> "pathname/%"
     snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
     evt_data.type = FIM_DELETE;
-    //fim_db_process_missing_entry(pattern, &syscheck.fim_entry_mutex, &evt_data);
+    ctx.event = (event_data_t *)&evt_data;
+    callback_data.callback = fim_db_remove_entry;
+    callback_data.context = &ctx;
+    fim_db_file_pattern_search(pattern, callback_data);
 }
 
 // Checks the DB state, sends a message alert if necessary
