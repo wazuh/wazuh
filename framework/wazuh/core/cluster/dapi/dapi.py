@@ -10,7 +10,7 @@ import operator
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import process, ProcessPoolExecutor
+from concurrent.futures import process
 from copy import copy, deepcopy
 from functools import reduce, partial
 from operator import or_

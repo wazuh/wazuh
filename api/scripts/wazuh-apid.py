@@ -11,6 +11,20 @@ from atexit import register
 from wazuh.core import common, utils
 
 
+def spawn_process_pool():
+    """Import necessary basic Wazuh SDK modules for the local request pool and spawn child."""
+    from wazuh import agent, manager  # noqa
+    from wazuh.core import common # noqa
+    from wazuh.core.cluster import dapi # noqa
+    return
+
+
+def spawn_authentication_pool():
+    """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
+    from wazuh import security # noqa
+    return
+
+
 def start(foreground, root, config_file):
     """Run the Wazuh API.
 
@@ -30,10 +44,6 @@ def start(foreground, root, config_file):
     import os
     from api import alogging, configuration
     from wazuh.core import pyDaemonModule
-
-    def spawn_child():
-        """Dummy task to force child process forking."""
-        return
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -149,9 +159,10 @@ def start(foreground, root, config_file):
     else:
         print(f"Starting API as root")
 
-    # Force child processes to fork
-    common.mp_pools.get()['process_pool'].submit(spawn_child)
-    common.mp_pools.get()['authentication_pool'].submit(spawn_child)
+    # Spawn child processes with their own needed imports
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.wait([loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
+                                          for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
