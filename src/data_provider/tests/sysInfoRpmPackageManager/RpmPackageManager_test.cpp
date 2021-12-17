@@ -32,7 +32,7 @@ class RpmLibMock : public IRpmLibWrapper
     public:
         RpmLibMock() = default;
         virtual ~RpmLibMock() override {};
-        MOCK_METHOD(int, rpmReadConfigFiles, (const char * file, const char * target), (override));
+        MOCK_METHOD(int, rpmReadConfigFiles, (const char* file, const char* target), (override));
         MOCK_METHOD(void, rpmFreeRpmrc, (), (override));
         MOCK_METHOD(rpmtd, rpmtdNew, (), (override));
         MOCK_METHOD(void, rpmtdFree, (rpmtd td), (override));
@@ -41,10 +41,10 @@ class RpmLibMock : public IRpmLibWrapper
         MOCK_METHOD(int, rpmtsCloseDB, (rpmts ts), (override));
         MOCK_METHOD(rpmts, rpmtsFree, (rpmts ts), (override));
         MOCK_METHOD(int, headerGet, (Header h, rpmTagVal tag, rpmtd td, headerGetFlags flags), (override));
-        MOCK_METHOD(const char *, rpmtdGetString, (rpmtd td), (override));
+        MOCK_METHOD(const char*, rpmtdGetString, (rpmtd td), (override));
         MOCK_METHOD(uint64_t, rpmtdGetNumber, (rpmtd td), (override));
         MOCK_METHOD(int, rpmtsRun, (rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet), (override));
-        MOCK_METHOD(rpmdbMatchIterator, rpmtsInitIterator, (const rpmts ts, rpmDbiTagVal rpmtag, const void *keypointer, size_t keylen), (override));
+        MOCK_METHOD(rpmdbMatchIterator, rpmtsInitIterator, (const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen), (override));
         MOCK_METHOD(Header, rpmdbNextIterator, (rpmdbMatchIterator mi), (override));
         MOCK_METHOD(rpmdbMatchIterator, rpmdbFreeIterator, (rpmdbMatchIterator mi), (override));
 };
@@ -54,11 +54,13 @@ TEST(RpmLibTest, MissingConfFiles)
 {
     auto mock {std::make_shared<RpmLibMock>()};
     EXPECT_CALL(*mock, rpmReadConfigFiles(_, _)).WillOnce(Return(-1));
-    EXPECT_THROW({
-        try {
+    EXPECT_THROW(
+    {
+        try
+        {
             RpmPackageManager rpm{mock};
         }
-        catch(const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "rpmReadConfigFiles failed");
             throw;
@@ -70,11 +72,13 @@ TEST(RpmLibTest, MultipleInstances)
 {
     auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
     RpmPackageManager otherRpm{mock};
-    EXPECT_THROW({
-        try {
+    EXPECT_THROW(
+    {
+        try
+        {
             RpmPackageManager rpm{mock};
         }
-        catch(const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "there is another RPM instance already created");
             throw;
@@ -98,15 +102,17 @@ TEST(RpmLibTest, TransactionSetCreateFailure)
     std::vector<RpmPackageManager::Package> packages;
     EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(nullptr));
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         try
         {
             RpmPackageManager rpm{mock};
-            for (const auto &p : rpm)
+
+            for (const auto& p : rpm)
             {
             }
         }
-        catch (const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "rpmtsCreate failed");
             throw;
@@ -122,15 +128,17 @@ TEST(RpmLibTest, OpenDatabaseFailure)
     EXPECT_CALL(*mock, rpmtsCreate()).WillOnce(Return(tsMock));
     EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, _)).WillOnce(Return(-1));
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         try
         {
             RpmPackageManager rpm{mock};
-            for (const auto &p : rpm)
+
+            for (const auto& p : rpm)
             {
             }
         }
-        catch (const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "rpmtsOpenDB failed");
             throw;
@@ -148,15 +156,17 @@ TEST(RpmLibTest, TransactionSetRunFailure)
     EXPECT_CALL(*mock, rpmtsOpenDB(tsMock, _)).WillOnce(Return(0));
     EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(-1));
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         try
         {
             RpmPackageManager rpm{mock};
-            for (const auto &p : rpm)
+
+            for (const auto& p : rpm)
             {
             }
         }
-        catch (const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "rpmtsRun failed");
             throw;
@@ -174,15 +184,17 @@ TEST(RpmLibTest, TagDataContainerCreateFailure)
     EXPECT_CALL(*mock, rpmtsRun(tsMock, nullptr, _)).WillOnce(Return(0));
     EXPECT_CALL(*mock, rpmtdNew()).WillOnce(nullptr);
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         try
         {
             RpmPackageManager rpm{mock};
-            for (const auto &p : rpm)
+
+            for (const auto& p : rpm)
             {
             }
         }
-        catch (const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "rpmtdNew failed");
             throw;
@@ -202,15 +214,17 @@ TEST(RpmLibTest, IteratorInitFailure)
     EXPECT_CALL(*mock, rpmtdNew()).WillOnce(Return(tdMock));
     EXPECT_CALL(*mock, rpmtsInitIterator(tsMock, 1000, _, _)).WillOnce(Return(nullptr));
 
-    EXPECT_THROW({
+    EXPECT_THROW(
+    {
         try
         {
             RpmPackageManager rpm{mock};
-            for (const auto &p : rpm)
+
+            for (const auto& p : rpm)
             {
             }
         }
-        catch (const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             EXPECT_STREQ(e.what(), "rpmtsInitIterator failed");
             throw;
@@ -239,7 +253,8 @@ TEST(RpmLibTest, NoPackages)
 
     {
         RpmPackageManager rpm{mock};
-        for (const auto &p : rpm)
+
+        for (const auto& p : rpm)
         {
         }
     }
@@ -259,25 +274,26 @@ TEST(RpmLibTest, SinglePackage)
 
     EXPECT_CALL(*mock, rpmdbNextIterator(_)).WillOnce(Return(headerMock)).WillOnce(nullptr);
 
-    EXPECT_CALL(*mock, headerGet(headerMock, _ , tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
+    EXPECT_CALL(*mock, headerGet(headerMock, _, tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
     EXPECT_CALL(*mock, rpmtdGetString(_)).Times(10).WillOnce(Return("name"))
-                                              .WillOnce(Return("version"))
-                                              .WillOnce(Return("release"))
-                                              .WillOnce(Return("epoch"))
-                                              .WillOnce(Return("summary"))
-                                              .WillOnce(Return("vendor"))
-                                              .WillOnce(Return("group"))
-                                              .WillOnce(Return("source"))
-                                              .WillOnce(Return("arch"))
-                                              .WillOnce(Return("description"));
+    .WillOnce(Return("version"))
+    .WillOnce(Return("release"))
+    .WillOnce(Return("epoch"))
+    .WillOnce(Return("summary"))
+    .WillOnce(Return("vendor"))
+    .WillOnce(Return("group"))
+    .WillOnce(Return("source"))
+    .WillOnce(Return("arch"))
+    .WillOnce(Return("description"));
     EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(2).WillOnce(Return(20))
-                                                  .WillOnce(Return(20));
+    .WillOnce(Return(20));
 
 
     std::vector<RpmPackageManager::Package> packages;
     {
         RpmPackageManager rpm{mock};
-        for (const auto &p : rpm)
+
+        for (const auto& p : rpm)
         {
             EXPECT_EQ(p.name, "name");
             EXPECT_EQ(p.release, "release");
@@ -307,40 +323,41 @@ TEST(RpmLibTest, TwoPackages)
     EXPECT_CALL(*mock, rpmtsInitIterator(tsMock, 1000, _, _)).WillOnce(Return(tsIteratorMock));
 
     EXPECT_CALL(*mock, rpmdbNextIterator(_)).WillOnce(Return(headerMock))
-                                            .WillOnce(Return(headerMock))
-                                            .WillOnce(nullptr);
+    .WillOnce(Return(headerMock))
+    .WillOnce(nullptr);
 
-    EXPECT_CALL(*mock, headerGet(headerMock, _ , tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
+    EXPECT_CALL(*mock, headerGet(headerMock, _, tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
     EXPECT_CALL(*mock, rpmtdGetString(_)).Times(20).WillOnce(Return("name"))
-                                                   .WillOnce(Return("version"))
-                                                   .WillOnce(Return("release"))
-                                                   .WillOnce(Return("epoch"))
-                                                   .WillOnce(Return("summary"))
-                                                   .WillOnce(Return("vendor"))
-                                                   .WillOnce(Return("group"))
-                                                   .WillOnce(Return("source"))
-                                                   .WillOnce(Return("arch"))
-                                                   .WillOnce(Return("description"))
-                                                   .WillOnce(Return("name"))
-                                                   .WillOnce(Return("version"))
-                                                   .WillOnce(Return("release"))
-                                                   .WillOnce(Return("epoch"))
-                                                   .WillOnce(Return("summary"))
-                                                   .WillOnce(Return("vendor"))
-                                                   .WillOnce(Return("group"))
-                                                   .WillOnce(Return("source"))
-                                                   .WillOnce(Return("arch"))
-                                                   .WillOnce(Return("description"));
+    .WillOnce(Return("version"))
+    .WillOnce(Return("release"))
+    .WillOnce(Return("epoch"))
+    .WillOnce(Return("summary"))
+    .WillOnce(Return("vendor"))
+    .WillOnce(Return("group"))
+    .WillOnce(Return("source"))
+    .WillOnce(Return("arch"))
+    .WillOnce(Return("description"))
+    .WillOnce(Return("name"))
+    .WillOnce(Return("version"))
+    .WillOnce(Return("release"))
+    .WillOnce(Return("epoch"))
+    .WillOnce(Return("summary"))
+    .WillOnce(Return("vendor"))
+    .WillOnce(Return("group"))
+    .WillOnce(Return("source"))
+    .WillOnce(Return("arch"))
+    .WillOnce(Return("description"));
     EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(4).WillOnce(Return(20))
-                                                  .WillOnce(Return(20))
-                                                  .WillOnce(Return(20))
-                                                  .WillOnce(Return(20));
+    .WillOnce(Return(20))
+    .WillOnce(Return(20))
+    .WillOnce(Return(20));
 
 
     std::vector<RpmPackageManager::Package> packages;
     RpmPackageManager rpm{mock};
     auto count = 0;
-    for (const auto &p : rpm)
+
+    for (const auto& p : rpm)
     {
         EXPECT_EQ(p.name, "name");
         EXPECT_EQ(p.release, "release");
@@ -355,5 +372,6 @@ TEST(RpmLibTest, TwoPackages)
         EXPECT_EQ(p.description, "description");
         count++;
     }
+
     EXPECT_EQ(count, 2);
 }
