@@ -819,7 +819,7 @@ checks:
       - cis_csc: ["8.3"]
     condition: all
     rules:
-      - 'c:journalctl -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
+      - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:\.*kernel: NX \(Execute Disable\) protection:\s*active'
 
 # 1.6.3 Ensure address space layout randomization (ASLR) is enabled
   - id: 7527
@@ -1158,7 +1158,8 @@ checks:
       - cis_csc: ["9.2"]
     condition: none
     rules:
-      - 'c:rpm -qa -> r:^avahi'
+      - 'c:rpm -q avahi -> r:not installed'
+      - 'c:rpm -q avahi-autoipd -> r:not installed'
 
 # 2.2.4 Ensure CUPS is not installed
   - id: 7540
@@ -2317,11 +2318,11 @@ checks:
       - 'c:grep -R identity /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/etc/gshadow\s+-p\s+wa\s+-k\s+identity'
       - 'c:grep -R identity /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity'
       - 'c:grep -R identity /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity'
-      - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/group\s+-p\s+wa\s+-k\s+identity'
-      - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/passwd\s+-p\s+wa\s+-k\s+identity'
-      - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/gshadow\s+-p\s+wa\s+-k\s+identity'
-      - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity'
-      - 'c:auditctl -l | grep identity -> r:^\s*-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity'
+      - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/group\s+-p\s+wa\s+-k\s+identity'
+      - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/passwd\s+-p\s+wa\s+-k\s+identity'
+      - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/gshadow\s+-p\s+wa\s+-k\s+identity'
+      - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity'
+      - 'c:sh -c "auditctl -l | grep identity" -> r:^\s*-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity'
 
 # 4.1.5 Ensure events that modify the system's network environment are collected - Not implemented
 
@@ -2356,8 +2357,8 @@ checks:
     rules:
       - 'c:grep -R MAC-policy /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/etc/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
       - 'c:grep -R MAC-policy /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/usr/share/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
-      - 'c:auditctl -l | grep MAC-policy -> r:^\s*-w\s+/etc/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
-      - 'c:auditctl -l | grep MAC-policy -> r:^\s*-w\s+/usr/share/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
+      - 'c:sh -c "auditctl -l | grep MAC-policy" -> r:^\s*-w\s+/etc/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
+      - 'c:sh -c "auditctl -l | grep MAC-policy" -> r:^\s*-w\s+/usr/share/selinux/\s+-p\s+wa\s+-k\s+MAC-policy'
 
 # 4.1.7 Ensure login and logout events are collected 
   - id: 7586
@@ -2391,9 +2392,9 @@ checks:
       - 'c:grep -R logins /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/log/faillog\s+-p\s+wa\s+-k\s+logins'
       - 'c:grep -R logins /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins'
       - 'c:grep -R logins /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/log/tallylog\s+-p\s+wa\s+-k\s+logins'
-      - 'c:auditctl -l | grep logins -> r:^\s*-w\s+/var/log/faillog\s+-p\s+wa\s+-k\s+logins'
-      - 'c:auditctl -l | grep logins -> r:^\s*-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins'
-      - 'c:auditctl -l | grep logins -> r:^\s*-w\s+/var/log/tallylog\s+-p\s+wa\s+-k\s+logins'
+      - 'c:sh -c "auditctl -l | grep logins" -> r:^\s*-w\s+/var/log/faillog\s+-p\s+wa\s+-k\s+logins'
+      - 'c:sh -c "auditctl -l | grep logins" -> r:^\s*-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins'
+      - 'c:sh -c "auditctl -l | grep logins" -> r:^\s*-w\s+/var/log/tallylog\s+-p\s+wa\s+-k\s+logins'
 
 # 4.1.8 Ensure session initiation information is collected
   - id: 7587
@@ -2431,9 +2432,9 @@ checks:
       - 'c:grep -RE "(session|logins)" /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/run/utmp\s+-p\s+wa\s+-k\s+session'
       - 'c:grep -RE "(session|logins)" /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/log/wtmp\s+-p\s+wa\s+-k\s+logins'
       - 'c:grep -RE "(session|logins)" /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/var/log/btmp\s+-p\s+wa\s+-k\s+logins'
-      - 'c:auditctl -l | grep -E "(session|logins)" -> r:^\s*-w\s+/var/run/utmp\s+-p\s+wa\s+-k\s+session'
-      - 'c:auditctl -l | grep -E "(session|logins)" -> r:^\s*-w\s+/var/log/wtmp\s+-p\s+wa\s+-k\s+logins'
-      - 'c:auditctl -l | grep -E "(session|logins)" -> r:^\s*-w\s+/var/log/btmp\s+-p\s+wa\s+-k\s+logins'
+      - 'c:sh -c "auditctl -l | grep -E \"(session|logins)\"" -> r:^\s*-w\s+/var/run/utmp\s+-p\s+wa\s+-k\s+session'
+      - 'c:sh -c "auditctl -l | grep -E \"(session|logins)\"" -> r:^\s*-w\s+/var/log/wtmp\s+-p\s+wa\s+-k\s+logins'
+      - 'c:sh -c "auditctl -l | grep -E \"(session|logins)\"" -> r:^\s*-w\s+/var/log/btmp\s+-p\s+wa\s+-k\s+logins'
 
 # 4.1.9 Ensure discretionary access control permission modification events are collected - Not implemented
 # 4.1.10 Ensure unsuccessful unauthorized file access attempts are collected - Not implemented
@@ -2469,8 +2470,8 @@ checks:
     rules:
       - 'c:grep -R scope /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+scope'
       - 'c:grep -R scope /etc/audit/rules.d/ -> r:^/etc/audit/rules.d/\.+.rules:\s*-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+scope'
-      - 'c:auditctl -l | grep scope -> r:^\s*-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+scope'
-      - 'c:auditctl -l | grep scope -> r:^\s*-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+scope'
+      - 'c:sh -c "auditctl -l | grep scope" -> r:^\s*-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+scope'
+      - 'c:sh -c "auditctl -l | grep scope" -> r:^\s*-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+scope'
 
 # 4.1.15 Ensure system administrator actions (sudolog) are collected - Not implemented
 # 4.1.16 Ensure kernel module loading and unloading is collected - Not implemented
@@ -2500,7 +2501,7 @@ checks:
       - cis_csc: ["6.2","6.3"]
     condition: all
     rules:
-      - 'c:grep -R "^\s*[^#]" /etc/audit/rules.d/ | tail -1 -> r:^/etc/audit/rules.d/\.+.rules:\s*-e\s+2\s*$'
+      - 'c:sh -c "grep -R \"^\s*[^#]\" /etc/audit/rules.d/ | tail -1" -> r:^/etc/audit/rules.d/\.+.rules:\s*-e\s+2\s*$'
 
 # 4.2.1.1 Ensure rsyslog is installed
   - id: 7590
