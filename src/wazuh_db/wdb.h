@@ -1385,11 +1385,14 @@ cJSON* wdb_global_get_backup();
  * @brief Function restore a backup of global.db.
  *
  * @param [in] wdb The global struct database.
- * @param [in] input The snapshot name to be restored. If not present, the last one will be used.
+ * @param [in] snapshot The backup file name to be restored. If not present, the last one will be used.
+ * @param [in] save_pre_restore_state If FALSE, the database will be overwritten with the snapshot. If TRUE or not present,
+ *                                    the database will be saved before restoring the snapshot.
+ * @param [out] output A message related to the result of the operation.
  * @retval  0 Success: Backup restored successfully.
  * @retval -1 On error: The backup couldn't be restored.
  */
-int wdb_global_restore_backup(wdb_t* wdb, char* input);
+int wdb_global_restore_backup(wdb_t* wdb, char* snapshot, bool save_pre_restore_state, char* output);
 
 // Functions for database integrity
 
