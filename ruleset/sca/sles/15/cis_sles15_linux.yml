@@ -1156,7 +1156,7 @@ checks:
     compliance:
       - cis: ["2.2.3"]
       - cis_csc: ["9.2"]
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q avahi -> r:not installed'
       - 'c:rpm -q avahi-autoipd -> r:not installed'
