@@ -613,6 +613,7 @@ void log_realtime_status(int next) {
     }
 }
 
+//Callback
 void fim_db_remove_validated_path(void * data, void * ctx)
 {
     char *path = (char *)data;

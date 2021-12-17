@@ -229,6 +229,12 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 directory_t *fim_configuration_directory(const char *path);
 
 /**
+ * @brief Update directories configuration with the wildcard list, at runtime
+ *
+ */
+void update_wildcards_config();
+
+/**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
  *
  * @param path File name of the file/directory to check
@@ -925,22 +931,6 @@ void fim_diff_folder_size();
  * @return A string holding the element being monitored. It must be freed after it's usage.
  */
 char *fim_get_real_path(const directory_t *dir);
-
-/**
- * @brief Create a delete event and removes the entry from the database.
- *
- * @param entry Entry data to be removed.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param _evt_data Information associated to the triggered event.
- * @param _unused_field_1 Unused field, required to use this function as a callback.
- * @param _unused_field_2 Unused field, required to use this function as a callback.
- *
- */
-void fim_delete_file_event(char *entry,
-                           pthread_mutex_t *mutex,
-                           void *_evt_data,
-                           void *_unused_field_1,
-                           void *_unused_field_2);
 
 /**
  * @brief Create a delete event and removes the entry from the database.

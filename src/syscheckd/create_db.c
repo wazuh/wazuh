@@ -46,12 +46,7 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-/**
- * @brief Update directories configuration with the wildcard list, at runtime
- *
- */
-void update_wildcards_config();
-
+// Callback
 void process_delete_event(void * data, void * ctx)
 {
     cJSON *json_event = NULL;
@@ -476,6 +471,8 @@ void fim_realtime_event(char *file) {
         fim_process_missing_entry(file, FIM_REALTIME, NULL);
     }
 }
+
+// Callback
 void create_windows_who_data_events(void * data, void * ctx)
 {
     char *path = (char *)data;
@@ -513,6 +510,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
     }
 }
 
+// Callback
 void fim_db_remove_entry(void * data, void * ctx)
 {
     char *path = (char *)data;
@@ -545,6 +543,7 @@ void fim_process_wildcard_removed(directory_t *configuration) {
     fim_db_file_pattern_search(pattern, callback_data);
 }
 
+// Callback
 void fim_db_process_missing_entry(void * data, void * ctx)
 {
     fim_entry *new_entry = (fim_entry *)data;
