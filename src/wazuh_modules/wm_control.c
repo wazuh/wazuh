@@ -16,7 +16,6 @@
 #include "external/cJSON/cJSON.h"
 #include "file_op.h"
 #include "../os_net/os_net.h"
-
 static void *wm_control_main();
 static void wm_control_destroy();
 cJSON *wm_control_dump();

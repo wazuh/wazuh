@@ -62,4 +62,14 @@ class FactoryNetworkFamilyCreator<OSType::WINDOWS> final
         }
 };
 
+template <>
+class FactoryNetworkFamilyCreator<OSType::SOLARIS> final
+{
+    public:
+        static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+        {
+            return FactorySolarisNetwork::create(interfaceWrapper);
+        }
+};
+
 #endif // _NETWORK_FAMILY_DATA_AFACTORY_H
