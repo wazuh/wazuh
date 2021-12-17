@@ -97,6 +97,7 @@ def main():
 
     # Main processing loop
     session_token = str()
+
     while True:
         # Get user input
         try:
@@ -132,6 +133,16 @@ def main():
         # Check and alert to user if new session was created
         if session_token and session_token != output['token']:
             logging.warning('New session was created with token "%s"', output['token'])
+
+        # Show the warning messages
+        if 'messages' in output.keys():
+            do_print_newline = False
+            for message in output['messages']:
+                if message.startswith("WARNING"):
+                    logging.warning('** Wazuh-Logtest: %s', message)
+                    do_print_newline = True
+            if do_print_newline:
+                    logging.warning('')
 
         # Continue using last available session
         session_token = output['token']

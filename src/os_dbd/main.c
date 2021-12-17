@@ -21,7 +21,6 @@ static void cleanup();
 static void handler(int signum);
 static void help_dbd(char *home_path) __attribute__((noreturn));
 
-
 /* Print information regarding enabled databases */
 static void print_db_info()
 {
@@ -62,8 +61,7 @@ static void help_dbd(char *home_path)
     exit(1);
 }
 
-int main(int argc, char **argv)
-{
+int main (int argc, char **argv) {
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
@@ -213,7 +211,6 @@ int main(int argc, char **argv)
 
         d++;
         sleep(d * 60);
-
     }
 
     /* If after the maxreconnect attempts, it still didn't work, exit here */
@@ -287,7 +284,7 @@ void handler(int signum) {
     case SIGINT:
     case SIGTERM:
         minfo(SIGNAL_RECV, signum, strsignal(signum));
-        break;
+        exit(EXIT_SUCCESS);
     default:
         merror("unknown signal (%d)", signum);
     }

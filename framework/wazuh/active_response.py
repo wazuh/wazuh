@@ -52,6 +52,7 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                 result.total_affected_items += 1
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
+        result.affected_items.sort(key=int)
         wq.close()
 
     return result

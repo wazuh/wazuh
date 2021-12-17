@@ -636,7 +636,6 @@ class WazuhRequestQueue:
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server
-        self.pending_requests = {}
 
     def add_request(self, request: bytes):
         """Add a request to the queue.

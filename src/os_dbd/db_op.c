@@ -174,7 +174,6 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
         return (NULL);
     }
 
-
     /* If host is 127.0.0.1 or localhost, use tcp socket */
     if((strcmp(host, "127.0.0.1") == 0) ||
        (strcmp(host, "::1") == 0) ||

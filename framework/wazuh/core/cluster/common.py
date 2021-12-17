@@ -1104,7 +1104,6 @@ def as_wazuh_object(dct: Dict):
             funcname = encoded_callable['__name__']
             if '__wazuh__' in encoded_callable:
                 # Encoded Wazuh instance method.
-                wazuh_dict = encoded_callable['__wazuh__']
                 wazuh = Wazuh()
                 return getattr(wazuh, funcname)
             else:

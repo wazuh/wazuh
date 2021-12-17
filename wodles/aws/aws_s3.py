@@ -501,6 +501,7 @@ class AWSBucket(WazuhIntegration):
         self.bucket_path = self.bucket + '/' + self.prefix
         self.aws_organization_id = aws_organization_id
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
+        self.prefix_regex= re.compile("^\d{12}$")
         self.check_prefix = False
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
@@ -686,11 +687,9 @@ class AWSBucket(WazuhIntegration):
 
     def find_account_ids(self):
         try:
-            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
-                    self.client.list_objects_v2(Bucket=self.bucket,
-                                                Prefix=self.get_base_prefix(),
-                                                Delimiter='/')['CommonPrefixes']
-                    ]
+            prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
+                                                   Delimiter='/')['CommonPrefixes']
+            return [account_id for p in prefixes if self.prefix_regex.match(account_id := p['Prefix'].split('/')[-2])]
         except KeyError:
             bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
