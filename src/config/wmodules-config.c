@@ -142,7 +142,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
 #endif
-else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
         if (wm_azure_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
