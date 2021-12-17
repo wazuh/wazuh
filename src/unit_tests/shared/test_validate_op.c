@@ -1167,7 +1167,8 @@ void OS_CIDRtoStr_valid_ipv6CIDR_128(void **state)
     }
 
     ret = OS_CIDRtoStr(ret_ip, ip_to_test, IPSIZE);
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, 0);
+    assert_string_equal(ip_to_test, "0101:0101:0101:0101:0101:0101:0101:0101");
 
     w_free_os_ip(ret_ip);
 }
