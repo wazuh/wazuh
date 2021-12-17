@@ -33,14 +33,13 @@
     <if_sid>42001</if_sid>
     <field name="event_type">^FirewallAggregated_Event$</field>
     <description>ESET: Firewall aggregated rules group.</description>
-    <group>firewall, firewall_aggregated_event,</group>
+    <group>firewall,</group>
   </rule>
 
   <rule id="42004" level="3">
     <if_sid>42001</if_sid>
     <field name="event_type">^HipsAggregated_Event$</field>
     <description>ESET: HIPS aggregated rules group.</description>
-    <group>hips_aggregated_event,</group>
   </rule>
 
   <rule id="42005" level="2">
@@ -54,7 +53,6 @@
     <if_sid>42001</if_sid>
     <field name="event_type">^EnterpriseInspectorAlert_Event$</field>
     <description>ESET: Enterprise inspector alert rules group.</description>
-    <group>enterprise_inspector_alert_event,</group>
   </rule>
 
   <rule id="42007" level="5">
