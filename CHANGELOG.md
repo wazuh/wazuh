@@ -86,6 +86,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug that caused cluster agent-groups files to be synchronized multiple times unnecessarily. ([#10866](https://github.com/wazuh/wazuh/pull/10866))
 - Fixed an issue in Wazuh DB that compiled the SQL statements multiple times unnecessarily. ([#10922](https://github.com/wazuh/wazuh/pull/10922))
 - Fixed a crash in Analysisd when setting Active Response with agent_id = 0. ([#10948](https://github.com/wazuh/wazuh/pull/10948))
+- Fixed an uninitialized Blowfish encryption structure warning. ([#11161](https://github.com/wazuh/wazuh/pull/11161))
+- Fixed a memory overrun hazard in Vulnerability Detector. ([#11262](https://github.com/wazuh/wazuh/pull/11262))
 
 #### Removed
 
@@ -134,6 +136,7 @@ All notable changes to this project will be documented in this file.
 - Error logs by Logcollector when a file is missing have been changed to info logs. ([#10651](https://github.com/wazuh/wazuh/pull/10651))
 - The agent MSI installer for Windows now detects the platform version to install the default configuration. ([#8724](https://github.com/wazuh/wazuh/pull/8724))
 - Agent logs for inability to resolve the manager hostname now have info level. ([#3659](https://github.com/wazuh/wazuh/pull/3659))
+- Added ID number to connection enrollment logs. ([#11276](https://github.com/wazuh/wazuh/pull/11276))
 
 #### Fixed
 
@@ -158,6 +161,12 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug on the installation script that made upgrades not to update the code of the external integration modules. ([#10884](https://github.com/wazuh/wazuh/pull/10884))
 - Fixed issue with AWS integration module trying to parse manually created folders as if they were files. ([#10921](https://github.com/wazuh/wazuh/pull/10921))
 - Fixed installation errors in OS with no subversion. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
+- Fixed a typo in an error log about enrollment SSL certificate. ([#11115](https://github.com/wazuh/wazuh/pull/11115))
+- Fixed unit tests for Windows agent when built on MinGW 10. ([#11121](https://github.com/wazuh/wazuh/pull/11121))
+- Fixed Windows agent compilation warnings. ([#10942](https://github.com/wazuh/wazuh/pull/10942))
+- Fixed the OS version reported by the agent on OpenSUSE Tumbleweed. ([#11207](https://github.com/wazuh/wazuh/pull/11207))
+- Prevented Syscollector from truncating the open port inode numbers on Linux. ([#11329](https://github.com/wazuh/wazuh/pull/11329))
+- Fixed agent auto-restart on configuration changes when started via `wazuh-control` on a Systemd based Linux OS. ([#11365](https://github.com/wazuh/wazuh/pull/11365))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
@@ -277,12 +286,13 @@ All notable changes to this project will be documented in this file.
 - Upgraded external SQLite library dependency version to 3.36. ([#10247](https://github.com/wazuh/wazuh/pull/10247))
 - Upgraded external BerkeleyDB library dependency version to 18.1.40. ([#10247](https://github.com/wazuh/wazuh/pull/10247))
 - Upgraded external OpenSSL library dependency version to 1.1.1l. ([#10247](https://github.com/wazuh/wazuh/pull/10247))
-- Upgraded external Google Test library dependency version to 1.11 ([#10927](https://github.com/wazuh/wazuh/pull/10927))
+- Upgraded external Google Test library dependency version to 1.11. ([#10927](https://github.com/wazuh/wazuh/pull/10927))
 
 #### Fixed
 
 - Fixed error detection in the CURL helper library. ([#9168](https://github.com/wazuh/wazuh/pull/9168))
 - Fixed external BerkeleyDB library support for GCC 11. ([#10899](https://github.com/wazuh/wazuh/pull/10899))
+- Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
 
 ## [v4.2.5]
 
