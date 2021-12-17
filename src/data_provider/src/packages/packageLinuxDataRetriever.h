@@ -16,6 +16,7 @@
 #include "json.hpp"
 #include "sharedDefs.h"
 #include "filesystemHelper.h"
+#include "utilsWrapperLinux.hpp"
 
 /**
  * @brief Fills a JSON object with all available pacman-related information

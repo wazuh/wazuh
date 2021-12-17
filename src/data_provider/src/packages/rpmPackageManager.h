@@ -24,14 +24,6 @@
 #include "rpmlibWrapper.h"
 
 // Provides an iterable abstraction for retrieving installed RPM packages.
-template<typename T>
-class UtilsWrapper{
-    public:
-        static std::string exec(const std::string& cmd, const size_t bufferSize = 128)
-        {
-            return T::exec(cmd,bufferSize);
-        }
-};
 
 class RpmPackageManager final
 {

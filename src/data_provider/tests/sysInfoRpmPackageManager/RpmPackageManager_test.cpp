@@ -16,19 +16,6 @@
 
 #include <fcntl.h>
 
-class UtilsMockTrampoline{
-    public:
-        static std::string exec_trampoline(const std::string& cmd, const size_t bufferSize = 128){
-            return m_mock->exec(cmd,bufferSize);
-        }
-        static UtilsMock * m_mock;
-}
-
-class UtilsMock{
-    public:
-        MOCK_METHOD(std::string, exec,(const std::string&, const size_t));
-}
-
 using ::testing::_;
 using ::testing::Return;
 using ::testing::DoAll;
