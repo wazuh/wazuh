@@ -90,6 +90,14 @@ int main(int argc, char ** argv)
     wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
+    // Allocatting memory for backup configuration nodes
+    wdb_init_conf();
+
+    // Read ossec.conf
+    if (ReadConfig(WAZUHDB, OSSECCONF, NULL, NULL) < 0) {
+        merror_exit("Invalid configuration block for Wazuh-DB.");
+    }
+
     if (!isDebug()) {
         int debug_level;
 
@@ -223,6 +231,7 @@ int main(int argc, char ** argv)
     wdb_close_all();
 
     OSHash_Free(open_dbs);
+    wdb_free_conf();
 
     // Reset template here too, remove queue/db/.template.db again
     // Without the prefix, because chrooted at that point
