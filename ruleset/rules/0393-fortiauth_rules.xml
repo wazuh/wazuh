@@ -34,7 +34,7 @@
     <if_sid>44731</if_sid>
     <field name="data.status">Failed</field>
     <description>FortiAuth: Authentication failed by user $(dstuser).</description>
-    <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
+    <group>gpg13_3.3,hipaa_164.312.e.1,nist_800_53_AC.7,pci_dss_8.2</group>
     <mitre>
       <id>T1102</id>
     </mitre>
