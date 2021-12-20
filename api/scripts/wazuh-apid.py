@@ -8,6 +8,7 @@ import argparse
 import sys
 from atexit import register
 
+from api.constants import API_LOG_FILE_PATH
 from wazuh.core import common, utils
 
 
@@ -61,21 +62,25 @@ def start(foreground, root, config_file):
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
-    log_path = api_conf['logs']['path']
 
     # Set up logger
-    set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
+    set_logging(log_path=API_LOG_FILE_PATH, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
 
-    # `use_only_authd` deprecated on v4.3.0. To be removed
-    if "use_only_authd" in api_conf:
-        del api_conf["use_only_authd"]
+    # Check deprecated options. To delete after expected versions
+    if 'use_only_authd' in api_conf:
+        del api_conf['use_only_authd']
         logger.warning("'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
 
+    if 'path' in api_conf['logs']:
+        del api_conf['logs']['path']
+        logger.warning("Log 'path' option was deprecated on v4.3.0. Default path will always be used: "
+                       f"{API_LOG_FILE_PATH}")
+
     # Set correct permissions on api.log file
-    if os.path.exists(os.path.join(common.wazuh_path, log_path)):
-        os.chown(os.path.join(common.wazuh_path, log_path), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(os.path.join(common.wazuh_path, log_path), 0o660)
+    if os.path.exists(os.path.join(common.wazuh_path, API_LOG_FILE_PATH)):
+        os.chown(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
+        os.chmod(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), 0o660)
 
     # Configure https
     ssl_context = None
