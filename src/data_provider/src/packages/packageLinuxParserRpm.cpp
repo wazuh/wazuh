@@ -24,7 +24,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
     {
         [](std::function<void(nlohmann::json&)> cb)
         {
-            auto rawRpmPackagesInfo{ UtilsWrapper::exec("rpm -qa --qf '%{name}\t%{size}\t%{installtime:date}\t%{group}\t%{version}\t%{arch}\t%{vendor}\t%{summary}\t%{release}\t%{epoch}\t\n'") };
+            auto rawRpmPackagesInfo{ UtilsWrapper::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'") };
 
             if (!rawRpmPackagesInfo.empty())
             {
@@ -32,7 +32,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 
                 for (auto row : rows)
                 {
-                    auto package{ PackageLinuxHelper::parseRpm(row) };
+                    auto package = PackageLinuxHelper::parseRpm(row);
 
                     if (!package.empty())
                     {
