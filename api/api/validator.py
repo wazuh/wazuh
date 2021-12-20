@@ -79,10 +79,13 @@ api_config_schema = {
             "additionalProperties": False,
             "properties": {
                 "enabled": {"type": "boolean"},
-                "key": {"type": "string"},
-                "cert": {"type": "string"},
+                "key": {"type": "string",
+                        "pattern": r"^[\w\-.]+$"},
+                "cert": {"type": "string",
+                         "pattern": r"^[\w\-.]+$"},
                 "use_ca": {"type": "boolean"},
-                "ca": {"type": "string"},
+                "ca": {"type": "string",
+                       "pattern": r"^[\w\-.]+$"},
                 "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
                                                             "TLSv1", "TLSv1.1", "TLSv1.2"]},
                 "ssl_ciphers": {"type": "string"}
@@ -93,7 +96,7 @@ api_config_schema = {
             "additionalProperties": False,
             "properties": {
                 "level": {"type": "string"},
-                "path": {"type": "string"},
+                "path": {"type": "string"},  # Deprecated. To be removed on later versions
             },
         },
         "cors": {
