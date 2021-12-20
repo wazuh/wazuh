@@ -154,7 +154,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_FIND_GROUP] = "SELECT id FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP] = "UPDATE agent SET `group` = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH] = "UPDATE agent SET group_local_hash = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT INTO `group` (name) VALUES(?);",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT OR IGNORE INTO `group` (name) VALUES(?);",
     [WDB_STMT_GLOBAL_SELECT_GROUP_BELONG] = "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ?  order by belongs.rowid;",
     [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT OR REPLACE INTO belongs (id_group, id_agent, priority) VALUES(?,?,?);",
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
@@ -167,6 +167,13 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_CKS_GET] = "SELECT id FROM agent WHERE id > ? AND group_local_hash != group_sync_hash LIMIT 1;",
     [WDB_STMT_GLOBAL_AGENT_GROUPS_GET] = "SELECT id_group from belongs where id_agent = ? ORDER BY priority;",
+
+    [WDB_STMT_GLOBAL_GROUP_SYNC_SET] = "UPDATE agent SET group_sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_PRIORITY_GET] = "SELECT MAX(priority) FROM belongs WHERE id_agent=?;",
+    [WDB_STMT_GLOBAL_GROUP_SOURCE_GET] = "SELECT group_source from agent where id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_SOURCE_SET] = "UPDATE agent SET group_source = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT 'group' from agent where id = ?;",
+
     [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
