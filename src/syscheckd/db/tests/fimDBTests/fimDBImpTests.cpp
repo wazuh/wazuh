@@ -238,7 +238,7 @@ TEST_F(FimDBFixture, executeQueryFailException)
 
 TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
 {
-    const std::string& data = "testing msg";
+    const std::string data("testing msg");
     auto rawData{data};
     const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 
@@ -250,7 +250,7 @@ TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
 
 TEST_F(FimDBFixture, fimSyncPushMsgException)
 {
-    const std::string& data = "testing msg";
+    const std::string data("testing msg");
     auto rawData{data};
     const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 

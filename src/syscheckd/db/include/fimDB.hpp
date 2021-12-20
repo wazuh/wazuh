@@ -23,8 +23,8 @@ extern "C"
 }
 #endif
 
-const auto FIM_COMPONENT_FILE {"fim_file"};
-const auto FIM_COMPONENT_REGISTRY {"fim_registry"};
+#define FIM_COMPONENT_FILE "fim_file"
+#define FIM_COMPONENT_REGISTRY "fim_registry"
 
 constexpr auto CREATE_FILE_DB_STATEMENT
 {
@@ -338,6 +338,13 @@ class FIMDB
             m_stopping = true;
         };
 
+        /**
+         * @brief Its the function to log an error
+         */
+        inline void logErr(const modules_log_level_t logLevel, const std::string& msg)
+        {
+            m_loggingFunction(logLevel, msg);
+        }
 
     private:
 
