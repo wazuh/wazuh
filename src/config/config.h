@@ -34,6 +34,7 @@
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
 #define CLOGTEST      020000000
+#define WAZUHDB       040000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -45,6 +46,8 @@ typedef enum needed_tags {
 } NeededTags;
 
 #include "os_xml/os_xml.h"
+#include "config/wazuh_db-config.h"
+#include "time.h"
 
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
@@ -148,5 +151,17 @@ int Test_WModule(const char * path);
 
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
+
+/**
+ * @brief It converts a time string with the format <time><unit>, where the unit could be
+ *        d (days), h (hours), m (minutes), or s (seconds), to a representation in seconds saved
+ *        in a `time_t` variable.
+ *        The time unit is optional. If not provided, it is assumed as seconds.
+ *
+ * @param syscheck String with the format <time><unit>.
+ * @param interval The variable to save the time conversion.
+ * @retval OS_INVALID in case of error. OS_SUCCES otherways.
+ */
+int get_time_interval(char *source, time_t *interval);
 
 #endif /* HCONFIG_H */

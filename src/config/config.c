@@ -52,6 +52,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
+    const char *wazuh_db = "wdb";                       /* Wazuh-DB Daemon */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
     const char *osauthd = "auth";                       /* Authd Config */
@@ -228,6 +229,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             #else
                 mwarn("%s configuration is only set in the manager.", node[i]->element);
             #endif
+        }  else if (chld_node && (strcmp(node[i]->element, wazuh_db) == 0)) {
+            if ((modules & WAZUHDB) && (Read_WazuhDB(xml, chld_node) < 0)) {
+                goto fail;
+            }
         }
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
         else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
@@ -446,4 +451,32 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
     return (0);
+}
+
+int get_time_interval(char *source, time_t *interval) {
+    char *endptr;
+    *interval = strtoul(source, &endptr, 0);
+
+    if ((!*interval && endptr == source) || *interval < 0) {
+        return OS_INVALID;
+    }
+
+    switch (*endptr) {
+    case 'd':
+        *interval *= 86400;
+        break;
+    case 'h':
+        *interval *= 3600;
+        break;
+    case 'm':
+        *interval *= 60;
+        break;
+    case 's':
+    case '\0':
+        break;
+    default:
+        return OS_INVALID;
+    }
+
+    return 0;
 }
