@@ -112,8 +112,8 @@ set(SOURCE_FILES "${ENGINE_SOURCE_DIR}/main.cpp")
 
 add_executable(main ${SOURCE_FILES})
 
-# Build server
-add_subdirectory(${ENGINE_SOURCE_DIR}/server)
+# Build sandbox
+add_subdirectory(${ENGINE_SOURCE_DIR}/sandbox)
 
 target_link_libraries(main "-static" ${EXTERNAL_DEPS})
 
