@@ -9,7 +9,6 @@ import sys
 from atexit import register
 
 from api.constants import API_LOG_FILE_PATH
-from wazuh.core import common, utils
 
 
 def spawn_process_pool():
@@ -44,7 +43,7 @@ def start(foreground, root, config_file):
     import logging
     import os
     from api import alogging, configuration
-    from wazuh.core import pyDaemonModule
+    from wazuh.core import pyDaemonModule, common, utils
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -241,11 +240,11 @@ def test_config(config_file):
     config_file : str
         Path of the file
     """
-    from api.configuration import read_yaml_config
     try:
+        from api.configuration import read_yaml_config
         read_yaml_config(config_file=config_file)
-    except Exception as e:
-        print(f"Configuration not valid: {e}")
+    except Exception as exc:
+        print(f"Configuration not valid. ERROR: {exc}")
         sys.exit(1)
     sys.exit(0)
 
@@ -274,4 +273,8 @@ if __name__ == '__main__':
     elif args.test_config:
         test_config(args.config_file)
     else:
-        start(args.foreground, args.root, args.config_file)
+        try:
+            start(args.foreground, args.root, args.config_file)
+        except Exception as e:
+            print(f"Error when trying to start the Wazuh API. {e}")
+            sys.exit(1)
