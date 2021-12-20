@@ -318,12 +318,20 @@ typedef struct wdb_t {
     struct wdb_t * next;
 } wdb_t;
 
+typedef struct wdb_backup_settings_node {
+    char* database;
+    bool enabled;
+    time_t interval;
+    int max_files;
+} wdb_backup_settings_node;
+
 typedef struct wdb_config {
     int sock_queue_size;
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
+    wdb_backup_settings_node* wdb_backup_settings;
 } wdb_config;
 
 /// Enumeration of components supported by the integrity library.
