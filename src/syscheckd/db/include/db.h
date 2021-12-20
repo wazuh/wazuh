@@ -14,8 +14,8 @@
 extern "C" {
 #endif
 
-#include <openssl/evp.h>
 #include "syscheck.h"
+#include <openssl/evp.h>
 
 #define FIM_DB_MEMORY_PATH  ":memory:"
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"

@@ -156,11 +156,11 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
         {
             const auto file { std::make_unique<FileItem>(data) };
             *updated = FIMDBHelper::updateItem<FIMDB>(*file->toJSON());
+            retVal = FIMDB_OK;
         }
         catch (DbSync::dbsync_error& err)
         {
             FIMDB::getInstance().logErr(LOG_ERROR, err.what());
-            retVal = FIMDB_OK;
         }
     }
 

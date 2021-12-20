@@ -77,7 +77,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
                            ${CMAKE_SOURCE_DIR}/src/file.cpp
                            ${CMAKE_SOURCE_DIR}/src/fimDB.cpp
-                           ${CMAKE_SOURCE_DIR}/src/registry.cpp
+                           # ${CMAKE_SOURCE_DIR}/src/registry.cpp
                            ${CMAKE_SOURCE_DIR}/src/dbFileItem.cpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
