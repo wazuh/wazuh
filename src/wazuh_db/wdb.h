@@ -44,7 +44,7 @@
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
 #define WDB_MAX_COMMAND_SIZE    512
-#define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
+#define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE //JJP Calculate the max size of the set group command too
 
 #define AGENT_CS_NEVER_CONNECTED "never_connected"
 #define AGENT_CS_PENDING         "pending"
@@ -60,11 +60,20 @@
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
 /// Enumeration of agent groups sync conditions
-typedef enum wdb_groups_sync_condition {
-        WDB_GROUP_SYNC_STATUS,     ///< Get groups by their sync status
-        WDB_GROUP_CKS_MISMATCH,    ///< Get groups by their CKS status
-        WDB_GROUP_INVALID,         ///< Invalid condition
-} wdb_groups_sync_condition;
+typedef enum wdb_groups_sync_condition_t {
+        WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
+        WDB_GROUP_CKS_MISMATCH,     ///< Get groups by their CKS status
+        WDB_GROUP_INVALID_CONDITION ///< Invalid condition
+} wdb_groups_sync_condition_t;
+
+/// Enumeration of agent groups set mode
+typedef enum wdb_groups_set_mode_t {
+        WDB_GROUP_OVERRIDE,     ///< Re-write the group assignment
+        WDB_GROUP_OVERRIDE_ALL, ///< Re-write the group assignment ignoring the source of the last write
+        WDB_GROUP_APPEND,       ///< Add group assignment to the existent one
+        WDB_GROUP_EMPTY_ONLY,   ///< Write a group assignment only if the agent doesn´t have one
+        WDB_GROUP_INVALID_MODE  ///< Invalid mode
+} wdb_groups_set_mode_t;
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 #define WDB_RESPONSE_OK_SIZE     3
@@ -202,6 +211,13 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_CKS_GET,
     WDB_STMT_GLOBAL_AGENT_GROUPS_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_SET,
+
+    WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
+    WDB_STMT_GLOBAL_GROUP_SOURCE_GET,
+    WDB_STMT_GLOBAL_GROUP_SOURCE_SET,
+    WDB_STMT_GLOBAL_GROUP_CSV_GET,
+
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -1800,7 +1816,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  * @return wdbc_result to represent if all agents has being obtained.
  */
 wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb,
-                                             wdb_groups_sync_condition condition,
+                                             wdb_groups_sync_condition_t condition,
                                              int last_agent_id,
                                              char **output);
 
