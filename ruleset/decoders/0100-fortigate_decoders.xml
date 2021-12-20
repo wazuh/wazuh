@@ -85,8 +85,8 @@
   FortiOS 3.0 via syslog 
 -->
 <decoder name="fortigate-firewall-v3">
-  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
   <type>syslog</type>
+  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
 </decoder>
 
 <decoder name="fortigate-firewall-v3-fields">
@@ -159,8 +159,8 @@
   FortiOS 4.0 via syslog
 -->
 <decoder name="fortigate-firewall-v4">
-  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
   <type>syslog</type>
+  <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ status=</prematch>
 </decoder>
 
 <decoder name="fortigate-firewall-v4-fields">
@@ -237,8 +237,8 @@
 -->
 
 <decoder name="fortigate-firewall-v5">
-  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
   <type>syslog</type>
+  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
 </decoder>
 
 <decoder name="fortigate-firewall-v5">
@@ -815,8 +815,8 @@
   FortiOS 6.0 via syslog 
 -->
 <decoder name="fortigate-firewall-v6">
-  <prematch>date=\d\d\d\d-\d\d-\d\d time=\.+logid=\.+type=\.+subtype=\.+</prematch>
   <type>syslog</type>
+  <prematch>date=\d\d\d\d-\d\d-\d\d time=\.+logid=\.+type=\.+subtype=\.+</prematch>
 </decoder>
 
 <decoder name="fortigate-firewall-v6">
