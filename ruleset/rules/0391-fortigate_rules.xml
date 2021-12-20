@@ -554,14 +554,14 @@
     <if_sid>44622</if_sid>
     <field name="appcat">^botnet$|^proxy$</field>
     <description>FortiGate: UTM app control event.</description>
-    <group>utm,application_control,</group>
+    <group>application_control,utm,</group>
   </rule>
 
   <rule id="44625" level="5">
     <if_sid>44622</if_sid>
     <field name="actn">^block$</field>
     <description>FortiGate: UTM DLP event.</description>
-    <group>utm,dlp,</group>
+    <group>dlp,utm,</group>
   </rule>
 
   <rule id="44626" level="5">
