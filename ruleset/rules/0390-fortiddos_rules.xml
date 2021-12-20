@@ -282,7 +282,7 @@
     <field name="evesubcode">^24$</field>
     <options>no_full_log</options>
     <description>Invalid TCP checksum.</description>
-    <group>layer4,header_anomaly,</group>
+    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44435" level="5">
@@ -290,7 +290,7 @@
     <field name="evesubcode">^25$</field>
     <options>no_full_log</options>
     <description>Invalid UDP checksum.</description>
-    <group>layer4,header_anomaly,</group>
+    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44436" level="5">
@@ -298,7 +298,7 @@
     <field name="evesubcode">^26$</field>
     <options>no_full_log</options>
     <description>Invalid ICMP checksum.</description>
-    <group>layer4,header_anomaly,</group>
+    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44437" level="5">
@@ -306,7 +306,7 @@
     <field name="evesubcode">^27$</field>
     <options>no_full_log</options>
     <description>Invalid TCP flag combination. If the urgent flag is set, then the urgent pointer must be non-zero. SYN, FIN or RST is set for fragmented packets.</description>
-    <group>layer4,header_anomaly,</group>
+    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44438" level="5">
@@ -314,7 +314,7 @@
     <field name="evesubcode">^28$</field>
     <options>no_full_log</options>
     <description>Drops due to predefined Layer 4 header rules: Data offset is less than 5 for a TCP packet; EOP (End of packet) is detected before the 20 bytes of TCP header; EOP before the data offset indicated data offset; Length field in TCP window scale option is a value other than 3; Length field in TCP window scale option is a value other than 3; Missing UDP payload; Missing ICMP payload ; TCP Option Anamoly based on Option Type.</description>
-    <group>layer4,header_anomaly,</group>
+    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44439" level="5">
