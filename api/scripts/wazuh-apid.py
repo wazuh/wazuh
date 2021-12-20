@@ -25,7 +25,7 @@ def spawn_authentication_pool():
     return
 
 
-def start(foreground, root, config_file):
+def start(foreground: bool, root: bool, config_file: str):
     """Run the Wazuh API.
 
     If another Wazuh API is running, this function fails.
@@ -145,10 +145,10 @@ def start(foreground, root, config_file):
         except ssl.SSLError:
             logger.error(str(APIError(2003, details='Private key does not match with the certificate')))
             sys.exit(1)
-        except IOError as e:
-            if e.errno == 22:
+        except IOError as exc:
+            if exc.errno == 22:
                 logger.error(str(APIError(2003, details='PEM phrase is not correct')))
-            elif e.errno == 13:
+            elif exc.errno == 13:
                 logger.error(str(APIError(2003, details='Ensure the certificates have the correct permissions')))
             else:
                 print('Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration '
@@ -232,7 +232,7 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
 
 
-def test_config(config_file):
+def test_config(config_file: str):
     """Make an attempt to read the API config file. Exits with 0 code if successful, 1 otherwise.
 
     Arguments
