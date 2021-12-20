@@ -8,7 +8,6 @@ from typing import Union
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
-from api import configuration
 from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel

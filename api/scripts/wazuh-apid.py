@@ -11,6 +11,20 @@ from atexit import register
 from wazuh.core import common, utils
 
 
+def spawn_process_pool():
+    """Import necessary basic Wazuh SDK modules for the local request pool and spawn child."""
+    from wazuh import agent, manager  # noqa
+    from wazuh.core import common # noqa
+    from wazuh.core.cluster import dapi # noqa
+    return
+
+
+def spawn_authentication_pool():
+    """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
+    from wazuh import security # noqa
+    return
+
+
 def start(foreground, root, config_file):
     """Run the Wazuh API.
 
@@ -26,27 +40,9 @@ def start(foreground, root, config_file):
     config_file : str
         Path to the API config file
     """
-    import asyncio
     import logging
     import os
-    import ssl
-
-    import connexion
-    import uvloop
-    from aiohttp_cache import setup_cache
     from api import alogging, configuration
-
-    import wazuh.security
-    from api import __path__ as api_path
-    # noinspection PyUnresolvedReferences
-    from api import validator
-    from api.api_exception import APIError
-    from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
-        set_secure_headers
-    from api.signals import modify_response_headers
-    from api.uri_parser import APIUriParser
-    from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
@@ -57,6 +53,15 @@ def start(foreground, root, config_file):
             )
             api_logger.setup_logger()
 
+    # Foreground/Daemon
+    utils.check_pid('wazuh-apid')
+    if not foreground:
+        pyDaemonModule.pyDaemon()
+    pid = os.getpid()
+    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    if foreground:
+        print(f"Starting API in foreground (pid: {pid})")
+
     if config_file is not None:
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
@@ -66,6 +71,23 @@ def start(foreground, root, config_file):
     # Set up logger
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
+
+    import asyncio
+    import ssl
+
+    import connexion
+    import uvloop
+    from aiohttp_cache import setup_cache
+    from api import __path__ as api_path
+    # noinspection PyUnresolvedReferences
+    from api import validator
+    from api.api_exception import APIError
+    from api.constants import CONFIG_FILE_PATH
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
+        set_secure_headers
+    from api.signals import modify_response_headers
+    from api.uri_parser import APIUriParser
+    from api.util import to_relative_path
 
     # `use_only_authd` deprecated on v4.3.0. To be removed
     if "use_only_authd" in api_conf:
@@ -137,17 +159,10 @@ def start(foreground, root, config_file):
     else:
         print(f"Starting API as root")
 
-    # Foreground/Daemon
-    utils.check_pid('wazuh-apid')
-    if not foreground:
-        pyDaemonModule.pyDaemon()
-    pid = os.getpid()
-    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
-    if foreground:
-        print(f"Starting API in foreground (pid: {pid})")
-
-    # Load the SPEC file into memory to use as a reference for future calls
-    wazuh.security.load_spec()
+    # Spawn child processes with their own needed imports
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.wait([loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
+                                          for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
