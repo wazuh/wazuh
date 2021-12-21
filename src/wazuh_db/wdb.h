@@ -75,6 +75,8 @@ typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
 } wdb_groups_set_mode_t;
 
+#define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
+
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 #define WDB_RESPONSE_OK_SIZE     3
 
@@ -217,6 +219,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_SOURCE_GET,
     WDB_STMT_GLOBAL_GROUP_SOURCE_SET,
     WDB_STMT_GLOBAL_GROUP_CSV_GET,
+    WDB_STMT_GLOBAL_GROUP_CTX_SET,
 
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
@@ -1227,6 +1230,9 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
  */
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
 
+// JJP Doxygen
+int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
+
 /**
  * @brief Function to parse the select keepalive request.
  *
@@ -1819,6 +1825,14 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb,
                                              wdb_groups_sync_condition_t condition,
                                              int last_agent_id,
                                              char **output);
+
+// JJP: Doxygen
+char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id);
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int agent_id, char* csv, char* hash, char* sync_status, char* source);
+char* wdb_global_get_agent_group_source(wdb_t *wdb, int id);
+int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int agent_id, cJSON* j_groups, int priority);
+wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, char* source, cJSON* j_agents_group_info);
 
 /**
  * @brief Function to get the information of a particular agent stored in Wazuh DB.

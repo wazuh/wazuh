@@ -5324,34 +5324,53 @@ int wdb_parse_global_select_groups(wdb_t * wdb, char * output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_agent_groups_set(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
+
     const char *error = NULL;
     cJSON *args = cJSON_ParseWithOpts(input, &error, TRUE);
     if (args) {
-        cJSON *j_last_id = cJSON_GetObjectItem(args, "last_id");
-        cJSON *j_sync_condition = cJSON_GetObjectItem(args, "sync_condition");
-        if (cJSON_IsNumber(j_last_id) && cJSON_IsString(j_sync_condition)) {
-            int last_id = j_last_id->valueint;
-            wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
-            if (0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
-                condition = WDB_GROUP_SYNC_STATUS;
+        cJSON *j_mode = cJSON_GetObjectItem(args, "mode");
+        cJSON *j_sync_status = cJSON_GetObjectItem(args, "sync_status");
+        cJSON *j_source = cJSON_GetObjectItem(args, "source");
+        cJSON *j_groups_data = cJSON_GetObjectItem(args, "data");
+
+        // Mandatory fields
+        if (cJSON_IsArray(j_groups_data) && cJSON_IsString(j_mode)) {
+            wdb_groups_set_mode_t mode = WDB_GROUP_INVALID_MODE;
+            char* sync_status = "synced";
+            char* source = "manual";
+            if (0 == strcmp(j_mode->valuestring, "override")) {
+                mode = WDB_GROUP_OVERRIDE;
             }
-            else if (0 == strcmp(j_sync_condition->valuestring, "cks_mismatch")) {
-                condition = WDB_GROUP_CKS_MISMATCH;
+            else if (0 == strcmp(j_mode->valuestring, "override_all")) {
+                mode = WDB_GROUP_OVERRIDE_ALL;
             }
-            char* agent_group_sync = NULL;
-            wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, &agent_group_sync);
-            snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], agent_group_sync);
-            os_free(agent_group_sync)
+            else if (0 == strcmp(j_mode->valuestring, "append")) {
+                mode = WDB_GROUP_APPEND;
+            }
+            else if (0 == strcmp(j_mode->valuestring, "empty_only")) {
+                mode = WDB_GROUP_EMPTY_ONLY;
+            }
+
+            if (cJSON_IsString(j_sync_status)){
+                sync_status = j_sync_status->valuestring;
+            }
+
+            if (cJSON_IsString(j_source)){
+                source = j_source->valuestring;
+            }
+
+            wdb_global_set_agent_groups(wdb, mode, sync_status, source, j_groups_data);
+            snprintf(output, OS_MAXSTR + 1, "ok");
         }
         else {
-            mdebug1("Missing mandatory fields in agent_groups_get_sync command.");
+            mdebug1("Missing mandatory fields in set_agent_groups command.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
-    cJSON_Delete(args);
+        cJSON_Delete(args);
     }
     else {
-        mdebug1("Global DB Invalid JSON syntax when parsing agent_groups_get_sync");
+        mdebug1("Global DB Invalid JSON syntax when parsing set_agent_groups");
         mdebug2("Global DB JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }

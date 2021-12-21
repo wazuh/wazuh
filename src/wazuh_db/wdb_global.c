@@ -629,28 +629,24 @@ int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group) {
 }
 
 int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
-    char truncated_groups_hash[9] = {0};
-    os_sha256 groups_hash;
     int result = OS_INVALID;
+    char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
 
     // If the comma-separated groups string is not sent, read it from 'group' column
     if (groups_string) {
-	    OS_SHA256_String(groups_string, groups_hash);
-	} else {
-        char* agent_groups = wdb_global_get_agent_group_csv(wdb, agent_id);
-        if (agent_groups) {
-            OS_SHA256_String(agent_groups, groups_hash);
-            cJSON_Delete(agent_groups);
+        OS_SHA256_String_sized(groups_string, groups_hash, WDB_GROUP_HASH_SIZE);
+    }
+    else {
+        char* agent_group_csv = wdb_global_get_agent_group_csv(wdb, agent_id);
+        if (agent_group_csv) {
+            OS_SHA256_String_sized(groups_string, groups_hash, WDB_GROUP_HASH_SIZE);
+            os_free(agent_group_csv);
         }
         else {
             mdebug2("Empty group column for agent '%d'. The groups_hash column won't be updated", agent_id);
             return OS_SUCCESS;
         }
 	}
-
-	/* We'll use only the first 8 bytes to keep the same legacy format */
-	groups_hash[8] = '\0';
-	strncpy(truncated_groups_hash, groups_hash, 8);
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -663,7 +659,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
     }
 
     sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH];
-    if (sqlite3_bind_text(stmt, 1, truncated_groups_hash, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, 1, groups_hash, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1193,38 +1189,25 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id) {
     return group_csv;
 }
 
-wdbc_result wdb_global_set_agent_group_sync_status(wdb_t *wdb, int agent_id, char* sync_status) {
 
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNC_SET);
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int agent_id, char* csv, char* hash, char* sync_status, char* source) {
+
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_CTX_SET);
     if (stmt == NULL) {
         return WDBC_ERROR;
     }
 
-    sqlite3_bind_int(stmt, 1, agent_id);
-    sqlite3_bind_text(stmt, 2, sync_status, -1, NULL);
+    sqlite3_bind_text(stmt, 1, csv, -1, NULL);
+    sqlite3_bind_text(stmt, 2, hash, -1, NULL);
+    sqlite3_bind_text(stmt, 3, sync_status, -1, NULL);
+    sqlite3_bind_text(stmt, 4, source, -1, NULL);
+    sqlite3_bind_int(stmt, 5, agent_id);
 
     if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
         return WDBC_OK;
     }
     else {
-        return WDBC_ERROR;
-    }
-}
-
-wdbc_result wdb_global_set_agent_group_source(wdb_t *wdb, int agent_id, char* source) {
-
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SOURCE_SET);
-    if (stmt == NULL) {
-        return WDBC_ERROR;
-    }
-
-    sqlite3_bind_int(stmt, 1, agent_id);
-    sqlite3_bind_text(stmt, 2, source, -1, NULL);
-
-    if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
-        return WDBC_OK;
-    }
-    else {
+        mdebug1("Error executing setting the agent group context: %s", sqlite3_errmsg(wdb->db));
         return WDBC_ERROR;
     }
 }
@@ -1259,14 +1242,14 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
+        return OS_INVALID;
     }
 
     int group_priority = OS_INVALID;
     cJSON* j_result = wdb_exec_stmt(stmt);
     if (j_result) {
-        cJSON* j_priority = cJSON_GetObjectItem(j_result->child, "priority");
-        if (j_priority) {
+        if (j_result->child->child) {
+            cJSON* j_priority = j_result->child->child;
             group_priority = j_priority->valueint;
         }
         cJSON_Delete(j_result);
@@ -1309,53 +1292,50 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int agent_id, cJSON* j_gro
     return result;
 }
 
-
-wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* source, char* sync_status, cJSON* j_agents_group_info) {
+wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, char* source, cJSON* j_agents_group_info) {
     cJSON* j_group_info = NULL;
     cJSON_ArrayForEach (j_group_info, j_agents_group_info) {
         cJSON* j_agent_id = cJSON_GetObjectItem(j_group_info, "id");
         cJSON* j_groups = cJSON_GetObjectItem(j_group_info, "groups"); //JJP: Verify if the order is the expected.
-        if (cJSON_IsArray(j_agent_id) && cJSON_IsArray(j_groups)) {
+        if (cJSON_IsNumber(j_agent_id) && cJSON_IsArray(j_groups)) {
             int agent_id = j_agent_id->valueint;
-
-            int last_group_priority = 0;
-
+            int group_priority = 0;
             if (WDB_GROUP_OVERRIDE_ALL != mode) {
                 char* actual_source = wdb_global_get_agent_group_source(wdb, agent_id);
-                bool write_allowed = (actual_source && !strcmp(actual_source, "remote"));
+                // Write is allowed if mode is override_all or actual source isn´t remote or if the new source is remote too.
+                bool write_allowed = (actual_source && (strcmp(actual_source, "remote") || !strcmp(actual_source, source)));
                 os_free(actual_source);
-                if (write_allowed) {
+                if (!write_allowed) {
                     mdebug2("Agent group set ignored because the mode isn't override_all and last source was 'remote'");
                     continue;
                 }
             }
-            if (mode == WDB_GROUP_OVERRIDE || WDB_GROUP_OVERRIDE_ALL) {
+            if (mode == WDB_GROUP_OVERRIDE || mode == WDB_GROUP_OVERRIDE_ALL) {
                 if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
                     merror("There was an error cleaning the previous agent groups");
+                }
             }
             else {
-                last_group_priority = wdb_global_get_agent_max_group_priority(wdb, agent_id);
-                // If we have
-                if (mode == WDB_GROUP_EMPTY_ONLY && last_group_priority >= 0) {
-                    mdebug2("Agent group set in empty_only mode ignored because the agent already contains groups");
-                    continue;
+                int last_group_priority = wdb_global_get_agent_max_group_priority(wdb, agent_id);
+                if (last_group_priority >= 0) {
+                    if (mode == WDB_GROUP_EMPTY_ONLY) {
+                        mdebug2("Agent group set in empty_only mode ignored because the agent already contains groups");
+                        continue;
+                    }
+                    group_priority = last_group_priority+1;
                 }
             }
 
-            if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, last_group_priority)) {
-                merror("There was an error assigning the groups to agent '%03d'");
-            }
-            if (WDBC_ERROR == wdb_global_set_agent_group_source(wdb, agent_id, source)) {
-                merror("There was an error assigning the source of groups to agent '%03d'");
+            if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
+                merror("There was an error assigning the groups to agent '%03d'", agent_id);
             }
 
             char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
             if (agent_groups_csv) {
-                if (OS_SUCCESS != wdb_global_update_agent_group(wdb, agent_id, agent_groups_csv)) {
-                    merror("There was an error updating the groups csv string of the agent '%03d'");
-                }
-                if (OS_SUCCESS != wdb_global_update_agent_groups_hash(wdb, agent_id, agent_groups_csv)) {
-                    merror("There was an error updating the groups hash of the agent '%03d'");
+                char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
+                OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
+                if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status, source)) {
+                    merror("There was an error assigning the groups context to agent '%03d'", agent_id);
                 }
                 os_free(agent_groups_csv);
             }
