@@ -5748,8 +5748,7 @@ int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
     int result = wdb_global_create_backup(wdb);
 
     if (OS_SUCCESS != result) {
-        mdebug1("DB(%s) Cannot execute backup create command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup create command; SQL err: %s", sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup create command.");
     } else {
         snprintf(output, OS_MAXSTR + 1, "ok");
     }
