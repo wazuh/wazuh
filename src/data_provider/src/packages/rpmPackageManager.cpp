@@ -18,12 +18,12 @@
 // For O_RDONLY
 #include <fcntl.h>
 
-bool instantiated = false;
+bool gs_instantiated = false;
 
 RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper)
     : m_rpmlib{wrapper}
 {
-    if (instantiated)
+    if (gs_instantiated)
     {
         throw std::runtime_error("there is another RPM instance already created");
     }
@@ -33,18 +33,18 @@ RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper)
         throw std::runtime_error("rpmReadConfigFiles failed");
     }
 
-    instantiated = true;
+    gs_instantiated = true;
 }
 
 RpmPackageManager::~RpmPackageManager()
 {
     m_rpmlib->rpmFreeRpmrc();
-    instantiated = false;
+    gs_instantiated = false;
 }
 
 std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag)
 {
-    std::string str;
+    std::string retval;
 
     if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT))
     {
@@ -52,23 +52,23 @@ std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag)
 
         if (cstr)
         {
-            str = cstr;
+            retval = cstr;
         }
     }
 
-    return str;
+    return retval;
 }
 
 uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag)
 {
-    uint64_t num = 0;
+    uint64_t retval = 0;
 
     if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT))
     {
-        num = m_rpmlib->rpmtdGetNumber(m_dataContainer);
+        retval = m_rpmlib->rpmtdGetNumber(m_dataContainer);
     }
 
-    return num;
+    return retval;
 }
 
 const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR{};

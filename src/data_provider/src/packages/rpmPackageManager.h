@@ -26,7 +26,9 @@ class RpmPackageManager final
 {
     public:
         RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper);
+        // LCOV_EXCL_START
         ~RpmPackageManager();
+        // LCOV_EXCL_STOP
         struct Package
         {
             std::string name;
