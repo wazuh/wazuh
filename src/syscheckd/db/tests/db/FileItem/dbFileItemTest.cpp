@@ -58,6 +58,41 @@ TEST_F(FileItemTest, fileItemConstructorFromFIM)
     });
 }
 
+TEST_F(FileItemTest, fileItemConstructorFromFIMWithNullParameters)
+{
+    fim_entry* fimEntryTestNull = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
+    fim_file_data* data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
+
+    fimEntryTestNull->type = FIM_TYPE_FILE;
+    fimEntryTestNull->file_entry.path = NULL;
+    data->attributes = NULL;
+    data->checksum[0] = '\0';
+    data->dev = 0;
+    data->gid = NULL;
+    data->group_name = NULL;
+    data->hash_md5[0] = '\0';
+    data->hash_sha1[0] = '\0';
+    data->hash_sha256[0] = '\0';
+    data->inode = 0;
+    data->last_event = 0;
+    data->mode = FIM_SCHEDULED;
+    data->mtime = 0;
+    data->options = 131583;
+    data->perm = NULL;
+    data->scanned = 1;
+    data->size = 0;
+    data->uid = NULL;
+    data->user_name = NULL;
+    fimEntryTestNull->file_entry.data = data;
+    EXPECT_NO_THROW(
+    {
+        auto file = new FileItem(fimEntryTestNull);
+        auto scanned = file->state();
+        EXPECT_TRUE(scanned);
+        delete file;
+    });
+}
+
 TEST_F(FileItemTest, fileItemConstructorFromJSON)
 {
     const auto json = R"(
