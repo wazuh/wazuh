@@ -1790,12 +1790,13 @@ int wdb_global_create_backup(wdb_t* wdb) {
 int wdb_remove_old_backup() {
     DIR* dp = NULL;
     struct dirent *entry = NULL;
-    time_t time_since_creation = -1;
     time_t current_time = 0;
     struct stat backup_info = {0};
     int number_of_files = 0;
-    char backup_to_delete[OS_SIZE_512] = {0};
     char tmp_path[OS_SIZE_512] = {0};
+    char** backups_array = NULL;
+    time_t* backups_time_array = NULL;
+    int backups_to_delete = 0;
 
     dp = opendir(WDB_BACKUP_FOLDER);
 
@@ -1813,22 +1814,44 @@ int wdb_remove_old_backup() {
         }
 
         number_of_files++;
+        os_realloc(backups_array, number_of_files * sizeof(char*), backups_array);
+        os_realloc(backups_time_array, number_of_files * sizeof(time_t), backups_time_array);
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
         if(!stat(tmp_path, &backup_info)) {
-            if(current_time - backup_info.st_mtime >= time_since_creation) {
-                time_since_creation = current_time - backup_info.st_mtime;
-                snprintf(backup_to_delete, OS_SIZE_512, "%s", tmp_path);
-            }
+            os_strdup(tmp_path, backups_array[number_of_files-1]);
+            backups_time_array[number_of_files-1] = current_time - backup_info.st_mtime;
         }
     }
 
-    if(number_of_files > wconfig.wdb_backup_settings[0].max_files) {
-        mdebug1("Removing old snapshot '%s'", backup_to_delete);
-        unlink(backup_to_delete);
+    backups_to_delete = number_of_files - wconfig.wdb_backup_settings[0].max_files;
+
+    for(int i = 0; backups_to_delete > i; i++) {
+        int oldest_backup = -1;
+        int array_index = 0;
+        char* backup_to_remove = NULL;
+        for(int j = 0; j < number_of_files; j++ ){
+            if(backups_array[j] && backups_time_array[j] > oldest_backup) {
+                backup_to_remove = backups_array[j];
+                oldest_backup = backups_time_array[j];
+                array_index = j;
+            }
+        }
+
+        if(backup_to_remove) {
+            unlink(backup_to_remove);
+            backups_time_array[array_index] = -1;
+        }
     }
 
+    for(int j = 0; j < number_of_files; j++) {
+        os_free(backups_array[j]);
+    }
+
+    os_free(backups_array);
+    os_free(backups_time_array);
     closedir(dp);
+
     return OS_SUCCESS;
 }
 
