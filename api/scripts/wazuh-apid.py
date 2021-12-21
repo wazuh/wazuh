@@ -8,6 +8,7 @@ import argparse
 import sys
 from atexit import register
 
+from api.api_exception import APIError
 from api.constants import API_LOG_FILE_PATH
 
 
@@ -139,21 +140,29 @@ def start(foreground: bool, root: bool, config_file: str):
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
                 except ssl.SSLError:
-                    logger.error(str(APIError(2003, details='SSL ciphers cannot be selected')))
-                    sys.exit(1)
+                    error = APIError(2003, details='SSL ciphers cannot be selected')
+                    logger.error(error)
+                    raise error
 
         except ssl.SSLError:
-            logger.error(str(APIError(2003, details='Private key does not match with the certificate')))
-            sys.exit(1)
+            error = APIError(2003, details='Private key does not match with the certificate')
+            logger.error(error)
+            raise error
         except IOError as exc:
             if exc.errno == 22:
-                logger.error(str(APIError(2003, details='PEM phrase is not correct')))
+                error = APIError(2003, details='PEM phrase is not correct')
+                logger.error(error)
+                raise error
             elif exc.errno == 13:
-                logger.error(str(APIError(2003, details='Ensure the certificates have the correct permissions')))
+                error = APIError(2003, details='Ensure the certificates have the correct permissions')
+                logger.error(error)
+                raise error
             else:
-                print('Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration '
-                      f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
-            sys.exit(1)
+                msg = f'Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration ' \
+                      f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+                print(msg)
+                logger.error(msg)
+                raise exc
 
     # Drop privileges to wazuh
     if not root:
@@ -219,12 +228,21 @@ def start(foreground: bool, root: bool, config_file: str):
     logger.debug(f'Loaded security API configuration: {security_conf}')
 
     # Start API
-    app.run(port=api_conf['port'],
-            host=api_conf['host'],
-            ssl_context=ssl_context,
-            access_log_class=alogging.AccessLogger,
-            use_default_access_log=True
-            )
+    try:
+        app.run(port=api_conf['port'],
+                host=api_conf['host'],
+                ssl_context=ssl_context,
+                access_log_class=alogging.AccessLogger,
+                use_default_access_log=True
+                )
+    except OSError as exc:
+        if exc.errno == 98:
+            error = APIError(2010)
+            logger.error(error)
+            raise error
+        else:
+            logger.error(exc)
+            raise exc
 
 
 def print_version():
@@ -275,6 +293,9 @@ if __name__ == '__main__':
     else:
         try:
             start(args.foreground, args.root, args.config_file)
-        except Exception as e:
+        except APIError as e:
             print(f"Error when trying to start the Wazuh API. {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f'Internal error when trying to start the Wazuh API. {e}')
             sys.exit(1)
