@@ -13,16 +13,18 @@
 #define _FIMDB_HPP
 #include "dbsync.hpp"
 #include "rsync.hpp"
-#include "fimCommonDefs.h"
 #include <condition_variable>
 #include <mutex>
 
 #ifdef __cplusplus
 extern "C"
 {
-#include "logging_helper.h"
+#include "fimCommonDefs.h"
 }
 #endif
+
+#define FIM_COMPONENT_FILE "fim_file"
+#define FIM_COMPONENT_REGISTRY "fim_registry"
 
 constexpr auto CREATE_FILE_DB_STATEMENT
 {
@@ -52,6 +54,7 @@ constexpr auto CREATE_FILE_DB_STATEMENT
 constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS registry_key (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     path TEXT NOT NULL,
     perm TEXT,
     uid INTEGER,
@@ -63,10 +66,8 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    item_id TEXT,
-    PRIMARY KEY(arch, path)) WITHOUT ROWID;)"
+    PRIMARY KEY (arch, path)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> REGISTRY_KEY_ITEM_ID_FIELDS{"arch", "path"};
 
 constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 {
@@ -81,11 +82,17 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    item_id TEXT,
     PRIMARY KEY(key_id, name)
     FOREIGN KEY (key_id) REFERENCES registry_key(item_id)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> REGISTRY_VALUE_ITEM_ID_FIELDS{"key_id", "name"};
+
+constexpr auto CREATE_REGISTRY_VIEW_STATEMENT
+{
+    R"(CREATE VIEW IF NOT EXISTS registry_view (path, checksum) AS
+       SELECT arch || ' ' || replace(replace(path, '\', '\\'), ':', '\:'), checksum FROM registry_key
+       UNION ALL
+       SELECT arch || ' ' || replace(replace(path, '\', '\\'), ':', '\:') || ':' || replace(replace(name, '\', '\\'), ':', '\:'), registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id;)"
+};
 
 constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
 {
@@ -93,7 +100,7 @@ constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
     {
         "decoder_type":"JSON_RANGE",
         "table":"file_entry",
-        "component":"fim_file_sync",
+        "component":"fim_file",
         "index":"path",
         "checksum_field":"checksum",
         "no_data_query_json": {
@@ -130,69 +137,31 @@ constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
     R"(
     {
         "decoder_type":"JSON_RANGE",
-        "table":"registry_key",
-        "component":"fim_registry_sync",
-        "index":"item_id",
+        "table":"registry_view",
+        "component":"fim_registry",
+        "index":"path",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE item_id ='?'",
+                "row_filter":"WHERE path ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        }
-    }
-    )"
-};
-
-constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
-{
-    R"(
-    {
-        "decoder_type":"JSON_RANGE",
-        "table":"registry_data",
-        "component":"fim_value_sync",
-        "index":"item_id",
-        "checksum_field":"checksum",
-        "no_data_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "count_range_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
-                "count_field_name":"count",
-                "column_list":["count(*) AS count "],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "row_data_query_json": {
-                "row_filter":"WHERE item_id ='?'",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "range_checksum_query_json": {
-                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -204,24 +173,72 @@ constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
 /* Statement related to files items. Defines everything necessary to perform the synchronization loop */
 constexpr auto FIM_FILE_START_CONFIG_STATEMENT
 {
-    R"({"table":"file_entry"})"
-    //TO DO
+    R"({"table":"file_entry",
+        "first_query":
+            {
+                "column_list":["path"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"path DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["path"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"path ASC",
+                "count_opt":1
+            },
+        "component":"fim_file",
+        "index":"path",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["path, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
 };
 
 /* Statement related to registries items. Defines everything necessary to perform the synchronization loop */
 constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
 {
-    R"({"table":"registry_key"})"
-    //TO DO
+    R"({"table":"registry_view",
+        "first_query":
+            {
+                "column_list":["path"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"path DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["path"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"path ASC",
+                "count_opt":1
+            },
+        "component":"syscheck",
+        "index":"path",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["path, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
 };
-
-/* Statement related to values items. Defines everything necessary to perform the synchronization loop */
-constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
-{
-    R"({"table":"registry_data"})"
-    //TO DO
-};
-
 
 class FIMDB
 {
@@ -292,8 +309,8 @@ class FIMDB
         void executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
-        * @brief Create the loop with the configured interval to do the periodical synchronization
-        */
+         * @brief Create the loop with the configured interval to do the periodical synchronization
+         */
         void loopRSync(std::unique_lock<std::mutex>& lock);
 
         /**
@@ -301,11 +318,33 @@ class FIMDB
          */
         void registerRSync();
 
+        /**
+         * @brief Push a syscheck synchronization message to the rsync queue
+         *
+         * @param data Message to push
+         */
+        void fimSyncPushMsg(const std::string& data);
+
+        /**
+         * @brief Function in chage of run synchronization integrity
+         */
+        void fimRunIntegrity();
+
+        /**
+         * @brief Its the function in charge of stopping the sync flow
+         */
         inline void stopSync()
         {
             m_stopping = true;
         };
 
+        /**
+         * @brief Its the function to log an error
+         */
+        inline void logErr(const modules_log_level_t logLevel, const std::string& msg)
+        {
+            m_loggingFunction(logLevel, msg);
+        }
 
     private:
 
@@ -313,10 +352,12 @@ class FIMDB
         unsigned int                                                            m_max_rows_registry;
         unsigned int                                                            m_interval_synchronization;
         bool                                                                    m_stopping;
+        std::mutex                                                              m_fimSyncMutex;
         std::condition_variable                                                 m_cv;
         std::shared_ptr<DBSync>                                                 m_dbsyncHandler;
         std::shared_ptr<RemoteSync>                                             m_rsyncHandler;
-        std::function<void(const std::string&)>                                 m_syncMessageFunction;
+        std::function<void(const std::string&)>                                 m_syncFileMessageFunction;
+        std::function<void(const std::string&)>                                 m_syncRegistryMessageFunction;
         std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
 
         /**

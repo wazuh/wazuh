@@ -55,6 +55,19 @@ void fim_db_init(int storage,
                  logging_callback_t log_callback);
 #endif
 
+/**
+ * @brief Push a message to the syscheck queue
+ *
+ * @param msg The specific message to be pushed
+ */
+void fim_sync_push_msg(const char* msg);
+
+/**
+ * @brief Thread that performs the syscheck data synchronization
+ *
+ */
+void fim_run_integrity();
+
 #ifdef __cplusplus
 }
 #endif // _cplusplus

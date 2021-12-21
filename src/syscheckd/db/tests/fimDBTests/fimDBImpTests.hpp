@@ -32,6 +32,7 @@ class MockRSyncHandler: public RemoteSync
         ~MockRSyncHandler() {};
         MOCK_METHOD(void, registerSyncID, (const std::string&, const DBSYNC_HANDLE, const nlohmann::json&, SyncCallbackData), (override));
         MOCK_METHOD(void, startSync, (const DBSYNC_HANDLE, const nlohmann::json&, SyncCallbackData), (override));
+        MOCK_METHOD(void, pushMessage, (const std::vector<uint8_t>&), (override));
 };
 
 class MockFIMDB: public FIMDB

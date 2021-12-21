@@ -258,25 +258,19 @@ void start_daemon()
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
+
+    // Launch inventory synchronization thread, if enabled
+    if (syscheck.enable_synchronization) {
+        fim_run_integrity();
+    }
+
 #ifndef WIN32
     // Launch Real-time thread
     w_create_thread(fim_run_realtime, &syscheck);
 
-    // Launch inventory synchronization thread, if enabled
-    if (syscheck.enable_synchronization) {
-        w_create_thread(fim_run_integrity, &syscheck);
-    }
-
     // Launch symbolic links checker thread
     w_create_thread(symlink_checker_thread, NULL);
-
 #else
-    if (syscheck.enable_synchronization) {
-        if (CreateThread(NULL, 0, fim_run_integrity, &syscheck, 0, NULL) == NULL) {
-            merror(THREAD_ERROR);
-        }
-    }
-
     if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
 
         merror(THREAD_ERROR);

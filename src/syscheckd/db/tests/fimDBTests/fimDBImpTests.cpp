@@ -173,10 +173,9 @@ TEST_F(FimDBFixture, updateItemSuccess)
 TEST_F(FimDBFixture, registerSyncIDSuccess)
 {
 
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 #ifdef WIN32
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_value_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
 #endif
 
     fimDBMock.registerRSync();
@@ -185,7 +184,7 @@ TEST_F(FimDBFixture, registerSyncIDSuccess)
 
 TEST_F(FimDBFixture, registerSyncIDError)
 {
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file_sync", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 
     fimDBMock.registerRSync();
 
@@ -201,7 +200,6 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
 #ifdef WIN32
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_VALUE_START_CONFIG_STATEMENT), testing::_));
 #endif
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
 
@@ -238,4 +236,27 @@ TEST_F(FimDBFixture, executeQueryFailException)
     fimDBMock.executeQuery(itemJson, callback);
 }
 
+TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
+{
+    const std::string data("testing msg");
+    auto rawData{data};
+    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+
+    EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()}));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "Message pushed: " + data));
+
+    fimDBMock.fimSyncPushMsg(data);
+}
+
+TEST_F(FimDBFixture, fimSyncPushMsgException)
+{
+    const std::string data("testing msg");
+    auto rawData{data};
+    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+
+    EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()})).WillOnce(testing::Throw(std::exception()));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, testing::_));
+
+    fimDBMock.fimSyncPushMsg(data);
+}
 #endif

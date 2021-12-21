@@ -87,10 +87,12 @@ package "FIMDB" <<Folder>> #DDDDDD{
         - int m_max_rows_registry
         - int m_interval_synchronization
         - bool m_stopping
+        - mutex m_fimSyncMutex
         - condition_variable m_cv
         - DBSync m_dbsyncHandler
         - Rsync m_rsyncHandler
-        - callback m_syncMessageFunction
+        - callback m_syncFileMessageFunction
+        - callback m_syncRegistryMessageFunction
         - callback m_loggingFunction
 
         - FIMDB()
@@ -103,6 +105,9 @@ package "FIMDB" <<Folder>> #DDDDDD{
 
         + void init()
         + void registerRsync()
+        + void fimSyncPushMsg(data)
+        + void fimRunIntegrity()
+        + void stopSync()
         + void loopRsync(lock)
         + void insertItem(json)
         + void removeItem(json)

@@ -11,6 +11,7 @@
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBHelper.hpp"
+#include <thread>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,7 +23,7 @@ extern "C" {
  *
  * @return std::string Contains the dbsync's schema for FIM db.
  */
-const char * CreateStatement()
+const char* CreateStatement()
 {
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
@@ -66,6 +67,31 @@ void fim_db_init(int storage,
     {
         auto errorMessage = "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
         log_callback(LOG_ERROR_EXIT, errorMessage.c_str());
+    }
+}
+
+void fim_run_integrity()
+{
+    try
+    {
+        std::thread syncThread(&FIMDB::fimRunIntegrity, &FIMDB::getInstance());
+        syncThread.detach();
+    }
+    catch (const DbSync::dbsync_error& err)
+    {
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+    }
+}
+
+void fim_sync_push_msg(const char* msg)
+{
+    try
+    {
+        FIMDB::getInstance().fimSyncPushMsg(msg);
+    }
+    catch (const DbSync::dbsync_error& err)
+    {
+        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
     }
 }
 
