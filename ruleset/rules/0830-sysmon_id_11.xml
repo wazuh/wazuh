@@ -38,7 +38,7 @@
   </rule>
 
   <rule id="92003" level="15">
-    <if_sid>92080</if_sid>
+    <if_sid>92002</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)(scp|pscp|FZSFTP|sftp)\.exe</field>
     <description>Binary file dropped in Users\Public folder by SSH enabled copy software.</description>
     <mitre>

@@ -31,7 +31,7 @@
   </rule>
 
   <rule id="92142" level="6">
-    <if_sid>92035</if_sid>
+    <if_sid>92141</if_sid>
     <field name="win.eventdata.authenticationPackageName" type="pcre2">NTLM</field>
     <description>Successful Remote Logon Detected - NTLM authentication, possible pass-the-hash attack.</description>
     <mitre>
@@ -41,7 +41,7 @@
   </rule>
 
   <rule id="92143" level="0">
-    <if_sid>92035</if_sid>
+    <if_sid>92141</if_sid>
     <field name="win.eventdata.logonType" type="pcre2">10</field>
     <description>User: $(win.eventdata.subjectDomainName)\$(win.eventdata.targetUserName) logged using Remote Desktop Connection (RDP) from ip:$(win.eventdata.ipAddress).</description>
     <mitre>
