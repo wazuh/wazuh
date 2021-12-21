@@ -16,6 +16,7 @@
 #include "timeHelper.h"
 #include "sharedDefs.h"
 #include "networkSolarisHelper.hpp"
+#include "network/networkFamilyDataAFactory.h"
 
 struct SocketDeleter
 {
@@ -99,12 +100,53 @@ nlohmann::json SysInfo::getNetworks() const
     nlohmann::json networks;
     const std::unique_ptr<int, SocketDeleter> spSocket { UtilsWrapperUnix::createSocket(AF_INET, SOCK_DGRAM, 0) };
     const auto interfaceCount { NetworkSolarisHelper::getInterfacesCount(spSocket.get()) };
-    struct lifconf if_conf = { .lifc_family = AF_INET, .lifc_len = interfaceCount * sizeof(struct lifreq) };
-    auto buffer { std::vector<char *>(if_conf.lifc_len) };
-    if_conf.lifc_buf = buffer.data();
 
+    // Get IPv4 address
+    struct lifconf configurationInterface = { .lifc_family = AF_INET, .lifc_len = interfaceCount * sizeof(struct lifreq) };
+    auto buffer1 { std::vector<char *>(configurationInterface.lifc_len) };
+    configurationInterface.lifc_buf = buffer1.data();
 
-    networks["iface"].push_back(ifaddr);
+    if (NetworkSolarisHelper::getInterfaces(spSocket.get(), &configurationInterface))
+    {
+        nlohmann::json ifaddr {};
+
+        for (auto index = 0; index < interfaceCount; index++)
+        {
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(std::make_shared<NetworkSolarisInterface>(spSocket.get(), index, &configurationInterface)) };
+
+            if (networkInterfacePtr)
+            {
+                networkInterfacePtr->buildNetworkData(ifaddr);
+            }
+        }
+
+        networks["iface"].push_back(ifaddr);
+    }
+
+    // Get IPv6 address
+    const std::unique_ptr<int, SocketDeleter> spSocketV6 { UtilsWrapperUnix::createSocket(AF_INET6, SOCK_DGRAM, 0) };
+    const auto interfaceV6Count { NetworkSolarisHelper::getInterfacesV6Count(spSocketV6.get()) };
+    struct lifconf configurationInterfaceV6 = { .lifc_family = AF_INET6, .lifc_len = interfaceV6Count * sizeof(struct lifreq) };
+    auto buffer2 { std::vector<char *>(configurationInterfaceV6.lifc_len) };
+    configurationInterfaceV6.lifc_buf = buffer2.data();
+
+    if (NetworkSolarisHelper::getInterfaces(spSocketV6.get(), &configurationInterfaceV6))
+    {
+        nlohmann::json ifaddr {};
+
+        for (auto index = 0; index < interfaceV6Count; index++)
+        {
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(std::make_shared<NetworkSolarisInterface>(spSocketV6.get(), index, &configurationInterfaceV6) };
+
+            if (networkInterfacePtr)
+            {
+                networkInterfacePtr->buildNetworkData(ifaddr);
+            }
+        }
+
+        networks["iface"].push_back(ifaddr);
+    }
+
 
     return networks;
 }

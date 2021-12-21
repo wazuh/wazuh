@@ -9,8 +9,12 @@
  * Foundation.
  */
 
+#include <net/if.h>
+
 class NetworkSolarisHelper final
 {
     public:
         static int getInterfacesCount(int fd);
+        static int getInterfacesV6Count(int fd);
+        static bool getInterfaces(int fd, struct lifconf* networkInterface);
 };

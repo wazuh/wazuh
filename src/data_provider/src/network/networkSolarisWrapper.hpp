@@ -12,12 +12,24 @@
 #ifndef _NETWORK_LINUX_WRAPPER_H
 #define _NETWORK_LINUX_WRAPPER_H
 
+#include <vector>
+#include <sys/sockio.h>
+#include <arpa/inet.h>
+
 #include "inetworkWrapper.h"
+#include "UtilsWrapperUnix.hpp"
 
 class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 {
+    struct lifconf* m_networkInterfaces;
+    int m_indexInterface;
+    int m_fileDescriptor;
+
     public:
-        explicit NetworkSolarisInterface(addrs* addrs)
+        explicit NetworkSolarisInterface(int fs, iint index, struct lifconf* interfaces)
+        : m_networkInterfaces {interfaces}
+        , m_indexInterface {index}
+        , m_fileDescriptor {fs}
         {
         }
 
@@ -33,12 +45,29 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
         int family() const override
         {
-            return AF_UNSPEC;
+            return interfaces->lifc_family;
         }
 
         std::string address() const override
         {
-            return "";
+            constexpr auto IPSIZE {16};
+            auto addressInterface { std::vector<char>(IPSIZE) };
+            struct lifreq *interfaceReq = m_networkInterfaces->lifc_req + m_indexInterface;
+
+            if (-1 != UtilsWrappperUnix::createIoctl(m_fileDescriptor, SIOCGLIFFLAGS, interfaceReq))
+            {
+                // Get address of interfaces are UP and aren't Loopback
+                if ( !(IFF_UP & interfaceReq->lifr_flags) && !(IFF_LOOPBACK & interfaceReq->lifr_flags) )
+                {
+                    if (-1 != UtilsWrappperUnix::createIoctl(m_fileDescriptorn, SIOCGLIFADDR, interfaceReq))
+                    {
+                        struct sockaddr_in* data = reinterpret_cast<struct sockaddr_in *>&interfaceReq->lifr_addr;
+                        inet_ntop(AF_INET, &data, addressInterface, addressInterface.size());
+                    }
+                }
+            }
+
+            return std::string address(addressInterface.begin(), addressInterface.end());
         }
 
         std::string netmask() const override
@@ -54,7 +83,32 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
         std::string addressV6() const override
         {
-            return "";
+            constexpr auto IPSIZE {46};
+            auto addressInterface { std::vector<char>(IPSIZE) };
+            struct lifreq *interfaceReq = m_networkInterfaces->lifc_req + m_indexInterface;
+
+            if (-1 != UtilsWrappperUnix::createIoctl(m_fileDescriptor, SIOCGLIFFLAGS, interfaceReq))
+            {
+                // Get address of interfaces are UP and aren't Loopback
+                if ( !(IFF_UP & interfaceReq->lifr_flags) && !(IFF_LOOPBACK & interfaceReq->lifr_flags) )
+                {
+                    #ifdef SIOCGLIFADDR
+                    if (-1 != UtilsWrappperUnix::createIoctl(m_fileDescriptorn, SIOCGLIFADDR, interfaceReq))
+                    {
+                        struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6 *>&interfaceReq->lifr_addr;
+                        inet_ntop(AF_INET6, &data, addressInterface, addressInterface.size());
+                    }
+                    #else
+                    if (-1 != UtilsWrappperUnix::createIoctl(m_fileDescriptorn, SIOCGIFV6ADDR, interfaceReq))
+                    {
+                        struct sockaddr_in6* data = reinterpret_cast<struct sockaddr_in6 *>&interfaceReq->lifr_addr;
+                        inet_ntop(AF_INET6, &data, addressInterface, addressInterface.size());
+                    }
+                    #endif
+                }
+            }
+
+            return std::string address(addressInterface.begin(), addressInterface.end());;
         }
 
         std::string netmaskV6() const override
