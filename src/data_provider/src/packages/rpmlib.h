@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
- 
+
 #include "rpmlibWrapper.h"
 
 class RpmLib final : public IRpmLibWrapper

@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
- 
+
 #ifndef RPM_PACKAGE_MANAGER_H
 #define RPM_PACKAGE_MANAGER_H
 

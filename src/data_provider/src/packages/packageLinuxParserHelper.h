@@ -23,7 +23,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
- 
+
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
@@ -41,6 +41,7 @@ namespace PackageLinuxHelper
         nlohmann::json ret;
         std::stringbuf ss;
         std::string version = package.version;
+
         if (package.epoch)
         {
             version = std::to_string(package.epoch) + ":" + version;

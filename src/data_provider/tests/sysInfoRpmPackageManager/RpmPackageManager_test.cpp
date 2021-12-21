@@ -285,9 +285,9 @@ TEST(RpmLibTest, SinglePackage)
     .WillOnce(Return("arch"))
     .WillOnce(Return("description"));
     EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(3)
-                                                 .WillOnce(Return(1)) // epoch
-                                                 .WillOnce(Return(20)) // installtime
-                                                 .WillOnce(Return(20)); // size
+    .WillOnce(Return(1)) // epoch
+    .WillOnce(Return(20)) // installtime
+    .WillOnce(Return(20)); // size
 
     std::vector<RpmPackageManager::Package> packages;
     {
@@ -346,11 +346,11 @@ TEST(RpmLibTest, TwoPackages)
     .WillOnce(Return("arch"))
     .WillOnce(Return("description"));
     EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(6).WillOnce(Return(1)) // epoch
-                                                  .WillOnce(Return(20)) // installtime
-                                                  .WillOnce(Return(20)) // size
-                                                  .WillOnce(Return(1)) // epoch
-                                                  .WillOnce(Return(20)) // installtime
-                                                  .WillOnce(Return(20)); // size
+    .WillOnce(Return(20)) // installtime
+    .WillOnce(Return(20)) // size
+    .WillOnce(Return(1)) // epoch
+    .WillOnce(Return(20)) // installtime
+    .WillOnce(Return(20)); // size
 
 
     std::vector<RpmPackageManager::Package> packages;
