@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "shared.h"
 #include "os_err.h"
 #include "sym_load.h"
 #include "../../data_provider/include/sysInfo.h"
@@ -618,6 +619,169 @@ void test_get_ip_from_resolved_hostname_no_ip(void ** state){
     assert_string_equal(ret, "");
 }
 
+void get_ipv4_string_fail_size(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0x0F0F0F0F;
+#else
+    addr.u.Byte = 0x0F0F0F0F;
+#endif
+
+    int ret = get_ipv4_string(addr, address, 1);
+
+    assert_string_equal(address, "");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void get_ipv4_string_success(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0x0F0F0F0F;
+#else
+    addr.u.Byte = 0x0F0F0F0F;
+#endif
+
+    int ret = get_ipv4_string(addr, address, IPSIZE);
+
+    assert_string_equal(address, "15.15.15.15");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void get_ipv6_string_fail_size(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0x00;
+#else
+        addr6.u.Byte[i] = 0x00;
+#endif
+    }
+
+    int ret = get_ipv6_string(addr6, address, 1);
+
+    assert_string_equal(address, "");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void get_ipv6_string_success(void ** state) {
+
+    char address[IPSIZE] = {0};
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0x10;
+#else
+        addr6.u.Byte[i] = 0x10;
+#endif
+
+    }
+
+    int ret = get_ipv6_string(addr6, address, IPSIZE);
+
+    assert_string_equal(address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void get_ipv4_numeric_fail(void ** state) {
+
+    const char *address = "Not a valid IP";
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0;
+#else
+    addr.u.Byte = 0;
+#endif
+
+    int ret = get_ipv4_numeric(address, &addr);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void get_ipv4_numeric_success(void ** state) {
+
+    const char *address = "15.15.15.15";
+    struct in_addr addr;
+
+#ifndef WIN32
+    addr.s_addr = 0;
+#else
+    addr.u.Byte = 0;
+#endif
+
+    int ret = get_ipv4_numeric(address, &addr);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+#ifndef WIN32
+    assert_int_equal(addr.s_addr, 0x0F0F0F0F);
+#else
+    assert_int_equal(addr.u.Byte, 0x0F0F0F0F);
+#endif
+}
+
+void get_ipv6_numeric_fail(void ** state) {
+
+    const char *address = "Not a valid IP";
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0;
+#else
+        addr6.u.Byte[i] = 0;
+#endif
+    }
+
+    int ret = get_ipv6_numeric(address, &addr6);
+
+    assert_int_equal(ret, OS_INVALID);
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        assert_int_equal(addr6.s6_addr[i], 0);
+#else
+        assert_int_equal(addr6.u.Byte[i], 0);
+#endif
+    }
+}
+
+void get_ipv6_numeric_success(void ** state) {
+
+    const char *address = "1010:1010:1010:1010:1010:1010:1010:1010";
+    struct in6_addr addr6;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0;
+#else
+        addr6.u.Byte[i] = 0;
+#endif
+    }
+
+    int ret = get_ipv6_numeric(address, &addr6);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        assert_int_equal(addr6.s6_addr[i], 0x10);
+#else
+        assert_int_equal(addr6.u.Byte[i], 0x10);
+#endif
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* Bind a TCP port */
@@ -713,6 +877,23 @@ int main(void) {
         /* Test for get_ip_from_resolved_hostname */
         cmocka_unit_test(test_get_ip_from_resolved_hostname_ip),
         cmocka_unit_test(test_get_ip_from_resolved_hostname_no_ip),
+
+        /* Test get_ipv4_string */
+        cmocka_unit_test(get_ipv4_string_fail_size),
+        cmocka_unit_test(get_ipv4_string_success),
+
+        /* Test get_ipv6_string */
+        cmocka_unit_test(get_ipv6_string_fail_size),
+        cmocka_unit_test(get_ipv6_string_success),
+
+        /* Test get_ipv4_numeric */
+        cmocka_unit_test(get_ipv4_numeric_fail),
+        cmocka_unit_test(get_ipv4_numeric_success),
+
+        /* Test get_ipv6_numeric */
+        cmocka_unit_test(get_ipv6_numeric_fail),
+        cmocka_unit_test(get_ipv6_numeric_success),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
