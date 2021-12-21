@@ -101,7 +101,8 @@ async def worker_main(args, cluster_config, cluster_items, logger):
                                                          cluster_items=cluster_items)
 
         # Spawn pool processes
-        my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
+        if my_client.task_pool:
+            my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
 
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
