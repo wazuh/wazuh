@@ -1382,6 +1382,14 @@ int wdb_parse_global_restore_backup(wdb_t* wdb, char* input, char* output);
 int wdb_global_create_backup(wdb_t* wdb);
 
 /**
+ * @brief Function to delete old backups in case the amount exceeds the max_files limit.
+ *
+ * @retval  0 Success: The method exited without errors.
+ * @retval -1 On error: The method failed in reading the backp folder.
+ */
+int wdb_remove_old_backup();
+
+/**
  * @brief Function to get a list of the available backups of global.db.
  *
  * @retval cJSON* Success: The list of all snapshots found, or empty if none was found.
