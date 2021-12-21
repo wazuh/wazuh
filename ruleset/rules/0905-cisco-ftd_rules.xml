@@ -15,37 +15,37 @@
   <rule id="91501" level="7">
     <if_sid>91500</if_sid>
     <field name="event.severity">1</field>
-    <description>FTD alert message.</description>
+    <description>FTD: alert message.</description>
   </rule>
 
   <rule id="91502" level="5">
     <if_sid>91500</if_sid>
     <field name="event.severity">2</field>
-    <description>FTD critical message.</description>
+    <description>FTD: critical message.</description>
   </rule>
 
   <rule id="91503" level="4">
     <if_sid>91500</if_sid>
     <field name="event.severity">3</field>
-    <description>FTD error message.</description>
+    <description>FTD: error message.</description>
   </rule>
 
   <rule id="91504" level="3">
     <if_sid>91500</if_sid>
     <field name="event.severity">4</field>
-    <description>FTD warning message.</description>
+    <description>FTD: warning message.</description>
   </rule>
 
   <rule id="91505" level="2">
     <if_sid>91500</if_sid>
     <field name="event.severity">5|6</field>
-    <description>FTD notification/informational message.</description>
+    <description>FTD: notification/informational message.</description>
   </rule>
 
   <rule id="91506" level="0">
     <if_sid>91500</if_sid>
     <field name="event.severity">7</field>
-    <description>FTD debug message.</description>
+    <description>FTD: debug message.</description>
   </rule>
 
   <rule id="91507" level="9">
