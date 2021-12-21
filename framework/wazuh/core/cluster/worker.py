@@ -926,7 +926,17 @@ class Worker(client.AbstractClientManager):
         self.version = metadata.__version__
         self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
-        self.task_pool = ProcessPoolExecutor(max_workers=1)
+        try:
+            self.task_pool = ProcessPoolExecutor(max_workers=1)
+        # Handle exception when the user running Wazuh cannot access /dev/shm
+        except (FileNotFoundError, PermissionError):
+            self.logger.warning(
+                "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
+                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "Changing the file permissions to 777 will solve this issue.")
+            self.logger.warning(
+                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
+            self.task_pool = None
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
 

@@ -15,14 +15,14 @@ from wazuh.core import common, utils
 def spawn_process_pool():
     """Import necessary basic Wazuh SDK modules for the local request pool and spawn child."""
     from wazuh import agent, manager  # noqa
-    from wazuh.core import common # noqa
-    from wazuh.core.cluster import dapi # noqa
+    from wazuh.core import common  # noqa
+    from wazuh.core.cluster import dapi  # noqa
     return
 
 
 def spawn_authentication_pool():
     """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
-    from wazuh import security # noqa
+    from wazuh import security  # noqa
     return
 
 
@@ -165,9 +165,11 @@ def start(foreground, root, config_file):
         print(f"Starting API as root")
 
     # Spawn child processes with their own needed imports
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.wait([loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
-                                          for name, pool in common.mp_pools.get().items()]))
+    if 'thread_pool' not in common.mp_pools.get():
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            asyncio.wait([loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
+                          for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

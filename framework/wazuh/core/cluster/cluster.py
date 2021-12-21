@@ -669,7 +669,7 @@ async def run_in_pool(loop, pool, f, *args, **kwargs):
     -------
     Result of `f(*args, **kwargs)` function.
     """
-    if pool:
+    if pool is not None:
         task = loop.run_in_executor(pool, partial(f, *args, **kwargs))
         return await wait_for(task, timeout=None)
     else:
