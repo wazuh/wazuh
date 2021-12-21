@@ -160,7 +160,7 @@ def start(foreground, root, config_file):
         print(f"Starting API as root")
 
     # Spawn child processes with their own needed imports
-    if not common.mp_pools.get().get('thread_pool', None):
+    if 'thread_pool' not in common.mp_pools.get():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
             asyncio.wait([loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
