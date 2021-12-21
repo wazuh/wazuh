@@ -17,5 +17,6 @@ typedef char os_sha256[65];
 
 int OS_SHA256_File(const char *fname, os_sha256 output, int mode) __attribute((nonnull));
 int OS_SHA256_String(const char *str, os_sha256 output);
+int OS_SHA256_String_sized(const char *str, char* output, size_t size);
 
 #endif /* SHA256_OP_H */

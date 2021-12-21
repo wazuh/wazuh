@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS info (
 
 CREATE TABLE IF NOT EXISTS `group` (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT
+    name TEXT,
     UNIQUE (name)
 );
 

@@ -67,3 +67,21 @@ int OS_SHA256_String(const char *str, os_sha256 output)
 
     return (0);
 }
+// JJP: DOxygen clarifying that output must be size+1 at least, and
+int OS_SHA256_String_sized(const char *str, char* output, size_t size)
+{
+    SHA256_CTX c;
+    unsigned char md[SHA256_DIGEST_LENGTH];
+    size_t n;
+
+    SHA256_Init(&c);
+    SHA256_Update(&c, str, strlen(str));
+    SHA256_Final(&(md[0]), &c);
+
+    for (n = 0; n < size/2 && n < SHA256_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", md[n]);
+        output += 2;
+    }
+
+    return (0);
+}
