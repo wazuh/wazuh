@@ -1056,6 +1056,7 @@ InstallServer()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/groups
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
 
     ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
 

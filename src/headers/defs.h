@@ -228,7 +228,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_PROF_NAME     ".template.db"
 #define WDB_TASK_DIR      "queue/tasks"
 #define WDB_TASK_NAME     "tasks"
-#define WDB_BACKUP_FOLDER "queue/db/backup"
+#define WDB_BACKUP_FOLDER "backup/db"
 
 /* Diff queue */
 #define DIFF_DIR        "queue/diff"
