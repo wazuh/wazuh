@@ -34,7 +34,7 @@ class FIMDBMOCK final
         MOCK_METHOD(void, removeItem, (const nlohmann::json&), ());
         MOCK_METHOD(void, updateItem, (const nlohmann::json&, ResultCallbackData), ());
         MOCK_METHOD(void, executeQuery, (const nlohmann::json&, ResultCallbackData), ());
-        MOCK_METHOD(void, logErr, (const modules_log_level_t logLevel, const std::string& msg), ());
+        MOCK_METHOD(void, logFunction, (const modules_log_level_t logLevel, const std::string& msg), ());
 
     private:
         FIMDBMOCK() = default;

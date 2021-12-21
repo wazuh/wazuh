@@ -39,7 +39,7 @@ namespace FimDBUtils
         }
         catch (const DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
 
         return paths;
@@ -72,7 +72,7 @@ namespace FimDBUtils
         }
         catch (const DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
 
         return paths;

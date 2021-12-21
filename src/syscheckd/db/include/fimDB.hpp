@@ -335,7 +335,7 @@ class FIMDB
         /**
          * @brief Its the function to log an error
          */
-        inline void logErr(const modules_log_level_t logLevel, const std::string& msg)
+        inline void logFunction(const modules_log_level_t logLevel, const std::string& msg)
         {
             m_loggingFunction(logLevel, msg);
         }

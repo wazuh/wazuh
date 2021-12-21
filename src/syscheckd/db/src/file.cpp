@@ -23,7 +23,7 @@ int fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
 
     if (paths.empty())
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, "No entry found with that pattern");
+        FIMDB::getInstance().logFunction(LOG_ERROR, "No entry found with that pattern");
     }
     else
     {
@@ -45,7 +45,7 @@ int fim_db_get_path(const char* file_path, callback_context_t callback)
 
     if (!file_path || !callback.callback)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, "Invalid parameters");
+        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -63,7 +63,7 @@ int fim_db_get_path(const char* file_path, callback_context_t callback)
 
             if (entry_from_path.empty())
             {
-                FIMDB::getInstance().logErr(LOG_ERROR, "No entry found with that path");
+                FIMDB::getInstance().logFunction(LOG_ERROR, "No entry found with that path");
             }
             else
             {
@@ -74,7 +74,7 @@ int fim_db_get_path(const char* file_path, callback_context_t callback)
         }
         catch (const DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
     }
 
@@ -88,7 +88,7 @@ int fim_db_remove_path(const char* path)
 
     if (!path)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, "Invalid parameters");
+        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -100,7 +100,7 @@ int fim_db_remove_path(const char* path)
         }
         catch (const DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
     }
 
@@ -120,7 +120,7 @@ int fim_db_get_count_file_inode()
     }
     catch (const DbSync::dbsync_error& err)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
 
     return count;
@@ -136,7 +136,7 @@ int fim_db_get_count_file_entry()
     }
     catch (const DbSync::dbsync_error& err)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
 
     return count;
@@ -148,7 +148,7 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
 
     if (!data || !updated)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, "Invalid parameters");
+        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -160,7 +160,7 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
         }
         catch (DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
     }
 
@@ -173,7 +173,7 @@ void fim_db_file_inode_search(const unsigned long inode, const unsigned long dev
 
     if (paths.empty())
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, "No paths found with these inode and dev");
+        FIMDB::getInstance().logFunction(LOG_ERROR, "No paths found with these inode and dev");
     }
     else
     {

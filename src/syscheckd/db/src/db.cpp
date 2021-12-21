@@ -79,7 +79,7 @@ void fim_run_integrity()
     }
     catch (const DbSync::dbsync_error& err)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
 }
 
@@ -91,7 +91,7 @@ void fim_sync_push_msg(const char* msg)
     }
     catch (const DbSync::dbsync_error& err)
     {
-        FIMDB::getInstance().logErr(LOG_ERROR, err.what());
+        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
 }
 
