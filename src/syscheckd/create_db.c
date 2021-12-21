@@ -53,6 +53,12 @@ void process_delete_event(void * data, void * ctx)
     fim_entry *new_entry = (fim_entry *)data;
     struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
 
+    // Remove path from the DB.
+    if (fim_db_remove_path(new_entry->file_entry.path) == FIMDB_ERR)
+    {
+        return;
+    }
+
     if (ctx_data->event->report_event) {
         json_event = fim_json_event(new_entry, NULL, ctx_data->config, ctx_data->event, NULL);
     }
@@ -81,14 +87,7 @@ int fim_generate_delete_event(const char *file_path,
         fim_diff_process_delete_file(file_path);
     }
 
-    // Remove path from the DB.
-    int retVal = fim_db_remove_path(file_path);
-
-    if (retVal != FIMDB_ERR) {
-        retVal = fim_db_get_path(file_path, callback_data);
-    }
-
-    return retVal;
+    return fim_db_get_path(file_path, callback_data);
 }
 
 time_t fim_scan() {
