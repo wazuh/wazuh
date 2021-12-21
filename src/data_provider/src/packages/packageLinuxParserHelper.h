@@ -39,15 +39,30 @@ namespace PackageLinuxHelper
     static nlohmann::json parseRpm(const RpmPackageManager::Package& package)
     {
         nlohmann::json ret;
-        ret["name"]         = package.name;
-        ret["size"]         = package.size;
-        ret["install_time"] = package.installTime;
-        ret["groups"]       = package.group;
-        ret["version"]      = package.version;
-        ret["architecture"] = package.architecture;
-        ret["format"]       = "rpm";
-        ret["vendor"]       = package.vendor;
-        ret["description"]  = package.description;
+        std::string version = package.version;
+        if (package.epoch)
+        {
+            version = package.epoch + ":" + version;
+        }
+
+        if (!package.release.empty())
+        {
+            version += "-" + package.release;
+        }
+
+        if (package.name.compare("gpg-pubkey") != 0 && !package.name.empty())
+        {
+            ret["name"]         = package.name;
+            ret["size"]         = package.size;
+            ret["install_time"] = package.installTime;
+            ret["groups"]       = package.group;
+            ret["version"]      = version;
+            ret["architecture"] = package.architecture;
+            ret["format"]       = "rpm";
+            ret["vendor"]       = package.vendor;
+            ret["description"]  = package.description;
+        }
+
         return ret;
     }
 

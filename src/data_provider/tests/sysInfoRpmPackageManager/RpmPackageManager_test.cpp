@@ -275,19 +275,19 @@ TEST(RpmLibTest, SinglePackage)
     EXPECT_CALL(*mock, rpmdbNextIterator(_)).WillOnce(Return(headerMock)).WillOnce(nullptr);
 
     EXPECT_CALL(*mock, headerGet(headerMock, _, tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
-    EXPECT_CALL(*mock, rpmtdGetString(_)).Times(10).WillOnce(Return("name"))
+    EXPECT_CALL(*mock, rpmtdGetString(_)).Times(9).WillOnce(Return("name"))
     .WillOnce(Return("version"))
     .WillOnce(Return("release"))
-    .WillOnce(Return("epoch"))
     .WillOnce(Return("summary"))
     .WillOnce(Return("vendor"))
     .WillOnce(Return("group"))
     .WillOnce(Return("source"))
     .WillOnce(Return("arch"))
     .WillOnce(Return("description"));
-    EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(2).WillOnce(Return(20))
-    .WillOnce(Return(20));
-
+    EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(3)
+                                                 .WillOnce(Return(1)) // epoch
+                                                 .WillOnce(Return(20)) // installtime
+                                                 .WillOnce(Return(20)); // size
 
     std::vector<RpmPackageManager::Package> packages;
     {
@@ -297,9 +297,9 @@ TEST(RpmLibTest, SinglePackage)
         {
             EXPECT_EQ(p.name, "name");
             EXPECT_EQ(p.release, "release");
-            EXPECT_EQ(p.epoch, "epoch");
+            EXPECT_EQ(p.epoch, uint64_t{1});
             EXPECT_EQ(p.summary, "summary");
-            EXPECT_EQ(p.installTime, uint64_t{20});
+            EXPECT_EQ(p.installTime, "20");
             EXPECT_EQ(p.size, uint64_t{20});
             EXPECT_EQ(p.vendor, "vendor");
             EXPECT_EQ(p.group, "group");
@@ -327,10 +327,9 @@ TEST(RpmLibTest, TwoPackages)
     .WillOnce(nullptr);
 
     EXPECT_CALL(*mock, headerGet(headerMock, _, tdMock, HEADERGET_DEFAULT)).WillRepeatedly(Return(1));
-    EXPECT_CALL(*mock, rpmtdGetString(_)).Times(20).WillOnce(Return("name"))
+    EXPECT_CALL(*mock, rpmtdGetString(_)).Times(18).WillOnce(Return("name"))
     .WillOnce(Return("version"))
     .WillOnce(Return("release"))
-    .WillOnce(Return("epoch"))
     .WillOnce(Return("summary"))
     .WillOnce(Return("vendor"))
     .WillOnce(Return("group"))
@@ -340,17 +339,18 @@ TEST(RpmLibTest, TwoPackages)
     .WillOnce(Return("name"))
     .WillOnce(Return("version"))
     .WillOnce(Return("release"))
-    .WillOnce(Return("epoch"))
     .WillOnce(Return("summary"))
     .WillOnce(Return("vendor"))
     .WillOnce(Return("group"))
     .WillOnce(Return("source"))
     .WillOnce(Return("arch"))
     .WillOnce(Return("description"));
-    EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(4).WillOnce(Return(20))
-    .WillOnce(Return(20))
-    .WillOnce(Return(20))
-    .WillOnce(Return(20));
+    EXPECT_CALL(*mock, rpmtdGetNumber(_)).Times(6).WillOnce(Return(1)) // epoch
+                                                  .WillOnce(Return(20)) // installtime
+                                                  .WillOnce(Return(20)) // size
+                                                  .WillOnce(Return(1)) // epoch
+                                                  .WillOnce(Return(20)) // installtime
+                                                  .WillOnce(Return(20)); // size
 
 
     std::vector<RpmPackageManager::Package> packages;
@@ -361,9 +361,9 @@ TEST(RpmLibTest, TwoPackages)
     {
         EXPECT_EQ(p.name, "name");
         EXPECT_EQ(p.release, "release");
-        EXPECT_EQ(p.epoch, "epoch");
+        EXPECT_EQ(p.epoch, uint64_t{1});
         EXPECT_EQ(p.summary, "summary");
-        EXPECT_EQ(p.installTime, uint64_t{20});
+        EXPECT_EQ(p.installTime, "20");
         EXPECT_EQ(p.size, uint64_t{20});
         EXPECT_EQ(p.vendor, "vendor");
         EXPECT_EQ(p.group, "group");

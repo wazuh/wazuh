@@ -34,9 +34,9 @@ class RpmPackageManager final
             std::string name;
             std::string version;
             std::string release;
-            std::string epoch;
+            uint64_t epoch;
             std::string summary;
-            uint64_t installTime;
+            std::string installTime;
             uint64_t size;
             std::string vendor;
             std::string group;
