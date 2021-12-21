@@ -1340,7 +1340,7 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
  * @retval  0 Success: Response contains the value.
  * @retval -1 On error: Response contains details of the error.
  */
-int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output);
 
 /**
  * @brief Function to parse the global create backup.
@@ -1370,7 +1370,7 @@ int wdb_parse_global_get_backup(char* output);
  * @retval  0 Success: Response contains 'ok'.
  * @retval -1 On error: Response contains details of the error.
  */
-int wdb_parse_global_restore_backup(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output);
 
 /**
  * @brief Function to create a backup of the global.db.
@@ -1408,7 +1408,7 @@ cJSON* wdb_global_get_backup();
  * @retval  0 Success: Backup restored successfully.
  * @retval -1 On error: The backup couldn't be restored.
  */
-int wdb_global_restore_backup(wdb_t* wdb, char* snapshot, bool save_pre_restore_state, char* output);
+int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
 
 // Functions for database integrity
 
