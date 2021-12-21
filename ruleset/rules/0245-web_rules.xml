@@ -362,15 +362,15 @@
     </mitre>
   </rule>
 
-<rule id="31173" level="12">
-  <if_sid>31172</if_sid>
-  <regex type="pcre2">ldap[s]?|rmi|dns|nis|iiop|corba|nds|http|lower|upper|(\$\{\S*\w\}\S*)+</regex>
-  <description>Log4j RCE attack attempt detected.</description>
-  <mitre>
-     <id>T1190</id>
-     <id>T1210</id>
-     <id>T1211</id>
-  </mitre>
-</rule>
+  <rule id="31173" level="12">
+    <if_sid>31172</if_sid>
+    <regex type="pcre2">ldap[s]?|rmi|dns|nis|iiop|corba|nds|http|lower|upper|(\$\{\S*\w\}\S*)+</regex>
+    <description>Log4j RCE attack attempt detected.</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1210</id>
+      <id>T1211</id>
+    </mitre>
+  </rule>
 
 </group>
