@@ -19,7 +19,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 {
     if (!Utils::existsRegular(RPM_DATABASE))
     {
-        // We are probably using RPM >= 1.16 – get the packages from librpm.
+        // We are probably using RPM >= 4.16 – get the packages from librpm.
         RpmPackageManager rpm{std::make_shared<RpmLib>()};
 
         for (const auto& p : rpm)
