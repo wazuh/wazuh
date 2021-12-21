@@ -1572,7 +1572,7 @@ cJSON* wdb_global_get_backup() {
     return j_backups;
 }
 
-int wdb_global_restore_backup(wdb_t* wdb, char* snapshot, bool save_pre_restore_state, char* output) {
+int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
     bool backup_found = false;
     DIR* dp = NULL;
     struct dirent *entry = NULL;
@@ -1621,8 +1621,9 @@ int wdb_global_restore_backup(wdb_t* wdb, char* snapshot, bool save_pre_restore_
         snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, snapshot ? snapshot : most_recent_backup);
 
         if(!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
-            wdb_commit2(wdb);
-            sqlite3_close_v2(wdb->db);
+            wdb_leave(*wdb);
+            wdb_close(*wdb, true);
+            *wdb = NULL;
 
             if(save_pre_restore_state) {
                 if(w_compress_gzfile(global_path, global_pre_restore_path)) {
@@ -1634,9 +1635,6 @@ int wdb_global_restore_backup(wdb_t* wdb, char* snapshot, bool save_pre_restore_
 
             unlink(global_path);
             rename(global_tmp_path, global_path);
-            if(sqlite3_open_v2(global_path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-                mdebug1("Failed opening global.db after backup restore");
-            }
 
             snprintf(output, OS_MAXSTR + 1, "ok");
             return OS_SUCCESS;
