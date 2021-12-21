@@ -19,6 +19,8 @@ static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_up(void * args);
+static void * run_backup(void * args);
+
 
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
@@ -39,6 +41,7 @@ int main(int argc, char ** argv)
     pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_up;
+    pthread_t thread_backup;
 
     OS_SetName(ARGV0);
 
@@ -216,6 +219,11 @@ int main(int argc, char ** argv)
         goto failure;
     }
 
+    if (status = pthread_create(&thread_backup, NULL, run_backup, NULL), status != 0) {
+        merror("Couldn't create thread: %s", strerror(status));
+        goto failure;
+    }
+
     // Join threads
 
     pthread_join(thread_dealer, NULL);
@@ -228,6 +236,7 @@ int main(int argc, char ** argv)
     free(worker_pool);
     pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
+    pthread_join(thread_backup, NULL);
     wdb_close_all();
 
     OSHash_Free(open_dbs);
@@ -403,6 +412,25 @@ void * run_gc(__attribute__((unused)) void * args) {
 
     return NULL;
 }
+
+void * run_backup(__attribute__((unused)) void * args) {
+    if(wconfig.wdb_backup_settings[0].enabled) {
+        time_t last_time = 0;
+        while (running) {
+            time_t current_time = time(NULL);
+            if(current_time - last_time >= wconfig.wdb_backup_settings[0].interval) {
+                wdb_t* wdb = wdb_open_global();
+                wdb_global_create_backup(wdb);
+                last_time = current_time;
+                wdb_leave(wdb);
+            }
+            sleep(1);
+        }
+    }
+
+    return NULL;
+}
+
 
 void * run_up(__attribute__((unused)) void * args) {
     DIR *fd;
