@@ -1734,13 +1734,8 @@ int wdb_global_create_backup(wdb_t* wdb) {
     dp = opendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
-        // Try to create it
-        mkdir(WDB_BACKUP_FOLDER, 0750);
-        dp = opendir(WDB_BACKUP_FOLDER);
-        if(!dp) {
-            mdebug1("Unable to create backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
-            return OS_INVALID;
-        }
+        mdebug1("Unable to create backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
+        return OS_INVALID;
     }
     closedir(dp);
 
