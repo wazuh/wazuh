@@ -274,10 +274,10 @@ class DistributedAPI:
                     loop = asyncio.get_event_loop()
                     if 'thread_pool' in pools:
                         pool = pools.get('thread_pool')
-                    elif self.f.__name__ not in authentication_funcs:
-                        pool = pools.get('process_pool')
-                    else:
+                    elif self.f.__name__ in authentication_funcs:
                         pool = pools.get('authentication_pool')
+                    else:
+                        pool = pools.get('process_pool')
 
                     task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
                                                               self.logger, self.rbac_permissions,
