@@ -384,6 +384,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Worker")
+        self.integrity_control = {}
         # The self.client_data will be sent to the master when doing a hello request.
         self.client_data = f"{self.name} {cluster_name} {node_type} {version}".encode()
 
@@ -620,9 +621,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     if self.check_integrity_free and await integrity_check.request_permission():
                         logger.info("Starting.")
                         self.integrity_check_status['date_start'] = start_time
-                        files_metadata = await cluster.run_in_pool(self.loop, self.manager.task_pool,
-                                                                   cluster.get_files_status)
-                        await integrity_check.sync(files_metadata=files_metadata, files_to_sync={})
+                        self.integrity_control = await cluster.run_in_pool(self.loop, self.manager.task_pool,
+                                                                           cluster.get_files_status,
+                                                                           self.integrity_control)
+                        await integrity_check.sync(files_metadata=self.integrity_control, files_to_sync={})
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
                 logger.error(f"Error synchronizing integrity: {e}")

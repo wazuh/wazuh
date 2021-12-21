@@ -1004,7 +1004,8 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
+                task = self.loop.run_in_executor(self.task_pool, partial(wazuh.core.cluster.cluster.get_files_status,
+                                                                         self.integrity_control))
                 # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_control = await asyncio.wait_for(task, timeout=None)
             except Exception as e:

@@ -78,10 +78,8 @@ async def master_main(args, cluster_config, cluster_items, logger):
                                                      concurrency_test=args.concurrency_test, node=my_server,
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
-    # Spawn pool processes if needed
-    if cluster_items['intervals']['master']['process_pool_debug']:
-        my_server.task_pool.map(cluster_utils.process_spawn_sleep,
-                                range(my_server.task_pool._max_workers))
+    # Spawn pool processes
+    my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
@@ -100,6 +98,10 @@ async def worker_main(args, cluster_config, cluster_items, logger):
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
                                                          cluster_items=cluster_items)
+
+        # Spawn pool processes
+        my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
+
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:

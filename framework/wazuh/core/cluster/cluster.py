@@ -156,7 +156,8 @@ def check_cluster_status():
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
+             get_md5=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
@@ -174,6 +175,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     get_cluster_item_key : str
         Key inside cluster.json['files'] to which each file belongs. This is useful to know what actions to take
         after sending a file from one node to another, depending on the directory the file belongs to.
+    previous_status : dict
+        Information collected in the previous integration process.
     get_md5 : bool
         Whether to calculate and save the MD5 hash of the found file.
 
@@ -182,10 +185,9 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     walk_files : dict
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
     """
+    if previous_status is None:
+        previous_status = {}
     walk_files = {}
-
-    # Get the information collected in the previous integration process.
-    previous_status = common.cluster_integrity_mtime.get()
 
     full_dirname = path.join(common.wazuh_path, dirname)
     # Get list of all files and directories inside 'full_dirname'.
@@ -233,11 +235,13 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(get_md5=True):
+def get_files_status(previous_status=None, get_md5=True):
     """Get all files and metadata inside the directories listed in cluster.json['files'].
 
     Parameters
     ----------
+    previous_status : dict
+        Information collected in the previous integration process.
     get_md5 : bool
         Whether to calculate and save the MD5 hash of the found file.
 
@@ -246,6 +250,8 @@ def get_files_status(get_md5=True):
     final_items : dict
         Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
     """
+    if previous_status is None:
+        previous_status = {}
 
     cluster_items = get_cluster_items()
 
@@ -256,11 +262,9 @@ def get_files_status(get_md5=True):
         try:
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, get_md5))
+                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_md5))
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
-    # Save the information collected in the current integration process.
-    common.cluster_integrity_mtime.set(final_items)
 
     return final_items
 
@@ -650,7 +654,7 @@ async def run_in_pool(loop, pool, f, *args, **kwargs):
 
     Parameters
     ----------
-    loop : uvloop.EventLoopPolicy
+    loop : AbstractEventLoop
         Asyncio loop.
     pool : ProcessPoolExecutor or None
         Process pool object in charge of running functions.
