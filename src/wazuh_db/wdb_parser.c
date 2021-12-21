@@ -942,7 +942,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
-                result = wdb_parse_global_backup(wdb, next, output);
+                // The "backup restore" command takes the pool_mutex to remove the wdb pointer
+                result = wdb_parse_global_backup(&wdb, next, output);
             }
         }
         else {
@@ -5717,7 +5718,7 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
     int result = OS_INVALID;
     char * next;
     const char delim[] = " ";
@@ -5729,13 +5730,16 @@ int wdb_parse_global_backup(wdb_t* wdb, char* input, char* output) {
         snprintf(output, OS_MAXSTR + 1, "err Missing backup action");
     }
     else if (strcmp(next, "create") == 0) {
-        result = wdb_parse_global_create_backup(wdb, output);
+        result = wdb_parse_global_create_backup(*wdb, output);
     }
     else if (strcmp(next, "get") == 0) {
         result = wdb_parse_global_get_backup(output);
     }
     else if (strcmp(next, "restore") == 0) {
+        // During a restore, the global wdb_t pointer may change. The mutex prevents anyone else from accesing it
+        w_mutex_lock(&pool_mutex);
         result = wdb_parse_global_restore_backup(wdb, tail, output);
+        w_mutex_unlock(&pool_mutex);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
@@ -5771,14 +5775,14 @@ int wdb_parse_global_get_backup(char* output) {
     }
 }
 
-int wdb_parse_global_restore_backup(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
     cJSON *j_parameters = NULL;
     const char *error = NULL;
     int result = OS_INVALID;
 
     j_parameters = cJSON_ParseWithOpts(input, &error, TRUE);
 
-    if (!j_parameters) {
+    if (!j_parameters && strcmp(input, "")) {
         mdebug1("Invalid backup JSON syntax when restoring snapshot.");
         mdebug2("JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);

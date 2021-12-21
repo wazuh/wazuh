@@ -1270,9 +1270,11 @@ int wdb_close(wdb_t * wdb, bool commit) {
 }
 
 void wdb_leave(wdb_t * wdb) {
-    wdb->refcount--;
-    wdb->last = time(NULL);
-    w_mutex_unlock(&wdb->mutex);
+    if(wdb) {
+        wdb->refcount--;
+        wdb->last = time(NULL);
+        w_mutex_unlock(&wdb->mutex);
+    }
 }
 
 wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
