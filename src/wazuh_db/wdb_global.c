@@ -1190,7 +1190,7 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id) {
 }
 
 
-wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int agent_id, char* csv, char* hash, char* sync_status, char* source) {
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status, char* source) {
 
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_CTX_SET);
     if (stmt == NULL) {
@@ -1201,7 +1201,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int agent_id, char* c
     sqlite3_bind_text(stmt, 2, hash, -1, NULL);
     sqlite3_bind_text(stmt, 3, sync_status, -1, NULL);
     sqlite3_bind_text(stmt, 4, source, -1, NULL);
-    sqlite3_bind_int(stmt, 5, agent_id);
+    sqlite3_bind_int(stmt, 5, id);
 
     if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
         return WDBC_OK;
@@ -1262,23 +1262,21 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
 }
 
 
-wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int agent_id, cJSON* j_groups, int priority) {
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority) {
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
     cJSON_ArrayForEach (j_group_name, j_groups) {
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
-            // JJP: Doing this for each agent doesn´t look performant, but it is what the original database sync task is doing.
             if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
                 result = WDBC_ERROR;
             }
 
-            // JJP This can be avoided if we remove the ID concept from the group table
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
             cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
             int group_id = j_group_id->valueint;
-
-            if (OS_INVALID == wdb_global_insert_agent_belong(wdb, group_id, agent_id, priority)) {
+            cJSON_Delete(j_find_response);
+            if (OS_INVALID == wdb_global_insert_agent_belong(wdb, group_id, id, priority)) {
                 result = WDBC_ERROR;
             }
             priority++;
@@ -1296,7 +1294,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
     cJSON* j_group_info = NULL;
     cJSON_ArrayForEach (j_group_info, j_agents_group_info) {
         cJSON* j_agent_id = cJSON_GetObjectItem(j_group_info, "id");
-        cJSON* j_groups = cJSON_GetObjectItem(j_group_info, "groups"); //JJP: Verify if the order is the expected.
+        cJSON* j_groups = cJSON_GetObjectItem(j_group_info, "groups");
         if (cJSON_IsNumber(j_agent_id) && cJSON_IsArray(j_groups)) {
             int agent_id = j_agent_id->valueint;
             int group_priority = 0;
