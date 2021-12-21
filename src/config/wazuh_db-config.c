@@ -31,6 +31,10 @@ int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
     const char* xml_database = "database";
     const char* xml_database_global = "global";
 
+    wconfig.wdb_backup_settings[0].enabled = true;
+    wconfig.wdb_backup_settings[0].interval = 86400;
+    wconfig.wdb_backup_settings[0].max_files = 10;
+
     for(int i = 0; chld_node[i]; i++) {
         if (!chld_node[i]->element) {
             merror(XML_ELEMNULL);
