@@ -37,8 +37,8 @@ checks:
     condition: all
     rules:
       - 'c:inetadm -p -> r:^tcp_wrappers=TRUE'
-      - 'c:ls /etc/hosts.deny -> r:^/etc/hosts.deny$'
-      - 'c:ls /etc/hosts.allow -> r:^/etc/hosts.allow$'
+      - 'f:/etc/hosts.deny
+      - 'f:/etc/hosts.allow
 
   - id: 9001
     title: "Disable Local-only Graphical Login Environment."
@@ -80,10 +80,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/gss"
     compliance:
       - cis: ["2.5"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/rpc/gss -> r:disabled|uninitialized|error'
-      - 'c:svcs -Ho state svc:/network/rpc/gss -> !r:\.+'
 
   - id: 9005
     title: "Disable Apache Service."
@@ -92,10 +91,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/http:apache24"
     compliance:
       - cis: ["2.6"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/http:apache24 -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/network/http:apache24 -> !r:\.+'
 
   - id: 9006
     title: "Disable Kerberos TGT Expiration Warning."
@@ -107,7 +105,6 @@ checks:
     condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/security/ktkt_warn -> r:disabled|uninitialized|error'
-      - 'c:svcs -Ho state svc:/network/security/ktkt_warn -> !r:\.+'
 
   - id: 9007
     title: "Disable NIS Client Services."
@@ -116,10 +113,9 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/client. If LDAP is not in use also disable nis/domain: # svcadm disable svc:/network/nis/domain"
     compliance:
       - cis: ["2.8"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/nis/client -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/network/nis/client -> !r:\.+'
 
   - id: 9008
     title: "Disable NIS Client Services (Domain - Scored)."
@@ -128,10 +124,9 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/client. If LDAP is not in use also disable nis/domain: # svcadm disable svc:/network/nis/domain"
     compliance:
       - cis: ["2.8-2.9"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/nis/domain -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/network/nis/domain -> !r:\.+'
 
   - id: 9009
     title: "Disable NIS Server Services."
@@ -140,10 +135,9 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/server. If LDAP is not in use also disable nis/domain: # svcadm disable svc:/network/nis/domain"
     compliance:
       - cis: ["2.9"]
-    condition: any
+    condition: all
     rules:
-      - 'c:svcs -Ho state svc:/network/nis/server -> r:disabled|error|match any instances'
-      - 'c:svcs -Ho state svc:/network/nis/server -> !r:\.+'
+      - 'c:svcs -Ho state svc:/network/nis/server -> r:disabled|error'
 
   - id: 9010
     title: "Disable Removable Volume Manager (rmvolmgr - Scored)."
@@ -152,10 +146,9 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/system/filesystem/rmvolmgr # svcadm disable svc:/network/rpc/smserver"
     compliance:
       - cis: ["2.10"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/system/filesystem/rmvolmgr -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/system/filesystem/rmvolmgr -> !r:\.+'
 
   - id: 9011
     title: "Disable Removable Volume Manager."
@@ -164,10 +157,9 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/system/filesystem/rmvolmgr # svcadm disable svc:/network/rpc/smserver"
     compliance:
       - cis: ["2.10"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/rpc/smserver -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/network/rpc/smserver -> !r:\.+'
 
   - id: 9012
     title: "Disable automount Service."
@@ -176,10 +168,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/system/filesystem/autofs"
     compliance:
       - cis: ["2.11"]
-    condition: any
+    condition: all
     rules:
       - 'c:svcs -Ho state svc:/system/filesystem/autofs -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/system/filesystem/autofs -> !r:\.+'
 
   - id: 9013
     title: "Disable Telnet Service."
@@ -191,7 +182,6 @@ checks:
     condition: all
     rules:
       - 'c:svcs -Ho state svc:/network/telnet -> r:disabled|error'
-      - 'c:svcs -Ho state svc:/network/telnet -> !r:\.+'
 
 # 3 Kernel Tuning
   - id: 9014
@@ -519,7 +509,7 @@ checks:
       - cis: ["5.1"]
     condition: all
     rules:
-      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -type d \( -perm -0002 -a ! -perm -1000 \) -ls -> !r:\.+'
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -type d \( -perm -0002 -a ! -perm -1000 \) -ls -> r:^$'
 
 # 6 System Access, Authentication, and Authorization
   - id: 9037
@@ -543,8 +533,8 @@ checks:
       - cis: ["6.3"]
     condition: all
     rules:
-      - 'c:ls /etc/cron.d/cron.deny -> r:No such file or directory'
-      - 'c:ls /etc/cron.d/at.deny -> r:No such file or directory'
+      - 'not f:/etc/cron.d/cron.deny'
+      - 'not f:/etc/cron.d/at.deny'
       - 'c:cat /etc/cron.d/cron.allow -> r:root'
       - 'c:wc -l /etc/cron.d/at.allow -> r:0'
 
@@ -603,7 +593,7 @@ checks:
       - cis: ["6.9"]
     condition: all
     rules:
-      - 'c:grep ^PermitRootLogin /etc/ssh/sshd_config -> r:no'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+no'
 
   - id: 9046
     title: "Disable Host-based Authentication for Login-based Services."
@@ -625,10 +615,9 @@ checks:
     remediation: "Perform the following to implement the recommended state: Edit /etc/ssh/sshd_config - PermitEmptyPasswords no # svcadm restart svc:/network/ssh"
     compliance:
       - cis: ["6.11"]
-    condition: any
+    condition: all
     rules:
-      - 'c:grep ^PermitEmptyPasswords /etc/ssh/sshd_config -> r:no'
-      - 'c:grep PermitEmptyPasswords /etc/ssh/sshd_config -> r:^#\S+'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+no'
 
   - id: 9048
     title: "Limit Consecutive Login Attempts for SSH."
@@ -639,7 +628,7 @@ checks:
       - cis: ["6.12"]
     condition: all
     rules:
-      - 'c:grep MaxAuthTries /etc/ssh/sshd_config -> r:6|^#'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 6'
 
   - id: 9049
     title: "Disable X11 Forwarding for SSH."
@@ -650,7 +639,7 @@ checks:
       - cis: ["6.13"]
     condition: all
     rules:
-      - 'c:grep X11Forwarding /etc/ssh/sshd_config -> r:no|^#'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:X11Forwarding\s+no'
 
   - id: 9050
     title: "Disable .\"nobody\" Access for RPC Encryption Key Storage Service"
@@ -708,9 +697,9 @@ checks:
       - cis: ["7.1"]
     condition: all
     rules:
-      - 'c:grep WEEKS= /etc/default/passwd -> r:^MAXWEEKS=13'
-      - 'c:grep WEEKS= /etc/default/passwd -> r:^MINWEEKS=1'
-      - 'c:grep WEEKS= /etc/default/passwd -> r:^WARNWEEKS=1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MAXWEEKS && n:=\s*\t*(\d+) compare <= 13'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINWEEKS && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:WARNWEEKS && n:=\s*\t*(\d+) compare == 4'
 
   - id: 9055
     title: "Set Strong Password Creation Policies."
@@ -721,18 +710,18 @@ checks:
       - cis: ["7.2"]
     condition: all
     rules:
-      - 'c:grep ^PASSLENGTH= /etc/default/passwd -> r:14'
-      - 'c:grep NAMECHECK= /etc/default/passwd -> r:YES'
-      - 'c:grep ^HISTORY= /etc/default/passwd -> r:10'
-      - 'c:grep MINDIFF= /etc/default/passwd -> r:3'
-      - 'c:grep ^MINUPPER= /etc/default/passwd -> r:1'
-      - 'c:grep ^MINLOWER= /etc/default/passwd -> r:1'
-      - 'c:grep ^MINSPECIAL= /etc/default/passwd -> r:1'
-      - 'c:grep ^MINDIGIT= /etc/default/passwd -> r:1'
-      - 'c:grep ^MAXREPEATS= /etc/default/passwd -> r:1'
-      - 'c:grep WHITESPACE= /etc/default/passwd -> r:YES'
-      - 'c:grep DICTIONDBDIR= /etc/default/passwd -> r:/var/passwd'
-      - 'c:grep ^DICTIONLIST= /etc/default/passwd -> r:/usr/share/lib/dict/words'
+      - 'f:/etc/default/passwd -> !r:^# && r:PASSLENGTH && n:=\s*\t*(\d) compare == 14'
+      - 'f:/etc/default/passwd -> !r:^# && r:NAMECHECK && r:=\s*\t*yes'
+      - 'f:/etc/default/passwd -> !r:^# && r:HISTORY && n:=\s*\t*(\d+) compare == 10'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINDIFF && n:=\s*\t*(\d+) compare == 3'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINUPPER && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINLOWER && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINSPECIAL && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINDIGIT && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MAXREPEATS && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:WHITESPACE && r:=\s*\t*yes'
+      - 'f:/etc/default/passwd -> !r:^# && r:DICTIONDBDIR && r:=\s*\t*/var/passwd'
+      - 'f:/etc/default/passwd -> !r:^# && r:DICTIONLIST && r:=\s*\t*/usr/share/lib/dict/words'
 
   - id: 9056
     title: "Set Default umask for users."
@@ -803,7 +792,7 @@ checks:
       - cis: ["8.3"]
     condition: all
     rules:
-      - 'c:grep ^Banner /etc/ssh/sshd_config -> r:Banner /etc/issue'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Banner\s*/etc/issue'
 
   - id: 9063
     title: "Enable a Warning Banner for the GNOME Service."
@@ -837,7 +826,7 @@ checks:
       - cis: ["9.1"]
     condition: all
     rules:
-      - 'c:/usr/sbin/consadm -p -> !r:\.+'
+      - 'c:/usr/sbin/consadm -p -> r:^$'
 
   - id: 9068
     title: "Verify System Account Default Passwords."
@@ -895,7 +884,7 @@ checks:
       - cis: ["9.6"]
     condition: all
     rules:
-      - 'c:logins -p -> !r:\.+'
+      - 'c:logins -p -> r:^$'
 
   - id: 9071
     title: "Verify No UID 0 Accounts Exist Other than root."
@@ -947,7 +936,7 @@ checks:
       - cis: ["9.16"]
     condition: all
     rules:
-      - 'c:logins -d -> !r:\.+'
+      - 'c:logins -d -> r:^$'
 
   - id: 9085
     title: "Find World Writable Files."
@@ -958,7 +947,7 @@ checks:
       - cis: ["9.21"]
     condition: all
     rules:
-      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -type f -perm -0002 -print -> !r:\.+'
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -type f -perm -0002 -print -> r:^$'
 
   - id: 9086
     title: "Find SUID/SGID System Executables."
@@ -980,7 +969,7 @@ checks:
       - cis: ["9.23"]
     condition: all
     rules:
-      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o \( -nouser -o -nogroup \) -ls -> !r:\.+'
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o \( -nouser -o -nogroup \) -ls -> r:^$'
 
   - id: 9088
     title: "Find Files and Directories with Extended Attributes."
@@ -991,4 +980,4 @@ checks:
       - cis: ["9.24"]
     condition: all
     rules:
-      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs\ -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -xattr -ls -> !r:\.+'
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs\ -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -xattr -ls -> r:^$'
