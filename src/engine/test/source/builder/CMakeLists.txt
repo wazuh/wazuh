@@ -6,25 +6,20 @@ set(BUILDER_TEST_SOURCE_DIR ${TEST_SOURCE_DIR}/builder)
 set(BUILDER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/builder)
 
 # Builder test
-add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
+CPMAddPackage(
+  NAME RxCpp
+  GITHUB_REPOSITORY ReactiveX/RxCpp
+  GIT_TAG v4.1.1
+  VERSION 4.1.1
+)
+
+add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp)
 target_include_directories(builder_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
-target_link_libraries(builder_test gtest_main)
+target_link_libraries(builder_test gtest_main rxcpp nlohmann_json::nlohmann_json)
 gtest_discover_tests(builder_test)
 
-# Configuration test
-add_executable(configuration_test ${BUILDER_TEST_SOURCE_DIR}/configuration_test.cpp)
-target_include_directories(configuration_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
-target_link_libraries(configuration_test gtest_main)
-gtest_discover_tests(configuration_test)
-
-# Processor test
-add_executable(processor_test ${BUILDER_TEST_SOURCE_DIR}/processor_test.cpp)
-target_include_directories(processor_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
-target_link_libraries(processor_test gtest_main)
-gtest_discover_tests(processor_test)
-
 # Registry test
-add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp)
+add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp)
 target_include_directories(registry_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
 target_link_libraries(registry_test gtest_main)
 gtest_discover_tests(registry_test)
