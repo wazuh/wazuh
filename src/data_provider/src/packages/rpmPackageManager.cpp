@@ -50,7 +50,7 @@ std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag) const
 
     if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT))
     {
-        auto cstr = m_rpmlib->rpmtdGetString(m_dataContainer);
+        auto cstr {m_rpmlib->rpmtdGetString(m_dataContainer)};
 
         if (cstr)
         {
@@ -83,10 +83,9 @@ RpmPackageManager::Iterator::Iterator()
 
 RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
     : m_end{false},
-      m_rpmlib{rpmlib}
+      m_rpmlib{rpmlib},
+      m_transactionSet{rpmlib->rpmtsCreate()}
 {
-    m_transactionSet = rpmlib->rpmtsCreate();
-
     if (!m_transactionSet)
     {
         throw std::runtime_error("rpmtsCreate failed");

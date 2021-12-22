@@ -92,4 +92,4 @@ class RpmLib final : public IRpmLibWrapper
             return ::rpmdbFreeIterator(mi);
         }
 };
-#endif _RPMLIB_H
+#endif //_RPMLIB_H

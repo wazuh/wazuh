@@ -1,5 +1,7 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
+/*
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * December 22, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -24,7 +26,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 
         for (const auto& p : rpm)
         {
-            auto packageJson = PackageLinuxHelper::parseRpm(p);
+            auto packageJson {PackageLinuxHelper::parseRpm(p)};
 
             if (!packageJson.empty())
             {
@@ -35,12 +37,12 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
     else
     {
         BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
-        auto row = db.getNext();
+        auto row {db.getNext()};
 
         // Get the packages from the Berkeley DB.
         while (!row.empty())
         {
-            auto package = PackageLinuxHelper::parseRpm(row);
+            auto package {PackageLinuxHelper::parseRpm(row)};
 
             if (!package.empty())
             {

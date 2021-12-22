@@ -9,8 +9,8 @@
  * Foundation
  */
 
-#ifndef RPMLIB_WRAPPER_H
-#define RPMLIB_WRAPPER_H
+#ifndef _RPMLIB_WRAPPER_H
+#define _RPMLIB_WRAPPER_H
 
 #include <rpm/header.h>
 #include <rpm/rpmdb.h>
@@ -38,4 +38,4 @@ class IRpmLibWrapper
         virtual rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) = 0;
 };
 
-#endif // RPMLIB_WRAPPER_H
+#endif // _RPMLIB_WRAPPER_H
