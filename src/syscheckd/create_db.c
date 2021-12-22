@@ -556,7 +556,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     directory_t *configuration = NULL;
 
     configuration = fim_configuration_directory(pathname);
-    if (configuration == NULL) {
+    if (NULL == configuration) {
         return;
     }
 

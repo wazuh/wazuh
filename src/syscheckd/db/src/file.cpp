@@ -115,7 +115,7 @@ int fim_db_get_count_file_inode()
     {
         nlohmann::json inodeQuery;
         inodeQuery["column_list"] = "count(DISTINCT (inode || ',' || dev)) AS count";
-        const auto countQuery { FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "") };
+        const auto countQuery = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "");
         count = FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, countQuery);
     }
     catch (const DbSync::dbsync_error& err)

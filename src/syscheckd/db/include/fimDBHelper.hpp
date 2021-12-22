@@ -115,7 +115,7 @@ namespace FIMDBHelper
             {
                 if (ReturnTypeCallback::SELECTED == type)
                 {
-                    count = jsonResult["query"]["count"];
+                    count = jsonResult["count"];
                 }
             }
         };
