@@ -9,6 +9,12 @@ using namespace std;
 
 namespace builder
 {
+    /**
+     * @brief Manage specific builders.
+     *
+     * It implements a key value registry that stores all registred managers and act as the
+     * interface to retreive them.
+     */
     class Registry
     {
         public:
