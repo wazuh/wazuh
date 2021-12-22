@@ -415,12 +415,14 @@ void * run_gc(__attribute__((unused)) void * args) {
 
 void * run_backup(__attribute__((unused)) void * args) {
     if(wconfig.wdb_backup_settings[0].enabled) {
+        char output[OS_MAXSTR + 1];
         time_t last_time = 0;
         while (running) {
             time_t current_time = time(NULL);
             if(current_time - last_time >= wconfig.wdb_backup_settings[0].interval) {
                 wdb_t* wdb = wdb_open_global();
-                wdb_global_create_backup(wdb);
+                wdb_global_create_backup(wdb, output);
+                mdebug1("Backup creation result: %s", output);
                 last_time = current_time;
                 wdb_leave(wdb);
             }
