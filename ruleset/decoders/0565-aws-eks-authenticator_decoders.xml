@@ -1,5 +1,5 @@
 <!--
-  -  Copyright (C) 2015-2021, Wazuh Inc.
+  Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
 <decoder name="aws-eks-authenticator">
@@ -95,4 +95,3 @@
   <regex type="pcre2">accesskeyid=(\S+)</regex>
   <order>accesskeyid</order>
 </decoder>
-
