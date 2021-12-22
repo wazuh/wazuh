@@ -31,10 +31,6 @@ int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
     const char* xml_database = "database";
     const char* xml_database_global = "global";
 
-    wconfig.wdb_backup_settings[0].enabled = true;
-    wconfig.wdb_backup_settings[0].interval = 86400;
-    wconfig.wdb_backup_settings[0].max_files = 10;
-
     for(int i = 0; chld_node[i]; i++) {
         if (!chld_node[i]->element) {
             merror(XML_ELEMNULL);
@@ -125,6 +121,10 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node) {
 
 void wdb_init_conf() {
     os_calloc(1, sizeof(wdb_backup_settings_node), wconfig.wdb_backup_settings);
+
+    wconfig.wdb_backup_settings[0].enabled = true;
+    wconfig.wdb_backup_settings[0].interval = 86400;
+    wconfig.wdb_backup_settings[0].max_files = 10;
 }
 
 void wdb_free_conf() {
