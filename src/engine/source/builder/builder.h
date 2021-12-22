@@ -4,6 +4,8 @@
 #include <rxcpp/rx.hpp>
 #include <nlohmann/json.hpp>
 
+#include "utils.h"
+
 using json = nlohmann::json;
 using namespace std;
 using namespace rxcpp;
@@ -31,7 +33,7 @@ namespace builder
     observable<json> get_enviroment(const string_view& enviroment_id);
 
     /**
-     * Builder base class.
+     * @brief Base class to allow polymorphism in the Registry.
      *
      * This class implements the polimorphism needed to include various builder types in the Registry
      * and implements the registration on all Builder classes.
@@ -66,7 +68,7 @@ namespace builder
     };
 
     /**
-    * JsonBuilder class.
+    * @brief Implements json input builders.
     *
     * This class implements the builders wich need a json object as input.
     */
@@ -74,7 +76,7 @@ namespace builder
     {
         public:
             /**
-             * @brief Construct a new Json Builder object.
+             * @brief Construct a new JsonBuilder object.
              *
              * @param builder_id Name with which it will be registered.
              * @param build Function that implements the build operation.
@@ -107,7 +109,7 @@ namespace builder
     };
 
     /**
-    * MultiJsonBuilder class.
+    * @brief Implements multiple jsons input builders.
     *
     * This class implements the builders wich need multiple json objects as input.
     */
@@ -146,5 +148,29 @@ namespace builder
             * @brief Deleted for safety.
             */
             MultiJsonBuilder& operator = (const MultiJsonBuilder&) = delete;
+    };
+
+    /**
+     * @brief Exception thrown on building errors.
+     *
+     * Thrown by specific instances of Builder when method build encounters errors and the object
+     * can't be built.
+     *
+     */
+    class BuildError: public exception
+    {
+        public:
+            /**
+             * @brief Construct a new BuildError object.
+             *
+             * @param builder_name name of the Builder instance.
+             * @param message descriptive message of the error.
+             */
+            BuildError(const string& builder_name, const string& message);
+            const char* what() const noexcept override;
+
+        private:
+            string m_builder_name;
+            string m_message;
     };
 };

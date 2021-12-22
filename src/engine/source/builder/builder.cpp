@@ -12,6 +12,9 @@ using namespace rxcpp;
 
 namespace builder
 {
+    /**********************************************************************************************/
+    /* Builder classes                                                                            */
+    /**********************************************************************************************/
     Builder::Builder(const string& builder_id)
     {
         Registry& registry = Registry::instance();
@@ -21,4 +24,14 @@ namespace builder
     JsonBuilder::JsonBuilder(const string& builder_id, observable<json> (*build)(const observable<json>&, const json&)): Builder(builder_id), build(build) {}
 
     MultiJsonBuilder::MultiJsonBuilder(const string& builder_id, observable<json> (*build)(const observable<json>& obs, const vector<json>&)): Builder(builder_id), build(build) {}
+
+    /**********************************************************************************************/
+    /* BuildError class                                                                           */
+    /**********************************************************************************************/
+    BuildError::BuildError(const string& builder_name, const string& message): m_builder_name{move(builder_name)}, m_message{move(message)} {}
+
+    const char* BuildError::what() const noexcept
+    {
+        return this->m_message.c_str();
+    }
 }
