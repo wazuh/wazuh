@@ -23,9 +23,21 @@
 
 #include "rpmlibWrapper.h"
 
+struct TransactionSetDeleter
+{
+    void operator()(rpmts ts)
+    {
+        rpmtsFree(ts);
+    }
+};
+
+
 // Provides an iterable abstraction for retrieving installed RPM packages.
 class RpmPackageManager final
 {
+    using TransactionSet = std::shared_ptr<rpmts_s>;
+    using TagDataContainer = std::shared_ptr<rpmtd_s>;
+    using RpmIterator = std::shared_ptr<rpmdbMatchIterator_s>;
     public:
         explicit RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper);
         // LCOV_EXCL_START
@@ -65,9 +77,9 @@ class RpmPackageManager final
                 uint64_t getAttributeNumber(rpmTag tag) const;
                 bool m_end = false;
                 std::shared_ptr<IRpmLibWrapper> m_rpmlib;
-                rpmts m_transactionSet = nullptr;
-                rpmdbMatchIterator m_matches = nullptr;
-                rpmtd m_dataContainer = nullptr;
+                TransactionSet m_transactionSet;
+                RpmIterator m_matches;
+                TagDataContainer m_dataContainer;
                 Header m_header = nullptr;
                 friend class RpmPackageManager;
         };

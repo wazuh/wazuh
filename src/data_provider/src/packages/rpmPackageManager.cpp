@@ -48,9 +48,9 @@ std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag) const
 {
     std::string retval;
 
-    if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT))
+    if (m_rpmlib->headerGet(m_header, tag, m_dataContainer.get(), HEADERGET_DEFAULT))
     {
-        auto cstr {m_rpmlib->rpmtdGetString(m_dataContainer)};
+        auto cstr {m_rpmlib->rpmtdGetString(m_dataContainer.get())};
 
         if (cstr)
         {
@@ -65,9 +65,9 @@ uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag) const
 {
     uint64_t retval {};
 
-    if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT))
+    if (m_rpmlib->headerGet(m_header, tag, m_dataContainer.get(), HEADERGET_DEFAULT))
     {
-        retval = m_rpmlib->rpmtdGetNumber(m_dataContainer);
+        retval = m_rpmlib->rpmtdGetNumber(m_dataContainer.get());
     }
 
     return retval;
@@ -84,31 +84,31 @@ RpmPackageManager::Iterator::Iterator()
 RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
     : m_end{false},
       m_rpmlib{rpmlib},
-      m_transactionSet{rpmlib->rpmtsCreate()}
+      m_transactionSet{rpmlib->rpmtsCreate(), rpmtsFree}
 {
     if (!m_transactionSet)
     {
         throw std::runtime_error("rpmtsCreate failed");
     }
 
-    if (rpmlib->rpmtsOpenDB(m_transactionSet, O_RDONLY))
+    if (rpmlib->rpmtsOpenDB(m_transactionSet.get(), O_RDONLY))
     {
         throw std::runtime_error("rpmtsOpenDB failed");
     }
 
-    if (rpmlib->rpmtsRun(m_transactionSet, nullptr, 0))
+    if (rpmlib->rpmtsRun(m_transactionSet.get(), nullptr, 0))
     {
         throw std::runtime_error("rpmtsRun failed");
     }
 
-    m_dataContainer = rpmlib->rpmtdNew();
+    m_dataContainer = TagDataContainer{rpmlib->rpmtdNew(), rpmtdFree};
 
     if (!m_dataContainer)
     {
         throw std::runtime_error("rpmtdNew failed");
     }
 
-    m_matches = rpmlib->rpmtsInitIterator(m_transactionSet, RPMTAG_NAME, nullptr, 0);
+    m_matches = RpmIterator(rpmlib->rpmtsInitIterator(m_transactionSet.get(), RPMTAG_NAME, nullptr, 0), rpmdbFreeIterator);
 
     if (!m_matches)
     {
@@ -121,26 +121,12 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
 RpmPackageManager::Iterator::~Iterator()
 {
-    if (m_transactionSet)
-    {
-        m_rpmlib->rpmtsCloseDB(m_transactionSet);
-        m_rpmlib->rpmtsFree(m_transactionSet);
-    }
-
-    if (m_dataContainer)
-    {
-        m_rpmlib->rpmtdFree(m_dataContainer);
-    }
-
-    if (m_matches)
-    {
-        m_rpmlib->rpmdbFreeIterator(m_matches);
-    }
+    ms_instantiated = false;
 }
 
 void RpmPackageManager::Iterator::operator++()
 {
-    m_header = m_rpmlib->rpmdbNextIterator(m_matches);
+    m_header = m_rpmlib->rpmdbNextIterator(m_matches.get());
 
     if (!m_header)
     {
