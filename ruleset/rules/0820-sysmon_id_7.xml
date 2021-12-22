@@ -3,12 +3,12 @@
 -->
 
 <!-- 
-  Sysmon Event ID 7 rules           
+  Sysmon Event ID 7 rules: 92151 - 92199
 -->
 
 <group name="sysmon_eid7_detections,">
 
-  <rule id="92031" level="12">
+  <rule id="92151" level="12">
     <if_group>sysmon_event7</if_group>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)System.Management.Automation.dll</field>
     <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]\:\\\\Windows\\\\Microsoft.NET\\.+\\csc\\.exe$</field>
@@ -21,7 +21,7 @@
     </mitre>
   </rule>
 
-  <rule id="92140" level="6">
+  <rule id="92152" level="6">
     <if_group>sysmon_event7</if_group>
     <field name="win.eventdata.imageLoaded" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers</field>
     <field name="win.eventdata.image" type="pcre2">spoolsv\.exe$</field>
@@ -31,7 +31,7 @@
     </mitre>
   </rule>
 
-  <rule id="92150" level="10">
+  <rule id="92153" level="10">
     <if_group>sysmon_event7</if_group>
     <field name="win.eventdata.imageLoaded" type="pcre2">(?i)vaultcli.dll</field>
     <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)VaultCmd\.exe$</field>

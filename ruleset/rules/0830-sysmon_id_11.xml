@@ -3,12 +3,12 @@
 -->
 
 <!-- 
-  Sysmon Event ID 11 rules          
+  Sysmon Event ID 11 rules 92200 - 92299
 -->
 
 <group name="sysmon_eid11_detections,">
    
-  <rule id="92000" level="4">
+  <rule id="92200" level="4">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(c|w)script\.exe</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
@@ -18,7 +18,7 @@
     </mitre>
   </rule>
 
-  <rule id="92041" level="6">
+  <rule id="92201" level="6">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">\\(?i)powershell\.exe</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\\\Roaming\\\\.*\\\\.+\.(exe|bin|dll)</field>
@@ -28,7 +28,7 @@
     </mitre>
   </rule>
 
-  <rule id="92080" level="12">
+  <rule id="92202" level="12">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js)</field>
     <description>Binary file dropped in Users\Public folder.</description>
@@ -37,8 +37,8 @@
     </mitre>
   </rule>
 
-  <rule id="92081" level="15">
-    <if_sid>92080</if_sid>
+  <rule id="92203" level="15">
+    <if_sid>92202</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)(scp|pscp|FZSFTP|sftp)\.exe</field>
     <description>Binary file dropped in Users\Public folder by SSH enabled copy software.</description>
     <mitre>
@@ -46,7 +46,7 @@
     </mitre>
   </rule>
 
-  <rule id="92090" level="15">
+  <rule id="92204" level="15">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\.+\\\\AppData\\\\Local\\\\Temp\\\\.+\.(exe|bin|dll|vbs|bat|js)</field>
     <description>Executable file dropped in folder commonly used by malware.</description>
@@ -55,7 +55,7 @@
     </mitre>
   </rule>
   
-  <rule id="92104" level="6">
+  <rule id="92205" level="6">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">^System$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
@@ -65,7 +65,7 @@
     </mitre>
   </rule>
 
-  <rule id="92200" level="12">
+  <rule id="92206" level="12">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">\\spoolsv.exe$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers.+\.dll</field>
