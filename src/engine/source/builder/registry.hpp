@@ -3,9 +3,8 @@
 #include <map>
 #include <string>
 
-#include "builder.h"
+#include "builder.hpp"
 
-using namespace std;
 
 namespace builder
 {
@@ -42,7 +41,7 @@ namespace builder
              * @param builder_id Unique Builder id string.
              * @param builder Builder object.
              */
-            void register_builder(const string& builder_id, const Builder& builder);
+            void register_builder(const std::string& builder_id, const Builder& builder);
 
             /**
              * @brief Get the builder object
@@ -50,7 +49,7 @@ namespace builder
              * @param builder_id Builder name to be retreived.
              * @return Builder object.
              */
-            const builder::Builder* get_builder(const string& builder_id) const;
+            const Builder* get_builder(const std::string& builder_id) const;
 
         private:
             /**
@@ -66,6 +65,6 @@ namespace builder
             /**
              * @brief registry that holds all Builders.
              */
-            map<string, const builder::Builder*> registry;
+            std::map<std::string, const Builder*> registry;
     };
 };

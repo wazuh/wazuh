@@ -1,14 +1,9 @@
 #pragma once
 
-#include <string_view>
+#include <string>
+#include <exception>
 #include <rxcpp/rx.hpp>
 #include <nlohmann/json.hpp>
-
-#include "utils.h"
-
-using json = nlohmann::json;
-using namespace std;
-using namespace rxcpp;
 
 
 /**
@@ -30,7 +25,7 @@ namespace builder
      * @param enviroment_id Name of the enviroment to be built.
      * @return observable<json>
      */
-    observable<json> get_enviroment(const string_view& enviroment_id);
+    rxcpp::observable<nlohmann::json> get_enviroment(const std::string& enviroment_id);
 
     /**
      * @brief Base class to allow polymorphism in the Registry.
@@ -48,7 +43,7 @@ namespace builder
              *
              * @param builder_id Name with which it will be registered.
              */
-            explicit Builder(const string& builder_id);
+            explicit Builder(const std::string& builder_id);
 
         public:
             /**
@@ -81,7 +76,7 @@ namespace builder
              * @param builder_id Name with which it will be registered.
              * @param build Function that implements the build operation.
              */
-            JsonBuilder(const string& builder_id, observable<json> (*build)(const observable<json>&, const json&));
+            JsonBuilder(const std::string& builder_id, rxcpp::observable<nlohmann::json> (*build)(const rxcpp::observable<nlohmann::json>&, const nlohmann::json&));
 
             /**
              * @brief Implepents build operation.
@@ -90,7 +85,7 @@ namespace builder
              * @param input_json Json object with transformations definitions.
              * @return Composed observable with transformations.
              */
-            observable<json> (*build)(const observable<json>& input_observable, const json& input_json);
+            rxcpp::observable<nlohmann::json> (*build)(const rxcpp::observable<nlohmann::json>& input_observable, const nlohmann::json& input_json);
 
             /**
              * @brief Deleted for safety.
@@ -122,7 +117,7 @@ namespace builder
             * @param builder_id Name with which it will be registered.
             * @param build Function that implements the build operation.
             */
-            MultiJsonBuilder(const string&, observable<json> (*)(const observable<json>&, const vector<json>&));
+            MultiJsonBuilder(const std::string&, rxcpp::observable<nlohmann::json> (*)(const rxcpp::observable<nlohmann::json>&, const std::vector<nlohmann::json>&));
 
 
             /**
@@ -132,7 +127,7 @@ namespace builder
              * @param input_json_vector Json objects with transformations definitions.
              * @return Composed observable with transformations.
              */
-            observable<json> (*build)(const observable<json>& input_observable, const vector<json>& input_json_vector);
+            rxcpp::observable<nlohmann::json> (*build)(const rxcpp::observable<nlohmann::json>& input_observable, const std::vector<nlohmann::json>& input_json_vector);
 
             /**
             * @brief Deleted for safety.
@@ -157,7 +152,7 @@ namespace builder
      * can't be built.
      *
      */
-    class BuildError: public exception
+    class BuildError: public std::exception
     {
         public:
             /**
@@ -166,11 +161,11 @@ namespace builder
              * @param builder_name name of the Builder instance.
              * @param message descriptive message of the error.
              */
-            BuildError(const string& builder_name, const string& message);
+            BuildError(const std::string& builder_name, const std::string& message);
             const char* what() const noexcept override;
 
         private:
-            string m_builder_name;
-            string m_message;
+            std::string m_builder_name;
+            std::string m_message;
     };
 };
