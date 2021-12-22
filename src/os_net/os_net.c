@@ -365,6 +365,7 @@ int OS_SendUDPbySize(int socket, int size, const char *msg)
 /* Accept a TCP connection */
 int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
 {
+    char aux_ip[IPSIZE + 1];
     int clientsocket;
     struct sockaddr_storage _nc;
     socklen_t _ncl;
@@ -383,6 +384,9 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         break;
     case AF_INET6:
         get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, addrsize - 1);
+        if (OS_GetIPv4FromIPv6(srcip, aux_ip)) {
+            strcpy(srcip, aux_ip);
+        }
         break;
     default:
         close(clientsocket);
