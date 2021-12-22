@@ -23,3 +23,12 @@ add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp ${BUIL
 target_include_directories(registry_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
 target_link_libraries(registry_test gtest_main)
 gtest_discover_tests(registry_test)
+
+# Utils test
+add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp)
+target_include_directories(utils_test PUBLIC ${BUILDER_ENGINE_SOURCE_DIR})
+target_link_libraries(utils_test gtest_main rxcpp nlohmann_json::nlohmann_json)
+gtest_discover_tests(utils_test)
+
+# Operations tests
+add_subdirectory(operations)
