@@ -1,5 +1,7 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
+/*
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * December 22, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -8,6 +10,9 @@
  */
 
 #include "rpmlibWrapper.h"
+
+#ifndef _RPMLIB_H
+#define _RPMLIB_H
 
 class RpmLib final : public IRpmLibWrapper
 {
@@ -87,3 +92,4 @@ class RpmLib final : public IRpmLibWrapper
             return ::rpmdbFreeIterator(mi);
         }
 };
+#endif _RPMLIB_H

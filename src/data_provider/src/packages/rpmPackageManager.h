@@ -1,5 +1,7 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
+/*
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * December 22, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -7,8 +9,8 @@
  * Foundation
  */
 
-#ifndef RPM_PACKAGE_MANAGER_H
-#define RPM_PACKAGE_MANAGER_H
+#ifndef _RPM_PACKAGE_MANAGER_H
+#define _RPM_PACKAGE_MANAGER_H
 
 #include <string>
 #include <vector>
@@ -25,7 +27,7 @@
 class RpmPackageManager final
 {
     public:
-        RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper);
+        explicit RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper);
         // LCOV_EXCL_START
         ~RpmPackageManager();
         // LCOV_EXCL_STOP
@@ -59,8 +61,8 @@ class RpmPackageManager final
                 Iterator();
                 // Used for regular iterator
                 Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib);
-                std::string getAttribute(rpmTag tag);
-                uint64_t getAttributeNumber(rpmTag tag);
+                std::string getAttribute(rpmTag tag) const;
+                uint64_t getAttributeNumber(rpmTag tag) const;
                 bool m_end = false;
                 std::shared_ptr<IRpmLibWrapper> m_rpmlib;
                 rpmts m_transactionSet = nullptr;
@@ -74,12 +76,13 @@ class RpmPackageManager final
         {
             return Iterator{m_rpmlib};
         }
-        const Iterator& end()
+        const Iterator& end() const
         {
             return END_ITERATOR;
         }
     private:
+        static bool ms_instantiated;
         std::shared_ptr<IRpmLibWrapper> m_rpmlib;
 };
 
-#endif // RPM_PACKAGE_MANAGER_H
+#endif // _RPM_PACKAGE_MANAGER_H

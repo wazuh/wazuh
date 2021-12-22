@@ -1,7 +1,7 @@
 /*
  * Wazuh SysInfo
  * Copyright (C) 2015-2021, Wazuh Inc.
- * March 16, 2021.
+ * December 22, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -355,7 +355,7 @@ TEST(RpmLibTest, TwoPackages)
 
     std::vector<RpmPackageManager::Package> packages;
     RpmPackageManager rpm{mock};
-    auto count = 0;
+    auto count {0};
 
     for (const auto& p : rpm)
     {

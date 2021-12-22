@@ -1,5 +1,7 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
+/*
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * December 22, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -18,12 +20,12 @@
 // For O_RDONLY
 #include <fcntl.h>
 
-bool gs_instantiated = false;
+bool RpmPackageManager::ms_instantiated = false;
 
 RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper)
     : m_rpmlib{wrapper}
 {
-    if (gs_instantiated)
+    if (ms_instantiated)
     {
         throw std::runtime_error("there is another RPM instance already created");
     }
@@ -33,16 +35,16 @@ RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper)
         throw std::runtime_error("rpmReadConfigFiles failed");
     }
 
-    gs_instantiated = true;
+    ms_instantiated = true;
 }
 
 RpmPackageManager::~RpmPackageManager()
 {
     m_rpmlib->rpmFreeRpmrc();
-    gs_instantiated = false;
+    ms_instantiated = false;
 }
 
-std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag)
+std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag) const
 {
     std::string retval;
 
@@ -59,9 +61,9 @@ std::string RpmPackageManager::Iterator::getAttribute(rpmTag tag)
     return retval;
 }
 
-uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag)
+uint64_t RpmPackageManager::Iterator::getAttributeNumber(rpmTag tag) const
 {
-    uint64_t retval = 0;
+    uint64_t retval {};
 
     if (m_rpmlib->headerGet(m_header, tag, m_dataContainer, HEADERGET_DEFAULT))
     {
