@@ -45,11 +45,11 @@ int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
                     os_strdup(xml_database_global, wconfig.wdb_backup_settings[0].database);
                     return Read_WazuhDB_Backup(xml, chld_node[i]);
                 } else {
-                    merror(XML_VALUEERR, chld_node[i]->attributes[0], chld_node[i]->values ? chld_node[i]->values[0] : "");
+                    merror(XML_VALUEERR, chld_node[i]->attributes[0], chld_node[i]->values && chld_node[i]->values[0] ? chld_node[i]->values[0] : "");
                     return OS_INVALID;
                 }
             } else {
-                merror(XML_INVATTR, chld_node[i]->attributes ? chld_node[i]->attributes[0] : "", chld_node[i]->element);
+                merror(XML_INVATTR, chld_node[i]->attributes && chld_node[i]->attributes[0] ? chld_node[i]->attributes[0] : "", chld_node[i]->element);
                 return OS_INVALID;
             }
         } else {
