@@ -3,7 +3,7 @@
 -->
 
 <!-- 
-  Sysmon Event ID 11 rules          
+  Sysmon Event ID 11 rules ID: 92000 - 92200
 -->
 
 <group name="sysmon_eid11_detections,">
