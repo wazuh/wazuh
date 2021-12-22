@@ -3,7 +3,7 @@
 -->
 
 <!-- 
-  General Windows Event channel detection rules          
+  General Windows Event channel detection rules ID
 -->
 
 <group name="win_evt_channel,">

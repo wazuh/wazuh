@@ -3,7 +3,7 @@
 -->
 
 <!-- 
-  Sysmon Event ID 7 rules ID: 92031 - 92150
+  Sysmon Event ID 7 rules ID
 -->
 
 <group name="sysmon_eid7_detections,">
