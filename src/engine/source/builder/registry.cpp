@@ -1,13 +1,11 @@
-#include "registry.h"
+#include "registry.hpp"
 
-#include <map>
 #include <string>
 
-#include "builder.h"
+#include "builder.hpp"
 
 
 using namespace std;
-
 
 namespace builder
 {
