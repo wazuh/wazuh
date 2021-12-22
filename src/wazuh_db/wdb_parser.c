@@ -5749,11 +5749,9 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
-    int result = wdb_global_create_backup(wdb);
+    int result = wdb_global_create_backup(wdb, output);
 
-    if (OS_SUCCESS != result) {
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup create command.");
-    } else {
+    if (OS_SUCCESS == result) {
         snprintf(output, OS_MAXSTR + 1, "ok");
     }
 

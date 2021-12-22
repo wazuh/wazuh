@@ -1723,7 +1723,7 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
     return result;
 }
 
-int wdb_global_create_backup(wdb_t* wdb) {
+int wdb_global_create_backup(wdb_t* wdb, char* output) {
     sqlite3_stmt *stmt = NULL;
     char path[PATH_MAX-3] = {0};
     char path_compressed[PATH_MAX] = {0};
@@ -1735,6 +1735,7 @@ int wdb_global_create_backup(wdb_t* wdb) {
 
     if(!dp) {
         mdebug1("Unable to create backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
+        snprintf(output, OS_MAXSTR + 1, "Unable to create backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
         return OS_INVALID;
     }
     closedir(dp);
@@ -1749,12 +1750,14 @@ int wdb_global_create_backup(wdb_t* wdb) {
     if (wdb->transaction) {
         if(wdb_commit2(wdb) == OS_INVALID) {
             mdebug1("Cannot commit current transaction to create backup");
+            snprintf(output, OS_MAXSTR + 1, "Cannot commit current transaction to create backup");
             return OS_INVALID;
         }
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_VACUUM_INTO) < 0) {
         mdebug1("Cannot cache statement");
+        snprintf(output, OS_MAXSTR + 1, "Cannot cache statement");
         return OS_INVALID;
     }
 
@@ -1762,6 +1765,7 @@ int wdb_global_create_backup(wdb_t* wdb) {
 
     if (sqlite3_bind_text(stmt, 1, path , -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
@@ -1772,6 +1776,7 @@ int wdb_global_create_backup(wdb_t* wdb) {
         break;
     default:
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "SQLite: %s", sqlite3_errmsg(wdb->db));
         result = OS_INVALID;
     }
 
@@ -1781,6 +1786,8 @@ int wdb_global_create_backup(wdb_t* wdb) {
         if(OS_SUCCESS == result) {
             unlink(path);
             wdb_remove_old_backup();
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "Failed during database backup compression");
         }
     }
 
