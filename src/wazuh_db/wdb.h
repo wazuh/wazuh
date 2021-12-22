@@ -1376,10 +1376,11 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output);
  * @brief Function to create a backup of the global.db.
  *
  * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
  * @retval  0 Success: Backup created successfully.
  * @retval -1 On error: The backup creation failed.
  */
-int wdb_global_create_backup(wdb_t* wdb);
+int wdb_global_create_backup(wdb_t* wdb, char* output);
 
 /**
  * @brief Function to delete old backups in case the amount exceeds the max_files limit.
