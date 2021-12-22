@@ -75,20 +75,20 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
-                          #  ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           ${CMAKE_SOURCE_DIR}/src/file.cpp
                            ${CMAKE_SOURCE_DIR}/src/fimDB.cpp
-                          #  ${CMAKE_SOURCE_DIR}/src/registry.cpp
-              )
+                           # ${CMAKE_SOURCE_DIR}/src/registry.cpp
+                           ${CMAKE_SOURCE_DIR}/src/dbFileItem.cpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
-                          #  ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           ${CMAKE_SOURCE_DIR}/src/file.cpp
                            ${CMAKE_SOURCE_DIR}/src/fimDB.cpp
-              )
+                           ${CMAKE_SOURCE_DIR}/src/dbFileItem.cpp)
 else()
   add_library(fimdb SHARED ${CMAKE_SOURCE_DIR}/src/db.cpp
-                          #  ${CMAKE_SOURCE_DIR}/src/file.cpp
+                           ${CMAKE_SOURCE_DIR}/src/file.cpp
                            ${CMAKE_SOURCE_DIR}/src/fimDB.cpp
-              )
+                           ${CMAKE_SOURCE_DIR}/src/dbFileItem.cpp)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 

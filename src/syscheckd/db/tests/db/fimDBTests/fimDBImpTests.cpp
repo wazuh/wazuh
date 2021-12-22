@@ -151,8 +151,9 @@ TEST_F(FimDBFixture, setRegistryLimitNoTableData)
 TEST_F(FimDBFixture, insertItemSuccess)
 {
     nlohmann::json itemJson;
-    EXPECT_CALL(*mockDBSync, insertData(itemJson));
-    fimDBMock.insertItem(itemJson);
+    ResultCallbackData callback;
+    EXPECT_CALL(*mockDBSync, syncRow(itemJson, testing::_));
+    fimDBMock.updateItem(itemJson, callback);
 }
 
 TEST_F(FimDBFixture, removeItemSuccess)

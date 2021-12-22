@@ -31,10 +31,10 @@ class FIMDBMOCK final
         MOCK_METHOD(void, init, (unsigned int, unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
                                  std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
 #endif
-        MOCK_METHOD(int, insertItem, (const nlohmann::json&), ());
-        MOCK_METHOD(int, removeItem, (const nlohmann::json&), ());
-        MOCK_METHOD(int, updateItem, (const nlohmann::json&, ResultCallbackData), ());
-        MOCK_METHOD(int, executeQuery, (const nlohmann::json&, ResultCallbackData), ());
+        MOCK_METHOD(void, removeItem, (const nlohmann::json&), ());
+        MOCK_METHOD(void, updateItem, (const nlohmann::json&, ResultCallbackData), ());
+        MOCK_METHOD(void, executeQuery, (const nlohmann::json&, ResultCallbackData), ());
+        MOCK_METHOD(void, logFunction, (const modules_log_level_t logLevel, const std::string& msg), ());
 
     private:
         FIMDBMOCK() = default;

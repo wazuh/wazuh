@@ -20,10 +20,10 @@ void FileItem::createFimEntry()
     data->size = m_size;
     data->perm = const_cast<char*>(m_perm.c_str());
     data->attributes = const_cast<char*>(m_attributes.c_str());
-    data->uid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
-    std::strncpy(data->uid, std::to_string(m_uid).c_str(), sizeof(std::to_string(m_uid).size()));
-    data->gid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
-    std::strncpy(data->gid, std::to_string(m_gid).c_str(), sizeof(std::to_string(m_gid).size()));
+    data->uid = static_cast<char*>(std::calloc(1, sizeof(char) +1));
+    std::strncpy(data->uid, std::to_string(m_uid).c_str(), sizeof(char));
+    data->gid = static_cast<char*>(std::calloc(1, sizeof(char) +1));
+    std::strncpy(data->gid, std::to_string(m_gid).c_str(), sizeof(char));
     data->user_name = const_cast<char*>(m_username.c_str());
     data->group_name = const_cast<char*>(m_groupname.c_str());
     data->mtime = m_time;
@@ -43,26 +43,29 @@ void FileItem::createFimEntry()
 
 void FileItem::createJSON()
 {
-    nlohmann::json conf = {};
+    nlohmann::json conf;
+    nlohmann::json data;
 
-    conf.push_back(nlohmann::json::object_t::value_type("path", m_identifier));
-    conf.push_back(nlohmann::json::object_t::value_type("mode", m_mode));
-    conf.push_back(nlohmann::json::object_t::value_type("last_event", m_lastEvent));
-    conf.push_back(nlohmann::json::object_t::value_type("scanned", m_scanned));
-    conf.push_back(nlohmann::json::object_t::value_type("options", m_options));
-    conf.push_back(nlohmann::json::object_t::value_type("checksum", m_checksum));
-    conf.push_back(nlohmann::json::object_t::value_type("dev", m_dev));
-    conf.push_back(nlohmann::json::object_t::value_type("inode", m_inode));
-    conf.push_back(nlohmann::json::object_t::value_type("size", m_size));
-    conf.push_back(nlohmann::json::object_t::value_type("perm", m_perm));
-    conf.push_back(nlohmann::json::object_t::value_type("attributes", m_attributes));
-    conf.push_back(nlohmann::json::object_t::value_type("uid", m_uid));
-    conf.push_back(nlohmann::json::object_t::value_type("gid", m_gid));
-    conf.push_back(nlohmann::json::object_t::value_type("user_name", m_username));
-    conf.push_back(nlohmann::json::object_t::value_type("group_name", m_groupname));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_md5", m_md5));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_sha1", m_sha1));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_sha256", m_sha256));
-    conf.push_back(nlohmann::json::object_t::value_type("mtime", m_time));
+    conf["table"] = FIMBD_FILE_TABLE_NAME;
+    data["path"] = m_identifier;
+    data["mode"] = m_mode;
+    data["last_event"] = m_lastEvent;
+    data["scanned"] = m_scanned;
+    data["options"] = m_options;
+    data["checksum"] = m_checksum;
+    data["dev"] = m_dev;
+    data["inode"] = m_inode;
+    data["size"] = m_size;
+    data["perm"] = m_perm;
+    data["attributes"] = m_attributes;
+    data["uid"] = m_uid;
+    data["gid"] = m_gid;
+    data["user_name"] = m_username;
+    data["group_name"] = m_groupname;
+    data["hash_md5"] = m_md5;
+    data["hash_sha1"] = m_sha1;
+    data["hash_sha256"] = m_sha256;
+    data["mtime"] = m_time;
+    conf["data"] = nlohmann::json::array({data});
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 }

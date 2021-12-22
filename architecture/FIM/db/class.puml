@@ -116,29 +116,26 @@ package "FIMDB" <<Folder>> #DDDDDD{
         + FimDB getInstance()
     }
     interface FIMDBHelper {
-        int getDBItem(json &, const json &)
+        void getDBItem(const json &, const json &)
         int getCount(const string &)
         void initDB(const string&, int, int, void(*)(const char *, const char *), void(*)(modules_log_level_t level))
-        int insertItem(const string &, const json &)
-        int updateItem(const string &, const json &)
-        int removeFromDB(const string &, const json &)
+        bool updateItem(const string &, const json &)
+        void removeFromDB(const string &, const json &)
+        nlohmann::json dbQuery(const std::string& , const nlohmann::json&, const std::string&, const std::string&)
     }
     namespace db{
     interface file {
-        int fim_db_get_not_scanned(int)
-        int fim_db_delete_not_scanned(int)
-        int fim_db_delete_range(int)
-        int fim_db_process_missing_entry(int)
-        int fim_db_remove_wildcard_entry(int)
-        fim_entry* fim_db_get_path(const char *)
-        char** fim_db_get_paths_from_inode(unsigned long int, unsigned long int)
-        int fim_db_insert_entry(const char *, const fim_file_data *)
-        int fim_db_set_all_unscanned()
-        int fim_db_set_scanned(const char *)
+        int fim_db_file_pattern_search(const char*, callback_context_t )
+        int fim_db_get_path(const char*, callback_context_t)
+        int fim_db_remove_path(const char*)
         int fim_db_get_count_file_inode()
         int fim_db_get_count_file_entry()
-        int fim_db_get_path_from_pattern(const char *, int)
-        int fim_db_file_update(const char *, const fim_file_data *, fim_entry **)
+        int fim_db_file_update(const fim_entry*, bool*)
+        void fim_db_file_inode_search(const unsigned long, const unsigned long, callback_context_t)
+    }
+    interface FimDBUtils {
+        static std::vector<std::string> getPathsFromINode(const unsigned long inode, const unsigned long dev)
+        static std::vector<std::string> getPathsFromPattern(const std::string& pattern)
     }
     interface registry {
         int fim_db_get_registry_key_rowid(const char *, unsigned int, unsigned int *)
@@ -154,9 +151,10 @@ package "FIMDB" <<Folder>> #DDDDDD{
         int fim_db_remove_registry_value_data(fim_registry_value_data *)
         fim_registry_key* fim_db_get_registry_key_using_id(unsigned int)
     }
+    file o-- FimDBUtils
     }
 }
-circle input_point
+circle FIM
 
 DBItem <|-- FileItem
 DBItem <|-- RegistryValue
@@ -165,5 +163,5 @@ FIMDBHelper --o FimDB
 item --o db
 FIMDBHelper --o db
 FimDB -- dbresult
-input_point => FIMDB
+FIM => FIMDB
 @enduml

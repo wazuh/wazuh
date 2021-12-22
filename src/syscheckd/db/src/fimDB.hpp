@@ -277,12 +277,6 @@ class FIMDB
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler);
 #endif
-        /**
-         * @brief Insert a given item into the database
-         *
-         * @param item json item that represent the fim_entry data
-         */
-        void insertItem(const nlohmann::json& item);
 
         /**
          * @brief Remove a given item from the database
@@ -341,7 +335,7 @@ class FIMDB
         /**
          * @brief Its the function to log an error
          */
-        inline void logErr(const modules_log_level_t logLevel, const std::string& msg)
+        inline void logFunction(const modules_log_level_t logLevel, const std::string& msg)
         {
             m_loggingFunction(logLevel, msg);
         }

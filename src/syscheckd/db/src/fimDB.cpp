@@ -132,11 +132,6 @@ void FIMDB::init(unsigned int interval_synchronization,
 
 }
 
-void FIMDB::insertItem(const nlohmann::json& item)
-{
-    m_dbsyncHandler->insertData(item);
-}
-
 void FIMDB::removeItem(const nlohmann::json& item)
 {
     m_dbsyncHandler->deleteRows(item);

@@ -34,16 +34,15 @@ TEST_F(FIMHelperTest, testInit)
 
 TEST_F(FIMHelperTest, insertItemToDatabase)
 {
-    std::string tableName;
     nlohmann::json insertItem;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), insertItem(testing::_));
-    FIMDBHelper::insertItem<FIMDBMOCK>(tableName, insertItem);
+    EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
+    FIMDBHelper::updateItem<FIMDBMOCK>(insertItem);
 }
 
 TEST_F(FIMHelperTest, deleteItemToDatabase)
 {
-    std::string tableName;
-    nlohmann::json filter;
+    std::string tableName = "test";
+    nlohmann::json filter = "";
     EXPECT_CALL(FIMDBMOCK::getInstance(), removeItem(testing::_));
     FIMDBHelper::removeFromDB<FIMDBMOCK>(tableName, filter);
 }
@@ -51,10 +50,9 @@ TEST_F(FIMHelperTest, deleteItemToDatabase)
 
 TEST_F(FIMHelperTest, updateItemToDatabaseSuccess)
 {
-    std::string tableName;
     nlohmann::json updateItem;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
-    FIMDBHelper::updateItem<FIMDBMOCK>(tableName, updateItem);
+    FIMDBHelper::updateItem<FIMDBMOCK>(updateItem);
 }
 
 TEST_F(FIMHelperTest, executeQuerySuccess)
@@ -74,6 +72,14 @@ TEST_F(FIMHelperTest, executeGetCountSuccess)
     FIMDBHelper::getCount<FIMDBMOCK>(tableName, count);
 }
 
+TEST_F(FIMHelperTest, executeGetCountSuccessCustomQuery)
+{
+    std::string tableName;
+    nlohmann::json query;
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
+    FIMDBHelper::getCount<FIMDBMOCK>(tableName, query);
+}
+
 TEST_F(FIMHelperTest, createANewQuery)
 {
     const auto expectedReturn = R"({"table":"file_entry",
@@ -85,7 +91,8 @@ TEST_F(FIMHelperTest, createANewQuery)
                                     }
                                 }
     )"_json;
-    auto columnList = R"({"column_list":"[path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime]"})"_json;
+    auto columnList =
+        R"({"column_list":"[path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime]"})"_json;
     auto filter = "WHERE path=/tmp/fakeFile";
     auto returnStatement = FIMDBHelper::dbQuery("file_entry", columnList, filter, "path");
     ASSERT_TRUE(expectedReturn == returnStatement);

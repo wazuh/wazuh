@@ -91,6 +91,12 @@ typedef struct diff_data {
     char *diff_file;
 } diff_data;
 
+typedef struct get_data_ctx {
+    event_data_t *event;
+    const directory_t *config;
+    const char *path;
+} get_data_ctx;
+
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -223,6 +229,12 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 directory_t *fim_configuration_directory(const char *path);
 
 /**
+ * @brief Update directories configuration with the wildcard list, at runtime
+ *
+ */
+void update_wildcards_config();
+
+/**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
  *
  * @param path File name of the file/directory to check
@@ -267,11 +279,6 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
  *
  */
 void fim_rt_delay();
-
-/**
- * @brief Checks for deleted files, deletes them from the agent's database and sends a deletion event on scheduled scans
- */
-void check_deleted_files();
 
 
 /**
@@ -928,38 +935,14 @@ char *fim_get_real_path(const directory_t *dir);
 /**
  * @brief Create a delete event and removes the entry from the database.
  *
- * @param fim_sql  FIM database struct.
- * @param entry Entry data to be removed.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param _evt_data Information associated to the triggered event.
- * @param _unused_field_1 Unused field, required to use this function as a callback.
- * @param _unused_field_2 Unused field, required to use this function as a callback.
- *
- */
-void fim_delete_file_event(fdb_t *fim_sql,
-                           fim_entry *entry,
-                           pthread_mutex_t *mutex,
-                           void *_evt_data,
-                           void *_unused_field_1,
-                           void *_unused_field_2);
-
-/**
- * @brief Create a delete event and removes the entry from the database.
- *
- * @param fim_sql  FIM database struct.
- * @param entry Entry data to be removed.
- * @param mutex FIM database's mutex for thread synchronization.
+ * @param file_path path data to be removed.
  * @param evt_data Information associated to the triggered event.
  * @param configuration Directory configuration to be deleted.
- * @param _unused_field Unused field, required to use this function as a callback.
  *
  */
-void fim_generate_delete_event(fdb_t *fim_sql,
-                               fim_entry *entry,
-                               pthread_mutex_t *mutex,
-                               void *evt_data,
-                               void *configuration,
-                               void *_unused_field);
+int fim_generate_delete_event(const char *file_path,
+                              const void *evt_data,
+                              const void *configuration);
 
 /**
  * @brief Send a state synchronization message.

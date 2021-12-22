@@ -13,6 +13,7 @@
 #define _FILEITEM_HPP
 #include "json.hpp"
 #include "dbItem.hpp"
+#include "fimCommonDefs.h"
 
 struct FimFileDataDeleter
 {
@@ -43,11 +44,11 @@ struct FimFileDataDeleter
 class FileItem final : public DBItem
 {
     public:
-        FileItem(fim_entry* const fim)
-            : DBItem(std::string(fim->file_entry.path)
+        FileItem(const fim_entry* const fim)
+            : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path
                      , fim->file_entry.data->scanned
                      , fim->file_entry.data->last_event
-                     , fim->file_entry.data->checksum
+                     , fim->file_entry.data->checksum[0] == '\0' ? "" : fim->file_entry.data->checksum
                      , fim->file_entry.data->mode)
         {
             m_options = fim->file_entry.data->options;
@@ -55,57 +56,18 @@ class FileItem final : public DBItem
             m_size = fim->file_entry.data->size;
             m_dev = fim->file_entry.data->dev;
             m_inode = fim->file_entry.data->inode;
-            m_attributes = std::string(fim->file_entry.data->attributes);
-            m_gid = std::atoi(fim->file_entry.data->gid);
-            m_groupname = std::string(fim->file_entry.data->group_name);
-            m_md5 = std::string(fim->file_entry.data->hash_md5);
-            m_perm = std::string(fim->file_entry.data->perm);
-            m_sha1 = std::string(fim->file_entry.data->hash_sha1);
-            m_sha256 = std::string(fim->file_entry.data->hash_sha256);
-            m_uid = std::atoi(fim->file_entry.data->uid);
-            m_username = std::string(fim->file_entry.data->user_name);
+            m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
+            m_gid =  fim->file_entry.data->gid == NULL ? 0 :std::atoi(fim->file_entry.data->gid);
+            m_groupname = fim->file_entry.data->group_name == NULL ? "" : fim->file_entry.data->group_name;
+            m_md5 = fim->file_entry.data->hash_md5[0] == '\0' ? "" : fim->file_entry.data->hash_md5;
+            m_perm = fim->file_entry.data->perm == NULL ? "" : fim->file_entry.data->perm;
+            m_sha1 = fim->file_entry.data->hash_sha1[0] == '\0' ? "" : fim->file_entry.data->hash_sha1;
+            m_sha256 = fim->file_entry.data->hash_sha256[0] == '\0' ? "" : fim->file_entry.data->hash_sha256;
+            m_uid = fim->file_entry.data->uid == NULL ? 0 :std::atoi(fim->file_entry.data->uid);
+            m_username = fim->file_entry.data->user_name == NULL ? "" : fim->file_entry.data->user_name;
             createJSON();
             createFimEntry();
-        }
-
-        FileItem(const std::string& path,
-                 const std::string& checksum,
-                 const time_t& lastEvent,
-                 const fim_event_mode& mode,
-                 const unsigned int& scanned,
-                 const int& options,
-                 const int& uid,
-                 const int& gid,
-                 const unsigned int& time,
-                 const unsigned int& size,
-                 const unsigned long& dev,
-                 const unsigned long int& inode,
-                 const std::string& attributes,
-                 const std::string& groupname,
-                 const std::string& md5,
-                 const std::string& perm,
-                 const std::string& sha1,
-                 const std::string& sha256,
-                 const std::string& username)
-            : DBItem(path, scanned, lastEvent, checksum, mode)
-            , m_options( options )
-            , m_gid ( gid )
-            , m_uid( uid )
-            , m_size( size )
-            , m_dev( dev )
-            , m_inode( inode )
-            , m_time( time )
-            , m_attributes( attributes )
-            , m_groupname( groupname )
-            , m_md5( md5 )
-            , m_perm( perm )
-            , m_sha1( sha1)
-            , m_sha256( sha256 )
-            , m_username( username )
-        {
-            createFimEntry();
-            createJSON();
-        }
+        };
 
         FileItem(const nlohmann::json& fim)
             : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))

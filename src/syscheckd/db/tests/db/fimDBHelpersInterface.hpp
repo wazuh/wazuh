@@ -12,8 +12,8 @@
 #include "FDBHMockInterface.hpp"
 #include "dbItem.hpp"
 
-#ifndef _FIMDB_HELPERS_UT_INTERFACE_
-#define _FIMDB_HELPERS_UT_INTERFACE_
+#ifndef _FIMDB_HELPERS_INTERFACE
+#define _FIMDB_HELPERS_INTERFACE
 
 namespace FIMDBHelper
 {
@@ -21,19 +21,19 @@ namespace FIMDBHelper
 #ifndef WIN32
 
     void initDB(unsigned int sync_interval, unsigned int file_limit,
-                            fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                            std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         FIMDBHelpersUTInterface::initDB(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
     }
 #else
 
     void initDB(unsigned int sync_interval, unsigned int file_limit, unsigned int registry_limit,
-                             fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                             std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
     {
         FIMDBHelpersUTInterface::initDB(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
-                              handler_RSync);
+                                        handler_RSync);
     }
 #endif
 
@@ -44,26 +44,20 @@ namespace FIMDBHelper
     }
 
     template<typename T>
-    void getCount(const std::string & tableName, int & count)
+    void getCount(const std::string& tableName, int& count)
     {
 
         FIMDBHelpersUTInterface::getCount(tableName, count);
     }
 
     template<typename T>
-    void insertItem(const std::string & tableName, const nlohmann::json & item)
-    {
-        FIMDBHelpersUTInterface::insertItem(tableName, item);
-    }
-
-    template<typename T>
-    void updateItem(const std::string & tableName, const nlohmann::json & item)
+    void updateItem(const std::string& tableName, const nlohmann::json& item)
     {
         FIMDBHelpersUTInterface::updateItem(tableName, item);
     }
 
     template<typename T>
-    void getDBItem(nlohmann::json & item, const nlohmann::json & query)
+    void getDBItem(nlohmann::json& item, const nlohmann::json& query)
     {
         FIMDBHelpersUTInterface::getDBItem(item, query);
     }
