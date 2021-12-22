@@ -8,8 +8,8 @@ import argparse
 import sys
 from atexit import register
 
+from api.api_exception import APIError
 from api.constants import API_LOG_FILE_PATH
-from wazuh.core import common, utils
 
 
 def spawn_process_pool():
@@ -26,7 +26,7 @@ def spawn_authentication_pool():
     return
 
 
-def start(foreground, root, config_file):
+def start(foreground: bool, root: bool, config_file: str):
     """Run the Wazuh API.
 
     If another Wazuh API is running, this function fails.
@@ -44,7 +44,7 @@ def start(foreground, root, config_file):
     import logging
     import os
     from api import alogging, configuration
-    from wazuh.core import pyDaemonModule
+    from wazuh.core import pyDaemonModule, common, utils
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -140,21 +140,29 @@ def start(foreground, root, config_file):
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
                 except ssl.SSLError:
-                    logger.error(str(APIError(2003, details='SSL ciphers cannot be selected')))
-                    sys.exit(1)
+                    error = APIError(2003, details='SSL ciphers cannot be selected')
+                    logger.error(error)
+                    raise error
 
         except ssl.SSLError:
-            logger.error(str(APIError(2003, details='Private key does not match with the certificate')))
-            sys.exit(1)
-        except IOError as e:
-            if e.errno == 22:
-                logger.error(str(APIError(2003, details='PEM phrase is not correct')))
-            elif e.errno == 13:
-                logger.error(str(APIError(2003, details='Ensure the certificates have the correct permissions')))
+            error = APIError(2003, details='Private key does not match with the certificate')
+            logger.error(error)
+            raise error
+        except IOError as exc:
+            if exc.errno == 22:
+                error = APIError(2003, details='PEM phrase is not correct')
+                logger.error(error)
+                raise error
+            elif exc.errno == 13:
+                error = APIError(2003, details='Ensure the certificates have the correct permissions')
+                logger.error(error)
+                raise error
             else:
-                print('Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration '
-                      f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
-            sys.exit(1)
+                msg = f'Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration ' \
+                      f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+                print(msg)
+                logger.error(msg)
+                raise exc
 
     # Drop privileges to wazuh
     if not root:
@@ -220,12 +228,21 @@ def start(foreground, root, config_file):
     logger.debug(f'Loaded security API configuration: {security_conf}')
 
     # Start API
-    app.run(port=api_conf['port'],
-            host=api_conf['host'],
-            ssl_context=ssl_context,
-            access_log_class=alogging.AccessLogger,
-            use_default_access_log=True
-            )
+    try:
+        app.run(port=api_conf['port'],
+                host=api_conf['host'],
+                ssl_context=ssl_context,
+                access_log_class=alogging.AccessLogger,
+                use_default_access_log=True
+                )
+    except OSError as exc:
+        if exc.errno == 98:
+            error = APIError(2010)
+            logger.error(error)
+            raise error
+        else:
+            logger.error(exc)
+            raise exc
 
 
 def print_version():
@@ -233,7 +250,7 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
 
 
-def test_config(config_file):
+def test_config(config_file: str):
     """Make an attempt to read the API config file. Exits with 0 code if successful, 1 otherwise.
 
     Arguments
@@ -241,11 +258,11 @@ def test_config(config_file):
     config_file : str
         Path of the file
     """
-    from api.configuration import read_yaml_config
     try:
+        from api.configuration import read_yaml_config
         read_yaml_config(config_file=config_file)
-    except Exception as e:
-        print(f"Configuration not valid: {e}")
+    except Exception as exc:
+        print(f"Configuration not valid. ERROR: {exc}")
         sys.exit(1)
     sys.exit(0)
 
@@ -274,4 +291,11 @@ if __name__ == '__main__':
     elif args.test_config:
         test_config(args.config_file)
     else:
-        start(args.foreground, args.root, args.config_file)
+        try:
+            start(args.foreground, args.root, args.config_file)
+        except APIError as e:
+            print(f"Error when trying to start the Wazuh API. {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f'Internal error when trying to start the Wazuh API. {e}')
+            sys.exit(1)
