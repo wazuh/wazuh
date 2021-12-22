@@ -4,14 +4,14 @@
 #include <algorithm>
 #include <vector>
 
-#include "builder.h"
-#include "registry.h"
+#include "builder.hpp"
+#include "registry.hpp"
 
 #define GTEST_COUT std::cout << "[          ] [ INFO ] "
 
+
 using json = nlohmann::json;
 using namespace std;
-
 
 // entry_point as observable
 json generate(std::string name, std::string source)
@@ -88,7 +88,7 @@ TEST(ConditionValueTest, Initializes)
     builder::Registry& registry = builder::Registry::instance();
 
     // Retreive builder
-    ASSERT_NO_THROW(auto builder = registry.get_builder("condition_value"));
+    ASSERT_NO_THROW(auto builder = registry.get_builder("condition.value"));
 }
 
 TEST(ConditionValueTest, Builds)
@@ -100,10 +100,16 @@ TEST(ConditionValueTest, Builds)
     auto entry_point = rxcpp::observable<>::create<json>(handler);
 
     // Retreive builder
-    auto _builder = (const builder::JsonBuilder*)(registry.get_builder("condition_value"));
+    auto _builder = (const builder::JsonBuilder*)(registry.get_builder("condition.value"));
 
     // Build
     ASSERT_NO_THROW(auto _observable = _builder->build(entry_point, json({{"field", "value"}})));
+
+    // Error not json object
+    ASSERT_THROW(auto _observable = _builder->build(entry_point, json({"field", "value"})), builder::BuildError);
+
+    // Error more than one key
+    ASSERT_THROW(auto _observable = _builder->build(entry_point, json({{"field", "value"}, {"error", "value"}})), builder::BuildError);
 }
 
 TEST(ConditionValueTest, Operates)
@@ -115,7 +121,7 @@ TEST(ConditionValueTest, Operates)
     rxcpp::observable<json> entry_point = rxcpp::observable<>::create<json>(handler);
 
     // Retreive builder
-    auto _builder = static_cast<const builder::JsonBuilder*>(registry.get_builder("condition_value"));
+    auto _builder = static_cast<const builder::JsonBuilder*>(registry.get_builder("condition.value"));
 
     // Build
     auto _observable = _builder->build(entry_point, json({{"module.source", "apache-access"}}));
