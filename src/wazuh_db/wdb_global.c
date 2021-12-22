@@ -1912,7 +1912,7 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
             }
         } else {
             snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-            if(!stat(tmp_path, &backup_info)) {
+            if(!stat(tmp_path, &backup_info) && strcmp(entry->d_name, "global.db-backup-pre_restore.gz")) {
                 if(backup_info.st_mtime >= last_modification_time) {
                     last_modification_time = backup_info.st_mtime;
                     most_recent_backup = entry->d_name;
