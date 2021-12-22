@@ -38,25 +38,25 @@
 <group name="gitlab_v.12_application_log">
 
   <rule id="65604" level="3">
-    <decoded_as>gitlab-12_application_log</decoded_as>
+    <decoded_as>gitlab-12-application-log</decoded_as>
     <field name="new_user">\.+</field>
     <description>(Gitlab) User $(new_user) was created.</description>
   </rule>
 
   <rule id="65606" level="3">
-    <decoded_as>gitlab-12_application_log</decoded_as>
+    <decoded_as>gitlab-12-application-log/decoded_as>
     <field name="project_autor">\.+</field>
     <description>(Gitlab) $(project_autor) created a new project.</description>
   </rule>
 
   <rule id="65607" level="3">
-    <decoded_as>gitlab-12_application_log</decoded_as>
+    <decoded_as>gitlab-12-application-log/decoded_as>
     <field name="removed_user">\.+</field>
     <description>(Gitlab) User $(removed_user) was removed.</description>
   </rule>
 
   <rule id="65608" level="3">
-    <decoded_as>gitlab-12_application_log</decoded_as>
+    <decoded_as>gitlab-12-application-log/decoded_as>
     <field name="project_removed">\.+</field>
     <description>(Gitlab) Project $(project_removed) was removed.</description>
   </rule>
@@ -130,7 +130,7 @@
 <group name="gitlab_v.12_sidekiq_log">
   
   <rule id="65615" level="3">
-    <decoded_as>gitlab_sidekiq</decoded_as>
+    <decoded_as>gitlab-sidekiq</decoded_as>
     <description>Group of gitlab_sidekiq.</description>
   </rule>
 
@@ -169,13 +169,13 @@
 <group name="gitlab_v.12_shell_stderr_log">
   
   <rule id="65620" level="3">
-    <decoded_as>gitlab_shell_stderr</decoded_as>
+    <decoded_as>gitlab-shell-stderr</decoded_as>
     <field name="severity">INFO</field>
     <description>(Gitlab) $(severity): $(message).</description>
   </rule>
 
   <rule id="65621" level="5">
-    <decoded_as>gitlab_shell_stderr</decoded_as>
+    <decoded_as>gitlab-shell-stderr</decoded_as>
     <field name="severity">WARN</field>
     <description>(Gitlab) $(severity): $(message).</description>
   </rule>
