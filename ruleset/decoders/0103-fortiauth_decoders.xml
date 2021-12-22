@@ -13,7 +13,7 @@
 -->
 
 <decoder name="fortiauth">
-  <program_name>db</program_name>
+  <program_name>^db$</program_name>
 </decoder>
 
 <decoder name="fortiauth-fields">
