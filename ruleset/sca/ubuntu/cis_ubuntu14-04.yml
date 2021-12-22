@@ -27,8 +27,8 @@ requirements:
     - 'f:/proc/sys/kernel/ostype -> Linux'
 
 checks:
-# 1.1.1 Disable unused filesystems
 
+# 1.1.1 Disable unused filesystems
   - id: 18000 
     title: "Ensure mounting of cramfs filesystems is disabled"
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
@@ -247,8 +247,6 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:noexec'
 
-
-
   - id: 18014 
     title: "Ensure separate partition exists for /var/log"
     description: "The /var/log directory is used by system services to store log data."
@@ -299,7 +297,6 @@ checks:
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s'
-
 
   - id: 18017 
     title: "Ensure nodev option set on /home partition"
@@ -519,10 +516,7 @@ checks:
     rules:
       - 'c:dpkg -s prelink -> r:install ok installed'
 
-
-
 # 1.6 Configure SELinux
-
   - id: 18031 
     title: "Ensure SELinux is not disabled in bootloader configuration"
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
@@ -588,7 +582,6 @@ checks:
     rules:
       - 'c:ps -eZ -> r:initrc && !r:tr|ps|egrep|bash|awk'
 
-
   - id: 18035 
     title: "Ensure AppArmor is not disabled in bootloader configuration"
     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwrittenby the bootloader boot parameters."
@@ -636,7 +629,6 @@ checks:
     rules:
       - 'c:dpkg -s selinux-basics -> r:install ok installed'
       - 'c:dpkg -s apparmor -> r:install ok installed'
-
 
 # 1.7 Warning Banners
   - id: 18038 
@@ -790,7 +782,6 @@ checks:
       - 'f:/etc/inetd.conf -> r:^chargen'
       - 'd:/etc/inetd.d -> r:\. -> r:^chargen'
 
-
   - id: 18047 
     title: "Ensure daytime services are not enabled"
     description: "daytime is a network service that responds with the server's current date and time. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -828,7 +819,6 @@ checks:
     rules:
       - 'f:/etc/inetd.conf -> r:^discard'
       - 'd:/etc/inetd.d/ -> r:\. -> r:^discard'
-
 
   - id: 18049 
     title: "Ensure echo services are not enabled"
@@ -891,7 +881,6 @@ checks:
       - 'f:/etc/inetd.conf -> r:^exec'
       - 'd:/etc/inetd.d/ -> r:\. -> r:^exec'
 
-
   - id: 18052 
     title: "Ensure talk server is not enabled"
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client (allows initiate of talk sessions) is installed by default."
@@ -931,7 +920,6 @@ checks:
     rules:
       - 'f:/etc/inetd.conf -> r:^telnet'
       - 'd:/etc/inetd.d/ -> r:\. -> r:^telnet'
-
 
   - id: 18054 
     title: "Ensure tftp server is not enabled"
@@ -1438,7 +1426,6 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
 
-
   - id: 18084 
     title: "Ensure ICMP redirects are not accepted"
     description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
@@ -1456,7 +1443,6 @@ checks:
       - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-
 
   - id: 18085 
     title: "Ensure secure ICMP redirects are not accepted"
@@ -1559,7 +1545,6 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-
 
   - id: 18091 
     title: "Ensure IPv6 router advertisements are not accepted"
@@ -1799,9 +1784,6 @@ checks:
       - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-
-
-
 #########################################
 # 4 Logging and Auditing
 #########################################
@@ -1816,7 +1798,6 @@ checks:
       - cis_csc: ["6.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
       - 'f:/etc/audit/auditd.conf'
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
@@ -1830,7 +1811,6 @@ checks:
       - cis_csc: [ "6.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
       - 'f:/etc/audit/auditd.conf'
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*action_mail_acct\s*\t*=\s*\t*root'
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*space_left_action\s*\t*=\s*\t*email'
@@ -1846,7 +1826,6 @@ checks:
       - cis_csc: ["6.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
       - 'f:/etc/audit/auditd.conf'
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
 
@@ -1896,7 +1875,6 @@ checks:
       - tsc: ["CC6.1","CC6.3", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
       - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
@@ -1918,8 +1896,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/group && r:-p wa && r:-k identity'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
@@ -1942,8 +1918,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale'
@@ -1966,8 +1940,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/selinux/|/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/usr/share/selinux/|/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
 
@@ -1987,8 +1959,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins'
@@ -2006,8 +1976,6 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k logins'
@@ -2028,8 +1996,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
@@ -2050,8 +2016,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
 
@@ -2071,8 +2035,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
 
   - id: 18119 
@@ -2089,8 +2051,6 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
 
   - id: 18120 
@@ -2109,8 +2069,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
 
@@ -2130,8 +2088,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/var/log/sudo.log && r:-p wa && r:-k actions'
 
   - id: 18122 
@@ -2150,8 +2106,6 @@ checks:
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules'
       - 'f:/etc/audit/audit.rules -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules'
@@ -2171,10 +2125,7 @@ checks:
       - tsc: ["CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/audit.rules'
       - 'c:tail -1 /etc/audit/audit.rules -> -e 2'
-
 
   - id: 18124 
     title: "Ensure rsyslog Service is enabled"
@@ -2331,8 +2282,6 @@ checks:
       - 'c:initctl show-config cron -> r:^cron'
       - 'c:initctl show-config cron -> r:start on runlevel [2345]'
 
-
-
 # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
   - id: 18133 
     title: "Ensure permissions on /etc/crontab are configured"
@@ -2351,7 +2300,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/crontab -> r:^Access: \(0\d00/\w\w\w-------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
 
 # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
   - id: 18134 
@@ -2401,7 +2349,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
 
 # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
   - id: 18137 
@@ -2819,7 +2766,6 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
 
-
   - id: 18164 
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files ( .profile , .bashrc , etc.) in their home directories."
@@ -2838,7 +2784,6 @@ checks:
       - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
 
-
 # 5.4.5 Ensure default user shell timeout is 900 seconds or less (Scored)
   - id: 18165 
     title: "Ensure default user shell timeout is 900 seconds or less"
@@ -2853,7 +2798,6 @@ checks:
     rules:
       - 'f:/etc/bashrc -> n:^\s*\t*TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
       - 'f:/etc/profile -> n:^\s*\t*TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
-
 
   - id: 18166 
     title: "Ensure access to the su command is restricted"
@@ -2874,11 +2818,9 @@ checks:
       - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel.so'
       - 'f:/etc/group -> !r:^# && r:wheel:\w+:\d+:\.'
 
-
 ###############################
 # 6 System Maintenance
 ###############################
-
 
   - id: 18167 
     title: "Ensure permissions on /etc/passwd are configured"
@@ -2910,7 +2852,6 @@ checks:
     rules:
       - 'c:stat /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-
   - id: 18169 
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
@@ -2925,7 +2866,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
 
   - id: 18170 
     title: "Ensure permissions on /etc/gshadow are configured"
@@ -2942,7 +2882,6 @@ checks:
     rules:
       - 'c:stat /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-
   - id: 18171 
     title: "Ensure permissions on /etc/passwd- are configured"
     description: "The /etc/passwd- file contains backup user account information."
@@ -2957,7 +2896,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
 
   - id: 18172 
     title: "Ensure permissions on /etc/shadow- are configured"
@@ -2974,7 +2912,6 @@ checks:
     rules:
       - 'c:stat /etc/shadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-
   - id: 18173 
     title: "Ensure permissions on /etc/group- are configured"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
@@ -2989,7 +2926,6 @@ checks:
     condition: all
     rules:
       - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-
 
   - id: 18174 
     title: "Ensure permissions on /etc/gshadow- are configured"
@@ -3006,16 +2942,6 @@ checks:
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
      
-
-
-
-
-
-
-
-
-
-
 
 # 6.2 User and Group Settings
 
