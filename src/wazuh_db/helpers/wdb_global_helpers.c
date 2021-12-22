@@ -41,6 +41,7 @@ static const char *global_db_commands[] = {
     [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
+    [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
@@ -1041,6 +1042,80 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
         wdbc_close(&aux_sock);
     }
 
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
+int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, char* source, int *sock) {
+    cJSON* j_groups = cJSON_CreateObject();
+    if (!j_groups) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+    char** groups_array = NULL;
+    wstr_split(groups_csv, ",", NULL, 1, &groups_array);
+    return wdb_set_agent_groups(id, groups_array, mode, sync_status, source, sock);
+}
+
+int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, char* source, int *sock) {
+    int aux_sock = -1;
+
+    if (!groups_array || !mode) {
+        mdebug1("Invalid groups array to set the agent groups %02d", id);
+        return OS_INVALID;
+    }
+    cJSON* j_data_in = cJSON_CreateObject();
+    if (!j_data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddStringToObject(j_data_in, "mode", mode);
+    if (sync_status) {
+        cJSON_AddStringToObject(j_data_in, "sync_status", sync_status);
+    }
+    if (source) {
+        cJSON_AddStringToObject(j_data_in, "source", source);
+    }
+    cJSON* j_agents_array = cJSON_AddArrayToObject(j_data_in, "data");
+    cJSON* j_agent_info = cJSON_CreateObject();
+    cJSON_AddItemToArray(j_agents_array, j_agent_info);
+    cJSON_AddNumberToObject(j_agent_info, "id", id);
+    cJSON* groups = cJSON_AddArrayToObject(j_agent_info, "groups");
+    for (int i=0; groups_array[i]; i++) {
+        cJSON_AddItemToArray(groups, cJSON_CreateString(groups_array[i]));
+    }
+
+
+    char* data_in_str = cJSON_PrintUnformatted(j_data_in);
+    cJSON_Delete(j_data_in);
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_GROUPS], data_in_str);
+    os_free(data_in_str);
+
+    int result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    char *payload = NULL;
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {

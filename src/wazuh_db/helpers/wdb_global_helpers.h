@@ -38,6 +38,7 @@ typedef enum global_db_access {
     WDB_SELECT_GROUP_BELONG,
     WDB_DELETE_AGENT_BELONG,
     WDB_DELETE_GROUP_BELONG,
+    WDB_SET_AGENT_GROUPS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_DISCONNECT_AGENTS
@@ -271,6 +272,30 @@ int wdb_delete_agent_belongs(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_from_belongs_db(const char *name, int *sock);
+
+/**
+ * @brief Set the groups of an agent using a comma separated string to represent the groups.
+ *
+ * @param[in] id ID of the agent to set the groups.
+ * @param[in] groups_csv The groups to be set in a comma separated format.
+ * @param[in] mode The mode to request the writting.
+ * @param[in] sync_status The sync_status to ask the addition (optional).
+ * @param[in] source The source to ask the addition (optional).
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, char* source, int *sock);
+
+/**
+ * @brief Set the groups of an agent using a string array to represent the groups.
+ *
+ * @param[in] id ID of the agent to set the groups.
+ * @param[in] groups_array The groups to be set in a string array format.
+ * @param[in] mode The mode to request the writting.
+ * @param[in] sync_status The sync_status to ask the addition (optional).
+ * @param[in] source The source to ask the addition (optional).
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, char* source, int *sock);
 
 /**
  * @brief Reset the connection_status column of every agent (excluding the manager).
