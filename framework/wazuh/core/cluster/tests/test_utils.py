@@ -154,8 +154,7 @@ def test_get_cluster_items():
                                    'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
                                               'check_worker_lastkeepalive': 60,
                                               'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
-                                              'timeout_agent_info': 40, 'process_pool_debug': False,
-                                              'max_locked_integrity_time': 1000},
+                                              'timeout_agent_info': 40, 'max_locked_integrity_time': 1000},
                                    'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
                                                      'timeout_receiving_file': 120}},
                      'distributed_api': {'enabled': True}}

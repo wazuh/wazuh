@@ -7,7 +7,9 @@ import logging
 import os.path
 import shutil
 import zipfile
+from asyncio import wait_for
 from datetime import datetime
+from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
@@ -154,7 +156,8 @@ def check_cluster_status():
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
+             get_md5=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
@@ -172,6 +175,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     get_cluster_item_key : str
         Key inside cluster.json['files'] to which each file belongs. This is useful to know what actions to take
         after sending a file from one node to another, depending on the directory the file belongs to.
+    previous_status : dict
+        Information collected in the previous integration process.
     get_md5 : bool
         Whether to calculate and save the MD5 hash of the found file.
 
@@ -180,10 +185,9 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     walk_files : dict
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
     """
+    if previous_status is None:
+        previous_status = {}
     walk_files = {}
-
-    # Get the information collected in the previous integration process.
-    previous_status = common.cluster_integrity_mtime.get()
 
     full_dirname = path.join(common.wazuh_path, dirname)
     # Get list of all files and directories inside 'full_dirname'.
@@ -231,11 +235,13 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(get_md5=True):
+def get_files_status(previous_status=None, get_md5=True):
     """Get all files and metadata inside the directories listed in cluster.json['files'].
 
     Parameters
     ----------
+    previous_status : dict
+        Information collected in the previous integration process.
     get_md5 : bool
         Whether to calculate and save the MD5 hash of the found file.
 
@@ -244,6 +250,8 @@ def get_files_status(get_md5=True):
     final_items : dict
         Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
     """
+    if previous_status is None:
+        previous_status = {}
 
     cluster_items = get_cluster_items()
 
@@ -254,11 +262,9 @@ def get_files_status(get_md5=True):
         try:
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, get_md5))
+                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_md5))
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
-    # Save the information collected in the current integration process.
-    common.cluster_integrity_mtime.set(final_items)
 
     return final_items
 
@@ -330,7 +336,27 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
+async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):
+    """Async wrapper for decompress_files() function.
+
+    Parameters
+    ----------
+    zip_path : str
+        Full path to the zip file.
+    ko_files_name : str
+        Name of the metadata json inside zip file.
+
+    Returns
+    -------
+    ko_files : dict
+        Paths (keys) and metadata (values) of the files listed in cluster.json.
+    zip_dir : str
+        Full path to unzipped directory.
+    """
+    return decompress_files(zip_path, ko_files_name)
+
+
+def decompress_files(zip_path, ko_files_name="files_metadata.json"):
     """Unzip files in a directory and load the files_metadata.json as a dict.
 
     Parameters
@@ -617,3 +643,34 @@ def unmerge_info(merge_type, path_file, filename):
             bytes_read += st_size
 
             yield path.join(dst_path, name), data, st_mtime
+
+
+async def run_in_pool(loop, pool, f, *args, **kwargs):
+    """Run function in process pool if it exists.
+
+    This function checks if the process pool exists. If it does, the function is run inside it and
+    the result is waited. Otherwise (the pool is None), the function is run in the parent process,
+    as usual.
+
+    Parameters
+    ----------
+    loop : AbstractEventLoop
+        Asyncio loop.
+    pool : ProcessPoolExecutor or None
+        Process pool object in charge of running functions.
+    f : callable
+        Function to be executed.
+    *args
+        Arguments list to be passed to function `f`. Default `None`.
+    **kwargs
+        Keyword arguments to be passed to function `f`. Default `None`.
+
+    Returns
+    -------
+    Result of `f(*args, **kwargs)` function.
+    """
+    if pool is not None:
+        task = loop.run_in_executor(pool, partial(f, *args, **kwargs))
+        return await wait_for(task, timeout=None)
+    else:
+        return f(*args, **kwargs)
