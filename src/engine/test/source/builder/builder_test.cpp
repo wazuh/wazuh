@@ -6,14 +6,15 @@
 #include <map>
 #include <string>
 
-#include "builder.h"
-#include "registry.h"
+#include "builder.hpp"
+#include "registry.hpp"
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
+
 using json = nlohmann::json;
 using namespace std;
-
+using namespace rxcpp;
 
 // Fake engine class
 class FakeEngine
@@ -100,7 +101,7 @@ json generate(std::string name, std::string source)
         }
     };
 }
-auto handler = [](rxcpp::subscriber<json> s)
+auto handler = [](subscriber<json> s)
 {
     s.on_next(generate("logcollector", "apache-access"));
     s.on_next(generate("logcollector", "apache-error"));
@@ -112,7 +113,7 @@ auto handler = [](rxcpp::subscriber<json> s)
 // Dummy builders
 namespace
 {
-    rxcpp::observable<json> decoder_build(const observable<json>& obs, const vector<json>& decoders)
+    observable<json> decoder_build(const observable<json>& obs, const vector<json>& decoders)
     {
         GTEST_COUT << "Decoder engine builder called" << endl;
         return obs;
@@ -155,14 +156,14 @@ TEST(BuilderTest, BuilderBuilds)
     GTEST_COUT << "Configuration retreived" << endl;
 
     // Build observable entry point, where subsequents observable operations are concatenated
-    rxcpp::observable<json> entry_point = rxcpp::observable<>::create<json>(handler);
+    observable<json> entry_point = observable<>::create<json>(handler);
     GTEST_COUT << "Entry point built" << endl;
 
 
     // and iterate over each engine, building the appropiate object.
     // When building the object an observable is passed, operations are applied to
     // the observable, returning the combined observable
-    rxcpp::observable<json> current_point = entry_point;
+    observable<json> current_point = entry_point;
     for_each(begin(conf), end(conf), [&registry, &current_point](FakeEngine e)
     {
         GTEST_COUT << "Start building " << e.engine_id << endl;

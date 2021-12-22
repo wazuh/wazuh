@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-#include "builder.h"
+#include "builder.hpp"
+#include "utils.hpp"
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 

@@ -1,8 +1,10 @@
+#include <string>
 #include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
-#include <string>
 
-#include "builder.h"
+#include "builder.hpp"
+#include "utils.hpp"
+
 
 using json = nlohmann::json;
 using namespace std;
@@ -10,7 +12,7 @@ using namespace rxcpp;
 
 namespace
 {
-    string name("condition_value");
+    string name("condition.value");
     observable<json> build(const observable<json>& input_observable, const json& input_json)
     {
         // Check that input is as expected and throw exception otherwise
@@ -26,7 +28,8 @@ namespace
 
         auto it = begin(input_json);
         auto field =  builder::utils::JsonPath(it.key());
-        auto value = it.value().get<string>();
+        // Todo validate json path
+        auto value = it.value();
         auto output_observable = input_observable.filter([field, value](json e)
         {
             const json* actual = &e;
