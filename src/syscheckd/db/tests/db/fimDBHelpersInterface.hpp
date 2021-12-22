@@ -12,8 +12,8 @@
 #include "FDBHMockInterface.hpp"
 #include "dbItem.hpp"
 
-#ifndef _FIMDB_HELPERS_UT_INTERFACE_
-#define _FIMDB_HELPERS_UT_INTERFACE_
+#ifndef _FIMDB_HELPERS_INTERFACE
+#define _FIMDB_HELPERS_INTERFACE
 
 namespace FIMDBHelper
 {
