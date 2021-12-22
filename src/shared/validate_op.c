@@ -576,6 +576,9 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                 }
                                 ret = 2;
                             } else {
+                                if (!_mask_inited) {
+                                    _init_masks();
+                                }
                                 nmask.s_addr = htonl(_netmasks[DEFAULT_IPV4_NETMASK]);
                             }
 
