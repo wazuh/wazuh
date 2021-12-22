@@ -192,9 +192,9 @@ checks:
     compliance:
       - cis: ["2.3.1"]
       - cis_level: ["1"]
-    condition: all
+    condition: none
     rules:
-      - 'c:defaults -currentHost read com.apple.screensaver idleTime -> !r:does not exist'
+      - 'c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist'
 
 # 2.3.2 Secure screen saver corners (Automated)
   - id: 18011
@@ -239,14 +239,14 @@ checks:
     compliance:
       - cis: ["2.4.2"]
       - cis_level: ["1"]
-    condition: all
+    condition: none
     rules:
-      - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> !r:Enabled\s*\t*=\s*\t*1'
+      - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
 
 # 2.4.3 Disable Screen Sharing (Automated)
   - id: 18014
     title: "Disable Screen Sharing."
-    description: "Screen sharing allows a computer to connect to another computer on a network and display the computer’s screen. While sharing the computer’s screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer."
+    description: "Screen sharing allows a computer to connect to another computer on a network and display the computer's screen. While sharing the computer's screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer."
     rationale: "Disabling screen sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
     remediation: "Run the following command to turn off Screen Sharing: sudo launchctl disable system/com.apple.screensharing"
     compliance:
@@ -254,7 +254,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:launchctl print-disabled system | grep -c ''"com.apple.screensharing" => true'' -> 1'
+      - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.screensharing\" => true''" -> 1'
 
 # 2.4.4 Disable Printer Sharing (Automated)
   - id: 18015
@@ -295,7 +295,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl print-disabled system  | grep -c ''\"com.apple.ODSAgent\" => true''"" -> 1'
+      - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.ODSAgent\" => true''" -> 1'
 
 # 2.4.7 Disable Bluetooth Sharing (Automated)
   - id: 18018
@@ -321,7 +321,7 @@ checks:
       - cis_level: ["1"]
     condition: none
     rules:
-      - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.smbd\" => true''"" -> 1'
+      - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.smbd\" => true''" -> 1'
 
 # 2.4.9 Disable Remote Management (Automated)
   - id: 18020
@@ -463,7 +463,7 @@ checks:
       - https://support.apple.com/en-us/HT204690
     condition: all
     rules:
-      - 'c:launchctl list | grep -c com.apple.locationd -> 1'
+      - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> 1'
 
 # not implemented - process -> 2.5.4 Review Application Firewall Rules (Manual)
 
@@ -522,7 +522,7 @@ checks:
 # 2.8 Disable Wake for network access (Automated)
   - id: 18031
     title: "Disable Wake for network access."
-    description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. Theie macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer’s shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
+    description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. Theie macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
     remediation: "Run the following command to disable Wake for network access: sudo pmset -a womp 0 "
     compliance:
@@ -530,7 +530,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sh -c "pmset -g | grep -e womp" -> r: 0'
+      - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
 
 # 2.9 Disable Power Nap (Automated)
   - id: 18032
@@ -543,7 +543,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sh -c "pmset -g everything | grep -c ''powernap             1''"-> 0'
+      - 'c:sh -c "pmset -g everything | grep -e powernap" -> r:powernap\s+0'
 
 # 2.10 Enable Secure Keyboard Entry in terminal.app (Automated)
   - id: 18033
@@ -569,8 +569,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:system_profiler SPiBridgeDataType | grep "T2" -> Model Name: Apple T2 Security Chip'
-      - 'c:launchctl list | grep com.apple.driver.eficheck -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
+      - 'c:sh -c "system_profiler SPiBridgeDataType | grep \"T2\"" -> r:Model Name: Apple T2 Security Chip'
+      - 'c:sh -c "launchctl list | grep com.apple.driver.eficheck" -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
 
 # not implemented - requires supervision -> 2.12 Automatic Actions for Optical Media (Manual)
 # not implemented - requires supervision -> 2.13 Review Siri Settings (Manual)
@@ -732,7 +732,7 @@ checks:
       - cis_level: ["2"]
     condition: all
     rules:
-      - 'c:find /System/Volumes/Data/Library -type d -perm -2 -ls | grep -v Caches | grep -v Audio -> r:^$'
+      - 'c:sh -c "find /System/Volumes/Data/Library -type d -perm -2 -ls | grep -v Caches | grep -v Audio" -> r:^$'
 
 ############################################################
 # 5.2 Password Management
@@ -855,7 +855,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'd:/Library/Security -> r:PolyBanner.* -> r:^$'
+      - 'd:/Library/Security -> r:^PolicyBanner'
 
 # not implemented - SCA Limit -> 5.15 Do not enter a password-related hint (Automated)
 
