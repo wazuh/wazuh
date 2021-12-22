@@ -1821,6 +1821,9 @@ int wdb_remove_old_backup() {
         if(!stat(tmp_path, &backup_info)) {
             os_strdup(tmp_path, backups_array[number_of_files-1]);
             backups_time_array[number_of_files-1] = current_time - backup_info.st_mtime;
+        } else {
+            backups_array[number_of_files-1] = NULL;
+            backups_time_array[number_of_files-1] = -1;
         }
     }
 
