@@ -17,7 +17,11 @@ namespace builder
 
     void Registry::register_builder(const string& builder_id, const Builder& builder)
     {
-        this->registry[builder_id] = &builder;
+        if (registry.count(builder_id)>0) {
+            throw invalid_argument("Key is already stored on the map");
+        }else{
+            this->registry[builder_id] = &builder;
+        }
     }
 
     const Builder* Registry::get_builder(const string& builder_id) const
