@@ -7,16 +7,35 @@
  */
 
 #include "dbsync.hpp"
-#include "db.h"
+#include "dbsync.h"
+#include "db.hpp"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBHelper.hpp"
 #include <thread>
+#include "dbFileItem.hpp"
+
+#ifdef WIN32
+#include "dbRegistryKey.hpp"
+#include "dbRegistryValue.hpp"
+#endif
+
+struct CJsonDeleter
+{
+    void operator()(char* json)
+    {
+        cJSON_free(json);
+    }
+    void operator()(cJSON* json)
+    {
+        cJSON_Delete(json);
+    }
+};
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /**
  * @brief Create the statement string to create the dbsync schema.
@@ -100,6 +119,64 @@ void fim_sync_push_msg(const char* msg)
         FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
 }
+
+TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data)
+{
+    const auto jsonTable { R"({"table": "file_entry"})" };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsInput
+    {
+        cJSON_Parse(jsonTable)
+    };
+
+    callback_data_t cb_data = { .callback = row_callback, .user_data = user_data };
+
+    TXN_HANDLE dbsyncTxnHandle = dbsync_create_txn(FIMDB::getInstance().handle(), jsInput.get(), 0, QUEUE_SIZE, cb_data);
+    return dbsyncTxnHandle;
+}
+
+FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry) {
+
+    nlohmann::json json_insert;
+    auto retVal = FIMDB_OK;
+
+    if (entry->type == FIM_TYPE_FILE)
+    {
+        auto syncItem = std::make_unique<FileItem>(entry);
+        json_insert["table"] = FIMDB_FILE_TABLENAME;
+        json_insert["data"] = {*(syncItem->toJSON())};
+    }
+    else
+    {
+        // auto syncItem = FileItem(entry);
+        // json_insert["table"] = FIMDB_FILE_TABLENAME;
+        // json_insert["data"] = syncItem.toJSON();
+    }
+
+    const std::unique_ptr<cJSON, CJsonDeleter> jsInput
+    {
+        cJSON_Parse(json_insert.dump().c_str())
+    };
+
+
+    int res = dbsync_sync_txn_row(txn_handler, jsInput.get());
+    if (res != 0)
+    {
+        retVal = FIMDB_ERR;
+    }
+
+    return retVal;
+}
+
+FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler, result_callback_t res_callback) {
+    auto retVal = FIMDB_OK;
+    callback_data_t cb_data = { .callback = res_callback, .user_data = NULL };
+
+    dbsync_get_deleted_rows(txn_handler, cb_data);
+    dbsync_close_txn(txn_handler);
+    return retVal;
+}
+
+
 
 #ifdef __cplusplus
 }

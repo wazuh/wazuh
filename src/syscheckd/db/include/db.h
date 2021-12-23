@@ -9,9 +9,13 @@
 #ifndef FIMDB_H
 #define FIMDB_H
 #include "fimCommonDefs.h"
+#include "commonDefs.h"
+
 
 #ifdef __cplusplus
 extern "C" {
+#include "syscheck.h"
+#include <openssl/evp.h>
 #endif
 
 #include "syscheck.h"
@@ -132,6 +136,41 @@ void fim_sync_push_msg(const char* msg);
  *
  */
 void fim_run_integrity();
+
+/*
+ * @brief Function that starts a new DBSync transaction.
+ *
+ * @param table Database table that will be used in the DBSync transaction.
+ * @param row_callback Callback that is going to be executed for each insertion or modification.
+ * param user_data Context that will be used in the callback.
+ *
+ * @return TXN_HANDLE Transaction handler.
+ */
+TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data);
+
+/**
+ * @brief Function to perform a sync row operation (ADD OR REPLACE).
+ *
+ * @param txn_handler Handler to an active transaction.
+ * @param entry FIM entry to be added/updated.
+ *
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
+ */
+FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry);
+
+/**
+ * @brief Function to perform the deleted rows operation.
+ *
+ * @param txn_handler Handler to an active transaction.
+ * @param callback Function to be executed for each deleted entry.
+ *
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
+ */
+FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler, result_callback_t callback);
 
 #ifdef __cplusplus
 }
