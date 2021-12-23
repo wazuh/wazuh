@@ -1,50 +1,50 @@
 #include <gtest/gtest.h>
+#include <rxcpp/rx.hpp>
 #include <typeinfo>
 #include <string>
 #include <map>
-#include "registry.h"
 
-using std::string;
+#include "registry.hpp"
 
-/*TEST (RegistryTests, RegistryType) {
+using json = nlohmann::json;
+using namespace rxcpp;
+using namespace std;
 
-    Registry reg;
-    std::map<string,string> mapStringStringType;
-
-    EXPECT_STREQ(typeid(reg.getRegistry()).name(), typeid(mapStringStringType).name());
+namespace
+{
+    observable<json> decoder_build(const observable<json>& obs, const vector<json>& decoders)
+    {
+        return obs;
+    }
+    builder::MultiJsonBuilder decoder_builder("decoder_engine", &decoder_build);
 }
 
-TEST (RegistryTests, RegistryTypeFail) {
-
-    Registry reg;
-    int intType = 1;
-
-    EXPECT_STREQ(typeid(reg.getRegistry()).name(), typeid(intType).name());
-}*/
-
-string name = "decoder";
-string builder = "asi se buildea este decoder";
-
-TEST (RegistryTests, RegistryIsEmpty) {
-
-    Registry reg;
-
-    EXPECT_TRUE(reg.isEmpty());
-}
-
-TEST (RegistryTests, RegistryNotEmpty) {
-
-    Registry reg;
-
-    reg.registerBuilder(name, builder);
-
-    EXPECT_FALSE(reg.isEmpty());
-}
+string builder_id = "decoder";
+builder::Registry &reg = builder::Registry::instance();
 
 TEST (RegistryTests, RegisterNewBuilder) {
 
-    Registry reg;
+    EXPECT_NO_THROW(reg.register_builder(builder_id,decoder_builder));
 
+}
+
+TEST (RegistryTests, RegisterExistingBuilder) {
+
+    EXPECT_THROW(reg.register_builder(builder_id,decoder_builder),invalid_argument);
+
+}
+
+TEST (RegistryTests, getExistingBuilder) {
+
+    EXPECT_NO_THROW(reg.get_builder(builder_id));
+
+}
+
+TEST (RegistryTests, getNonExistingBuilder) {
+
+    EXPECT_THROW(reg.get_builder("none"),out_of_range);
+    
+}
     EXPECT_NO_THROW(reg.registerBuilder(name, builder));
 
 }
