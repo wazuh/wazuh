@@ -191,8 +191,8 @@
   <rule id="30304" level="12">
     <if_sid>30303</if_sid>
     <match>exit signal Segmentation Fault</match>
-    <description>Apache: Segmentation fault.</description>
     <info type="link">http://www.securityfocus.com/infocus/1633</info>
+    <description>Apache: Segmentation fault.</description>
     <group>service_availability,gpg13_4.14,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.5,nist_800_53_SI.3,pci_dss_6.5.2,pci_dss_6.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,</group>
   </rule>
 
@@ -216,9 +216,9 @@
   <rule id="30307" level="6">
     <if_sid>30301</if_sid>
     <id>AH00550</id>
-    <description>Apache: Client sent malformed Host header. Possible Code Red attack.</description>
     <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
     <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
+    <description>Apache: Client sent malformed Host header. Possible Code Red attack.</description>
     <mitre>
       <id>T1102</id>
     </mitre>
