@@ -782,6 +782,41 @@ void get_ipv6_numeric_success(void ** state) {
     }
 }
 
+void get_ipv6_numeric_compare_compres_ipv6(void ** state) {
+
+    const char *address = "fd17:625c:f037::45ea:97eb";
+    const char *address2 = "fd17:625c:f037:0:0:0:45ea:97eb";
+
+    struct in6_addr addr6;
+    struct in6_addr addr6_2;
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        addr6.s6_addr[i] = 0;
+        addr6_2.s6_addr[i] = 0;
+#else
+        addr6.u.Byte[i] = 0;
+        addr6_2.u.Byte[i] = 0;
+#endif
+    }
+
+    int ret = get_ipv6_numeric(address, &addr6);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    ret = get_ipv6_numeric(address2, &addr6_2);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    for(unsigned int i = 0; i < 16 ; i++) {
+#ifndef WIN32
+        assert_int_equal(addr6.s6_addr[i], addr6_2.s6_addr[i]);
+#else
+        assert_int_equal(addr6.u.Byte[i], addr6_2.u.Byte[i]);
+#endif
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* Bind a TCP port */
@@ -893,6 +928,7 @@ int main(void) {
         /* Test get_ipv6_numeric */
         cmocka_unit_test(get_ipv6_numeric_fail),
         cmocka_unit_test(get_ipv6_numeric_success),
+        cmocka_unit_test(get_ipv6_numeric_compare_compres_ipv6),
 
     };
 
