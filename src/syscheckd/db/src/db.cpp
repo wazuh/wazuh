@@ -130,7 +130,9 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
 
     callback_data_t cb_data = { .callback = row_callback, .user_data = user_data };
 
-    TXN_HANDLE dbsyncTxnHandle = dbsync_create_txn(FIMDB::getInstance().handle(), jsInput.get(), 0, QUEUE_SIZE, cb_data);
+    TXN_HANDLE dbsyncTxnHandle = dbsync_create_txn(FIMDB::getInstance().DBSyncHandle(), jsInput.get(), 0,
+                                                   QUEUE_SIZE, cb_data);
+
     return dbsyncTxnHandle;
 }
 
@@ -142,7 +144,7 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
     if (entry->type == FIM_TYPE_FILE)
     {
         auto syncItem = std::make_unique<FileItem>(entry);
-        json_insert["table"] = FIMBD_FILE_TABLE_NAME
+        json_insert["table"] = FIMBD_FILE_TABLE_NAME;
         json_insert["data"] = {*(syncItem->toJSON())};
     }
     else

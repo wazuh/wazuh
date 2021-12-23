@@ -26,6 +26,11 @@ extern "C"
 #define FIM_COMPONENT_FILE "fim_file"
 #define FIM_COMPONENT_REGISTRY "fim_registry"
 
+constexpr auto QUEUE_SIZE
+{
+    4096
+};
+
 constexpr auto CREATE_FILE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS file_entry (
@@ -339,6 +344,13 @@ class FIMDB
         {
             m_loggingFunction(logLevel, msg);
         }
+
+        /**
+         * @brief Function to return the DBSync handle.
+         *
+         * @return DBSYNC_HANDLE Handle to DBSync.
+         */
+        DBSYNC_HANDLE DBSyncHandle() { return m_dbsyncHandler->handle(); }
 
     private:
 
