@@ -639,7 +639,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
     else {
         char* agent_group_csv = wdb_global_get_agent_group_csv(wdb, agent_id);
         if (agent_group_csv) {
-            OS_SHA256_String_sized(groups_string, groups_hash, WDB_GROUP_HASH_SIZE);
+            OS_SHA256_String_sized(agent_group_csv, groups_hash, WDB_GROUP_HASH_SIZE);
             os_free(agent_group_csv);
         }
         else {
@@ -1300,11 +1300,15 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
             int group_priority = 0;
             if (WDB_GROUP_OVERRIDE_ALL != mode) {
                 char* actual_source = wdb_global_get_agent_group_source(wdb, agent_id);
+                if (!actual_source) {
+                    mdebug2("Agent '%02d' group set ignored because the last writer source couldn't be obtained.", agent_id);
+                    continue;
+                }
                 // Write is allowed if mode is override_all or actual source isn´t remote or if the new source is remote too.
-                bool write_allowed = (actual_source && (strcmp(actual_source, "remote") || !strcmp(actual_source, source)));
+                bool write_allowed = (strcmp(actual_source, "remote") || !strcmp(source, "remote"));
                 os_free(actual_source);
                 if (!write_allowed) {
-                    mdebug2("Agent group set ignored because the mode isn't override_all and last source was 'remote'");
+                    mdebug2("Agent '%02d' group set ignored because the mode isn't override_all and last source was 'remote'", agent_id);
                     continue;
                 }
             }
