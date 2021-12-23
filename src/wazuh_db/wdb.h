@@ -73,6 +73,12 @@ typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
 } wdb_groups_set_mode_t;
 
+#define WDB_GROUP_SOURCE_MANUAL "manual"
+#define WDB_GROUP_SOURCE_REMOTE "remote"
+#define WDB_GROUP_MODE_EMPTY_ONLY "empty_only"
+#define WDB_GROUP_MODE_OVERRIDE "override"
+#define WDB_GROUP_MODE_OVERRIDE_ALL "override_all"
+
 #define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/

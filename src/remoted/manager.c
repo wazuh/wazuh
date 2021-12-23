@@ -1004,7 +1004,12 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
     if (agt_group = w_parser_get_agent(agent_id), agt_group) {
         strncpy(group, agt_group->group, OS_SIZE_65536);
         group[OS_SIZE_65536 - 1] = '\0';
-        wdb_update_agent_group(atoi(agent_id), group, NULL);
+        wdb_set_agent_groups_csv(atoi(agent_id),
+                                 group,
+                                 WDB_GROUP_MODE_OVERRIDE_ALL,
+                                 w_is_worker() ? "syncreq" : "synced",
+                                 WDB_GROUP_SOURCE_REMOTE,
+                                 NULL);
     } else if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536, wdb_sock) < 0) {
         group[0] = '\0';
     }
@@ -1075,10 +1080,15 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        wdb_update_agent_group(atoi(agent_id), group, NULL);
+        wdb_set_agent_groups_csv(atoi(agent_id),
+                                 group,
+                                 WDB_GROUP_MODE_EMPTY_ONLY,
+                                 w_is_worker() ? "syncreq" : "synced",
+                                 WDB_GROUP_SOURCE_MANUAL,
+                                 NULL);
+
         os_strdup(group, *r_group);
         ret = OS_SUCCESS;
-        mdebug2("Group assigned: '%s'", group);
         break;
     }
 
