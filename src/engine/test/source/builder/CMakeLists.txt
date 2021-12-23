@@ -11,6 +11,9 @@ set(BUILDER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/builder)
 set(BUILDER_OPERATIONS_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/operations)
 set(BUILDER_OPERATIONS_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/operations)
 
+set(BUILDER_ENSEMBLES_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/ensembles)
+set(BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/ensembles)
+
 ####################################################################################################
 # Dependencies -- assuming cpm is available
 ####################################################################################################
@@ -49,6 +52,7 @@ set(SOURCES
   ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp
+  ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}/decoder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_value.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_builder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/helper_exists.cpp
@@ -56,6 +60,7 @@ set(SOURCES
 
 include_directories(
   ${BUILDER_ENGINE_SOURCE_DIR}
+  ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
 )
 
@@ -82,6 +87,13 @@ gtest_discover_tests(registry_test)
 add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${SOURCES})
 gtest_discover_tests(utils_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp)
+
+####################################################################################################
+# Ensemble targets
+####################################################################################################
+add_executable(decoder_test ${BUILDER_ENSEMBLES_TEST_SOURCE_DIR}/decoder_test.cpp ${SOURCES})
+gtest_discover_tests(decoder_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_ENSEMBLES_TEST_SOURCE_DIR}/decoder_test.cpp)
 
 ####################################################################################################
 # Operations targets
