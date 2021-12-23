@@ -32,7 +32,7 @@ add_executable(router_benchmarks
 )
 
 # Build benchmarks
-target_include_directories(router_benchmarks PUBLIC "${ENGINE_SOURCE_DIR}/" "${RAPIDJSON_INCLUDE_DIR}/" "/var/home/gdiazlo/src/wazuh/src/engine/build/_deps/rapidjson-src/include/")
+target_include_directories(router_benchmarks PRIVATE "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/" )
 target_link_libraries(router_benchmarks benchmark::benchmark_main rxcpp "nlohmann_json::nlohmann_json")
 
 
