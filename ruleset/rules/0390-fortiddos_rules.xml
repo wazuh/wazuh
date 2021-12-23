@@ -32,7 +32,6 @@
     <field name="evecode">^1$</field>
     <options>no_full_log</options>
     <description>Group of layer 3 events.</description>
-    <group>layer3,</group>
   </rule>
 
   <rule id="44403" level="0">
@@ -40,7 +39,6 @@
     <field name="evecode">^2$</field>
     <options>no_full_log</options>
     <description>Group of layer 4 events.</description>
-    <group>layer4,</group>
   </rule>
 
   <rule id="44404" level="0">
@@ -48,7 +46,6 @@
     <field name="evecode">^4$</field>
     <options>no_full_log</options>
     <description>Group of layer 7 events.</description>
-    <group>layer7,</group>
   </rule>
 
   <rule id="44405" level="5">
@@ -56,7 +53,6 @@
     <field name="evesubcode">^0$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the protocol has been reached.</description>
-    <group>layer3,rate_flood,</group>
   </rule>
 
   <rule id="44406" level="5">
@@ -64,7 +60,6 @@
     <field name="evesubcode">^1$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the fragment threshold has been reached.</description>
-    <group>layer3,rate_flood,</group>
   </rule>
 
   <rule id="44407" level="5">
@@ -72,7 +67,6 @@
     <field name="evesubcode">^4$</field>
     <options>no_full_log</options>
     <description>Drops due to predefined IP header rules: Invalid header length (less than 5 words) total length less than 20 bytes End of Header before the data offset (while parsing options) length field in the LSRR or SSRR IP option is other than (3+(n*4)) where n is a value greater than or equal to 1 Pointer in the LSRR or SSRR IP option is other than (n*4) where n is a value greater than or equal to 1.</description>
-    <group>header_anomaly,layer3,</group>  
   </rule>
 
   <rule id="44408" level="5">
@@ -94,7 +88,6 @@
     <field name="evesubcode">^8$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the most-active-source threshold has been reached. Source IP address is reported.</description>
-    <group>layer3,rate_flood,</group>
   </rule>
 
   <rule id="44411" level="5">
@@ -116,7 +109,6 @@
     <field name="evesubcode">^14$</field>
     <options>no_full_log</options>
     <description>Invalid IP header checksum.</description>
-    <group>header_anomaly,layer3,</group> 
   </rule>
 
   <rule id="44414" level="5">
@@ -124,7 +116,6 @@
     <field name="evesubcode">^15$</field>
     <options>no_full_log</options>
     <description>Identical source and protected IP addresses (LAND attack).</description>
-    <group>header_anomaly,layer3,</group> 
   </rule>
 
   <rule id="44415" level="5">
@@ -132,7 +123,6 @@
     <field name="evesubcode">^16$</field>
     <options>no_full_log</options>
     <description>Source/destination address is the local host (loopback address spoofing).</description>
-    <group>header_anomaly,layer3,</group> 
   </rule>
 
   <rule id="44416" level="5">
@@ -140,7 +130,6 @@
     <field name="evesubcode">^17$</field>
     <options>no_full_log</options>
     <description>Drops due to predefined Layer 3 rules: IP version other than IPv4 or IPv6; EOP (End of Packet) before 20 bytes of IPv4 data; EOP comes before the length specified by Total Length; Reserved Flag set; More Frag and Don't Frag Flags set; Added Anomaly for DSCP and ECN.</description>
-    <group>header_anomaly,layer3,</group>
   </rule>
 
   <rule id="44417" level="5">
@@ -148,7 +137,6 @@
     <field name="evesubcode">^50$|^54$|^55$</field>
     <options>no_full_log</options>
     <description>Layer 3: Denied by an SPP ACL rule.</description>
-    <group>ACL,layer3,</group>
   </rule>
 
   <rule id="44418" level="5">
@@ -156,7 +144,6 @@
     <field name="evesubcode">^59$</field>
     <options>no_full_log</options>
     <description>Denied by the global geolocation ACL.</description>
-    <group>ACL,layer3,</group>
   </rule>
 
   <rule id="44419" level="5">
@@ -164,7 +151,6 @@
     <field name="evesubcode">^60$</field>
     <options>no_full_log</options>
     <description>Denied by the global ACL.</description>
-    <group>ACL,layer3,</group>
   </rule>
 
   <rule id="44420" level="5">
@@ -172,7 +158,6 @@
     <field name="evesubcode">^61$</field>
     <options>no_full_log</options>
     <description>Denied by the global IP Reputation ACL.</description>
-    <group>ACL,layer3,</group>
   </rule>
 
   <rule id="44421" level="5">
@@ -180,7 +165,6 @@
     <field name="evesubcode">^62$</field>
     <options>no_full_log</options>
     <description>Denied by the global local address antispoofing ACL.</description>
-    <group>ACL,layer3,</group>
   </rule>
 
   <rule id="44422" level="5">
@@ -188,7 +172,6 @@
     <field name="evesubcode">^0$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the syn threshold has been reached.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44423" level="5">
@@ -196,7 +179,6 @@
     <field name="evesubcode">^6$</field>
     <options>no_full_log</options>
     <description>A foreign packet is a TCP packet that does not belong to any known connections.  Tracked when the SPP setting foreign-packet is enabled.</description>
-    <group>layer4,state_anomaly,</group>
   </rule>
 
   <rule id="44424" level="5">
@@ -204,7 +186,6 @@
     <field name="evesubcode">^7$</field>
     <options>no_full_log</options>
     <description>Sequence number of a packet was outside the acceptable window.  Tracked when the SPP setting seq-validation is enabled.</description>
-    <group>layer4,state_anomaly,</group>
   </rule>
 
   <rule id="44425" level="5">
@@ -226,7 +207,6 @@
     <field name="evesubcode">^12$</field>
     <options>no_full_log</options>
     <description>State of the TCP packet received was not consistent with the expected state. Tracked when the SPP setting state-transition-anomalies-validation is enabled.</description>
-    <group>layer4,state_anomaly,</group>
   </rule>
 
   <rule id="44428" level="5">
@@ -234,7 +214,6 @@
     <field name="evesubcode">^15$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the new-connections threshold has been reached. A spike in new connections from IP addresses formerly determined to be legitimate might be a sign of a zombie attack.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44429" level="5">
@@ -242,7 +221,6 @@
     <field name="evesubcode">^17$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the TCP port has been reached.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44430" level="5">
@@ -250,7 +228,6 @@
     <field name="evesubcode">^18$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the UDP port has been reached.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44431" level="5">
@@ -258,7 +235,6 @@
     <field name="evesubcode">^19$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the type/code has been reached.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44432" level="5">
@@ -266,7 +242,6 @@
     <field name="evesubcode">^20$</field>
     <options>no_full_log</options>
     <description>Slow Connection Aggressive Aging.</description>
-    <group>layer4,state_anomaly,</group>
   </rule>
 
   <rule id="44433" level="5">
@@ -274,7 +249,6 @@
     <field name="evesubcode">^22$</field>
     <options>no_full_log</options>
     <description>Slow connection attack detected and “Source blocking for slow connections” enabled. Source IP address is reported.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44434" level="5">
@@ -282,7 +256,6 @@
     <field name="evesubcode">^24$</field>
     <options>no_full_log</options>
     <description>Invalid TCP checksum.</description>
-    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44435" level="5">
@@ -290,7 +263,6 @@
     <field name="evesubcode">^25$</field>
     <options>no_full_log</options>
     <description>Invalid UDP checksum.</description>
-    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44436" level="5">
@@ -298,7 +270,6 @@
     <field name="evesubcode">^26$</field>
     <options>no_full_log</options>
     <description>Invalid ICMP checksum.</description>
-    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44437" level="5">
@@ -306,7 +277,6 @@
     <field name="evesubcode">^27$</field>
     <options>no_full_log</options>
     <description>Invalid TCP flag combination. If the urgent flag is set, then the urgent pointer must be non-zero. SYN, FIN or RST is set for fragmented packets.</description>
-    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44438" level="5">
@@ -314,7 +284,6 @@
     <field name="evesubcode">^28$</field>
     <options>no_full_log</options>
     <description>Drops due to predefined Layer 4 header rules: Data offset is less than 5 for a TCP packet; EOP (End of packet) is detected before the 20 bytes of TCP header; EOP before the data offset indicated data offset; Length field in TCP window scale option is a value other than 3; Length field in TCP window scale option is a value other than 3; Missing UDP payload; Missing ICMP payload ; TCP Option Anamoly based on Option Type.</description>
-    <group>header_anomaly,layer4,</group>
   </rule>
 
   <rule id="44439" level="5">
@@ -322,7 +291,6 @@
     <field name="evesubcode">^52$|^53$|^54$</field>
     <options>no_full_log</options>
     <description>Layer 4: Denied by an SPP ACL rule.</description>
-    <group>ACL,layer4,</group>
   </rule>
 
   <rule id="44440" level="5">
@@ -330,7 +298,6 @@
     <field name="evesubcode">^56$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the syn-per-src threshold has been reached. Source IP address is reported.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44441" level="5">
@@ -338,7 +305,6 @@
     <field name="evesubcode">^58$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the concurrent-connections-per-source threshold has been reached. Source IP address is reported.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44442" level="5">
@@ -346,7 +312,6 @@
     <field name="evesubcode">^82$</field>
     <options>no_full_log</options>
     <description>DNS Query flood from Source.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44443" level="5">
@@ -354,7 +319,6 @@
     <field name="evesubcode">^83$</field>
     <options>no_full_log</options>
     <description>DNS Packet Track Flood from Source.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44444" level="5">
@@ -362,7 +326,6 @@
     <field name="evesubcode">^86$</field>
     <options>no_full_log</options>
     <description>Invalid ICMP Type/Code.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44445" level="5">
@@ -370,7 +333,6 @@
     <field name="evesubcode">^87$</field>
     <options>no_full_log</options>
     <description>HTTP Method flood from source.</description>
-    <group>layer4,rate_flood,</group>
   </rule>
 
   <rule id="44446" level="5">
@@ -378,7 +340,6 @@
     <field name="evesubcode">^0$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for a particular HTTP method threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44447" level="5">
@@ -386,7 +347,6 @@
     <field name="evesubcode">^1$</field>
     <options>no_full_log</options>
     <description>Packets dropped due to the unknown-opcode-anomaly rule (Global Settings > Settings page).</description>
-    <group>header_anomaly,layer7,</group>
   </rule>
 
   <rule id="44448" level="5">
@@ -394,7 +354,6 @@
     <field name="evesubcode">^2$</field>
     <options>no_full_log</options>
     <description>Packets dropped due to the invalid-opcode-anomaly rule (Global Settings > Settings page).</description>
-    <group>header_anomaly,layer7,</group>
   </rule>
 
   <rule id="44449" level="5">
@@ -402,7 +361,6 @@
     <field name="evesubcode">^3$|^7$|^9$|^11$|^13$|^37$|^38$|^39$|^40$</field>
     <options>no_full_log</options>
     <description>Layer 7: Denied by an SPP ACL rule.</description>
-    <group>ACL,layer7,</group>
   </rule>
 
   <rule id="44450" level="5">
@@ -410,7 +368,6 @@
     <field name="evesubcode">^4$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for a particular URL threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44451" level="5">
@@ -418,7 +375,6 @@
     <field name="evesubcode">^5$</field>
     <options>no_full_log</options>
     <description>Invalid HTTP Method anomaly.</description>
-    <group>header_anomaly,layer7,</group>
   </rule>
 
   <rule id="44452" level="5">
@@ -426,7 +382,6 @@
     <field name="evesubcode">^6$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for a particular Host header threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44453" level="5">
@@ -434,7 +389,6 @@
     <field name="evesubcode">^8$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for a particular Referer header threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44454" level="5">
@@ -442,7 +396,6 @@
     <field name="evesubcode">^10$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for a particular Cookie header threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44455" level="5">
@@ -450,7 +403,6 @@
     <field name="evesubcode">^12$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for a particular User-Agent threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44456" level="5">
@@ -458,7 +410,6 @@
     <field name="evesubcode">^42$</field>
     <options>no_full_log</options>
     <description>Invalid value in the OpCode field.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44457" level="5">
@@ -466,7 +417,6 @@
     <field name="evesubcode">^43$</field>
     <options>no_full_log</options>
     <description>Invalid combination in the flags field.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44458" level="5">
@@ -474,7 +424,6 @@
     <field name="evesubcode">^44$</field>
     <options>no_full_log</options>
     <description>DNS Header Anomaly.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44459" level="5">
@@ -482,7 +431,6 @@
     <field name="evesubcode">^45$</field>
     <options>no_full_log</options>
     <description>(QR) bit set to 1.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44460" level="5">
@@ -490,7 +438,6 @@
     <field name="evesubcode">^46$</field>
     <options>no_full_log</options>
     <description>recursion allowed (RA) bit set.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44461" level="5">
@@ -498,7 +445,6 @@
     <field name="evesubcode">^47$</field>
     <options>no_full_log</options>
     <description>DNS query with count 0.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44462" level="5">
@@ -506,7 +452,6 @@
     <field name="evesubcode">^48$|^53$</field>
     <options>no_full_log</options>
     <description>Question count not 1.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44463" level="5">
@@ -514,7 +459,6 @@
     <field name="evesubcode">^49$</field>
     <options>no_full_log</options>
     <description>recursion desired (RD) bit set.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44464" level="5">
@@ -522,7 +466,6 @@
     <field name="evesubcode">^50$</field>
     <options>no_full_log</options>
     <description>DNS response with QCLASS.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44465" level="5">
@@ -530,7 +473,6 @@
     <field name="evesubcode">^51$</field>
     <options>no_full_log</options>
     <description>DNS response with a resource specifying a TYPE ID.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44466" level="5">
@@ -538,7 +480,6 @@
     <field name="evesubcode">^52$</field>
     <options>no_full_log</options>
     <description>(QR) bit set to 0.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44467" level="5">
@@ -546,7 +487,6 @@
     <field name="evesubcode">^54$</field>
     <options>no_full_log</options>
     <description>TCP/UDP query or response message that exceeds the maximum header length.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44468" level="5">
@@ -554,7 +494,6 @@
     <field name="evesubcode">^55$</field>
     <options>no_full_log</options>
     <description>DNS name that exceeds 255 characters.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44469" level="5">
@@ -562,7 +501,6 @@
     <field name="evesubcode">^56$</field>
     <options>no_full_log</options>
     <description>Query or response with a label that exceeds the maximum length (63).</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44470" level="5">
@@ -570,7 +508,6 @@
     <field name="evesubcode">^57$</field>
     <options>no_full_log</options>
     <description>DNS message with a pointer that points beyond the end of data.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44471" level="5">
@@ -578,7 +515,6 @@
     <field name="evesubcode">^58$</field>
     <options>no_full_log</options>
     <description>An asynchronous Transfer Full Range (AXFR) request (QTYPE=252).</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44472" level="5">
@@ -586,7 +522,6 @@
     <field name="evesubcode">^59$</field>
     <options>no_full_log</options>
     <description>A query/response in which the question/resource address class is not IN.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44473" level="5">
@@ -594,7 +529,6 @@
     <field name="evesubcode">^60$</field>
     <options>no_full_log</options>
     <description>DNS Exploit Anomaly: Empty UDP message.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44474" level="5">
@@ -602,7 +536,6 @@
     <field name="evesubcode">^61$</field>
     <options>no_full_log</options>
     <description>DNS Exploit Anomaly: Message ends prematurely.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44475" level="5">
@@ -610,7 +543,6 @@
     <field name="evesubcode">^62$</field>
     <options>no_full_log</options>
     <description>A query/response with less than two bytes of data specified in the two-byte prefix field.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44476" level="5">
@@ -618,7 +550,6 @@
     <field name="evesubcode">^63$</field>
     <options>no_full_log</options>
     <description>DNS request with request type set to ALL (QTYPE=255).</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44477" level="5">
@@ -626,7 +557,6 @@
     <field name="evesubcode">^64$</field>
     <options>no_full_log</options>
     <description>A query/response with TYPE or CLASS reserved values.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44478" level="5">
@@ -634,7 +564,6 @@
     <field name="evesubcode">^65$</field>
     <options>no_full_log</options>
     <description>A query/response with excess data.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44479" level="5">
@@ -642,7 +571,6 @@
     <field name="evesubcode">^66$</field>
     <options>no_full_log</options>
     <description>TTL value is greater than 7 days.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44480" level="5">
@@ -650,7 +578,6 @@
     <field name="evesubcode">^67$</field>
     <options>no_full_log</options>
     <description>A query/response with a null DNS name.</description>
-    <group>dns_anomaly,layer7,</group>
   </rule>
 
   <rule id="44481" level="5">
@@ -658,7 +585,6 @@
     <field name="evesubcode">^68$</field>
     <options>no_full_log</options>
     <description>UDP Drops due to a response with no matching query.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44482" level="5">
@@ -666,7 +592,6 @@
     <field name="evesubcode">^69$</field>
     <options>no_full_log</options>
     <description>TCP Drops due to a response with no matching query.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44483" level="5">
@@ -674,7 +599,6 @@
     <field name="evesubcode">^70$</field>
     <options>no_full_log</options>
     <description>DNS DQRM Horizontal Link Limit Crossed.</description>
-    <group>layer7,</group>
   </rule>
 
   <rule id="44484" level="5">
@@ -682,7 +606,6 @@
     <field name="evesubcode">^71$</field>
     <options>no_full_log</options>
     <description>An issue with DQRM table internal logic or memory.</description>
-    <group>layer7,</group>
   </rule>
 
   <rule id="44485" level="5">
@@ -690,7 +613,6 @@
     <field name="evesubcode">^72$</field>
     <options>no_full_log</options>
     <description>UDP drops due to response sent to port 53.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44486" level="5">
@@ -698,7 +620,6 @@
     <field name="evesubcode">^73$</field>
     <options>no_full_log</options>
     <description>TCP drops due to response sent to port 53.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44487" level="5">
@@ -706,7 +627,6 @@
     <field name="evesubcode">^74$|^75$|^76$|^77$|^78$|^79$|^80$</field>
     <options>no_full_log</options>
     <description>UDP drops due to LQ check during flood.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44488" level="5">
@@ -714,7 +634,6 @@
     <field name="evesubcode">^81$|^82$|^83$|^84$|^85$|^86$</field>
     <options>no_full_log</options>
     <description>UDP drops due to TTL check during flood.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44489" level="5">
@@ -722,7 +641,6 @@
     <field name="evesubcode">^87$|^88$|^89$|^90$|^91$|^92$</field>
     <options>no_full_log</options>
     <description>UDP drops due to TC=1 antispoofing check during flood.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44490" level="5">
@@ -730,7 +648,6 @@
     <field name="evesubcode">^93$|^94$|^95$|^96$|^97$|^98$</field>
     <options>no_full_log</options>
     <description>UDP drops due to Retransmission antispoofing check during flood.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44491" level="5">
@@ -738,7 +655,6 @@
     <field name="evesubcode">^99$</field>
     <options>no_full_log</options>
     <description>UDP drops because the response was served from the cache during a flood.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44492" level="5">
@@ -746,7 +662,6 @@
     <field name="evesubcode">^100$|^101$|^102$|^103$|^104$|^105$|^106$|^107$|^108$|^109$|^110$</field>
     <options>no_full_log</options>
     <description>UDP drops because the response was not served from the cache during a flood.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44493" level="5">
@@ -754,7 +669,6 @@
     <field name="evesubcode">^201$</field>
     <options>no_full_log</options>
     <description>Drops due to HTTP Range Header rule (Global Settings > Settings page).</description>
-    <group>header_anomaly,layer7,</group>
   </rule>
 
   <rule id="44494" level="5">
@@ -762,7 +676,6 @@
     <field name="evesubcode">^111$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the dns-query threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44495" level="5">
@@ -770,7 +683,6 @@
     <field name="evesubcode">^112$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the dns-question-count threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44496" level="5">
@@ -778,7 +690,6 @@
     <field name="evesubcode">^113$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the dns-fragment threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44497" level="5">
@@ -786,7 +697,6 @@
     <field name="evesubcode">^114$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the dns-zone-xfer threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44498" level="5">
@@ -794,7 +704,6 @@
     <field name="evesubcode">^115$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the dns-mx threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44499" level="5">
@@ -802,7 +711,6 @@
     <field name="evesubcode">^116$</field>
     <options>no_full_log</options>
     <description>Effective rate limit for the dns-all threshold has been reached.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44500" level="5">
@@ -810,7 +718,6 @@
     <field name="evesubcode">^117$</field>
     <options>no_full_log</options>
     <description>UDP Drops due to DQRM duplicate query check.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44501" level="5">
@@ -818,7 +725,6 @@
     <field name="evesubcode">^118$</field>
     <options>no_full_log</options>
     <description>TCP Drops due to DQRM duplicate query check.</description>
-    <group>layer7,rate_flood,</group>
   </rule>
 
   <rule id="44502" level="5">
@@ -826,7 +732,6 @@
     <field name="evesubcode">^119$</field>
     <options>no_full_log</options>
     <description>DNS Query ACL drops due to Query restricted to specific subnets.</description>
-    <group>ACL,layer7,</group>
   </rule>
 
   <rule id="44503" level="5">
@@ -834,7 +739,6 @@
     <field name="evesubcode">^120$</field>
     <options>no_full_log</options>
     <description>DNS Query ACL Drops due to Blacklisted domains/ipv4 address.</description>
-    <group>ACL,layer7,</group>
   </rule>
 
 </group>
