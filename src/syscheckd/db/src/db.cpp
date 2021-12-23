@@ -8,7 +8,7 @@
 
 #include "dbsync.hpp"
 #include "dbsync.h"
-#include "db.hpp"
+#include "db.h"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
 #include "fimDBHelper.hpp"
@@ -142,13 +142,13 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
     if (entry->type == FIM_TYPE_FILE)
     {
         auto syncItem = std::make_unique<FileItem>(entry);
-        json_insert["table"] = FIMDB_FILE_TABLENAME;
+        json_insert["table"] = FIMBD_FILE_TABLE_NAME
         json_insert["data"] = {*(syncItem->toJSON())};
     }
     else
     {
         // auto syncItem = FileItem(entry);
-        // json_insert["table"] = FIMDB_FILE_TABLENAME;
+        // json_insert["table"] = FIMBD_FILE_TABLE_NAME
         // json_insert["data"] = syncItem.toJSON();
     }
 
