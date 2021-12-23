@@ -92,32 +92,6 @@ CPMAddPackage(
 )
 list(APPEND EXTERNAL_DEPS "nlohmann_json::nlohmann_json")
 
-# nlohmann json_schema_validator  #FIXME 70 stars on github
-CPMAddPackage(
-  NAME json-schema-validator
-  GITHUB_REPOSITORY pboettch/json-schema-validator
-  GIT_TAG 2.1.0
-  VERSION 2.1.0
-  OPTIONS
-      "BUILD_SHARED_LIBS OFF"
-      "BUILD_TESTS OFF"
-      "BUILD_EXAMPLES OFF"
-)
-list(APPEND EXTERNAL_DEPS "nlohmann_json_schema_validator")
-
-CPMAddPackage(
-  NAME yaml-cpp
-  GITHUB_REPOSITORY jbeder/yaml-cpp
-  GIT_TAG yaml-cpp-0.7.0
-  VERSION 0.7.0
-  OPTIONS
-      "YAML_BUILD_SHARED_LIBS OFF"
-      "YAML_CPP_BUILD_TESTS OFF"
-)
-
-# yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
-list(APPEND EXTERNAL_DEPS "yaml-cpp")
-
 # google logging
 CPMAddPackage(
   NAME glog
@@ -137,6 +111,9 @@ list(APPEND EXTERNAL_DEPS "glog::glog")
 set(SOURCE_FILES "${ENGINE_SOURCE_DIR}/main.cpp")
 
 add_executable(main ${SOURCE_FILES})
+
+# Build catalog
+add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 
 target_link_libraries(main "-static" ${EXTERNAL_DEPS})
 
