@@ -13,8 +13,11 @@
 #define _UTILS_WRAPPER_UNIX_H
 
 #include <stdexcept>
+
 #include <sys/socket.h>
-#include <sys/ioctl.h>
+#include <net/if.h>
+#include <unistd.h>
+#include <stropts.h>
 
 class UtilsWrapperUnix
 {

@@ -110,6 +110,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
       "${CMAKE_SOURCE_DIR}/src/*Solaris.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/networkSolarisHelper.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Solaris.cpp")
 else()

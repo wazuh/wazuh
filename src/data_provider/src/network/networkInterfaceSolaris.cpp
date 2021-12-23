@@ -14,7 +14,7 @@ std::shared_ptr<IOSNetwork> FactorySolarisNetwork::create(const std::shared_ptr<
         {
             ret = std::make_shared<SolarisNetworkImpl<AF_INET>>(interfaceWrapper);
         }
-        else if (AF_INTE6 == family)
+        else if (AF_INET6 == family)
         {
             ret = std::make_shared<SolarisNetworkImpl<AF_INET6>>(interfaceWrapper);
         }

@@ -17,6 +17,7 @@
 #include "networkInterfaceLinux.h"
 #include "networkInterfaceBSD.h"
 #include "networkInterfaceWindows.h"
+#include "networkInterfaceSolaris.h"
 #include "sharedDefs.h"
 
 template <OSType osType>
