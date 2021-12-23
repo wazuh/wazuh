@@ -21,17 +21,19 @@ extern "C" {
 /**
  * @brief Create the statement string to create the dbsync schema.
  *
- * @return std::string Contains the dbsync's schema for FIM db.
+ * @return char* Contains the dbsync's schema for FIM db.
  */
-const char* CreateStatement()
+static char* CreateStatement()
 {
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
     ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
     ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
 #endif
+    char* statement_cstr = new char[ret.length() + 1];
 
-    return ret.c_str();
+    std::strcpy(statement_cstr, ret.c_str());
+    return statement_cstr;
 }
 
 #ifndef WIN32
@@ -51,9 +53,13 @@ void fim_db_init(int storage,
 {
     try
     {
-        auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+        const std::unique_ptr<char[]> createQuery
+        {
+            CreateStatement()
+        };
 
-        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement());
+        auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, createQuery.get());
         auto rsyncHandler = std::make_shared<RemoteSync>();
 
 #ifndef WIN32

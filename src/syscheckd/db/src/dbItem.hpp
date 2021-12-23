@@ -32,7 +32,7 @@ class DBItem
 
         virtual ~DBItem() = default;
         virtual fim_entry* toFimEntry() = 0;
-        virtual nlohmann::json* toJSON() = 0;
+        virtual const nlohmann::json* toJSON() const = 0;
         bool state()
         {
             return m_scanned;

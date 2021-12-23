@@ -57,13 +57,13 @@ class FileItem final : public DBItem
             m_dev = fim->file_entry.data->dev;
             m_inode = fim->file_entry.data->inode;
             m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
-            m_gid =  fim->file_entry.data->gid == NULL ? 0 :std::atoi(fim->file_entry.data->gid);
+            m_gid =  fim->file_entry.data->gid == NULL ? 0 : std::atoi(fim->file_entry.data->gid);
             m_groupname = fim->file_entry.data->group_name == NULL ? "" : fim->file_entry.data->group_name;
             m_md5 = fim->file_entry.data->hash_md5[0] == '\0' ? "" : fim->file_entry.data->hash_md5;
             m_perm = fim->file_entry.data->perm == NULL ? "" : fim->file_entry.data->perm;
             m_sha1 = fim->file_entry.data->hash_sha1[0] == '\0' ? "" : fim->file_entry.data->hash_sha1;
             m_sha256 = fim->file_entry.data->hash_sha256[0] == '\0' ? "" : fim->file_entry.data->hash_sha256;
-            m_uid = fim->file_entry.data->uid == NULL ? 0 :std::atoi(fim->file_entry.data->uid);
+            m_uid = fim->file_entry.data->uid == NULL ? 0 : std::atoi(fim->file_entry.data->uid);
             m_username = fim->file_entry.data->user_name == NULL ? "" : fim->file_entry.data->user_name;
             createJSON();
             createFimEntry();
@@ -97,7 +97,7 @@ class FileItem final : public DBItem
             return m_fimEntry.get();
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };

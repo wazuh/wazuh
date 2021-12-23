@@ -14,16 +14,21 @@ void FileItem::createFimEntry()
 {
     fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
     fim_file_data* data = reinterpret_cast<fim_file_data*>(std::calloc(1, sizeof(fim_file_data)));
+    auto uid_size = std::to_string(m_uid).size();
+    auto gid_size = std::to_string(m_gid).size();
 
     fim->type = FIM_TYPE_FILE;
     fim->file_entry.path = const_cast<char*>(m_identifier.c_str());
     data->size = m_size;
     data->perm = const_cast<char*>(m_perm.c_str());
     data->attributes = const_cast<char*>(m_attributes.c_str());
-    data->uid = static_cast<char*>(std::calloc(1, sizeof(char) +1));
-    std::strncpy(data->uid, std::to_string(m_uid).c_str(), sizeof(char));
-    data->gid = static_cast<char*>(std::calloc(1, sizeof(char) +1));
-    std::strncpy(data->gid, std::to_string(m_gid).c_str(), sizeof(char));
+
+    data->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
+    std::strncpy(data->uid, std::to_string(m_uid).c_str(), uid_size);
+
+    data->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
+    std::strncpy(data->gid, std::to_string(m_gid).c_str(), gid_size);
+
     data->user_name = const_cast<char*>(m_username.c_str());
     data->group_name = const_cast<char*>(m_groupname.c_str());
     data->mtime = m_time;
