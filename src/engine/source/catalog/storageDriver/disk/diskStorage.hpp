@@ -3,13 +3,10 @@
 
 #include <iostream>
 #include <vector>
+#include "../storageDriverInterface.hpp"
 
-#include "../../catalogSharedDef.hpp"
 
-#include "nlohmann/json.hpp"
-// using json = nlohmann::json;
-
-class diskStorage {
+class diskStorage : public storageDriverInterface{
 
     private:
 
@@ -22,8 +19,8 @@ class diskStorage {
         }
         ~diskStorage() = default;
 
-        std::vector<std::string> getAssetList(const AssetType type);
-        nlohmann::ordered_json getAsset(const AssetType type, const std::string_view assetName);
+        std::vector<std::string> getAssetList(const AssetType type) override;
+        nlohmann::ordered_json getAsset(const AssetType type, const std::string_view assetName) override;
 
 };
 
