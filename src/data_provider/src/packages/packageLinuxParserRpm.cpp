@@ -26,7 +26,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 
         for (const auto& p : rpm)
         {
-            auto packageJson {PackageLinuxHelper::parseRpm(p)};
+            auto packageJson = PackageLinuxHelper::parseRpm(p);
 
             if (!packageJson.empty())
             {
@@ -42,7 +42,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
         // Get the packages from the Berkeley DB.
         while (!row.empty())
         {
-            auto package {PackageLinuxHelper::parseRpm(row)};
+            auto package = PackageLinuxHelper::parseRpm(row);
 
             if (!package.empty())
             {
