@@ -179,7 +179,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     return (NULL);
 }
 
-/* convert to netmasks from number */
+/* convert to netmasks from CIDR number */
 static int convertNetmask(int netnumb, struct in6_addr *nmask6)
 {
     if (netnumb < 0 || netnumb > 128) {
@@ -189,25 +189,18 @@ static int convertNetmask(int netnumb, struct in6_addr *nmask6)
     uint32_t aux = 0;
     uint32_t index = 0;
     uint8_t variable_size = 8;
-    for (int i = 0; i < 16; i++) {
 
+    for (int i = 0; i < 16; i++) {
 #ifndef WIN32
         nmask6->s6_addr[i] = 0;
 #else
         nmask6->u.Byte[i] = 0;
 #endif
-
-        if (netnumb > variable_size) {
-            index = variable_size;
-            netnumb -= variable_size;
-        } else {
-            index = netnumb;
-            netnumb = 0;
-        }
+        index = ((netnumb > variable_size) ? variable_size : netnumb);
+        netnumb -= index;
 
         for (uint8_t a = 0; a < index; a++) {
             aux = variable_size - a -1;
-
 #ifndef WIN32
             nmask6->s6_addr[i] += UINT8_C(1) << aux;
 #else
@@ -553,8 +546,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                     if (!_mask_inited) {
                                         _init_masks();
                                     }
-                                    nmask.s_addr = _netmasks[cidr];
-                                    nmask.s_addr = htonl(nmask.s_addr);
+                                    nmask.s_addr = htonl(_netmasks[cidr]);
                                 } else if (OS_INVALID == get_ipv4_numeric(regex_match->sub_strings[1], &nmask)) {
                                     ret = 0;
                                     break;
