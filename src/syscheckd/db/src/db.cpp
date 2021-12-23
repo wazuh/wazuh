@@ -23,7 +23,7 @@ extern "C" {
  *
  * @return std::string Contains the dbsync's schema for FIM db.
  */
-const char* CreateStatement()
+static char *CreateStatement()
 {
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
@@ -31,7 +31,7 @@ const char* CreateStatement()
     ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
 #endif
 
-    return ret.c_str();
+    return strdup(ret.c_str());
 }
 
 #ifndef WIN32

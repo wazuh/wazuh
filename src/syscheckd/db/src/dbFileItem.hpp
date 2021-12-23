@@ -97,7 +97,7 @@ class FileItem final : public DBItem
             return m_fimEntry.get();
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };
