@@ -144,14 +144,7 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
     if (entry->type == FIM_TYPE_FILE)
     {
         auto syncItem = std::make_unique<FileItem>(entry);
-        json_insert["table"] = FIMBD_FILE_TABLE_NAME;
-        json_insert["data"] = {*(syncItem->toJSON())};
-    }
-    else
-    {
-        // auto syncItem = FileItem(entry);
-        // json_insert["table"] = FIMBD_FILE_TABLE_NAME
-        // json_insert["data"] = syncItem.toJSON();
+        json_insert = *syncItem->toJSON();
     }
 
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput

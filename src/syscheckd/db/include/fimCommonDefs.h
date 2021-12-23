@@ -9,6 +9,7 @@
 #ifndef DB_COMMONDEFS_H
 #define DB_COMMONDEFS_H
 #include "logging_helper.h"
+#include "commonDefs.h"
 
 #define FIMBD_FILE_TABLE_NAME "file_entry"
 #define FILE_PRIMARY_KEY "path"

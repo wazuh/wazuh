@@ -283,20 +283,21 @@ time_t fim_scan() {
         */
     }
 
-    /*
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
+
+        db_transaction_handle = fim_db_transaction_start(FIMBD_FILE_TABLE_NAME, transaction_callback, &txn_ctx);
 
         w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             char *path;
             event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
-            DEPRECATED CODE
+            /* DEPRECATED CODE
             if (fim_db_is_full(syscheck.database)) {
                 break;
             }
-
+            */
 
             path = fim_get_real_path(dir_it);
 
@@ -317,13 +318,15 @@ time_t fim_scan() {
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
 #ifdef WIN32
-        DEPRECATED CODE
+        /* DEPRECATED CODE
         if (fim_db_is_full(syscheck.database) != 0) {
             fim_registry_scan();
         }
+        */
 #endif
+        fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+        db_transaction_handle = NULL;
     }
-    */
 
     gettime(&end);
     end_of_scan = time(NULL);
