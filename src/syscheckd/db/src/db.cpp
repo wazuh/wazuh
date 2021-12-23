@@ -169,9 +169,11 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
     return retVal;
 }
 
-FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler, result_callback_t res_callback) {
+FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+                                                result_callback_t res_callback,
+                                                void* txn_ctx) {
     auto retVal = FIMDB_OK;
-    callback_data_t cb_data = { .callback = res_callback, .user_data = NULL };
+    callback_data_t cb_data = { .callback = res_callback, .user_data = txn_ctx };
 
     dbsync_get_deleted_rows(txn_handler, cb_data);
     dbsync_close_txn(txn_handler);

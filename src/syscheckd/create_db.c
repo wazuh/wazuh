@@ -46,11 +46,10 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-// Callback
-
-typedef struct transaction_context_s {
+typedef struct fim_txn_context_s {
     event_data_t *evt_data;
-} transaction_context_t;
+} fim_txn_context_t;
+
 
 static cJSON* fim_dbsync_json_event(const char* path,
                                     const char* diff,
@@ -98,16 +97,35 @@ static cJSON* fim_dbsync_json_event(const char* path,
 
 static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
-    cJSON *json_event = NULL;
-    directory_t *configuration = NULL;
     char *path = NULL;
     char *diff = NULL;
+    cJSON *json_event = NULL;
+    cJSON *dbsync_event = NULL;
+    cJSON *json_path = NULL;
+    directory_t *configuration = NULL;
+    fim_txn_context_t *event_data = (fim_txn_context_t *) user_data;
 
-    transaction_context_t *event_data = (transaction_context_t *) user_data;
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
 
-    if (path = cJSON_GetObjectItem(result_json, "path"), path == NULL) {
+    // DBSync returns an array when there is a addition or modification. This callback is executed for each entry, so
+    // this array only has one element.
+    if (cJSON_IsArray(result_json)) {
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+            return;
+        }
+    // In case of a deletion, DBSync is not going to return an array.
+    } else {
+        dbsync_event = result_json;
+    }
+
+    if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
         goto end;
     }
+
+    path = cJSON_GetStringValue(json_path);
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
         goto end;
@@ -123,10 +141,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             break;
 
         case MODIFIED:
-            if (cJSON_GetObjectItem(result_json, "last_event") == NULL) {
-                goto end;
-            }
-
             event_data->evt_data->type = FIM_MODIFICATION;
             break;
 
@@ -146,14 +160,13 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             break;
     }
 
-    json_event = fim_dbsync_json_event(path, diff, result_json, configuration, event_data->evt_data);
+    json_event = fim_dbsync_json_event(path, diff, dbsync_event, configuration, event_data->evt_data);
 
-    if (json_event && _base_line) {
+    if (json_event != NULL) {
         send_syscheck_msg(json_event);
     }
 
 end:
-    os_free(path);
     os_free(diff);
 
     cJSON_Delete(json_event);
@@ -218,7 +231,7 @@ time_t fim_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    transaction_context_t txn_ctx = { .evt_data = &evt_data };
+    fim_txn_context_t txn_ctx = { .evt_data = &evt_data };
 
     cputime_start = clock();
     gettime(&start);
@@ -258,7 +271,7 @@ time_t fim_scan() {
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
 
-    fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback);
+    fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
     db_transaction_handle = NULL;
 
 #ifdef WIN32
@@ -521,27 +534,29 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
  * @param evt_data Information on how the event was triggered.
  * @param txn_handle DBSync transaction handler. Can be NULL.
  */
-static cJSON *
-_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle) {
-    fim_entry new;
-    bool saved;
-    cJSON *json_event = NULL;
-    char *diff = NULL;
-    FIMDBErrorCodes res = FIMDB_OK;
-
+static void _fim_file(const char *path,
+                      const directory_t *configuration,
+                      event_data_t *evt_data,
+                      TXN_HANDLE txn_handle) {
     assert(path != NULL);
     assert(configuration != NULL);
     assert(evt_data != NULL);
 
+    bool saved;
+    cJSON *json_event = NULL;
+    char *diff = NULL;
+    fim_entry new = {.type = FIM_FILE};
+
     new.file_entry.path = (char *)path;
     new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
+
     if (new.file_entry.data == NULL) {
         mdebug1(FIM_GET_ATTRIBUTES, path);
-        return NULL;
+        return;
     }
 
     if (txn_handle != NULL) {
-        res = fim_db_transaction_sync_row(txn_handle, &new);
+        fim_db_transaction_sync_row(txn_handle, &new);
         free_file_data(new.file_entry.data);
         return NULL;
     }
@@ -566,23 +581,15 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
     os_free(diff);
     free_file_data(new.file_entry.data);
 
-    return json_event;
 }
 
 void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle) {
-    cJSON *json_event = NULL;
 
     check_max_fps();
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    json_event = _fim_file(path, configuration, evt_data, txn_handle);
+    _fim_file(path, configuration, evt_data, txn_handle);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    if (json_event && _base_line && evt_data->report_event) {
-        send_syscheck_msg(json_event);
-    }
-
-    cJSON_Delete(json_event);
 }
 
 

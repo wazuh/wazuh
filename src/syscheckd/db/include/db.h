@@ -170,7 +170,9 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler, result_callback_t callback);
+FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+                                                result_callback_t callback,
+                                                void* txn_ctx);
 
 #ifdef __cplusplus
 }
