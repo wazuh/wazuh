@@ -41,13 +41,13 @@ namespace
         {
             auto str_value = value.get<string>();
 
-            if (str_value == builder::syntax::REFERENCE_ANCHOR)
+            if (str_value.compare(0, builder::syntax::REFERENCE_ANCHOR.size(), builder::syntax::REFERENCE_ANCHOR) == 0)
             {
                 /* TODO */
             }
-            else if (str_value == builder::syntax::HELPER_ANCHOR)
+            else if (str_value.compare(0, builder::syntax::HELPER_ANCHOR.size(), builder::syntax::HELPER_ANCHOR) == 0)
             {
-                output_observable = static_cast<const builder::JsonBuilder*>(registry.get_builder(str_value.replace(0, builder::syntax::HELPER_ANCHOR.size(), "")))->build(input_observable, input_json);
+                output_observable = static_cast<const builder::JsonBuilder*>(registry.get_builder("helper."+str_value.replace(0, builder::syntax::HELPER_ANCHOR.size(), "")))->build(input_observable, input_json);
             }
             else
             {
