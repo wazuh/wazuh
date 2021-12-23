@@ -1077,7 +1077,7 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
     int aux_sock = -1;
 
     if (!groups_array || !mode) {
-        mdebug1("Invalid groups array to set the agent groups %02d", id);
+        mdebug1("Invalid params to set the agent groups %02d", id);
         return OS_INVALID;
     }
     cJSON* j_data_in = cJSON_CreateObject();
