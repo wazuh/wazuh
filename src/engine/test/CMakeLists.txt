@@ -15,14 +15,16 @@ CPMAddPackage(
       "INSTALL_GTEST OFF"
 )
 
+
+
 # Add unit tests here
 file(GLOB SOURCE_FILES ${TEST_SOURCE_DIR}/*.cpp)
 
 # Build unit tests
-add_executable(unit_tests ${SOURCE_FILES} ${SANDBOX_FILES})
-target_link_libraries(unit_tests gtest_main)
+add_executable(unit_tests ${SOURCE_FILES} ${ROUTER_FILES})
+target_link_libraries(unit_tests gtest_main bechmark_main)
 include(GoogleTest)
 gtest_discover_tests(unit_tests)
 
 
-add_subdirectory(${TEST_SOURCE_DIR}/sandbox)
+add_subdirectory(${TEST_SOURCE_DIR}/router)
