@@ -2,6 +2,10 @@
     Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
+<!--
+    F5 BigIp rules ID range: 65260 - 65302
+-->
+
 <group name="f5-bigip,">
 
      <!-- F5 BigIP LTM decoded grouped rules -->
