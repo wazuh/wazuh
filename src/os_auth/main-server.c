@@ -867,7 +867,12 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
             gettime(&t0);
             if (cur->group) {
-                if (wdb_update_agent_group(atoi(cur->id),cur->group, &wdb_sock) == -1) {
+                if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                             cur->group,
+                                             WDB_GROUP_MODE_OVERRIDE,
+                                             "synced",
+                                             WDB_GROUP_SOURCE_MANUAL,
+                                             NULL)) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
 
@@ -875,7 +880,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             }
 
             gettime(&t1);
-            mdebug2("[Writer] wdb_update_agent_group(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            mdebug2("[Writer] wdb_set_agent_groups_csv(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             os_free(cur->id);
             os_free(cur->name);
