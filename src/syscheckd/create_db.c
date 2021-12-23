@@ -121,7 +121,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         dbsync_event = result_json;
     }
 
-    if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+    if (json_path = cJSON_GetObjectItem(dbsync_event, FILE_PRIMARY_KEY), json_path == NULL) {
         goto end;
     }
 
@@ -154,10 +154,10 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
         case MAX_ROWS:
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
-            goto end;
 
+        // Fallthrough
         default:
-            break;
+            goto end;
     }
 
     json_event = fim_dbsync_json_event(path, diff, dbsync_event, configuration, event_data->evt_data);
@@ -168,7 +168,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
 end:
     os_free(diff);
-
     cJSON_Delete(json_event);
 }
 
@@ -286,7 +285,7 @@ time_t fim_scan() {
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
 
-        db_transaction_handle = fim_db_transaction_start(FIMBD_FILE_TABLE_NAME, transaction_callback, &txn_ctx);
+        db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
 
         w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {

@@ -122,10 +122,9 @@ void fim_sync_push_msg(const char* msg)
 
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data)
 {
-    const auto jsonTable { R"({"table": "file_entry"})" };
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput
     {
-        cJSON_Parse(jsonTable)
+        cJSON_Parse(table)
     };
 
     callback_data_t cb_data = { .callback = row_callback, .user_data = user_data };
