@@ -72,12 +72,15 @@ CREATE INDEX IF NOT EXISTS agent_group_sync_hash ON agent (group_sync_hash);
 
 CREATE TABLE IF NOT EXISTS `_group` (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT
+    name TEXT,
     UNIQUE (name)
 );
 
 BEGIN;
 INSERT OR IGNORE INTO `_group` (name) SELECT name FROM `group`;
 END;
+
+DROP TABLE IF EXISTS `group`;
+ALTER TABLE `_group` RENAME TO `group`;
 
 UPDATE metadata SET value = '4' where key = 'db_version';
