@@ -505,12 +505,12 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id) {
         return NULL;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_SELECT_AGENT_GROUP) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GROUP_CSV_GET) < 0) {
         mdebug1("Cannot cache statement");
         return NULL;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_AGENT_GROUP];
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_GROUP_CSV_GET];
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
