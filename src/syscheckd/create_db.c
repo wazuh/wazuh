@@ -171,13 +171,6 @@ end:
     cJSON_Delete(json_event);
 }
 
-/**
- * @brief Update directories configuration with the wildcard list, at runtime
- *
- */
-void update_wildcards_config();
-
-
 void process_delete_event(void * data, void * ctx)
 {
     cJSON *json_event = NULL;
