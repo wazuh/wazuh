@@ -2,6 +2,13 @@
 #define __CATALOGSHAREDDEF_H__
 
 
-enum class AssetType {Decoder, Rule, JSONSchema, Filter, Output};
+enum class AssetType {
+                Decoder,
+                Rule,
+                Output,
+                Filter,
+                Schemas,
+                Environments
+            };
 
 #endif // __CATALOGSHAREDDEF_H__
