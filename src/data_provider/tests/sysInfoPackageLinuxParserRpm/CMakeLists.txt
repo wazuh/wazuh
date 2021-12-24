@@ -25,10 +25,6 @@ target_link_libraries(sysInfoPackageLinuxParserRPM_unit_test
     optimized gtest_main
     optimized gmock_main
     pthread
-    sqlite3
-    cjson
-    proc
-    db #TODO - add wrapper to delete this line.
     dl
 )
 
