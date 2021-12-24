@@ -3,8 +3,11 @@
 -->
 
 <!--
-  Exim rules 87500 - 87512
+  Exim 4 rules 
 -->
+
+<!-- ID: 87500 - 87600 -->
+
 
 <group name="exim,">
 
@@ -34,7 +37,7 @@
     <mitre>
       <id>T1110</id>
     </mitre>
-      <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="87508" level="0">
