@@ -1,5 +1,5 @@
 /*
- * Wazuh Syscheckd
+ * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
  * September 24, 2021.
  *
