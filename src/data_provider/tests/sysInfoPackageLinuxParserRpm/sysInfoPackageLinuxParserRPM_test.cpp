@@ -1,3 +1,14 @@
+/*
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * December 22, 2021.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
 #include "sysInfoPackageLinuxParserRPM_test.hpp"
 #include "packages/packageLinuxDataRetriever.h"
 #include "packages/berkeleyRpmDbHelper.h"
@@ -343,7 +354,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
 {
     CallbackMock wrapper;
 
-    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"7","vendor":"8","install_time":9,"groups":"10","format":"rpm"})"_json;
+    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
@@ -377,14 +388,13 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
     .WillOnce(Return("1")) \
     .WillOnce(Return("7")) \
     .WillOnce(Return("6")) \
-    .WillOnce(Return("5")) \
     .WillOnce(Return("summary")) \
     .WillOnce(Return("8")) \
     .WillOnce(Return("10")) \
     .WillOnce(Return("source")) \
     .WillOnce(Return("2")) \
     .WillOnce(Return("3"));
-    EXPECT_CALL(*rpm_mock, rpmtdGetNumber(_)).WillOnce(Return(9)).WillOnce(Return(4));
+    EXPECT_CALL(*rpm_mock, rpmtdGetNumber(_)).WillOnce(Return(5)).WillOnce(Return(9)).WillOnce(Return(4));
 
 
     EXPECT_CALL(wrapper, callbackMock(expectedPackage1)).Times(1);

@@ -24,7 +24,6 @@
 #include "rpmlibWrapper.h"
 
 // Provides an iterable abstraction for retrieving installed RPM packages.
-
 class RpmPackageManager final
 {
     public:
