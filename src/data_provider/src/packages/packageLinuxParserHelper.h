@@ -18,6 +18,7 @@
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
+#include "rpmPackageManager.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -26,6 +27,37 @@
 // Parse helpers for standard Linux packaging systems (rpm, dpkg, ...)
 namespace PackageLinuxHelper
 {
+    static nlohmann::json parseRpm(const RpmPackageManager::Package& package)
+    {
+        nlohmann::json ret;
+        auto version { package.version };
+
+        if (package.epoch)
+        {
+            version = std::to_string(package.epoch) + ":" + version;
+        }
+
+        if (!package.release.empty())
+        {
+            version += "-" + package.release;
+        }
+
+        if (package.name.compare("gpg-pubkey") != 0 && !package.name.empty())
+        {
+            ret["name"]         = package.name;
+            ret["size"]         = package.size;
+            ret["install_time"] = package.installTime;
+            ret["groups"]       = package.group;
+            ret["version"]      = version;
+            ret["architecture"] = package.architecture;
+            ret["format"]       = "rpm";
+            ret["vendor"]       = package.vendor;
+            ret["description"]  = package.description;
+        }
+
+        return ret;
+    }
+
     static nlohmann::json parseRpm(const std::string& packageInfo)
     {
         nlohmann::json ret;

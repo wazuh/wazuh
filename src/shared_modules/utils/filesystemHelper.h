@@ -20,6 +20,7 @@
 #include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <vector>
 #include <dirent.h>
 
 #pragma GCC diagnostic push
@@ -31,6 +32,11 @@ namespace Utils
     {
         struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
+    }
+    static bool existsRegular(const std::string& path)
+    {
+        struct stat info {};
+        return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
     struct DirSmartDeleter
     {
