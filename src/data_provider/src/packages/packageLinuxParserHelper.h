@@ -30,7 +30,7 @@ namespace PackageLinuxHelper
     static nlohmann::json parseRpm(const RpmPackageManager::Package& package)
     {
         nlohmann::json ret;
-        std::string version = package.version;
+        auto version { package.version };
 
         if (package.epoch)
         {
