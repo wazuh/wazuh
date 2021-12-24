@@ -20,7 +20,9 @@
 class IRpmLibWrapper
 {
     public:
+        // LCOV_EXCL_START
         virtual ~IRpmLibWrapper() = default;
+        // LCOV_EXCL_STOP
         virtual int rpmReadConfigFiles(const char* file, const char* target) = 0;
         virtual void rpmFreeRpmrc() = 0;
         virtual rpmtd rpmtdNew() = 0;
