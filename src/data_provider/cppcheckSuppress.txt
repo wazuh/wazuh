@@ -5,3 +5,5 @@
 *:*src/packages/packagesWindowsParserHelper.h:54
 *:*src/packages/packagesWindowsParserHelper.h:182
 *:*src/packages/packagesWindowsParserHelper.h:197
+*:*src/sysInfo.cpp:14
+*:*src/sysInfo_test.cpp:96

@@ -15,6 +15,7 @@
 #include <memory>
 #include "json.hpp"
 #include "sharedDefs.h"
+#include "filesystemHelper.h"
 
 /**
  * @brief Fills a JSON object with all available pacman-related information
@@ -28,6 +29,12 @@ void getPacmanInfo(const std::string& libPath, std::function<void(nlohmann::json
  * @param callback Callback to be called for every single element being found
  */
 void getRpmInfo(std::function<void(nlohmann::json&)> callback);
+
+/**
+ * @brief Fills a JSON object with all available rpm-related information for legacy Linux.
+ * @param callback Callback to be called for every single element being found
+ */
+void getRpmInfoLegacy(std::function<void(nlohmann::json&)> callback);
 
 /**
  * @brief Fills a JSON object with all available dpkg-related information
@@ -89,7 +96,7 @@ class FactoryPackagesCreator<LinuxType::LEGACY> final
 
             if (Utils::existsDir(RPM_PATH))
             {
-                getRpmInfo(callback);
+                getRpmInfoLegacy(callback);
             }
         }
 };
