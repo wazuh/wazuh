@@ -432,7 +432,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromLibRPM)
 
 }
 
-TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDB)
+TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBConfigError)
 {
     CallbackMock wrapper;
 
@@ -448,6 +448,80 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDB)
     EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(true));
     EXPECT_CALL(*libdb_mock, db_create(_, _, _)).Times(1).WillOnce(Return(1));
     EXPECT_CALL(*libdb_mock, db_strerror(_)).Times(1).WillOnce(Return(const_cast<char*>("test")));
+    EXPECT_CALL(*utils_mock, exec(_, _)).Times(1).WillOnce(Return("1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t\n11\t12\t13\t14\t15\t16\t17\t18\t19\t20\t\n"));
+    EXPECT_CALL(wrapper, callbackMock(expectedPackage1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedPackage2)).Times(1);
+
+    getRpmInfo([&wrapper](nlohmann::json & data)
+    {
+        wrapper.callbackMock(data);
+    });
+
+}
+
+TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBOpenError)
+{
+    CallbackMock wrapper;
+
+    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
+    auto expectedPackage2 = R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm"})"_json;
+
+    auto utils_mock { std::make_unique<UtilsMock>() };
+    auto libdb_mock { std::make_unique<LibDBMock>() };
+
+    m_utils_mock = utils_mock.get();
+    m_libdb_mock = libdb_mock.get();
+
+    DB db {};
+
+    db.set_lorder = db_set_lorder;
+    db.open = db_open;
+    db.close = db_close;
+
+    EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*libdb_mock, db_create(_, _, _)).Times(1).WillOnce(DoAll(SetArgPointee<0>(&db), Return(0)));
+    EXPECT_CALL(*libdb_mock, set_lorder(_, _)).Times(1).WillOnce(Return(0));
+    EXPECT_CALL(*libdb_mock, open(_, _, _, _, _, _, _)).Times(1).WillOnce(Return(1));
+    EXPECT_CALL(*libdb_mock, db_strerror(_)).Times(1).WillOnce(Return(const_cast<char*>("test")));
+    EXPECT_CALL(*libdb_mock, close(_, _)).Times(1).WillOnce(Return(0));
+    EXPECT_CALL(*utils_mock, exec(_, _)).Times(1).WillOnce(Return("1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t\n11\t12\t13\t14\t15\t16\t17\t18\t19\t20\t\n"));
+    EXPECT_CALL(wrapper, callbackMock(expectedPackage1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedPackage2)).Times(1);
+
+    getRpmInfo([&wrapper](nlohmann::json & data)
+    {
+        wrapper.callbackMock(data);
+    });
+
+}
+
+TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBCursorError)
+{
+    CallbackMock wrapper;
+
+    auto expectedPackage1 = R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm"})"_json;
+    auto expectedPackage2 = R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm"})"_json;
+
+    auto utils_mock { std::make_unique<UtilsMock>() };
+    auto libdb_mock { std::make_unique<LibDBMock>() };
+
+    m_utils_mock = utils_mock.get();
+    m_libdb_mock = libdb_mock.get();
+
+    DB db {};
+
+    db.set_lorder = db_set_lorder;
+    db.open = db_open;
+    db.close = db_close;
+    db.cursor = db_cursor;
+
+    EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*libdb_mock, db_create(_, _, _)).Times(1).WillOnce(DoAll(SetArgPointee<0>(&db), Return(0)));
+    EXPECT_CALL(*libdb_mock, set_lorder(_, _)).Times(1).WillOnce(Return(0));
+    EXPECT_CALL(*libdb_mock, open(_, _, _, _, _, _, _)).Times(1).WillOnce(Return(0));
+    EXPECT_CALL(*libdb_mock, cursor(_, _, _, _)).Times(1).WillOnce(Return(1));
+    EXPECT_CALL(*libdb_mock, db_strerror(_)).Times(1).WillOnce(Return(const_cast<char*>("test")));
+    EXPECT_CALL(*libdb_mock, close(_, _)).Times(1).WillOnce(Return(0));
     EXPECT_CALL(*utils_mock, exec(_, _)).Times(1).WillOnce(Return("1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t\n11\t12\t13\t14\t15\t16\t17\t18\t19\t20\t\n"));
     EXPECT_CALL(wrapper, callbackMock(expectedPackage1)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedPackage2)).Times(1);
