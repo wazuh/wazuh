@@ -14,8 +14,6 @@
 
 #ifdef __cplusplus
 extern "C" {
-#include "syscheck.h"
-#include <openssl/evp.h>
 #endif
 
 #include "syscheck.h"

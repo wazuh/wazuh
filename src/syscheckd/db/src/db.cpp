@@ -120,7 +120,7 @@ void fim_sync_push_msg(const char* msg)
     }
 }
 
-TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data)
+TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)
 {
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput
     {
@@ -135,41 +135,46 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
     return dbsyncTxnHandle;
 }
 
-FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry) {
-
-    nlohmann::json json_insert;
-    auto retVal = FIMDB_OK;
+FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
+{
+    std::unique_ptr<DBItem> syncItem = nullptr;
 
     if (entry->type == FIM_TYPE_FILE)
     {
-        auto syncItem = std::make_unique<FileItem>(entry);
-        json_insert = *syncItem->toJSON();
+        syncItem = std::make_unique<FileItem>(entry);
     }
 
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput
     {
-        cJSON_Parse(json_insert.dump().c_str())
+        cJSON_Parse((*syncItem->toJSON()).dump().c_str())
     };
 
-
-    int res = dbsync_sync_txn_row(txn_handler, jsInput.get());
-    if (res != 0)
+    if (dbsync_sync_txn_row(txn_handler, jsInput.get()) != 0)
     {
-        retVal = FIMDB_ERR;
+        return FIMDB_ERR;
     }
 
-    return retVal;
+    return FIMDB_OK;
 }
 
 FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                                 result_callback_t res_callback,
-                                                void* txn_ctx) {
-    auto retVal = FIMDB_OK;
+                                                void* txn_ctx)
+{
+
     callback_data_t cb_data = { .callback = res_callback, .user_data = txn_ctx };
 
-    dbsync_get_deleted_rows(txn_handler, cb_data);
-    dbsync_close_txn(txn_handler);
-    return retVal;
+    if (dbsync_get_deleted_rows(txn_handler, cb_data) != 0)
+    {
+        return FIMDB_ERR;
+    }
+
+    if (dbsync_close_txn(txn_handler) != 0)
+    {
+        return FIMDB_ERR;
+    }
+
+    return FIMDB_OK;
 }
 
 

@@ -350,7 +350,10 @@ class FIMDB
          *
          * @return DBSYNC_HANDLE Handle to DBSync.
          */
-        DBSYNC_HANDLE DBSyncHandle() { return m_dbsyncHandler->handle(); }
+        DBSYNC_HANDLE DBSyncHandle()
+        {
+            return m_dbsyncHandler->handle();
+        }
 
     private:
 

@@ -100,7 +100,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     char *path = NULL;
     char *diff = NULL;
     cJSON *json_event = NULL;
-    cJSON *dbsync_event = NULL;
+    const cJSON *dbsync_event = NULL;
     cJSON *json_path = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *event_data = (fim_txn_context_t *) user_data;
@@ -231,8 +231,11 @@ time_t fim_scan() {
     fim_send_scan_info(FIM_SCAN_START);
 
 
-    TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMBD_FILE_TABLE_NAME, transaction_callback, &txn_ctx);
-
+    TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
+    if (db_transaction_handle == NULL) {
+        merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
+        return time(NULL);
+    }
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;
 
@@ -538,7 +541,6 @@ static void _fim_file(const char *path,
     assert(evt_data != NULL);
 
     bool saved;
-    cJSON *json_event = NULL;
     char *diff = NULL;
     fim_entry new = {.type = FIM_FILE};
 
@@ -553,12 +555,12 @@ static void _fim_file(const char *path,
     if (txn_handle != NULL) {
         fim_db_transaction_sync_row(txn_handle, &new);
         free_file_data(new.file_entry.data);
-        return NULL;
+        return;
     }
 
     if (fim_db_file_update(&new, &saved) != FIMDB_OK) {
         free_file_data(new.file_entry.data);
-        return NULL;
+        return;
     }
 
     if (!saved) {
@@ -571,11 +573,8 @@ static void _fim_file(const char *path,
         diff = fim_file_diff(path, configuration);
     }
 
-    json_event = fim_json_event(&new, saved ? new.file_entry.data : NULL, configuration, evt_data, diff);
-
     os_free(diff);
     free_file_data(new.file_entry.data);
-
 }
 
 void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle) {
