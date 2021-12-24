@@ -9,46 +9,20 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
     std::vector<string> assetList {};
 
     std::filesystem::path base_dir {this->path};
-    std::cout << "Listing files | Type: ";
-
-    switch (type)
-    {
-        case AssetType::Decoder:
-            std::cout << "Decoder" << std::endl;
-            base_dir /= "decoders";
-            break;
-
-        case AssetType::Rule:
-            std::cout << "Rules" << std::endl;
-            base_dir /= "rules";
-            break;
-
-        case AssetType::JSONSchema:
-            std::cout << "JSONSchema" << std::endl;
-            base_dir /= "schemas";
-            break;
-
-        case AssetType::Filter:
-            std::cout << "Filter" << std::endl;
-            base_dir /= "filters";
-            break;
-
-        default:
-            std::cout << "Unknown" << std::endl;
-            break;
-    }
+    //std::cout << "Listing files | Type: ";
+    base_dir /= assetTypeToPath.at(type);
 
     for (const auto& entry : std::filesystem::directory_iterator(base_dir))
     {
         if (entry.is_regular_file() && entry.path().has_extension() && entry.path().extension().string() == ".yml")
         {
-            std::cout << "Adding file: '" << entry.path() << "' . A yml file"  << std::endl;
+            //std::cout << "Adding file: '" << entry.path() << std::endl;
             const string asset_name {entry.path().stem().string()};
             assetList.push_back(std::move(asset_name));
-            // } else
-            // {
-            //     std::cout << "ignoring file: '" << entry.path() << "' . Not a yml file"  << std::endl;
         }
+        // else {
+        //     std::cout << "ignoring file: '" << entry.path() << std::endl;
+        // }
     }
 
     return assetList;
@@ -62,44 +36,35 @@ nlohmann::ordered_json diskStorage::getAsset(const AssetType type, const std::st
 
     std::filesystem::path base_dir {this->path};
     //    std::cout << "Getting file | Type: ";
+    base_dir /= assetTypeToPath.at(type);
 
-    switch (type)
-    {
-        case AssetType::Decoder:
-            //          std::cout << "Decoder" << std::endl;
-            base_dir /= "decoders";
-            break;
-
-        case AssetType::Rule:
-            //        std::cout << "Rules" << std::endl;
-            base_dir /= "rules";
-            break;
-
-        case AssetType::JSONSchema:
-            //        std::cout << "JSONSchema" << std::endl;
-            base_dir /= "schemas";
-            break;
-
-        case AssetType::Filter:
-            //        std::cout << "Filter" << std::endl;
-            base_dir /= "filters";
-            break;
-
-        default:
-            //        std::cout << "Unknown" << std::endl;
-            break;
-    }
 
     string asset_name {assetName};
-    string ext {".yml"};
-    string_view file_name {asset_name + ext};
+    string ext {};
+
+    if (type != AssetType::Schemas) {
+        ext = ".yml";
+    } else {
+        ext = ".json";
+    }
+
+    string_view file_name {asset_name.append(ext)};
     std::filesystem::path file_path {base_dir / file_name};
 
     if (std::filesystem::exists(file_path))
     {
-        std::cout << "File found: " << file_path << std::endl;
+        //std::cout << "File found: " << file_path << std::endl;
+        nlohmann::ordered_json j {};
 
-        nlohmann::ordered_json j {tojson::detail::loadyaml(file_path.string())};
+        if (type != AssetType::Schemas) {
+            // @FIXME Check the exeptions
+            nlohmann::ordered_json j_array {tojson::detail::loadyaml(file_path.string())};
+            j = std::move(j_array[0]);
+        } else {
+            std::ifstream i(file_path.string());
+            i >> j;
+        }
+
         return j;
     }
     else
