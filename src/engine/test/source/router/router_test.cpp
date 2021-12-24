@@ -114,7 +114,7 @@ TEST(RouterTest, WhiteBoard)
 
 }
 
-TEST(RouterTest, AddSingleRoute)
+TEST(RouterTestAdd, AddSingleRoute)
 {
     // Protocol Handler from server
     auto fph = new FakeProtocolHandler<json>(
@@ -149,7 +149,7 @@ TEST(RouterTest, AddSingleRoute)
 
 }
 
-TEST(RouterTest, AddSingleRouteAndSendAMessage)
+TEST(RouterTestAdd, AddSingleRouteAndSendAMessage)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -206,7 +206,7 @@ TEST(RouterTest, AddSingleRouteAndSendAMessage)
 
 }
 
-TEST(RouterTest, AddSingleRouteAndSend100Message)
+TEST(RouterTestAdd, AddSingleRouteAndSend100Message)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -262,7 +262,7 @@ TEST(RouterTest, AddSingleRouteAndSend100Message)
 
 }
 
-TEST(RouterTest, AddSingleRouteAndFilterOut100Message)
+TEST(RouterTestAdd, AddSingleRouteAndFilterOut100Message)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -321,7 +321,7 @@ TEST(RouterTest, AddSingleRouteAndFilterOut100Message)
 
 }
 
-TEST(RouterTest, AddSingleRouteAndFilterOut5Of10)
+TEST(RouterTestAdd, AddSingleRouteAndFilterOut5Of10)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -382,7 +382,7 @@ TEST(RouterTest, AddSingleRouteAndFilterOut5Of10)
 
 }
 
-TEST(RouterTest, AddTwoRoutes)
+TEST(RouterTestAdd, AddTwoRoutes)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -456,7 +456,69 @@ TEST(RouterTest, AddTwoRoutes)
 
 }
 
-TEST(RouterTest, AddTwoRoutesHalf)
+TEST(RouterTestAdd, AddADuplicateRoute)
+{
+    // Server
+    auto fph = new FakeProtocolHandler<json>(
+    [](int i) {
+        return JSONGenerator(i, "logcollector", "apache-access");
+    });
+
+    auto handler = [&,fph](rxcpp::subscriber<json> s) {
+        fph->on_message = [&,s](const json j) {
+            s.on_next(j);
+        };
+
+        fph->on_close = [&,s]() {
+            s.on_completed();
+        };
+    };
+
+    // Test
+    int got = 0;
+    int expected = 10;
+
+    auto testSub = rxcpp::make_subscriber<json>([&got](const json j) {
+        ++got;
+    },
+    [&got, expected]() {
+        GTEST_COUT << "Builder expects " << expected << " and got " << got << std::endl;
+    });
+
+    // Builder
+    auto builder = new FakeBuilder<json>();
+
+    auto testBuilder = [testSub, builder](std::string name) {
+        auto built = builder->build(name, "logcollector");
+        built.get_observable().subscribe(testSub);
+        return built;
+    };
+
+    // Router
+    auto router = new Router::Router<json>(handler, testBuilder);
+
+    // Add route 1
+    std::atomic<int> r1got = 0;
+    std::atomic<int> r1expected = 10;
+
+    std::function<bool(json)>  f1 = [&r1got](const json j) {
+        ++r1got;
+        return r1got % 2 == 0;
+    };
+
+    router->add(std::string("test_route"), f1, std::string("test_environment"));
+
+
+    try {
+    router->add(std::string("test_route"), f1, std::string("test_environment"));
+    } catch (std::invalid_argument& err) {
+        ASSERT_STREQ("Tried to add a route, but it's name is already in use by another route", err.what());
+    }
+
+}
+
+
+TEST(RouterTestAdd, AddTwoRoutesHalf)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -530,7 +592,7 @@ TEST(RouterTest, AddTwoRoutesHalf)
 
 }
 
-TEST(RouterTest, RemoveRoute)
+TEST(RouterTestRemove, RemoveRoute)
 {
     // Protocol Handler from server
     auto fph = new FakeProtocolHandler<json>(
@@ -568,7 +630,59 @@ TEST(RouterTest, RemoveRoute)
     ASSERT_EQ(router->list().size(), 0);
 }
 
-TEST(RouterTest, RemoveRouteStopReceiving)
+TEST(RouterTestRemove, RemoveRouteAndEnvironment)
+{
+    // Protocol Handler from server
+    auto fph = new FakeProtocolHandler<json>(
+    [](int i) {
+        return JSONGenerator(i, "logcollector", "apache-access");
+    });
+
+    auto handler = [&,fph](rxcpp::subscriber<json> s) {
+        fph->on_message = [&,s](const json j) {
+            s.on_next(j);
+        };
+
+        fph->on_close = [&,s]() {
+            s.on_completed();
+        };
+    };
+
+    // Builder
+    auto builder = new FakeBuilder<json>();
+
+    int count = 0;
+    auto testBuilder = [&count, builder](std::string name) {
+        ++count;
+        return builder->build(name, "logcollector");
+    };
+
+    auto router = new Router::Router<json>(handler, testBuilder);
+
+    std::function<bool(json)>  filter = [](const json j) {
+        return j["module"]["name"] == "logcollector";
+    };
+
+    router->add(std::string("test_route_1"), filter, std::string("test_environment"));
+    ASSERT_EQ(router->list().size(), 1);
+
+    router->add(std::string("test_route_2"), filter, std::string("test_environment"));
+    ASSERT_EQ(router->list().size(), 2);
+
+    router->remove(std::string("test_route_1"));
+    ASSERT_EQ(router->list().size(), 1);
+
+    router->remove(std::string("test_route_2"));
+    ASSERT_EQ(router->list().size(), 0);
+
+    router->add(std::string("test_route_3"), filter, std::string("test_environment"));
+    ASSERT_EQ(router->list().size(), 1);
+
+    ASSERT_EQ(count, 2);
+
+}
+
+TEST(RouterTestRemove, RemoveRouteStopReceiving)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -655,7 +769,7 @@ TEST(RouterTest, RemoveRouteStopReceiving)
 
 }
 
-TEST(RouterTest, RemoveRouteWhileReceiving)
+TEST(RouterTestRemove, RemoveRouteWhileReceiving)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -718,7 +832,7 @@ TEST(RouterTest, RemoveRouteWhileReceiving)
     ASSERT_LT(got, expected);
 }
 
-TEST(RouterTest, AddReceiveRemoveReceiveAddReceive)
+TEST(RouterTestRemove, AddReceiveRemoveReceiveAddReceive)
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -771,20 +885,20 @@ TEST(RouterTest, AddReceiveRemoveReceiveAddReceive)
     // Run
     auto w = fph->run(10000);
     std::chrono::milliseconds span (500);
-    while (w.wait_for(span)==std::future_status::timeout) {
-        // Remove the route while we're still receiving
-        router->remove("test_route");
-        GTEST_COUT << '.' << std::flush;
-    }
 
+    router->remove("test_route");
     router->add(std::string("test_route"), filter, std::string("test_environment"));
 
+    while (w.wait_for(span)==std::future_status::timeout) {
+        // Remove the route while we're still receiving
+        GTEST_COUT << '.' << std::flush;
+    }
 
     // We should bet less messages than we sent
     ASSERT_LT(got, expected);
 }
 
-TEST(RouterTest, RemoveNonExistentRoute )
+TEST(RouterTestRemove, RemoveNonExistentRoute )
 {
     // Server
     auto fph = new FakeProtocolHandler<json>(
@@ -816,7 +930,7 @@ TEST(RouterTest, RemoveNonExistentRoute )
     try {
         router->remove("unknown");
     } catch (std::invalid_argument& err) {
-        ASSERT_STREQ("Tried to delete a route which name is not in the route table.", err.what());
+        ASSERT_STREQ("Tried to delete a route, but it's name is not in the route table.", err.what());
     }
 }
 
@@ -827,14 +941,20 @@ TEST(RXCPPTest, StepbyStepScheduler)
     auto test = rxcpp::identity_same_worker(worker);
     int count = 0;
 
-    auto seq = rxcpp::observable<>::interval(
+    auto router = rxcpp::observable<>::interval(
                    std::chrono::milliseconds(1),
                    test // on the test scheduler
-    ).filter([](int i) {
+    );
+    
+    auto route = router.filter([](int i) {
         return i % 2;
     });
 
-    seq.subscribe([&count](int) {
+    rxcpp::subjects::subject<long int> subject;
+
+    route.subscribe(subject.get_subscriber());
+
+    auto sub = subject.get_observable().subscribe([&count](int) {
         count++;
     });
 
@@ -843,4 +963,10 @@ TEST(RXCPPTest, StepbyStepScheduler)
 
     worker.advance_by(8 /* ms */);
     ASSERT_EQ(count, 5);
+
+    sub.unsubscribe();
+
+    worker.advance_by(8 /* ms */);
+    ASSERT_EQ(count, 5); 
+
 }

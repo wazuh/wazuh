@@ -56,28 +56,32 @@ struct environment
 };
 
 /**
- * @brief A router forward messages to the appropriate environments
+ * @brief a router forwards events as stated by each one of its routes. It
+ * allows adding and deleting routes.
  *
+ * @tparam F
  */
 template <class F> class Router
 {
 private:
 
     /**
-     * @brief environments available for routing
+     * @brief environments available for routing. This collection
+     * is used as a cache, because the lifecycle of an environment
+     * is tied to the routes.
      *
      */
     std::vector<environment<F>> environments;
 
     /**
-     * @brief a route maps an environment name,a filter function and
-     * and environment implementation as operations
+     * @brief a route maps an environment name, a filter function and
+     * and environment implementation as operations.
      */
     std::vector<route<F>> routes;
 
     /**
      * @brief a router send all events published through all the
-     * enabled routes.
+     * enabled routes. It is implmented by a rxcpp::observable.
      *
      */
     rxcpp::observable<F> router;
@@ -112,6 +116,7 @@ public:
      *
      * We can create more than one route per environment.
      *
+     * @throws std::invalid_argument when the route name is already registered
      * @param name of the route
      * @param from filter to get events from
      * @param to environment name
@@ -119,6 +124,9 @@ public:
     void add(std::string name, std::function<bool(F)> from, std::string to)
     {
         rxcpp::subjects::subject<F> envSub;
+
+        if (std::any_of(std::begin(this->routes), std::end(this->routes), [name](const auto& r) { return r.name == name; }))
+        throw std::invalid_argument("Tried to add a route, but it's name is already in use by another route");
 
         auto res = std::find_if(std::begin(this->environments), std::end(this->environments), [to](const auto& e) {
             return e.name == to;
@@ -147,51 +155,42 @@ public:
      */
     void remove(std::string name)
     {
-        auto res = std::find_if(std::begin(this->routes), std::end(this->routes), [name](const auto& r) {
+        auto it = std::find_if(std::begin(this->routes), std::end(this->routes), [name](const auto& r) {
             return r.name == name;
         });
 
-        if(res == std::end(this->routes)) {
-            throw std::invalid_argument("Tried to delete a route which name is not in the route table.");
+        if(it == std::end(this->routes)) {
+            throw std::invalid_argument("Tried to delete a route, but it's name is not in the route table.");
         }
 
-        (*res).subscription.unsubscribe();
-        this->routes.erase(res);
+        (*it).subscription.unsubscribe();
+
+        auto to = (*it).to;
+        this->routes.erase(it);
+
+        auto s = std::any_of(std::begin(this->routes), std::end(this->routes), [to](const auto& r) {
+            return r.to == to;
+        });
+
+        if (! s) {
+            auto it = std::remove_if(std::begin(this->environments), std::end(this->environments), [to](const auto& e) {
+                return e.name == to;
+            });
+            // remove_if does not re
+            this->environments.erase(it);
+        }
     }
 
     /**
      * @brief list all routes in the router
-     * 
-     * @return std::vector<route> 
+     *
+     * @return std::vector<route>
      */
     std::vector<route<F>> list()
     {
         return this->routes;
     }
 
-    /**
-     * @brief Enable an environment so the router is able to
-     * send messages to it
-     *
-     * @param environment_id
-     */
-    void enable(const std::string environment_id)
-    {
-
-
-    }
-
-    /**
-     * @brief Disables an already enabled environment. It does nothing if the
-     * then environment is already disabled. When an environment is disabled, it
-     * will all on-going messages, but will stop receiving new ones.
-     *
-     * @param environment_id
-     */
-    void disable(const std::string environment_id)
-    {
-
-    }
 };
 
 }
