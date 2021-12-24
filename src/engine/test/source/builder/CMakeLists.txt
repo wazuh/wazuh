@@ -55,6 +55,7 @@ set(SOURCES
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}/decoder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_value.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_builder.cpp
+  ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_value.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/helper_exists.cpp
 )
 
@@ -112,6 +113,11 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_va
 add_executable(helper_exists_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_exists_test.cpp ${SOURCES})
 gtest_discover_tests(helper_exists_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_exists_test.cpp)
+
+# map_value test
+add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp ${SOURCES})
+gtest_discover_tests(map_value_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp)
 
 ####################################################################################################
 # Special targets WIP
