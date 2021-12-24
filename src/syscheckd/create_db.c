@@ -356,7 +356,6 @@ void fim_checker(const char *path,
                  event_data_t *evt_data,
                  const directory_t *parent_configuration,
                  TXN_HANDLE dbsync_txn) {
-
     directory_t *configuration;
     int depth;
 
@@ -410,20 +409,23 @@ void fim_checker(const char *path,
             return;
         }
 
-        evt_data->type = FIM_DELETE;
-        get_data_ctx ctx = {
-            .event = (event_data_t *)evt_data,
-            .config = configuration,
-            .path = path
-        };
-        callback_context_t callback_data;
-        callback_data.callback = process_delete_event;
-        callback_data.context = &ctx;
-        if (fim_db_get_path(path, callback_data) != FIMDB_OK && configuration->options & CHECK_SEECHANGES)
-        {
-            fim_diff_process_delete_file(path);
+        // Delete alerts in scheduled scan is triggered in the transaction delete rows operation.
+        if (evt_data->mode != FIM_SCHEDULED) {
+            evt_data->type = FIM_DELETE;
+            get_data_ctx ctx = {
+                .event = (event_data_t *)evt_data,
+                .config = configuration,
+                .path = path
+            };
+            callback_context_t callback_data;
+            callback_data.callback = process_delete_event;
+            callback_data.context = &ctx;
+            if (fim_db_get_path(path, callback_data) != FIMDB_OK && configuration->options & CHECK_SEECHANGES)
+            {
+                fim_diff_process_delete_file(path);
+            }
+            return;
         }
-        return;
     }
 
 #ifdef WIN_WHODATA
