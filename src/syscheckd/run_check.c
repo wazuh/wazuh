@@ -92,14 +92,9 @@ void fim_sync_check_eps() {
 }
 
 // Send a state synchronization message
-void fim_send_sync_state(const char *location, cJSON * msg) {
-    char *plain = dbsync_state_msg(location, msg);
-    mdebug2(FIM_DBSYNC_SEND, plain);
-
-    fim_send_msg(DBSYNC_MQ, location, plain);
-
-    os_free(plain);
-
+void fim_send_sync_state(const char *location, const char* msg) {
+    mdebug2(FIM_DBSYNC_SEND, msg);
+    fim_send_msg(DBSYNC_MQ, location, msg);
     fim_sync_check_eps();
 }
 
