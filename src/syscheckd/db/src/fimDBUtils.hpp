@@ -29,7 +29,7 @@ namespace FimDBUtils
         try
         {
             const auto filter { std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev) };
-            const auto query { FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY) };
+            const auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<FIMDB>(resultQuery, query);
 
             for (const auto& item : resultQuery["path"].items())
@@ -61,7 +61,7 @@ namespace FimDBUtils
         try
         {
             const auto filter { std::string("WHERE path LIKE") + std::string(pattern) };
-            const auto queryFromPattern { FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY) };
+            const auto queryFromPattern = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<FIMDB>(resultQuery, queryFromPattern);
 
             for (const auto& item : resultQuery["path"].items())
