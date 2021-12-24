@@ -30,7 +30,7 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback)
             {
                 const auto rows { Utils::split(rawRpmPackagesInfo, '\n') };
 
-                for (auto row : rows)
+                for (const auto& row : rows)
                 {
                     auto package = PackageLinuxHelper::parseRpm(row);
 

@@ -32,15 +32,15 @@ class UtilsMock
         MOCK_METHOD(bool, existsRegular, (const std::string& path));
 };
 
-static UtilsMock* m_utils_mock = NULL;
+static UtilsMock* gs_utils_mock = NULL;
 
 std::string UtilsWrapper::exec(const std::string& cmd, const size_t bufferSize)
 {
-    return m_utils_mock->exec(cmd, bufferSize);
+    return gs_utils_mock->exec(cmd, bufferSize);
 }
 bool UtilsWrapper::existsRegular(const std::string& path)
 {
-    return m_utils_mock->existsRegular(path);
+    return gs_utils_mock->existsRegular(path);
 }
 
 class RpmLibMock
@@ -63,67 +63,67 @@ class RpmLibMock
         MOCK_METHOD(rpmdbMatchIterator, rpmdbFreeIterator, (rpmdbMatchIterator mi));
 };
 
-static RpmLibMock* m_rpm_mock = NULL;
+static RpmLibMock* gs_rpm_mock = NULL;
 
 int rpmReadConfigFiles(const char* file, const char* target)
 {
-    return m_rpm_mock->rpmReadConfigFiles(file, target);
+    return gs_rpm_mock->rpmReadConfigFiles(file, target);
 }
 void rpmFreeRpmrc()
 {
-    m_rpm_mock->rpmFreeRpmrc();
+    gs_rpm_mock->rpmFreeRpmrc();
 }
 rpmtd rpmtdNew()
 {
-    return m_rpm_mock->rpmtdNew();
+    return gs_rpm_mock->rpmtdNew();
 }
 rpmtd rpmtdFree(rpmtd td)
 {
-    return m_rpm_mock->rpmtdFree(td);
+    return gs_rpm_mock->rpmtdFree(td);
 }
 rpmts rpmtsCreate()
 {
-    return m_rpm_mock->rpmtsCreate();
+    return gs_rpm_mock->rpmtsCreate();
 }
 int rpmtsOpenDB(rpmts ts, int dbmode)
 {
-    return m_rpm_mock->rpmtsOpenDB(ts, dbmode);
+    return gs_rpm_mock->rpmtsOpenDB(ts, dbmode);
 }
 int rpmtsCloseDB(rpmts ts)
 {
-    return m_rpm_mock->rpmtsCloseDB(ts);
+    return gs_rpm_mock->rpmtsCloseDB(ts);
 }
 rpmts rpmtsFree(rpmts ts)
 {
-    return m_rpm_mock->rpmtsFree(ts);
+    return gs_rpm_mock->rpmtsFree(ts);
 }
 int headerGet(Header h, rpmTagVal tag, rpmtd td, headerGetFlags flags)
 {
-    return m_rpm_mock->headerGet(h, tag, td, flags);
+    return gs_rpm_mock->headerGet(h, tag, td, flags);
 }
 const char* rpmtdGetString(rpmtd td)
 {
-    return m_rpm_mock->rpmtdGetString(td);
+    return gs_rpm_mock->rpmtdGetString(td);
 }
 uint64_t rpmtdGetNumber(rpmtd td)
 {
-    return m_rpm_mock->rpmtdGetNumber(td);
+    return gs_rpm_mock->rpmtdGetNumber(td);
 }
 int rpmtsRun(rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet)
 {
-    return m_rpm_mock->rpmtsRun(ts, okProbs, ignoreSet);
+    return gs_rpm_mock->rpmtsRun(ts, okProbs, ignoreSet);
 }
 rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen)
 {
-    return m_rpm_mock->rpmtsInitIterator(ts, rpmtag, keypointer, keylen);
+    return gs_rpm_mock->rpmtsInitIterator(ts, rpmtag, keypointer, keylen);
 }
 Header rpmdbNextIterator(rpmdbMatchIterator mi)
 {
-    return m_rpm_mock->rpmdbNextIterator(mi);
+    return gs_rpm_mock->rpmdbNextIterator(mi);
 }
 rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi)
 {
-    return m_rpm_mock->rpmdbFreeIterator(mi);
+    return gs_rpm_mock->rpmdbFreeIterator(mi);
 }
 
 class LibDBMock
@@ -139,42 +139,40 @@ class LibDBMock
         MOCK_METHOD(int, close, (DB*, u_int32_t));
 };
 
-static LibDBMock* m_libdb_mock = NULL;
+static LibDBMock* gs_libdb_mock = NULL;
 
 int db_create(DB** dbp, DB_ENV* dbenv, u_int32_t flags)
 {
-    return m_libdb_mock->db_create(dbp, dbenv, flags);
+    return gs_libdb_mock->db_create(dbp, dbenv, flags);
 }
 char* db_strerror(int error)
 {
-    return m_libdb_mock->db_strerror(error);
+    return gs_libdb_mock->db_strerror(error);
 }
 int db_set_lorder(DB* dbp, int lorder)
 {
-    return m_libdb_mock->set_lorder(dbp, lorder);
+    return gs_libdb_mock->set_lorder(dbp, lorder);
 }
 int db_open(DB* db, DB_TXN* txnid, const char* file, const char* database, DBTYPE type, u_int32_t flags, int mode)
 {
-    return m_libdb_mock->open(db, txnid, file, database, type, flags, mode);
+    return gs_libdb_mock->open(db, txnid, file, database, type, flags, mode);
 }
 int db_cursor(DB* db, DB_TXN* txnid, DBC** cursorp, u_int32_t flags)
 {
-    return m_libdb_mock->cursor(db, txnid, cursorp, flags);
+    return gs_libdb_mock->cursor(db, txnid, cursorp, flags);
 }
 int db_c_get(DBC* cursor, DBT* key, DBT* data, u_int32_t flags)
 {
-    return m_libdb_mock->c_get(cursor, key, data, flags);
+    return gs_libdb_mock->c_get(cursor, key, data, flags);
 }
 int db_c_close(DBC* cursor)
 {
-    return m_libdb_mock->c_close(cursor);
+    return gs_libdb_mock->c_close(cursor);
 }
 int db_close(DB* db, u_int32_t flags)
 {
-    return m_libdb_mock->close(db, flags);
+    return gs_libdb_mock->close(db, flags);
 }
-
-
 
 class CallbackMock
 {
@@ -183,8 +181,6 @@ class CallbackMock
         ~CallbackMock() = default;
         MOCK_METHOD(void, callbackMock, (nlohmann::json&), ());
 };
-
-
 
 TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
 {
@@ -196,8 +192,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_libdb_mock = libdb_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_libdb_mock = libdb_mock.get();
 
     DB db {};
     DBC cursor {};
@@ -238,14 +234,12 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
 
     const auto total_len {FIRST_ENTRY_OFFSET + ENTRY_SIZE* total_fields + total_fields_len + 1};
 
-    DBT data, key;
-    memset(&key, 0, sizeof(key));
-    memset(&data, 0, sizeof(data));
-    char bytes[total_len];
-    memset(bytes, 0, sizeof(bytes));
+    DBT data {}, key {};
+    char bytes[total_len] {};
+    int bytes_count {};
+
     char* cp;
     int* ip;
-    int bytes_count {0};
 
     data.data = bytes;
     data.size = total_len;
@@ -257,15 +251,15 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
         [&cp, &bytes_count](int tag, int type, unsigned int len)
         {
             // Name
-            int32_t* tmp = (int32_t*)cp;
+            int32_t* tmp = reinterpret_cast<int32_t*>(cp);
             *tmp = __builtin_bswap32(tag);
             cp += sizeof(int32_t);
             // type
-            tmp = (int32_t*)cp;
+            tmp = reinterpret_cast<int32_t*>(cp);
             *tmp = __builtin_bswap32(type);
             cp += sizeof(int32_t);
             //offset
-            tmp = (int32_t*)cp;
+            tmp = reinterpret_cast<int32_t*>(cp);
             *tmp = __builtin_bswap32(bytes_count);
             bytes_count += len;
             cp += sizeof(int32_t);
@@ -287,7 +281,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
     {
         [&cp](int value)
         {
-            int32_t* tmp = (int32_t*)cp;
+            int32_t* tmp = reinterpret_cast<int32_t*>(cp);
             *tmp = __builtin_bswap32(value);
             cp += sizeof(int);
         }
@@ -296,13 +290,10 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
 
     {
         // Header
-        // index lenght
-        ip = (int32_t*)cp;
-        *ip = __builtin_bswap32(total_fields); // TAG_X COUNT
+        ip = reinterpret_cast<int32_t*>(cp);
+        *ip = __builtin_bswap32(total_fields);
         cp += sizeof(int);
-
-        // Data lenght
-        ip = (int32_t*)cp;
+        ip = reinterpret_cast<int32_t*>(cp);
         *ip = __builtin_bswap32(total_fields_len);
         cp += sizeof(int);
     }
@@ -349,7 +340,6 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
 
 }
 
-
 TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
 {
     CallbackMock wrapper;
@@ -359,8 +349,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_rpm_mock = rpm_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_rpm_mock = rpm_mock.get();
     rpmts ts = (rpmts) 0x123;
     rpmtd td = (rpmtd) 0x123;
     rpmdbMatchIterator mi = (rpmdbMatchIterator) 0x123;
@@ -416,8 +406,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromLibRPM)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_rpm_mock = rpm_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_rpm_mock = rpm_mock.get();
 
     EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(false));
     EXPECT_CALL(*rpm_mock, rpmReadConfigFiles(_, _)).Times(1).WillOnce(Return(1));
@@ -442,8 +432,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBConfigError)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_libdb_mock = libdb_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_libdb_mock = libdb_mock.get();
 
     EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(true));
     EXPECT_CALL(*libdb_mock, db_create(_, _, _)).Times(1).WillOnce(Return(1));
@@ -469,8 +459,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBOpenError)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_libdb_mock = libdb_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_libdb_mock = libdb_mock.get();
 
     DB db {};
 
@@ -505,8 +495,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBCursorError)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_libdb_mock = libdb_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_libdb_mock = libdb_mock.get();
 
     DB db {};
 
@@ -540,8 +530,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, emptyRpmFallback)
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_rpm_mock = rpm_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_rpm_mock = rpm_mock.get();
 
     EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(false));
     EXPECT_CALL(*rpm_mock, rpmReadConfigFiles(_, _)).Times(1).WillOnce(Return(1));
@@ -554,7 +544,6 @@ TEST(SysInfoPackageLinuxParserRPM_test, emptyRpmFallback)
     });
 }
 
-
 TEST(SysInfoPackageLinuxParserRPM_test, invalidPackageParsingRpmFallback)
 {
     CallbackMock wrapper;
@@ -563,8 +552,8 @@ TEST(SysInfoPackageLinuxParserRPM_test, invalidPackageParsingRpmFallback)
     auto rpm_mock { std::make_unique<RpmLibMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
 
-    m_utils_mock = utils_mock.get();
-    m_rpm_mock = rpm_mock.get();
+    gs_utils_mock = utils_mock.get();
+    gs_rpm_mock = rpm_mock.get();
 
     EXPECT_CALL(*utils_mock, existsRegular(_)).Times(1).WillOnce(Return(false));
     EXPECT_CALL(*rpm_mock, rpmReadConfigFiles(_, _)).Times(1).WillOnce(Return(1));
