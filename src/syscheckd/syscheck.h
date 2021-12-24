@@ -950,7 +950,7 @@ int fim_generate_delete_event(const char *file_path,
  * @param location Name of the component
  * @param msg Synchronization data for the message
  */
-void fim_send_sync_state(const char *location, cJSON * msg);
+void fim_send_sync_state(const char *location, const char* msg);
 
 /**
  * @brief Send a control synchronization message
