@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include "../storageDriverInterface.hpp"
 
 
@@ -11,11 +12,20 @@ class diskStorage : public storageDriverInterface{
     private:
 
         const std::string_view path;
+        // @FIXME Optimize: search a maps with number 4 keys
+        static const inline std::map<AssetType, std::string> assetTypeToPath {
+            {AssetType::Decoder, "decoders"},
+            {AssetType::Rule, "rules"},
+            {AssetType::Output, "outputs"},
+            {AssetType::Filter, "filters"},
+            {AssetType::Schemas, "schemas"},
+            {AssetType::Environments, "environments"}
+        };
 
     public:
 
         diskStorage(std::string_view path) : path(path) {
-            std::cout << "New driver | Path: " << this->path << std::endl;
+            //std::cout << "New driver | Path: " << this->path << std::endl;
         }
         ~diskStorage() = default;
 
