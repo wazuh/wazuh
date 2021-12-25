@@ -432,7 +432,7 @@ TEST(RouterTestAdd, AddTwoRoutes)
         return r1got % 2 == 0;
     };
 
-    router->add(std::string("test_route_!"), f1, std::string("test_environment"));
+    router->add(std::string("test_route_1"), f1, std::string("test_environment"));
 
     // Add route 2 for the same environment
     std::atomic<int> r2got = 0;
@@ -516,7 +516,6 @@ TEST(RouterTestAdd, AddADuplicateRoute)
     }
 
 }
-
 
 TEST(RouterTestAdd, AddTwoRoutesHalf)
 {
