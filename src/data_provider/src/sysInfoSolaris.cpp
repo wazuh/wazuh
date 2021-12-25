@@ -20,15 +20,7 @@
 #include "network/networkSolarisWrapper.hpp"
 #include "network/networkFamilyDataAFactory.h"
 #include "UtilsWrapperUnix.hpp"
-#include "uniqueHandle.h"
-
-struct SocketDeleter
-{
-    void operator()(UniqueHandle<int, -1> fd)
-    {
-        close(fd);
-    }
-};
+#include "uniqueFD.hpp"
 
 static void getOsInfoFromUname(nlohmann::json& info)
 {
@@ -98,21 +90,21 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks;
-    std::unique_ptr<int, SocketDeleter> spSocket ( UtilsWrapperUnix::createSocket(AF_INET, SOCK_DGRAM, 0) );
-    const auto interfaceCount { NetworkSolarisHelper::getInterfacesCount(*spSocket.get()) };
+    Utils::UniqueFD SocketV4 ( UtilsWrapperUnix::createSocket(AF_INET, SOCK_DGRAM, 0) );
+    const auto interfaceCount { NetworkSolarisHelper::getInterfacesCount(SocketV4.get()) };
 
     // Get IPv4 address
     struct lifconf configurationInterface = { .lifc_family = AF_INET, .lifc_flags = 0, .lifc_len = interfaceCount * sizeof(struct lifreq) };
     auto buffer1 { std::vector<char>(configurationInterface.lifc_len) };
     configurationInterface.lifc_buf = buffer1.data();
 
-    if (NetworkSolarisHelper::getInterfaces(*spSocket.get(), &configurationInterface))
+    if (NetworkSolarisHelper::getInterfaces(SocketV4.get(), &configurationInterface))
     {
         nlohmann::json ifaddr {};
 
         for (auto index = 0; index < interfaceCount; index++)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(std::make_shared<NetworkSolarisInterface>(*spSocket.get(), index, &configurationInterface)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(std::make_shared<NetworkSolarisInterface>(SocketV4.get(), index, &configurationInterface)) };
 
             if (networkInterfacePtr)
             {
@@ -124,19 +116,19 @@ nlohmann::json SysInfo::getNetworks() const
     }
 
     // Get IPv6 address
-    std::unique_ptr<int, SocketDeleter> spSocketV6 ( UtilsWrapperUnix::createSocket(AF_INET6, SOCK_DGRAM, 0) );
-    const auto interfaceV6Count { NetworkSolarisHelper::getInterfacesV6Count(*spSocketV6.get()) };
+    Utils::UniqueFD socketV6 ( UtilsWrapperUnix::createSocket(AF_INET6, SOCK_DGRAM, 0) );
+    const auto interfaceV6Count { NetworkSolarisHelper::getInterfacesV6Count(socketV6.get()) };
     struct lifconf configurationInterfaceV6 = { .lifc_family = AF_INET6, .lifc_flags = 0, .lifc_len = interfaceV6Count * sizeof(struct lifreq) };
     auto buffer2 { std::vector<char>(configurationInterfaceV6.lifc_len) };
     configurationInterfaceV6.lifc_buf = buffer2.data();
 
-    if (NetworkSolarisHelper::getInterfaces(*spSocketV6.get(), &configurationInterfaceV6))
+    if (NetworkSolarisHelper::getInterfaces(socketV6.get(), &configurationInterfaceV6))
     {
         nlohmann::json ifaddr {};
 
         for (auto index = 0; index < interfaceV6Count; index++)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(std::make_shared<NetworkSolarisInterface>(spSocketV6.get(), index, &configurationInterfaceV6) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(std::make_shared<NetworkSolarisInterface>(socketV6.get(), index, &configurationInterfaceV6) };
 
             if (networkInterfacePtr)
             {
