@@ -141,7 +141,7 @@ public:
 
         auto r = this->router.filter(from);
 
-        rxcpp::composite_subscription sub = r.subscribe(envSub.get_subscriber());
+        auto sub = r.subscribe(envSub.get_subscriber());
 
         this->routes.push_back(route(name, from, to, sub));
 
