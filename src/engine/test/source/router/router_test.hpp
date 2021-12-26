@@ -64,12 +64,12 @@ public:
         rxcpp::subjects::subject<F> subject;
 
         auto from = [=](const json j) {
-            return j["module"]["source"] == source;
+            return j.at("wazuh").at("module").at("name") == source;
         };
 
 
         auto res = subject.get_observable().filter(from).subscribe([](const F j) {
-            GTEST_COUT << "test output got an event" << std::endl;
+            // GTEST_COUT << "test output got an event" << std::endl;
         },
         []() {
             GTEST_COUT << "test output finalized" << std::endl;
