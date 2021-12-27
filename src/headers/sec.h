@@ -137,6 +137,14 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge);
 /* Write keystore on client keys file */
 int OS_WriteKeys(const keystore *keys);
 
+/**
+ * @brief Synchronizes a keystore with the agent table of global.db.
+ *
+ * @param keys The keystore structure to be synchronized
+ * @param wdb_sock The socket to be used in the calls to Wazuh DB
+ */
+void sync_keys_with_wdb(keystore *keys, int *wdb_sock);
+
 /* Duplicate keystore except key hashes and file pointer */
 keystore* OS_DupKeys(const keystore *keys);
 

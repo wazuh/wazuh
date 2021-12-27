@@ -38,10 +38,12 @@ void add_insert(const keyentry *entry,const char *group) {
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
     node->ip = strdup(entry->ip->ip);
-    node->group = NULL;
+    node->raw_key = strdup(entry->raw_key);
 
     if (group != NULL)
         node->group = strdup(group);
+    else
+        node->group = NULL;
 
     (*insert_tail) = node;
     insert_tail = &node->next;

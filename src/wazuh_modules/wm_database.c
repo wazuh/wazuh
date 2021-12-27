@@ -13,7 +13,6 @@
 #include "sec.h"
 #include "remoted_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
-#include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
 #ifndef CLIENT
@@ -59,6 +58,7 @@ char * wm_inotify_pop();
 #endif // INOTIFY_ENABLED
 
 wm_database *module;
+int is_worker;
 int wdb_wmdb_sock = -1;
 
 // Module main function. It won't return
@@ -88,7 +88,6 @@ static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
 
-static int wm_sync_agent_group(int id_agent, const char *fname);
 static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
@@ -114,6 +113,9 @@ void* wm_database_main(wm_database *data) {
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template db file removed: %s", path_template);
+
+    // Check if it is a worker node
+    is_worker = w_is_worker();
 
     // Manager name synchronization
     if (data->sync_agents) {
@@ -252,15 +254,15 @@ void wm_check_agents() {
 
 // Synchronize agents
 void wm_sync_agents() {
-    unsigned int i;
-    char * group;
-    char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
-    keyentry *entry;
-    int *agents;
     clock_t clock0 = clock();
     struct timespec spec0;
     struct timespec spec1;
+
+    // The client.keys file should only be synchronized with the database in the
+    // worker nodes. In the case of the master, this will happen in the writter
+    // thread of authd.
+    if (!is_worker) return;
 
     gettime(&spec0);
 
@@ -268,87 +270,10 @@ void wm_sync_agents() {
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+    sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
 
-    /* Insert new entries */
-
-    for (i = 0; i < keys.keysize; i++) {
-        entry = keys.keyentries[i];
-        int id;
-
-        mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
-
-        if (!(id = atoi(entry->id))) {
-            mterror(WM_DATABASE_LOGTAG, "At wm_sync_agents(): invalid ID number.");
-            continue;
-        }
-
-        if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1, NULL) < 0) {
-            *group = 0;
-        }
-
-        if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
-                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
-            // The agent already exists, update group only.
-            wm_sync_agent_group(id, entry->id);
-        }
-    }
-
-    /* Delete old keys */
-
-    if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
-        char id[9];
-        char wdbquery[OS_SIZE_128 + 1];
-        char *wdboutput = NULL;
-        int error;
-
-        for (i = 0; agents[i] != -1; i++) {
-            snprintf(id, 9, "%03d", agents[i]);
-
-            if (OS_IsAllowedID(&keys, id) == -1) {
-                char *name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
-
-                if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
-                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
-                    os_free(name);
-                    continue;
-                }
-
-                if (wdboutput == NULL) {
-                    os_malloc(WDBOUTPUT_SIZE, wdboutput);
-                }
-
-                snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", id);
-                error = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
-
-                if (error == 0) {
-                    mdebug1("DB from agent %s was deleted '%s'", id, wdboutput);
-                } else {
-                    merror("Could not remove the DB of the agent %s. Error: %d.", id, error);
-                }
-
-                // Remove agent-related files
-                OS_RemoveCounter(id);
-                OS_RemoveAgentTimestamp(id);
-
-                if (name == NULL || *name == '\0') {
-                    os_free(name);
-                    continue;
-                }
-
-                delete_diff(name);
-
-                free(name);
-            }
-        }
-
-        os_free(wdboutput);
-        os_free(agents);
-    }
-
-    os_free(group);
     OS_FreeKeys(&keys);
-    mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
+    mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
     gettime(&spec1);
     time_sub(&spec1, &spec0);
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
@@ -455,26 +380,6 @@ void wm_sync_multi_groups(const char *dirname) {
 
 #endif // LOCAL
 
-int wm_sync_agent_group(int id_agent, const char *fname) {
-    int result = 0;
-    char *group;
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
-    clock_t clock0 = clock();
-
-    get_agent_group(atoi(fname), group, OS_SIZE_65536, NULL);
-
-    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
-        wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
-        result = -1;
-    }
-
-    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
-
-    free(group);
-    return result;
-}
-
 int wm_sync_shared_group(const char *fname) {
     int result = 0;
     char path[PATH_MAX];
@@ -565,7 +470,6 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         free(name);
-        result = wm_sync_agent_group(id_agent, fname);
         break;
 
     case WDB_SHARED_GROUPS:
