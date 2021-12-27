@@ -60,11 +60,22 @@
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
 /// Enumeration of agent groups sync conditions
-typedef enum wdb_groups_sync_condition {
-        WDB_GROUP_SYNC_STATUS,     ///< Get groups by their sync status
-        WDB_GROUP_CKS_MISMATCH,    ///< Get groups by their CKS status
-        WDB_GROUP_INVALID,         ///< Invalid condition
-} wdb_groups_sync_condition;
+typedef enum wdb_groups_sync_condition_t {
+        WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
+        WDB_GROUP_CKS_MISMATCH,     ///< Get groups by their CKS status
+        WDB_GROUP_INVALID_CONDITION ///< Invalid condition
+} wdb_groups_sync_condition_t;
+
+/// Enumeration of agent groups set mode
+typedef enum wdb_groups_set_mode_t {
+        WDB_GROUP_OVERRIDE,     ///< Re-write the group assignment
+        WDB_GROUP_OVERRIDE_ALL, ///< Re-write the group assignment ignoring the source of the last write
+        WDB_GROUP_APPEND,       ///< Add group assignment to the existent one
+        WDB_GROUP_EMPTY_ONLY,   ///< Write a group assignment only if the agent doesn´t have one
+        WDB_GROUP_INVALID_MODE  ///< Invalid mode
+} wdb_groups_set_mode_t;
+
+#define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 
@@ -183,7 +194,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
-    WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
@@ -201,6 +211,12 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_CKS_GET,
     WDB_STMT_GLOBAL_AGENT_GROUPS_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_SET,
+    WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
+    WDB_STMT_GLOBAL_GROUP_SOURCE_GET,
+    WDB_STMT_GLOBAL_GROUP_SOURCE_SET,
+    WDB_STMT_GLOBAL_GROUP_CSV_GET,
+    WDB_STMT_GLOBAL_GROUP_CTX_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -1209,6 +1225,17 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
 
 /**
+ * @brief Function to parse the set agent groups request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the group name.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
+
+/**
  * @brief Function to parse the select keepalive request.
  *
  * @param [in] wdb The global struct database.
@@ -1797,9 +1824,78 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  * @return wdbc_result to represent if all agents has being obtained.
  */
 wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb,
-                                             wdb_groups_sync_condition condition,
+                                             wdb_groups_sync_condition_t condition,
                                              int last_agent_id,
                                              char **output);
+
+/**
+ * @brief Gets the csv representation of an agent group from the group column of the agent table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the group.
+ * @return string with the csv of the group. Must be de-allocated by the caller
+ */
+char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id);
+
+/**
+ * @brief Sets the group information in the agent table.
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to set the information.
+ * @param [in] csv String with all the groups sepparated by comma to be inserted in the group column.
+ * @param [in] hash Hash calculus from the csv string to be inserted in the group_local_hash column.
+ * @param [in] sync_status Tag of the sync status to be inserted in the group_sync_status column.
+ * @param [in] source Tag of the source writter to be inserted in the group_source column.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status, char* source);
+
+/**
+ * @brief Gets the writter source of an agent group.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the source.
+ * @return string with the source of the group writter. Must be de-allocated by the caller
+ */
+char* wdb_global_get_agent_group_source(wdb_t *wdb, int id);
+
+/**
+ * @brief Gets the maximum priority of the groups of an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the priority.
+ * @return Numeric representation of the group priority.
+ */
+int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
+
+/**
+ * @brief Writes the groups of an agent.
+ *        If the group doesn´t exists it creates it.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the priority.
+ * @param [in] j_groups JSON array with all the groups of the agent.
+ * @param [in] priority Initial priority to insert the groups.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority);
+
+/**
+ * @brief Sets the belongship af a set of agents.
+ *          If any of the groups doesn´t exist, this command creates it.
+ *          If the current groups where previously written by "remote" source, only another "remote" source can write groups on the agent,
+ *          or WDB_GROUP_OVERRIDE_ALL mode must be used.
+ * @param [in] wdb The Global struct database.
+ * @param [in] mode The mode in which the write will be performed.
+ *               WDB_GROUP_OVERRIDE The existing groups will be overwritten.
+                 WDB_GROUP_OVERRIDE_ALL The existing groups will be overwritten even if the source is "remote".
+                 WDB_GROUP_APPEND The existing groups are conserved and new ones are added.
+                 WDB_GROUP_EMPTY_ONLY The groups are written only if the agent doesn´t have any group.
+ * @param [in] sync_status The sync_status tag used to insert the groups.
+ * @param [in] source The source tag of the writter used to insert the groups.
+ * @param [in] j_agents_group_info JSON structure with all the agent_ids and the groups to insert.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, char* source, cJSON* j_agents_group_info);
 
 /**
  * @brief Function to get the information of a particular agent stored in Wazuh DB.
