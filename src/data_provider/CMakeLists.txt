@@ -62,6 +62,7 @@ link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
+link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
 
