@@ -8,6 +8,18 @@ CPMAddPackage(
       "YAML_CPP_BUILD_TESTS OFF"
 )
 
+CPMAddPackage(
+    NAME RapidJSON
+    GITHUB_REPOSITORY Tencent/rapidjson
+    GIT_TAG v1.1.0
+    VERSION 1.1.0
+    OPTIONS
+        "RAPIDJSON_BUILD_DOC OFF"
+        "RAPIDJSON_BUILD_EXAMPLES OFF"
+        "RAPIDJSON_BUILD_TESTS OFF"
+        # "RAPIDJSON_BUILD_CXX17 ON"
+)
+
 # Configuration router test
 add_executable(diskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
@@ -19,6 +31,6 @@ add_executable(diskStorage_driver_catalog_test
   ${TEST_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage_test.cpp
 )
 
-target_include_directories(diskStorage_driver_catalog_test PUBLIC "${ENGINE_SOURCE_DIR}/")
-target_link_libraries(diskStorage_driver_catalog_test gtest_main "yaml-cpp" "nlohmann_json::nlohmann_json")
+target_include_directories(diskStorage_driver_catalog_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
+target_link_libraries(diskStorage_driver_catalog_test gtest_main "yaml-cpp")
 gtest_discover_tests(diskStorage_driver_catalog_test)

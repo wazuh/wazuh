@@ -1,9 +1,9 @@
-# # Minimum 3.14 required by googletest discover tests
-# cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
-# # Set c++17
-# set(CMAKE_CXX_STANDARD 17)
-# # Project settings
-# project(wazuh-engine)
+# Minimum 3.14 required by googletest discover tests
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+# Set c++17
+set(CMAKE_CXX_STANDARD 17)
+# Project settings
+project(wazuh-engine)
 
 # yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
 CPMAddPackage(
