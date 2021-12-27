@@ -207,12 +207,12 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
         LinkStats stats() const override
         {
-            auto buffer { Utils::exec("dlstat -a" + this->name(), 256) };
-	        LinkStats statistic;
+            auto buffer { Utils::exec("dlstat -a " + this->name(), 256) };
+	        LinkStats statistic { 0, 0, 0, 0, 0, 0, 0, 0 };
 
             if (!buffer.empty())
             {
-                const auto lines { Utils::split(buffer, '\n') };
+                auto lines { Utils::split(buffer, '\n') };
 
 		        lines.erase(lines.begin());
 		        lines.erase(lines.begin());
