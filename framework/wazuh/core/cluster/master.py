@@ -1041,9 +1041,14 @@ class Master(server.AbstractServer):
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 
         # Get active agents by node and format last keep alive date format
+        active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': filter_node})['items']
+        for agent in active_agents:
+            if (agent_node := agent["node_name"]) in workers_info.keys():
+                workers_info[agent_node]["info"]["n_active_agents"] = \
+                    workers_info[agent_node]["info"].get("n_active_agents", 0) + 1
         for node_name in workers_info.keys():
-            workers_info[node_name]["info"]["n_active_agents"] = \
-                Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
+            if workers_info[node_name]["info"].get("n_active_agents") is None:
+                workers_info[node_name]["info"]["n_active_agents"] = 0
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
