@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
     wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
-    // Allocatting memory for backup configuration nodes
+    // Allocatting memory for configuration structures and setting default values
     wdb_init_conf();
 
     // Read ossec.conf

@@ -1226,3 +1226,15 @@ char* w_strcat_list(char ** list, char sep_char) {
 
     return concatenation;
 }
+
+short eval_bool(const char *str) {
+    if (!str) {
+        return OS_INVALID;
+    } else if (!strcmp(str, "yes")) {
+        return 1;
+    } else if (!strcmp(str, "no")) {
+        return 0;
+    } else {
+        return OS_INVALID;
+    }
+}
