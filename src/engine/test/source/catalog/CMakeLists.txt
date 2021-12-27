@@ -24,6 +24,7 @@ CPMAddPackage(
 add_executable(diskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
   ${ENGINE_SOURCE_DIR}/catalog/yml2json.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/storageDriver/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/storageDriverInterface.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.cpp
@@ -32,5 +33,5 @@ add_executable(diskStorage_driver_catalog_test
 )
 
 target_include_directories(diskStorage_driver_catalog_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
-target_link_libraries(diskStorage_driver_catalog_test gtest_main "yaml-cpp")
+target_link_libraries(diskStorage_driver_catalog_test gtest_main "yaml-cpp" "nlohmann_json::nlohmann_json")
 gtest_discover_tests(diskStorage_driver_catalog_test)
