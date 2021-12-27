@@ -9,18 +9,18 @@
  * Foundation.
  */
 
-#ifndef LINUXPROCESS_HELPER_TESTS_H
-#define LINUXPROCESS_HELPER_TESTS_H
+#ifndef LINUXINFO_HELPER_TESTS_H
+#define LINUXINFO_HELPER_TESTS_H
 #include "gtest/gtest.h"
 
-class LinuxProcessHelperTest : public ::testing::Test
+class LinuxInfoHelperTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    LinuxProcessHelperTest() = default;
-    virtual ~LinuxProcessHelperTest() = default;
+        LinuxInfoHelperTest() = default;
+        virtual ~LinuxInfoHelperTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif //LINUXPROCESS_HELPER_TESTS_H
+#endif // LINUXINFO_HELPER_TESTS_H

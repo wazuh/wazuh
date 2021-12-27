@@ -924,7 +924,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save process info into the DB. Return 0 on success or -1 on error.
-int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace) {
+int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_process_save(): cannot begin transaction");
@@ -972,7 +972,7 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert process info tuple. Return 0 on success or -1 on error.
-int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace) {
+int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, long long start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROC_INSERT2 : WDB_STMT_PROC_INSERT) < 0) {
@@ -1034,7 +1034,7 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     else
         sqlite3_bind_null(stmt, 23);
     if (start_time >= 0)
-        sqlite3_bind_int(stmt, 24, start_time);
+        sqlite3_bind_int64(stmt, 24, (sqlite_int64) start_time);
     else
         sqlite3_bind_null(stmt, 24);
     if (pgrp >= 0)
@@ -1125,7 +1125,7 @@ int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
     const int vm_size = cJSON_GetObjectItem(attributes, "vm_size") ? cJSON_GetObjectItem(attributes, "vm_size")->valueint : 0;
     const int resident = cJSON_GetObjectItem(attributes, "resident") ? cJSON_GetObjectItem(attributes, "resident")->valueint : 0;
     const int share = cJSON_GetObjectItem(attributes, "share") ? cJSON_GetObjectItem(attributes, "share")->valueint : 0;
-    const int start_time = cJSON_GetObjectItem(attributes, "start_time") ? cJSON_GetObjectItem(attributes, "start_time")->valueint : 0;
+    const long long start_time = cJSON_GetObjectItem(attributes, "start_time") ? (long long) cJSON_GetObjectItem(attributes, "start_time")->valuedouble : 0;
     const int pgrp = cJSON_GetObjectItem(attributes, "pgrp") ? cJSON_GetObjectItem(attributes, "pgrp")->valueint : 0;
     const int session = cJSON_GetObjectItem(attributes, "session") ? cJSON_GetObjectItem(attributes, "session")->valueint : 0;
     const int nlwp = cJSON_GetObjectItem(attributes, "nlwp") ? cJSON_GetObjectItem(attributes, "nlwp")->valueint : 0;

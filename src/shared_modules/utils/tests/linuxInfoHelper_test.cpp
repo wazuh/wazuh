@@ -9,27 +9,26 @@
  * Foundation.
  */
 
-#include "linuxProcessHelper_test.h"
-#include "linuxProcessHelper.h"
+#include "linuxInfoHelper_test.h"
+#include "linuxInfoHelper.h"
 #include "cmdHelper.h"
 
 
-void LinuxProcessHelperTest::SetUp() {};
+void LinuxInfoHelperTest::SetUp() {};
 
-void LinuxProcessHelperTest::TearDown() {};
+void LinuxInfoHelperTest::TearDown() {};
 
-#ifndef WIN32
-TEST_F(LinuxProcessHelperTest, getBootTime)
+TEST_F(LinuxInfoHelperTest, getBootTime)
 {
     const auto btimeNumFromFunc{Utils::getBootTime()};
 
     const auto btimeStr{Utils::exec("grep 'btime' /proc/stat | awk '{print $2}'")};
-    const auto btimeNumFromProc{std::stoul(btimeStr)};
+    const auto btimeNumFromProc{std::stoull(btimeStr)};
 
     EXPECT_FALSE(btimeNumFromFunc != btimeNumFromProc);
 }
 
-TEST_F(LinuxProcessHelperTest, timeTick2unixTime)
+TEST_F(LinuxInfoHelperTest, timeTick2unixTime)
 {
     const auto startTimeStr{Utils::exec("awk '{print $22}' /proc/1/stat")};
     const auto startTimeNum{std::stoul(startTimeStr)};
@@ -39,6 +38,3 @@ TEST_F(LinuxProcessHelperTest, timeTick2unixTime)
 
     EXPECT_FALSE(startTimeUnixFunc != startTimeUnixCmd);
 }
-
-
-#endif

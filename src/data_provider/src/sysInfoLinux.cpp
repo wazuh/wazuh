@@ -27,7 +27,7 @@
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageLinuxDataRetriever.h"
 
-#include "linuxProcessHelper.h"
+#include "linuxInfoHelper.h"
 
 struct ProcTableDeleter
 {

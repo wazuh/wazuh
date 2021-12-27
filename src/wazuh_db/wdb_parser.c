@@ -3861,7 +3861,8 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
     char * next;
     char * scan_id;
     char * scan_time;
-    int pid, ppid, utime, stime, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor;
+    int pid, ppid, utime, stime, priority, nice, size, vm_size, resident, share, pgrp, session, nlwp, tgid, tty, processor;
+    long long start_time;
     char * name;
     char * state;
     char * cmd;
@@ -4230,14 +4231,14 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             start_time = -1;
         else
-            start_time = strtol(curr,NULL,10);
+            start_time = (long long) strtoull(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Process query syntax.");
-            mdebug2("Process query: %d", start_time);
+            mdebug2("Process query: %lld", start_time);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
             return -1;
         }

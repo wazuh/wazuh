@@ -9,23 +9,25 @@
  * Foundation.
  */
 
-#ifndef _LINUXPROCESS_HELPER_H
-#define _LINUXPROCESS_HELPER_H
+#ifndef LINUXINFO_HELPER_H
+#define LINUXINFO_HELPER_H
 
-#include <cstdint>   //uint64_t
-#include <string>    //std::stoul
-
-#include <unistd.h>  //sysconf
-
+#include "filesystemHelper.h"
 #include <vector>
-#include "filesystemHelper.h" //getFileContent
-
+#include <cstdint>
+#include <string>
+#include <unistd.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
 namespace Utils
 {
+    /**
+     * @brief Get system boot time in seconds since epoch
+     *
+     * @return uint64_t system boot time in seconds since epoch
+     */
     static uint64_t getBootTime(void)
     {
         static uint64_t btime;
@@ -37,28 +39,40 @@ namespace Utils
                 const std::string key {"btime "};
                 const auto file { Utils::getFileContent("/proc/stat") };
 
-                btime = std::stoul(file.substr(file.find(key) + key.length()));
+                btime = std::stoull(file.substr(file.find(key) + key.length()));
             }
-         }
-         catch(...)
-         {
-         }
+        }
+        // LCOV_EXCL_START
+        catch (...)
+        {}
 
-         return btime;
+        // LCOV_EXCL_STOP
+
+        return btime;
     }
 
+    /**
+     * @brief Get the number of clock ticks per second
+     *
+     * @return uint64_t number of clock ticks per second
+     */
     static uint64_t getClockTick(void)
     {
-       static uint64_t tick = static_cast<uint64_t>(sysconf(_SC_CLK_TCK));
+        static uint64_t tick { static_cast<uint64_t>(sysconf(_SC_CLK_TCK)) };
 
-       return tick;
+        return tick;
     }
 
+    /**
+     * @brief Convert a boot-relative time in ticks to seconds since epoch
+     *
+     * @param startTime boot-relative time in ticks
+     * @return uint64_t seconds since epoch
+     */
     static uint64_t timeTick2unixTime(const uint64_t startTime)
     {
         return (startTime / getClockTick()) + getBootTime();
     }
 }
 
-
-#endif // _LINUXPROCESS_HELPER_H
+#endif // LINUXINFO_HELPER_H
