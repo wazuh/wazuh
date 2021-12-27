@@ -17,7 +17,7 @@ from integration import WazuhGCloudIntegration
 try:
     from google.cloud import pubsub_v1 as pubsub
 except ImportError:
-    raise Exception('ERROR: google-cloud-storage module is required.')
+    raise Exception('ERROR: google-cloud-pubsub module is required.')
 
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):

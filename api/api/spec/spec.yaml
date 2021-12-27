@@ -40,8 +40,13 @@ info:
 
     <SecurityDefinitions />
 
+<<<<<<< HEAD
   version: '4.4.0'
   x-revision: '40400'
+=======
+  version: '4.3.0'
+  x-revision: '40303'
+>>>>>>> 4.3
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -6675,7 +6680,7 @@ paths:
               required:
                 - group_id
             example:
-              name: NewGroup_1
+              group_id: NewGroup_1
       responses:
         '200':
           description: "Add new agent"

@@ -19,7 +19,7 @@ from uuid import uuid4
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
-from wazuh.core.cluster import server, common as c_common
+from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import decimals_date_format
@@ -61,7 +61,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
         # Integrity task is only freed if master is not waiting for Extra valid files.
         if not self.wazuh_common.extra_valid_requested:
-            self.wazuh_common.sync_integrity_free = True
+            self.wazuh_common.sync_integrity_free[0] = True
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
@@ -98,7 +98,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
         """
         super().done_callback(future)
         self.wazuh_common.extra_valid_requested = False
-        self.wazuh_common.sync_integrity_free = True
+        self.wazuh_common.sync_integrity_free[0] = True
 
 
 class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
@@ -153,7 +153,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         super().__init__(**kwargs, tag="Worker")
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_agent_info_free = True
-        self.sync_integrity_free = True
+        self.sync_integrity_free = [True, datetime.utcnow()]
 
         # Variable used to check whether integrity sync process includes extra_valid files.
         self.extra_valid_requested = False
@@ -184,7 +184,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Healthcheck information for each process.
         """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
-                'status': {'sync_integrity_free': self.sync_integrity_free,
+                'status': {'sync_integrity_free': self.sync_integrity_free[0],
                            'last_check_integrity': {key: value for key, value in self.integrity_check_status.items() if
                                                     not key.startswith('tmp')},
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
@@ -440,7 +440,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if sync_type == b'syn_i_w_m_p' and self.name not in self.server.integrity_already_executed:
             # Add the variable self.name to keep track of the number of integrity_checks per cycle
             self.server.integrity_already_executed.append(self.name)
-            permission = self.sync_integrity_free
+
+            # Reset integrity permissions if False for more than "max_locked_integrity_time" seconds
+            if not self.sync_integrity_free[0] and (datetime.utcnow() - self.sync_integrity_free[1]).total_seconds() > \
+                    self.cluster_items['intervals']['master']['max_locked_integrity_time']:
+                self.logger.warning(f'Automatically releasing Integrity check permissions flag ({sync_type}) after '
+                                    f'being locked out for more than '
+                                    f'{self.cluster_items["intervals"]["master"]["max_locked_integrity_time"]}s.')
+                self.sync_integrity_free[0] = True
+
+            permission = self.sync_integrity_free[0]
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
         else:
@@ -464,7 +473,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         if sync_type == b'syn_i_w_m':
-            self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
+            self.sync_integrity_free, sync_function = [False, datetime.utcnow()], ReceiveIntegrityTask
         elif sync_type == b'syn_e_w_m':
             sync_function = ReceiveExtraValidTask
         elif sync_type == b'syn_a_w_m':
@@ -491,7 +500,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        self.sync_integrity_free = True
+        self.sync_integrity_free[0] = True
         return super().error_receiving_file(error_msg.decode())
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
@@ -582,11 +591,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Update chunks in local wazuh-db
         try:
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(self.send_data_to_wdb, data, self.cluster_items['intervals']['master']['timeout_agent_info'])
-            )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.send_data_to_wdb, data,
+                                               self.cluster_items['intervals']['master']['timeout_agent_info'])
         except Exception as e:
             await self.send_request(command=b'syn_m_a_err',
                                     data=f'error processing agent-info chunks in process pool: {str(e)}'.encode())
@@ -658,7 +664,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug(f"Received file from worker: '{received_filename}'")
 
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
-        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
+            received_filename)
         # There are no files inside decompressed_files_path, only files_metadata.json which has already been loaded.
         shutil.rmtree(decompressed_files_path)
 
@@ -693,7 +700,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             # Compress data: master files (only KO shared and missing).
             logger.debug("Compressing files to be synced in worker.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
-            compressed_data = wazuh.core.cluster.cluster.compress_files(self.name, master_files_paths, worker_files_ko)
+
+            # Create and add the file synchronization task to the process pool
+            task = self.loop.run_in_executor(
+                self.server.task_pool,
+                partial(wazuh.core.cluster.cluster.compress_files, self.name, master_files_paths, worker_files_ko)
+            )
+            compressed_data = await asyncio.wait_for(task, timeout=None)
 
             logger.debug("Zip with files to be synced sent to worker.")
             try:
@@ -765,7 +778,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.integrity_sync_status['date_end_master'] = \
             self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
         self.extra_valid_requested = False
-        self.sync_integrity_free = True
+        self.sync_integrity_free[0] = True
 
     async def sync_worker_files(self, task_id: str, received_file: asyncio.Event, logger):
         """Wait until extra valid files are received from the worker and create a child process for them.
@@ -791,17 +804,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug(f"Received extra-valid file from worker: '{received_filename}'")
 
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
-        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
+            received_filename)
         logger.debug(f"Received {len(files_metadata)} extra-valid files to check.")
 
         # Create a child process to run the task.
         try:
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(self.process_files_from_worker, files_metadata, decompressed_files_path, self.cluster_items,
-                        self.name, self.cluster_items['intervals']['master']['timeout_extra_valid'])
-            )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.process_files_from_worker,
+                                               files_metadata, decompressed_files_path, self.cluster_items, self.name,
+                                               self.cluster_items['intervals']['master']['timeout_extra_valid'])
         except Exception as e:
             raise exception.WazuhClusterError(3038, extra_message=str(e))
         finally:
@@ -954,8 +965,18 @@ class Master(server.AbstractServer):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(
-            max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        try:
+            self.task_pool = ProcessPoolExecutor(
+                max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        # Handle exception when the user running Wazuh cannot access /dev/shm
+        except (FileNotFoundError, PermissionError):
+            self.logger.warning(
+                "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
+                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "Changing the file permissions to 777 will solve this issue.")
+            self.logger.warning(
+                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
+            self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
@@ -987,12 +1008,12 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
-                # With this we avoid that each worker starts integrity_check more than once per local_integrity
-                self.integrity_control = await asyncio.wait_for(task, timeout=None)
+                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
+                                                                   wazuh.core.cluster.cluster.get_files_status)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:
+                # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_already_executed.clear()
 
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "

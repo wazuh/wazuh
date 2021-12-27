@@ -1911,9 +1911,9 @@ const char *getuname()
                             }
 
                             char *endptr = NULL, *osVersion = NULL;
-                            const int buildNumber = (int) strtol(wincomp, endptr, 10);
+                            const int buildNumber = (int) strtol(wincomp, &endptr, 10);
 
-                            if ('\0' == endptr && buildNumber >= FIRST_BUILD_WINDOWS_11) {
+                            if ('\0' == *endptr && buildNumber >= FIRST_BUILD_WINDOWS_11) {
                                 if (osVersion = strstr(ret, "Microsoft Windows 10"), osVersion != NULL) {
                                     memcpy(osVersion, "Microsoft Windows 11", strlen("Microsoft Windows 11"));
                                 }
