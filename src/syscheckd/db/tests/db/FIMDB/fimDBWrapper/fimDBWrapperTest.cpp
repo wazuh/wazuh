@@ -10,13 +10,13 @@
  */
 
 #include "fimDBHelper.hpp"
-#include "fimDBHelperTest.h"
+#include "fimDBUtilsTest.h"
 
-void FIMHelperTest::SetUp() {}
+void FIMWrapperTest::SetUp() {}
 
-void FIMHelperTest::TearDown() {}
+void FIMWrapperTest::TearDown() {}
 
-TEST_F(FIMHelperTest, testInit)
+TEST_F(FIMWrapperTest, testInit)
 {
     std::shared_ptr<DBSync> handlerDbsync;
     std::shared_ptr<RemoteSync> handlerRsync;
@@ -32,14 +32,14 @@ TEST_F(FIMHelperTest, testInit)
 #endif
 }
 
-TEST_F(FIMHelperTest, insertItemToDatabase)
+TEST_F(FIMWrapperTest, insertItemToDatabase)
 {
     nlohmann::json insertItem;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
     FIMDBHelper::updateItem<FIMDBMOCK>(insertItem);
 }
 
-TEST_F(FIMHelperTest, deleteItemToDatabase)
+TEST_F(FIMWrapperTest, deleteItemToDatabase)
 {
     std::string tableName = "test";
     nlohmann::json filter = "";
@@ -48,14 +48,14 @@ TEST_F(FIMHelperTest, deleteItemToDatabase)
 }
 
 
-TEST_F(FIMHelperTest, updateItemToDatabaseSuccess)
+TEST_F(FIMWrapperTest, updateItemToDatabaseSuccess)
 {
     nlohmann::json updateItem;
     EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
     FIMDBHelper::updateItem<FIMDBMOCK>(updateItem);
 }
 
-TEST_F(FIMHelperTest, executeQuerySuccess)
+TEST_F(FIMWrapperTest, executeQuerySuccess)
 {
     nlohmann::json itemJson;
     nlohmann::json query;
@@ -64,7 +64,7 @@ TEST_F(FIMHelperTest, executeQuerySuccess)
 }
 
 
-TEST_F(FIMHelperTest, executeGetCountSuccess)
+TEST_F(FIMWrapperTest, executeGetCountSuccess)
 {
     std::string tableName;
     int count = 0;
@@ -72,7 +72,7 @@ TEST_F(FIMHelperTest, executeGetCountSuccess)
     FIMDBHelper::getCount<FIMDBMOCK>(tableName, count);
 }
 
-TEST_F(FIMHelperTest, executeGetCountSuccessCustomQuery)
+TEST_F(FIMWrapperTest, executeGetCountSuccessCustomQuery)
 {
     std::string tableName;
     nlohmann::json query;
@@ -80,7 +80,7 @@ TEST_F(FIMHelperTest, executeGetCountSuccessCustomQuery)
     FIMDBHelper::getCount<FIMDBMOCK>(tableName, query);
 }
 
-TEST_F(FIMHelperTest, createANewQuery)
+TEST_F(FIMWrapperTest, createANewQuery)
 {
     const auto expectedReturn = R"({"table":"file_entry",
                                     "query": {"column_list": "[path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime]",

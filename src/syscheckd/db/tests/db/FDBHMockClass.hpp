@@ -1,7 +1,7 @@
 /*
  * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
- * Dicember 7, 2021.
+ * December 7, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -17,12 +17,12 @@
 #ifndef _FIM_DB_HELPERS_MOCK_CLASS_
 #define _FIM_DB_HELPERS_MOCK_CLASS_
 
-class FIMDBHelpersMock
+class FIMDBHelperMock
 {
     public:
-        static FIMDBHelpersMock& getInstance()
+        static FIMDBHelperMock& getInstance()
         {
-            static FIMDBHelpersMock mock;
+            static FIMDBHelperMock mock;
             return mock;
         }
 

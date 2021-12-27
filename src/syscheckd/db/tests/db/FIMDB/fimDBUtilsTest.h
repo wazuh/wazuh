@@ -1,7 +1,7 @@
 /*
  * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
- * October 5, 2021.
+ * December 24, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -42,10 +42,20 @@ class FIMDBMOCK final
 
 };
 
-class FIMHelperTest : public testing::Test {
+
+class FIMWrapperTest : public testing::Test {
     protected:
-        FIMHelperTest() = default;
-        virtual ~FIMHelperTest() = default;
+        FIMWrapperTest() = default;
+        virtual ~FIMWrapperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
+};
+
+class FIMDBUtilsTest : public testing::Test {
+    protected:
+        FIMDBUtilsTest() = default;
+        virtual ~FIMDBUtilsTest() = default;
 
         void SetUp() override;
         void TearDown() override;
