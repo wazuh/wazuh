@@ -1063,11 +1063,6 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
 }
 
 int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, char* source, int *sock) {
-    cJSON* j_groups = cJSON_CreateObject();
-    if (!j_groups) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
     char** groups_array = NULL;
     wstr_split(groups_csv, ",", NULL, 1, &groups_array);
     return wdb_set_agent_groups(id, groups_array, mode, sync_status, source, sock);
@@ -1101,7 +1096,6 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
     for (int i=0; groups_array[i]; i++) {
         cJSON_AddItemToArray(groups, cJSON_CreateString(groups_array[i]));
     }
-
 
     char* data_in_str = cJSON_PrintUnformatted(j_data_in);
     cJSON_Delete(j_data_in);
