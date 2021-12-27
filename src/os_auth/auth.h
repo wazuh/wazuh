@@ -63,6 +63,7 @@ struct keynode {
     char *name;
     char *ip;
     char *group;
+    char *raw_key;
     struct keynode *next;
 };
 
