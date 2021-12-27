@@ -356,10 +356,18 @@ char** w_strtok(const char *string);
 
 /**
  * @brief Concatenate a NULL-terminated string list into a single string
- * 
+ *
  * @param list String list to concatenate
  * @param sep Optional separator. Set to 0 if unused.
  * @return Allocated string with list concatenation.
  */
 char* w_strcat_list(char ** list, char sep);
+
+/**
+ * @brief Converts a "yes/no" string to a numeric boolean.
+ *
+ * @param str [in] The string that contains the boolean text.
+ * @return OS_INVALID on error, the numeric boolean value on success.
+ */
+short eval_bool(const char *str);
 #endif
