@@ -207,7 +207,7 @@
     </mitre>
   </rule>
 
-  <rule id="92021" level="0">
+  <rule id="92021" level="3">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.EXE</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(Remove-Item|ri|rm|rmdir|del|erase|rd)\b</field>
