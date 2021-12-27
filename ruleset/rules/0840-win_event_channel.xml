@@ -40,7 +40,7 @@
     <group>authentication_success,gdpr_IV_32.2,gpg13_7.1,gpg13_7.2,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="92653" level="0">
+  <rule id="92653" level="3">
     <if_sid>92651</if_sid>
     <field name="win.eventdata.logonType" type="pcre2">10</field>
     <description>User: $(win.eventdata.subjectDomainName)\$(win.eventdata.targetUserName) logged using Remote Desktop Connection (RDP) from ip:$(win.eventdata.ipAddress).</description>
