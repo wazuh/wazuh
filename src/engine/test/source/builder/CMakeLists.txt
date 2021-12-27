@@ -61,6 +61,7 @@ set(SOURCES
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_builder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_value.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/helper_exists.cpp
+  ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_reference.cpp
 )
 
 include_directories(
@@ -130,6 +131,11 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_exist
 add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp ${SOURCES})
 gtest_discover_tests(map_value_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp)
+
+# map_reference test
+add_executable(map_reference_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp ${SOURCES})
+gtest_discover_tests(map_reference_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp)
 
 ####################################################################################################
 # Special targets WIP
