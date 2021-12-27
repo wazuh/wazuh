@@ -50,7 +50,7 @@ int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     return (0);
 }
 
-int OS_SHA256_String(const char *str, os_sha256 output)
+void OS_SHA256_String(const char *str, os_sha256 output)
 {
     SHA256_CTX c;
     unsigned char md[SHA256_DIGEST_LENGTH];
@@ -64,11 +64,9 @@ int OS_SHA256_String(const char *str, os_sha256 output)
         snprintf(output, 3, "%02x", md[n]);
         output += 2;
     }
-
-    return (0);
 }
 
-int OS_SHA256_String_sized(const char *str, char* output, size_t size)
+void OS_SHA256_String_sized(const char *str, char* output, size_t size)
 {
     SHA256_CTX c;
     unsigned char md[SHA256_DIGEST_LENGTH];
@@ -82,6 +80,4 @@ int OS_SHA256_String_sized(const char *str, char* output, size_t size)
         snprintf(output, 3, "%02x", md[n]);
         output += 2;
     }
-
-    return (0);
 }
