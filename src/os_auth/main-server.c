@@ -122,8 +122,8 @@ char *__generatetmppass()
     os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
     OS_MD5_Str(str1, -1, md1);
     fstring = strdup(md1);
-    free(rand3);
-    free(rand4);
+    os_free(rand3);
+    os_free(rand4);
     return(fstring);
 }
 
@@ -334,22 +334,22 @@ int main(int argc, char **argv)
         }
 
         if (ciphers) {
-            free(config.ciphers);
+            os_free(config.ciphers);
             config.ciphers = strdup(ciphers);
         }
 
         if (ca_cert) {
-            free(config.agent_ca);
+            os_free(config.agent_ca);
             config.agent_ca = strdup(ca_cert);
         }
 
         if (server_cert) {
-            free(config.manager_cert);
+            os_free(config.manager_cert);
             config.manager_cert = strdup(server_cert);
         }
 
         if (server_key) {
-            free(config.manager_key);
+            os_free(config.manager_key);
             config.manager_key = strdup(server_key);
         }
 
@@ -613,7 +613,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             SSL_free(ssl);
             close(client->socket);
             os_free(client);
-            free(buf);
+            os_free(buf);
             continue;
         }
         buf[ret] = '\0';
@@ -837,12 +837,21 @@ void* run_writer(__attribute__((unused)) void *arg) {
         mdebug2("[Writer] OS_WriteTimestamps(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
         OS_FreeKeys(copy_keys);
-        free(copy_keys);
+        os_free(copy_keys);
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+
+            gettime(&t0);
+            if (wdb_insert_agent(atoi(cur->id), cur->name, NULL, cur->ip, cur->raw_key, cur->group, 1, &wdb_sock)) {
+                // The agent already exists, update group only.
+                mdebug2("The agent %s '%s' already exist in the database.", cur->id, cur->name);
+            }
+            gettime(&t1);
+            mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
             gettime(&t0);
             if (cur->group) {
                 if (wdb_update_agent_group(atoi(cur->id),cur->group, &wdb_sock) == -1) {
@@ -855,11 +864,12 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_update_agent_group(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur->group);
-            free(cur);
+            os_free(cur->id);
+            os_free(cur->name);
+            os_free(cur->ip);
+            os_free(cur->group);
+            os_free(cur->raw_key);
+            os_free(cur);
 
             inserted_agents++;
         }
@@ -882,6 +892,11 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
+            OS_RemoveAgentTimestamp(cur->id);
+            gettime(&t1);
+            mdebug2("[Writer] OS_RemoveAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
             if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
                 mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
             }
@@ -894,10 +909,12 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdbc_query_ex(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            free(cur->id);
-            free(cur->name);
-            free(cur->ip);
-            free(cur);
+            os_free(cur->id);
+            os_free(cur->name);
+            os_free(cur->ip);
+            os_free(cur->group);
+            os_free(cur->raw_key);
+            os_free(cur);
 
             removed_agents++;
         }
