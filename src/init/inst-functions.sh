@@ -26,6 +26,7 @@ AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
+WDB_TEMPLATE="./etc/templates/config/generic/wdb.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -465,6 +466,10 @@ WriteManager()
       echo "" >> $NEWCONFIG
     fi
 
+    # Wazuh-DB
+    cat ${WDB_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Write rootcheck
     WriteRootcheck "manager"
 
@@ -590,6 +595,10 @@ WriteLocal()
 
     # Logging format
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Wazuh-DB
+    cat ${WDB_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write rootcheck
