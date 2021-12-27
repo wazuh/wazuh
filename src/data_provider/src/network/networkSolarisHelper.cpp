@@ -1,14 +1,15 @@
 #include <sys/sockio.h>
 #include "networkSolarisHelper.hpp"
 #include "UtilsWrapperUnix.hpp"
+#include <iostream>
 
-int NetworkSolarisHelper::getInterfacesCount(int fd)
+int NetworkSolarisHelper::getInterfacesCount(int fd, sa_family_t family)
 {
     auto interfaceCount { 0 };
 
-    struct lifnum ifn = { .lifn_family = AF_INET, .lifn_flags = 0};
+    struct lifnum ifn = { .lifn_family = family, .lifn_flags = 0, .lifn_count = 0 };
 
-    if (-1 != UtilsWrapperUnix::createIoctl(fd, SIOCGLIFNUM, reinterpret_cast<char *>(&ifn)))
+    if (-1 != UtilsWrapperUnix::ioctl(fd, SIOCGLIFNUM, reinterpret_cast<char *>(&ifn)))
     {
         interfaceCount = ifn.lifn_count;
     }
@@ -20,30 +21,10 @@ int NetworkSolarisHelper::getInterfacesCount(int fd)
     return interfaceCount;
 }
 
-int NetworkSolarisHelper::getInterfacesV6Count(int fd)
+void NetworkSolarisHelper::getInterfacesConfig(int fd, lifconf &networkInterfacesConf)
 {
-    auto interfaceCount { 0 };
-
-    struct lifnum ifn = { .lifn_family = AF_INET6, .lifn_flags = 0};
-
-    if (-1 != UtilsWrapperUnix::createIoctl(fd, SIOCGLIFNUM, reinterpret_cast<char *>(&ifn)))
+    if (UtilsWrapperUnix::ioctl(fd, SIOCGLIFCONF, reinterpret_cast<char *>(&networkInterfacesConf)))
     {
-        interfaceCount = ifn.lifn_count;
+        throw std::runtime_error { "Couldn't get network interface " + std::to_string(errno) };
     }
-    else
-    {
-        throw std::runtime_error { "Invalid interfaces IPv6 number" };
-    }
-
-    return interfaceCount;
-}
-
-bool NetworkSolarisHelper::getInterfaces(int fd, struct lifconf* networkInterface)
-{
-    if (-1 != UtilsWrapperUnix::createIoctl(fd, SIOCGLIFCONF, reinterpret_cast<char *>(networkInterface)))
-    {
-        throw std::runtime_error { "Couldn't get network interface" };
-    }
-
-    return true;
 }

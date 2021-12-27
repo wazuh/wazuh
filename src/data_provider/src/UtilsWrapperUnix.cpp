@@ -21,13 +21,14 @@ int UtilsWrapperUnix::createSocket(int domain, int type, int protocol)
     return fd;
 }
 
-int UtilsWrapperUnix::createIoctl(int d, unsigned long request, char *argp)
+int UtilsWrapperUnix::ioctl(int fd, unsigned long request, char *argp)
 {
-    const auto retVal {ioctl(d, request, argp)};
+    const auto retVal { ::ioctl(fd, request, argp) };
     if (-1 == retVal)
     {
-        throw std::runtime_error{"Cannot manipulate the device."};
+        throw std::runtime_error{ "Cannot manage device io." };
     }
 
     return retVal;
 }
+

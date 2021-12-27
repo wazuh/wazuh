@@ -14,7 +14,6 @@
 class NetworkSolarisHelper final
 {
     public:
-        static int getInterfacesCount(int fd);
-        static int getInterfacesV6Count(int fd);
-        static bool getInterfaces(int fd, struct lifconf* networkInterface);
+        static int getInterfacesCount(int fd, sa_family_t family);
+        static void getInterfacesConfig(int fd, lifconf& networkInterface);
 };
