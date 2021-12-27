@@ -2,6 +2,10 @@
 #include "diskStorage.hpp"
 #include "../../yml2json.hpp"
 
+/*
+#TODO Replace witch RapidJSON
+#TODO Create Test for DiskStorage that create a dir struct
+*/
 std::vector<std::string> diskStorage::getAssetList(const AssetType type)
 {
     using std::string;
