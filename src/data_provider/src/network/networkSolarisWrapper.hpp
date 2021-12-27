@@ -13,6 +13,7 @@
 #define _NETWORK_SOLARIS_WRAPPER_H
 
 #include <vector>
+#include <map>
 #include <sys/sockio.h>
 #include <arpa/inet.h>
 #include <net/if_arp.h>
@@ -206,7 +207,74 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
         LinkStats stats() const override
         {
-            return LinkStats();
+            auto buffer { Utils::exec("dlstat -a" + this->name(), 256) };
+	        LinkStats statistic;
+
+            if (!buffer.empty())
+            {
+                const auto lines { Utils::split(buffer, '\n') };
+
+		        lines.erase(lines.begin());
+		        lines.erase(lines.begin());
+		        lines.erase(lines.end());
+
+                try
+                {
+                    size_t valueSize = 0;
+                    constexpr auto RX_PACKET_INDEX { 0 };
+                    constexpr auto RX_BYTES_INDEX  { 1 };
+                    constexpr auto TX_PACKET_INDEX { 2 };
+                    constexpr auto TX_BYTES_INDEX  { 3 };
+                    constexpr auto RX_DROPS_INDEX  { 4 };
+                    constexpr auto TX_DROPS_INDEX  { 6 };
+                    auto value { std::stoi(Utils::split(lines.at(RX_PACKET_INDEX), ' ').back(), &valueSize) };
+
+                    if (Utils::split(lines.at(RX_PACKET_INDEX), ' ').back().size() == valueSize)
+                    {
+                        statistic.rxPackets = static_cast<unsigned int>(value);
+                    }
+
+                    value = std::stoi(Utils::split(lines.at(RX_BYTES_INDEX), ' ').back(), &valueSize);
+
+                    if (Utils::split(lines.at(RX_BYTES_INDEX), ' ').back().size() == valueSize)
+                    {
+                        statistic.rxBytes = static_cast<unsigned int>(value);
+                    }
+
+                    value = std::stoi(Utils::split(lines.at(TX_PACKET_INDEX), ' ').back(), &valueSize);
+
+                    if (Utils::split(lines.at(TX_PACKET_INDEX), ' ').back().size() == valueSize)
+                    {
+                        statistic.txPackets = static_cast<unsigned int>(value);
+                    }
+
+                    value = std::stoi(Utils::split(lines.at(TX_BYTES_INDEX), ' ').back(), &valueSize);
+
+                    if (Utils::split(lines.at(TX_BYTES_INDEX), ' ').back().size() == valueSize)
+                    {
+                        statistic.txBytes = static_cast<unsigned int>(value);
+                    }
+
+                    value = std::stoi(Utils::split(lines.at(RX_DROPS_INDEX), ' ').back(), &valueSize);
+
+                    if (Utils::split(lines.at(RX_DROPS_INDEX), ' ').back().size() == valueSize)
+                    {
+                        statistic.rxDropped = static_cast<unsigned int>(value);
+                    }
+
+                    value = std::stoi(Utils::split(lines.at(TX_DROPS_INDEX), ' ').back(), &valueSize);
+
+                    if (Utils::split(lines.at(TX_DROPS_INDEX), ' ').back().size() == valueSize)
+                    {
+                        statistic.txDropped = static_cast<unsigned int>(value);
+                    }
+                }
+                catch(...)
+                {
+                }
+            }
+
+            return statistic;
         }
 
         std::string type() const override
