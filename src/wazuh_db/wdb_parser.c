@@ -5768,7 +5768,7 @@ int wdb_parse_global_get_backup(char* output) {
         cJSON_Delete(j_backups);
         return OS_SUCCESS;
     } else {
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command; unable to open '%s' folder", WDB_BACKUP_FOLDER);
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command, unable to open '%s' folder", WDB_BACKUP_FOLDER);
         return OS_INVALID;
     }
 }
@@ -5788,7 +5788,7 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
     } else {
         char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
         cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
-        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : true;
+        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : false;
         result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
     }
 
