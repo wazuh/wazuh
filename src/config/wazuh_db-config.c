@@ -1,6 +1,6 @@
 /*
  * Wazuh-DB settings manager
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015-2022, Wazuh Inc.
  * Dec 17, 2021.
  *
  * This program is free software; you can redistribute it
@@ -13,18 +13,7 @@
 #include "config.h"
 #include "config/wazuh_db-config.h"
 #include "wazuh_db/wdb.h"
-
-short eval_bool(const char *str) {
-    if (!str) {
-        return OS_INVALID;
-    } else if (!strcmp(str, "yes")) {
-        return 1;
-    } else if (!strcmp(str, "no")) {
-        return 0;
-    } else {
-        return OS_INVALID;
-    }
-}
+#include "headers/string_op.h"
 
 int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
     const char* xml_backup = "backup";
@@ -89,8 +78,12 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node) {
 
             wconfig.wdb_backup_settings[0].enabled = tmp_bool;
         } else if (!strcmp(chld_node[i]->element, xml_interval)) {
-            if (get_time_interval(chld_node[i]->content,&wconfig.wdb_backup_settings[0].interval)) {
-                merror("Invalid interval for '%s' option", chld_node[i]->element);
+            long time_value = w_parse_time(chld_node[i]->content);
+
+            if (time_value > 0) {
+                wconfig.wdb_backup_settings[0].interval = time_value;
+            } else {
+                merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
                 os_free(chld_node);
                 return OS_INVALID;
             }
