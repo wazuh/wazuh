@@ -214,6 +214,34 @@ short eval_bool(const char *str) {
     }
 }
 
+int get_time_interval(char *source, time_t *interval) {
+    char *endptr;
+    *interval = strtoul(source, &endptr, 0);
+
+    if ((!*interval && endptr == source) || *interval < 0) {
+        return OS_INVALID;
+    }
+
+    switch (*endptr) {
+    case 'd':
+        *interval *= 86400;
+        break;
+    case 'h':
+        *interval *= 3600;
+        break;
+    case 'm':
+        *interval *= 60;
+        break;
+    case 's':
+    case '\0':
+        break;
+    default:
+        return OS_INVALID;
+    }
+
+    return 0;
+}
+
 int w_read_force_config(XML_NODE node, authd_config_t *config) {
     /* XML Definitions */
     static const char *xml_enabled = "enabled";
