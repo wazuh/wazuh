@@ -1391,7 +1391,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output);
  * @retval  0 Success: The method exited without errors.
  * @retval -1 On error: The method failed in reading the backp folder.
  */
-int wdb_remove_old_backup();
+int wdb_global_remove_old_backups();
 
 /**
  * @brief Function to get a list of the available backups of global.db.
@@ -1422,12 +1422,20 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 bool wdb_check_backup_enabled();
 
 /**
- * @brief Method to get the most recent global.db backup
+ * @brief Method to get the most recent global.db backup time and name
  *
- * @retval Last modification time on success, OS_INVALID on error.
+ * @param most_recent_backup_name [out] The name of the most recent backup. Must be freed by the caller, ignored if NULL.
+ * @retval Last modification time of the most recent backup on success, OS_INVALID on error.
  */
-time_t wdb_global_get_most_recent_backup_time();
+time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name);
 
+/**
+ * @brief Method to get oldest global.db backup time and name
+ *
+ * @param oldest_backup_name [out] The name of the oldest backup. Must be freed by the caller, ignored if NULL.
+ * @retval Last modification time of the oldest backup on success, OS_INVALID on error.
+ */
+time_t wdb_global_get_oldest_backup(char **oldest_backup_name);
 // Functions for database integrity
 
 int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);
