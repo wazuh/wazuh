@@ -17,20 +17,42 @@ void FIMWrapperTest::SetUp() {}
 
 void FIMWrapperTest::TearDown() {}
 
-TEST_F(FIMWrapperTest, testInit)
+TEST_F(FIMHelperTest, testWinInit)
 {
     std::shared_ptr<DBSync> handlerDbsync;
     std::shared_ptr<RemoteSync> handlerRsync;
     unsigned int maxFiles = 0;
     unsigned int syncInterval = 0;
-#ifndef WIN32
-    EXPECT_CALL(FIMDBMOCK::getInstance(), init(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_));
-    FIMDBHelper::initDB<FIMDBMOCK>(syncInterval, maxFiles, NULL, NULL, handlerDbsync, handlerRsync);
-#else
-    unsigned int max_registries = 0;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), init(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_, testing::_));
-    FIMDBHelper::initDB<FIMDBMOCK>(syncInterval, maxFiles, max_registries, NULL, NULL, handlerDbsync, handlerRsync);
-#endif
+    unsigned int maxRegistries = 0;
+
+    EXPECT_CALL(FIMDBMOCK::getInstance(), init(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_, testing::_, testing::_));
+    FIMDBHelper::initDB<FIMDBMOCK>(syncInterval,
+                                   NULL,
+                                   NULL,
+                                   handlerDbsync,
+                                   handlerRsync,
+                                   maxFiles,
+                                   maxRegistries,
+                                   true);
+}
+
+TEST_F(FIMHelperTest, testInit)
+{
+    std::shared_ptr<DBSync> handlerDbsync;
+    std::shared_ptr<RemoteSync> handlerRsync;
+    unsigned int maxFiles = 0;
+    unsigned int maxRegistries = 0;
+    unsigned int syncInterval = 0;
+
+    EXPECT_CALL(FIMDBMOCK::getInstance(), init(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_, testing::_, testing::_));
+    FIMDBHelper::initDB<FIMDBMOCK>(syncInterval,
+                                   NULL,
+                                   NULL,
+                                   handlerDbsync,
+                                   handlerRsync,
+                                   maxFiles,
+                                   maxRegistries,
+                                   false);
 }
 
 TEST_F(FIMWrapperTest, insertItemToDatabase)

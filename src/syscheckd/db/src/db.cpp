@@ -42,7 +42,7 @@ extern "C" {
  *
  * @return std::string Contains the dbsync's schema for FIM db.
  */
-std::string CreateStatement(bool isWindows)
+std::string CreateStatement(const bool isWindows)
 {
 
     std::string ret = CREATE_FILE_DB_STATEMENT;
