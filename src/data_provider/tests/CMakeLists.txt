@@ -22,6 +22,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_subdirectory(sysInfoWin)
   add_subdirectory(sysInfoNetworkWindows)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  add_subdirectory(sysInfoNetworkSolaris)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
