@@ -166,7 +166,7 @@ namespace FIMDBHelper
         {
             [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
-                if (type == ReturnTypeCallback::SELECTED)
+                if (ReturnTypeCallback::SELECTED == type)
                 {
                     item = jsonResult["query"];
                 }
