@@ -293,7 +293,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
-
 struct stmt_cache {
     sqlite3_stmt *stmt;
     char *query;
@@ -318,8 +317,12 @@ typedef struct wdb_t {
     struct wdb_t * next;
 } wdb_t;
 
+typedef enum wdb_backup_db {
+    WDB_GLOBAL_BACKUP,
+    WDB_LAST_BACKUP
+} wdb_backup_db ;
+
 typedef struct wdb_backup_settings_node {
-    char* database;
     bool enabled;
     time_t interval;
     int max_files;
@@ -331,7 +334,7 @@ typedef struct wdb_config {
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
-    wdb_backup_settings_node* wdb_backup_settings;
+    wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
 /// Enumeration of components supported by the integrity library.
@@ -1393,7 +1396,7 @@ int wdb_remove_old_backup();
  * @retval cJSON* Success: The list of all snapshots found, or empty if none was found.
  * @retval NULL On error: The list of snapshots couldn't be retrieved.
  */
-cJSON* wdb_global_get_backup();
+cJSON* wdb_global_get_backups();
 
 /**
  * @brief Function restore a backup of global.db.
@@ -1407,6 +1410,20 @@ cJSON* wdb_global_get_backup();
  * @retval -1 On error: The backup couldn't be restored.
  */
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
+
+/**
+ * @brief Function to check if there is at least one backup configuration node enabled.
+ *
+ * @retval true If there is at least one backup enabled, false otherwise.
+ */
+bool wdb_check_backup_enabled();
+
+/**
+ * @brief Method to get the most recent global.db backup
+ *
+ * @retval Last modification time on success, OS_INVALID on error.
+ */
+time_t wdb_global_get_most_recent_backup_time();
 
 // Functions for database integrity
 
