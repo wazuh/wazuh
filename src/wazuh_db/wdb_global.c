@@ -1742,7 +1742,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
     timestamp = w_get_timestamp(time(NULL));
     wchr_replace(timestamp, ' ', '-');
     wchr_replace(timestamp, '/', '-');
-    snprintf(path, PATH_MAX-3, "%s/%s%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp);
+    snprintf(path, PATH_MAX-3, "%s/%s-%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp);
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
@@ -1779,7 +1779,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
         result = w_compress_gzfile(path, path_compressed);
         unlink(path);
         if(OS_SUCCESS == result) {
-            wdb_remove_old_backup();
+            wdb_global_remove_old_backups();
         } else {
             snprintf(output, OS_MAXSTR + 1, "err Failed during database backup compression");
         }
@@ -1788,25 +1788,16 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
     return result;
 }
 
-int wdb_remove_old_backup() {
-    DIR* dp = NULL;
-    struct dirent *entry = NULL;
-    time_t current_time = 0;
-    struct stat backup_info = {0};
-    int number_of_files = 0;
-    char tmp_path[OS_SIZE_512] = {0};
-    char** backups_array = NULL;
-    time_t* backups_time_array = NULL;
-    int backups_to_delete = 0;
-
-    dp = opendir(WDB_BACKUP_FOLDER);
+int wdb_global_remove_old_backups() {
+    DIR* dp = opendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
         return OS_INVALID;
     }
 
-    current_time = time(NULL);
+    int number_of_files = 0;
+    struct dirent *entry = NULL;
 
     // The pre-restore snapshot is not considered for the max_files limit
     while (entry = readdir(dp), entry) {
@@ -1815,46 +1806,21 @@ int wdb_remove_old_backup() {
         }
 
         number_of_files++;
-        os_realloc(backups_array, number_of_files * sizeof(char*), backups_array);
-        os_realloc(backups_time_array, number_of_files * sizeof(time_t), backups_time_array);
-
-        snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-        if(!stat(tmp_path, &backup_info)) {
-            os_strdup(tmp_path, backups_array[number_of_files-1]);
-            backups_time_array[number_of_files-1] = current_time - backup_info.st_mtime;
-        } else {
-            backups_array[number_of_files-1] = NULL;
-            backups_time_array[number_of_files-1] = -1;
-        }
     }
+    closedir(dp);
 
-    backups_to_delete = number_of_files - wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files;
+    int backups_to_delete = number_of_files - wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files;
+    char tmp_path[OS_SIZE_512] = {0};
 
     for(int i = 0; backups_to_delete > i; i++) {
-        int oldest_backup = -1;
-        int array_index = 0;
-        char* backup_to_remove = NULL;
-        for(int j = 0; j < number_of_files; j++ ){
-            if(backups_array[j] && backups_time_array[j] > oldest_backup) {
-                backup_to_remove = backups_array[j];
-                oldest_backup = backups_time_array[j];
-                array_index = j;
-            }
-        }
-
-        if(backup_to_remove) {
-            unlink(backup_to_remove);
-            backups_time_array[array_index] = -1;
+        char* backup_to_delete_name = NULL;
+        wdb_global_get_oldest_backup(&backup_to_delete_name);
+        if (backup_to_delete_name) {
+            snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, backup_to_delete_name);
+            unlink(tmp_path);
+            os_free(backup_to_delete_name);
         }
     }
-
-    for(int j = 0; j < number_of_files; j++) {
-        os_free(backups_array[j]);
-    }
-
-    os_free(backups_array);
-    os_free(backups_time_array);
-    closedir(dp);
 
     return OS_SUCCESS;
 }
@@ -1873,7 +1839,8 @@ cJSON* wdb_global_get_backups() {
 
     j_backups = cJSON_CreateArray();
     while (entry = readdir(dp), entry) {
-        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0) {
+        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0 ||
+            strncmp(entry->d_name, WDB_GLOB_PRE_RESTORE_BACKUP_NAME, sizeof(WDB_GLOB_PRE_RESTORE_BACKUP_NAME) - 1) != 0 ) {
             continue;
         }
 
@@ -1885,110 +1852,139 @@ cJSON* wdb_global_get_backups() {
 }
 
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
-    bool backup_found = false;
-    DIR* dp = NULL;
-    struct dirent *entry = NULL;
-    struct stat backup_info = {0};
-    time_t last_modification_time = -1;
-    char* most_recent_backup = NULL;
-    char global_path[OS_SIZE_256] = {0};
-    char global_tmp_path[OS_SIZE_256] = {0};
-    char global_pre_restore_path[OS_SIZE_256] = {0};
-    char backup_to_restore_path[OS_SIZE_256] = {0};
-    char tmp_path[OS_SIZE_512] = {0};
-
-    dp = opendir(WDB_BACKUP_FOLDER);
-
+    DIR* dp = opendir(WDB_BACKUP_FOLDER);
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
         return OS_INVALID;
     }
-
-    while (entry = readdir(dp), entry) {
-        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
-            continue;
-        }
-
-        if(snapshot) {
-            if(!strcmp(entry->d_name, snapshot)) {
-                backup_found = true;
-                break;
-            }
-        } else {
-            snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
-            if(!stat(tmp_path, &backup_info) && strcmp(entry->d_name, "global.db-backup-pre_restore.gz")) {
-                if(backup_info.st_mtime >= last_modification_time) {
-                    last_modification_time = backup_info.st_mtime;
-                    most_recent_backup = entry->d_name;
-                }
-            }
-        }
-    }
     closedir(dp);
 
-    if((snapshot && backup_found) || most_recent_backup) {
-        snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+    char global_path[OS_SIZE_256] = {0};
+    char global_pre_restore_path[OS_SIZE_256] = {0};
+    snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+    snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, WDB_GLOB_PRE_RESTORE_BACKUP_NAME);
+
+    // Preparing DB for pre_restore backup and later removal
+    wdb_leave(*wdb);
+    wdb_close(*wdb, true);
+    *wdb = NULL;
+    if(save_pre_restore_state) {
+        if(w_compress_gzfile(global_path, global_pre_restore_path)) {
+            mdebug1("Unable to save pre-restore DB state");
+            snprintf(output, OS_MAXSTR + 1, "err Unable to save pre-restore DB state");
+            return OS_INVALID;
+        }
+    }
+
+    // If the snapshot is not present, the most recent backup will be used
+    char* backup_to_restore = NULL;
+    if(snapshot) {
+        backup_to_restore = snapshot;
+    } else {
+        wdb_global_get_most_recent_backup(&backup_to_restore);
+    }
+
+    int result = OS_INVALID;
+    if(backup_to_restore) {
+        char global_tmp_path[OS_SIZE_256] = {0};
+        char backup_to_restore_path[OS_SIZE_256] = {0};
+
         snprintf(global_tmp_path, OS_SIZE_256, "%s/%s.db.back", WDB2_DIR, WDB_GLOB_NAME);
-        snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s.db-backup-pre_restore.gz", WDB_BACKUP_FOLDER, WDB_GLOB_NAME);
-        snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, snapshot ? snapshot : most_recent_backup);
+        snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
 
         if(!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
-            wdb_leave(*wdb);
-            wdb_close(*wdb, true);
-            *wdb = NULL;
-
-            if(save_pre_restore_state) {
-                if(w_compress_gzfile(global_path, global_pre_restore_path)) {
-                    mdebug1("Unable to save pre-restore DB state");
-                    snprintf(output, OS_MAXSTR + 1, "err Unable to save pre-restore DB state");
-                    return OS_INVALID;
-                }
-            }
-
             unlink(global_path);
             rename(global_tmp_path, global_path);
-
             snprintf(output, OS_MAXSTR + 1, "ok");
-            return OS_SUCCESS;
+            result = OS_SUCCESS;
         } else {
             mdebug1("Failed during backup decompression");
             snprintf(output, OS_MAXSTR + 1, "err Failed during backup decompression");
-            return OS_INVALID;
+            result = OS_INVALID;
         }
     } else {
         mdebug1("Unable to found a snapshot to restore");
         snprintf(output, OS_MAXSTR + 1, "err Unable to found a snapshot to restore");
-        return OS_INVALID;
+        result = OS_INVALID;
     }
+
+    if(!snapshot) {
+        os_free(backup_to_restore);
+    }
+    return result;
 }
 
-time_t wdb_global_get_most_recent_backup_time() {
-    DIR* dp = NULL;
-    struct dirent *entry = NULL;
-    time_t recent_backup_time = OS_INVALID;
-
-    dp = opendir(WDB_BACKUP_FOLDER);
+time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
+    DIR* dp = opendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
         return OS_INVALID;
     }
+
+    struct dirent *entry = NULL;
+    char *tmp_backup_name = NULL;
+    time_t most_recent_backup_time = OS_INVALID;
 
     while (entry = readdir(dp), entry) {
         if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0) {
             continue;
         }
-
+        char tmp_path[OS_SIZE_512] = {0};
         struct stat backup_info = {0};
-        if(!stat(entry->d_name, &backup_info) ) {
-            if(backup_info.st_mtime >= recent_backup_time) {
-                recent_backup_time = backup_info.st_mtime;
+
+        snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
+        if(!stat(tmp_path, &backup_info) ) {
+            if(backup_info.st_mtime >= most_recent_backup_time) {
+                most_recent_backup_time = backup_info.st_mtime;
+                tmp_backup_name = entry->d_name;
             }
         }
     }
 
     closedir(dp);
-    return recent_backup_time;
+    if(most_recent_backup_name) {
+        os_strdup(tmp_backup_name, *most_recent_backup_name);
+    }
+
+    return most_recent_backup_time;
+}
+
+time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
+    DIR* dp = opendir(WDB_BACKUP_FOLDER);
+
+    if(!dp) {
+        mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
+        return OS_INVALID;
+    }
+
+    struct dirent *entry = NULL;
+    time_t oldest_backup_time = OS_INVALID;
+    time_t current_time = time(NULL);
+    char *tmp_backup_name = NULL;
+
+    while (entry = readdir(dp), entry) {
+        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0) {
+            continue;
+        }
+        char tmp_path[OS_SIZE_512] = {0};
+        struct stat backup_info = {0};
+
+        snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
+        if(!stat(tmp_path, &backup_info) ) {
+            if((current_time - backup_info.st_mtime) >= oldest_backup_time) {
+                oldest_backup_time = current_time - backup_info.st_mtime;
+                tmp_backup_name = entry->d_name;
+            }
+        }
+    }
+
+    closedir(dp);
+    if(oldest_backup_name) {
+        os_strdup(tmp_backup_name, *oldest_backup_name);
+    }
+
+    return oldest_backup_time;
 }
 
 sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
