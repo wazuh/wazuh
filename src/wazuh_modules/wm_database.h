@@ -26,4 +26,12 @@ extern int wdb_wmdb_sock;
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read();
 
+/**
+ * @brief Synchronizes a keystore with the agent table of global.db.
+ *
+ * @param keys The keystore structure to be synchronized
+ * @param wdb_sock The socket to be used in the calls to Wazuh DB
+ */
+void sync_keys_with_wdb(keystore *keys, int *wdb_sock);
+
 #endif /* WM_DATABASE */
