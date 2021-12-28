@@ -13,7 +13,7 @@
 #define _NETWORK_SOLARIS_WRAPPER_H
 
 #include <vector>
-#include <map>
+#include <algorithm>
 #include <sys/sockio.h>
 #include <arpa/inet.h>
 #include <net/if_arp.h>
@@ -281,7 +281,7 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
         {
             const auto buffer { Utils::exec("dladm show-phys " + this->name(), 256) };
             constexpr auto INDEX_TYPE_INTERFACE { 1 };
-            std::string type();
+            std::string type { "" };
 
             if (!buffer.empty())
             {
