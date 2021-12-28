@@ -15,6 +15,18 @@
 #include "wazuh_db/wdb.h"
 #include "headers/string_op.h"
 
+static short eval_bool(const char *str) {
+    if (!str) {
+        return OS_INVALID;
+    } else if (!strcmp(str, "yes")) {
+        return 1;
+    } else if (!strcmp(str, "no")) {
+        return 0;
+    } else {
+        return OS_INVALID;
+    }
+}
+
 int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
     const char* xml_backup = "backup";
     const char* xml_database = "database";
