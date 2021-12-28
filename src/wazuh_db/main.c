@@ -431,7 +431,7 @@ bool wdb_check_backup_enabled() {
 }
 
 void * run_backup(__attribute__((unused)) void * args) {
-    time_t last_global_backup_time = wdb_global_get_most_recent_backup_time();
+    time_t last_global_backup_time = wdb_global_get_most_recent_backup(NULL);
     char output[OS_MAXSTR + 1] = {0};
     time_t current_time = 0;
 
