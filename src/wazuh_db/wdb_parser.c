@@ -5771,7 +5771,7 @@ int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
 }
 
 int wdb_parse_global_get_backup(char* output) {
-    cJSON* j_backups = wdb_global_get_backup();
+    cJSON* j_backups = wdb_global_get_backups();
 
     if (j_backups) {
         char* out = cJSON_PrintUnformatted(j_backups);
