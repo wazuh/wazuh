@@ -27,8 +27,7 @@ int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
         } else if (!strcmp(chld_node[i]->element, xml_backup)) {
             if(chld_node[i]->attributes && chld_node[i]->attributes[0] && !strcmp(chld_node[i]->attributes[0], xml_database)) {
                 if(chld_node[i]->values && chld_node[i]->values[0] && !strcmp(chld_node[i]->values[0], xml_database_global)) {
-                    os_strdup(xml_database_global, wconfig.wdb_backup_settings[0].database);
-                    return Read_WazuhDB_Backup(xml, chld_node[i]);
+                    return Read_WazuhDB_Backup(xml, chld_node[i], WDB_GLOBAL_BACKUP);
                 } else {
                     merror(XML_VALUEERR, chld_node[i]->attributes[0], chld_node[i]->values && chld_node[i]->values[0] ? chld_node[i]->values[0] : "");
                     return OS_INVALID;
@@ -46,7 +45,7 @@ int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
     return OS_SUCCESS;
 }
 
-int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node) {
+int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE) {
     const char* xml_enabled = "enabled";
     const char* xml_interval = "interval";
     const char* xml_max_files = "max_files";
@@ -76,12 +75,12 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node) {
                 return OS_INVALID;
             }
 
-            wconfig.wdb_backup_settings[0].enabled = tmp_bool;
+            wconfig.wdb_backup_settings[BACKUP_NODE]->enabled = tmp_bool;
         } else if (!strcmp(chld_node[i]->element, xml_interval)) {
             long time_value = w_parse_time(chld_node[i]->content);
 
             if (time_value > 0) {
-                wconfig.wdb_backup_settings[0].interval = time_value;
+                wconfig.wdb_backup_settings[BACKUP_NODE]->interval = time_value;
             } else {
                 merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
                 os_free(chld_node);
@@ -94,9 +93,9 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node) {
                 return (OS_INVALID);
             }
 
-            wconfig.wdb_backup_settings[0].max_files = atoi(chld_node[i]->content);
+            wconfig.wdb_backup_settings[BACKUP_NODE]->max_files = atoi(chld_node[i]->content);
 
-            if (wconfig.wdb_backup_settings[0].max_files <= 0) {
+            if (wconfig.wdb_backup_settings[BACKUP_NODE]->max_files <= 0) {
                 merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
                 os_free(chld_node);
                 return (OS_INVALID);
@@ -113,14 +112,19 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node) {
 }
 
 void wdb_init_conf() {
-    os_calloc(1, sizeof(wdb_backup_settings_node), wconfig.wdb_backup_settings);
+    os_calloc(WDB_LAST_BACKUP, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings);
 
-    wconfig.wdb_backup_settings[0].enabled = true;
-    wconfig.wdb_backup_settings[0].interval = 86400;
-    wconfig.wdb_backup_settings[0].max_files = 10;
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        os_calloc(1, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings[i]);
+        wconfig.wdb_backup_settings[i]->enabled = true;
+        wconfig.wdb_backup_settings[i]->interval = 86400;
+        wconfig.wdb_backup_settings[i]->max_files = 3;
+    }
 }
 
 void wdb_free_conf() {
-    os_free(wconfig.wdb_backup_settings[0].database);
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        os_free(wconfig.wdb_backup_settings[i]);
+    }
     os_free(wconfig.wdb_backup_settings);
 }

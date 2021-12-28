@@ -219,9 +219,12 @@ int main(int argc, char ** argv)
         goto failure;
     }
 
-    if (status = pthread_create(&thread_backup, NULL, run_backup, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
-        goto failure;
+    bool backups_enabled = wdb_check_backup_enabled();
+    if (backups_enabled) {
+        if (status = pthread_create(&thread_backup, NULL, run_backup, NULL), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            goto failure;
+        }
     }
 
     // Join threads
@@ -236,7 +239,9 @@ int main(int argc, char ** argv)
     free(worker_pool);
     pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
-    pthread_join(thread_backup, NULL);
+    if(backups_enabled) {
+        pthread_join(thread_backup, NULL);
+    }
     wdb_close_all();
 
     OSHash_Free(open_dbs);
@@ -413,22 +418,48 @@ void * run_gc(__attribute__((unused)) void * args) {
     return NULL;
 }
 
-void * run_backup(__attribute__((unused)) void * args) {
-    if(wconfig.wdb_backup_settings[0].enabled) {
-        char output[OS_MAXSTR + 1];
-        time_t last_time = 0;
-        while (running) {
-            time_t current_time = time(NULL);
-            if(current_time - last_time >= wconfig.wdb_backup_settings[0].interval) {
-                wdb_t* wdb = wdb_open_global();
-                wdb_global_create_backup(wdb, output);
-                mdebug1("Backup creation result: %s", output);
-                last_time = current_time;
-                wdb_leave(wdb);
-            }
-            sleep(1);
+bool wdb_check_backup_enabled() {
+    bool result = false;
+
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        if(wconfig.wdb_backup_settings[i]->enabled) {
+            result = true;
         }
     }
+
+    return result;
+}
+
+void * run_backup(__attribute__((unused)) void * args) {
+    time_t last_global_backup_time = wdb_global_get_most_recent_backup_time();
+    char output[OS_MAXSTR + 1] = {0};
+    time_t current_time = 0;
+
+    if(OS_INVALID == last_global_backup_time) {
+        last_global_backup_time = time(NULL);
+    }
+
+    while(running) {
+        for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+            if(wconfig.wdb_backup_settings[i]->enabled) {
+                switch (i) {
+                    case WDB_GLOBAL_BACKUP:
+                        current_time = time(NULL);
+                        if(current_time - last_global_backup_time >= wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval) {
+                            wdb_t* wdb = wdb_open_global();
+                            wdb_global_create_backup(wdb, output);
+                            mdebug1("Backup creation result: %s", output);
+                            last_global_backup_time = current_time;
+                            wdb_leave(wdb);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        sleep(1);
+   }
 
     return NULL;
 }
