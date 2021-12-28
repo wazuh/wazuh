@@ -111,6 +111,10 @@ list(APPEND EXTERNAL_DEPS "glog::glog")
 set(SOURCE_FILES "${ENGINE_SOURCE_DIR}/main.cpp")
 
 add_executable(main ${SOURCE_FILES})
+
+# Build server
+add_subdirectory(${ENGINE_SOURCE_DIR}/server)
+
 target_link_libraries(main "-static" ${EXTERNAL_DEPS})
 
 # Build test
