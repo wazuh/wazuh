@@ -13,6 +13,7 @@
 #include "sec.h"
 #include "remoted_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
 #ifndef CLIENT
@@ -277,6 +278,100 @@ void wm_sync_agents() {
     gettime(&spec1);
     time_sub(&spec1, &spec0);
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+}
+
+/**
+ * @brief Synchronizes a keystore with the agent table of global.db.
+ *
+ * @param keys The keystore structure to be synchronized
+ * @param wdb_sock The socket to be used in the calls to Wazuh DB
+ */
+void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
+    keyentry *entry;
+    char * group;
+    char cidr[20];
+    int *agents;
+    unsigned int i;
+
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+
+    // Add new agents to the database
+
+    for (i = 0; i < keys->keysize; i++) {
+        entry = keys->keyentries[i];
+        int id;
+
+        mdebug2("Synchronizing agent %s '%s'.", entry->id, entry->name);
+
+        if (!(id = atoi(entry->id))) {
+            merror("At sync_keys_with_wdb(): invalid ID number.");
+            continue;
+        }
+
+        if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1, NULL) < 0) {
+            *group = 0;
+        }
+
+        if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
+                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, wdb_sock)) {
+            // The agent already exists, update group only.
+            mdebug2("The agent %s '%s' already exist in the database.", entry->id, entry->name);
+        }
+    }
+
+    // Delete from the database all the agents without a key
+
+    if ((agents = wdb_get_all_agents(FALSE, wdb_sock))) {
+        char id[9];
+        char wdbquery[OS_SIZE_128 + 1];
+        char *wdboutput = NULL;
+        int error;
+
+        for (i = 0; agents[i] != -1; i++) {
+            snprintf(id, 9, "%03d", agents[i]);
+
+            if (OS_IsAllowedID(keys, id) == -1) {
+                char *name = wdb_get_agent_name(agents[i], wdb_sock);
+
+                if (wdb_remove_agent(agents[i], wdb_sock) < 0) {
+                    mdebug1("Couldn't remove agent %s", id);
+                    os_free(name);
+                    continue;
+                }
+
+                if (wdboutput == NULL) {
+                    os_malloc(OS_SIZE_1024, wdboutput);
+                }
+
+                snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", id);
+                error = wdbc_query_ex(wdb_sock, wdbquery, wdboutput, OS_SIZE_1024);
+
+                if (error == 0) {
+                    mdebug1("DB from agent %s was deleted '%s'", id, wdboutput);
+                } else {
+                    merror("Could not remove the DB of the agent %s. Error: %d.", id, error);
+                }
+
+                // Remove agent-related files
+                OS_RemoveCounter(id);
+                OS_RemoveAgentTimestamp(id);
+
+                if (name == NULL || *name == '\0') {
+                    os_free(name);
+                    continue;
+                }
+
+                delete_diff(name);
+
+                free(name);
+            }
+        }
+
+        os_free(wdboutput);
+        os_free(agents);
+    }
+
+    os_free(group);
 }
 
 // Clean dangling database files
