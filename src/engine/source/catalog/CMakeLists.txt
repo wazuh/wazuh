@@ -22,7 +22,6 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 set(CATALOG_SOURCES
     catalogSharedDef.hpp
-    yml2json.hpp
     storageDriver/yml_to_json.hpp
     storageDriver/storageDriverInterface.hpp
     storageDriver/disk/diskStorage.hpp
