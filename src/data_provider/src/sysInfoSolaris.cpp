@@ -97,7 +97,8 @@ nlohmann::json SysInfo::getNetworks() const
     if (interfaceCount > 0)
     {
         std::vector<lifreq> buffer(interfaceCount);
-        lifconf lifc = {
+        lifconf lifc =
+        {
             AF_UNSPEC,
             0,
             static_cast<int>(buffer.size() * sizeof(lifreq)),
@@ -106,15 +107,16 @@ nlohmann::json SysInfo::getNetworks() const
 
         NetworkSolarisHelper::getInterfacesConfig(socketV4.get(), lifc);
 
-        std::map<std::string, std::vector<std::pair<lifreq *, uint64_t>>> interfaces;
-        for (auto &item : buffer)
+        std::map<std::string, std::vector<std::pair<lifreq*, uint64_t>>> interfaces;
+
+        for (auto& item : buffer)
         {
             struct lifreq interfaceReq = {};
             std::memcpy(interfaceReq.lifr_name, item.lifr_name, sizeof(item.lifr_name));
 
             if (-1 != UtilsWrapperUnix::ioctl(AF_INET == item.lifr_addr.ss_family ? socketV4.get() : socketV6.get(),
-                                                    SIOCGLIFFLAGS,
-                                                    reinterpret_cast<char *>(&interfaceReq)))
+                                              SIOCGLIFFLAGS,
+                                              reinterpret_cast<char*>(&interfaceReq)))
             {
                 if ((IFF_UP & interfaceReq.lifr_flags) && !(IFF_LOOPBACK & interfaceReq.lifr_flags))
                 {
@@ -123,7 +125,7 @@ nlohmann::json SysInfo::getNetworks() const
             }
         }
 
-        for (const auto & item : interfaces)
+        for (const auto& item : interfaces)
         {
             if (item.second.size())
             {
@@ -131,7 +133,8 @@ nlohmann::json SysInfo::getNetworks() const
                 const auto firstItemFD { AF_INET == firstItem.first->lifr_addr.ss_family ? socketV4.get() : socketV6.get() };
 
                 nlohmann::json network;
-                for (const auto &itemr : item.second)
+
+                for (const auto& itemr : item.second)
                 {
                     if (AF_INET == itemr.first->lifr_addr.ss_family)
                     {
@@ -146,6 +149,7 @@ nlohmann::json SysInfo::getNetworks() const
                         FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
                     }
                 }
+
                 const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_UNSPEC, firstItemFD, firstItem) };
                 FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
 

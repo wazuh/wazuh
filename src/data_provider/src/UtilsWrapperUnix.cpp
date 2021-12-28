@@ -14,16 +14,19 @@
 int UtilsWrapperUnix::createSocket(int domain, int type, int protocol)
 {
     auto fd { socket(domain, type, protocol) };
+
     if (-1 == fd)
     {
         throw std::runtime_error{"Cannot connect to local socket."};
     }
+
     return fd;
 }
 
-int UtilsWrapperUnix::ioctl(int fd, unsigned long request, char *argp)
+int UtilsWrapperUnix::ioctl(int fd, unsigned long request, char* argp)
 {
     const auto retVal { ::ioctl(fd, request, argp) };
+
     if (-1 == retVal)
     {
         throw std::runtime_error{ "Cannot manage device io." };

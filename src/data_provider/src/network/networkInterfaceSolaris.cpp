@@ -37,6 +37,7 @@ template <>
 void SolarisNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
 {
     const auto address { m_interfaceAddress->address() };
+
     if (!address.empty())
     {
         nlohmann::json ipv4JS { };
@@ -57,6 +58,7 @@ template <>
 void SolarisNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
 {
     const auto address { m_interfaceAddress->addressV6() };
+
     if (!address.empty())
     {
         nlohmann::json ipv6JS {};
