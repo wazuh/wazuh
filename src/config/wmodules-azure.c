@@ -416,18 +416,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
-        } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->account_name);
-        } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->account_key);
-        } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->auth_path);
-        } else if (!strcmp(nodes[i]->element, XML_TAG)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->tag);
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER)) {
 
             if (container) {
@@ -480,6 +468,22 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 OS_ClearNode(children);
             }
 
+        // To avoid the defects reported by scan-build in the issue: https://github.com/wazuh/wazuh/issues/11568
+        // It's necessary to check that nodes[i]->content is valid
+        } else if (nodes[i]->content) {
+            if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
+                if (*nodes[i]->content != '\0')
+                    os_strdup(nodes[i]->content, storage->account_name);
+            } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
+                if (nodes[i]->content && *nodes[i]->content != '\0')
+                    os_strdup(nodes[i]->content, storage->account_key);
+            } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
+                if (nodes[i]->content && *nodes[i]->content != '\0')
+                    os_strdup(nodes[i]->content, storage->auth_path);
+            } else if (!strcmp(nodes[i]->element, XML_TAG)) {
+                if (nodes[i]->content && *nodes[i]->content != '\0')
+                    os_strdup(nodes[i]->content, storage->tag);
+            }
 
         } else {
             merror(XML_INVELEM, nodes[i]->element);
