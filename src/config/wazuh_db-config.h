@@ -13,7 +13,7 @@
 #define WAZUH_DB_CONFIG_H
 
 int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node);
-int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node);
+int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE);
 void wdb_init_conf();
 void wdb_free_conf();
 
