@@ -279,7 +279,31 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
         std::string type() const override
         {
-            std::string type { UNKNOWN_VALUE };
+            const auto buffer { Utils::exec("dladm show-phys " + this->name(), 256) };
+            constexpr auto INDEX_TYPE_INTERFACE { 1 };
+            std::string type();
+
+            if (!buffer.empty())
+            {
+                auto lines { Utils::split(buffer, '\n') };
+                lines.erase(lines.begin ());
+
+                try
+                {
+                    for (auto line : lines)
+                    {
+                        Utils::replaceAll(line, "\t", "");
+                        auto fields { Utils::split(line, ' ') };
+                        fields.erase(std::remove_if(fields.begin(), fields.end(), [](const std::string& s) { return s.empty(); }), fields.end());
+
+                        type = fields.at(INDEX_TYPE_INTERFACE);
+                    }
+                }
+                catch(...)
+                {
+                }
+            }
+
             return type;
         }
 
