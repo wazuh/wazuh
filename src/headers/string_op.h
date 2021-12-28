@@ -363,11 +363,4 @@ char** w_strtok(const char *string);
  */
 char* w_strcat_list(char ** list, char sep);
 
-/**
- * @brief Converts a "yes/no" string to a numeric boolean.
- *
- * @param str [in] The string that contains the boolean text.
- * @return OS_INVALID on error, the numeric boolean value on success.
- */
-short eval_bool(const char *str);
 #endif
