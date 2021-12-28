@@ -13,6 +13,30 @@ namespace FimDBUtils
 {
 
     /**
+    * @brief Create a new query to database
+    *
+    * @param tableName a string with table name
+    * @param columnList an array with the column list
+    * @param filter a string with a filter to a table
+    * @param order a string with the column to order in result
+    *
+    * @return a nlohmann::json with a database query
+    */
+    inline nlohmann::json dbQuery(const std::string& tableName, const nlohmann::json& columnList, const std::string& filter,
+                                  const std::string& order)
+    {
+        nlohmann::json query;
+        query["table"] = tableName;
+        query["query"]["column_list"] = columnList["column_list"];
+        query["query"]["row_filter"] = filter;
+        query["query"]["distinct_opt"] = false;
+        query["query"]["order_by_opt"] = order;
+        query["query"]["count_opt"] = 100;
+
+        return query;
+    }
+
+    /**
      * @brief Get all the paths asociated to an inode
      *
      * @param inode Inode.
@@ -21,6 +45,7 @@ namespace FimDBUtils
      * @return a vector with paths asociated to the inode.
      */
 
+    template <class T>
     static std::vector<std::string> getPathsFromINode(const unsigned long inode, const unsigned long dev)
     {
         std::vector<std::string> paths;
@@ -29,8 +54,8 @@ namespace FimDBUtils
         try
         {
             const auto filter { std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev) };
-            const auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
-            FIMDBHelper::getDBItem<FIMDB>(resultQuery, query);
+            const auto query { dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY) };
+            FIMDBHelper::getDBItem<T>(resultQuery, query);
 
             for (const auto& item : resultQuery["path"].items())
             {
@@ -39,7 +64,7 @@ namespace FimDBUtils
         }
         catch (const DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            T::getInstance().logFunction(LOG_ERROR, err.what());
         }
 
         return paths;
@@ -52,7 +77,7 @@ namespace FimDBUtils
      * @return a vector with every paths on success, a empty vector otherwise.
      */
 
-
+    template <class T>
     static std::vector<std::string> getPathsFromPattern(const std::string& pattern)
     {
         std::vector<std::string> paths;
@@ -61,8 +86,8 @@ namespace FimDBUtils
         try
         {
             const auto filter { std::string("WHERE path LIKE") + std::string(pattern) };
-            const auto queryFromPattern = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY);
-            FIMDBHelper::getDBItem<FIMDB>(resultQuery, queryFromPattern);
+            const auto queryFromPattern { dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY) };
+            FIMDBHelper::getDBItem<T>(resultQuery, queryFromPattern);
 
             for (const auto& item : resultQuery["path"].items())
             {
@@ -72,7 +97,7 @@ namespace FimDBUtils
         }
         catch (const DbSync::dbsync_error& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            T::getInstance().logFunction(LOG_ERROR, err.what());
         }
 
         return paths;
