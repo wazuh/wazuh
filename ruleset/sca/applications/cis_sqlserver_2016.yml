@@ -666,18 +666,3 @@ checks:
     condition: none
     rules:
       - "c:sqlcmd -Q \"SELECT name, permission_set_desc FROM sys.assemblies WHERE is_user_defined = 1;\" -> r:EXTERNAL_ACCESS|UNSAFE"
-
-#
-#  - id:
-#    title:
-#    description:
-#    rationale:
-#    remediation:
-#    compliance:
-#      - cis: [""]
-#      - cis_csc: [""]
-#    references:
-#      -
-#    condition:
-#    rules:
-#      -
