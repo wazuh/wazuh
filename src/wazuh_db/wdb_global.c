@@ -1839,7 +1839,7 @@ cJSON* wdb_global_get_backups() {
 
     j_backups = cJSON_CreateArray();
     while (entry = readdir(dp), entry) {
-        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0 ||
+        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0 &&
             strncmp(entry->d_name, WDB_GLOB_PRE_RESTORE_BACKUP_NAME, sizeof(WDB_GLOB_PRE_RESTORE_BACKUP_NAME) - 1) != 0 ) {
             continue;
         }
@@ -1862,13 +1862,14 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
     char global_path[OS_SIZE_256] = {0};
     char global_pre_restore_path[OS_SIZE_256] = {0};
     snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-    snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, WDB_GLOB_PRE_RESTORE_BACKUP_NAME);
+    snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s.gz", WDB_BACKUP_FOLDER, WDB_GLOB_PRE_RESTORE_BACKUP_NAME);
 
     // Preparing DB for pre_restore backup and later removal
     wdb_leave(*wdb);
     wdb_close(*wdb, true);
     *wdb = NULL;
     if(save_pre_restore_state) {
+        unlink(global_pre_restore_path);
         if(w_compress_gzfile(global_path, global_pre_restore_path)) {
             mdebug1("Unable to save pre-restore DB state");
             snprintf(output, OS_MAXSTR + 1, "err Unable to save pre-restore DB state");

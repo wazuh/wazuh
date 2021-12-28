@@ -5789,7 +5789,13 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
         char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
         cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
         bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : false;
-        result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+        if (save_pre_restore_state && snapshot && strncmp(snapshot, WDB_GLOB_PRE_RESTORE_BACKUP_NAME, sizeof(WDB_GLOB_PRE_RESTORE_BACKUP_NAME) - 1) == 0) {
+            mdebug1("Invalid parameters combination for backup restoration.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid parameters combination for backup restoration.");
+            result = OS_INVALID;
+        } else {
+            result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+        }
     }
 
     cJSON_Delete(j_parameters);
