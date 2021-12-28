@@ -2,15 +2,16 @@
 #define __STORAGEDRIVERINTERFACE_H__
 
 #include "../catalogSharedDef.hpp"
-#include "nlohmann/json.hpp"
+#include "rapidjson/document.h"
 
-class storageDriverInterface {
+class storageDriverInterface
+{
 
-public:
+    public:
 
-    virtual ~storageDriverInterface() = default;
-    virtual std::vector<std::string> getAssetList(const AssetType type) = 0;
-    virtual nlohmann::ordered_json getAsset(const AssetType type, const std::string_view assetName) = 0;
+        virtual ~storageDriverInterface() = default;
+        virtual std::vector<std::string> getAssetList(const AssetType type) = 0;
+        virtual rapidjson::Document getAsset(const AssetType type, const std::string_view assetName) = 0;
 };
 
 #endif // __STORAGEDRIVERINTERFACE_H__
