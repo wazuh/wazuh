@@ -626,5 +626,55 @@ ID: 65000 - 65499
         <field name="gcp.bucket" type="pcre2">^(?!^$).+$</field>
         <description>GCP VPC Storage event</description>
     </rule>
+  
+    <!-- GCP Cloud SQL rules-->
+    <rule id="65080" level="0">
+        <if_group>gcp</if_group>
+        <field name="gcp.resource.type">^cloudsql_database$</field>
+        <description>GCP Cloud SQL event on project $(gcp.resource.labels.project_id)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65081" level="2">
+        <if_sid>65080</if_sid>
+        <field name="gcp.severity">^INFO$</field>
+        <description>GCP Cloud SQL info event with source user $(gcp.protoPayload.request.privUser) on project $(gcp.resource.labels.project_id)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65082" level="5">
+        <if_sid>65080</if_sid>
+        <field name="gcp.severity">^WARNING$</field>
+        <description>GCP Cloud SQL warning event with source user $(gcp.protoPayload.request.privUser) on project $(gcp.resource.labels.project_id)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65083" level="3">
+        <if_sid>65080</if_sid>
+        <field name="gcp.severity">^NOTICE$</field>
+        <description>GCP Cloud SQL notice event with source user $(gcp.protoPayload.request.privUser) on project $(gcp.resource.labels.project_id)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65084" level="7">
+        <if_sid>65080</if_sid>
+        <field name="gcp.severity">^ERROR$</field>
+        <description>GCP Cloud SQL error event with source user $(gcp.protoPayload.request.privUser) on project $(gcp.resource.labels.project_id)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65085" level="9">
+        <if_sid>65080</if_sid>
+        <field name="gcp.severity">^CRITICAL$</field>
+        <description>GCP Cloud SQL critical event with source user $(gcp.protoPayload.request.privUser) on project $(gcp.resource.labels.project_id)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65090" level="10">
+        <if_sid>65080</if_sid>
+        <field name="gcp.protoPayload.methodName">^cloudsql.databases.delete$</field>
+        <description>GCP Cloud SQL delete event on the resource $(gcp.protoPayload.resourceName)</description>
+        <options>no_full_log</options>
+    </rule>
 
 </group>
