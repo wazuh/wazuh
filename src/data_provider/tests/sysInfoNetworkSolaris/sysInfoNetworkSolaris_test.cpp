@@ -68,7 +68,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET)
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOncce(Return("disabled"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
-    for (auto &element : ifaddr.at("IPv4"))
+    for (auto& element : ifaddr.at("IPv4"))
     {
         EXPECT_EQ("192.168.0.47", element.at("address").<const std::string&>());
         EXPECT_EQ("55.255.255.0", element.at("netmask").<const std::string&>());
@@ -99,7 +99,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET6)
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOncce(Return("enabled"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
-    for (auto &element : ifaddr.at("IPv6"))
+    for (auto& element : ifaddr.at("IPv6"))
     {
         EXPECT_EQ("fe80::a00:27ff:fedd:cc5b", element.at("address").<const std::string&>());
         EXPECT_EQ("ffc0::", element.at("netmask").<const std::string&>());
