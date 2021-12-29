@@ -4,29 +4,32 @@
 #include "diskStorage.hpp"
 #include "rapidjson/istreamwrapper.h"
 
+constexpr std::string_view ext_json_schema {".json"};
+constexpr std::string_view ext_other_asset {".yml"};
 
-
-/*
-#TODO Replace witch RapidJSON
-#TODO Create Test for DiskStorage that create a dir struct
-*/
+// Overridden method
 std::vector<std::string> diskStorage::getAssetList(const AssetType type)
 {
     using std::string;
     using std::string_view;
-    std::vector<string> assetList {};
 
+    std::vector<string> assetList {};
     std::filesystem::path base_dir {this->path};
-    //std::cout << "Listing files | Type: ";
+
+    // Get the path to the asset directory
     base_dir /= assetTypeToPath.at(type);
 
     for (const auto& entry : std::filesystem::directory_iterator(base_dir))
     {
-        if (entry.is_regular_file() && entry.path().has_extension() && entry.path().extension().string() == ".yml")
+        if (entry.is_regular_file() && entry.path().has_extension())
         {
-            //std::cout << "Adding file: '" << entry.path() << std::endl;
-            const string asset_name {entry.path().stem().string()};
-            assetList.push_back(std::move(asset_name));
+            // Only the json schema has the json extension
+            if (entry.path().extension().string() == ext_other_asset ||
+                    (entry.path().extension().string() == ext_json_schema && type == AssetType::Schemas))
+            {
+                assetList.push_back(string {entry.path().stem().string()});
+                //std::cout << "Adding file: '" << entry.path() << std::endl;
+            }
         }
 
         // else {
@@ -37,37 +40,39 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
     return assetList;
 }
 
-
+// Overridden method
 rapidjson::Document diskStorage::getAsset(const AssetType type, const std::string_view assetName)
 {
     using std::string;
     using std::string_view;
     using rapidjson::Document;
-    Document doc {};
+    namespace fs = std::filesystem;
 
-    std::filesystem::path base_dir {this->path};
-    //    std::cout << "Getting file | Type: ";
+    Document doc {};
+    fs::path base_dir {this->path};
+
+    /* Get the path to the asset directory */
     base_dir /= assetTypeToPath.at(type);
 
-    string asset_name {assetName};
-    string ext {};
+    /* Get the file name to the asset file */
+    string file_name {assetName};
 
-    if (type != AssetType::Schemas)
+    if (type == AssetType::Schemas)
     {
-        ext = ".yml";
+        file_name.append(ext_json_schema);
     }
     else
     {
-        ext = ".json";
+        file_name.append(ext_other_asset);
     }
 
-    string_view file_name {asset_name.append(ext)};
-    std::filesystem::path file_path {base_dir / file_name};
+    /* Get full path to the asset file */
+    fs::path file_path {base_dir / file_name};
 
-    if (std::filesystem::exists(file_path))
+    //    std::cout << "Getting file | Type: ";
+    if (fs::exists(file_path))
     {
         //std::cout << "File found: " << file_path << std::endl;
-
         if (type != AssetType::Schemas)
         {
             // #FIXME Check the exeptions
@@ -75,18 +80,17 @@ rapidjson::Document diskStorage::getAsset(const AssetType type, const std::strin
         }
         else
         {
+            // #FIXME Check the exeptions
             std::ifstream ifs(file_path.string());
             rapidjson::IStreamWrapper isw(ifs);
             doc.ParseStream(isw);
         }
+    }
 
-        return doc;
-    }
-    else
-    {
-        std::cout << "File not found: " << file_path << std::endl;
-        return Document {};
-    }
+    // else
+    // {
+    //     std::cout << "Asset file not found: " << file_path << std::endl;
+    // }
 
     return doc;
 }
