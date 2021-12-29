@@ -113,7 +113,7 @@ int fim_db_get_count_file_entry();
  * @param data The information linked to the path to be created or updated
  * @param updated The updated is a flag to keep if the operation was updated or not.
  * @return The result of the update operation.
- * 
+ *
  * @retval FIMDB_OK on success.
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
