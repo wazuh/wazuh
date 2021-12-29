@@ -4,11 +4,11 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "../storageDriverInterface.hpp"
+#include "../StorageDriverInterface.hpp"
 #include "../yml_to_json.hpp"
 
 
-class diskStorage : public storageDriverInterface
+class diskStorage : public StorageDriverInterface
 {
 
     private:
