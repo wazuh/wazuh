@@ -24,7 +24,7 @@ CPMAddPackage(
 add_executable(diskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/yml_to_json.hpp
-  ${ENGINE_SOURCE_DIR}/catalog/storageDriver/storageDriverInterface.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/storageDriver/StorageDriverInterface.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.cpp
   ${TEST_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage_test.hpp
