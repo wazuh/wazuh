@@ -2211,6 +2211,7 @@ class CiscoUmbrella(AWSCustomBucket):
     def __init__(self, **kwargs):
         db_table_name = 'cisco_umbrella'
         AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        self.check_prefix = False
 
     def load_information_from_file(self, log_key):
         """Load data from a Cisco Umbrella log file."""
