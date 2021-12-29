@@ -13,6 +13,7 @@
 #define _NETWORK_SOLARIS_WRAPPER_H
 
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <sys/sockio.h>
 #include <arpa/inet.h>
@@ -212,66 +213,52 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
             if (!buffer.empty())
             {
+                constexpr auto RX_PACKET_INDEX { "ipackets64" };
+                constexpr auto RX_BYTES_INDEX  { "rbytes64" };
+                constexpr auto TX_PACKET_INDEX { "opackets64" };
+                constexpr auto TX_BYTES_INDEX  { "obytes64" };
+                constexpr auto RX_DROPS_INDEX  { "idrops64" };
+                constexpr auto TX_DROPS_INDEX  { "odrops64" };
+
+                std::map<std::string, int> data;
+                auto value { 0 };
+                size_t valueSize = 0;
                 auto lines { Utils::split(buffer, '\n') };
 
 		        lines.erase(lines.begin());
 		        lines.erase(lines.begin());
 		        lines.erase(lines.end());
 
-                try
+                for (auto line : lines)
                 {
-                    size_t valueSize = 0;
-                    constexpr auto RX_PACKET_INDEX { 0 };
-                    constexpr auto RX_BYTES_INDEX  { 1 };
-                    constexpr auto TX_PACKET_INDEX { 2 };
-                    constexpr auto TX_BYTES_INDEX  { 3 };
-                    constexpr auto RX_DROPS_INDEX  { 4 };
-                    constexpr auto TX_DROPS_INDEX  { 6 };
-                    auto value { std::stoi(Utils::split(lines.at(RX_PACKET_INDEX), ' ').back(), &valueSize) };
+                    Utils::replaceAll(line, "\t", "");
+                    Utils::replaceAll(line, "  ", " ");
+                    auto fields { Utils::split(line, ' ') };
 
-                    if (Utils::split(lines.at(RX_PACKET_INDEX), ' ').back().size() == valueSize)
+                    try
                     {
-                        statistic.rxPackets = static_cast<unsigned int>(value);
+                        value = std::stoi(fields.back(), &valueSize);
+
+                        if (fields.back().size() == valueSize)
+                        {
+                            data[fields.at(1)] = value;
+                        }
+                        else
+                        {
+                            data[fields.at(1)] = 0;
+                        }
                     }
-
-                    value = std::stoi(Utils::split(lines.at(RX_BYTES_INDEX), ' ').back(), &valueSize);
-
-                    if (Utils::split(lines.at(RX_BYTES_INDEX), ' ').back().size() == valueSize)
+                    catch(...)
                     {
-                        statistic.rxBytes = static_cast<unsigned int>(value);
-                    }
-
-                    value = std::stoi(Utils::split(lines.at(TX_PACKET_INDEX), ' ').back(), &valueSize);
-
-                    if (Utils::split(lines.at(TX_PACKET_INDEX), ' ').back().size() == valueSize)
-                    {
-                        statistic.txPackets = static_cast<unsigned int>(value);
-                    }
-
-                    value = std::stoi(Utils::split(lines.at(TX_BYTES_INDEX), ' ').back(), &valueSize);
-
-                    if (Utils::split(lines.at(TX_BYTES_INDEX), ' ').back().size() == valueSize)
-                    {
-                        statistic.txBytes = static_cast<unsigned int>(value);
-                    }
-
-                    value = std::stoi(Utils::split(lines.at(RX_DROPS_INDEX), ' ').back(), &valueSize);
-
-                    if (Utils::split(lines.at(RX_DROPS_INDEX), ' ').back().size() == valueSize)
-                    {
-                        statistic.rxDropped = static_cast<unsigned int>(value);
-                    }
-
-                    value = std::stoi(Utils::split(lines.at(TX_DROPS_INDEX), ' ').back(), &valueSize);
-
-                    if (Utils::split(lines.at(TX_DROPS_INDEX), ' ').back().size() == valueSize)
-                    {
-                        statistic.txDropped = static_cast<unsigned int>(value);
                     }
                 }
-                catch(...)
-                {
-                }
+
+                statistic.rxPackets = static_cast<unsigned int>(data.at(RX_PACKET_INDEX));
+                statistic.rxBytes   = static_cast<unsigned int>(data.at(RX_BYTES_INDEX));
+                statistic.txPackets = static_cast<unsigned int>(data.at(TX_PACKET_INDEX));
+                statistic.txBytes   = static_cast<unsigned int>(data.at(TX_BYTES_INDEX));
+                statistic.rxDropped = static_cast<unsigned int>(data.at(RX_DROPS_INDEX));
+                statistic.txDropped = static_cast<unsigned int>(data.at(TX_DROPS_INDEX));
             }
 
             return statistic;
@@ -280,23 +267,37 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
         std::string type() const override
         {
             const auto buffer { Utils::exec("dladm show-phys " + this->name(), 256) };
-            constexpr auto INDEX_TYPE_INTERFACE { 1 };
+            constexpr auto COLUMN_TYPE_INTERFACE { "MEDIA" };
             std::string type { "" };
 
             if (!buffer.empty())
             {
                 auto lines { Utils::split(buffer, '\n') };
-                lines.erase(lines.begin ());
+                std::vector<std::string> headers = { };
+                std::vector<std::string> values = { };
+
+                for (auto line : lines)
+                {
+                    Utils::replaceAll(line, "\t", "");
+                    Utils::replaceAll(line, "  ", " ");
+
+                    if (headers.size() == 0)
+                    {
+                        headers = Utils::split(line, ' ');
+                    }
+                    else
+                    {
+                        values = Utils::split(line, ' ');
+                    }
+                }
 
                 try
                 {
-                    for (auto line : lines)
-                    {
-                        Utils::replaceAll(line, "\t", "");
-                        auto fields { Utils::split(line, ' ') };
-                        fields.erase(std::remove_if(fields.begin(), fields.end(), [](const std::string& s) { return s.empty(); }), fields.end());
+                    const auto it = std::find(headers.begin(), headers.end(), COLUMN_TYPE_INTERFACE);
 
-                        type = fields.at(INDEX_TYPE_INTERFACE);
+                    if (it != headers.end() && values.size() > (it - headers.begin()))
+                    {
+                        type = values.at(it - headers.begin());
                     }
                 }
                 catch(...)
