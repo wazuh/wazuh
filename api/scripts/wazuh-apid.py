@@ -23,8 +23,6 @@ def spawn_process_pool():
 def spawn_authentication_pool():
     """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
     from wazuh import security  # noqa
-    from wazuh.rbac.orm import create_rbac_db
-    create_rbac_db()
     return
 
 
@@ -81,6 +79,7 @@ def start(foreground: bool, root: bool, config_file: str):
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
+    from wazuh.rbac.orm import create_rbac_db
 
     # Check deprecated options. To delete after expected versions
     if 'use_only_authd' in api_conf:
