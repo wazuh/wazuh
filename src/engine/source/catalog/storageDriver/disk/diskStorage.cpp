@@ -8,12 +8,11 @@ constexpr std::string_view ext_json_schema {".json"};
 constexpr std::string_view ext_other_asset {".yml"};
 
 // Overridden method
-std::vector<std::string> diskStorage::getAssetList(const AssetType type)
+std::vector<std::string_view> diskStorage::getAssetList(const AssetType type)
 {
-    using std::string;
     using std::string_view;
 
-    std::vector<string> assetList {};
+    std::vector<string_view> assetList {};
     std::filesystem::path base_dir {this->path};
 
     // Get the path to the asset directory
@@ -27,7 +26,7 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
             if (entry.path().extension().string() == ext_other_asset ||
                     (entry.path().extension().string() == ext_json_schema && type == AssetType::Schemas))
             {
-                assetList.push_back(string {entry.path().stem().string()});
+                assetList.push_back(string_view {entry.path().stem().string()});
                 //std::cout << "Adding file: '" << entry.path() << std::endl;
             }
         }
@@ -41,7 +40,7 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
 }
 
 // Overridden method
-rapidjson::Document diskStorage::getAsset(const AssetType type, const std::string_view assetName)
+rapidjson::Document diskStorage::getAsset(const AssetType type, std::string_view assetName)
 {
     using std::string;
     using std::string_view;

@@ -17,17 +17,31 @@ CPMAddPackage(
 )
 list(APPEND EXTERNAL_DEPS "yaml-cpp")
 
+CPMAddPackage(
+    NAME RapidJSON
+    GITHUB_REPOSITORY Tencent/rapidjson
+    GIT_TAG v1.1.0
+    VERSION 1.1.0
+    OPTIONS
+        "RAPIDJSON_BUILD_DOC OFF"
+        "RAPIDJSON_BUILD_EXAMPLES OFF"
+        "RAPIDJSON_BUILD_TESTS OFF"
+        # "RAPIDJSON_BUILD_CXX17 ON"
+)
+
 # Parent scope scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 set(CATALOG_SOURCES
     catalogSharedDef.hpp
+    Catalog.hpp
+    Catalog.cpp
     storageDriver/yml_to_json.hpp
     storageDriver/StorageDriverInterface.hpp
     storageDriver/disk/diskStorage.hpp
     storageDriver/disk/diskStorage.cpp
 )
 
-
+target_include_directories(main PUBLIC "${RapidJSON_SOURCE_DIR}/include/")
 target_sources(main PRIVATE ${CATALOG_SOURCES})
 # target_sources(main PUBLIC ${CATALOG_SOURCES})
