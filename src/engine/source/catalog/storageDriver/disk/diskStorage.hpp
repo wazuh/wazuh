@@ -13,8 +13,10 @@ class diskStorage : public storageDriverInterface
 
     private:
 
+        /** @brief The path to the database directory */
         const std::string_view path;
-        // #FIXME Optimize: search a maps with number 4 keys
+
+        /** @brief Mapping the assets and the storage directory */
         static const inline std::map<AssetType, std::string> assetTypeToPath
         {
             {AssetType::Decoder, "decoders"},
@@ -27,12 +29,14 @@ class diskStorage : public storageDriverInterface
 
     public:
 
-        diskStorage(std::string_view path) : path(path)
-        {
-            //std::cout << "New driver | Path: " << this->path << std::endl;
-        }
+        /**
+         * @brief Instance of a database from its directory
+         * @param path The path to the database directory
+         */
+        diskStorage(std::string_view path) : path(path) {}
         ~diskStorage() = default;
 
+        // Overridden methods must be documented in the interface
         std::vector<std::string> getAssetList(const AssetType type) override;
         rapidjson::Document getAsset(const AssetType type, const std::string_view assetName) override;
 
