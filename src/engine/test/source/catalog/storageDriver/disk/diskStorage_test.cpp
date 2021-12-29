@@ -36,13 +36,13 @@ TEST(diskStorage, path)
         printf("Valid\n");
     }
 
-    // rapidjson::StringBuffer SB;
+    rapidjson::StringBuffer SB;
 
-    // SB.Clear();
-    // rapidjson::Writer<rapidjson::StringBuffer> writer(SB);
+    SB.Clear();
+    rapidjson::Writer<rapidjson::StringBuffer> writer(SB);
 
-    // syslogDec.Accept(writer);
-    // std::cout << SB.GetString() << std::endl;
+    syslogDec.Accept(writer);
+    std::cout << SB.GetString() << std::endl;
 
 
     EXPECT_STREQ("test out --> ", "json_dump.c_str()");
