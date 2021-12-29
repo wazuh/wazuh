@@ -33,8 +33,6 @@
 #define WDB_FIM_READDED 3
 #define WDB_FIM_DELETED 4
 
-#define WDB_GROUPS 0
-#define WDB_SHARED_GROUPS 1
 #define WDB_NETADDR_IPV4 0
 
 #define WDB_MULTI_GROUP_DELIM '-'
