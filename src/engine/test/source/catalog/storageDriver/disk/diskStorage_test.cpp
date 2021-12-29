@@ -14,7 +14,7 @@ TEST(diskStorage, path)
 {
 
     diskStorage ds(db_dir_test);
-    storageDriverInterface* dsi {&ds};
+    StorageDriverInterface* dsi {&ds};
 
     auto syslogDec {dsi->getAsset(AssetType::Decoder, "syslog")};
     auto decSchema {dsi->getAsset(AssetType::Schemas, "wazuh-decoders")};
