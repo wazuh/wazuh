@@ -2,6 +2,9 @@
   Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
+<!-- Sample log
+  time="2021-07-19T00:02:37Z" level=info msg="STS response" accesskeyid=ABCDABCDABCD accountid=12341234 arn="arn:aws:sts::12341234:assumed-role/eksctl-cicd-nodegroup-ng-eks1-19-NodeInstanceRole-MBOPVSHP4S06/i-12ab12ab" client="127.0.0.1:33278" method=POST path=/authenticate session=i-12ab12ab12ab sts=sts.eu-central-1.amazonaws.com userid=ABCDABCDABCD
+-->
 <decoder name="aws-eks-authenticator">
   <prematch type="pcre2">time="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"</prematch>
 </decoder>
