@@ -10,12 +10,12 @@
  * This class is the interface for all storage drivers,
  * which will be used to store the data of the catalog.
  */
-class storageDriverInterface
+class StorageDriverInterface
 {
 
     public:
         //! @brief The destructor
-        virtual ~storageDriverInterface() = default;
+        virtual ~StorageDriverInterface() = default;
 
         /**
          * @brief Gets a list of available assets of a specific type
