@@ -1386,7 +1386,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output);
  * @brief Function to delete old backups in case the amount exceeds the max_files limit.
  *
  * @retval  0 Success: The method exited without errors.
- * @retval -1 On error: The method failed in reading the backp folder.
+ * @retval -1 On error: The method failed in reading the backup folder.
  */
 int wdb_global_remove_old_backups();
 
@@ -1399,7 +1399,7 @@ int wdb_global_remove_old_backups();
 cJSON* wdb_global_get_backups();
 
 /**
- * @brief Function restore a backup of global.db.
+ * @brief Method to restore a backup of global.db.
  *
  * @param [in] wdb The global struct database.
  * @param [in] snapshot The backup file name to be restored. If not present, the last one will be used.

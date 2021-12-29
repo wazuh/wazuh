@@ -1727,17 +1727,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
     char path[PATH_MAX-3] = {0};
     char path_compressed[PATH_MAX] = {0};
     char* timestamp = NULL;
-    DIR* dp = NULL;
     int result = OS_INVALID;
-
-    dp = opendir(WDB_BACKUP_FOLDER);
-
-    if(!dp) {
-        mdebug1("Unable to open backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
-        snprintf(output, OS_MAXSTR + 1, "err Unable to open backup directory '%s' for Wazuh-DB", WDB_BACKUP_FOLDER);
-        return OS_INVALID;
-    }
-    closedir(dp);
 
     timestamp = w_get_timestamp(time(NULL));
     wchr_replace(timestamp, ' ', '-');
@@ -1826,11 +1816,10 @@ int wdb_global_remove_old_backups() {
 }
 
 cJSON* wdb_global_get_backups() {
-    DIR* dp = NULL;
     cJSON* j_backups = NULL;
     struct dirent *entry = NULL;
 
-    dp = opendir(WDB_BACKUP_FOLDER);
+    DIR* dp = opendir(WDB_BACKUP_FOLDER);
 
     if(!dp) {
         mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
@@ -1852,15 +1841,9 @@ cJSON* wdb_global_get_backups() {
 }
 
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
-    if(!dp) {
-        mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
-        return OS_INVALID;
-    }
-    closedir(dp);
-
     char global_path[OS_SIZE_256] = {0};
     char global_pre_restore_path[OS_SIZE_256] = {0};
+
     snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
     snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s.gz", WDB_BACKUP_FOLDER, WDB_GLOB_PRE_RESTORE_BACKUP_NAME);
 
