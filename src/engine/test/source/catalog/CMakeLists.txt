@@ -23,6 +23,8 @@ CPMAddPackage(
 # Configuration router test
 add_executable(diskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/Catalog.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/Catalog.cpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/StorageDriverInterface.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.hpp

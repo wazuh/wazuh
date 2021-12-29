@@ -7,6 +7,9 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 
+// #TODO Adds a thread-safe mechanism (?)
+// #TODO Adds test
+// #TODO Convert to static class
 namespace yml2json
 {
 
