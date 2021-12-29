@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
     wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
-    // Allocatting memory for configuration structures and setting default values
+    // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
     // Read ossec.conf
@@ -196,7 +196,7 @@ int main(int argc, char ** argv)
     // Start threads
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
+        merror("Couldn't create 'run_dealer' thread: %s", strerror(status));
         goto failure;
     }
 
@@ -204,25 +204,25 @@ int main(int argc, char ** argv)
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
+            merror("Couldn't create 'run_worker' %d thread: %s", i + 1, strerror(status));
             goto failure;
         }
     }
 
     if (status = pthread_create(&thread_gc, NULL, run_gc, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
+        merror("Couldn't create 'run_gc' thread: %s", strerror(status));
         goto failure;
     }
 
     if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
-        merror("Couldn't create thread: %s", strerror(status));
+        merror("Couldn't create 'run_up' thread: %s", strerror(status));
         goto failure;
     }
 
     bool backups_enabled = wdb_check_backup_enabled();
     if (backups_enabled) {
         if (status = pthread_create(&thread_backup, NULL, run_backup, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
+            merror("Couldn't create 'run_backup' thread: %s", strerror(status));
             goto failure;
         }
     }
@@ -424,6 +424,7 @@ bool wdb_check_backup_enabled() {
     for (int i = 0; i < WDB_LAST_BACKUP; i++) {
         if(wconfig.wdb_backup_settings[i]->enabled) {
             result = true;
+            break;
         }
     }
 
@@ -434,6 +435,8 @@ void * run_backup(__attribute__((unused)) void * args) {
     time_t last_global_backup_time = wdb_global_get_most_recent_backup(NULL);
     char output[OS_MAXSTR + 1] = {0};
     time_t current_time = 0;
+    int global_interval = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval;
+    bool global_enabled = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled;
 
     if(OS_INVALID == last_global_backup_time) {
         last_global_backup_time = time(NULL);
@@ -441,22 +444,23 @@ void * run_backup(__attribute__((unused)) void * args) {
 
     while(running) {
         for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-            if(wconfig.wdb_backup_settings[i]->enabled) {
-                switch (i) {
-                    case WDB_GLOBAL_BACKUP:
+            switch (i) {
+                case WDB_GLOBAL_BACKUP:
+                    if (global_enabled) {
                         current_time = time(NULL);
-                        if(current_time - last_global_backup_time >= wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval) {
+                        if((current_time - last_global_backup_time) >= global_interval) {
                             wdb_t* wdb = wdb_open_global();
                             wdb_global_create_backup(wdb, output);
                             mdebug1("Backup creation result: %s", output);
                             last_global_backup_time = current_time;
                             wdb_leave(wdb);
                         }
-                        break;
-                    default:
-                        break;
-                }
+                    }
+                    break;
+                default:
+                    break;
             }
+
         }
         sleep(1);
    }
