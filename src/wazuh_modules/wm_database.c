@@ -90,7 +90,6 @@ static void wm_sync_multi_groups(const char *dirname);
 #endif // LOCAL
 
 static int wm_sync_shared_group(const char *fname);
-static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
@@ -171,7 +170,6 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(GROUPS_DIR);
                 wm_sync_multi_groups(SHAREDCFG_DIR);
                 wm_clean_dangling_groups();
                 wm_clean_dangling_legacy_dbs();
@@ -499,77 +497,22 @@ int wm_sync_shared_group(const char *fname) {
     return result;
 }
 
-void wm_scan_directory(const char *dirname) {
-    char path[PATH_MAX];
-    struct dirent *dirent = NULL;
-    DIR *dir;
-
-    mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", dirname);
-    snprintf(path, PATH_MAX, "%s", dirname);
-
-    if (!(dir = opendir(path))) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", path, strerror(errno));
-        return;
-    }
-
-    while ((dirent = readdir(dir)) != NULL)
-        if (dirent->d_name[0] != '.')
-            wm_sync_file(dirname, dirent->d_name);
-
-    closedir(dir);
-}
-
 int wm_sync_file(const char *dirname, const char *fname) {
     char path[PATH_MAX] = "";
-    int result = 0;
-    int id_agent = -1;
-    int type;
-    char * name;
+    int result = OS_INVALID;
 
     mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
     if (snprintf(path, PATH_MAX, "%s/%s", dirname, fname) >= PATH_MAX) {
         mterror(WM_DATABASE_LOGTAG, "At wm_sync_file(): Path '%s/%s' exceeded length limit.", dirname, fname);
-        return -1;
+        return result;
     }
 
-    if (!strcmp(dirname, GROUPS_DIR)) {
-        type = WDB_GROUPS;
-    } else if (!strcmp(dirname, SHAREDCFG_DIR)) {
-        type = WDB_SHARED_GROUPS;
+    if (!strcmp(dirname, SHAREDCFG_DIR)) {
+        result = wm_sync_shared_group(fname);
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
-        return -1;
-    }
-
-    switch (type) {
-    case WDB_GROUPS:
-        id_agent = atoi(fname);
-        if (id_agent <= 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
-            return -1;
-        }
-
-        name = wdb_get_agent_name(id_agent, &wdb_wmdb_sock);
-
-        if (name == NULL) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", id_agent);
-            return -1;
-        }
-
-        if (*name == '\0') {
-            mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", fname);
-            unlink(path);
-            free(name);
-            return -1;
-        }
-
-        free(name);
-        break;
-
-    case WDB_SHARED_GROUPS:
-        result = wm_sync_shared_group(fname);
-        break;
+        return result;
     }
 
     return result;
