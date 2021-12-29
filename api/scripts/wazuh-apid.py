@@ -81,7 +81,6 @@ def start(foreground: bool, root: bool, config_file: str):
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
-    # from wazuh.rbac.orm import create_rbac_db
 
     # Check deprecated options. To delete after expected versions
     if 'use_only_authd' in api_conf:
