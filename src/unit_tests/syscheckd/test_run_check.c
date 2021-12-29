@@ -103,7 +103,6 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
 
-    syscheck.database = fim_db_init(FIM_DB_DISK);
 #endif // TEST_WINAGENT
 
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
@@ -906,7 +905,6 @@ void test_fim_link_update(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
 
     expect_fim_checker_call(new_path, affected_config);
@@ -951,8 +949,6 @@ void test_fim_link_check_delete(void **state) {
     expect_string(__wrap_lstat, filename, affected_config->symbolic_links);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
-
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
 
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
 
@@ -1033,8 +1029,6 @@ void test_fim_link_delete_range(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
-    expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 }
 
@@ -1046,9 +1040,7 @@ void test_fim_link_delete_range_error(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
 
-    expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, error_msg);
 
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
