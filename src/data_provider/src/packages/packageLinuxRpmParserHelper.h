@@ -54,4 +54,6 @@ namespace PackageLinuxHelper
 
 };
 
+#pragma GCC diagnostic pop
+
 #endif // _PACKAGE_LINUX_RPM_PARSER_HELPER_H
