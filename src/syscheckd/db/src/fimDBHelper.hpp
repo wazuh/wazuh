@@ -168,7 +168,7 @@ namespace FIMDBHelper
             {
                 if (ReturnTypeCallback::SELECTED == type)
                 {
-                    item = jsonResult["query"];
+                    item = jsonResult;
                 }
             }
         };

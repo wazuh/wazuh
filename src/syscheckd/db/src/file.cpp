@@ -49,13 +49,6 @@ FIMDBErrorCodes fim_db_get_path(const char* file_path, callback_context_t callba
     }
     else
     {
-        const auto fileColumnList { R"({"column_list":"[path, mode, last_event, scanned, options, checksum, dev, inode, size,
-                                                perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1,
-                                                hash_sha256, mtime]"})"_json };
-
-        const auto filter { std::string("WHERE path=") + std::string(file_path) };
-        const auto query { FimDBUtils::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY) };
-
         try
         {
             const auto fileColumnList = R"({"column_list":["path",
@@ -79,7 +72,7 @@ FIMDBErrorCodes fim_db_get_path(const char* file_path, callback_context_t callba
                                                            "mtime"]})"_json;
 
             const auto filter { std::string("WHERE path=\"") + std::string(file_path) + "\""};
-            const auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
+            const auto query = FimDBUtils::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
 
             nlohmann::json entry_from_path;
             FIMDBHelper::getDBItem<FIMDB>(entry_from_path, query);
@@ -193,7 +186,6 @@ FIMDBErrorCodes fim_db_file_update(const fim_entry* data, bool* updated)
 void fim_db_file_inode_search(const unsigned long inode, const unsigned long dev, callback_context_t callback)
 {
     const auto paths { FimDBUtils::getPathsFromINode<FIMDB>(inode, dev) };
-
     if (paths.empty())
     {
         FIMDB::getInstance().logFunction(LOG_ERROR, "No paths found with these inode and dev");

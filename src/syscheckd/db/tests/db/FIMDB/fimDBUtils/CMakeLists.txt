@@ -10,8 +10,7 @@ file(GLOB FIMDBHELPER_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB FIMDB_IMP_SRC
-     "${SRC_FOLDER}/syscheckd/db/src/fimDB.cpp"
-    )
+     "${SRC_FOLDER}/syscheckd/db/src/fimDB.cpp")
 
 add_executable(fim_db_utils_unit_test
     ${SRC_FOLDER}/syscheckd/db/tests/db/FIMDB/fimDBUtilsTest.h

@@ -9,13 +9,17 @@
  * Foundation.
  */
 
-#include "fimDBUtils.hpp"
 #include "fimDBUtilsTest.h"
-#include <iostream>
+#include "fimDBUtils.hpp"
 
 void FIMDBUtilsTest::SetUp() {}
 
 void FIMDBUtilsTest::TearDown() {}
+
+ACTION(myThrowException)
+{
+    throw DbSync::dbsync_error{INVALID_TABLE};
+}
 
 TEST_F(FIMDBUtilsTest, createANewQuery)
 {
@@ -37,7 +41,96 @@ TEST_F(FIMDBUtilsTest, createANewQuery)
 
 TEST_F(FIMDBUtilsTest, testGetPathsFromINode)
 {
-    //const auto paths { FimDBUtils::getPathsFromINode<FIMDBMOCK>(1, 12) };
-    //EXPECT_TRUE(paths.empty());
+    std::vector<std::string> paths;
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillOnce(testing::InvokeArgument<1>(ReturnTypeCallback::SELECTED, R"({"path":"/tmp/test.txt"})"_json));
+    EXPECT_NO_THROW(
+    {
+        paths = FimDBUtils::getPathsFromINode<FIMDBMOCK>(1, 12);
+    });
+    ASSERT_TRUE(!paths.empty());
+    ASSERT_EQ(paths[0], "/tmp/test.txt");
+}
 
+TEST_F(FIMDBUtilsTest, testGetPathsFromINodeWithDBSyncException)
+{
+    EXPECT_CALL(FIMDBMOCK::getInstance(), logFunction(testing::_, testing::_));
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(1)
+    .WillOnce(testing::Throw(DbSync::dbsync_error{INVALID_TABLE}));
+    try
+    {
+        const auto paths = FimDBUtils::getPathsFromINode<FIMDBMOCK>(1, 12);
+    }
+    catch (const DbSync::dbsync_error& ex)
+    {
+        std::cout << ex.what() << std::endl;
+        ASSERT_EQ(ex.what(), "ERROR");
+    }
+}
+
+TEST_F(FIMDBUtilsTest, testGetPathsFromINodeWithException)
+{
+    EXPECT_CALL(FIMDBMOCK::getInstance(), logFunction(testing::_, testing::_));
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillRepeatedly(testing::Throw(std::invalid_argument("ERROR")));
+    try
+    {
+        const auto paths = FimDBUtils::getPathsFromINode<FIMDBMOCK>(1, 12);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cout << ex.what() << std::endl;
+        ASSERT_EQ(ex.what(), "ERROR");
+    }
+}
+
+TEST_F(FIMDBUtilsTest, testgetPathsFromPattern)
+{
+    std::vector<std::string> paths;
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(::testing::AtLeast(1))
+    .WillOnce(::testing::InvokeArgument<1>(ReturnTypeCallback::SELECTED, R"({"path":"/tmp/test.txt"})"_json));
+    EXPECT_NO_THROW(
+    {
+        paths = FimDBUtils::getPathsFromPattern<FIMDBMOCK>("test.txt");
+    });
+    ASSERT_TRUE(!paths.empty());
+    ASSERT_EQ(paths[0], "/tmp/test.txt");
+}
+
+TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithDBSyncException)
+{
+    EXPECT_CALL(FIMDBMOCK::getInstance(), logFunction(testing::_, testing::_));
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(1)
+    .WillOnce(testing::Throw(DbSync::dbsync_error{INVALID_TABLE}));
+    try
+    {
+        const auto paths = FimDBUtils::getPathsFromPattern<FIMDBMOCK>("test.txt");
+    }
+    catch (const DbSync::dbsync_error& ex)
+    {
+        std::cout << ex.what() << std::endl;
+        ASSERT_EQ(ex.what(), "ERROR");
+    }
+}
+
+TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithException)
+{
+    EXPECT_CALL(FIMDBMOCK::getInstance(), logFunction(testing::_, testing::_));
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillRepeatedly(testing::Throw(std::invalid_argument("ERROR")));
+    try
+    {
+        const auto paths = FimDBUtils::getPathsFromPattern<FIMDBMOCK>("test.txt");
+    }
+    catch (const std::exception& ex)
+    {
+        std::cout << ex.what() << std::endl;
+        ASSERT_EQ(ex.what(), "ERROR");
+    }
 }

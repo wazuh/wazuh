@@ -5,7 +5,6 @@
  *
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
-#include "json.hpp"
 #include "fimDBHelper.hpp"
 
 
@@ -45,7 +44,7 @@ namespace FimDBUtils
      * @return a vector with paths asociated to the inode.
      */
 
-    template <class T>
+    template <typename T>
     static std::vector<std::string> getPathsFromINode(const unsigned long inode, const unsigned long dev)
     {
         std::vector<std::string> paths;
@@ -53,8 +52,9 @@ namespace FimDBUtils
 
         try
         {
-            const auto filter { std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev) };
-            const auto query { dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY) };
+            const auto filter = std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev);
+            const auto fileColumnList = R"({"column_list":["path"]})"_json;
+            const auto query = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<T>(resultQuery, query);
 
             for (const auto& item : resultQuery["path"].items())
@@ -65,6 +65,10 @@ namespace FimDBUtils
         catch (const DbSync::dbsync_error& err)
         {
             T::getInstance().logFunction(LOG_ERROR, err.what());
+        }
+        catch (const std::exception& ex)
+        {
+            T::getInstance().logFunction(LOG_ERROR, ex.what());
         }
 
         return paths;
@@ -77,7 +81,7 @@ namespace FimDBUtils
      * @return a vector with every paths on success, a empty vector otherwise.
      */
 
-    template <class T>
+    template <typename T>
     static std::vector<std::string> getPathsFromPattern(const std::string& pattern)
     {
         std::vector<std::string> paths;
@@ -86,7 +90,8 @@ namespace FimDBUtils
         try
         {
             const auto filter { std::string("WHERE path LIKE") + std::string(pattern) };
-            const auto queryFromPattern { dbQuery(FIMBD_FILE_TABLE_NAME, FILE_PRIMARY_KEY, filter, FILE_PRIMARY_KEY) };
+            const auto fileColumnList = R"({"column_list":["path"]})"_json;
+            const auto queryFromPattern = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<T>(resultQuery, queryFromPattern);
 
             for (const auto& item : resultQuery["path"].items())
@@ -98,6 +103,10 @@ namespace FimDBUtils
         catch (const DbSync::dbsync_error& err)
         {
             T::getInstance().logFunction(LOG_ERROR, err.what());
+        }
+        catch (const std::exception& ex)
+        {
+            T::getInstance().logFunction(LOG_ERROR, ex.what());
         }
 
         return paths;

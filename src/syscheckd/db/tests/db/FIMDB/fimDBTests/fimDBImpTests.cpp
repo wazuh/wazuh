@@ -271,4 +271,10 @@ TEST_F(FimDBFixture, fimSyncPushMsgException)
 
     fimDBMock.fimSyncPushMsg(data);
 }
+
+TEST_F(FimDBFixture, logAnExceptionErr)
+{
+    EXPECT_CALL(*mockLog, loggingFunction(testing::_, testing::_));
+    fimDBMock.logFunction(LOG_DEBUG_VERBOSE, "This is an error");
+}
 #endif

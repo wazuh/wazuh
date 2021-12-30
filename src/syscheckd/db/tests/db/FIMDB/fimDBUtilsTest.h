@@ -14,6 +14,8 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "fimCommonDefs.h"
+#include "dbsync.hpp"
+#include "rsync.hpp"
 
 class FIMDBMOCK final
 {
@@ -59,6 +61,14 @@ class FIMDBUtilsTest : public testing::Test {
 
         void SetUp() override;
         void TearDown() override;
+};
+
+class CallbackMock
+{
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (ReturnTypeCallback type, nlohmann::json&), ());
 };
 
 #endif //_FIMHELPER_TEST_H
