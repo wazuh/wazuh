@@ -1,5 +1,5 @@
 #include "networkInterfaceSolaris.h"
-#include "networkSolarisWrapper.hpp"
+#include "sys/socket.h"
 
 
 std::shared_ptr<IOSNetwork> FactorySolarisNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
