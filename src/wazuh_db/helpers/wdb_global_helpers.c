@@ -1205,6 +1205,7 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
 
 int wdb_create_agent_db(int id, const char *name) {
     const char *ROOT = "root";
+    const int ROOT_UID = 0;
     char path[OS_FLSIZE + 1];
     char buffer[4096];
     FILE *source;
@@ -1254,7 +1255,7 @@ int wdb_create_agent_db(int id, const char *name) {
         return -1;
     }
 
-    uid = Privsep_GetUser(ROOT);
+    uid = ROOT_UID;
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
