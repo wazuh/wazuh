@@ -1274,10 +1274,7 @@ class AWSConfigBucket(AWSLogsBucket):
     def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
         filter_marker = ''
         if self.reparse:
-            if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
-            else:
-                filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+            filter_marker = self.marker_custom_date(aws_region, aws_account_id, datetime.strptime(date, '%Y/%m/%d'))
         else:
             created_date = self.add_zero_to_day(date)
             query_last_key_of_day = self.db_connector.execute(
@@ -1664,19 +1661,23 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         return [datetime.strftime(date, "%Y/%m/%d") for date in reversed(date_list_time)]
 
     def get_date_last_log(self, aws_account_id, aws_region, flow_log_id):
-        try:
-            query_date_last_log = self.db_connector.execute(self.sql_get_date_last_log_processed.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                flow_log_id=flow_log_id))
-            # query returns an integer
-            last_date_processed = str(query_date_last_log.fetchone()[0])
-        # if DB is empty
-        except (TypeError, IndexError) as e:
-            last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
-                else self.default_date.strftime('%Y%m%d')
+        last_date_processed = self.only_logs_after.strftime('%Y%m%d') if \
+            self.only_logs_after and self.reparse else None
+
+        if not last_date_processed:
+            try:
+                query_date_last_log = self.db_connector.execute(self.sql_get_date_last_log_processed.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    flow_log_id=flow_log_id))
+                # query returns an integer
+                last_date_processed = str(query_date_last_log.fetchone()[0])
+            # if DB is empty
+            except (TypeError, IndexError) as e:
+                last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
+                    else self.default_date.strftime('%Y%m%d')
         return last_date_processed
 
     def iter_regions_and_accounts(self, account_id, regions):
@@ -1760,12 +1761,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
         filter_marker = ''
         if self.reparse:
-            if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
-            else:
-                filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+            filter_marker = self.marker_custom_date(aws_region, aws_account_id, datetime.strptime(date, '%Y/%m/%d'))
         else:
-
             query_last_key_of_day = self.db_connector.execute(
                 self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
                                                                bucket_path=self.bucket_path,
