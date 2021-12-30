@@ -28,8 +28,7 @@
 
   <rule id="92602" level="12">
     <if_sid>92600, 92601</if_sid>
-    <match type="pcre2">psexec.py|smbexec.py</match>
-    <match type="pcre2">a\d="-hashes".+a\d=".+:.+</match>
+    <match type="pcre2">(psexec.py|smbexec.py).+a\d="-hashes".+a\d=".+:.+</match>
     <description>Suspicious python script matches Impacket signature, possible use of stolen credentials or pass the hash attack.</description>
     <mitre>
       <id>T1059.006</id>
