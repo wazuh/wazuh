@@ -26,6 +26,8 @@ add_executable(catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.cpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/StorageDriverInterface.hpp
+  ${TEST_SOURCE_DIR}/catalog/Catalog_test.hpp
+  ${TEST_SOURCE_DIR}/catalog/Catalog_test.cpp
 )
 
 target_include_directories(catalog_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
