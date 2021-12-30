@@ -10,7 +10,6 @@
  */
 
 #ifndef WIN32
-#ifndef CLIENT
 
 #include "wmodules.h"
 #include "wm_azure.h"
@@ -546,5 +545,4 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
     return root;
 }
 
-#endif
 #endif
