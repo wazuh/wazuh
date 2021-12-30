@@ -416,18 +416,6 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
-        } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->account_name);
-        } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->account_key);
-        } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->auth_path);
-        } else if (!strcmp(nodes[i]->element, XML_TAG)) {
-            if (*nodes[i]->content != '\0')
-                os_strdup(nodes[i]->content, storage->tag);
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER)) {
 
             if (container) {
@@ -480,9 +468,22 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 OS_ClearNode(children);
             }
 
+        } else if (nodes[i]->content != NULL && *nodes[i]->content != '\0') {
+            if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
+                os_strdup(nodes[i]->content, storage->account_name);
+            } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
+                os_strdup(nodes[i]->content, storage->account_key);
+            } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
+                os_strdup(nodes[i]->content, storage->auth_path);
+            } else if (!strcmp(nodes[i]->element, XML_TAG)) {
+                os_strdup(nodes[i]->content, storage->tag);
+            } else {
+                merror(XML_INVELEM, nodes[i]->element);
+                return OS_INVALID;
+            }
 
         } else {
-            merror(XML_INVELEM, nodes[i]->element);
+            merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
         }
     }
