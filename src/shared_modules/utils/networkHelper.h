@@ -85,14 +85,17 @@ namespace Utils
             {
                 std::stringstream ss;
                 ss << std::hex << std::setfill('0');
+
                 for (int i = 0; i < 6; i++)
                 {
                     ss << std::setw(2) << (int) hwAddr.sa_data[i];
+
                     if (i < 5)
                     {
                         ss << ":";
                     }
                 }
+
                 return ss.str();
             }
     };
