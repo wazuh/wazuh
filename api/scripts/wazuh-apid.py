@@ -79,6 +79,7 @@ def start(foreground: bool, root: bool, config_file: str):
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
+    from wazuh.rbac.orm import create_rbac_db
 
     # Check deprecated options. To delete after expected versions
     if 'use_only_authd' in api_conf:
@@ -171,6 +172,7 @@ def start(foreground: bool, root: bool, config_file: str):
         pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
     else:
         print(f"Starting API in foreground")
+    create_rbac_db()
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():
