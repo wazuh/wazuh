@@ -208,129 +208,129 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
 
         LinkStats stats() const override
         {
-            auto buffer {Utils::exec("dladm show-dev -s " + this->name(), 256) };
+            auto buffer { Utils::exec("dlstat -a " + this->name(), 256) };
 	        LinkStats statistic { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-            // Solaris 10
-            if (!buffer.empty() && (buffer.find("Unrecognized subcommand:") == std::string::npos))
+            // Solaris 11
+            if (!buffer.empty())
             {
-                constexpr auto RX_PACKET_INDEX { "ipackets" };
-                constexpr auto RX_BYTES_INDEX  { "rbytes" };
-                constexpr auto TX_PACKET_INDEX { "opackets" };
-                constexpr auto TX_BYTES_INDEX  { "obytes" };
-                constexpr auto RX_ERRORS_INDEX  { "ierrors" };
-                constexpr auto TX_ERRORS_INDEX  { "oerrors" };
-                std::map<std::string, int> data = { };
-                std::vector<std::string> keys = { };
-                std::vector<std::string> values = { };
+                constexpr auto RX_PACKET_INDEX { "ipackets64" };
+                constexpr auto RX_BYTES_INDEX  { "rbytes64" };
+                constexpr auto TX_PACKET_INDEX { "opackets64" };
+                constexpr auto TX_BYTES_INDEX  { "obytes64" };
+                constexpr auto RX_DROPS_INDEX  { "idrops64" };
+                constexpr auto TX_DROPS_INDEX  { "odrops64" };
+
+                std::map<std::string, int> data;
+                auto value { 0 };
+                size_t valueSize { 0 };
                 auto lines { Utils::split(buffer, '\n') };
+
+                lines.erase(lines.begin());
+                lines.erase(lines.begin());
+                lines.erase(lines.end());
 
                 for (auto line : lines)
                 {
                     Utils::replaceAll(line, "\t", " ");
                     Utils::replaceAll(line, "  ", " ");
+                    auto fields { Utils::split(line, ' ') };
 
-                    if (!keys.size())
+                    try
                     {
-                        keys = Utils::split(line, ' ');
+                        value = std::stoi(fields.back(), &valueSize);
+
+                        if (fields.back().size() == valueSize)
+                        {
+                            data[fields.at(1)] = value;
+                        }
+                        else
+                        {
+                            data[fields.at(1)] = 0;
+                        }
                     }
-                    else
+                    catch(...)
                     {
-                        values = Utils::split(line, ' ');
                     }
                 }
 
-                if ((keys.size() == values.size()) && values.size())
+                if (data.size() != 0)
                 {
-                    size_t valueSize { 0 };
-                    auto value { 0 };
-
-                    for (size_t i = 0; i < values.size(); i++)
-                    {
-                        try
-                        {
-                            if (values.at(i).compare(this->name()))
-                            {
-                                value = std::stoi(values.at(i), &valueSize);
-
-                                if (values.at(i).size() == valueSize)
-                                {
-                                    data.emplace(keys.at(i), value);
-                                }
-                                else
-                                {
-                                    data.emplace(keys.at(i), 0);
-                                }
-                            }
-                        }
-                        catch(...)
-                        {
-                        }
-                    }
-
                     statistic.rxPackets = static_cast<unsigned int>(data.at(RX_PACKET_INDEX));
                     statistic.rxBytes   = static_cast<unsigned int>(data.at(RX_BYTES_INDEX));
                     statistic.txPackets = static_cast<unsigned int>(data.at(TX_PACKET_INDEX));
                     statistic.txBytes   = static_cast<unsigned int>(data.at(TX_BYTES_INDEX));
-                    statistic.rxErrors  = static_cast<unsigned int>(data.at(RX_ERRORS_INDEX));
-                    statistic.txErrors  = static_cast<unsigned int>(data.at(TX_ERRORS_INDEX));
+                    statistic.rxDropped = static_cast<unsigned int>(data.at(RX_DROPS_INDEX));
+                    statistic.txDropped = static_cast<unsigned int>(data.at(TX_DROPS_INDEX));
                 }
             }
-            // Solaris 11
+            // Solaris 10
             else
             {
-                buffer.clear();
-                buffer = Utils::exec("dlstat -a " + this->name(), 256);
+                buffer = Utils::exec("dladm show-dev -s " + this->name(), 256);
 
                 if (!buffer.empty())
                 {
-                    constexpr auto RX_PACKET_INDEX { "ipackets64" };
-                    constexpr auto RX_BYTES_INDEX  { "rbytes64" };
-                    constexpr auto TX_PACKET_INDEX { "opackets64" };
-                    constexpr auto TX_BYTES_INDEX  { "obytes64" };
-                    constexpr auto RX_DROPS_INDEX  { "idrops64" };
-                    constexpr auto TX_DROPS_INDEX  { "odrops64" };
-
-                    std::map<std::string, int> data;
-                    auto value { 0 };
-                    size_t valueSize { 0 };
+                    constexpr auto RX_PACKET_INDEX { "ipackets" };
+                    constexpr auto RX_BYTES_INDEX  { "rbytes" };
+                    constexpr auto TX_PACKET_INDEX { "opackets" };
+                    constexpr auto TX_BYTES_INDEX  { "obytes" };
+                    constexpr auto RX_ERRORS_INDEX  { "ierrors" };
+                    constexpr auto TX_ERRORS_INDEX  { "oerrors" };
+                    std::map<std::string, int> data = { };
+                    std::vector<std::string> keys = { };
+                    std::vector<std::string> values = { };
                     auto lines { Utils::split(buffer, '\n') };
-
-                    lines.erase(lines.begin());
-                    lines.erase(lines.begin());
-                    lines.erase(lines.end());
 
                     for (auto line : lines)
                     {
                         Utils::replaceAll(line, "\t", " ");
                         Utils::replaceAll(line, "  ", " ");
-                        auto fields { Utils::split(line, ' ') };
 
-                        try
+                        if (!keys.size())
                         {
-                            value = std::stoi(fields.back(), &valueSize);
-
-                            if (fields.back().size() == valueSize)
-                            {
-                                data[fields.at(1)] = value;
-                            }
-                            else
-                            {
-                                data[fields.at(1)] = 0;
-                            }
+                            keys = Utils::split(line, ' ');
                         }
-                        catch(...)
+                        else
                         {
+                            values = Utils::split(line, ' ');
                         }
                     }
-                    if (data.size() == 0)
+
+                    if ((keys.size() == values.size()) && values.size())
                     {
+                        size_t valueSize { 0 };
+                        auto value { 0 };
+
+                        for (size_t i = 0; i < values.size(); i++)
+                        {
+                            try
+                            {
+                                if (values.at(i).compare(this->name()))
+                                {
+                                    value = std::stoi(values.at(i), &valueSize);
+
+                                    if (values.at(i).size() == valueSize)
+                                    {
+                                        data.emplace(keys.at(i), value);
+                                    }
+                                    else
+                                    {
+                                        data.emplace(keys.at(i), 0);
+                                    }
+                                }
+                            }
+                            catch(...)
+                            {
+                            }
+                        }
+
                         statistic.rxPackets = static_cast<unsigned int>(data.at(RX_PACKET_INDEX));
                         statistic.rxBytes   = static_cast<unsigned int>(data.at(RX_BYTES_INDEX));
                         statistic.txPackets = static_cast<unsigned int>(data.at(TX_PACKET_INDEX));
                         statistic.txBytes   = static_cast<unsigned int>(data.at(TX_BYTES_INDEX));
-                        statistic.rxDropped = static_cast<unsigned int>(data.at(RX_DROPS_INDEX));
-                        statistic.txDropped = static_cast<unsigned int>(data.at(TX_DROPS_INDEX));
+                        statistic.rxErrors  = static_cast<unsigned int>(data.at(RX_ERRORS_INDEX));
+                        statistic.txErrors  = static_cast<unsigned int>(data.at(TX_ERRORS_INDEX));
                     }
                 }
             }
