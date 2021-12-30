@@ -703,6 +703,7 @@ int wdb_create_profile(const char *path) {
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source) {
     const char *ROOT = "root";
+    const int ROOT_UID = 0;
     const char *sql;
     const char *tail;
     sqlite3 *db;
@@ -750,7 +751,7 @@ int wdb_create_file(const char *path, const char *source) {
         return OS_INVALID;
 
     case 0:
-        uid = Privsep_GetUser(ROOT);
+        uid = ROOT_UID;
         gid = Privsep_GetGroup(GROUPGLOBAL);
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
