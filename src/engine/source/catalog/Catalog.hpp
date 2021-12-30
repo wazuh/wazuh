@@ -6,7 +6,6 @@
 #include <memory>
 
 #include "storageDriver/StorageDriverInterface.hpp"
-#include "storageDriver/disk/diskStorage.hpp"
 
 class Catalog {
 
