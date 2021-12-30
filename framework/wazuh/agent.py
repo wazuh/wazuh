@@ -632,7 +632,7 @@ def create_group(group_id):
         copyfile(group_def_path, path.join(group_path, 'agent.conf'))
         chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
-        chmod(group_path, 0o770)
+        chmod(group_path, 0o700)
         msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
