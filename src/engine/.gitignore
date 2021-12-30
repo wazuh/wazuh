@@ -1,36 +1,17 @@
 ### C++ ###
-# Prerequisites
-*.d
-
 # Compiled Object files
-*.slo
-*.lo
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
 
 # Compiled Dynamic libraries
 *.so
-*.dylib
-*.dll
 
-# Fortran module files
-*.mod
-*.smod
 
 # Compiled Static libraries
-*.lai
-*.la
 *.a
 *.lib
 
 # Executables
-*.exe
 *.out
-*.app
 
 ### CMake ###
 CMakeLists.txt.user
@@ -71,6 +52,8 @@ _deps
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+# Support for Project snippet scope
+!.vscode/*.code-snippets
 
 # Local History for Visual Studio Code
 .history/
@@ -79,9 +62,12 @@ _deps
 # Ignore all local history of files
 .history
 .ionide
+<<<<<<< HEAD
 
 # Support for Project snippet scope
 !.vscode/*.code-snippets
 
 # Personal
 _*.*pp
+=======
+>>>>>>> Fix gitignore
