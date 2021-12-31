@@ -16,7 +16,9 @@
 #define FILE_PRIMARY_KEY "path"
 
 #define FIMDB_REGISTRY_KEY_TABLENAME "registry_key"
-#define FIMDB_REGISTRY_VALUE_TABLENAME "registry_value"
+#define FIMDB_REGISTRY_KEY_TXN_TABLE "{\"table\": \"registry_key\"}"
+#define FIMDB_REGISTRY_VALUE_TABLENAME "registry_data"
+#define FIMDB_REGISTRY_VALUE_TXN_TABLE "{\"table\": \"registry_data\"}"
 
 typedef enum FIMDBErrorCodes
 {
