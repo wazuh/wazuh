@@ -1168,7 +1168,12 @@ class AWSConfigBucket(AWSLogsBucket):
                     aws_region=aws_region,
                     prefix=self.prefix))
                 # query returns an integer
-                last_date_processed = str(query_date_last_log.fetchone()[0])
+                db_date = str(query_date_last_log.fetchone()[0])
+                if self.only_logs_after:
+                    last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > self.only_logs_after else \
+                        datetime.strftime(self.only_logs_after, '%Y%m%d')
+                else:
+                    last_date_processed = db_date
             # if DB is empty
             except (TypeError, IndexError):
                 last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
@@ -1673,7 +1678,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     aws_region=aws_region,
                     flow_log_id=flow_log_id))
                 # query returns an integer
-                last_date_processed = str(query_date_last_log.fetchone()[0])
+                db_date = str(query_date_last_log.fetchone()[0])
+                if self.only_logs_after:
+                    last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > self.only_logs_after else \
+                        datetime.strftime(self.only_logs_after, '%Y%m%d')
+                else:
+                    last_date_processed = db_date
             # if DB is empty
             except (TypeError, IndexError) as e:
                 last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
