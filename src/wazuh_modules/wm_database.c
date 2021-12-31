@@ -59,6 +59,7 @@ char * wm_inotify_pop();
 #endif // INOTIFY_ENABLED
 
 wm_database *module;
+int is_worker;
 int wdb_wmdb_sock = -1;
 
 // Module main function. It won't return
@@ -88,9 +89,7 @@ static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
 
-static int wm_sync_agent_group(int id_agent, const char *fname);
 static int wm_sync_shared_group(const char *fname);
-static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
@@ -114,6 +113,9 @@ void* wm_database_main(wm_database *data) {
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template db file removed: %s", path_template);
+
+    // Check if it is a worker node
+    is_worker = w_is_worker();
 
     // Manager name synchronization
     if (data->sync_agents) {
@@ -168,7 +170,6 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(GROUPS_DIR);
                 wm_sync_multi_groups(SHAREDCFG_DIR);
                 wm_clean_dangling_groups();
                 wm_clean_dangling_legacy_dbs();
@@ -252,15 +253,15 @@ void wm_check_agents() {
 
 // Synchronize agents
 void wm_sync_agents() {
-    unsigned int i;
-    char * group;
-    char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
-    keyentry *entry;
-    int *agents;
     clock_t clock0 = clock();
     struct timespec spec0;
     struct timespec spec1;
+
+    // The client.keys file should only be synchronized with the database in the
+    // worker nodes. In the case of the master, this will happen in the writter
+    // thread of authd.
+    if (!is_worker) return;
 
     gettime(&spec0);
 
@@ -268,18 +269,40 @@ void wm_sync_agents() {
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
+    sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
+
+    OS_FreeKeys(&keys);
+    mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
+    gettime(&spec1);
+    time_sub(&spec1, &spec0);
+    mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+}
+
+/**
+ * @brief Synchronizes a keystore with the agent table of global.db.
+ *
+ * @param keys The keystore structure to be synchronized
+ * @param wdb_sock The socket to be used in the calls to Wazuh DB
+ */
+void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
+    keyentry *entry;
+    char * group;
+    char cidr[20];
+    int *agents;
+    unsigned int i;
+
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
 
-    /* Insert new entries */
+    // Add new agents to the database
 
-    for (i = 0; i < keys.keysize; i++) {
-        entry = keys.keyentries[i];
+    for (i = 0; i < keys->keysize; i++) {
+        entry = keys->keyentries[i];
         int id;
 
-        mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
+        mdebug2("Synchronizing agent %s '%s'.", entry->id, entry->name);
 
         if (!(id = atoi(entry->id))) {
-            mterror(WM_DATABASE_LOGTAG, "At wm_sync_agents(): invalid ID number.");
+            merror("At sync_keys_with_wdb(): invalid ID number.");
             continue;
         }
 
@@ -288,15 +311,15 @@ void wm_sync_agents() {
         }
 
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
-                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
+                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, wdb_sock)) {
             // The agent already exists, update group only.
-            wm_sync_agent_group(id, entry->id);
+            mdebug2("The agent %s '%s' already exist in the database.", entry->id, entry->name);
         }
     }
 
-    /* Delete old keys */
+    // Delete from the database all the agents without a key
 
-    if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
+    if ((agents = wdb_get_all_agents(FALSE, wdb_sock))) {
         char id[9];
         char wdbquery[OS_SIZE_128 + 1];
         char *wdboutput = NULL;
@@ -305,21 +328,21 @@ void wm_sync_agents() {
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
-            if (OS_IsAllowedID(&keys, id) == -1) {
-                char *name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
+            if (OS_IsAllowedID(keys, id) == -1) {
+                char *name = wdb_get_agent_name(agents[i], wdb_sock);
 
-                if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
-                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                if (wdb_remove_agent(agents[i], wdb_sock) < 0) {
+                    mdebug1("Couldn't remove agent %s", id);
                     os_free(name);
                     continue;
                 }
 
                 if (wdboutput == NULL) {
-                    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+                    os_malloc(OS_SIZE_1024, wdboutput);
                 }
 
                 snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", id);
-                error = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+                error = wdbc_query_ex(wdb_sock, wdbquery, wdboutput, OS_SIZE_1024);
 
                 if (error == 0) {
                     mdebug1("DB from agent %s was deleted '%s'", id, wdboutput);
@@ -347,11 +370,6 @@ void wm_sync_agents() {
     }
 
     os_free(group);
-    OS_FreeKeys(&keys);
-    mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
-    gettime(&spec1);
-    time_sub(&spec1, &spec0);
-    mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
 // Clean dangling database files
@@ -455,26 +473,6 @@ void wm_sync_multi_groups(const char *dirname) {
 
 #endif // LOCAL
 
-int wm_sync_agent_group(int id_agent, const char *fname) {
-    int result = 0;
-    char *group;
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
-    clock_t clock0 = clock();
-
-    get_agent_group(atoi(fname), group, OS_SIZE_65536, NULL);
-
-    if (OS_SUCCESS != wdb_update_agent_group(id_agent, *group ? group : NULL, &wdb_wmdb_sock)) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
-        wdb_delete_agent_belongs(id_agent, &wdb_wmdb_sock);
-        result = -1;
-    }
-
-    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
-
-    free(group);
-    return result;
-}
-
 int wm_sync_shared_group(const char *fname) {
     int result = 0;
     char path[PATH_MAX];
@@ -499,78 +497,22 @@ int wm_sync_shared_group(const char *fname) {
     return result;
 }
 
-void wm_scan_directory(const char *dirname) {
-    char path[PATH_MAX];
-    struct dirent *dirent = NULL;
-    DIR *dir;
-
-    mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", dirname);
-    snprintf(path, PATH_MAX, "%s", dirname);
-
-    if (!(dir = opendir(path))) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", path, strerror(errno));
-        return;
-    }
-
-    while ((dirent = readdir(dir)) != NULL)
-        if (dirent->d_name[0] != '.')
-            wm_sync_file(dirname, dirent->d_name);
-
-    closedir(dir);
-}
-
 int wm_sync_file(const char *dirname, const char *fname) {
     char path[PATH_MAX] = "";
-    int result = 0;
-    int id_agent = -1;
-    int type;
-    char * name;
+    int result = OS_INVALID;
 
     mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
     if (snprintf(path, PATH_MAX, "%s/%s", dirname, fname) >= PATH_MAX) {
         mterror(WM_DATABASE_LOGTAG, "At wm_sync_file(): Path '%s/%s' exceeded length limit.", dirname, fname);
-        return -1;
+        return result;
     }
 
-    if (!strcmp(dirname, GROUPS_DIR)) {
-        type = WDB_GROUPS;
-    } else if (!strcmp(dirname, SHAREDCFG_DIR)) {
-        type = WDB_SHARED_GROUPS;
+    if (!strcmp(dirname, SHAREDCFG_DIR)) {
+        result = wm_sync_shared_group(fname);
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
-        return -1;
-    }
-
-    switch (type) {
-    case WDB_GROUPS:
-        id_agent = atoi(fname);
-        if (id_agent <= 0) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
-            return -1;
-        }
-
-        name = wdb_get_agent_name(id_agent, &wdb_wmdb_sock);
-
-        if (name == NULL) {
-            mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", id_agent);
-            return -1;
-        }
-
-        if (*name == '\0') {
-            mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", fname);
-            unlink(path);
-            free(name);
-            return -1;
-        }
-
-        free(name);
-        result = wm_sync_agent_group(id_agent, fname);
-        break;
-
-    case WDB_SHARED_GROUPS:
-        result = wm_sync_shared_group(fname);
-        break;
+        return result;
     }
 
     return result;
