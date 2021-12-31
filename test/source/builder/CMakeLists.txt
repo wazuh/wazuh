@@ -62,6 +62,7 @@ set(SOURCES
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_value.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/helper_exists.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_reference.cpp
+  ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_builder.cpp
 )
 
 include_directories(
@@ -126,6 +127,11 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_va
 add_executable(helper_exists_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_exists_test.cpp ${SOURCES})
 gtest_discover_tests(helper_exists_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_exists_test.cpp)
+
+# map_builder test
+add_executable(map_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp ${SOURCES})
+gtest_discover_tests(map_builder_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp)
 
 # map_value test
 add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp ${SOURCES})
