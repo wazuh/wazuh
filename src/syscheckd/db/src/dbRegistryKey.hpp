@@ -43,7 +43,7 @@ struct FimRegistryKeyDeleter
 class RegistryKey final : public DBItem
 {
     public:
-        RegistryKey(fim_entry* const fim)
+        RegistryKey(const fim_entry* const fim)
             : DBItem(std::to_string(fim->registry_entry.key->id)
                      , fim->registry_entry.key->scanned
                      , fim->registry_entry.key->last_event
@@ -109,7 +109,7 @@ class RegistryKey final : public DBItem
             return m_fimEntry.get();
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };

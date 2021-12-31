@@ -33,7 +33,7 @@ struct FimRegistryValueDeleter
 class RegistryValue final : public DBItem
 {
     public:
-        RegistryValue(fim_entry* const fim)
+        RegistryValue(const fim_entry* const fim)
             : DBItem(std::string(fim->registry_entry.value->name)
                      , fim->registry_entry.value->scanned
                      , fim->registry_entry.value->last_event
@@ -42,6 +42,8 @@ class RegistryValue final : public DBItem
         {
             m_keyUid = fim->registry_entry.value->id;
             m_registryKey = 0;
+            m_path = std::string(fim->registry_entry.value->path);
+            m_arch = fim->registry_entry.value->arch;
             m_size = fim->registry_entry.value->size;
             m_type = fim->registry_entry.value->type;
             m_md5 = std::string(fim->registry_entry.value->hash_md5);
@@ -86,6 +88,8 @@ class RegistryValue final : public DBItem
             m_md5 = fim.at("hash_md5");
             m_sha1 = fim.at("hash_sha1");
             m_sha256 = fim.at("hash_sha256");
+            m_arch = fim.at("arch");
+            m_path = fim.at("path");
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
         }
@@ -96,7 +100,7 @@ class RegistryValue final : public DBItem
             return m_fimEntry.get();
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };
@@ -106,6 +110,8 @@ class RegistryValue final : public DBItem
         unsigned int                                        m_registryKey;
         unsigned int                                        m_size;
         unsigned int                                        m_type;
+        std::string                                         m_path;
+        int                                                 m_arch;
         std::string                                         m_md5;
         std::string                                         m_sha1;
         std::string                                         m_sha256;

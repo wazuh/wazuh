@@ -9,6 +9,7 @@
  * Foundation.
  */
 #include "dbRegistryValue.hpp"
+#include "fimCommonDefs.h"
 
 void RegistryValue::createFimEntry()
 {
@@ -32,18 +33,24 @@ void RegistryValue::createFimEntry()
 
 void RegistryValue::createJSON()
 {
-    nlohmann::json conf = {};
 
-    conf.push_back(nlohmann::json::object_t::value_type("id", m_keyUid));
-    conf.push_back(nlohmann::json::object_t::value_type("mode", m_mode));
-    conf.push_back(nlohmann::json::object_t::value_type("last_event", m_lastEvent));
-    conf.push_back(nlohmann::json::object_t::value_type("scanned", m_scanned));
-    conf.push_back(nlohmann::json::object_t::value_type("name", m_identifier));
-    conf.push_back(nlohmann::json::object_t::value_type("checksum", m_checksum));
-    conf.push_back(nlohmann::json::object_t::value_type("size", m_size));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_md5", m_md5));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_sha1", m_sha1));
-    conf.push_back(nlohmann::json::object_t::value_type("hash_sha256", m_sha256));
-    conf.push_back(nlohmann::json::object_t::value_type("type", m_type));
+    nlohmann::json conf;
+    nlohmann::json data;
+
+    conf["table"] = FIMDB_REGISTRY_VALUE_TABLENAME;
+    data["path"] = m_path;
+    data["arch"] = ((m_arch == 0) ? "[x32]" : "[x64]");
+    data["name"] = m_identifier;
+    data["last_event"] = m_lastEvent;
+    data["scanned"] = m_scanned;
+    data["checksum"] = m_checksum;
+    data["size"] = m_size;
+    data["hash_md5"] = m_md5;
+    data["hash_sha1"] = m_sha1;
+    data["hash_sha256"] = m_sha256;
+    data["type"] = m_type;
+
+    conf["data"] = nlohmann::json::array({data});
     m_statementConf = std::make_unique<nlohmann::json>(conf);
+
 }

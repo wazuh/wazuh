@@ -9,6 +9,7 @@
  * Foundation.
  */
 #include "dbRegistryKey.hpp"
+#include "fimCommonDefs.h"
 
 void RegistryKey::createFimEntry()
 {
@@ -37,20 +38,24 @@ void RegistryKey::createFimEntry()
 
 void RegistryKey::createJSON()
 {
-    nlohmann::json conf = {};
+    nlohmann::json conf;
+    nlohmann::json data;
 
-    conf.push_back(nlohmann::json::object_t::value_type("arch", m_arch));
-    conf.push_back(nlohmann::json::object_t::value_type("id", m_identifier));
-    conf.push_back(nlohmann::json::object_t::value_type("last_event", m_lastEvent));
-    conf.push_back(nlohmann::json::object_t::value_type("scanned", m_scanned));
-    conf.push_back(nlohmann::json::object_t::value_type("checksum", m_checksum));
-    conf.push_back(nlohmann::json::object_t::value_type("path", m_path));
-    conf.push_back(nlohmann::json::object_t::value_type("perm", m_perm));
-    conf.push_back(nlohmann::json::object_t::value_type("uid", m_uid));
-    conf.push_back(nlohmann::json::object_t::value_type("gid", m_gid));
-    conf.push_back(nlohmann::json::object_t::value_type("user_name", m_username));
-    conf.push_back(nlohmann::json::object_t::value_type("group_name", m_groupname));
-    conf.push_back(nlohmann::json::object_t::value_type("mtime", m_time));
 
+    conf["table"] = FIMDB_REGISTRY_KEY_TABLENAME;
+    data["name"] = m_identifier;
+    data["path"] = m_path;
+    data["arch"] = ((m_arch == 0) ? "[x32]" : "[x64]");
+    data["last_event"] = m_lastEvent;
+    data["scanned"] = m_scanned;
+    data["checksum"] = m_checksum;
+    data["perm"] = m_perm;
+    data["uid"] = m_uid;
+    data["gid"] = m_gid;
+    data["user_name"] = m_username;
+    data["group_name"] = m_groupname;
+    data["mtime"] = m_time;
+    conf["data"] = nlohmann::json::array({data});
     m_statementConf = std::make_unique<nlohmann::json>(conf);
+
 }

@@ -312,6 +312,8 @@ typedef struct fim_registry_key {
 
 typedef struct fim_registry_value_data {
     unsigned int id;
+    char* path;
+    int arch;
     char *name;
     unsigned int type;
     unsigned int size;
