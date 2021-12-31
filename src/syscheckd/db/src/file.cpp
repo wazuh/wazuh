@@ -186,6 +186,7 @@ FIMDBErrorCodes fim_db_file_update(const fim_entry* data, bool* updated)
 void fim_db_file_inode_search(const unsigned long inode, const unsigned long dev, callback_context_t callback)
 {
     const auto paths { FimDBUtils::getPathsFromINode<FIMDB>(inode, dev) };
+
     if (paths.empty())
     {
         FIMDB::getInstance().logFunction(LOG_ERROR, "No paths found with these inode and dev");

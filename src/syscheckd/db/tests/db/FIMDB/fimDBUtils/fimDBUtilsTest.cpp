@@ -59,6 +59,7 @@ TEST_F(FIMDBUtilsTest, testGetPathsFromINodeWithDBSyncException)
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
     .Times(1)
     .WillOnce(testing::Throw(DbSync::dbsync_error{INVALID_TABLE}));
+
     try
     {
         const auto paths = FimDBUtils::getPathsFromINode<FIMDBMOCK>(1, 12);
@@ -76,6 +77,7 @@ TEST_F(FIMDBUtilsTest, testGetPathsFromINodeWithException)
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
     .Times(testing::AtLeast(1))
     .WillRepeatedly(testing::Throw(std::invalid_argument("ERROR")));
+
     try
     {
         const auto paths = FimDBUtils::getPathsFromINode<FIMDBMOCK>(1, 12);
@@ -107,6 +109,7 @@ TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithDBSyncException)
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
     .Times(1)
     .WillOnce(testing::Throw(DbSync::dbsync_error{INVALID_TABLE}));
+
     try
     {
         const auto paths = FimDBUtils::getPathsFromPattern<FIMDBMOCK>("test.txt");
@@ -124,6 +127,7 @@ TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithException)
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
     .Times(testing::AtLeast(1))
     .WillRepeatedly(testing::Throw(std::invalid_argument("ERROR")));
+
     try
     {
         const auto paths = FimDBUtils::getPathsFromPattern<FIMDBMOCK>("test.txt");

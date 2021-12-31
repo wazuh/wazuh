@@ -10,6 +10,7 @@
  */
 
 #include "fimDBHelper.hpp"
+#include "fimDBUtils.hpp"
 #include "fimDBUtilsTest.h"
 
 void FIMWrapperTest::SetUp() {}
@@ -34,9 +35,16 @@ TEST_F(FIMWrapperTest, testInit)
 
 TEST_F(FIMWrapperTest, insertItemToDatabase)
 {
+    bool updated = true;
     nlohmann::json insertItem;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
-    FIMDBHelper::updateItem<FIMDBMOCK>(insertItem);
+    EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillOnce(testing::InvokeArgument<1>(ReturnTypeCallback::INSERTED, R"({})"_json));
+    EXPECT_NO_THROW(
+    {
+        updated = FIMDBHelper::updateItem<FIMDBMOCK>(insertItem);
+    });
+    ASSERT_FALSE(updated);
 }
 
 TEST_F(FIMWrapperTest, deleteItemToDatabase)
@@ -50,9 +58,16 @@ TEST_F(FIMWrapperTest, deleteItemToDatabase)
 
 TEST_F(FIMWrapperTest, updateItemToDatabaseSuccess)
 {
+    bool updated = false;
     nlohmann::json updateItem;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_));
-    FIMDBHelper::updateItem<FIMDBMOCK>(updateItem);
+    EXPECT_CALL(FIMDBMOCK::getInstance(), updateItem(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillOnce(testing::InvokeArgument<1>(ReturnTypeCallback::MODIFIED, R"({})"_json));
+    EXPECT_NO_THROW(
+    {
+        updated = FIMDBHelper::updateItem<FIMDBMOCK>(updateItem);
+    });
+    ASSERT_TRUE(updated);
 }
 
 TEST_F(FIMWrapperTest, executeQuerySuccess)
@@ -68,14 +83,32 @@ TEST_F(FIMWrapperTest, executeGetCountSuccess)
 {
     std::string tableName;
     int count = 0;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
-    FIMDBHelper::getCount<FIMDBMOCK>(tableName, count);
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillOnce(testing::InvokeArgument<1>(ReturnTypeCallback::SELECTED, R"({"count":5})"_json));
+    EXPECT_NO_THROW(
+    {
+        count = FIMDBHelper::getCount<FIMDBMOCK>(tableName);
+    });
+    ASSERT_NE(count, 0);
+    ASSERT_EQ(count, 5);
+
 }
 
 TEST_F(FIMWrapperTest, executeGetCountSuccessCustomQuery)
 {
-    std::string tableName;
+    std::string tableName = FIMBD_FILE_TABLE_NAME;
+    int count = 0;
     nlohmann::json query;
-    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_));
-    FIMDBHelper::getCount<FIMDBMOCK>(tableName, query);
+    query["column_list"] = "count(DISTINCT (inode || ',' || dev)) AS count";
+    const auto countQuery = FimDBUtils::dbQuery(tableName, query, "", "");
+    EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
+    .Times(testing::AtLeast(1))
+    .WillOnce(testing::InvokeArgument<1>(ReturnTypeCallback::SELECTED, R"({"count":2})"_json));
+    EXPECT_NO_THROW(
+    {
+        count = FIMDBHelper::getCount<FIMDBMOCK>(tableName, query);
+    });
+    ASSERT_NE(count, 0);
+    ASSERT_EQ(count, 2);
 }
