@@ -212,9 +212,14 @@ void SysInfo::getMemory(nlohmann::json& info) const
         memTotal = std::stoull(itTotal->second);
     }
 
+    const auto& itAvailable { systemInfo.find("MemAvailable") };
     const auto& itFree { systemInfo.find("MemFree") };
 
-    if (itFree != systemInfo.end())
+    if (itAvailable != systemInfo.end())
+    {
+        memFree = std::stoull(itAvailable->second);
+    }
+    else if (itFree != systemInfo.end())
     {
         memFree = std::stoull(itFree->second);
     }
