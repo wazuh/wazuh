@@ -9,6 +9,10 @@
  * Foundation.
  */
 
+#include <cerrno>
+#include <cstring>
+#include <system_error>
+
 #include "UtilsWrapperUnix.hpp"
 
 int UtilsWrapperUnix::createSocket(int domain, int type, int protocol)
@@ -17,7 +21,7 @@ int UtilsWrapperUnix::createSocket(int domain, int type, int protocol)
 
     if (-1 == fd)
     {
-        throw std::runtime_error{"Cannot connect to local socket."};
+        throw std::system_error{-1, std::system_category(), "Cannot connect to local socket."};
     }
 
     return fd;
@@ -29,9 +33,8 @@ int UtilsWrapperUnix::ioctl(int fd, unsigned long request, char* argp)
 
     if (-1 == retVal)
     {
-        throw std::runtime_error{ "Cannot manage device io." };
+        throw std::system_error{-1, std::system_category(), "Cannot manage device io."};
     }
 
     return retVal;
 }
-

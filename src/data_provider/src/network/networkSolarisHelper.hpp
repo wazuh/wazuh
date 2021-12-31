@@ -9,6 +9,9 @@
  * Foundation.
  */
 
+#ifndef _NETWORK_SOLARIS_HELPER_H
+#define _NETWORK_SOLARIS_HELPER_H
+
 #include <net/if.h>
 
 class NetworkSolarisHelper final
@@ -17,3 +20,5 @@ class NetworkSolarisHelper final
         static int getInterfacesCount(int fd, sa_family_t family);
         static void getInterfacesConfig(int fd, lifconf& networkInterface);
 };
+
+#endif //_NETWORK_SOLARIS_HELPER_H

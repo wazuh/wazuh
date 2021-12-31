@@ -35,7 +35,7 @@ class SolarisNetworkImpl final : public IOSNetwork
         // LCOV_EXCL_STOP
         void buildNetworkData(nlohmann::json& /*network*/) override
         {
-            throw std::runtime_error { "Non implemented specialization." };
+            throw std::runtime_error { "Specialization not implemented" };
         }
 };
 
