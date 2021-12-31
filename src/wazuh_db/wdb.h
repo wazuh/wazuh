@@ -222,6 +222,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
+    WDB_STMT_GLOBAL_VACUUM_INTO,
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
@@ -292,7 +293,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
-
 struct stmt_cache {
     sqlite3_stmt *stmt;
     char *query;
@@ -317,12 +317,24 @@ typedef struct wdb_t {
     struct wdb_t * next;
 } wdb_t;
 
+typedef enum wdb_backup_db {
+    WDB_GLOBAL_BACKUP,
+    WDB_LAST_BACKUP
+} wdb_backup_db ;
+
+typedef struct wdb_backup_settings_node {
+    bool enabled;
+    time_t interval;
+    int max_files;
+} wdb_backup_settings_node;
+
 typedef struct wdb_config {
     int sock_queue_size;
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
+    wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
 /// Enumeration of components supported by the integrity library.
@@ -1319,6 +1331,108 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+/**
+ * @brief Function to parse the global backup request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the backup command.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains the value.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse the global create backup.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains 'ok'.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_create_backup(wdb_t* wdb, char* output);
+
+/**
+ * @brief Function to parse the global get backup.
+ *
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains a list of the available backups.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_get_backup(char* output);
+
+/**
+ * @brief Function to parse the global restore request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the snapshot to restore. If not present, the more recent will be used.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains 'ok'.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output);
+
+/**
+ * @brief Function to create a backup of the global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @retval  0 Success: Backup created successfully.
+ * @retval -1 On error: The backup creation failed.
+ */
+int wdb_global_create_backup(wdb_t* wdb, char* output);
+
+/**
+ * @brief Function to delete old backups in case the amount exceeds the max_files limit.
+ *
+ * @retval  0 Success: The method exited without errors.
+ * @retval -1 On error: The method failed in reading the backup folder.
+ */
+int wdb_global_remove_old_backups();
+
+/**
+ * @brief Function to get a list of the available backups of global.db.
+ *
+ * @retval cJSON* Success: The list of all snapshots found, or empty if none was found.
+ * @retval NULL On error: The list of snapshots couldn't be retrieved.
+ */
+cJSON* wdb_global_get_backups();
+
+/**
+ * @brief Method to restore a backup of global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] snapshot The backup file name to be restored. If not present, the last one will be used.
+ * @param [in] save_pre_restore_state If FALSE or not present, the database will be overwritten with the snapshot. If TRUE,
+ *                                    the database will be saved before restoring the snapshot.
+ * @param [out] output A message related to the result of the operation.
+ * @retval  0 Success: Backup restored successfully.
+ * @retval -1 On error: The backup couldn't be restored.
+ */
+int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
+
+/**
+ * @brief Function to check if there is at least one backup configuration node enabled.
+ *
+ * @retval true If there is at least one backup enabled, false otherwise.
+ */
+bool wdb_check_backup_enabled();
+
+/**
+ * @brief Method to get the most recent global.db backup time and name
+ *
+ * @param most_recent_backup_name [out] The name of the most recent backup. Must be freed by the caller, ignored if NULL.
+ * @retval Last modification time of the most recent backup on success, OS_INVALID on error.
+ */
+time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name);
+
+/**
+ * @brief Method to get oldest global.db backup time and name
+ *
+ * @param oldest_backup_name [out] The name of the oldest backup. Must be freed by the caller, ignored if NULL.
+ * @retval Last modification time of the oldest backup on success, OS_INVALID on error.
+ */
+time_t wdb_global_get_oldest_backup(char **oldest_backup_name);
 // Functions for database integrity
 
 int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);

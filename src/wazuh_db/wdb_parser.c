@@ -935,6 +935,17 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
             }
         }
+        else if (strcmp(query, "backup") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for backup.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                // The "backup restore" command takes the pool_mutex to remove the wdb pointer
+                result = wdb_parse_global_backup(&wdb, next, output);
+            }
+        }
         else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -5704,6 +5715,90 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     os_free(out)
 
     return OS_SUCCESS;
+}
+
+int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
+    int result = OS_INVALID;
+    char * next;
+    const char delim[] = " ";
+    char *tail = NULL;
+
+    next = strtok_r(input, delim, &tail);
+
+    if (!next){
+        snprintf(output, OS_MAXSTR + 1, "err Missing backup action");
+    }
+    else if (strcmp(next, "create") == 0) {
+        result = wdb_parse_global_create_backup(*wdb, output);
+    }
+    else if (strcmp(next, "get") == 0) {
+        result = wdb_parse_global_get_backup(output);
+    }
+    else if (strcmp(next, "restore") == 0) {
+        // During a restore, the global wdb_t pointer may change. The mutex prevents anyone else from accesing it
+        w_mutex_lock(&pool_mutex);
+        result = wdb_parse_global_restore_backup(wdb, tail, output);
+        w_mutex_unlock(&pool_mutex);
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
+    }
+
+    return result;
+}
+
+int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
+    int result = wdb_global_create_backup(wdb, output);
+
+    if (OS_SUCCESS == result) {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+
+    return result;
+}
+
+int wdb_parse_global_get_backup(char* output) {
+    cJSON* j_backups = wdb_global_get_backups();
+
+    if (j_backups) {
+        char* out = cJSON_PrintUnformatted(j_backups);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        os_free(out);
+        cJSON_Delete(j_backups);
+        return OS_SUCCESS;
+    } else {
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute backup get command, unable to open '%s' folder", WDB_BACKUP_FOLDER);
+        return OS_INVALID;
+    }
+}
+
+int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output) {
+    cJSON *j_parameters = NULL;
+    const char *error = NULL;
+    int result = OS_INVALID;
+
+    j_parameters = cJSON_ParseWithOpts(input, &error, TRUE);
+
+    if (!j_parameters && strcmp(input, "")) {
+        mdebug1("Invalid backup JSON syntax when restoring snapshot.");
+        mdebug2("JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        char* snapshot = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "snapshot"));
+        cJSON* j_save_pre_restore_state = cJSON_GetObjectItem(j_parameters, "save_pre_restore_state");
+        bool save_pre_restore_state = cJSON_IsBool(j_save_pre_restore_state) ? (bool) j_save_pre_restore_state->valueint : false;
+        if (save_pre_restore_state && snapshot && strncmp(snapshot, WDB_GLOB_PRE_RESTORE_BACKUP_NAME, sizeof(WDB_GLOB_PRE_RESTORE_BACKUP_NAME) - 1) == 0) {
+            mdebug1("Invalid parameters combination for backup restoration.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid parameters combination for backup restoration.");
+            result = OS_INVALID;
+        } else {
+            result = wdb_global_restore_backup(wdb, snapshot, save_pre_restore_state, output);
+        }
+    }
+
+    cJSON_Delete(j_parameters);
+    return result;
 }
 
 bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, char *data)
