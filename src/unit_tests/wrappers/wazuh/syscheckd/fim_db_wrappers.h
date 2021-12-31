@@ -12,6 +12,7 @@
 #define FIM_DB_WRAPPERS_H
 
 #include "syscheckd/include/syscheck.h"
+#include "syscheckd/db/include/fimCommonDefs.h"
 
 int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      fim_type type,
@@ -39,7 +40,15 @@ int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
 fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
                                   const char *file_path);
 
-fdb_t *__wrap_fim_db_init(int memory);
+void __wrap_fim_db_init(int storage,
+                        int sync_interval,
+                        int file_limit,
+                        fim_sync_callback_t sync_callback,
+                        logging_callback_t log_callback);
+
+void expect_wrapper_fim_db_init(int storage,
+                                int sync_interval,
+                                int file_limit);
 
 int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
@@ -47,7 +56,7 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         int storage,
                                         event_data_t *evt_data);
 
-int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
+int __wrap_fim_db_remove_path(char *path);
 
 int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   pthread_mutex_t *mutex,
@@ -78,7 +87,7 @@ void expect_wrapper_fim_db_get_count_entries(const fdb_t *fim_sql, int ret);
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_remove_path
  */
-void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val);
+void expect_fim_db_remove_path(char *path, int ret_val);
 
 int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path);
 
@@ -94,5 +103,18 @@ int __wrap_fim_db_file_update(fdb_t *fim_sql,
                               const char *path,
                               const __attribute__((unused)) fim_file_data *data,
                               fim_entry **saved);
+
+int __wrap_fim_db_file_pattern_search(const char* pattern,
+                                      __attribute__((unused)) callback_context_t callback);
+
+void expect_fim_db_file_pattern_search(const char* pattern, int ret_val);
+
+int __wrap_fim_db_file_inode_search(const unsigned long inode,
+                                    const unsigned long dev,
+                                    __attribute__((unused)) callback_context_t callback);
+
+int __wrap_fim_db_get_count_file_inode();
+
+void __wrap_fim_run_integrity();
 
 #endif

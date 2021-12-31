@@ -63,9 +63,6 @@ include_directories((${SRC_FOLDER}/config))
 
 add_library(fim_shared STATIC expect_run_check.c
                               expect_fim_diff_changes.c
-                              db/expect_fim_db.c
-                              db/expect_fim_db_files.c
-                              db/expect_fim_db_registries.c
                               utils.c)
 
 set_target_properties(fim_shared PROPERTIES LINKER_LANGUAGE C )
@@ -118,8 +115,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
-                          -Wl,--wrap,get_group -Wl,--wrap,fim_db_remove_path \
-                          -Wl,--wrap,fim_db_get_count_file_entry \
+                          -Wl,--wrap,get_group \
                           -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
                           -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
                           -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
@@ -129,8 +125,10 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                           -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
-                          -Wl,--wrap,fim_db_file_update \
-                          -Wl,--wrap,realtime_sanitize_watch_map ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap,realtime_sanitize_watch_map,--wrap=fim_db_remove_path \
+                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_init \
+                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
@@ -156,6 +154,9 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                            -Wl,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
                            -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=pthread_rwlock_wrlock -Wl,--wrap=pthread_mutex_lock \
                            -Wl,--wrap=pthread_mutex_unlock -Wl,--wrap=pthread_rwlock_unlock -Wl,--wrap=pthread_rwlock_rdlock \
+                           -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                            ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "test_fim_diff_changes")
@@ -167,13 +168,14 @@ else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
 endif()
 
-set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch \
-                             -Wl,--wrap,read -Wl,--wrap,rbtree_insert \
-                             -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,send_log_msg \
+set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_file_pattern_search \
+                             -Wl,--wrap,read -Wl,--wrap,rbtree_insert -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_file_update \
+                             -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,send_log_msg  -Wl,--wrap,fim_db_remove_path \
                              -Wl,--wrap,rbtree_keys -Wl,--wrap,fim_realtime_event -Wl,--wrap=pthread_mutex_lock \
                              -Wl,--wrap=pthread_mutex_unlock -Wl,--wrap=getpid -Wl,--wrap=atexit -Wl,--wrap=os_random \
                              -Wl,--wrap,inotify_rm_watch -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
-                             -Wl,--wrap,pthread_rwlock_rdlock ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_get_count_file_entry \
+                             -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
@@ -191,7 +193,10 @@ endif()
 
 set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
                                 -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
-                                -Wl,--wrap,pthread_mutex_unlock ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_db_init \
+                                -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "test_syscheck_config")
 if(${TARGET} STREQUAL "agent")
@@ -200,7 +205,10 @@ else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
 endif()
 
-set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int ${DEBUG_OP_WRAPPERS}")
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int \
+                         -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                         -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                         -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "test_syscheck")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
@@ -220,11 +228,14 @@ endif()
 
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
                           -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency -Wl,--wrap,fim_checker \
-                          -Wl,--wrap,lstat \
+                          -Wl,--wrap,lstat -Wl,--wrap,fim_db_file_pattern_search \
                           -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random \
                           -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap,gettime \
                           -Wl,--wrap,remove_audit_rule_syscheck -Wl,--wrap,realtime_process -Wl,--wrap,FOREVER \
                           -Wl,--wrap,select -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                          -Wl,--wrap=fim_db_init,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity \
                           ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "test_run_check")

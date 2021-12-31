@@ -229,7 +229,6 @@ static int teardown_group(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    fim_db_clean();
     Free_Syscheck(&syscheck);
 
     return 0;
@@ -1025,23 +1024,10 @@ void test_fim_delete_realtime_watches(void **state) {
 
 void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
+    char pattern[PATH_MAX] = {0};
 
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
-}
-
-void test_fim_link_delete_range_error(void **state) {
-    char error_msg[OS_SIZE_128];
-    fim_tmp_file *tmp_file = *state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
-
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    snprintf(pattern, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "test");
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 }
@@ -1137,17 +1123,12 @@ void test_send_sync_control(void **state) {
 
 void test_send_sync_state(void **state) {
     char debug_msg[OS_SIZE_256] = {0};
-    cJSON *event = cJSON_CreateObject(); // to be freed in dbsync_state_msg
-
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-    cJSON_AddStringToObject(event, "data", "random_string");
+    char *event = "{\"data\":\"random_string\"}";
     char *ret_msg = "{\"component\":\"fim_file\",\"type\":\"state\",\"data\":{\"data\":\"random_string\"}}";
 
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
 
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
     expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
 
     fim_send_sync_state("fim_file", event);
@@ -1188,7 +1169,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_link_check_delete_noentry_error, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_delete_realtime_watches, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_delete_range, setup_tmp_file, teardown_tmp_file),
-        cmocka_unit_test_setup_teardown(test_fim_link_delete_range_error, setup_tmp_file, teardown_tmp_file),
         cmocka_unit_test_setup_teardown(test_fim_link_silent_scan, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_already_monitored, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_reload_broken, setup_symbolic_links, teardown_symbolic_links),

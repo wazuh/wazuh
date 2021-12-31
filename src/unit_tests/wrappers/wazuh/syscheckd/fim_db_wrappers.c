@@ -25,9 +25,22 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
     return mock_type(fim_entry*);
 }
 
-fdb_t *__wrap_fim_db_init(int memory) {
-    check_expected(memory);
-    return mock_type(fdb_t*);
+void __wrap_fim_db_init(int storage,
+                        int sync_interval,
+                        int file_limit,
+                        __attribute__((unused)) fim_sync_callback_t sync_callback,
+                        __attribute__((unused)) logging_callback_t log_callback) {
+    check_expected(storage);
+    check_expected(sync_interval);
+    check_expected(file_limit);
+}
+
+void expect_wrapper_fim_db_init(int storage,
+                                int sync_interval,
+                                int file_limit) {
+    expect_value(__wrap_fim_db_init, storage, storage);
+    expect_value(__wrap_fim_db_init, sync_interval, sync_interval);
+    expect_value(__wrap_fim_db_init, file_limit, file_limit);
 }
 
 int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
@@ -42,8 +55,7 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
     return mock();
 }
 
-int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path) {
-    check_expected_ptr(fim_sql);
+int __wrap_fim_db_remove_path(char *path) {
     check_expected(path);
     return mock_type(int);
 }
@@ -102,8 +114,7 @@ void expect_wrapper_fim_db_get_count_entries(const fdb_t *db, int ret) {
     will_return(__wrap_fim_db_get_count_entries, ret);
 }
 
-void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
-    expect_value(__wrap_fim_db_remove_path, fim_sql, fim_sql);
+void expect_fim_db_remove_path(char *path, int ret_val) {
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
@@ -120,4 +131,37 @@ int __wrap_fim_db_file_update(fdb_t *fim_sql,
     }
 
     return mock();
+}
+
+int __wrap_fim_db_file_pattern_search(const char* pattern,
+                                      __attribute__((unused)) callback_context_t callback) {
+    check_expected(pattern);
+
+    return mock();
+}
+
+void expect_fim_db_file_pattern_search(const char* pattern, int ret_val) {
+    expect_value(__wrap_fim_db_file_pattern_search, pattern, pattern);
+    will_return(__wrap_fim_db_file_pattern_search, ret_val);
+}
+
+int __wrap_fim_db_file_inode_search(const unsigned long inode,
+                                    const unsigned long dev,
+                                    __attribute__((unused)) callback_context_t callback) {
+    check_expected(inode);
+    check_expected(dev);
+}
+
+void expect_fim_db_file_inode_search(const unsigned long inode,
+                                     const unsigned long dev) {
+    expect_value(__wrap_fim_db_file_inode_search, inode, inode);
+    expect_value(__wrap_fim_db_file_inode_search, dev, dev);
+}
+
+int __wrap_fim_db_get_count_file_inode() {
+    return mock();
+}
+
+void __wrap_fim_run_integrity() {
+    function_called();
 }

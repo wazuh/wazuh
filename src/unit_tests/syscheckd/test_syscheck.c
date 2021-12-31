@@ -69,8 +69,7 @@ void test_fim_initialize(void **state)
 {
     fdb_t *fdb = *state;
 
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, fdb);
+    expect_wrapper_fim_db_init(1, 300, 100000);
 
     fim_initialize();
 
@@ -79,8 +78,7 @@ void test_fim_initialize(void **state)
 
 void test_fim_initialize_error(void **state)
 {
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
+    expect_wrapper_fim_db_init(1, 300, 100000);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
@@ -168,8 +166,9 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
 
     will_return(__wrap_rootcheck_init, 1);
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
+
+    expect_wrapper_fim_db_init(1, 300, 100000);
+
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     expect_assert_failure(Start_win32_Syscheck());
@@ -195,8 +194,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
+    expect_wrapper_fim_db_init(1, 300, 100000);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
@@ -228,8 +226,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
+    expect_wrapper_fim_db_init(1, 300, 100000);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
@@ -300,8 +297,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
 
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
+    expect_wrapper_fim_db_init(1, 300, 100000);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
@@ -353,8 +349,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'realtime'.");
 
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
+    expect_wrapper_fim_db_init(1, 300, 100000);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 

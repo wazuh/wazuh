@@ -1605,7 +1605,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
+    expect_fim_db_remove_path(fim_data->fentry->file_entry.path, FIMDB_ERR);
 
     fim_checker(path, &evt_data, NULL);
 
@@ -2233,125 +2233,6 @@ static void test_fim_scan_no_limit(void **state) {
     fim_scan();
 }
 
-/**** delete_file_event ****/
-void test_fim_delete_file_event_delete_error(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_fim_db_remove_path(syscheck.database, entry.file_entry.path, FIMDB_ERR);
-
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_remove_success(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-
-    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_fim_db_remove_path(syscheck.database, entry.file_entry.path, FIMDB_OK);
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-
-void test_fim_delete_file_event_no_conf(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-    fim_entry entry = {.file_entry.path = "/a/random/path", .file_entry.data=&DEFAULT_FILE_DATA};
-
-    char buffer_config[OS_SIZE_128] = {0};
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    // snprintf(buffer_msg, OS_SIZE_128, FIM_DELETE_EVENT_PATH_NOCONF, entry.file_entry.path);
-    snprintf(buffer_config, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "file", entry.file_entry.path);
-
-    // Inside fim_configuration_directory
-    expect_string(__wrap__mdebug2, formatted_msg, buffer_config);
-
-    // expect_string(__wrap__mdebug2, formatted_msg, buffer_msg);
-
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_different_mode_scheduled(void **state) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-
-    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_fim_db_remove_path(syscheck.database, entry.file_entry.path, FIMDB_OK);
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
-    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
-    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
-    fim_entry entry = {.file_entry.path = "/etc/test", .file_entry.data=&DEFAULT_FILE_DATA};
-    event_data_t evt_data = { .mode = FIM_REALTIME };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_report_changes(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .type = FIM_DELETE, .report_event = true };
-    directory_t *configuration;
-    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
-
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    configuration = fim_configuration_directory(entry.file_entry.path);
-    configuration->options |= CHECK_SEECHANGES;
-
-    expect_fim_db_remove_path(syscheck.database, entry.file_entry.path, FIMDB_OK);
-    // inside fim_json_event
-    expect_fim_diff_process_delete_file(entry.file_entry.path, 0);
-
-
-    fim_delete_file_event(syscheck.database, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-
-    configuration->options &= ~CHECK_SEECHANGES;
-}
 #else
 static void test_fim_checker_over_max_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true, .w_evt = NULL };
@@ -2464,7 +2345,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
+    expect_fim_db_remove_path(fim_data->fentry->file_entry.path, FIMDB_ERR);
 
     fim_checker(expanded_path, &evt_data, NULL);
 
@@ -2961,266 +2842,6 @@ static void test_fim_scan_no_limit(void **state) {
     fim_scan();
 }
 
-void test_fim_delete_file_event_delete_error(void **state) {
-    fim_data_t *fim_data = *state;
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-    char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .type=FIM_DELETE };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    fim_data->fentry->file_entry.path = strdup(expanded_path);
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_remove_success(void **state) {
-    fim_data_t *fim_data = *state;
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-    char expanded_path[OS_MAXSTR];
-
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    fim_data->fentry->file_entry.path = strdup(expanded_path);
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_no_conf(void **state) {
-    fim_data_t *fim_data = *state;
-    char *path = "C:\\A\\random\\path";
-    char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    fim_data->fentry->file_entry.path = strdup(expanded_path);
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-    char buffer_config[OS_SIZE_128] = {0};
-
-    snprintf(buffer_config, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "file", fim_data->fentry->file_entry.path);
-
-    // Inside fim_configuration_directory
-    expect_string(__wrap__mdebug2, formatted_msg, buffer_config);
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_different_mode_scheduled(void **state) {
-    fim_data_t *fim_data = *state;
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-    char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    fim_data->fentry->file_entry.path = strdup(expanded_path);
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
-    fim_data_t *fim_data = *state;
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-    char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_WHODATA, .report_event = true };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    fim_data->fentry->file_entry.path = strdup(expanded_path);
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-}
-
-void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
-    fim_data_t *fim_data = *state;
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-    char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    fim_data->fentry->file_entry.path = strdup(expanded_path);
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-    directory_t *configuration = fim_configuration_directory(fim_data->fentry->file_entry.path);
-    configuration->options |= WHODATA_ACTIVE | CHECK_SEECHANGES;
-    configuration->options &= ~REALTIME_ACTIVE;
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-
-    configuration->options &= ~(WHODATA_ACTIVE | CHECK_SEECHANGES);
-    configuration->options |= REALTIME_ACTIVE;
-}
-
 #endif
 
 /* fim_check_db_state */
@@ -3695,26 +3316,6 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
 }
 #endif
 
-static void test_check_deleted_files(void **state) {
-    fim_tmp_file *file = *state;
-
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_fim_db_delete_not_scanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_delete_not_scanned, FIMDB_OK);
-
-    check_deleted_files();
-}
-
-static void test_check_deleted_files_error(void **state) {
-
-    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_RM_NOT_SCANNED);
-
-    check_deleted_files();
-}
-
-
 static void test_fim_realtime_event_file_exists(void **state) {
     struct stat buf = { .st_mode = 0 };
 
@@ -4029,7 +3630,7 @@ static void test_fim_process_wildcard_removed_data_exists(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
+    expect_fim_db_remove_path(fim_data->fentry->file_entry.path, FIMDB_ERR);
 
     fim_process_wildcard_removed(directory0);
 }
@@ -4304,10 +3905,6 @@ int main(void) {
         cmocka_unit_test(test_fim_get_data_fail_to_get_file_premissions),
 #endif
 
-        /* check_deleted_files */
-        cmocka_unit_test_setup_teardown(test_check_deleted_files, setup_fim_tmp_file, teardown_fim_tmp_file),
-        cmocka_unit_test_setup_teardown(test_check_deleted_files_error, setup_fim_tmp_file, teardown_fim_tmp_file),
-
         /* fim_realtime_event */
         cmocka_unit_test(test_fim_realtime_event_file_exists),
         cmocka_unit_test(test_fim_realtime_event_file_missing),
@@ -4329,21 +3926,8 @@ int main(void) {
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),
 
-        /* test_fim_delete_file_event */
-#ifndef TEST_WINAGENT
-        cmocka_unit_test(test_fim_delete_file_event_delete_error),
-        cmocka_unit_test(test_fim_delete_file_event_remove_success),
-        cmocka_unit_test(test_fim_delete_file_event_no_conf),
-        cmocka_unit_test(test_fim_delete_file_event_report_changes),
-#else
-        cmocka_unit_test_setup(test_fim_delete_file_event_delete_error, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_delete_file_event_remove_success, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_delete_file_event_no_conf, setup_fim_entry),
-#endif
-        cmocka_unit_test_setup_teardown(test_fim_delete_file_event_different_mode_scheduled, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_delete_file_event_different_mode_abort_realtime, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_delete_file_event_different_mode_abort_whodata, setup_fim_entry, teardown_fim_entry),
     };
+
     const struct CMUnitTest root_monitor_tests[] = {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
         cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),

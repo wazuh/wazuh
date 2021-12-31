@@ -31,7 +31,7 @@ void __wrap_fim_sync_check_eps() {
 }
 
 // Send a state synchronization message
-void __wrap_fim_send_sync_state(const char *location, cJSON * msg) {
+void __wrap_fim_send_sync_state(const char* location, const char* msg) {
     check_expected(location);
     check_expected(msg);
 
@@ -55,7 +55,7 @@ void __wrap_fim_send_sync_control(const char *component,
     check_expected(checksum);
 }
 
-void expect_fim_send_sync_state_call(const char *location, cJSON *msg) {
+void expect_fim_send_sync_state_call(const char* location, const char* msg) {
     expect_value(__wrap_fim_send_sync_state, location, location);
     expect_value(__wrap_fim_send_sync_state, msg, msg);
 }
