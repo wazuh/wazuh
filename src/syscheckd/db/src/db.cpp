@@ -142,6 +142,13 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
     if (entry->type == FIM_TYPE_FILE)
     {
         syncItem = std::make_unique<FileItem>(entry);
+    }else
+    {
+        if (entry->registry_entry.key == NULL){
+            syncItem = std::make_unique<RegistryValue>(entry);
+        }else{
+            syncItem = std::make_unique<RegistryKey>(entry);
+        }
     }
 
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput

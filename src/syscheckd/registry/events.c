@@ -15,7 +15,9 @@ static const char *FIM_EVENT_TYPE_ARRAY[] = { "added", "deleted", "modified" };
 
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
-cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry_t *configuration) {
+cJSON *fim_registry_value_attributes_json(const cJSON *data, const registry_t *configuration, const int data_type) {
+    cJSON *size, *md5, *sha256, *sha1, *checksum;
+
     static const char *VALUE_TYPE[] = {
         [REG_NONE] = "REG_NONE",
         [REG_SZ] = "REG_SZ",
@@ -35,28 +37,36 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
 
     cJSON_AddStringToObject(attributes, "type", "registry_value");
 
-    if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
-        cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
+    if (configuration->opts & CHECK_TYPE && data_type <= REG_QWORD) {
+        cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data_type]);
     }
 
     if (configuration->opts & CHECK_SIZE) {
-        cJSON_AddNumberToObject(attributes, "size", data->size);
+        if (size = cJSON_GetObjectItem(data, "size"), size != NULL) {
+            cJSON_AddNumberToObject(attributes, "size", size->valueint);
+        }
     }
 
     if (configuration->opts & CHECK_MD5SUM) {
-        cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
+        if (md5 = cJSON_GetObjectItem(data, "hash_md5"), md5 != NULL) {
+            cJSON_AddStringToObject(attributes, "hash_md5", md5->valuestring);
+        }
     }
 
     if (configuration->opts & CHECK_SHA1SUM) {
-        cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
+        if (sha1 = cJSON_GetObjectItem(data, "hash_sha1"), sha1 == NULL) {
+            cJSON_AddStringToObject(attributes, "hash_sha1", sha1->valuestring);
+        }
     }
 
     if (configuration->opts & CHECK_SHA256SUM) {
-        cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
+        if (sha256 = cJSON_GetObjectItem(data, "hash_sha256"), sha256 != NULL) {
+            cJSON_AddStringToObject(attributes, "hash_sha256", sha256->valuestring);
+        }
     }
 
-    if (*data->checksum) {
-        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+    if (checksum = cJSON_GetObjectItem(data, "checksum"), checksum != NULL) {
+        cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
     }
 
     return attributes;
@@ -145,13 +155,13 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON_AddStringToObject(data, "value_name", new_data->registry_entry.value->name);
     cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
 
-    cJSON_AddItemToObject(data, "attributes",
-                          fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
+    //cJSON_AddItemToObject(data, "attributes",
+    //                      fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
 
     if (old_data != NULL && old_data->registry_entry.value != NULL) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes",
-                              fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
+        //cJSON_AddItemToObject(data, "old_attributes",
+        //                      fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
     }
 
     if (diff != NULL) {
