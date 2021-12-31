@@ -552,6 +552,7 @@
 #else
 #define FIM_ERROR_EXPAND_ENV_VAR                    "(6718): Could not expand the environment variable %s (%ld)."
 #endif
+#define FIM_ERROR_TRANSACTION                       "(6719): Could not start DBSync transaction (%s)"
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"

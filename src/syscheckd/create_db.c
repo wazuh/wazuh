@@ -46,7 +46,131 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-// Callback
+typedef struct fim_txn_context_s {
+    event_data_t *evt_data;
+} fim_txn_context_t;
+
+
+static cJSON* fim_dbsync_json_event(const char* path,
+                                    const char* diff,
+                                    const cJSON* fim_entry,
+                                    const directory_t* configuration,
+                                    const event_data_t* evt_data) {
+    cJSON* changed_attributes = NULL;
+
+    cJSON* json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+    // cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
+
+    // cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data));
+
+    cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+    // if (old_data) {
+    //     cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
+    // }
+
+    char* tags = NULL;
+    if (evt_data->w_evt) {
+        cJSON_AddItemToObject(data, "audit", fim_audit_json(evt_data->w_evt));
+    }
+
+    tags = configuration->tag;
+
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
+
+    if (tags != NULL) {
+        cJSON_AddStringToObject(data, "tags", tags);
+    }
+
+    return json_event;
+}
+
+static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
+{
+    char *path = NULL;
+    char *diff = NULL;
+    cJSON *json_event = NULL;
+    const cJSON *dbsync_event = NULL;
+    cJSON *json_path = NULL;
+    directory_t *configuration = NULL;
+    fim_txn_context_t *event_data = (fim_txn_context_t *) user_data;
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
+
+    // DBSync returns an array when there is a addition or modification. This callback is executed for each entry, so
+    // this array only has one element.
+    if (cJSON_IsArray(result_json)) {
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+            return;
+        }
+    // In case of a deletion, DBSync is not going to return an array.
+    } else {
+        dbsync_event = result_json;
+    }
+
+    if (json_path = cJSON_GetObjectItem(dbsync_event, FILE_PRIMARY_KEY), json_path == NULL) {
+        goto end;
+    }
+
+    path = cJSON_GetStringValue(json_path);
+
+    if (configuration = fim_configuration_directory(path), configuration == NULL) {
+        goto end;
+    }
+
+    if (configuration->options & CHECK_SEECHANGES) {
+        diff = fim_file_diff(path, configuration);
+    }
+
+    switch (resultType) {
+        case INSERTED:
+            event_data->evt_data->type = FIM_ADD;
+            break;
+
+        case MODIFIED:
+            event_data->evt_data->type = FIM_MODIFICATION;
+            break;
+
+        case DELETED:
+            if (configuration->options & CHECK_SEECHANGES) {
+                fim_diff_process_delete_file(path);
+            }
+            event_data->evt_data->type = FIM_DELETE;
+
+            break;
+
+        case MAX_ROWS:
+            mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+
+        // Fallthrough
+        default:
+            goto end;
+    }
+
+    json_event = fim_dbsync_json_event(path, diff, dbsync_event, configuration, event_data->evt_data);
+
+    if (json_event != NULL) {
+        send_syscheck_msg(json_event);
+    }
+
+end:
+    os_free(diff);
+    cJSON_Delete(json_event);
+}
+
 void process_delete_event(void * data, void * ctx)
 {
     cJSON *json_event = NULL;
@@ -98,6 +222,8 @@ time_t fim_scan() {
     int nodes_count = 0;
     OSListNode *node_it;
     directory_t *dir_it;
+    event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
+    fim_txn_context_t txn_ctx = { .evt_data = &evt_data };
 
     cputime_start = clock();
     gettime(&start);
@@ -105,6 +231,11 @@ time_t fim_scan() {
     fim_send_scan_info(FIM_SCAN_START);
 
 
+    TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
+    if (db_transaction_handle == NULL) {
+        merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
+        return time(NULL);
+    }
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;
 
@@ -117,10 +248,9 @@ time_t fim_scan() {
     w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
-        event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
         char *path = fim_get_real_path(dir_it);
 
-        fim_checker(path, &evt_data, dir_it);
+        fim_checker(path, &evt_data, dir_it, db_transaction_handle);
 
 #ifndef WIN32
         realtime_adddir(path, dir_it);
@@ -136,6 +266,9 @@ time_t fim_scan() {
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
 
+    fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+    db_transaction_handle = NULL;
+
 #ifdef WIN32
     fim_registry_scan();
 #endif
@@ -147,6 +280,8 @@ time_t fim_scan() {
 
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
+
+        db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
 
         w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
@@ -161,7 +296,7 @@ time_t fim_scan() {
 
             path = fim_get_real_path(dir_it);
 
-            fim_checker(path, &evt_data, dir_it);
+            fim_checker(path, &evt_data, dir_it, db_transaction_handle);
 
             // Verify the directory is being monitored correctly
 #ifndef WIN32
@@ -184,6 +319,8 @@ time_t fim_scan() {
         }
         */
 #endif
+        fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+        db_transaction_handle = NULL;
     }
 
     gettime(&end);
@@ -215,7 +352,10 @@ time_t fim_scan() {
     return end_of_scan;
 }
 
-void fim_checker(const char *path, event_data_t *evt_data, const directory_t *parent_configuration) {
+void fim_checker(const char *path,
+                 event_data_t *evt_data,
+                 const directory_t *parent_configuration,
+                 TXN_HANDLE dbsync_txn) {
     directory_t *configuration;
     int depth;
 
@@ -262,15 +402,15 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             return;
         }
         if((evt_data->mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE)) ||
-           (evt_data->mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE)))
-        {
+           (evt_data->mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE))) {
             /* Don't send alert if received mode and mode in configuration aren't the same.
             Scheduled mode events must always be processed to preserve the state of the agent's DB.
             */
             return;
         }
-        else
-        {
+
+        // Delete alerts in scheduled scan is triggered in the transaction delete rows operation.
+        if (evt_data->mode != FIM_SCHEDULED) {
             evt_data->type = FIM_DELETE;
             get_data_ctx ctx = {
                 .event = (event_data_t *)evt_data,
@@ -284,9 +424,8 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             {
                 fim_diff_process_delete_file(path);
             }
+            return;
         }
-
-        return;
     }
 
 #ifdef WIN_WHODATA
@@ -315,7 +454,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             return;
         }
 
-        fim_file(path, configuration, evt_data);
+        fim_file(path, configuration, evt_data, dbsync_txn);
         break;
 
     case FIM_DIRECTORY:
@@ -323,7 +462,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
             return;
         }
-        fim_directory(path, evt_data, configuration);
+        fim_directory(path, evt_data, configuration, dbsync_txn);
 
 #ifdef INOTIFY_ENABLED
         if (FIM_MODE(configuration->options) == FIM_REALTIME) {
@@ -335,7 +474,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
 }
 
 
-int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration) {
+int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration, TXN_HANDLE dbsync_txn) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
@@ -378,7 +517,7 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
         str_lowercase(f_name);
 #endif
         // Process the event related to f_name
-        fim_checker(f_name, evt_data, configuration);
+        fim_checker(f_name, evt_data, configuration, dbsync_txn);
     }
 
     os_free(f_name);
@@ -393,28 +532,37 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
  * @param path The path to the file being processed.
  * @param configuration The configuration associated with the file being processed.
  * @param evt_data Information on how the event was triggered.
+ * @param txn_handle DBSync transaction handler. Can be NULL.
  */
-static cJSON *
-_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
-    fim_entry new;
-    bool saved;
-    cJSON *json_event = NULL;
-    char *diff = NULL;
-
+static void _fim_file(const char *path,
+                      const directory_t *configuration,
+                      event_data_t *evt_data,
+                      TXN_HANDLE txn_handle) {
     assert(path != NULL);
     assert(configuration != NULL);
     assert(evt_data != NULL);
 
+    bool saved;
+    char *diff = NULL;
+    fim_entry new = {.type = FIM_FILE};
+
     new.file_entry.path = (char *)path;
     new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
+
     if (new.file_entry.data == NULL) {
         mdebug1(FIM_GET_ATTRIBUTES, path);
-        return NULL;
+        return;
+    }
+
+    if (txn_handle != NULL) {
+        fim_db_transaction_sync_row(txn_handle, &new);
+        free_file_data(new.file_entry.data);
+        return;
     }
 
     if (fim_db_file_update(&new, &saved) != FIMDB_OK) {
         free_file_data(new.file_entry.data);
-        return NULL;
+        return;
     }
 
     if (!saved) {
@@ -427,28 +575,17 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
         diff = fim_file_diff(path, configuration);
     }
 
-    json_event = fim_json_event(&new, saved ? new.file_entry.data : NULL, configuration, evt_data, diff);
-
     os_free(diff);
     free_file_data(new.file_entry.data);
-
-    return json_event;
 }
 
-void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
-    cJSON *json_event = NULL;
+void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle) {
 
     check_max_fps();
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    json_event = _fim_file(path, configuration, evt_data);
+    _fim_file(path, configuration, evt_data, txn_handle);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    if (json_event && _base_line && evt_data->report_event) {
-        send_syscheck_msg(json_event);
-    }
-
-    cJSON_Delete(json_event);
 }
 
 
@@ -464,7 +601,7 @@ void fim_realtime_event(char *file) {
          */
         fim_rt_delay();
 
-        fim_checker(file, &evt_data, NULL);
+        fim_checker(file, &evt_data, NULL, NULL);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
         fim_process_missing_entry(file, FIM_REALTIME, NULL);
@@ -491,7 +628,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
         fim_rt_delay();
 
         w_rwlock_rdlock(&syscheck.directories_lock);
-        fim_checker(w_evt->path, &evt_data, NULL);
+        fim_checker(w_evt->path, &evt_data, NULL, NULL);
         w_rwlock_unlock(&syscheck.directories_lock);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
@@ -548,7 +685,7 @@ void fim_db_process_missing_entry(void * data, void * ctx)
     fim_entry *new_entry = (fim_entry *)data;
     struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
 
-    fim_checker(new_entry->file_entry.path, ctx_data->event, NULL);
+    fim_checker(new_entry->file_entry.path, ctx_data->event, NULL, NULL);
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {

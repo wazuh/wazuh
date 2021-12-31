@@ -11,6 +11,7 @@
 #ifndef SYSCHECK_H
 #define SYSCHECK_H
 
+#include "commonDefs.h"
 #include "config/syscheck-config.h"
 #include "syscheck_op.h"
 #include "external/cJSON/cJSON.h"
@@ -174,8 +175,12 @@ void check_max_fps();
  * @param [in] path Path of the file to check
  * @param [in] evt_data Information associated to the triggered event
  * @param [in] configuration Configuration block associated with a previous event.
+ * @param [in] dbsync_txn Handle to an active dbsync transaction.
  */
-void fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration);
+void fim_checker(const char *path,
+                 event_data_t *evt_data,
+                 const directory_t *parent_configuration,
+                 TXN_HANDLE dbsync_txn);
 
 /**
  * @brief Check file integrity monitoring on a specific folder
@@ -183,9 +188,11 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *co
  * @param [in] dir
  * @param [in] evt_data Information associated to the triggered event
  * @param [in] configuration Configuration block associated with the directory.
+ * @param [in] txn_handle DBSync transaction handler. Can be NULL.
+ *
  * @return 0 on success, -1 on failure
  */
-int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration) ;
+int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration, TXN_HANDLE txn_handle);
 
 /**
  * @brief Check file integrity monitoring on a specific file
@@ -193,8 +200,9 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
  * @param [in] path Path of the file to check
  * @param [in] configuration Configuration block associated with a previous event.
  * @param [in] evt_data Information associated to the triggered event
+ * @param [in] txn_handle DBSync transaction handler. Can be NULL.
  */
-void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
+void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle);
 
 /**
  * @brief Process FIM realtime event
