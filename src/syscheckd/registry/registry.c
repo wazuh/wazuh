@@ -47,12 +47,13 @@ static const char *FIM_EVENT_MODE[] = {
 
 typedef struct fim_key_txn_context_s {
     event_data_t *evt_data;
+    fim_registry_key *key;
 } fim_key_txn_context_t;
 
 typedef struct fim_val_txn_context_s {
     event_data_t *evt_data;
+    fim_registry_value_data *data;
     char* diff;
-    int type;
 } fim_val_txn_context_t;
 
 /**
@@ -506,8 +507,9 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->mtime = get_registry_mtime(key_handle);
     }
 
+    // uncomment the line below for production code
     //key->last_event = time(NULL);
-    key->last_event = 0;
+    key->last_event = 0; // this option is necessary to avoid noise from fim events for now (dsync issue)
 
     fim_registry_get_checksum_key(key);
 
@@ -535,12 +537,12 @@ void fim_registry_free_entry(fim_entry *entry) {
 }
 
 cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
+                                            const fim_registry_value_data *value,
                                             const registry_t *configuration,
                                             fim_event_mode mode,
-                                            const event_data_t* evt_data,
+                                            const event_data_t *evt_data,
                                             __attribute__((unused)) whodata_evt *w_evt,
-                                            const char* diff,
-                                            const int data_type)
+                                            const char* diff)
 {
 
     //cJSON *changed_attributes = NULL;
@@ -553,6 +555,11 @@ cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
             cJSON_Delete(changed_attributes);
             return NULL;
         }
+        if (old_data != NULL && old_data->registry_entry.value != NULL) {
+            cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+            cJSON_AddItemToObject(data, "old_attributes",
+                                  fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
+    }
     }*/
 
     cJSON *json_event = cJSON_CreateObject();
@@ -561,30 +568,48 @@ cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    cJSON_AddStringToObject(data, "path", cJSON_GetObjectItem(dbsync_event, "path")->valuestring);
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-    cJSON_AddStringToObject(data, "arch", cJSON_GetObjectItem(dbsync_event, "arch")->valuestring);
-    cJSON_AddStringToObject(data, "value_name", cJSON_GetObjectItem(dbsync_event, "name")->valuestring);
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event,
-                          configuration, data_type));
+    if (value)
+    {
+        cJSON_AddStringToObject(data, "path", value->path);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64");
+        cJSON_AddStringToObject(data, "value_name", value->name);
+
+    } else
+    {
+
+        cJSON *path, *arch, *value_name;
+
+        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
+        {
+            cJSON_AddStringToObject(data, "path", path->valuestring);
+        }
+
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+
+        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
+        {
+            cJSON_AddStringToObject(data, "arch", arch->valuestring);
+        }
+
+        if (value_name = cJSON_GetObjectItem(dbsync_event, "name"), value_name != NULL)
+        {
+            cJSON_AddStringToObject(data, "value_name", value_name->valuestring);
+        }
+
+    }
+
+    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(dbsync_event, "last_event")->valuestring);
+
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
 
     if (diff != NULL) {
         cJSON_AddStringToObject(data, "content_changes", diff);
     }
-
-
- /* cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(dbsync_event, "last_event")->valuestring);
-    if (old_data != NULL && old_data->registry_entry.value != NULL) {
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes",
-                              fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
-    }
-
-    if (diff != NULL) {
-        cJSON_AddStringToObject(data, "content_changes", diff);
-    }*/
 
     if (configuration->tag != NULL) {
         cJSON_AddStringToObject(data, "tags", configuration->tag);
@@ -607,7 +632,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType, c
     int arch = -1;
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
     char* diff = event_data->diff;
-    const int data_type = event_data->type;
+    fim_registry_value_data *data = event_data->data;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
@@ -660,7 +685,8 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType, c
 
         case MAX_ROWS:
             if (configuration->opts & CHECK_SEECHANGES) {
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                        data->path);
                 goto end;
             }
             break;
@@ -669,8 +695,8 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType, c
             break;
     }
 
-    json_event = fim_dbsync_registry_value_json_event(dbsync_event, configuration, FIM_SCHEDULED, event_data->evt_data,
-                                                      NULL, diff, data_type);
+    json_event = fim_dbsync_registry_value_json_event(dbsync_event, data, configuration, FIM_SCHEDULED, event_data->evt_data,
+                                                      NULL, diff);
 
     if (json_event && _base_line) {
         send_syscheck_msg(json_event);
@@ -679,7 +705,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType, c
     end:
         cJSON_Delete(json_event);
         if(diff != NULL){
-            free(diff);
+            os_free(diff);
         }
 
 }
@@ -741,7 +767,7 @@ void fim_read_values(HKEY key_handle,
         new.registry_entry.value->size = data_size;
         new.registry_entry.value->last_event = 0;
         new.registry_entry.value->scanned = 0;
-        new.type = FIM_TYPE_REGISTRY; //arreglado uninitialized read
+        new.type = FIM_TYPE_REGISTRY;
 
         value_path_length = strlen(new.registry_entry.value->path) + strlen(new.registry_entry.value->name) + 2;
 
@@ -767,25 +793,43 @@ void fim_read_values(HKEY key_handle,
                                        (char *)data_buffer, new.registry_entry.value->type, configuration);
         }
         txn_ctx_regval->diff = diff;
-        txn_ctx_regval->type = data_type;
+        txn_ctx_regval->data = new.registry_entry.value;
 
         int result_transaction = fim_db_transaction_sync_row(regval_txn_handler, &new);
+
         if (result_transaction < 0) {
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
     }
 
+    fim_registry_free_value_data(new.registry_entry.value);
     os_free(value_buffer);
     os_free(data_buffer);
 }
 
-cJSON* fim_dbsync_registry_key_json_event(const char* path,
-                                          int arch,
-                                          const cJSON* dbsync_event,
+cJSON* fim_dbsync_registry_key_json_event(const cJSON* dbsync_event,
+                                          const fim_registry_key* key,
                                           const registry_t* configuration,
                                           const event_data_t* evt_data)
 {
-    //cJSON* changed_attributes = NULL;
+    /*
+
+    cJSON* changed_attributes = NULL;
+    if (old_data != NULL) {
+        changed_attributes = fim_registry_compare_key_attrs(new_data, old_data, configuration);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    if (old_data) {
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
+    }
+
+    */
 
     cJSON* json_event = cJSON_CreateObject();
     cJSON_AddStringToObject(json_event, "type", "event");
@@ -793,21 +837,39 @@ cJSON* fim_dbsync_registry_key_json_event(const char* path,
     cJSON* data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddStringToObject(data, "arch", (arch == ARCH_32BIT) ? "[x32]" : "[x64]");
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+    if (key != NULL)
+    {
+        cJSON_AddStringToObject(data, "path", key->path);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+        cJSON_AddStringToObject(data, "arch", (key->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
+
+    }
+    else
+    {
+        cJSON *path, *arch;
+
+        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
+        {
+            cJSON_AddStringToObject(data, "path", path->valuestring);
+        }
+
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+
+        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
+        {
+            cJSON_AddStringToObject(data, "arch", arch->valuestring);
+        }
+    }
+
+
 
     //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(fim_entry, "last_event")->valuestring);
 
-    //cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
-
-    //cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-
-    // if (old_data) {
-    //     cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
-    // }
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
 
     char* tags = NULL;
 
@@ -820,18 +882,17 @@ cJSON* fim_dbsync_registry_key_json_event(const char* path,
     return json_event;
 }
 
-
 static void registry_key_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
 
     registry_t *configuration = NULL;
     cJSON *json_event = NULL;
     const cJSON *dbsync_event = NULL;
-    cJSON *json_path = NULL;
-    cJSON *json_arch = NULL;
+    cJSON *json_path, *json_arch;
+    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
+    fim_registry_key* key = event_data->key;
     char *path = NULL;
     int arch = -1;
-    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
@@ -846,6 +907,8 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType, con
         dbsync_event = result_json;
     }
 
+    // Look for the old_attributes changed
+
     if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
         goto end;
     }
@@ -857,6 +920,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType, con
     arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
 
     configuration = fim_registry_configuration(path, arch);
+
     if (configuration == NULL) {
         return;
     }
@@ -879,7 +943,8 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType, con
 
         case MAX_ROWS:
             if (configuration->opts & CHECK_SEECHANGES) {
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                key->path);
                 goto end;
             }
             break;
@@ -888,7 +953,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType, con
             break;
     }
 
-    json_event = fim_dbsync_registry_key_json_event(path, arch, dbsync_event, configuration, event_data->evt_data);
+    json_event = fim_dbsync_registry_key_json_event(dbsync_event, key, configuration, event_data->evt_data);
 
     if (json_event && _base_line) {
         send_syscheck_msg(json_event);
@@ -916,7 +981,8 @@ void fim_open_key(HKEY root_key_handle,
                   registry_t *parent_configuration,
                   TXN_HANDLE regkey_txn_handler,
                   TXN_HANDLE regval_txn_handler,
-                  fim_val_txn_context_t *txn_ctx_regval) {
+                  fim_val_txn_context_t *txn_ctx_regval,
+                  fim_key_txn_context_t *txn_ctx_reg) {
 
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
@@ -992,7 +1058,7 @@ void fim_open_key(HKEY root_key_handle,
 
         /* Open sub_key */
         fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration, regkey_txn_handler,
-                     regval_txn_handler, txn_ctx_regval);
+                     regval_txn_handler, txn_ctx_regval, txn_ctx_reg);
 
         os_free(new_full_key);
     }
@@ -1004,6 +1070,8 @@ void fim_open_key(HKEY root_key_handle,
     if (new.registry_entry.key == NULL) {
         return;
     }
+
+    txn_ctx_reg->key = new.registry_entry.key;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -1055,9 +1123,10 @@ void fim_registry_scan() {
             continue;
         }
         fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
-                     NULL, regkey_txn_handler, regval_txn_handler, &txn_ctx_regval);
+                     NULL, regkey_txn_handler, regval_txn_handler, &txn_ctx_regval, &txn_ctx_reg);
     }
-
+    txn_ctx_reg.key = NULL;
+    txn_ctx_regval.data = NULL;
     fim_db_transaction_deleted_rows(regval_txn_handler, registry_value_transaction_callback, &txn_ctx_regval);
     fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
     regkey_txn_handler = NULL;
