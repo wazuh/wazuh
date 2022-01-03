@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _FIMHELPER_TEST_H
-#define _FIMHELPER_TEST_H
+#ifndef _FIMDB_UTILS_TEST_H
+#define _FIMDB_UTILS_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "fimCommonDefs.h"
@@ -71,4 +71,4 @@ class CallbackMock
         MOCK_METHOD(void, callbackMock, (ReturnTypeCallback type, nlohmann::json&), ());
 };
 
-#endif //_FIMHELPER_TEST_H
+#endif //_FIMDB_UTILS_TEST_H

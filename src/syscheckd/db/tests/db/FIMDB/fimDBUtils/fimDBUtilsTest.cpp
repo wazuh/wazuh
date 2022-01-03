@@ -16,11 +16,6 @@ void FIMDBUtilsTest::SetUp() {}
 
 void FIMDBUtilsTest::TearDown() {}
 
-ACTION(myThrowException)
-{
-    throw DbSync::dbsync_error{INVALID_TABLE};
-}
-
 TEST_F(FIMDBUtilsTest, createANewQuery)
 {
     const auto expectedReturn = R"({"table":"file_entry",
@@ -89,7 +84,7 @@ TEST_F(FIMDBUtilsTest, testGetPathsFromINodeWithException)
     }
 }
 
-TEST_F(FIMDBUtilsTest, testgetPathsFromPattern)
+TEST_F(FIMDBUtilsTest, testGetPathsFromPattern)
 {
     std::vector<std::string> paths;
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
@@ -103,7 +98,7 @@ TEST_F(FIMDBUtilsTest, testgetPathsFromPattern)
     ASSERT_EQ(paths[0], "/tmp/test.txt");
 }
 
-TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithDBSyncException)
+TEST_F(FIMDBUtilsTest, testGetPathsFromPatternWithDBSyncException)
 {
     EXPECT_CALL(FIMDBMOCK::getInstance(), logFunction(testing::_, testing::_));
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
@@ -121,7 +116,7 @@ TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithDBSyncException)
     }
 }
 
-TEST_F(FIMDBUtilsTest, testgetPathsFromPatternWithException)
+TEST_F(FIMDBUtilsTest, testGetPathsFromPatternWithException)
 {
     EXPECT_CALL(FIMDBMOCK::getInstance(), logFunction(testing::_, testing::_));
     EXPECT_CALL(FIMDBMOCK::getInstance(), executeQuery(testing::_, testing::_))
