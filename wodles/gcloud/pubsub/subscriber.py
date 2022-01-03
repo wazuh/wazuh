@@ -110,7 +110,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         ack_ids = []
         for received_message in response.received_messages:
-            formatted_message = self.format_msg(received_message.message.data)
+            formatted_message = self.format_msg(received_message.message.data.decode(errors='replace'))
             self.logger.debug(f'Processing event: {formatted_message}')
             ack_ids.append(received_message.ack_id)
             self.send_msg(formatted_message)
