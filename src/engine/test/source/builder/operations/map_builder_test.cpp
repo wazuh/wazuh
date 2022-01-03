@@ -113,7 +113,7 @@ TEST(MapBuilderTest, Builds)
     ASSERT_THROW(auto _observable = _builder->build(entry_point, json({{"field", "value"}, {"error", "value"}})), builder::BuildError);
 }
 
-TEST(MapBuilder, Operates)
+TEST(MapBuilderTest, Operates)
 {
     // Get registry instance as all builders are only accesible by it
     builder::Registry& registry = builder::Registry::instance();
@@ -125,22 +125,37 @@ TEST(MapBuilder, Operates)
     auto _builder = static_cast<const builder::JsonBuilder*>(registry.get_builder("map"));
 
     // Build
-    //auto _observable_value = _builder->build(entry_point, json({{"module.map_field", "changed"}}));
+    auto _observable_value = _builder->build(entry_point, json({{"module.map_field", "changed"}}));
     auto _observable_reference = _builder->build(entry_point, json({{"module.map_field", "$.module.field_value"}}));
 
-    // Fake subscriber
-    vector<json> observed;
-    auto on_next = [&observed](json j)
+    // Fake subscriber value
+    vector<json> observed_value;
+    auto on_next_value = [&observed_value](json j)
     {
-        observed.push_back(j);
+        observed_value.push_back(j);
     };
-    auto on_complete = []() {};
-    auto subscriber = rxcpp::make_subscriber<json>(on_next, on_complete);
+    auto on_complete_value = []() {};
+    auto subscriber_value = rxcpp::make_subscriber<json>(on_next_value, on_complete_value);
 
-    // Operate
-    //ASSERT_NO_THROW(_observable_value.subscribe(subscriber));
-    ASSERT_NO_THROW(_observable_reference.subscribe(subscriber));
-    for_each(begin(observed), end(observed), [](json j)
+    // Fake subscriber reference
+    vector<json> observed_reference;
+    auto on_next_reference = [&observed_reference](json j)
+    {
+        observed_reference.push_back(j);
+    };
+    auto on_complete_reference = []() {};
+    auto subscriber_reference = rxcpp::make_subscriber<json>(on_next_reference, on_complete_reference);
+
+    // Operate value
+    ASSERT_NO_THROW(_observable_value.subscribe(subscriber_value));
+    for_each(begin(observed_value), end(observed_value), [](json j)
+    {
+        ASSERT_EQ(j["module"]["map_field"], json("changed"));
+    });
+
+    // Operate reference
+    ASSERT_NO_THROW(_observable_reference.subscribe(subscriber_reference));
+    for_each(begin(observed_reference), end(observed_reference), [](json j)
     {
         ASSERT_EQ(j["module"]["map_field"], json("changed"));
     });
