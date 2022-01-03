@@ -137,12 +137,13 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
 
 FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
 {
-    std::unique_ptr<DBItem> syncItem = nullptr;
+    std::unique_ptr<DBItem> syncItem;
 
     if (entry->type == FIM_TYPE_FILE)
     {
         syncItem = std::make_unique<FileItem>(entry);
-    }else
+    }
+    else
     {
         if (entry->registry_entry.key == NULL){
             syncItem = std::make_unique<RegistryValue>(entry);

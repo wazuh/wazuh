@@ -62,32 +62,6 @@ class RegistryKey final : public DBItem
             createFimEntry();
         }
 
-        RegistryKey(const std::string& id,
-                    const std::string& checksum,
-                    const time_t& lastEvent,
-                    const unsigned int& scanned,
-                    const int& arch,
-                    const int& gid,
-                    const std::string& groupname,
-                    const std::string& path,
-                    const std::string& perm,
-                    const unsigned int& time,
-                    const int& uid,
-                    const std::string& username)
-            : DBItem(id, scanned, lastEvent, checksum, FIM_SCHEDULED)
-            , m_arch( arch )
-            , m_gid ( gid )
-            , m_uid( uid )
-            , m_groupname( groupname )
-            , m_path( path )
-            , m_perm( perm )
-            , m_username( username )
-            , m_time( time )
-        {
-            createFimEntry();
-            createJSON();
-        }
-
         RegistryKey(const nlohmann::json& fim)
             : DBItem(fim.at("id"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {

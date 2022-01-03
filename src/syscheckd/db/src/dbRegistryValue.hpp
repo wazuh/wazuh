@@ -53,31 +53,6 @@ class RegistryValue final : public DBItem
             createFimEntry();
         }
 
-        RegistryValue(const std::string& name,
-                      const std::string& checksum,
-                      const time_t& lastEvent,
-                      const unsigned int& scanned,
-                      const fim_event_mode& mode,
-                      const unsigned int& registryKey,
-                      const unsigned int& rowID,
-                      const std::string& md5,
-                      const std::string& sha1,
-                      const std::string& sha256,
-                      const unsigned int& size,
-                      const unsigned int& type)
-            : DBItem(name, scanned, lastEvent, checksum, mode)
-            , m_keyUid( rowID )
-            , m_registryKey ( registryKey )
-            , m_size( size )
-            , m_type( type )
-            , m_md5( md5 )
-            , m_sha1( sha1 )
-            , m_sha256( sha256 )
-        {
-            createFimEntry();
-            createJSON();
-        }
-
         RegistryValue(const nlohmann::json& fim)
             : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
