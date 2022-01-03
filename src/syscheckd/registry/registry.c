@@ -776,6 +776,7 @@ void fim_read_values(HKEY key_handle,
 
         if (fim_registry_validate_ignore(value_path, configuration, 0)) {
             os_free(value_path);
+            os_free(value_data.name);
             return;
         }
         os_free(value_path);
