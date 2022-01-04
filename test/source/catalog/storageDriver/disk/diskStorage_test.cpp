@@ -1,6 +1,8 @@
 #include <filesystem>
 
 #include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 #include "rapidjson/schema.h"
 #include "diskStorage_test.hpp"
 
@@ -16,8 +18,14 @@ TEST(diskStorage, path)
     diskStorage ds(db_dir_test);
     StorageDriverInterface* dsi {&ds};
 
-    auto syslogDec {dsi->getAsset(AssetType::Decoder, "syslog")};
-    auto decSchema {dsi->getAsset(AssetType::Schemas, "wazuh-decoders")};
+    auto syslogDecStr {dsi->getAsset(AssetType::Decoder, "syslog")};
+    auto decSchemaStr {dsi->getAsset(AssetType::Schemas, "wazuh-decoders")};
+
+    rapidjson::Document syslogDec {};
+    syslogDec.Parse(syslogDecStr.c_str());
+
+    rapidjson::Document decSchema {};
+    decSchema.Parse(decSchemaStr.c_str());
 
     rapidjson::SchemaDocument schema(decSchema);
     rapidjson::SchemaValidator validator(schema);

@@ -38,9 +38,9 @@ class StorageDriverInterface
          *
          * @param type Type of the asset
          * @param assetName Name of the asset
-         * @return rapidjson::Document The asset object
+         * @return std::string The asset as a string
          */
-        virtual rapidjson::Document getAsset(const AssetType type, std::string_view assetName) = 0;
+        virtual std::string getAsset(const AssetType type, std::string_view assetName) = 0;
 };
 
 #endif // __STORAGEDRIVERINTERFACE_H__
