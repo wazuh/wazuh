@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Project settings
 project(wazuh-engine)
 
+set(SERVER_TEST_SOURCE_DIR ${TEST_SOURCE_DIR}/server)
 set(SERVER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/server)
 
 CPMAddPackage(
@@ -35,16 +36,16 @@ CPMAddPackage(
 # Parent scope scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
-set(SERVER_SOURCES
+set(SOURCES
     ${SERVER_ENGINE_SOURCE_DIR}/engineserver.cpp
 )
 
 include_directories(
     ${SERVER_ENGINE_SOURCE_DIR}
+    ${SERVER_TEST_SOURCE_DIR}
 )
-
-add_executable(engine_server ${SERVER_SOURCES})
-target_include_directories(engine_server PUBLIC ${uvw_SOURCE_DIR}/src/ ${uvw_SOURCE_DIR}/src/uvw/)
-target_link_libraries(engine_server uv)
-target_sources(main PUBLIC ${SERVER_SOURCES})
-
+add_executable(engine_server_test ${SERVER_TEST_SOURCE_DIR}/engineserver_test.cpp ${SOURCES})
+target_include_directories(engine_server_test PUBLIC ${uvw_SOURCE_DIR}/src/ ${uvw_SOURCE_DIR}/src/uvw/)
+target_link_libraries(engine_server_test gtest_main uv)
+include(GoogleTest)
+gtest_discover_tests(engine_server_test)
