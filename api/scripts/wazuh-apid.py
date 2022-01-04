@@ -59,7 +59,6 @@ def start(foreground: bool, root: bool, config_file: str):
     if not foreground:
         pyDaemonModule.pyDaemon()
     pid = os.getpid()
-    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
     if foreground:
         print(f"Starting API in foreground (pid: {pid})")
 
@@ -171,6 +170,8 @@ def start(foreground: bool, root: bool, config_file: str):
             os.setuid(common.wazuh_uid())
     else:
         print(f"Starting API as root")
+
+    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():

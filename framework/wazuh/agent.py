@@ -377,6 +377,7 @@ def get_agents_keys(agent_list=None):
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=lambda i: i['id'])
 
     return result
 
@@ -1137,6 +1138,7 @@ def get_agents_sync_group(agent_list=None):
             result.add_failed_item(id_=agent_id, error=e)
 
     result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=lambda i: i['id'])
 
     return result
 

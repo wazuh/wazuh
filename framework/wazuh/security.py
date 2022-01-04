@@ -760,10 +760,19 @@ def set_user_role(user_id, role_ids, position=None):
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4016, 4008]})
 def remove_user_role(user_id, role_ids):
-    """Create a relationship between a user and a role
-    :param user_id: User id
-    :param role_ids: List of role ids
-    :return User-Roles information
+    """Remove a relationship between a user and a role.
+
+    Parameters
+    ----------
+    user_id : list
+        User ID
+    role_ids : list of int
+        List of role ids
+
+    Returns
+    -------
+    Dict
+        User-Roles information
     """
     username = get_username(user_id=user_id)
     if username == 'unknown':
