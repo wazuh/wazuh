@@ -11,6 +11,7 @@
 
 #include "sharedDefs.h"
 #include "packageLinuxParserHelper.h"
+#include <fstream>
 
 void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&)> callback)
 {

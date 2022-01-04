@@ -12,6 +12,8 @@
 #include "sysInfoPackagesLinuxHelper_test.h"
 #include "packages/packageLinuxParserHelper.h"
 #include "packages/packageLinuxParserHelperExtra.h"
+#include "packages/packageLinuxRpmParserHelper.h"
+#include "packages/packageLinuxRpmParserHelperLegacy.h"
 #include "packages/rpmPackageManager.h"
 #include <alpm.h>
 #include <package.h>
