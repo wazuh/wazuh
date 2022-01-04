@@ -10,7 +10,6 @@
  */
 #include "dbRegistryValue.hpp"
 #include "fimCommonDefs.h"
-
 void RegistryValue::createFimEntry()
 {
     fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
@@ -18,7 +17,6 @@ void RegistryValue::createFimEntry()
 
     fim->type = FIM_TYPE_REGISTRY;
     value->size = m_size;
-    value->id = m_keyUid;
     value->name = const_cast<char*>(m_identifier.c_str());
     std::strncpy(value->hash_md5, m_md5.c_str(), sizeof(value->hash_md5));
     std::strncpy(value->hash_sha1, m_sha1.c_str(), sizeof(value->hash_sha1));

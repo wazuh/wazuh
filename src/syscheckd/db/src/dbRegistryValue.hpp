@@ -11,6 +11,7 @@
 
 #ifndef _REGISTRYVALUE_HPP
 #define _REGISTRYVALUE_HPP
+
 #include "json.hpp"
 #include "dbItem.hpp"
 
@@ -40,7 +41,6 @@ class RegistryValue final : public DBItem
                      , fim->registry_entry.value->checksum
                      , fim->registry_entry.value->mode)
         {
-            m_keyUid = fim->registry_entry.value->id;
             m_registryKey = 0;
             m_path = std::string(fim->registry_entry.value->path);
             m_arch = fim->registry_entry.value->arch;
@@ -56,7 +56,7 @@ class RegistryValue final : public DBItem
         RegistryValue(const nlohmann::json& fim)
             : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
-            m_keyUid = fim.at("id");
+
             m_registryKey = 0;
             m_size = fim.at("size");
             m_type = fim.at("type");
@@ -66,7 +66,7 @@ class RegistryValue final : public DBItem
             m_arch = fim.at("arch");
             m_path = fim.at("path");
             createFimEntry();
-            m_statementConf = std::make_unique<nlohmann::json>(fim);
+            createJSON();
         }
 
         ~RegistryValue() = default;
@@ -81,7 +81,6 @@ class RegistryValue final : public DBItem
         };
 
     private:
-        unsigned int                                        m_keyUid;
         unsigned int                                        m_registryKey;
         unsigned int                                        m_size;
         unsigned int                                        m_type;
