@@ -37,6 +37,8 @@ static const char *global_db_agent_fields[] = {
     NULL
 };
 
+static const char *SQL_VACUUM_INTO = "VACUUM INTO ?;";
+
 int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add) {
     sqlite3_stmt *stmt = NULL;
 
@@ -1736,26 +1738,23 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
-    if (wdb->transaction) {
-        if(wdb_commit2(wdb) == OS_INVALID) {
-            mdebug1("Cannot commit current transaction to create backup");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to create backup");
-            return OS_INVALID;
-        }
-    }
-
-    sqlite3_stmt *stmt = NULL;
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_VACUUM_INTO) < 0) {
-        mdebug1("Cannot cache statement");
-        snprintf(output, OS_MAXSTR + 1, "err Cannot cache statement");
+    if(wdb_commit2(wdb) == OS_INVALID) {
+        mdebug1("Cannot commit current transaction to create backup");
+        snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to create backup");
         return OS_INVALID;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_VACUUM_INTO];
+    sqlite3_stmt *stmt = NULL;
+
+    if (sqlite3_prepare_v2(wdb->db, SQL_VACUUM_INTO, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
 
     if (sqlite3_bind_text(stmt, 1, path , -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         snprintf(output, OS_MAXSTR + 1, "err DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        sqlite3_finalize(stmt);
         return OS_INVALID;
     }
 
@@ -1763,6 +1762,8 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
     if (OS_INVALID == result) {
         snprintf(output, OS_MAXSTR + 1, "err SQLite: %s", sqlite3_errmsg(wdb->db));
     }
+
+    sqlite3_finalize(stmt);
 
     if(OS_SUCCESS == result) {
         snprintf(path_compressed, PATH_MAX, "%s.gz", path);
