@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "storageDriver/StorageDriverInterface.hpp"
+#include "yml_to_json.hpp"
 
 /**
  * @brief The Catalog class

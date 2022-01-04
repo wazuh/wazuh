@@ -36,7 +36,7 @@ set(CATALOG_SOURCES
     catalogSharedDef.hpp
     Catalog.hpp
     Catalog.cpp
-    storageDriver/yml_to_json.hpp
+    yml_to_json.hpp
     storageDriver/StorageDriverInterface.hpp
     storageDriver/disk/diskStorage.hpp
     storageDriver/disk/diskStorage.cpp
