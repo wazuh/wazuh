@@ -87,6 +87,24 @@ void wm_clean_dangling_groups();
 
 static void wm_sync_multi_groups(const char *dirname);
 
+/**
+ * @brief This method will read the legacy GROUPS_DIR folder to insert in the global.db the groups information it founds.
+ *        After every successful insertion, the legacy file is deleted. If we are in a worker, the files are deleted without inserting.
+ *
+ * @param is_worker Boolean parameter, TRUE if it is a worker, FALSE otherwise.
+ */
+void wm_sync_legacy_groups_files(bool is_worker);
+
+/**
+ * @brief Method to insert a single group file in the global.db. Like this insertion is performed for legacy group files only in the master,
+ *        the group insertion overrides any existent group assignment.
+ *
+ * @param group_file The name of the group file.
+ * @param group_file_path The full path of the group file.
+ * @return int OS_SUCCESS if successful, OS_INVALID otherwise.
+ */
+int wm_sync_group_file (const char* group_file, const char* group_file_path);
+
 #endif // LOCAL
 
 static int wm_sync_shared_group(const char *fname);
@@ -121,6 +139,9 @@ void* wm_database_main(wm_database *data) {
     if (data->sync_agents) {
         wm_sync_manager();
     }
+
+    // If we have groups assignment in legacy files, insert them (master) or remove them (worker)
+    wm_sync_legacy_groups_files(is_worker);
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -469,6 +490,80 @@ void wm_clean_dangling_groups() {
 void wm_sync_multi_groups(const char *dirname) {
 
     wdb_update_groups(dirname, &wdb_wmdb_sock);
+}
+
+void wm_sync_legacy_groups_files(bool is_worker) {
+    DIR *dir = opendir(GROUPS_DIR);
+
+    if (!dir) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
+        return;
+    }
+
+    mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", GROUPS_DIR);
+
+    struct dirent *dir_entry = NULL;
+    int sync_result = OS_INVALID;
+    char group_file_path[OS_SIZE_512] = {0};
+
+    while ((dir_entry = readdir(dir)) != NULL) {
+        if (dir_entry->d_name[0] != '.') {
+            snprintf(group_file_path, OS_SIZE_512, "%s/%s", GROUPS_DIR, dir_entry->d_name);
+
+            if (is_worker) {
+                mdebug1("Group file '%s' won't be synced in a worker node, removing.", group_file_path);
+                unlink(group_file_path);
+            } else {
+                sync_result = wm_sync_group_file(dir_entry->d_name, group_file_path);
+
+                if (OS_SUCCESS == sync_result) {
+                    mdebug1("Group file '%s' successfully synced, removing.", group_file_path);
+                    unlink(group_file_path);
+                } else {
+                    merror("Failed during the groups file '%s' syncronization.", group_file_path);
+                }
+            }
+        }
+    }
+    closedir(dir);
+}
+
+int wm_sync_group_file (const char* group_file, const char* group_file_path) {
+    int id_agent = atoi(group_file);
+
+    if (id_agent <= 0) {
+        mdebug1("Couldn't extract agent ID from file '%s'.", group_file_path);
+        return OS_INVALID;
+    }
+
+    FILE *fp = fopen(group_file, "r");
+
+    if (!fp) {
+        mdebug1("Groups file '%s' could not be opened for syncronization.", group_file_path);
+        return OS_INVALID;
+    }
+
+    char *groups_csv = NULL;
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), groups_csv);
+    int result = OS_INVALID;
+
+    if (fgets(groups_csv, OS_SIZE_65536, fp)) {
+        char *endl = strchr(groups_csv, '\n');
+
+        if (endl) {
+            *endl = '\0';
+        }
+
+        result = wdb_set_agent_groups_csv(id_agent, groups_csv, WDB_GROUP_OVERRIDE, "synced", "local", &wdb_wmdb_sock);
+    } else {
+        mdebug1("Empty group file '%s'.", group_file_path);
+        result = OS_SUCCESS;
+    }
+
+    fclose(fp);
+    os_free(groups_csv);
+
+    return result;
 }
 
 #endif // LOCAL
