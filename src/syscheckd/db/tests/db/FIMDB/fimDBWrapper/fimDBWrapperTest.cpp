@@ -90,7 +90,6 @@ TEST_F(FIMWrapperTest, executeGetCountSuccess)
     {
         count = FIMDBHelper::getCount<FIMDBMOCK>(tableName);
     });
-    ASSERT_NE(count, 0);
     ASSERT_EQ(count, 5);
 
 }
@@ -109,6 +108,5 @@ TEST_F(FIMWrapperTest, executeGetCountSuccessCustomQuery)
     {
         count = FIMDBHelper::getCount<FIMDBMOCK>(tableName, query);
     });
-    ASSERT_NE(count, 0);
     ASSERT_EQ(count, 2);
 }

@@ -52,7 +52,7 @@ namespace FimDBUtils
 
         try
         {
-            const auto filter = std::string("WHERE inode=") + std::to_string(inode) + std::string(" AND dev=") + std::to_string(dev);
+            const auto filter = "WHERE inode=" + std::to_string(inode) + " AND dev=" + std::to_string(dev);
             const auto fileColumnList = R"({"column_list":["path"]})"_json;
             const auto query = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<T>(resultQuery, query);
