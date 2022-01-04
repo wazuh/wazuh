@@ -5,7 +5,6 @@
 #include <vector>
 #include <map>
 #include "../StorageDriverInterface.hpp"
-#include "../yml_to_json.hpp"
 
 /*
  * #TODO Implement thread-safe mechanism
@@ -41,7 +40,7 @@ class diskStorage : public StorageDriverInterface
 
         // Overridden methods must be documented in the interface
         std::vector<std::string_view> getAssetList(const AssetType type) override;
-        rapidjson::Document getAsset(const AssetType type, std::string_view assetName) override;
+        std::string getAsset(const AssetType type, std::string_view assetName) override;
 
 };
 

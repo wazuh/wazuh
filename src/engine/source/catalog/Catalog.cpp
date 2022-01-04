@@ -1,11 +1,14 @@
 #include "Catalog.hpp"
 
 rapidjson::Document Catalog::getDecoder(std::string_view decoderName) {
-    rapidjson::Document decoder;
-    rapidjson::Document jsonSchema;
 
-    decoder = storageDriver->getAsset(AssetType::Decoder, decoderName);
-    jsonSchema = storageDriver->getAsset(AssetType::Schemas, "wazuh-decoder");
+    using std::string;
+    using rapidjson::Document;
+
+    auto decoderStr = storageDriver->getAsset(AssetType::Decoder, decoderName);
+    auto jsonSchemaStr = storageDriver->getAsset(AssetType::Schemas, "wazuh-decoder");
+
+    Document decoder {yml2json::loadYMLfromString(std::move(decoderStr))};
 
     // #TODO
     return decoder;
