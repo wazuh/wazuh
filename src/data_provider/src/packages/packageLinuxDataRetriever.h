@@ -90,11 +90,6 @@ class FactoryPackagesCreator<LinuxType::LEGACY> final
     public:
         static void getPackages(std::function<void(nlohmann::json&)> callback)
         {
-            if (Utils::existsDir(DPKG_PATH))
-            {
-                getDpkgInfo(DPKG_STATUS_PATH, callback);
-            }
-
             if (Utils::existsDir(RPM_PATH))
             {
                 getRpmInfoLegacy(callback);

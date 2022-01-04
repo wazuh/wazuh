@@ -13,8 +13,10 @@
 #include "iberkeleyDbWrapper.h"
 #include "berkeleyRpmDbHelper.h"
 #include "sharedDefs.h"
-#include "packageLinuxParserHelper.h"
+#include "packageLinuxRpmParserHelper.h"
+#include "packageLinuxRpmParserHelperLegacy.h"
 #include "filesystemHelper.h"
+#include "stringHelper.h"
 #include "rpmlib.h"
 
 void getRpmInfo(std::function<void(nlohmann::json&)> callback)

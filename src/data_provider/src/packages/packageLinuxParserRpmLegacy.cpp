@@ -11,7 +11,7 @@
 #include "iberkeleyDbWrapper.h"
 #include "sharedDefs.h"
 #include "berkeleyRpmDbHelper.h"
-#include "packageLinuxParserHelper.h"
+#include "packageLinuxRpmParserHelperLegacy.h"
 
 void getRpmInfoLegacy(std::function<void(nlohmann::json&)> callback)
 {
