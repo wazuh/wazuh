@@ -23,6 +23,7 @@ CPMAddPackage(
 # Configuration Catalog tests
 add_executable(catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.cpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/StorageDriverInterface.hpp
@@ -32,16 +33,16 @@ add_executable(catalog_test
 )
 
 target_include_directories(catalog_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
-target_link_libraries(catalog_test gtest_main)
+target_link_libraries(catalog_test gtest_main "yaml-cpp")
 gtest_discover_tests(catalog_test)
 
 
 # Configuration Storage Drivers tests: diskStorage
 add_executable(diskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.cpp
-  ${ENGINE_SOURCE_DIR}/catalog/storageDriver/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/StorageDriverInterface.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/diskStorage.cpp

@@ -37,11 +37,10 @@ class fakeStorage : public StorageDriverInterface
             return assets;
         }
 
-        rapidjson::Document getAsset(const AssetType type, std::string_view assetName) override
+        std::string getAsset(const AssetType type, std::string_view assetName) override
         {
 
-            rapidjson::Document asset;
-            const char* raw_asset;
+            std::string asset;
 
             if (this->return_empty)
             {
@@ -57,7 +56,7 @@ class fakeStorage : public StorageDriverInterface
             switch (type)
             {
                 case AssetType::Decoder:
-                    raw_asset = json_decoder_valid;
+                    asset.append(json_decoder_valid);
                     break;
 
                 case AssetType::Rule:
@@ -80,15 +79,6 @@ class fakeStorage : public StorageDriverInterface
                 default:
                     // #TODO Error
                     break;
-            }
-
-            if (asset.Parse(raw_asset).HasParseError())
-            {
-                fprintf(stderr, "\nError(offset %u): %s\n",
-                        (unsigned)asset.GetErrorOffset(),
-                        GetParseError_En(asset.GetParseError()));
-                // #TODO throw exception
-                ;;
             }
 
             return asset;

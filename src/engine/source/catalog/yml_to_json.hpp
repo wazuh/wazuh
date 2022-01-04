@@ -97,10 +97,22 @@ namespace yml2json
 
     }
 
-    inline rapidjson::Document loadyaml(const std::string& filepath)
+    inline rapidjson::Document loadYMLfromFile(const std::string& filepath)
     {
         // YAML::Node root = YAML::LoadAllFromFile(filepath)[x];
         YAML::Node root = YAML::LoadFile(filepath);
+        rapidjson::Document doc, tmpAllocator;
+        rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
+
+        rapidjson::Value val = internal::yaml2json(root, allocator);
+        doc.CopyFrom(val, doc.GetAllocator());
+
+        return doc;
+    }
+
+    inline rapidjson::Document loadYMLfromString(const std::string& yamlStr)
+    {
+        YAML::Node root = YAML::Load(yamlStr);
         rapidjson::Document doc, tmpAllocator;
         rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
 
