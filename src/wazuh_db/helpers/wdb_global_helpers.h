@@ -293,6 +293,7 @@ int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_st
  * @param[in] mode The mode to request the writting.
  * @param[in] sync_status The sync_status to ask the addition (optional).
  * @param[in] source The source to ask the addition (optional).
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, char* source, int *sock);
