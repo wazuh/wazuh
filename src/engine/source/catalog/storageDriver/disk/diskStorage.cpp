@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 #include "diskStorage.hpp"
 #include "rapidjson/istreamwrapper.h"
@@ -30,7 +31,6 @@ std::vector<std::string_view> diskStorage::getAssetList(const AssetType type)
                 //std::cout << "Adding file: '" << entry.path() << std::endl;
             }
         }
-
         // else {
         //     std::cout << "ignoring file: '" << entry.path() << std::endl;
         // }
@@ -40,15 +40,15 @@ std::vector<std::string_view> diskStorage::getAssetList(const AssetType type)
 }
 
 // Overridden method
-rapidjson::Document diskStorage::getAsset(const AssetType type, std::string_view assetName)
+std::string diskStorage::getAsset(const AssetType type, std::string_view assetName)
 {
     using std::string;
     using std::string_view;
     using rapidjson::Document;
     namespace fs = std::filesystem;
 
-    Document doc {};
     fs::path base_dir {this->path};
+    string assetStr {};
 
     /* Get the path to the asset directory */
     base_dir /= assetTypeToPath.at(type);
@@ -72,18 +72,15 @@ rapidjson::Document diskStorage::getAsset(const AssetType type, std::string_view
     if (fs::exists(file_path))
     {
         //std::cout << "File found: " << file_path << std::endl;
-        if (type != AssetType::Schemas)
-        {
-            // #FIXME Check the exeptions
-            doc = yml2json::loadyaml(file_path.string());
+        std::ifstream ifs {file_path.string()};
+        if (ifs) {
+            std::ostringstream oss {};
+            oss << ifs.rdbuf();
+            assetStr = oss.str();
         }
-        else
-        {
-            // #FIXME Check the exeptions
-            std::ifstream ifs(file_path.string());
-            rapidjson::IStreamWrapper isw(ifs);
-            doc.ParseStream(isw);
-        }
+        // else {
+        //     std::cerr << "Error reading file: " << file_path << std::endl;
+        // }
     }
 
     // else
@@ -91,5 +88,5 @@ rapidjson::Document diskStorage::getAsset(const AssetType type, std::string_view
     //     std::cout << "Asset file not found: " << file_path << std::endl;
     // }
 
-    return doc;
+    return assetStr;
 }
