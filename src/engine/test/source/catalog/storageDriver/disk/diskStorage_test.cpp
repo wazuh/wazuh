@@ -22,7 +22,8 @@ TEST(diskStorage, path)
     rapidjson::SchemaDocument schema(decSchema);
     rapidjson::SchemaValidator validator(schema);
 
-    if (!syslogDec.Accept(validator)) {
+    if (!syslogDec.Accept(validator))
+    {
         // Input JSON is invalid according to the schema
         // Output diagnostic information
         rapidjson::StringBuffer sb;
@@ -32,7 +33,9 @@ TEST(diskStorage, path)
         sb.Clear();
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
         printf("Invalid document: %s\n", sb.GetString());
-    } else {
+    }
+    else
+    {
         printf("Valid\n");
     }
 
