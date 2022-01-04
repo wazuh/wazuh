@@ -371,7 +371,7 @@ ID: 65000 - 65499
         <!-- Mitre detection rules  -->
     <!-- collection gcp_pub_sub subscription creation -->
     <rule id="65051" level="3">
-        <if_sid>65000</if_sid>
+        <if_sid>65042</if_sid>
         <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.CreateSubscription$</field>
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP: pub/sub topic subscription created.</description>
@@ -382,7 +382,7 @@ ID: 65000 - 65499
 
     <!-- collection gcp_pub_sub topic creation -->
     <rule id="65052" level="3">
-        <if_sid>65000</if_sid>
+        <if_sid>65042</if_sid>
         <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.CreateTopic$</field>
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP: pub/sub topic created.</description>
@@ -413,7 +413,7 @@ ID: 65000 - 65499
 
     <!-- defense evasion gcp_firewall_rule modified -->
     <rule id="65055" level="3">
-        <if_sid>65000</if_sid>
+        <if_sid>65042</if_sid>
         <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.patch$</field>
         <description>GCP: firewall rule modified.</description>
         <mitre>
