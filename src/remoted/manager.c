@@ -114,7 +114,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     const char * version_label = "#\"_wazuh_version\":";
     int is_startup = 0;
     int is_shutdown = 0;
-    int agent_id = 0;
+    int32_t agent_id = 0;
     int result = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
@@ -169,7 +169,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
-        agent_id = atoi(key->id);
+        agent_id = strtoul(key->id, NULL, 10);
 
         result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node?"syncreq":"synced", wdb_sock);
 

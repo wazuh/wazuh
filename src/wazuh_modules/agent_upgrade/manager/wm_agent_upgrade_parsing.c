@@ -165,8 +165,8 @@ int wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_
 STATIC int* wm_agent_upgrade_parse_agents(const cJSON* agents, char** error_message) {
     char *output = NULL;
     int *agent_ids = NULL;
-    int agents_size = 0;
-    int agent_index = 0;
+    int32_t agents_size = 0;
+    int32_t agent_index = 0;
     int error_flag = 0;
 
     os_calloc(OS_MAXSTR, sizeof(char), output);

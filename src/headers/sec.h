@@ -77,7 +77,7 @@ typedef struct _keystore {
     ino_t inode;
 
     /* ID counter */
-    int id_counter;
+    uint32_t id_counter;
 
     keystore_flags_t flags;
 
@@ -183,7 +183,7 @@ int OS_WriteTimestamps(keystore * keys);
 int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *ip, char **output) __attribute((nonnull));
 
 /* Create an OSSEC message (encrypt and compress) */
-size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id) __attribute((nonnull));
+size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, int32_t id) __attribute((nonnull));
 
 // Add socket number into keystore
 int OS_AddSocket(keystore * keys, unsigned int i, int sock);

@@ -67,7 +67,7 @@ int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event) {
 }
 
 /* Delete PM events of an agent. Returns 0 on success or -1 on error. */
-int wdb_delete_pm(int id) {
+int wdb_delete_pm(int32_t id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;

@@ -192,7 +192,7 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
 }
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_fim(int id) {
+int wdb_delete_fim(int32_t id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;

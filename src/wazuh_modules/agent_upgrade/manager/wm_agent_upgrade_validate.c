@@ -29,7 +29,7 @@ static const char* invalid_platforms[] = {
     "bsd"
 };
 
-int wm_agent_upgrade_validate_id(int agent_id) {
+int wm_agent_upgrade_validate_id(int32_t agent_id) {
     int return_code = WM_UPGRADE_SUCCESS;
 
     if (agent_id == MANAGER_ID) {

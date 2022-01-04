@@ -49,6 +49,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
     }
 }
 
+//TODO JJP: Verify if this is an agent id
 /* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
 int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description,
         char *rationale, char *remediation, char *condition, char *file,
@@ -654,6 +655,7 @@ end:
     return 0;
 }
 
+//TODO JJP: Verify if this is an agent id
 /* Update a configuration assessment entry. Returns affected rows on success or -1 on error (new) */
 int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * status, char * reason) {
 

@@ -340,7 +340,7 @@ end:
 }
 
 /* Open database for agent */
-sqlite3* wdb_open_agent(int id_agent, const char *name) {
+sqlite3* wdb_open_agent(uint32_t id_agent, const char *name) {
     char dir[OS_FLSIZE + 1];
     sqlite3 *db;
 
@@ -375,7 +375,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
 }
 
 // Open database for agent and store in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_agent2(int agent_id) {
+wdb_t * wdb_open_agent2(int32_t agent_id) {
     char sagent_id[64];
     char path[PATH_MAX + 1];
     sqlite3 * db;
@@ -1287,7 +1287,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     char *json_formated;
     char path[PATH_MAX];
     char agent[OS_SIZE_128];
-    long int agent_id;
+    int32_t agent_id;
     int n = 0;
 
     if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
@@ -1311,8 +1311,8 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
                 mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
                 result = "Invalid agent ID";
             } else {
-                snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
-                snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
+                snprintf(path, PATH_MAX, "%s/%03d.db", WDB2_DIR, agent_id);
+                snprintf(agent, OS_SIZE_128, "%03d", agent_id);
 
                 // Close the database only if it was open
 

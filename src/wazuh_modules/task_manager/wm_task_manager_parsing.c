@@ -403,7 +403,7 @@ void wm_task_manager_parse_data_result(cJSON *response, const char *node, const 
     }
 }
 
-cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status) {
+cJSON* wm_task_manager_parse_data_response(int error_code, int32_t agent_id, int task_id, char *status) {
     cJSON *response = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(response, task_manager_json_keys[WM_TASK_ERROR], error_code);

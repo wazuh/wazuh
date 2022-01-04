@@ -104,7 +104,7 @@ typedef struct _wm_task_info {
  * Definition of the structure with the information of a certain agent
  */
 typedef struct _wm_agent_info {
-    int agent_id;                ///> agent_id of the agent
+    int32_t agent_id;            ///> agent_id of the agent
     char *platform;              ///> platform of the agent
     char *major_version;         ///> OS major version of the agent
     char *minor_version;         ///> OS minor version of the agent

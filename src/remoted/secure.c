@@ -418,7 +418,7 @@ STATIC void * close_fp_main(void * args) {
 }
 
 STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
-    int agentid;
+    int32_t agentid;
     const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
@@ -468,7 +468,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
-            int id = OS_IsAllowedID(&keys, buffer + 1);
+            int32_t id = OS_IsAllowedID(&keys, buffer + 1);
 
             if (id < 0) {
                 strncpy(agname, "unknown", sizeof(agname));

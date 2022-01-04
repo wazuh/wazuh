@@ -100,14 +100,14 @@ void wm_agent_upgrade_destroy_task_map();
  * @param agent_id id of the agent
  * @param task pointer to the task
  * */
-int wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* agent_task);
+int wm_agent_upgrade_create_task_entry(int32_t agent_id, wm_agent_task* agent_task);
 
 /**
  * Removes an entry based on the agent_id
  * @param agent_id id of the agent
  * @param free whether free task or not
  * */
-void wm_agent_upgrade_remove_entry(int agent_id, int free);
+void wm_agent_upgrade_remove_entry(int32_t agent_id, int free);
 
 /**
  * Returns the first node of the tasks hash table
@@ -167,7 +167,7 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) __at
  * @retval OS_INVALID on errors
  *
  * */
-int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) __attribute__((nonnull(1,2)));
+int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int32_t agent_id, int free)) __attribute__((nonnull(1,2)));
 
 /**
  * Callback defined for upgrade command to process task manager information reponse

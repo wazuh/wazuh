@@ -60,7 +60,7 @@ void free_agents(char **agent_list);
 const char *print_agent_status(agent_status_t status);
 
 /* Gets the status of an agent, based on the agent ID */
-agent_status_t get_agent_status(int agent_id);
+agent_status_t get_agent_status(int32_t agent_id);
 
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_id) __attribute__((nonnull(1)));

@@ -45,7 +45,7 @@ static const char *global_db_commands[] = {
     [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
 };
 
-int wdb_insert_agent(int id,
+int wdb_insert_agent(int32_t id,
                      const char *name,
                      const char *ip,
                      const char *register_ip,
@@ -151,7 +151,7 @@ int wdb_insert_group(const char *name, int *sock) {
     return result;
 }
 
-int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
+int wdb_update_agent_belongs(int id_group, uint32_t id_agent, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -199,7 +199,7 @@ int wdb_update_agent_belongs(int id_group, int id_agent, int *sock) {
     return result;
 }
 
-int wdb_update_agent_name(int id, const char *name, int *sock) {
+int wdb_update_agent_name(int32_t id, const char *name, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char* data_in_str = NULL;
@@ -329,7 +329,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     return result;
 }
 
-int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock) {
+int wdb_update_agent_keepalive(int32_t id, const char *connection_status, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -385,7 +385,7 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
     return result;
 }
 
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock) {
+int wdb_update_agent_connection_status(int32_t id, const char *connection_status, const char *sync_status, int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -441,7 +441,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_update_agent_group(int id, char *group, int *sock) {
+int wdb_update_agent_group(int32_t id, char *group, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -498,7 +498,7 @@ int wdb_update_agent_group(int id, char *group, int *sock) {
     return result;
 }
 
-int wdb_set_agent_labels(int id, const char *labels, int *sock) {
+int wdb_set_agent_labels(int32_t id, const char *labels, int *sock) {
     int result = 0;
     // Making use of a big buffer for the query because it
     // will contain all the keys and values.
@@ -620,7 +620,7 @@ int wdb_find_agent(const char *name, const char *ip, int *sock) {
     return output;
 }
 
-cJSON* wdb_get_agent_info(int id, int *sock) {
+cJSON* wdb_get_agent_info(int32_t id, int *sock) {
     cJSON *root = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -641,7 +641,7 @@ cJSON* wdb_get_agent_info(int id, int *sock) {
     return root;
 }
 
-cJSON* wdb_get_agent_labels(int id, int *sock) {
+cJSON* wdb_get_agent_labels(int32_t id, int *sock) {
     cJSON *root = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -662,7 +662,7 @@ cJSON* wdb_get_agent_labels(int id, int *sock) {
     return root;
 }
 
-char* wdb_get_agent_name(int id, int *sock) {
+char* wdb_get_agent_name(int32_t id, int *sock) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -693,7 +693,7 @@ char* wdb_get_agent_name(int id, int *sock) {
     return output;
 }
 
-char* wdb_get_agent_group(int id, int *sock) {
+char* wdb_get_agent_group(int32_t id, int *sock) {
     char *output = NULL;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -882,7 +882,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     return result;
 }
 
-int wdb_remove_agent(int id, int *sock) {
+int wdb_remove_agent(int32_t id, int *sock) {
     int result = 0 ;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -970,7 +970,7 @@ int wdb_remove_group_db(const char *name, int *sock) {
     return result;
 }
 
-int wdb_delete_agent_belongs(int id, int *sock) {
+int wdb_delete_agent_belongs(int32_t id, int *sock) {
     int result = 0;
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -1180,7 +1180,7 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     return array;
 }
 
-int wdb_create_agent_db(int id, const char *name) {
+int wdb_create_agent_db(int32_t id, const char *name) {
     const char *ROOT = "root";
     char path[OS_FLSIZE + 1];
     char buffer[4096];
@@ -1252,7 +1252,7 @@ int wdb_create_agent_db(int id, const char *name) {
     return 0;
 }
 
-int wdb_remove_agent_db(int id, const char * name) {
+int wdb_remove_agent_db(int32_t id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
 
@@ -1272,7 +1272,7 @@ int wdb_remove_agent_db(int id, const char * name) {
         return OS_INVALID;
 }
 
-int wdb_update_agent_multi_group(int id, char *group, int *sock) {
+int wdb_update_agent_multi_group(int32_t id, char *group, int *sock) {
     int aux_sock = -1;
     int* query_sock = sock?sock:&aux_sock;
 
@@ -1362,7 +1362,7 @@ int wdb_agent_belongs_first_time(int *sock){
     return OS_SUCCESS;
 }
 
-time_t get_agent_date_added(int agent_id) {
+time_t get_agent_date_added(int32_t agent_id) {
     char path[PATH_MAX + 1] = {0};
     char line[OS_BUFFER_SIZE] = {0};
     char * sep;

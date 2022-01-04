@@ -948,7 +948,7 @@ agent_info *get_agent_info(const char *agent_id){
 #endif
 
 /* Gets the status of an agent, based on the  agent ID*/
-agent_status_t get_agent_status(int agent_id){
+agent_status_t get_agent_status(int32_t agent_id){
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
     agent_status_t status = GA_STATUS_UNKNOWN;

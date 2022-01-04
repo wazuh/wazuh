@@ -147,13 +147,13 @@ void wm_agent_upgrade_destroy_task_map() {
     OSHash_Free(task_table_by_agent_id);
 }
 
-int wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* agent_task) {
+int wm_agent_upgrade_create_task_entry(int32_t agent_id, wm_agent_task* agent_task) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
     return OSHash_Add_ex(task_table_by_agent_id, agent_id_string, agent_task);
 }
 
-void wm_agent_upgrade_remove_entry(int agent_id, int free) {
+void wm_agent_upgrade_remove_entry(int32_t agent_id, int free) {
     char agent_id_string[128];
     sprintf(agent_id_string, "%d", agent_id);
     wm_agent_task *agent_task = (wm_agent_task *)OSHash_Delete_ex(task_table_by_agent_id, agent_id_string);

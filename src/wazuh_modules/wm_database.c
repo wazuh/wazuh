@@ -88,7 +88,7 @@ static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
 
-static int wm_sync_agent_group(int id_agent, const char *fname);
+static int wm_sync_agent_group(uint32_t id_agent, const char *fname);
 static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
@@ -274,11 +274,11 @@ void wm_sync_agents() {
 
     for (i = 0; i < keys.keysize; i++) {
         entry = keys.keyentries[i];
-        int id;
+        int32_t id;
 
         mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
 
-        if (!(id = atoi(entry->id))) {
+        if (!(id = strtol(entry->id, NULL, 10))) {
             mterror(WM_DATABASE_LOGTAG, "At wm_sync_agents(): invalid ID number.");
             continue;
         }
@@ -379,7 +379,7 @@ void wm_clean_dangling_wdb_dbs() {
         // exclude global.db, global.db-journal, wdb socket, and current directory.
         if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
             if (end = strchr(dirent->d_name, '.'), end) {
-                int id = (int)strtol(dirent->d_name, &end, 10);
+                int32_t id = (int)strtol(dirent->d_name, &end, 10);
 
                 if (id > 0 && strncmp(end, ".db", 3) == 0 && (name = wdb_get_agent_name(id, &wdb_wmdb_sock)) != NULL) {
                     if (*name == '\0') {
@@ -408,7 +408,7 @@ void wm_clean_dangling_wdb_dbs() {
 void wm_clean_dangling_groups() {
     char path[PATH_MAX];
     char * name;
-    int agent_id;
+    int32_t agent_id;
     struct dirent * dirent = NULL;
     DIR * dir;
 
@@ -423,7 +423,7 @@ void wm_clean_dangling_groups() {
     while ((dirent = readdir(dir)) != NULL) {
         if (dirent->d_name[0] != '.') {
             os_snprintf(path, sizeof(path), GROUPS_DIR "/%s", dirent->d_name);
-            agent_id = atoi(dirent->d_name);
+            agent_id = strtol(dirent->d_name, NULL, 10);
 
             if (agent_id <= 0) {
                 mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", GROUPS_DIR, dirent->d_name);
@@ -456,7 +456,7 @@ void wm_sync_multi_groups(const char *dirname) {
 
 #endif // LOCAL
 
-int wm_sync_agent_group(int id_agent, const char *fname) {
+int wm_sync_agent_group(uint32_t id_agent, const char *fname) {
     int result = 0;
     char *group;
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
@@ -523,7 +523,7 @@ void wm_scan_directory(const char *dirname) {
 int wm_sync_file(const char *dirname, const char *fname) {
     char path[PATH_MAX] = "";
     int result = 0;
-    int id_agent = -1;
+    uint32_t id_agent = -1;
     int type;
     char * name;
 

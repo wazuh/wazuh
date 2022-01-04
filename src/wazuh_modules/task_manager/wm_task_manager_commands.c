@@ -102,8 +102,8 @@ cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error
 
 STATIC cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int command, int *error_code) {
     cJSON *response = cJSON_CreateArray();
-    int agent_it = 0;
-    int agent_id = 0;
+    int32_t agent_it = 0;
+    int32_t agent_id = 0;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         cJSON *parameters = cJSON_CreateObject();
@@ -152,8 +152,8 @@ STATIC cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int
 
 STATIC cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade_get_status *task, int *error_code) {
     cJSON *response = cJSON_CreateArray();
-    int agent_it = 0;
-    int agent_id = 0;
+    int32_t agent_it = 0;
+    int32_t agent_id = 0;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         cJSON *parameters = cJSON_CreateObject();
@@ -201,8 +201,8 @@ STATIC cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade
 
 STATIC cJSON* wm_task_manager_command_upgrade_update_status(wm_task_manager_upgrade_update_status *task, int *error_code) {
     cJSON *response = cJSON_CreateArray();
-    int agent_it = 0;
-    int agent_id = 0;
+    int32_t agent_it = 0;
+    int32_t agent_id = 0;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         cJSON *parameters = cJSON_CreateObject();
@@ -248,8 +248,8 @@ STATIC cJSON* wm_task_manager_command_upgrade_update_status(wm_task_manager_upgr
 
 STATIC cJSON* wm_task_manager_command_upgrade_result(wm_task_manager_upgrade_result *task, int *error_code) {
     cJSON *response = cJSON_CreateArray();
-    int agent_it = 0;
-    int agent_id = 0;
+    int32_t agent_it = 0;
+    int32_t agent_id = 0;
 
     while (agent_id = task->agent_ids[agent_it++], agent_id != OS_INVALID) {
         cJSON *parameters = cJSON_CreateObject();

@@ -73,7 +73,7 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) __attribute
  * @param status Status of the task when receiving a request for a specific status.
  * @return JSON object.
  * */
-cJSON* wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status);
+cJSON* wm_task_manager_parse_data_response(int error_code, int32_t agent_id, int task_id, char *status);
 
 /**
  * Add data to a JSON data object.

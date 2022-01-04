@@ -43,16 +43,16 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
-    char _id[9] = { '\0' };
+    char _id[11] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
     if (!id) {
-        snprintf(_id, 9, "%03d", ++keys->id_counter);
+        snprintf(_id, 11, "%03u", ++keys->id_counter);
         id = _id;
     }
     else {
         char *endptr;
-        int id_number = strtol(id, &endptr, 10);
+        uint32_t id_number = strtoul(id, &endptr, 10);
 
         if ('\0' == *endptr && id_number > keys->id_counter)
             keys->id_counter = id_number;
@@ -212,8 +212,8 @@ int OS_IsValidID(const char *id)
 
     id_len = strlen(id);
 
-    /* Check ID length, it should contain max. 8 characters */
-    if (id_len > 8) {
+    /* Check ID length, it should contain max.  characters */
+    if (id_len > 32) {
         return (0);
     }
 
@@ -541,7 +541,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     if (print_status) {
                         #ifndef CLIENT //print_status is only available on servers
                         // Within this context, line_read corresponds to the agent ID
-                        agent_status_t agt_status = get_agent_status(atoi(line_read));
+                        agent_status_t agt_status = get_agent_status(strtoul(line_read, NULL, 10));
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
                             continue;
                         }

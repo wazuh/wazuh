@@ -65,7 +65,7 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_lock_restart(int agent_id);
+STATIC int wm_agent_upgrade_send_lock_restart(int32_t agent_id);
 
 /**
  * Send an open file command to an agent
@@ -76,7 +76,7 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id);
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_open(int32_t agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
 
 /**
  * Send a write file command to an agent
@@ -89,7 +89,7 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, cons
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_write(int32_t agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) __attribute__((nonnull));
 
 /**
  * Send a close file command to an agent
@@ -100,7 +100,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, con
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_close(int32_t agent_id, int wpk_message_format, const char *wpk_file) __attribute__((nonnull));
 
 /**
  * Send a sha1 command to an agent
@@ -112,7 +112,7 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, con
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_sha1(int32_t agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1) __attribute__((nonnull));
 
 /**
  * Send an upgrade command to an agent
@@ -124,7 +124,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, cons
  * @retval OS_SUCCESS on success
  * @retval OS_INVALID on errors
  * */
-STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, const char *wpk_file, const char *installer) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_send_upgrade(int32_t agent_id, int wpk_message_format, const char *wpk_file, const char *installer) __attribute__((nonnull));
 
 void wm_agent_upgrade_init_upgrade_queue() {
     upgrade_queue = linked_queue_init();
@@ -141,7 +141,7 @@ void wm_agent_upgrade_prepare_upgrades() {
     node = wm_agent_upgrade_get_first_node(&index);
 
     while (node) {
-        int agent_key = atoi(node->key);
+        int32_t agent_key = strtol(node->key, NULL, 10);
         wm_agent_task *agent_task = (wm_agent_task *)node->data;
 
         node = wm_agent_upgrade_get_next_node(&index, node);
@@ -355,7 +355,7 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_lock_restart(int agent_id) {
+STATIC int wm_agent_upgrade_send_lock_restart(int32_t agent_id) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -374,7 +374,7 @@ STATIC int wm_agent_upgrade_send_lock_restart(int agent_id) {
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, const char *wpk_file) {
+STATIC int wm_agent_upgrade_send_open(int32_t agent_id, int wpk_message_format, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -418,7 +418,7 @@ STATIC int wm_agent_upgrade_send_open(int agent_id, int wpk_message_format, cons
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) {
+STATIC int wm_agent_upgrade_send_write(int32_t agent_id, int wpk_message_format, const char *wpk_file, const char *file_path, int chunk_size) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -475,7 +475,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, con
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, const char *wpk_file) {
+STATIC int wm_agent_upgrade_send_close(int32_t agent_id, int wpk_message_format, const char *wpk_file) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -510,7 +510,7 @@ STATIC int wm_agent_upgrade_send_close(int agent_id, int wpk_message_format, con
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1) {
+STATIC int wm_agent_upgrade_send_sha1(int32_t agent_id, int wpk_message_format, const char *wpk_file, const char *file_sha1) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;
@@ -554,7 +554,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, cons
     return result;
 }
 
-STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, const char *wpk_file, const char *installer) {
+STATIC int wm_agent_upgrade_send_upgrade(int32_t agent_id, int wpk_message_format, const char *wpk_file, const char *installer) {
     int result = OS_INVALID;
     char *command = NULL;
     char *response = NULL;

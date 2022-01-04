@@ -181,7 +181,7 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
     char id[KEYSIZE + 1];
     char key[KEYSIZE + 1];
     char *end;
-    int id_number;
+    uint32_t id_number;
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
@@ -252,7 +252,7 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 
             /* Update counter */
 
-            id_number = strtol(id, &end, 10);
+            id_number = strtoul(id, &end, 10);
 
             if (!*end && id_number > keys->id_counter)
                 keys->id_counter = id_number;
@@ -448,7 +448,7 @@ void OS_UpdateKeys(keystore *keys)
 }
 
 /* Check if an IP address is allowed to connect */
-int OS_IsAllowedIP(keystore *keys, const char *srcip)
+int32_t OS_IsAllowedIP(keystore *keys, const char *srcip)
 {
     keyentry *entry;
 
@@ -458,27 +458,27 @@ int OS_IsAllowedIP(keystore *keys, const char *srcip)
 
     entry = (keyentry *) rbtree_get(keys->keytree_ip, srcip);
     if (entry) {
-        return ((int)entry->keyid);
+        return ((uint32_t)entry->keyid);
     }
 
     return (-1);
 }
 
 /* Check if the agent name is valid */
-int OS_IsAllowedName(const keystore *keys, const char *name)
+int32_t OS_IsAllowedName(const keystore *keys, const char *name)
 {
-    unsigned int i = 0;
+    uint32_t i = 0;
 
     for (i = 0; i < keys->keysize; i++) {
         if (strcmp(keys->keyentries[i]->name, name) == 0) {
-            return ((int)i);
+            return ((uint32_t)i);
         }
     }
 
     return (-1);
 }
 
-int OS_IsAllowedID(keystore *keys, const char *id)
+int32_t OS_IsAllowedID(keystore *keys, const char *id)
 {
     keyentry *entry;
 
@@ -488,14 +488,14 @@ int OS_IsAllowedID(keystore *keys, const char *id)
 
     entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
-        return ((int)entry->keyid);
+        return ((uint32_t)entry->keyid);
     }
     return (-1);
 }
 
 
 /* Used for dynamic IP addresses */
-int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
+int32_t OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
 {
     keyentry *entry;
 
@@ -506,7 +506,7 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
     entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
         if (OS_IPFound(srcip, entry->ip)) {
-            return ((int)entry->keyid);
+            return ((uint32_t)entry->keyid);
         }
     }
 

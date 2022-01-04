@@ -17,7 +17,7 @@
 #include "os_net/os_net.h"
 #include "shared.h"
 
-int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int agent_id, int free)) {
+int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_module_request, cJSON* (*success_callback)(int *error, cJSON* input_json), void (*error_callback)(int32_t agent_id, int free)) {
     int error = OS_SUCCESS;
     cJSON *task_module_response = NULL;
     cJSON *error_json = NULL;
@@ -54,13 +54,13 @@ int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_m
 
     if (error) {
         cJSON *agents_array = cJSON_GetObjectItem(cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS]);
-        int agents = cJSON_GetArraySize(agents_array);
+        int32_t agents = cJSON_GetArraySize(agents_array);
 
         for(int i = 0; i < agents; i++) {
             cJSON *agent_json = cJSON_GetArrayItem(agents_array, i);
 
             if (agent_json && (agent_json->type == cJSON_Number)) {
-                int agent_id = agent_json->valueint;
+                int32_t agent_id = agent_json->valueint;
                 if (error_callback) {
                     error_callback(agent_id, 1);
                 }
@@ -83,7 +83,7 @@ int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_m
 }
 
 cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) {
-    int agent_id = 0;
+    int32_t agent_id = 0;
     int task_id = 0;
     char *data = NULL;
     cJSON *response = NULL;
@@ -107,7 +107,7 @@ cJSON* wm_agent_upgrade_upgrade_success_callback(int *error, cJSON* input_json) 
 }
 
 cJSON* wm_agent_upgrade_get_status_success_callback(int *error, cJSON* input_json) {
-    int agent_id = 0;
+    int32_t agent_id = 0;
     char *status = NULL;
     cJSON *response = NULL;
 
@@ -129,7 +129,7 @@ cJSON* wm_agent_upgrade_get_status_success_callback(int *error, cJSON* input_jso
 }
 
 cJSON* wm_agent_upgrade_update_status_success_callback(int *error, cJSON* input_json) {
-    int agent_id = 0;
+    int32_t agent_id = 0;
     cJSON *response = NULL;
 
     if (wm_agent_upgrade_validate_task_status_message(input_json, NULL, &agent_id), agent_id > 0) {

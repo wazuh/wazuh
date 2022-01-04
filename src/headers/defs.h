@@ -83,11 +83,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MAX_PID 32768
 #endif
 
-/* First ID assigned by authd */
-#ifndef AUTHD_FIRST_ID
-#define AUTHD_FIRST_ID  1024
-#endif
-
 /* Notify the manager */
 #define NOTIFY_TIME     10      // ... every 10 seconds
 #define RECONNECT_TIME  60      // Time to reconnect

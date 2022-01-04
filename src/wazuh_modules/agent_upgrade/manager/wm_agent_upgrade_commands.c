@@ -43,7 +43,7 @@
  * @retval WM_UPGRADE_NEW_VERSION_GREATER_MASTER
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
-STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task) __attribute__((nonnull));
+STATIC int wm_agent_upgrade_analyze_agent(int32_t agent_id, wm_agent_task *agent_task) __attribute__((nonnull));
 
 /**
  * Validate the information of the agent and the task
@@ -84,10 +84,10 @@ void wm_agent_upgrade_cancel_pending_upgrades() {
     cJSON_Delete(cancel_response);
 }
 
-char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_task* task) {
+char* wm_agent_upgrade_process_upgrade_command(const int32_t* agent_ids, wm_upgrade_task* task) {
     char* response = NULL;
-    int agent = 0;
-    int agent_id = 0;
+    int32_t agent = 0;
+    int32_t agent_id = 0;
     cJSON *json_response = NULL;
     cJSON* data_array = cJSON_CreateArray();
 
@@ -129,10 +129,10 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
     return response;
 }
 
-char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_upgrade_custom_task* task) {
+char* wm_agent_upgrade_process_upgrade_custom_command(const int32_t* agent_ids, wm_upgrade_custom_task* task) {
     char* response = NULL;
-    int agent = 0;
-    int agent_id = 0;
+    int32_t agent = 0;
+    int32_t agent_id = 0;
     cJSON *json_response = NULL;
     cJSON* data_array = cJSON_CreateArray();
 
@@ -172,11 +172,11 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
     return response;
 }
 
-char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) {
+char* wm_agent_upgrade_process_agent_result_command(const int32_t* agent_ids, const wm_upgrade_agent_status_task* task) {
     // Only one id of agent will reach at a time
     char* response = NULL;
-    int agent = 0;
-    int agent_id = 0;
+    int32_t agent = 0;
+    int32_t agent_id = 0;
     cJSON *json_response = NULL;
     cJSON *json_task_module_request = NULL;
     cJSON* data_array = cJSON_CreateArray();
@@ -207,10 +207,10 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
     return response;
 }
 
-char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
+char* wm_agent_upgrade_process_upgrade_result_command(const int32_t* agent_ids) {
     char* response = NULL;
-    int agent = 0;
-    int agent_id = 0;
+    int32_t agent = 0;
+    int32_t agent_id = 0;
     cJSON *json_response = NULL;
     cJSON *json_task_module_request = NULL;
     cJSON* data_array = cJSON_CreateArray();
@@ -234,7 +234,7 @@ char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
     return response;
 }
 
-STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task) {
+STATIC int wm_agent_upgrade_analyze_agent(int32_t agent_id, wm_agent_task *agent_task) {
     int validate_result = WM_UPGRADE_SUCCESS;
     cJSON *agent_info = NULL;
     cJSON *value = NULL;

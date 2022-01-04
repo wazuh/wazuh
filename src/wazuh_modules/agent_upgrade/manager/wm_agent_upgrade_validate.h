@@ -20,7 +20,7 @@
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_INVALID_ACTION_FOR_MANAGER
  * */
-int wm_agent_upgrade_validate_id(int agent_id);
+int wm_agent_upgrade_validate_id(int32_t agent_id);
 
 /**
  * Check if agent status is active
