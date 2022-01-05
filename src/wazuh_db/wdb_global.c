@@ -1931,7 +1931,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
     }
 
     closedir(dp);
-    if(most_recent_backup_name) {
+    if(most_recent_backup_name && tmp_backup_name) {
         os_strdup(tmp_backup_name, *most_recent_backup_name);
     }
 
@@ -1968,7 +1968,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
     }
 
     closedir(dp);
-    if(oldest_backup_name) {
+    if(oldest_backup_name && tmp_backup_name) {
         os_strdup(tmp_backup_name, *oldest_backup_name);
     }
 
