@@ -1744,6 +1744,9 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
         return OS_INVALID;
     }
 
+    // Clear all statements in cache to run VACUUM
+    wdb_finalize_all_statements(wdb);
+
     sqlite3_stmt *stmt = NULL;
 
     if (sqlite3_prepare_v2(wdb->db, SQL_VACUUM_INTO, -1, &stmt, NULL) != SQLITE_OK) {
