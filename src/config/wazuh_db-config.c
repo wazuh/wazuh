@@ -127,7 +127,7 @@ void wdb_init_conf() {
     os_calloc(WDB_LAST_BACKUP, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings);
 
     for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        os_calloc(1, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings[i]);
+        os_calloc(1, sizeof(wdb_backup_settings_node), wconfig.wdb_backup_settings[i]);
         wconfig.wdb_backup_settings[i]->enabled = true;
         wconfig.wdb_backup_settings[i]->interval = 86400;
         wconfig.wdb_backup_settings[i]->max_files = 3;
