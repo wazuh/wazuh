@@ -673,7 +673,7 @@ def upload_group_configuration(group_id, file_content):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".xml")
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.tmp_path)
     # create temporary file for parsing xml input and validate XML format
     try:
         with open(handle, 'w') as tmp_file:

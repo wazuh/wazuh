@@ -1731,7 +1731,7 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.tmp_path)
     try:
         with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
