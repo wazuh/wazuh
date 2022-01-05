@@ -88,6 +88,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
+    bool post_upgrade = FALSE;
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
@@ -112,6 +113,15 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         }
     }
 
+    char output[OS_MAXSTR + 1] = {0};
+
+    if (version < (int)(sizeof(UPDATES)/sizeof(char*))) {
+        if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
+            mdebug1("Create pre-upgrade global DB snapshot");
+            post_upgrade = TRUE;
+        }
+    }
+
     for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
         mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
@@ -121,6 +131,13 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
             break;
         }
     }
+
+    if (post_upgrade) {
+        if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
+            mdebug1("Create post-upgrade global DB snapshot");
+        }
+    }
+
 
     return wdb;
 }
