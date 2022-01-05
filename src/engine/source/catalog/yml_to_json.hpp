@@ -110,6 +110,12 @@ namespace yml2json
         return doc;
     }
 
+    /** Loads a YAML string and returns a rapidjson::Document.
+     *
+     * @param yamlStr The YAML string to load.
+     * @return rapidjson::Document The parsed YAML string.
+     * @throws YAML::ParserException If the YAML string is invalid.
+     */
     inline rapidjson::Document loadYMLfromString(const std::string& yamlStr)
     {
         YAML::Node root = YAML::Load(yamlStr);

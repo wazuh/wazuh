@@ -75,6 +75,9 @@ class fakeStorage : public StorageDriverInterface
                     break;
 
                 case AssetType::Schemas:
+                    asset.append(json_schema_decoder);
+                    break;
+
                 case AssetType::Environments:
                 default:
                     // #TODO Error
