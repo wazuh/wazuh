@@ -75,8 +75,14 @@ static void wm_sync_manager();
 
 static void wm_check_agents();
 
-// Synchronize agents and groups
-static void wm_sync_agents();
+/**
+ * @brief Method to synchronize 'client.keys' and 'global.db'. All new agents found in 'client.keys will be added to the DB
+ *        and any agent in the DB that doesn't have a key will be removed. This method runs in workers constantly, but in the master
+ *        it will run only at beggining.
+ *
+ * @param master_first_time Parameter to run the syncronization even if it's a master node.
+ */
+static void wm_sync_agents(bool master_first_time);
 
 // Clean dangling database files
 static void wm_clean_dangling_legacy_dbs();
@@ -90,10 +96,9 @@ static void wm_sync_multi_groups(const char *dirname);
 /**
  * @brief This method will read the legacy GROUPS_DIR folder to insert in the global.db the groups information it founds.
  *        After every successful insertion, the legacy file is deleted. If we are in a worker, the files are deleted without inserting.
- *
- * @param is_worker Boolean parameter, TRUE if it is a worker, FALSE otherwise.
+ *        If the folder is empty, it will be removed.
  */
-void wm_sync_legacy_groups_files(bool is_worker);
+void wm_sync_legacy_groups_files();
 
 /**
  * @brief Method to insert a single group file in the global.db. Like this insertion is performed for legacy group files only in the master,
@@ -140,8 +145,10 @@ void* wm_database_main(wm_database *data) {
         wm_sync_manager();
     }
 
+    // Synchronize client.keys at startup to insert agent groups files
+    wm_sync_agents(true);
     // If we have groups assignment in legacy files, insert them (master) or remove them (worker)
-    wm_sync_legacy_groups_files(is_worker);
+    wm_sync_legacy_groups_files();
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -158,7 +165,7 @@ void* wm_database_main(wm_database *data) {
 
 #ifndef LOCAL
             if (!strcmp(path, KEYS_FILE)) {
-                wm_sync_agents();
+                wm_sync_agents(false);
             } else
 #endif // !LOCAL
             {
@@ -265,7 +272,7 @@ void wm_check_agents() {
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
             /* Synchronize */
-            wm_sync_agents();
+            wm_sync_agents(false);
             timestamp = buffer.st_mtime;
             inode = buffer.st_ino;
         }
@@ -273,7 +280,7 @@ void wm_check_agents() {
 }
 
 // Synchronize agents
-void wm_sync_agents() {
+void wm_sync_agents(bool master_first_time) {
     keystore keys = KEYSTORE_INITIALIZER;
     clock_t clock0 = clock();
     struct timespec spec0;
@@ -281,22 +288,22 @@ void wm_sync_agents() {
 
     // The client.keys file should only be synchronized with the database in the
     // worker nodes. In the case of the master, this will happen in the writter
-    // thread of authd.
-    if (!is_worker) return;
+    // thread of authd and only one time at the begining of modulesd.
+    if (is_worker || (!is_worker && master_first_time)) {
+        gettime(&spec0);
 
-    gettime(&spec0);
+        mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
-    mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
-    OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, W_RAW_KEY, 0);
+        sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
 
-    sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
-
-    OS_FreeKeys(&keys);
-    mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
-    gettime(&spec1);
-    time_sub(&spec1, &spec0);
-    mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+        OS_FreeKeys(&keys);
+        mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
+        gettime(&spec1);
+        time_sub(&spec1, &spec0);
+        mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    }
 }
 
 /**
@@ -492,11 +499,11 @@ void wm_sync_multi_groups(const char *dirname) {
     wdb_update_groups(dirname, &wdb_wmdb_sock);
 }
 
-void wm_sync_legacy_groups_files(bool is_worker) {
+void wm_sync_legacy_groups_files() {
     DIR *dir = opendir(GROUPS_DIR);
 
     if (!dir) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
+        mdebug1("Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
         return;
     }
 
@@ -505,9 +512,11 @@ void wm_sync_legacy_groups_files(bool is_worker) {
     struct dirent *dir_entry = NULL;
     int sync_result = OS_INVALID;
     char group_file_path[OS_SIZE_512] = {0};
+    bool is_dir_empty = true;
 
     while ((dir_entry = readdir(dir)) != NULL) {
         if (dir_entry->d_name[0] != '.') {
+            is_dir_empty = false;
             snprintf(group_file_path, OS_SIZE_512, "%s/%s", GROUPS_DIR, dir_entry->d_name);
 
             if (is_worker) {
@@ -526,6 +535,12 @@ void wm_sync_legacy_groups_files(bool is_worker) {
         }
     }
     closedir(dir);
+
+    if (is_dir_empty) {
+        if (rmdir(GROUPS_DIR)) {
+            mdebug1("Unable to remove directory '%s': '%s' (%d) ", GROUPS_DIR, strerror(errno), errno);
+        }
+    }
 }
 
 int wm_sync_group_file (const char* group_file, const char* group_file_path) {
@@ -536,7 +551,7 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
         return OS_INVALID;
     }
 
-    FILE *fp = fopen(group_file, "r");
+    FILE *fp = fopen(group_file_path, "r");
 
     if (!fp) {
         mdebug1("Groups file '%s' could not be opened for syncronization.", group_file_path);
@@ -554,7 +569,7 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
             *endl = '\0';
         }
 
-        result = wdb_set_agent_groups_csv(id_agent, groups_csv, WDB_GROUP_OVERRIDE, "synced", "local", &wdb_wmdb_sock);
+        result = wdb_set_agent_groups_csv(id_agent, groups_csv, "override", "synced", "manual", &wdb_wmdb_sock);
     } else {
         mdebug1("Empty group file '%s'.", group_file_path);
         result = OS_SUCCESS;
@@ -770,7 +785,7 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
-        wm_sync_agents();
+        wm_sync_agents(false);
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
         wm_clean_dangling_groups();
