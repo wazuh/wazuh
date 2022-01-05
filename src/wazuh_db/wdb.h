@@ -892,6 +892,13 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
 int wdb_close(wdb_t * wdb, bool commit);
 
+/**
+ * @brief Finalizes all the statements in cache for a specific database.
+ *
+ * @param wdb The database struct pointer.
+ */
+void wdb_finalize_all_statements(wdb_t * wdb);
+
 void wdb_leave(wdb_t * wdb);
 
 wdb_t * wdb_pool_find_prev(wdb_t * wdb);
