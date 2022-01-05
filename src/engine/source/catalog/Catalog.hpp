@@ -5,8 +5,10 @@
 #include <vector>
 #include <memory>
 
-#include "storageDriver/StorageDriverInterface.hpp"
 #include "yml_to_json.hpp"
+#include "rapidjson/document.h"
+#include "catalogSharedDef.hpp"
+#include "storageDriver/StorageDriverInterface.hpp"
 
 /**
  * @brief The Catalog class
@@ -14,8 +16,7 @@
  * The Catalog class is used to manage the catalog and will be in charge of managing
  * the load, update and storage of all the assets needed by the engine.
  * It should support multiple storage systems and should make versioning easy to manage.
- *
- * #TODO Singleton
+ * ----------TODO Singleton
  * The Catalog class is a singleton. (@warning not implemented yet)
  */
 class Catalog {
@@ -30,10 +31,27 @@ class Catalog {
          *
          * @param json The json to validate.
          * @param schema The schema to validate against.
-         * @return true if the json is valid.
-         * @return false if the json is invalid.
+         * @return std::optional<std::string> The error message if the json is not valid.
          */
-        bool validateJSON(rapidjson::Document& json, rapidjson::Document& schema);
+        std::optional<std::string> validateJSON(rapidjson::Document& json, rapidjson::Document& schema);
+
+        /** @brief Mapping the assets and the schema validator */
+        static const inline std::map<AssetType, std::string> assetTypeToSchema
+        {
+            {AssetType::Decoder, "wazuh-decoders"},
+            {AssetType::Rule, "wazuh-rules"},
+            {AssetType::Output, "wazuh-outputs"},
+            {AssetType::Filter, "wazuh-filters"},
+            {AssetType::Schemas, ""},
+            {AssetType::Environments, ""}
+        };
+
+        std::string jsonToString(rapidjson::Document& json) {
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            json.Accept(writer);
+            return buffer.GetString();
+        }
 
     public:
         /**
@@ -53,6 +71,18 @@ class Catalog {
         ~Catalog() {
             storageDriver.reset();
         }
+
+        /**
+         * @brief Get the Asset object
+         *
+         * @param type The type of the asset. Only decoder, rules, filter and schema are supported.
+         * @param assetName The name of the asset.
+         * @return rapidjson::Document The asset object. If the asset is not found, the document is empty.
+         * @throws std::runtime_error If the asset is corrupted or cannot get the json schema to validate against.
+         * @throws CatalogExeptions The storage driver throws an exception.
+         *
+         */
+        rapidjson::Document getAsset(const AssetType type, std::string_view assetName);
 
         /**
          * @brief Get the decoder for the given decoder name.
