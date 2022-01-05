@@ -872,7 +872,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
                                              WDB_GROUP_MODE_OVERRIDE,
                                              "synced",
                                              WDB_GROUP_SOURCE_MANUAL,
-                                             NULL)) {
+                                             &wdb_sock)) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
 

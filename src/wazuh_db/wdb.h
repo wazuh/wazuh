@@ -78,6 +78,7 @@ typedef enum wdb_groups_set_mode_t {
 #define WDB_GROUP_MODE_EMPTY_ONLY "empty_only"
 #define WDB_GROUP_MODE_OVERRIDE "override"
 #define WDB_GROUP_MODE_OVERRIDE_ALL "override_all"
+#define WDB_GROUP_MODE_APPEND "append"
 
 #define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
 
