@@ -8,7 +8,7 @@ TEST(Catalog, get_decoder_valid)
     auto storageDriver = std::make_unique<fakeStorage>();
     auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
 
-    rapidjson::Document decoder = catalog->getDecoder("syslog2");
+    rapidjson::Document decoder = catalog->getAsset(AssetType::Decoder, "syslog2");
 
     if (decoder.IsNull())
     {
