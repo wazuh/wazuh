@@ -339,11 +339,29 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
                     const auto fields { Utils::split(line, ' ') };
                     if (fields.size() == MAC_SIZE_FIELDS && fields.front().compare("ether") == 0)
                     {
-                        mac = fields[MAC_ADDRESS];
+                        const auto components { Utils::split(fields[MAC_ADDRESS], ':') };
+
+                        for (const auto& item : components)
+                        {
+                            if (1 == item.length())
+                            {
+                                mac.append("0" + item);
+                            }
+                            else
+                            {
+                                mac.append(item);
+                            }
+
+                            if (item.compare(components.back()))
+                            {
+                                mac.append(":");
+                            }
+                        }
                         break;
                     }
                 }
             }
+
             return mac;
         }
 };
