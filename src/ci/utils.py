@@ -274,16 +274,19 @@ def runCoverage(moduleName):
     if moduleName == 'shared_modules/utils':
         moduleCMakeFiles = os.path.join(currentDir, '*/CMakeFiles/*.dir')
         includeDir = includeDir.parent
+        paths = glob.glob(moduleCMakeFiles)
+    elif moduleName == 'syscheckd/db':
+        paths = [root for root, _, _ in  os.walk((os.path.join(currentDir, 'build/tests'))) if re.search("\.dir$",root)]
     else:
         moduleCMakeFiles = os.path.join(
             currentDir, 'build/tests/*/CMakeFiles/*.dir')
+        paths = glob.glob(moduleCMakeFiles)
 
     printHeader(moduleName, 'coverage')
     folders = ''
     if not os.path.exists(reportFolder):
         os.mkdir(reportFolder)
-
-    for dir in glob.glob(moduleCMakeFiles):
+    for dir in paths:
         folders += '--directory ' + dir + ' '
 
     coverageCommand = f'lcov {folders} --capture --output-file {reportFolder}/code_coverage.info -rc ' \

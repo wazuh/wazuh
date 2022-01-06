@@ -1,5 +1,5 @@
 /*
- * Wazuh Syscheckd
+ * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
  * September 23, 2021.
  *
@@ -96,7 +96,7 @@ class RegistryValue final : public DBItem
             return m_fimEntry.get();
         };
 
-        nlohmann::json* toJSON()
+        const nlohmann::json* toJSON() const
         {
             return m_statementConf.get();
         };

@@ -1,5 +1,5 @@
 /*
- * Wazuh Syscheckd
+ * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
  * September 23, 2021.
  *
@@ -166,38 +166,14 @@ namespace FIMDBHelper
         {
             [&item](ReturnTypeCallback type, const nlohmann::json & jsonResult)
             {
-                if (type == ReturnTypeCallback::SELECTED)
+                if (ReturnTypeCallback::SELECTED == type)
                 {
-                    item = jsonResult["query"];
+                    item = jsonResult;
                 }
             }
         };
 
         T::getInstance().executeQuery(query, callback);
-    }
-
-    /**
-    * @brief Create a new query to database
-    *
-    * @param tableName a string with table name
-    * @param columnList an array with the column list
-    * @param filter a string with a filter to a table
-    * @param order a string with the column to order in result
-    *
-    * @return a nlohmann::json with a database query
-    */
-    inline nlohmann::json dbQuery(const std::string& tableName, const nlohmann::json& columnList, const std::string& filter,
-                                  const std::string& order)
-    {
-        nlohmann::json query;
-        query["table"] = tableName;
-        query["query"]["column_list"] = columnList["column_list"];
-        query["query"]["row_filter"] = filter;
-        query["query"]["distinct_opt"] = false;
-        query["query"]["order_by_opt"] = order;
-        query["query"]["count_opt"] = 100;
-
-        return query;
     }
 }
 

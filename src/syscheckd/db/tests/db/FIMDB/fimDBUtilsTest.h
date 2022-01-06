@@ -1,7 +1,7 @@
 /*
  * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
- * October 5, 2021.
+ * December 24, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,11 +9,13 @@
  * Foundation.
  */
 
-#ifndef _FIMHELPER_TEST_H
-#define _FIMHELPER_TEST_H
+#ifndef _FIMDB_UTILS_TEST_H
+#define _FIMDB_UTILS_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "fimCommonDefs.h"
+#include "dbsync.hpp"
+#include "rsync.hpp"
 
 class FIMDBMOCK final
 {
@@ -42,13 +44,31 @@ class FIMDBMOCK final
 
 };
 
-class FIMHelperTest : public testing::Test {
+
+class FIMWrapperTest : public testing::Test {
     protected:
-        FIMHelperTest() = default;
-        virtual ~FIMHelperTest() = default;
+        FIMWrapperTest() = default;
+        virtual ~FIMWrapperTest() = default;
 
         void SetUp() override;
         void TearDown() override;
 };
 
-#endif //_FIMHELPER_TEST_H
+class FIMDBUtilsTest : public testing::Test {
+    protected:
+        FIMDBUtilsTest() = default;
+        virtual ~FIMDBUtilsTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
+};
+
+class CallbackMock
+{
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (ReturnTypeCallback type, nlohmann::json&), ());
+};
+
+#endif //_FIMDB_UTILS_TEST_H

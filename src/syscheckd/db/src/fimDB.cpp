@@ -1,7 +1,7 @@
 /*
- * Wazuh SysCollector
+ * Wazuh Syscheck
  * Copyright (C) 2015-2021, Wazuh Inc.
- * September 27, 2020.
+ * September 27, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
