@@ -59,7 +59,6 @@ constexpr auto CREATE_FILE_DB_STATEMENT
 constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS registry_key (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     path TEXT NOT NULL,
     perm TEXT,
     uid INTEGER,
@@ -77,8 +76,9 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
 constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS registry_data (
-    key_id INTEGER,
-    name TEXT,
+    path TEXT,
+    arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
+    name TEXT NOT NULL,
     type INTEGER,
     size INTEGER,
     hash_md5 TEXT,
@@ -87,8 +87,9 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    PRIMARY KEY(key_id, name)
-    FOREIGN KEY (key_id) REFERENCES registry_key(item_id)) WITHOUT ROWID;)"
+    PRIMARY KEY(path, arch, name)
+    FOREIGN KEY (path) REFERENCES registry_key(path)
+    FOREIGN KEY (arch) REFERENCES registry_key(arch)) WITHOUT ROWID;)"
 };
 
 constexpr auto CREATE_REGISTRY_VIEW_STATEMENT

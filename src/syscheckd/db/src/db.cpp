@@ -14,12 +14,10 @@
 #include "fimDBHelper.hpp"
 #include <thread>
 #include "dbFileItem.hpp"
-
 #ifdef WIN32
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
 #endif
-
 struct CJsonDeleter
 {
     void operator()(char* json)
@@ -44,6 +42,7 @@ extern "C" {
  */
 static char* CreateStatement()
 {
+
     std::string ret = CREATE_FILE_DB_STATEMENT;
 #ifdef WIN32
     ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
@@ -135,15 +134,30 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
     return dbsyncTxnHandle;
 }
 
-FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
+FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
 {
-    std::unique_ptr<DBItem> syncItem = nullptr;
+    std::unique_ptr<DBItem> syncItem;
+    auto retval {FIMDB_OK};
 
     if (entry->type == FIM_TYPE_FILE)
     {
         syncItem = std::make_unique<FileItem>(entry);
     }
 
+#ifdef WIN32
+    else
+    {
+        if (entry->registry_entry.key == NULL)
+        {
+            syncItem = std::make_unique<RegistryValue>(entry);
+        }
+        else
+        {
+            syncItem = std::make_unique<RegistryKey>(entry);
+        }
+    }
+
+#endif
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput
     {
         cJSON_Parse((*syncItem->toJSON()).dump().c_str())
@@ -151,30 +165,31 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
 
     if (dbsync_sync_txn_row(txn_handler, jsInput.get()) != 0)
     {
-        return FIMDB_ERR;
+        retval = FIMDB_ERR;
     }
 
-    return FIMDB_OK;
+    return retval;
 }
 
-FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
-                                                result_callback_t res_callback,
-                                                void* txn_ctx)
+FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+                                               result_callback_t res_callback,
+                                               void* txn_ctx)
 {
 
+    auto retval {FIMDB_OK};
     callback_data_t cb_data = { .callback = res_callback, .user_data = txn_ctx };
 
     if (dbsync_get_deleted_rows(txn_handler, cb_data) != 0)
     {
-        return FIMDB_ERR;
+        retval = FIMDB_ERR;
     }
 
     if (dbsync_close_txn(txn_handler) != 0)
     {
-        return FIMDB_ERR;
+        retval = FIMDB_ERR;
     }
 
-    return FIMDB_OK;
+    return retval;
 }
 
 

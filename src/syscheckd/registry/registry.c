@@ -10,9 +10,11 @@
 
 #ifdef WIN32
 
+#include <cJSON.h>
 #include "registry.h"
 #include "shared.h"
 #include "../syscheck.h"
+#include "../../config/syscheck-config.h"
 #include "db/include/db.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
@@ -30,6 +32,29 @@ static int _base_line = 0;
 /* Default values */
 #define MAX_KEY_LENGTH 260
 #define MAX_VALUE_NAME 16383
+
+static const char *FIM_EVENT_TYPE_ARRAY[] = {
+    "added",
+    "deleted",
+    "modified"
+};
+
+static const char *FIM_EVENT_MODE[] = {
+    "scheduled",
+    "realtime",
+    "whodata"
+};
+
+typedef struct fim_key_txn_context_s {
+    event_data_t *evt_data;
+    fim_registry_key *key;
+} fim_key_txn_context_t;
+
+typedef struct fim_val_txn_context_s {
+    event_data_t *evt_data;
+    fim_registry_value_data *data;
+    char* diff;
+} fim_val_txn_context_t;
 
 /**
  * @brief Set the root key and subkey associated with a given key.
@@ -482,7 +507,9 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->mtime = get_registry_mtime(key_handle);
     }
 
-    key->last_event = time(NULL);
+    // uncomment the line below for production code
+    //key->last_event = time(NULL);
+    key->last_event = 0; // this option is necessary to avoid noise from fim events for now (dsync issue)
 
     fim_registry_get_checksum_key(key);
 
@@ -509,206 +536,178 @@ void fim_registry_free_entry(fim_entry *entry) {
     }
 }
 
-/**
- * @brief Process and trigger delete events for a given registry value.
- *
- * @param fim_sql An object holding all information corresponding to the FIM DB.
- * @param data A fim_entry object holding the deleted value information retrieved from the FIM DB.
- * @param mutex A mutex to be locked before operating on the registry tables from the FIM DB.
- * @param _alert A pointer to an integer specifying if an alert should be generated.
- * @param _ev_mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
- * @param _w_evt A whodata object holding information corresponding to the event.
- */
-void fim_registry_process_value_delete_event(fdb_t *fim_sql,
-                                             fim_entry *data,
-                                             __attribute__((unused)) pthread_mutex_t *mutex,
-                                             void *_alert,
-                                             void *_ev_mode,
-                                             __attribute__((unused)) void *_w_evt) {
-    int alert = *(int *)_alert;
-    fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
-    registry_t *configuration;
+cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
+                                            const fim_registry_value_data *value,
+                                            const registry_t *configuration,
+                                            fim_event_mode mode,
+                                            const event_data_t *evt_data,
+                                            __attribute__((unused)) whodata_evt *w_evt,
+                                            const char* diff)
+{
 
-    configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
-    if (configuration == NULL) {
-        return;
-    }
+    //cJSON *changed_attributes = NULL;
 
-    if (alert) {
-        cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
+    /*if (old_data != NULL && old_data->registry_entry.value != NULL) {
+        changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
+                                                              old_data->registry_entry.value, configuration);
 
-        if (json_event) {
-            send_syscheck_msg(json_event);
-            cJSON_Delete(json_event);
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
         }
+        if (old_data != NULL && old_data->registry_entry.value != NULL) {
+            cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+            cJSON_AddItemToObject(data, "old_attributes",
+                                  fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
     }
-    /* DEPRECATED CODE
-    fim_db_remove_registry_value_data(fim_sql, data->registry_entry.value);
-    */
-    if (configuration->opts & CHECK_SEECHANGES) {
-        fim_diff_process_delete_value(data->registry_entry.key->path, data->registry_entry.value->name,
-                                      data->registry_entry.key->arch);
-    }
-}
+    }*/
 
-/**
- * @brief Process and trigger delete events for a given registry key.
- *
- * @param fim_sql An object holding all information corresponding to the FIM DB.
- * @param data A fim_entry object holding the deleted key information retrieved from the FIM DB.
- * @param mutex A mutex to be locked before operating on the registry tables from the FIM DB.
- * @param _alert A pointer to an integer specifying if an alert should be generated.
- * @param _ev_mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
- * @param _w_evt A whodata object holding information corresponding to the event.
- */
-void fim_registry_process_key_delete_event(fdb_t *fim_sql,
-                                           fim_entry *data,
-                                           pthread_mutex_t *mutex,
-                                           void *_alert,
-                                           void *_ev_mode,
-                                           void *_w_evt) {
-    int alert = *(int *)_alert;
-    fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
-    fim_tmp_file *file;
-    registry_t *configuration;
-    int result;
+    cJSON *json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
 
-    configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
-    if (configuration == NULL) {
-        return;
-    }
+    cJSON *data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
 
-    if (alert) {
-        cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
+    if (value)
+    {
+        cJSON_AddStringToObject(data, "path", value->path);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64");
+        cJSON_AddStringToObject(data, "value_name", value->name);
 
-        if (json_event) {
-            send_syscheck_msg(json_event);
-            cJSON_Delete(json_event);
+    } else
+    {
+
+        cJSON *path, *arch, *value_name;
+
+        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
+        {
+            cJSON_AddStringToObject(data, "path", path->valuestring);
         }
-    }
-    /* DEPRECATED CODE
-    result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
 
-    if (result == FIMDB_OK && file && file->elements) {
-        fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
-                                               syscheck.database_store, _alert, _ev_mode, _w_evt);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+
+        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
+        {
+            cJSON_AddStringToObject(data, "arch", arch->valuestring);
+        }
+
+        if (value_name = cJSON_GetObjectItem(dbsync_event, "name"), value_name != NULL)
+        {
+            cJSON_AddStringToObject(data, "value_name", value_name->valuestring);
+        }
+
     }
 
-    fim_db_remove_registry_key(fim_sql, data);
+    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(dbsync_event, "last_event")->valuestring);
 
-    if (configuration->opts & CHECK_SEECHANGES) {
-        fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
+
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
     }
-    */
+
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    }
+
+    return json_event;
 }
 
-/**
- * @brief Process and trigger delete events for all unscanned registry elements.
- */
-void fim_registry_process_unscanned_entries() {
-    fim_tmp_file *file;
-    fim_event_mode event_mode = FIM_SCHEDULED;
-    int result;
-    /* DEPRECATED CODE
-    result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
+static void registry_value_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
+{
 
-    if (result != FIMDB_OK) {
-        mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
-    } else if (file && file->elements) {
-        fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex,
-                                 fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
-                                 &event_mode, NULL);
-    }
+    registry_t *configuration = NULL;
+    cJSON *json_event = NULL;
+    const cJSON *dbsync_event = NULL;
+    cJSON *json_path = NULL;
+    cJSON *json_arch = NULL;
+    cJSON *json_name = NULL;
+    char *path = NULL;
+    char *name = NULL;
+    int arch = -1;
+    fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
+    char* diff = event_data->diff;
+    fim_registry_value_data *data = event_data->data;
 
-    result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
-
-    if (result != FIMDB_OK) {
-        mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
-    } else if (file && file->elements) {
-        fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_entry_mutex,
-                                               fim_registry_process_value_delete_event, syscheck.database_store,
-                                               &_base_line, &event_mode, NULL);
-    }
-    */
-}
-
-/**
- * @brief Generate and send value event
- *
- * @param new A fim_entry object holding the information gathered from the key and value.
- * @param saved A fim_entry object holding the information from the key and value retrieved from the database.
- * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
- * @param data_buffer A pointer to the raw data buffer contained in the value.
- */
-void fim_registry_process_value_event(fim_entry *new,
-                                      fim_entry *saved,
-                                      fim_event_mode mode,
-                                      BYTE *data_buffer) {
-    char *value_path;
-    size_t value_path_length;
-    registry_t *configuration;
-    cJSON *json_event;
-    char *diff = NULL;
-
-    configuration = fim_registry_configuration(new->registry_entry.key->path, new->registry_entry.key->arch);
-    if (configuration == NULL) {
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
         return;
     }
 
-    value_path_length = strlen(new->registry_entry.key->path) + strlen(new->registry_entry.value->name) + 2;
-
-    os_malloc(value_path_length, value_path);
-    snprintf(value_path, value_path_length, "%s\\%s", new->registry_entry.key->path, new->registry_entry.value->name);
-
-    if (fim_registry_validate_ignore(value_path, configuration, 0)) {
-        os_free(value_path);
-        return;
-    }
-    os_free(value_path);
-
-    if (fim_check_restrict(new->registry_entry.value->name, configuration->restrict_value)) {
-        return;
-    }
-
-    fim_registry_calculate_hashes(new, configuration, data_buffer);
-
-    fim_registry_get_checksum_value(new->registry_entry.value);
-
-    /* DEPRECATED CODE
-    saved->registry_entry.value = fim_db_get_registry_data(syscheck.database, new->registry_entry.key->id,
-                                                           new->registry_entry.value->name);
-
-    if (configuration->opts & CHECK_SEECHANGES) {
-        diff = fim_registry_value_diff(new->registry_entry.key->path, new->registry_entry.value->name,
-                                       (char *)data_buffer, new->registry_entry.value->type, configuration);
-    }
-
-    json_event = fim_registry_event(new, saved, configuration, mode,
-                                    saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, diff);
-
-    os_free(diff);
-
-    if (json_event) {
-        if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id,
-                                        saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION) != FIMDB_OK) {
-            // Something went wrong or the DB is full, either way we need to stop.
-            mdebug2(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
-                    new->registry_entry.key->path, new->registry_entry.value->name);
-            cJSON_Delete(json_event);
-            fim_registry_free_value_data(saved->registry_entry.value);
+    if (cJSON_IsArray(result_json)) {
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
             return;
         }
+    } else {
+        dbsync_event = result_json;
+    }
 
-        if (_base_line) {
-            send_syscheck_msg(json_event);
+    if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+        goto end;
+    }
+    if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
+        goto end;
+    }
+    if (json_name = cJSON_GetObjectItem(dbsync_event, "name"), json_name == NULL) {
+        goto end;
+    }
+
+    path = cJSON_GetStringValue(json_path);
+    arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
+    name = cJSON_GetStringValue(json_name);
+
+    configuration = fim_registry_configuration(path, arch);
+    if (configuration == NULL) {
+        return;
+    }
+
+    switch (resultType) {
+        case INSERTED:
+            event_data->evt_data->type = FIM_ADD;
+            break;
+
+        case MODIFIED:
+
+            event_data->evt_data->type = FIM_MODIFICATION;
+            break;
+
+        case DELETED:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                fim_diff_process_delete_value(path, name, arch);
+            }
+            event_data->evt_data->type = FIM_DELETE;
+            break;
+
+        case MAX_ROWS:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                        data->path);
+                goto end;
+            }
+            break;
+        default:
+            goto end;
+            break;
+    }
+
+    json_event = fim_dbsync_registry_value_json_event(dbsync_event, data, configuration, FIM_SCHEDULED, event_data->evt_data,
+                                                      NULL, diff);
+
+    if (json_event && _base_line) {
+        send_syscheck_msg(json_event);
+    }
+
+    end:
+        cJSON_Delete(json_event);
+        if(diff != NULL){
+            os_free(diff);
         }
 
-        cJSON_Delete(json_event);
-    }
-    fim_db_set_registry_data_scanned(syscheck.database, new->registry_entry.value->name, new->registry_entry.key->id);
-
-    fim_registry_free_value_data(saved->registry_entry.value);
-    */
 }
 
 /**
@@ -723,30 +722,27 @@ void fim_registry_process_value_event(fim_entry *new,
  * @param mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
  */
 void fim_read_values(HKEY key_handle,
-                     fim_entry *new,
-                     fim_entry *saved,
+                     char* path,
+                     int arch,
                      DWORD value_count,
                      DWORD max_value_length,
                      DWORD max_value_data_length,
-                     fim_event_mode mode) {
+                     TXN_HANDLE regval_txn_handler,
+                     fim_val_txn_context_t *txn_ctx_regval) {
     fim_registry_value_data value_data;
     TCHAR *value_buffer;
     BYTE *data_buffer;
     DWORD i;
-    /* DEPRECATED CODE
+    fim_entry new;
+    char *value_path;
+    size_t value_path_length;
+    registry_t *configuration = NULL;
+    char* diff = NULL;
 
-    if (new->registry_entry.key->id == 0) {
-        if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
-                                          new->registry_entry.key->arch, &new->registry_entry.key->id) != FIMDB_OK) {
-            mwarn(FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
-                  new->registry_entry.key->path);
-            return;
-        }
-    }
-    */
-
-    value_data.id = new->registry_entry.key->id;
-    new->registry_entry.value = &value_data;
+    value_data.arch = arch;
+    value_data.path = path;
+    new.registry_entry.value = &value_data;
+    new.registry_entry.key = NULL;
 
     os_calloc(max_value_length + 1, sizeof(TCHAR), value_buffer);
     os_calloc(max_value_data_length, sizeof(BYTE), data_buffer);
@@ -756,21 +752,216 @@ void fim_read_values(HKEY key_handle,
         DWORD data_size = max_value_data_length;
         DWORD data_type = 0;
 
+        configuration = fim_registry_configuration(path, arch);
+        if (configuration == NULL) {
+            return;
+        }
+
         if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
             break;
         }
 
-        new->registry_entry.value->name = value_buffer;
-        new->registry_entry.value->type = data_type;
-        new->registry_entry.value->size = data_size;
-        new->registry_entry.value->last_event = time(NULL);
+        new.registry_entry.value->name = value_buffer;
+        new.registry_entry.value->type = data_type;
+        new.registry_entry.value->size = data_size;
+        new.registry_entry.value->last_event = 0;
+        new.registry_entry.value->scanned = 0;
+        new.type = FIM_TYPE_REGISTRY;
 
-        fim_registry_process_value_event(new, saved, mode, data_buffer);
+        value_path_length = strlen(new.registry_entry.value->path) + strlen(new.registry_entry.value->name) + 2;
+
+        os_malloc(value_path_length, value_path);
+        snprintf(value_path, value_path_length, "%s\\%s", new.registry_entry.value->path, new.registry_entry.value->name);
+
+        if (fim_registry_validate_ignore(value_path, configuration, 0)) {
+            os_free(value_path);
+            os_free(value_data.name);
+            return;
+        }
+        os_free(value_path);
+
+        if (fim_check_restrict(new.registry_entry.value->name, configuration->restrict_value)) {
+            return;
+        }
+
+        fim_registry_calculate_hashes(&new, configuration, data_buffer);
+
+        fim_registry_get_checksum_value(new.registry_entry.value);
+
+        if (configuration->opts & CHECK_SEECHANGES) {
+            diff = fim_registry_value_diff(new.registry_entry.value->path, new.registry_entry.value->name,
+                                       (char *)data_buffer, new.registry_entry.value->type, configuration);
+        }
+        txn_ctx_regval->diff = diff;
+        txn_ctx_regval->data = new.registry_entry.value;
+
+        int result_transaction = fim_db_transaction_sync_row(regval_txn_handler, &new);
+
+        if (result_transaction < 0) {
+            mdebug2("dbsync transaction failed due to %d", result_transaction);
+        }
     }
 
+    fim_registry_free_value_data(new.registry_entry.value);
     os_free(value_buffer);
     os_free(data_buffer);
+}
+
+cJSON* fim_dbsync_registry_key_json_event(const cJSON* dbsync_event,
+                                          const fim_registry_key* key,
+                                          const registry_t* configuration,
+                                          const event_data_t* evt_data)
+{
+    /*
+
+    cJSON* changed_attributes = NULL;
+    if (old_data != NULL) {
+        changed_attributes = fim_registry_compare_key_attrs(new_data, old_data, configuration);
+
+        if (cJSON_GetArraySize(changed_attributes) == 0) {
+            cJSON_Delete(changed_attributes);
+            return NULL;
+        }
+    }
+
+    if (old_data) {
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
+    }
+
+    */
+
+    cJSON* json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    if (key != NULL)
+    {
+        cJSON_AddStringToObject(data, "path", key->path);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+        cJSON_AddStringToObject(data, "arch", (key->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
+
+    }
+    else
+    {
+        cJSON *path, *arch;
+
+        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
+        {
+            cJSON_AddStringToObject(data, "path", path->valuestring);
+        }
+
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+
+        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
+        {
+            cJSON_AddStringToObject(data, "arch", arch->valuestring);
+        }
+    }
+
+
+
+    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(fim_entry, "last_event")->valuestring);
+
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
+
+    char* tags = NULL;
+
+    tags = configuration->tag;
+
+    if (tags != NULL) {
+        cJSON_AddStringToObject(data, "tags", tags);
+    }
+
+    return json_event;
+}
+
+static void registry_key_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
+{
+
+    registry_t *configuration = NULL;
+    cJSON *json_event = NULL;
+    const cJSON *dbsync_event = NULL;
+    cJSON *json_path, *json_arch;
+    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
+    fim_registry_key* key = event_data->key;
+    char *path = NULL;
+    int arch = -1;
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
+
+    if (cJSON_IsArray(result_json)) {
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+            return;
+        }
+    } else {
+        dbsync_event = result_json;
+    }
+
+    // Look for the old_attributes changed
+
+    if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+        goto end;
+    }
+    if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
+        goto end;
+    }
+
+    path = cJSON_GetStringValue(json_path);
+    arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
+
+    configuration = fim_registry_configuration(path, arch);
+
+    if (configuration == NULL) {
+        return;
+    }
+
+    switch (resultType) {
+        case INSERTED:
+            event_data->evt_data->type = FIM_ADD;
+            break;
+
+        case MODIFIED:
+            event_data->evt_data->type = FIM_MODIFICATION;
+            break;
+
+        case DELETED:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                fim_diff_process_delete_registry(path, arch);
+            }
+            event_data->evt_data->type = FIM_DELETE;
+            break;
+
+        case MAX_ROWS:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                key->path);
+                goto end;
+            }
+            break;
+        default:
+            goto end;
+            break;
+    }
+
+    json_event = fim_dbsync_registry_key_json_event(dbsync_event, key, configuration, event_data->evt_data);
+
+    if (json_event && _base_line) {
+        send_syscheck_msg(json_event);
+    }
+
+    end:
+        cJSON_Delete(json_event);
 }
 
 /**
@@ -788,7 +979,12 @@ void fim_open_key(HKEY root_key_handle,
                   const char *sub_key,
                   int arch,
                   fim_event_mode mode,
-                  registry_t *parent_configuration) {
+                  registry_t *parent_configuration,
+                  TXN_HANDLE regkey_txn_handler,
+                  TXN_HANDLE regval_txn_handler,
+                  fim_val_txn_context_t *txn_ctx_regval,
+                  fim_key_txn_context_t *txn_ctx_reg) {
+
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -797,8 +993,9 @@ void fim_open_key(HKEY root_key_handle,
     DWORD max_value_data_length;
     FILETIME file_time = { 0 };
     DWORD i;
-    fim_entry new, saved;
+    fim_entry new;
     registry_t *configuration;
+    int result_transaction = -1;
 
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
         return;
@@ -861,7 +1058,8 @@ void fim_open_key(HKEY root_key_handle,
         }
 
         /* Open sub_key */
-        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration);
+        fim_open_key(root_key_handle, new_full_key, new_sub_key, arch, mode, configuration, regkey_txn_handler,
+                     regval_txn_handler, txn_ctx_regval, txn_ctx_reg);
 
         os_free(new_full_key);
     }
@@ -874,53 +1072,23 @@ void fim_open_key(HKEY root_key_handle,
         return;
     }
 
+    txn_ctx_reg->key = new.registry_entry.key;
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    saved.type = FIM_TYPE_REGISTRY;
-    /* DEPRECATED CODE
-    saved.registry_entry.key = fim_db_get_registry_key(syscheck.database, full_key, arch);
-    saved.registry_entry.value = NULL;
+    result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
 
-    if (saved.registry_entry.key != NULL) {
-        new.registry_entry.key->id = saved.registry_entry.key->id;
+    if(result_transaction < 0){
+        merror("Dbsync registry transaction failed due to %d", result_transaction);
     }
-    // Ignore all the values of the ignored key.
-    if (!fim_check_restrict(full_key, configuration->restrict_key)) {
-        cJSON *json_event =
-        fim_registry_event(&new, &saved, configuration, mode,
-                           saved.registry_entry.key == NULL ? FIM_ADD : FIM_MODIFICATION, NULL, NULL);
 
-        if (json_event) {
-            if (fim_db_insert_registry_key(syscheck.database, new.registry_entry.key, new.registry_entry.key->id) !=
-                FIMDB_OK) {
-                // Something went wrong or the DB is full, either way we need to stop scanning.
-                w_mutex_unlock(&syscheck.fim_entry_mutex);
-                cJSON_Delete(json_event);
-                fim_registry_free_key(new.registry_entry.key);
-                fim_registry_free_key(saved.registry_entry.key);
-                RegCloseKey(current_key_handle);
-                return;
-            }
-
-            if (_base_line) {
-                send_syscheck_msg(json_event);
-            }
-
-            cJSON_Delete(json_event);
-        }
-
-        fim_db_set_registry_key_scanned(syscheck.database, full_key, arch);
-
-        if (value_count) {
-            fim_read_values(current_key_handle, &new, &saved, value_count, max_value_length, max_value_data_length,
-                            mode);
-        }
+    if (value_count) {
+        fim_read_values(current_key_handle, new.registry_entry.key->path, new.registry_entry.key->arch, value_count, max_value_length, max_value_data_length,
+                        regval_txn_handler, txn_ctx_regval);
     }
-    */
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     fim_registry_free_key(new.registry_entry.key);
-    fim_registry_free_key(saved.registry_entry.key);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
     RegCloseKey(current_key_handle);
 }
 
@@ -928,13 +1096,16 @@ void fim_registry_scan() {
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
     int i = 0;
+    event_data_t evt_data_registry_key = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
+    fim_key_txn_context_t txn_ctx_reg = { .evt_data = &evt_data_registry_key };
+    TXN_HANDLE regkey_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, registry_key_transaction_callback, &txn_ctx_reg);
+    event_data_t evt_data_registry_value = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
+    fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value };
+    TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
+                                                                 registry_value_transaction_callback, &txn_ctx_regval);
 
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);
-    /* DEPRECATED CODE
-    fim_db_set_all_registry_data_unscanned(syscheck.database);
-    fim_db_set_all_registry_key_unscanned(syscheck.database);
-    */
     /* Get sub class and a valid registry entry */
     for (i = 0; syscheck.registry[i].entry; i++) {
         /* Ignored entries are zeroed */
@@ -953,10 +1124,14 @@ void fim_registry_scan() {
             continue;
         }
         fim_open_key(root_key_handle, syscheck.registry[i].entry, sub_key, syscheck.registry[i].arch, FIM_SCHEDULED,
-                     NULL);
+                     NULL, regkey_txn_handler, regval_txn_handler, &txn_ctx_regval, &txn_ctx_reg);
     }
-
-    fim_registry_process_unscanned_entries();
+    txn_ctx_reg.key = NULL;
+    txn_ctx_regval.data = NULL;
+    fim_db_transaction_deleted_rows(regval_txn_handler, registry_value_transaction_callback, &txn_ctx_regval);
+    fim_db_transaction_deleted_rows(regkey_txn_handler, registry_key_transaction_callback, &txn_ctx_reg);
+    regkey_txn_handler = NULL;
+    regval_txn_handler = NULL;
 
     mdebug1(FIM_WINREGISTRY_ENDED);
 

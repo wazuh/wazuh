@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-FIMDBErrorCodes fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
+FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
 {
     auto retVal { FIMDB_ERR };
     const auto paths { FimDBUtils::getPathsFromPattern<FIMDB>(pattern) };
@@ -39,7 +39,7 @@ FIMDBErrorCodes fim_db_file_pattern_search(const char* pattern, callback_context
     return retVal;
 }
 
-FIMDBErrorCodes fim_db_get_path(const char* file_path, callback_context_t callback)
+FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callback)
 {
     auto retVal { FIMDB_ERR };
 
@@ -98,7 +98,7 @@ FIMDBErrorCodes fim_db_get_path(const char* file_path, callback_context_t callba
 }
 
 
-FIMDBErrorCodes fim_db_remove_path(const char* path)
+FIMDBErrorCode fim_db_remove_path(const char* path)
 {
     auto retVal { FIMDB_ERR };
 
@@ -158,7 +158,7 @@ int fim_db_get_count_file_entry()
     return count;
 }
 
-FIMDBErrorCodes fim_db_file_update(const fim_entry* data, bool* updated)
+FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated)
 {
     auto retVal { FIMDB_ERR };
 

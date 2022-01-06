@@ -15,7 +15,9 @@ static const char *FIM_EVENT_TYPE_ARRAY[] = { "added", "deleted", "modified" };
 
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
-cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry_t *configuration) {
+cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_registry_value_data *data,
+                                          const registry_t *configuration) {
+
     static const char *VALUE_TYPE[] = {
         [REG_NONE] = "REG_NONE",
         [REG_SZ] = "REG_SZ",
@@ -35,28 +37,67 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
 
     cJSON_AddStringToObject(attributes, "type", "registry_value");
 
-    if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
-        cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
-    }
+    if (data)
+    {
+        if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
+            cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
+        }
 
-    if (configuration->opts & CHECK_SIZE) {
-        cJSON_AddNumberToObject(attributes, "size", data->size);
-    }
+        if (configuration->opts & CHECK_SIZE) {
+            cJSON_AddNumberToObject(attributes, "size", data->size);
+        }
 
-    if (configuration->opts & CHECK_MD5SUM) {
-        cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
-    }
+        if (configuration->opts & CHECK_MD5SUM) {
+            cJSON_AddStringToObject(attributes, "hash_md5", data->hash_md5);
+        }
 
-    if (configuration->opts & CHECK_SHA1SUM) {
-        cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
-    }
+        if (configuration->opts & CHECK_SHA1SUM) {
+            cJSON_AddStringToObject(attributes, "hash_sha1", data->hash_sha1);
+        }
 
-    if (configuration->opts & CHECK_SHA256SUM) {
-        cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
-    }
+        if (configuration->opts & CHECK_SHA256SUM) {
+            cJSON_AddStringToObject(attributes, "hash_sha256", data->hash_sha256);
+        }
 
-    if (*data->checksum) {
-        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+        if (*data->checksum) {
+            cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+        }
+    } else
+    {
+        cJSON *type, *checksum, *sha256, *md5, *sha1, *size;
+
+        if (type = cJSON_GetObjectItem(dbsync_event, "type"), type != NULL) {
+            if (configuration->opts & CHECK_TYPE && type->valueint <= REG_QWORD) {
+                cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[type->valueint]);
+            }
+        }
+
+        if (configuration->opts & CHECK_SIZE) {
+            if (size = cJSON_GetObjectItem(dbsync_event, "size"), size != NULL) {
+                cJSON_AddNumberToObject(attributes, "size", size->valueint);
+            }
+        }
+        if (configuration->opts & CHECK_MD5SUM) {
+            if (md5 = cJSON_GetObjectItem(dbsync_event, "hash_md5"), md5 != NULL){
+                cJSON_AddStringToObject(attributes, "hash_md5", md5->valuestring);
+            }
+        }
+
+        if (configuration->opts & CHECK_SHA1SUM) {
+            if (sha1 = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), sha1 != NULL){
+                cJSON_AddStringToObject(attributes, "hash_sha1", sha1->valuestring);
+            }
+        }
+        if (configuration->opts & CHECK_SHA256SUM) {
+            if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
+                cJSON_AddStringToObject(attributes, "value_type", sha256->valuestring);
+            }
+        }
+
+        if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL){
+            cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
+        }
+
     }
 
     return attributes;
@@ -112,6 +153,7 @@ cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
  * @param diff A string holding the change in the value content.
  * @return A pointer to a cJSON object holding the FIM event, NULL on error or if no event is generated.
  */
+
 cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      const fim_entry *old_data,
                                      const registry_t *configuration,
@@ -145,13 +187,13 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON_AddStringToObject(data, "value_name", new_data->registry_entry.value->name);
     cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
 
-    cJSON_AddItemToObject(data, "attributes",
-                          fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
+    //cJSON_AddItemToObject(data, "attributes",
+    //                      fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
 
     if (old_data != NULL && old_data->registry_entry.value != NULL) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes",
-                              fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
+        //cJSON_AddItemToObject(data, "old_attributes",
+        //                      fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
     }
 
     if (diff != NULL) {
@@ -173,37 +215,82 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
  * @param configuration The configuration associated with the registry key.
  * @return A pointer to a cJSON object the translated key attributes.
  */
-cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry_t *configuration) {
+cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_registry_key *data, const registry_t *configuration) {
     cJSON *attributes = cJSON_CreateObject();
 
     cJSON_AddStringToObject(attributes, "type", "registry_key");
 
-    if (configuration->opts & CHECK_PERM) {
-        cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
-    }
-
-    if (configuration->opts & CHECK_OWNER) {
-        cJSON_AddStringToObject(attributes, "uid", data->uid);
-
-        if (data->user_name) {
-            cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+    if (data)
+    {
+        if (configuration->opts & CHECK_PERM) {
+            cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
         }
-    }
 
-    if (configuration->opts & CHECK_GROUP) {
-        cJSON_AddStringToObject(attributes, "gid", data->gid);
+        if (configuration->opts & CHECK_OWNER) {
+            cJSON_AddStringToObject(attributes, "uid", data->uid);
 
-        if (data->group_name) {
-            cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+            if (data->user_name) {
+                cJSON_AddStringToObject(attributes, "user_name", data->user_name);
+            }
         }
-    }
 
-    if (configuration->opts & CHECK_MTIME) {
-        cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
-    }
+        if (configuration->opts & CHECK_GROUP) {
+            cJSON_AddStringToObject(attributes, "gid", data->gid);
 
-    if (*data->checksum) {
-        cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+            if (data->group_name) {
+                cJSON_AddStringToObject(attributes, "group_name", data->group_name);
+            }
+        }
+
+        if (configuration->opts & CHECK_MTIME) {
+            cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
+        }
+
+        if (*data->checksum) {
+            cJSON_AddStringToObject(attributes, "checksum", data->checksum);
+        }
+    } else
+    {
+        cJSON *perm, *uid, *user_name, *gid, *group_name, *mtime, *checksum;
+
+        if (configuration->opts & CHECK_PERM) {
+            if (perm = cJSON_GetObjectItem(dbsync_event, "perm"), perm != NULL) {
+                cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(perm->valuestring));
+            }
+        }
+
+        if (configuration->opts & CHECK_OWNER) {
+            if (uid = cJSON_GetObjectItem(dbsync_event, "uid"), uid != NULL) {
+                cJSON_AddNumberToObject(attributes, "uid", uid->valueint);
+            }
+
+            if (user_name = cJSON_GetObjectItem(dbsync_event, "user_name"), user_name != NULL) {
+                cJSON_AddStringToObject(attributes, "user_name", user_name->valuestring);
+            }
+
+        }
+
+        if (configuration->opts & CHECK_GROUP) {
+            if (gid = cJSON_GetObjectItem(dbsync_event, "gid"), gid != NULL) {
+                cJSON_AddNumberToObject(attributes, "gid", gid->valueint);
+            }
+
+            if (group_name = cJSON_GetObjectItem(dbsync_event, "group_name"), group_name != NULL) {
+                cJSON_AddStringToObject(attributes, "group_name", group_name->valuestring);
+            }
+
+        }
+
+        if (configuration->opts & CHECK_MTIME) {
+            if (mtime = cJSON_GetObjectItem(dbsync_event, "mtime"), mtime != NULL) {
+                cJSON_AddNumberToObject(attributes, "mtime", mtime->valueint);
+            }
+        }
+
+        if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL) {
+            cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
+        }
+
     }
 
     return attributes;
@@ -298,11 +385,11 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
     cJSON_AddStringToObject(data, "arch", new_data->arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
 
-    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
+    //cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
 
     if (old_data) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
+        //cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
     }
 
     if (configuration->tag != NULL) {

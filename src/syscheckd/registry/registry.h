@@ -43,7 +43,8 @@ void fim_registry_scan();
  * @param configuration The configuration associated with the registry value.
  * @return A pointer to a cJSON object the translated value attributes.
  */
-cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry_t *configuration);
+cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_registry_value_data *data,
+                                          const registry_t *configuration);
 
 /**
  * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
@@ -53,7 +54,7 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
  * @param configuration The configuration associated with the registry key.
  * @return A pointer to a cJSON object the translated key attributes.
  */
-cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry_t *configuration);
+cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_registry_key *data, const registry_t *configuration);
 
 /**
  * @brief Check and trigger a FIM event on a registry.
