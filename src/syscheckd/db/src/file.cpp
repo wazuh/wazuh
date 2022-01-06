@@ -16,10 +16,10 @@
 extern "C" {
 #endif
 
-int fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
+FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
 {
     auto retVal { FIMDB_ERR };
-    const auto paths { FimDBUtils::getPathsFromPattern(pattern) };
+    const auto paths { FimDBUtils::getPathsFromPattern<FIMDB>(pattern) };
 
     if (paths.empty())
     {
@@ -39,7 +39,7 @@ int fim_db_file_pattern_search(const char* pattern, callback_context_t callback)
     return retVal;
 }
 
-int fim_db_get_path(const char* file_path, callback_context_t callback)
+FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callback)
 {
     auto retVal { FIMDB_ERR };
 
@@ -49,7 +49,6 @@ int fim_db_get_path(const char* file_path, callback_context_t callback)
     }
     else
     {
-
         try
         {
             const auto fileColumnList = R"({"column_list":["path",
@@ -73,7 +72,7 @@ int fim_db_get_path(const char* file_path, callback_context_t callback)
                                                            "mtime"]})"_json;
 
             const auto filter { std::string("WHERE path=\"") + std::string(file_path) + "\""};
-            const auto query = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
+            const auto query = FimDBUtils::dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
 
             nlohmann::json entry_from_path;
             FIMDBHelper::getDBItem<FIMDB>(entry_from_path, query);
@@ -99,7 +98,7 @@ int fim_db_get_path(const char* file_path, callback_context_t callback)
 }
 
 
-int fim_db_remove_path(const char* path)
+FIMDBErrorCode fim_db_remove_path(const char* path)
 {
     auto retVal { FIMDB_ERR };
 
@@ -132,7 +131,7 @@ int fim_db_get_count_file_inode()
     {
         nlohmann::json inodeQuery;
         inodeQuery["column_list"] = "count(DISTINCT (inode || ',' || dev)) AS count";
-        const auto countQuery = FIMDBHelper::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "");
+        const auto countQuery = FimDBUtils::dbQuery(FIMBD_FILE_TABLE_NAME, inodeQuery, "", "");
         count = FIMDBHelper::getCount<FIMDB>(FIMBD_FILE_TABLE_NAME, countQuery);
     }
     catch (const DbSync::dbsync_error& err)
@@ -159,7 +158,7 @@ int fim_db_get_count_file_entry()
     return count;
 }
 
-int fim_db_file_update(const fim_entry* data, bool* updated)
+FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated)
 {
     auto retVal { FIMDB_ERR };
 
@@ -186,7 +185,7 @@ int fim_db_file_update(const fim_entry* data, bool* updated)
 
 void fim_db_file_inode_search(const unsigned long inode, const unsigned long dev, callback_context_t callback)
 {
-    const auto paths { FimDBUtils::getPathsFromINode(inode, dev) };
+    const auto paths { FimDBUtils::getPathsFromINode<FIMDB>(inode, dev) };
 
     if (paths.empty())
     {

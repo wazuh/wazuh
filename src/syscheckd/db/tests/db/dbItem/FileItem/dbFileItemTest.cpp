@@ -43,8 +43,8 @@ void FileItemTest::SetUp()
 
 void FileItemTest::TearDown()
 {
-    free(fimEntryTest->file_entry.data);
-    free(fimEntryTest);
+    os_free(fimEntryTest->file_entry.data);
+    os_free(fimEntryTest);
 }
 
 TEST_F(FileItemTest, fileItemConstructorFromFIM)
@@ -91,6 +91,8 @@ TEST_F(FileItemTest, fileItemConstructorFromFIMWithNullParameters)
         EXPECT_TRUE(scanned);
         delete file;
     });
+    os_free(data);
+    os_free(fimEntryTestNull);
 }
 
 TEST_F(FileItemTest, fileItemConstructorFromJSON)

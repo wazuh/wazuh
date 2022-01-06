@@ -172,8 +172,8 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
 }
 
 FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
-                                                result_callback_t res_callback,
-                                                void* txn_ctx)
+                                               result_callback_t res_callback,
+                                               void* txn_ctx)
 {
 
     auto retval {FIMDB_OK};

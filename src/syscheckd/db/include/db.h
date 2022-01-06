@@ -65,9 +65,11 @@ void fim_db_init(int storage,
  * @param file_path File path can be a pattern or a primary key
  * @param data Pointer to the data structure where the callback context will be stored.
  *
- * @return FIMDB_OK on success, FIMDB_ERROR on failure.
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
  */
-int fim_db_get_path(const char* file_path, callback_context_t data);
+FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t data);
 
 /**
  * @brief Find entries based on pattern search.
@@ -75,18 +77,22 @@ int fim_db_get_path(const char* file_path, callback_context_t data);
  * @param pattern Pattern to be searched.
  * @param data Pointer to the data structure where the callback context will be stored.
  *
- * @return FIMDB_OK on success, FIMDB_ERROR on failure.
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
  */
-int fim_db_file_pattern_search(const char* pattern, callback_context_t data);
+FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t data);
 
 /**
  * @brief Delete entry from the DB using file path.
  *
  * @param path Path of the entry to be removed.
  *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
  */
-int fim_db_remove_path(const char* path);
+FIMDBErrorCode fim_db_remove_path(const char* path);
 
 /**
  * @brief Get count of all inodes in file_entry table.
@@ -109,9 +115,12 @@ int fim_db_get_count_file_entry();
  * @param data The information linked to the path to be created or updated
  * @param updated The updated is a flag to keep if the operation was updated or not.
  * @return The result of the update operation.
- * @retval Returns any of the values returned by fim_db_set_scanned and fim_db_insert_entry.
+ *
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_FULL if the table limit was reached.
+ * @retval FIMDB_ERR on failure.
  */
-int fim_db_file_update(const fim_entry* data, bool* updated);
+FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated);
 
 /**
  * @brief Find entries using the inode.
