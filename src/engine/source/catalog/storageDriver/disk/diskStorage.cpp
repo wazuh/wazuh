@@ -31,6 +31,7 @@ std::vector<std::string_view> diskStorage::getAssetList(const AssetType type)
                 //std::cout << "Adding file: '" << entry.path() << std::endl;
             }
         }
+
         // else {
         //     std::cout << "ignoring file: '" << entry.path() << std::endl;
         // }
@@ -68,16 +69,19 @@ std::string diskStorage::getAsset(const AssetType type, std::string_view assetNa
     /* Get full path to the asset file */
     fs::path file_path {base_dir / file_name};
 
-    //    std::cout << "Getting file | Type: ";
+    // Throws std::filesystem::filesystem_error
     if (fs::exists(file_path))
     {
-        //std::cout << "File found: " << file_path << std::endl;
+        // Throw a
         std::ifstream ifs {file_path.string()};
-        if (ifs) {
+
+        if (ifs)
+        {
             std::ostringstream oss {};
             oss << ifs.rdbuf();
             assetStr = oss.str();
         }
+
         // else {
         //     std::cerr << "Error reading file: " << file_path << std::endl;
         // }
