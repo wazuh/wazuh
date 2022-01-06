@@ -1727,6 +1727,7 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
 
 int wdb_global_create_backup(wdb_t* wdb, char* output) {
     char path[PATH_MAX-3] = {0};
+    char file_name[PATH_MAX] = {0};
     char path_compressed[PATH_MAX] = {0};
     char* timestamp = NULL;
     int result = OS_INVALID;
@@ -1735,6 +1736,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
     wchr_replace(timestamp, ' ', '-');
     wchr_replace(timestamp, '/', '-');
     snprintf(path, PATH_MAX-3, "%s/%s-%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp);
+    snprintf(file_name, PATH_MAX, "%s-%s", WDB_GLOB_BACKUP_NAME, timestamp);
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
@@ -1774,6 +1776,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
         unlink(path);
         if(OS_SUCCESS == result) {
             wdb_global_remove_old_backups();
+            snprintf(output, OS_MAXSTR + 1, "ok %s", file_name);
         } else {
             snprintf(output, OS_MAXSTR + 1, "err Failed during database backup compression");
         }
