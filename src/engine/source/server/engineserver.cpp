@@ -7,17 +7,15 @@
  * Foundation.
 */
 
+
 #include "engineserver.hpp"
 
 
-/**
- * @brief Opens a TCP socket and listens for the incoming events, which are then stored on the server queue
- *
- * @param port TCP socket interface Port
- * @return std::shared_ptr<uvw::TCPHandle>
- */
-std::shared_ptr<uvw::TCPHandle> EngineServer::listenTCP(const int port) {
+using namespace engineserver;
 
+
+void EngineServer::listenTCP(const int port, const std::string ip)
+{
     auto tcp = m_loop->resource<uvw::TCPHandle>();
 
     tcp->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::TCPHandle &tcp) {
@@ -33,63 +31,13 @@ std::shared_ptr<uvw::TCPHandle> EngineServer::listenTCP(const int port) {
 
         auto client = srv.loop().resource<uvw::TCPHandle>();
 
-        client->on<uvw::DataEvent>([this](const uvw::DataEvent &event, uvw::TCPHandle &client) {
-            std::string printStr(event.data.get(), event.length);
-            printf("Listen %d: %s", client.sock().port, printStr.c_str());
-            this->m_eventQueue.push(std::string(event.data.get(), event.length));
-        });
+        client->on<uvw::DataEvent>([this, &srv](const uvw::DataEvent &event, uvw::TCPHandle &client) {
+            // std::string printStr(event.data.get(), event.length);
+            // printf("Listen %d: %s", client.sock().port, printStr.c_str());
+            // this->m_eventQueue.push(std::string(event.data.get(), event.length));
 
-        client->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::TCPHandle &client) {
-            client.close();
-        });
-
-        client->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::TCPHandle &client) {
-            printf("TCP Client (%s:%d) error: code=%d; name=%s; message=%s\n",
-                                                    client.peer().ip.c_str(),
-                                                    client.peer().port,
-                                                    event.code(),
-                                                    event.name(),
-                                                    event.what());
-        });
-
-        srv.accept(*client);
-        client->read();
-    });
-
-    tcp->bind("0.0.0.0", port);
-    tcp->listen();
-
-    return tcp;
-}
-
-/**
- * @brief Opens a TCP socket and listens for the incoming events, which are then stored on the server queue
- *
- * @param ip TCP socket interface IP
- * @param port TCP socket interface Port
- * @return std::shared_ptr<uvw::TCPHandle>
- */
-std::shared_ptr<uvw::TCPHandle> EngineServer::listenTCP(const std::string ip, const int port) {
-
-    auto tcp = m_loop->resource<uvw::TCPHandle>();
-
-    tcp->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::TCPHandle &tcp) {
-        printf("TCP Server (%s:%d) error: code=%d; name=%s; message=%s\n",
-                                                        tcp.sock().ip.c_str(),
-                                                        tcp.sock().port,
-                                                        event.code(),
-                                                        event.name(),
-                                                        event.what());
-    });
-
-    tcp->on<uvw::ListenEvent>([this](const uvw::ListenEvent &, uvw::TCPHandle &srv) {
-
-        auto client = srv.loop().resource<uvw::TCPHandle>();
-
-        client->on<uvw::DataEvent>([this](const uvw::DataEvent &event, uvw::TCPHandle &client) {
-            std::string printStr(event.data.get(), event.length);
-            printf("Listen %d: %s", client.sock().port, printStr.c_str());
-            this->m_eventQueue.push(std::string(event.data.get(), event.length));
+            auto obs = this->getEndpointSubject(EndpointType::TCP, client.sock().port, srv.sock().ip);
+            if(obs) obs.value().get_subscriber().on_next(std::string(event.data.get(), event.length));
         });
 
         client->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::TCPHandle &client) {
@@ -112,17 +60,12 @@ std::shared_ptr<uvw::TCPHandle> EngineServer::listenTCP(const std::string ip, co
     tcp->bind(ip, port);
     tcp->listen();
 
-    return tcp;
+    m_endpointList.push_back(ServerEndpoint(EndpointType::TCP, std::string()+ip+":"+std::to_string(port), tcp));
 }
 
-/**
- * @brief Opens a UDP socket and listens for the incoming events, which are then stored on the server queue
- *
- * @param port UDP socket interface Port
- * @return std::shared_ptr<uvw::UDPHandle>
- */
-std::shared_ptr<uvw::UDPHandle> EngineServer::listenUDP(const int port) {
 
+void EngineServer::listenUDP(const int port, const std::string ip)
+{
     auto udp = m_loop->resource<uvw::UDPHandle>();
 
     udp->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::UDPHandle &udp) {
@@ -146,68 +89,23 @@ std::shared_ptr<uvw::UDPHandle> EngineServer::listenUDP(const int port) {
                                                         event.what());
         });
 
-        std::string printStr(event.data.get(), event.length);
-        printf("Listen %d: %s", udp.sock().port, printStr.c_str());
-        this->m_eventQueue.push(std::string(event.data.get(), event.length));
-    });
+        // std::string printStr(event.data.get(), event.length);
+        // printf("Listen %d: %s", udp.sock().port, printStr.c_str());
+        // this->m_eventQueue.push(std::string(event.data.get(), event.length));
 
-    udp->bind("0.0.0.0", port);
-    udp->recv();
-
-    return udp;
-}
-
-/**
- * @brief Opens a UDP socket and listens for the incoming events, which are then stored on the server queue
- *
- * @param ip UDP socket interface IP
- * @param port UDP socket interface Port
- * @return std::shared_ptr<uvw::UDPHandle>
- */
-std::shared_ptr<uvw::UDPHandle> EngineServer::listenUDP(const std::string ip, const int port) {
-
-    auto udp = m_loop->resource<uvw::UDPHandle>();
-
-    udp->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::UDPHandle &udp) {
-        printf("UDP Server (%s:%d) error: code=%d; name=%s; message=%s\n",
-                                                        udp.sock().ip.c_str(),
-                                                        udp.sock().port,
-                                                        event.code(),
-                                                        event.name(),
-                                                        event.what());
-    });
-
-    udp->on<uvw::UDPDataEvent>([this](const uvw::UDPDataEvent &event, uvw::UDPHandle &udp) {
-        auto client = udp.loop().resource<uvw::TCPHandle>();
-
-        client->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::TCPHandle &client) {
-            printf("UDP Client (%s:%d) error: code=%d; name=%s; message=%s\n",
-                                                        client.peer().ip.c_str(),
-                                                        client.peer().port,
-                                                        event.code(),
-                                                        event.name(),
-                                                        event.what());
-        });
-
-        std::string printStr(event.data.get(), event.length);
-        printf("Listen %d: %s", udp.sock().port, printStr.c_str());
-        this->m_eventQueue.push(std::string(event.data.get(), event.length));
+        auto obs = this->getEndpointSubject(EndpointType::UDP, udp.sock().port, udp.sock().ip);
+        if(obs) obs.value().get_subscriber().on_next(std::string(event.data.get(), event.length));
     });
 
     udp->bind(ip, port);
     udp->recv();
 
-    return udp;
+    m_endpointList.push_back(ServerEndpoint(EndpointType::UDP, std::string()+ip+":"+std::to_string(port), udp));
 }
 
-/**
- * @brief Opens a UNIX socket and listens for the incoming events, which are then stored on the server queue
- *
- * @param path Absolute path to the UNIX socket
- * @return std::shared_ptr<uvw::PipeHandle>
- */
-std::shared_ptr<uvw::PipeHandle> EngineServer::listenSocket(const std::string path) {
 
+void EngineServer::listenSocket(const std::string path)
+{
     auto socket = m_loop->resource<uvw::PipeHandle>();
 
     socket->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::PipeHandle &socket) {
@@ -235,9 +133,8 @@ std::shared_ptr<uvw::PipeHandle> EngineServer::listenSocket(const std::string pa
         });
 
         client->on<uvw::DataEvent>([this](const uvw::DataEvent &event, uvw::PipeHandle &client) {
-            std::string printStr(event.data.get(), event.length);
-            printf("Listen %s: %s", client.sock().c_str(), printStr.c_str());
-            this->m_eventQueue.push(std::string(event.data.get(), event.length));
+            auto obs = this->getEndpointSubject(EndpointType::SOCKET, client.sock());
+            if(obs) obs.value().get_subscriber().on_next(std::string(event.data.get(), event.length));
         });
 
         handle.accept(*client);
@@ -254,17 +151,12 @@ std::shared_ptr<uvw::PipeHandle> EngineServer::listenSocket(const std::string pa
     socket->bind(path);
     socket->listen();
 
-    return socket;
+    m_endpointList.push_back(ServerEndpoint(EndpointType::SOCKET, path, socket));
 }
 
-/**
- * @brief Handles a signal given its signal number and a signal wrapping function
- *
- * @param signum Number of UNIX signal to be handled
- * @return std::shared_ptr<uvw::SignalHandle>
- */
-std::shared_ptr<uvw::SignalHandle> EngineServer::listenSignal(const int signum, void (*const signal_wrapper)(void *)) {
 
+void EngineServer::listenSignal(const int signum, void (*const signal_wrapper)(void *))
+{
     auto signal = m_loop->resource<uvw::SignalHandle>();
 
     signal->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::SignalHandle &signal) {
@@ -277,22 +169,11 @@ std::shared_ptr<uvw::SignalHandle> EngineServer::listenSignal(const int signum, 
     });
 
     signal->start(signum);
-
-    return signal;
 }
 
-/**
- * @brief If timeout is zero, a TimerEvent event is emitted on the next event loop
- * iteration. If repeat is non-zero, a TimerEvent event is emitted first
- * after timeout milliseconds and then repeatedly after repeat milliseconds.
- *
- * @param timeout Milliseconds before to emit an event
- * @param repeat Milliseconds between successive events
- * @param callback Callback to be called when a TimerEvent happens
- * @return std::shared_ptr<uvw::TimerHandle>
- */
-std::shared_ptr<uvw::TimerHandle>
-EngineServer::setTimer(const int timeout, const int repeat, void (*const callback)(void *)) {
+
+void EngineServer::setTimer(const int timeout, const int repeat, void (*const callback)(void *))
+{
     auto timer = m_loop->resource<uvw::TimerHandle>();
 
     timer->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::TimerHandle &timer) {
@@ -304,32 +185,76 @@ EngineServer::setTimer(const int timeout, const int repeat, void (*const callbac
     });
 
     timer->start(uvw::TimerHandle::Time{timeout}, uvw::TimerHandle::Time{repeat});
-
-    return timer;
 }
 
-/**
- * @brief Construct a new EngineServer object
- */
+
+std::optional<rxcpp::subjects::subject<std::string>>
+EngineServer::getEndpointSubject(const EndpointType type, const std::string path)
+{
+    std::list<ServerEndpoint>::iterator it;
+    for (it = m_endpointList.begin(); it != m_endpointList.end(); ++it)
+    {
+        if (it->getType() != type) continue;
+        if (it->getPath().compare(path)) continue;
+        else return it->getSubject();
+    }
+    return {};
+};
+
+
+std::optional<rxcpp::subjects::subject<std::string>>
+EngineServer::getEndpointSubject(const EndpointType type, const int port, const std::string ip)
+{
+    std::list<ServerEndpoint>::iterator it;
+
+    auto path = std::string() + ip + ":" + std::to_string(port);
+
+    for (it = m_endpointList.begin(); it != m_endpointList.end(); ++it)
+    {
+        if (it->getType() != type) continue;
+        if (it->getPath().compare(path)) continue;
+        else return it->getSubject();
+    }
+    return {};
+};
+
+
+std::optional<rxcpp::observable<std::string>>
+EngineServer::getEndpointObservable(const EndpointType type, const std::string path)
+{
+    auto subj = getEndpointSubject(type, path);
+    if(subj) return subj.value().get_observable();
+    return {};
+};
+
+std::optional<rxcpp::observable<std::string>>
+EngineServer::getEndpointObservable(const EndpointType type, const int port, const std::string ip)
+{
+    auto subj = getEndpointSubject(type, port, ip);
+    if(subj) return subj.value().get_observable();
+    return {};
+};
+
+
+void EngineServer::close(void)
+{
+    m_loop->walk([](uvw::BaseHandle &handle){ handle.close(); }); /// Closes all the handles
+    m_loop->stop();
+    m_loop->clear();
+    m_loop->close();
+}
+
+
 EngineServer::EngineServer()
 {
     m_loop = uvw::Loop::getDefault();
 }
 
-/**
- * @brief Destroy the EngineServer object
- */
+
 EngineServer::~EngineServer()
 {
     m_loop->walk([](uvw::BaseHandle &handle){ handle.close(); }); /// Closes all the handles
     m_loop->stop();
     m_loop->clear();
     m_loop->close();
-
-    // Just for testing
-    printf("\n");
-    while(!m_eventQueue.empty()) {
-        printf("Event: %s", m_eventQueue.front().c_str());
-        m_eventQueue.pop();
-    }
 }

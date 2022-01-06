@@ -32,6 +32,18 @@ CPMAddPackage(
       "BUILD_TESTING OFF"
 )
 
+CPMAddPackage(
+    NAME RapidJSON
+    GITHUB_REPOSITORY Tencent/rapidjson
+    GIT_TAG v1.1.0
+    VERSION 1.1.0
+    OPTIONS
+        "RAPIDJSON_BUILD_DOC OFF"
+        "RAPIDJSON_BUILD_EXAMPLES OFF"
+        "RAPIDJSON_BUILD_TESTS OFF"
+        # "RAPIDJSON_BUILD_CXX17 ON"
+)
+
 # Parent scope scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
@@ -44,7 +56,11 @@ include_directories(
 )
 
 add_executable(engine_server ${SERVER_SOURCES})
-target_include_directories(engine_server PUBLIC ${uvw_SOURCE_DIR}/src/ ${uvw_SOURCE_DIR}/src/uvw/)
+target_include_directories(engine_server PUBLIC 
+    ${uvw_SOURCE_DIR}/src/
+    ${uvw_SOURCE_DIR}/src/uvw/
+    ${RapidJSON_SOURCE_DIR}/include/
+)
 target_link_libraries(engine_server uv)
 target_sources(main PUBLIC ${SERVER_SOURCES})
 
