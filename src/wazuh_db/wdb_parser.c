@@ -5740,7 +5740,7 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
         snprintf(output, OS_MAXSTR + 1, "err Missing backup action");
     }
     else if (strcmp(next, "create") == 0) {
-        result = wdb_parse_global_create_backup(*wdb, output);
+        result = wdb_global_create_backup(*wdb, output);
     }
     else if (strcmp(next, "get") == 0) {
         result = wdb_parse_global_get_backup(output);
@@ -5753,16 +5753,6 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
-    }
-
-    return result;
-}
-
-int wdb_parse_global_create_backup(wdb_t* wdb, char* output) {
-    int result = wdb_global_create_backup(wdb, output);
-
-    if (OS_SUCCESS == result) {
-        snprintf(output, OS_MAXSTR + 1, "ok");
     }
 
     return result;
