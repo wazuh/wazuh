@@ -348,7 +348,7 @@
   <!-- Defense evasion gcp_logging_sink deletion -->
   <rule id="65057" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\*\.DeleteSink$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\d*\.DeleteSink$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP logging sink deleted.</description>
     <mitre>
@@ -392,7 +392,7 @@
   <!-- Defense evasion gcp_storage_bucket_permissions modified -->
   <rule id="65061" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage\.setIamPermissions$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.setIamPermissions$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP storage bucket permissions modified.</description>
     <mitre>
@@ -403,7 +403,7 @@
   <!-- Exfiltration gcp_logging_sink modification -->
   <rule id="65062" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.logging\.v\d*\.ConfigServiceV\d*\.UpdateSink$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\d*\.UpdateSink$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP logging sink modified.</description>
     <mitre>
@@ -414,7 +414,7 @@
   <!-- Impact gcp_iam_role deletion -->
   <rule id="65063" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteRole$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DeleteRole$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP IAM role deleted.</description>
     <mitre>
@@ -425,7 +425,7 @@
   <!-- Impact gcp_service_account deleted -->
   <rule id="65064" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteServiceAccount$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DeleteServiceAccount$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP service account deleted.</description>
     <mitre>
@@ -493,7 +493,7 @@
   <!-- Persistence gcp_key_created_for_service_account -->
   <rule id="65071" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateServiceAccountKey$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.CreateServiceAccountKey$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP new key is created for a service account.</description>
     <mitre>
@@ -504,7 +504,7 @@
   <!-- Persistence gcp_iam_service_account_key deletion -->
   <rule id="65072" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.DeleteServiceAccountKey$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DeleteServiceAccountKey$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP identity and access management (IAM) service account key deleted.</description>
     <mitre>
@@ -515,7 +515,7 @@
   <!-- Initial access gcp_iam_custom_role creation -->
   <rule id="65073" level="3">
     <if_sid>65000</if_sid>
-    <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.CreateRole$</field>
     <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
     <description>GCP identity and access management (IAM) custom role created.</description>
     <mitre>
