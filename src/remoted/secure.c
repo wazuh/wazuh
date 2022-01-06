@@ -418,7 +418,7 @@ STATIC void * close_fp_main(void * args) {
 }
 
 STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
-    int32_t agentid;
+    uint32_t agentid;
     const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
@@ -467,10 +467,10 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_lock_read();
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
-        if (agentid == -1) {
-            int32_t id = OS_IsAllowedID(&keys, buffer + 1);
+        if (agentid == ID_INVALID) {
+            uint32_t id = OS_IsAllowedID(&keys, buffer + 1);
 
-            if (id < 0) {
+            if (id == ID_INVALID) {
                 strncpy(agname, "unknown", sizeof(agname));
             } else {
                 strncpy(agname, keys.keyentries[id]->name, sizeof(agname));
@@ -511,7 +511,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
 
-        if (agentid < 0) {
+        if (agentid == ID_INVALID) {
             key_unlock();
             mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 

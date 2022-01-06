@@ -435,7 +435,7 @@ void * run_up(__attribute__((unused)) void * args) {
         }
 
         *(name++) = '\0';
-        wdb = wdb_open_agent2(atoi(entry));
+        wdb = wdb_open_agent2(strtoul(entry, NULL, 10));
         wdb_leave(wdb);
         free(entry);
 

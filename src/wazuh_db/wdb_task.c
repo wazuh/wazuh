@@ -12,7 +12,7 @@
 #include "wdb.h"
 #include "wazuh_modules/wm_task_general.h"
 
-int wdb_task_insert_task(wdb_t* wdb, int32_t agent_id, const char *node, const char *module, const char *command) {
+int wdb_task_insert_task(wdb_t* wdb, uint32_t agent_id, const char *node, const char *module, const char *command) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
     int task_id = OS_INVALID;
@@ -64,7 +64,7 @@ int wdb_task_insert_task(wdb_t* wdb, int32_t agent_id, const char *node, const c
     return task_id;
 }
 
-int wdb_task_get_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char *node, char **status) {
+int wdb_task_get_upgrade_task_status(wdb_t* wdb, uint32_t agent_id, const char *node, char **status) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
     int task_id = OS_INVALID;
@@ -124,7 +124,7 @@ int wdb_task_get_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char *n
     return OS_SUCCESS;
 }
 
-int wdb_task_update_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char *node, const char *status, const char *error) {
+int wdb_task_update_upgrade_task_status(wdb_t* wdb, uint32_t agent_id, const char *node, const char *status, const char *error) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
     int task_id = OS_INVALID;
@@ -196,7 +196,7 @@ int wdb_task_update_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char
     return OS_SUCCESS;
 }
 
-int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int32_t agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
+int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, uint32_t agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
     int task_id;

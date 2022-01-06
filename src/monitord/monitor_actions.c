@@ -47,14 +47,14 @@ void monitor_send_disconnection_msg(char *agent) {
 }
 
 void monitor_agents_disconnection(){
-    int *agents_array;
+    uint32_t *agents_array;
     char str_agent_id[12];
 
     //The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     agents_array = wdb_disconnect_agents(time(0) - mond.global.agents_disconnection_time,
                                          "synced", &sock);
     if (mond.monitor_agents != 0 && agents_array) {
-        for (int i = 0; agents_array[i] != -1; i++) {
+        for (int i = 0; agents_array[i] != ID_INVALID; i++) {
             snprintf(str_agent_id, 12, "%d", agents_array[i]);
             if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
                 mdebug1("Can't add agent ID '%d' to the alerts hash table", agents_array[i]);
@@ -117,7 +117,7 @@ void monitor_agents_alert(){
 }
 
 void monitor_agents_deletion(){
-    int *agents_array;
+    uint32_t *agents_array;
     cJSON *j_agent_info = NULL;
     cJSON *j_agent_lastkeepalive = NULL;
     cJSON *j_agent_name = NULL;
@@ -126,7 +126,7 @@ void monitor_agents_deletion(){
 
     agents_array = wdb_get_agents_by_connection_status("disconnected", &sock);
     if (agents_array) {
-        for (int i = 0; agents_array[i] != -1; i++) {
+        for (int i = 0; agents_array[i] != ID_INVALID; i++) {
             j_agent_info = wdb_get_agent_info(agents_array[i], &sock);
             if (j_agent_info) {
                 j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");

@@ -43,11 +43,12 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
-    char _id[11] = { '\0' };
+    char _id[ID_SIZE+1] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
     if (!id) {
-        snprintf(_id, 11, "%03u", ++keys->id_counter);
+        //JJP Maximum ID check here
+        snprintf(_id, ID_SIZE+1, "%03u", ++keys->id_counter);
         id = _id;
     }
     else {
@@ -213,7 +214,7 @@ int OS_IsValidID(const char *id)
     id_len = strlen(id);
 
     /* Check ID length, it should contain max.  characters */
-    if (id_len > 32) {
+    if (id_len > ID_SIZE) {
         return (0);
     }
 

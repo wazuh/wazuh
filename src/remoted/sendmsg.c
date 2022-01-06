@@ -70,16 +70,15 @@ int check_keyupdate()
  */
 int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
-    int key_id;
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1] = {0};
     int retval = 0;
     int error = 0;
 
     key_lock_read();
-    key_id = OS_IsAllowedID(&keys, agent_id);
+    uint32_t key_id = OS_IsAllowedID(&keys, agent_id);
 
-    if (key_id < 0) {
+    if (key_id == ID_INVALID) {
         key_unlock();
         merror(AR_NOAGENT_ERROR, agent_id);
         return (-1);

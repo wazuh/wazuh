@@ -13,15 +13,15 @@
 #include "wazuhdb_op.h"
 
 static const char *agents_db_commands[] = {
-    [WDB_AGENTS_SYS_OSINFO_GET] = "agent %d osinfo get",
-    [WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED] = "agent %d osinfo set_triaged",
-    [WDB_AGENTS_VULN_CVES_INSERT] = "agent %d vuln_cves insert %s",
-    [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %d vuln_cves update_status %s",
-    [WDB_AGENTS_VULN_CVES_REMOVE] = "agent %d vuln_cves remove %s",
-    [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
+    [WDB_AGENTS_SYS_OSINFO_GET] = "agent %u osinfo get",
+    [WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED] = "agent %u osinfo set_triaged",
+    [WDB_AGENTS_VULN_CVES_INSERT] = "agent %u vuln_cves insert %s",
+    [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %u vuln_cves update_status %s",
+    [WDB_AGENTS_VULN_CVES_REMOVE] = "agent %u vuln_cves remove %s",
+    [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %u vuln_cves clear"
 };
 
-cJSON* wdb_get_agent_sys_osinfo(int32_t id,
+cJSON* wdb_get_agent_sys_osinfo(uint32_t id,
                           int *sock) {
     char *wdbquery = NULL;
     char *wdboutput = NULL;
@@ -49,7 +49,7 @@ cJSON* wdb_get_agent_sys_osinfo(int32_t id,
     return result;
 }
 
-int wdb_set_agent_sys_osinfo_triaged(int32_t id,
+int wdb_set_agent_sys_osinfo_triaged(uint32_t id,
                                int *sock) {
     int result = 0;
     char *wdbquery = NULL;
@@ -91,7 +91,7 @@ int wdb_set_agent_sys_osinfo_triaged(int32_t id,
     return result;
 }
 
-cJSON* wdb_insert_vuln_cves(int32_t id,
+cJSON* wdb_insert_vuln_cves(uint32_t id,
                             const char *name,
                             const char *version,
                             const char *architecture,
@@ -151,7 +151,7 @@ cJSON* wdb_insert_vuln_cves(int32_t id,
     return result;
 }
 
-int wdb_update_vuln_cves_status(int32_t id,
+int wdb_update_vuln_cves_status(uint32_t id,
                                 const char *old_status,
                                 const char *new_status,
                                 int *sock) {
@@ -210,7 +210,7 @@ int wdb_update_vuln_cves_status(int32_t id,
     return result;
 }
 
-int wdb_update_vuln_cves_status_by_type(int32_t id,
+int wdb_update_vuln_cves_status_by_type(uint32_t id,
                                         const char *type,
                                         const char *new_status,
                                         int *sock) {
@@ -269,7 +269,7 @@ int wdb_update_vuln_cves_status_by_type(int32_t id,
     return result;
 }
 
-int wdb_remove_vuln_cves(int32_t id,
+int wdb_remove_vuln_cves(uint32_t id,
                          const char *cve,
                          const char *reference,
                          int *sock) {
@@ -328,7 +328,7 @@ int wdb_remove_vuln_cves(int32_t id,
     return result;
 }
 
-cJSON* wdb_remove_vuln_cves_by_status(int32_t id,
+cJSON* wdb_remove_vuln_cves_by_status(uint32_t id,
                                       const char *status,
                                       int *sock) {
     cJSON *data_in = NULL;
@@ -411,7 +411,7 @@ cJSON* wdb_remove_vuln_cves_by_status(int32_t id,
     return data_out;
 }
 
-int wdb_clear_vuln_cves(int32_t id,
+int wdb_clear_vuln_cves(uint32_t id,
                         int *sock) {
     int result = 0;
     char *wdbquery = NULL;

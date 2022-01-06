@@ -359,7 +359,7 @@ cJSON* local_add(const char *id,
                  const char *key,
                  const char *key_hash,
                  authd_force_options_t *force_options) {
-    int index;
+    uint32_t index;
     cJSON *response = NULL;
     int ierror;
     char* str_result = NULL;
@@ -376,7 +376,7 @@ cJSON* local_add(const char *id,
     }
 
     // Check for duplicate ID
-    if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
+    if (id && (index = OS_IsAllowedID(&keys, id), index != ID_INVALID)) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
             minfo("Duplicate ID. %s", str_result);
         } else {
@@ -388,7 +388,7 @@ cJSON* local_add(const char *id,
 
     /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
-        if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
+        if (index = OS_IsAllowedIP(&keys, ip), index != ID_INVALID) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
             minfo("Duplicate IP '%s'. %s", ip, str_result);
         } else {
@@ -406,7 +406,7 @@ cJSON* local_add(const char *id,
     }
 
     /* Check for duplicate names */
-    if (index = OS_IsAllowedName(&keys, name), index >= 0) {
+    if (index = OS_IsAllowedName(&keys, name), index != ID_INVALID) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
             minfo("Duplicate name. %s", str_result);
         } else {
@@ -416,7 +416,7 @@ cJSON* local_add(const char *id,
         }
     }
 
-    if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
+    if (index = OS_AddNewAgent(&keys, id, name, ip, key), index == ID_INVALID) {
         ierror = EKEY;
         goto fail;
     }
@@ -451,14 +451,14 @@ fail:
 
 // Remove an agent
 cJSON* local_remove(const char *id, int purge) {
-    int index;
+    uint32_t index;
     cJSON *response = NULL;
 
     mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
     w_mutex_lock(&mutex_keys);
 
-    if (index = OS_IsAllowedID(&keys, id), index < 0) {
+    if (index = OS_IsAllowedID(&keys, id), index == ID_INVALID) {
         mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     } else {
@@ -477,13 +477,13 @@ cJSON* local_remove(const char *id, int purge) {
 
 // Get agent data
 cJSON* local_get(const char *id) {
-    int index;
+    uint32_t index;
     cJSON *response = NULL;
 
     mdebug2("local_get(%s)", id);
     w_mutex_lock(&mutex_keys);
 
-    if (index = OS_IsAllowedID(&keys, id), index < 0) {
+    if (index = OS_IsAllowedID(&keys, id), index != ID_INVALID) {
         mdebug1("Error %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }

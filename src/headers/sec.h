@@ -146,16 +146,16 @@ keyentry * OS_DupKeyEntry(const keyentry * key);
 /** Function prototypes -- agent authorization **/
 
 /* Check if the IP is allowed */
-int OS_IsAllowedIP(keystore *keys, const char *srcip) __attribute((nonnull(1)));
+uint32_t OS_IsAllowedIP(keystore *keys, const char *srcip) __attribute((nonnull(1)));
 
 /* Check if the ID is allowed */
-int OS_IsAllowedID(keystore *keys, const char *id) __attribute((nonnull(1)));
+uint32_t OS_IsAllowedID(keystore *keys, const char *id) __attribute((nonnull(1)));
 
 /* Check if the name is valid */
-int OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnull));
+uint32_t OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnull));
 
 /* Check if the id is valid and dynamic */
-int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __attribute((nonnull(1)));
+uint32_t OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __attribute((nonnull(1)));
 
 /**
  * @brief Parse the agent timestamps file into the keystore structure
@@ -180,10 +180,10 @@ int OS_WriteTimestamps(keystore * keys);
 /** Function prototypes -- send/recv messages **/
 
 /* Decrypt and decompress a remote message */
-int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *ip, char **output) __attribute((nonnull));
+int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, uint32_t id, unsigned int buffer_size, size_t *final_size, const char *ip, char **output) __attribute((nonnull));
 
 /* Create an OSSEC message (encrypt and compress) */
-size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, int32_t id) __attribute((nonnull));
+size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, uint32_t id) __attribute((nonnull));
 
 // Add socket number into keystore
 int OS_AddSocket(keystore * keys, unsigned int i, int sock);
@@ -223,6 +223,9 @@ void os_set_agent_crypto_method(keystore * keys,const int method);
 
 #define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE         128
+#define ID_SIZE          10
+#define TOKEN_SIZE       5
+#define ID_INVALID      0xffffffff
 
 extern unsigned int _s_comp_print;
 extern unsigned int _s_recv_flush;

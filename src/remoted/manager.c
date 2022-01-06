@@ -114,7 +114,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     const char * version_label = "#\"_wazuh_version\":";
     int is_startup = 0;
     int is_shutdown = 0;
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
     int result = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {

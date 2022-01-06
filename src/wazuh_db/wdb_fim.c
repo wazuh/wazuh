@@ -192,7 +192,7 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
 }
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_fim(int32_t id) {
+int wdb_delete_fim(uint32_t id) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;
@@ -246,13 +246,12 @@ int wdb_delete_fim(int32_t id) {
 
 /* Delete FIM events of all agents */
 void wdb_delete_fim_all() {
-    int i;
-    int *agents = wdb_get_all_agents(FALSE, NULL);
+    uint32_t *agents = wdb_get_all_agents(FALSE, NULL);
 
     if (agents) {
         wdb_delete_fim(0);
 
-        for (i = 0; agents[i] >= 0; i++)
+        for (uint32_t i = 0; agents[i] != ID_INVALID; i++)
             wdb_delete_fim(agents[i]);
 
         free(agents);

@@ -349,7 +349,7 @@ typedef struct os_data {
 } os_data;
 
 typedef struct agent_info_data {
-    int32_t id;
+    uint32_t id;
     os_data *osd;
     char *version;
     char *config_sum;
@@ -415,7 +415,7 @@ wdb_t * wdb_open_mitre();
 sqlite3* wdb_open_agent(uint32_t id_agent, const char *name);
 
 // Open database for agent and store in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_agent2(int32_t agent_id);
+wdb_t * wdb_open_agent2(uint32_t agent_id);
 
 /**
  * @brief Open task database and store in DB poll.
@@ -465,11 +465,9 @@ int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event);
 /* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
 
-//TODO JJP: Verify if this is an agent id
 /* Update a configuration assessment entry. Returns ID on success or -1 on error (new) */
 int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id, char * status, char * reason);
 
-//TODO JJP: Verify if this is an agent id
 /* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
 int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description, char *rationale,
         char *remediation, char *condition, char *file, char *directory, char *process, char *registry,
@@ -545,7 +543,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  * @param [out] last_size Size of the returned array. If NULL no value is written.
  * @return JSON array with the statement execution results. NULL On error.
  */
-wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
+wdbc_result wdb_parse_chunk_to_id(char* input, uint32_t** output, const char* item, uint32_t* last_id, size_t* last_size);
 
 /**
  * @brief Function to initialize a new transaction and cache the statement.
@@ -563,7 +561,7 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
  * @param[in] name Name of the agent.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_create_agent_db(int32_t id, const char *name);
+int wdb_create_agent_db(uint32_t id, const char *name);
 
 /**
  * @brief Create database for agent from profile.
@@ -580,7 +578,7 @@ int wdb_create_agent_db2(const char * agent_id);
  * @param[in] name Name of the agent for whom its database must be deleted.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_remove_agent_db(int32_t id, const char * name);
+int wdb_remove_agent_db(uint32_t id, const char * name);
 
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
@@ -642,13 +640,13 @@ int wdb_create_profile(const char *path);
 int wdb_create_file(const char *path, const char *source);
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_fim(int32_t id);
+int wdb_delete_fim(uint32_t id);
 
 /* Delete FIM events of all agents. */
 void wdb_delete_fim_all();
 
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_pm(int32_t id);
+int wdb_delete_pm(uint32_t id);
 
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_rootcheck_delete(wdb_t * wdb);
@@ -1451,7 +1449,7 @@ int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
  * @param [in] date_add The agent addition date.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent(wdb_t *wdb, int32_t id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
+int wdb_global_insert_agent(wdb_t *wdb, uint32_t id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
 
 /**
  * @brief Function to update an agent name.
@@ -1461,7 +1459,7 @@ int wdb_global_insert_agent(wdb_t *wdb, int32_t id, char* name, char* ip, char* 
  * @param [in] name The agent name
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_name(wdb_t *wdb, int32_t id, char* name);
+int wdb_global_update_agent_name(wdb_t *wdb, uint32_t id, char* name);
 
 /**
  * @brief Function to update an agent version data.
@@ -1488,7 +1486,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int32_t id, char* name);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_version(wdb_t *wdb,
-                                    int32_t id,
+                                    uint32_t id,
                                     const char *os_name,
                                     const char *os_version,
                                     const char *os_major,
@@ -1514,7 +1512,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
  * @param [in] id Agent id.
  * @return JSON with labels on success. NULL on error.
  */
-cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int32_t id);
+cJSON* wdb_global_get_agent_labels(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Function to delete the labels of a particular agent.
@@ -1523,7 +1521,7 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int32_t id);
  * @param [in] id Agent id.
  * @return 0 On success. -1 On error.
  */
-int wdb_global_del_agent_labels(wdb_t *wdb, int32_t id);
+int wdb_global_del_agent_labels(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Function to insert a label of a particular agent.
@@ -1534,7 +1532,7 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int32_t id);
  * @param [in] value A string with the label value.
  * @return 0 On success. -1 On error.
  */
-int wdb_global_set_agent_label(wdb_t *wdb, int32_t id, char* key, char* value);
+int wdb_global_set_agent_label(wdb_t *wdb, uint32_t id, char* key, char* value);
 
 /**
  * @brief Function to update an agent keepalive and the synchronization status.
@@ -1545,7 +1543,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int32_t id, char* key, char* value);
  * @param [in] sync_status The value of sync_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int32_t id, const char *connection_status, const char *sync_status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb, uint32_t id, const char *connection_status, const char *sync_status);
 
 /**
  * @brief Function to update an agent connection status and the synchronization status.
@@ -1556,7 +1554,7 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int32_t id, const char *connec
  * @param [in] sync_status The value of sync_status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int32_t id, const char* connection_status, const char *sync_status);
+int wdb_global_update_agent_connection_status(wdb_t *wdb, uint32_t id, const char* connection_status, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.
@@ -1565,7 +1563,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int32_t id, const char
  * @param [in] id The agent ID
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_delete_agent(wdb_t *wdb, int32_t id);
+int wdb_global_delete_agent(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Function to get the name of a particular agent.
@@ -1574,7 +1572,7 @@ int wdb_global_delete_agent(wdb_t *wdb, int32_t id);
  * @param [in] id Agent id.
  * @return JSON with the agent name on success. NULL on error.
  */
-cJSON* wdb_global_select_agent_name(wdb_t *wdb, int32_t id);
+cJSON* wdb_global_select_agent_name(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Function to get the group of a particular agent.
@@ -1583,7 +1581,7 @@ cJSON* wdb_global_select_agent_name(wdb_t *wdb, int32_t id);
  * @param [in] id Agent id.
  * @return JSON with the agent group on success. NULL on error.
  */
-cJSON* wdb_global_select_agent_group(wdb_t *wdb, int32_t id);
+cJSON* wdb_global_select_agent_group(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Function to delete an agent from the belongs table.
@@ -1592,7 +1590,7 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int32_t id);
  * @param [in] id The agent ID
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_delete_agent_belong(wdb_t *wdb, int32_t id);
+int wdb_global_delete_agent_belong(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Function to get an agent id using the agent name and register ip.
@@ -1612,7 +1610,7 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
  * @param [in] group The group to be set
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_group(wdb_t *wdb, int32_t id, char *group);
+int wdb_global_update_agent_group(wdb_t *wdb, uint32_t id, char *group);
 
 /**
  * @brief Function to get a group id using the group name.
@@ -1686,7 +1684,7 @@ cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
  * @param [in] sync_status The value of sync_status
  * @return 0 On success. -1 On error.
  */
-int wdb_global_set_sync_status(wdb_t *wdb, int32_t id, const char *sync_status);
+int wdb_global_set_sync_status(wdb_t *wdb, uint32_t id, const char *sync_status);
 
 /**
  * @brief Gets and parses agents with 'syncreq' sync_status and sets them to 'synced'.
@@ -1699,7 +1697,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int32_t id, const char *sync_status);
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained.
  */
-wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
+wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, uint32_t* next_agent_id, char **output);
 
 /**
  * @brief Function to update the information of an agent.
@@ -1718,7 +1716,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  * @retval JSON with agent information on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agent_info(wdb_t *wdb, int32_t id);
+cJSON* wdb_global_get_agent_info(wdb_t *wdb, uint32_t id);
 
 /**
  * @brief Gets every agent ID.
@@ -1732,7 +1730,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int32_t id);
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
+cJSON* wdb_global_get_all_agents(wdb_t *wdb, uint32_t last_agent_id, wdbc_result* status);
 
 /**
  * @brief Checks the given ID is in the agent table.
@@ -1743,7 +1741,7 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
  * @retval 1 if the ID was found.
  * @retval -1 on error.
  */
-int wdb_global_agent_exists(wdb_t *wdb, int32_t agent_id);
+int wdb_global_agent_exists(wdb_t *wdb, uint32_t agent_id);
 
 /**
  * @brief Function to reset connection_status column of every agent (excluding the manager).
@@ -1770,7 +1768,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, uint32_t last_agent_id, const char* connection_status, wdbc_result* status);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
@@ -1785,7 +1783,7 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
+cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, uint32_t last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 /**
  * @brief Check the agent 0 status in the global database
@@ -2010,7 +2008,7 @@ int wdb_task_delete_old_entries(wdb_t* wdb, int timestamp);
  * @param command Command to be executed in the agent.
  * @return ID of the task recently created when succeed, <=0 otherwise.
  * */
-int wdb_task_insert_task(wdb_t* wdb, int32_t agent_id, const char *node, const char *module, const char *command);
+int wdb_task_insert_task(wdb_t* wdb, uint32_t agent_id, const char *node, const char *module, const char *command);
 
 /**
  * Get the status of an upgrade task from the tasks DB.
@@ -2020,7 +2018,7 @@ int wdb_task_insert_task(wdb_t* wdb, int32_t agent_id, const char *node, const c
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wdb_task_get_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char *node, char **status);
+int wdb_task_get_upgrade_task_status(wdb_t* wdb, uint32_t agent_id, const char *node, char **status);
 
 /**
  * Update the status of a upgrade task in the tasks DB.
@@ -2031,7 +2029,7 @@ int wdb_task_get_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char *n
  * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wdb_task_update_upgrade_task_status(wdb_t* wdb, int32_t agent_id, const char *node, const char *status, const char *error);
+int wdb_task_update_upgrade_task_status(wdb_t* wdb, uint32_t agent_id, const char *node, const char *status, const char *error);
 
 /**
  * Cancel the upgrade tasks of a given node in the tasks DB.
@@ -2054,7 +2052,7 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node);
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return task_id when succeed, < 0 otherwise.
  * */
-int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int32_t agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
+int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, uint32_t agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }

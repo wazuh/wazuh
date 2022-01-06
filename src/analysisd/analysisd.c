@@ -1860,8 +1860,9 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
                 if (sock == OS_SOCKTERR) {
                     merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
                 } else {
-                    int32_t agent = strtol(lf->agent_id, NULL, 10);
-                    cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                    uint32_t agent = strtoul(lf->agent_id, NULL, 10);
+                    //JJP Double check this
+                    cJSON* agents = cJSON_CreateIntArray((int*)&agent, 1);
                     cJSON_AddItemToObject(message_params, "agents", agents);
 
                     char *message = cJSON_PrintUnformatted(message_obj);

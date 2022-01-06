@@ -84,7 +84,7 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
 
         if (ar->location & ALL_AGENTS) {
 
-            int *id_array = NULL;
+            uint32_t *id_array = NULL;
 
             id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, sock);
             if(!id_array) {
@@ -92,7 +92,7 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                 goto cleanup;
             }
 
-            for (size_t i = 0; id_array[i] != -1; i++) {
+            for (size_t i = 0; id_array[i] != ID_INVALID; i++) {
                 cJSON *json_agt_info = NULL;
                 cJSON *json_agt_version = NULL;
                 char c_agent_id[OS_SIZE_16];

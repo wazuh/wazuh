@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     int restart_all_agents = 0;
     int list_agents = 0;
     int info_agent = 0;
-    int agt_id = 0;
+    uint32_t agt_id = 0;
     int active_only = 0;
     int csv_output = 0;
     int json_output = 0;
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
             OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
-            if (agt_id < 0) {
+            if (agt_id == ID_INVALID) {
                 if(json_output){
                     cJSON_AddNumberToObject(root, "error", 40);
                     cJSON_AddStringToObject(root, "message", "Invalid agent id");
@@ -359,7 +359,7 @@ int main(int argc, char **argv)
             printf("\n%s %s. Agent information:", __ossec_name, ARGV0);
         }
 
-        if (agt_id != -1) {
+        if (agt_id != ID_INVALID) {
             agt_info = get_agent_info(agent_id);
             if (!agt_info) {
                 printf("\n Unable to get agent info\n\n");

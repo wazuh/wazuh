@@ -30,13 +30,13 @@ static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
 static void move_netdata(keystore *keys, const keystore *old_keys)
 {
     unsigned int i;
-    int keyid;
+    uint32_t keyid;
     char strsock[16];
 
     for (i = 0; i < old_keys->keysize; i++) {
         keyid = OS_IsAllowedID(keys, old_keys->keyentries[i]->id);
 
-        if (keyid >= 0 && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
+        if (keyid != ID_INVALID && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
             memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
@@ -448,12 +448,12 @@ void OS_UpdateKeys(keystore *keys)
 }
 
 /* Check if an IP address is allowed to connect */
-int32_t OS_IsAllowedIP(keystore *keys, const char *srcip)
+uint32_t OS_IsAllowedIP(keystore *keys, const char *srcip)
 {
     keyentry *entry;
 
     if (srcip == NULL) {
-        return (-1);
+        return (ID_INVALID);
     }
 
     entry = (keyentry *) rbtree_get(keys->keytree_ip, srcip);
@@ -461,11 +461,11 @@ int32_t OS_IsAllowedIP(keystore *keys, const char *srcip)
         return ((uint32_t)entry->keyid);
     }
 
-    return (-1);
+    return (ID_INVALID);
 }
 
 /* Check if the agent name is valid */
-int32_t OS_IsAllowedName(const keystore *keys, const char *name)
+uint32_t OS_IsAllowedName(const keystore *keys, const char *name)
 {
     uint32_t i = 0;
 
@@ -475,32 +475,32 @@ int32_t OS_IsAllowedName(const keystore *keys, const char *name)
         }
     }
 
-    return (-1);
+    return (ID_INVALID);
 }
 
-int32_t OS_IsAllowedID(keystore *keys, const char *id)
+uint32_t OS_IsAllowedID(keystore *keys, const char *id)
 {
     keyentry *entry;
 
     if (id == NULL) {
-        return (-1);
+        return (ID_INVALID);
     }
 
     entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
         return ((uint32_t)entry->keyid);
     }
-    return (-1);
+    return (ID_INVALID);
 }
 
 
 /* Used for dynamic IP addresses */
-int32_t OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
+uint32_t OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
 {
     keyentry *entry;
 
     if (id == NULL) {
-        return (-1);
+        return (ID_INVALID);
     }
 
     entry = (keyentry *) rbtree_get(keys->keytree_id, id);
@@ -510,7 +510,7 @@ int32_t OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
         }
     }
 
-    return (-1);
+    return (ID_INVALID);
 }
 
 /* Configure to pass if keys file is empty */
@@ -525,9 +525,9 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
         return -1;
     }
 
-    int i = OS_IsAllowedID(keys, id);
+    uint32_t i = OS_IsAllowedID(keys, id);
 
-    if (i < 0)
+    if (i == ID_INVALID)
         return -1;
 
     /* Save removed key */
@@ -553,7 +553,7 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     OS_FreeKey(keys->keyentries[i]);
     keys->keysize--;
 
-    if (i < (int)keys->keysize) {
+    if (i < keys->keysize) {
         keys->keyentries[i] = keys->keyentries[keys->keysize];
         keys->keyentries[i]->keyid = i;
     }
@@ -722,10 +722,13 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 }
 
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
+    int ret = ID_INVALID;
+    const uint32_t key_id = OS_IsAllowedID(keys, agent_id);
 
-    const int key_id = OS_IsAllowedID(keys, agent_id);
-
-    return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
+    if (key_id != ID_INVALID) {
+        ret = keys->keyentries[key_id]->net_protocol;
+    }
+    return ret;
 }
 
 // Parse the agent timestamps file into the keystore structure
@@ -764,9 +767,9 @@ int OS_ReadTimestamps(keystore * keys) {
             continue;
         }
 
-        int keyid = OS_IsAllowedID(keys, line);
+        uint32_t keyid = OS_IsAllowedID(keys, line);
 
-        if (keyid != -1) {
+        if (keyid != ID_INVALID) {
             struct tm tm = { .tm_isdst = -1 };
 
             if (sscanf(date, "%d-%d-%d %d:%d:%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {

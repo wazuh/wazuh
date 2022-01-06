@@ -679,7 +679,7 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
         }
     } else {
         int sock = -1;
-        int *id_array = NULL;
+        uint32_t *id_array = NULL;
 
         if (agt_id == NULL) {
             id_array = wdb_get_all_agents(FALSE, &sock);
@@ -690,11 +690,12 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
             }
         } else {
             os_calloc(2, sizeof(int), id_array);
-            id_array[0] = atoi(agt_id);
-            id_array[1] = OS_INVALID;
+            id_array[0] = strtoul(agt_id, NULL, 10);
+            id_array[1] = ID_INVALID;
         }
 
-        for (size_t i = 0; id_array[i] != OS_INVALID; i++) {
+        //JJP: Is this correct?! shouldn´t be NULL or anything else?
+        for (size_t i = 0; id_array[i] != ID_INVALID; i++) {
             cJSON *json_agt_info = NULL;
             cJSON *json_agt_version = NULL;
             char c_agent_id[OS_SIZE_16];
@@ -948,7 +949,7 @@ agent_info *get_agent_info(const char *agent_id){
 #endif
 
 /* Gets the status of an agent, based on the  agent ID*/
-agent_status_t get_agent_status(int32_t agent_id){
+agent_status_t get_agent_status(uint32_t agent_id){
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
     agent_status_t status = GA_STATUS_UNKNOWN;
@@ -984,7 +985,7 @@ agent_status_t get_agent_status(int32_t agent_id){
 char **get_agents(int flag){
     size_t array_size = 0;
     char **agents_array = NULL;
-    int *id_array = NULL;
+    uint32_t *id_array = NULL;
     int i = 0;
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
@@ -1000,7 +1001,8 @@ char **get_agents(int flag){
         return (NULL);
     }
 
-    for (i = 0; id_array[i] != -1; i++){
+    // JJP: Does wdb_get_all_agents truly responds with ID_INVALID as the end of the array?
+    for (i = 0; id_array[i] != ID_INVALID; i++){
         agent_status_t status = GA_STATUS_UNKNOWN;
         char agent_name_ip[OS_SIZE_512] = "";
 

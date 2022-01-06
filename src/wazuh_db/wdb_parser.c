@@ -194,7 +194,7 @@ int wdb_parse(char * input, char * output, int peer) {
     char * query;
     char * sql;
     char * next;
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
     char sagent_id[64] = "000";
     wdb_t * wdb;
     wdb_t * wdb_global;
@@ -235,7 +235,7 @@ int wdb_parse(char * input, char * output, int peer) {
         *next++ = '\0';
         query = next;
 
-        if (agent_id = strtol(id, &next, 10), *next) {
+        if (agent_id = strtoul(id, &next, 10), *next) {
             mdebug1("Invalid agent ID '%s'", id);
             snprintf(output, OS_MAXSTR + 1, "err Invalid agent ID '%.32s'", id);
             return -1;
@@ -4629,7 +4629,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             cJSON_IsNumber(j_date_add)) {
 
             // Getting each field
-            int32_t id = j_id->valueint;
+            uint32_t id = j_id->valueint;
             char* name = j_name->valuestring;
             char* ip = cJSON_IsString(j_ip) ? j_ip->valuestring : NULL;
             char* register_ip = cJSON_IsString(j_register_ip) ? j_register_ip->valuestring : NULL;
@@ -5028,9 +5028,9 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
 }
 
 int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output) {
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
 
-    agent_id = strtol(input, NULL, 10);
+    agent_id = strtoul(input, NULL, 10);
 
     if (OS_SUCCESS != wdb_global_delete_agent_belong(wdb, agent_id)) {
         mdebug1("Error deleting agent from belongs table in global.db.");
@@ -5290,24 +5290,24 @@ int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * ou
 }
 
 int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {
-    static int last_id = 0;
+    static uint32_t next_id = 1;
     char* agent_info_sync = NULL;
 
     if (input) {
         char *next = wstr_chr(input, ' ');
         if(next) {
             *next++ = '\0';
-            if (strcmp(input, "last_id") == 0) {
-                last_id = atoi(next);
+            if (strcmp(input, "next_id") == 0) {
+                next_id = strtoul(next, NULL, 10);
             }
         }
     }
 
-    wdbc_result status = wdb_global_sync_agent_info_get(wdb, &last_id, &agent_info_sync);
+    wdbc_result status = wdb_global_sync_agent_info_get(wdb, &next_id, &agent_info_sync);
     snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], agent_info_sync);
     os_free(agent_info_sync)
     if (status != WDBC_DUE) {
-        last_id = 0;
+        next_id = 1;
     }
 
     return OS_SUCCESS;
@@ -5417,20 +5417,20 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
-    int last_id = 0;
+    uint32_t next_id = 1;
     char *connection_status = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
 
-    /* Get last_id*/
+    /* Get next_id*/
     next = strtok_r(input, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
+        mdebug1("Invalid arguments 'next_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'next_id' not found");
         return OS_INVALID;
     }
-    last_id = atoi(next);
+    next_id = strtoul(next, NULL, 10);
     /* Get connection status */
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
@@ -5442,7 +5442,7 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, next_id, connection_status, &status);
     if (!result) {
         mdebug1("Error getting agents by connection status from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents by connection status from global.db.");
@@ -5460,29 +5460,29 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
 }
 
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
-    int last_id = 0;
+    uint32_t next_id = 1;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
 
-    /* Get last_id*/
+    /* Get next_id*/
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(next, "last_id") != 0) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
+    if (next == NULL || strcmp(next, "next_id") != 0) {
+        mdebug1("Invalid arguments 'next_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'next_id' not found");
         return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
+        mdebug1("Invalid arguments 'next_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'next_id' not found");
         return OS_INVALID;
     }
-    last_id = atoi(next);
+    next_id = strtoul(next, NULL, 10);
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_all_agents(wdb, last_id, &status);
+    cJSON* result = wdb_global_get_all_agents(wdb, next_id, &status);
     if (!result) {
         mdebug1("Error getting agents from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
@@ -5511,21 +5511,21 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output) {
 }
 
 int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
-    int last_id = 0;
+    uint32_t next_id = 1;
     int keep_alive = 0;
     char *sync_status = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
 
-    /* Get last id*/
+    /* Get next_id*/
     next = strtok_r(input, delim, &savedptr);
     if (next == NULL) {
-        mdebug1("Invalid arguments last id not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments last id not found");
+        mdebug1("Invalid arguments next_id not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments next_id not found");
         return OS_INVALID;
     }
-    last_id = atoi(next);
+    next_id = strtoul(next, NULL, 10);
 
     /* Get keepalive*/
     next = strtok_r(NULL, delim, &savedptr);
@@ -5547,7 +5547,7 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_to_disconnect(wdb, last_id, keep_alive, sync_status, &status);
+    cJSON* result = wdb_global_get_agents_to_disconnect(wdb, next_id, keep_alive, sync_status, &status);
     if (!result) {
         mdebug1("Error getting agents to be disconnected from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents to be disconnected from global.db.");

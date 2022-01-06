@@ -22,8 +22,8 @@
 
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
-static void StoreCounter(const keystore *keys, int32_t id, unsigned int global, unsigned int local) __attribute((nonnull));
-static void ReloadCounter(const keystore *keys, int32_t id, const char * cid) __attribute((nonnull));
+static void StoreCounter(const keystore *keys, uint32_t id, unsigned int global, unsigned int local) __attribute((nonnull));
+static void ReloadCounter(const keystore *keys, uint32_t id, const char * cid) __attribute((nonnull));
 static char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
@@ -176,7 +176,7 @@ static void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
 }
 
 /* Store the global and local count of events */
-static void StoreCounter(const keystore *keys, int32_t id, unsigned int global, unsigned int local)
+static void StoreCounter(const keystore *keys, uint32_t id, unsigned int global, unsigned int local)
 {
     if (!keys->keyentries[id]->fp) {
         char rids_file[OS_FLSIZE + 1];
@@ -210,7 +210,7 @@ static void StoreCounter(const keystore *keys, int32_t id, unsigned int global, 
 }
 
 /* Reload the global and local count of events */
-static void ReloadCounter(const keystore *keys, int32_t id, const char * cid)
+static void ReloadCounter(const keystore *keys, uint32_t id, const char * cid)
 {
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
@@ -232,7 +232,7 @@ static void ReloadCounter(const keystore *keys, int32_t id, const char * cid)
             unsigned int l_c = 0;
 
             if (fscanf(keys->keyentries[id]->fp, "%u:%u", &g_c, &l_c) != 2) {
-                if ((unsigned int)id == keys->keysize) {
+                if (id == keys->keysize) {
                     mdebug1("No previous sender counter.");
                 } else {
                     mdebug1("No previous counter available for '%s'.", keys->keyentries[id]->id);
@@ -242,7 +242,7 @@ static void ReloadCounter(const keystore *keys, int32_t id, const char * cid)
                 l_c = 0;
             }
 
-            if ((unsigned int)id == keys->keysize) {
+            if (id == keys->keysize) {
                 mdebug1("Reloading sender counter: %u:%u", g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
@@ -286,7 +286,7 @@ static char *CheckSum(char *msg, size_t length)
     return (msg);
 }
 
-int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int32_t id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
+int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, uint32_t id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
 {
     if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
         merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
@@ -534,7 +534,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int32_t id, unsign
 /* Create an encrypted message
  * Returns the size
  */
-size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, int32_t id)
+size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, uint32_t id)
 {
     if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
         merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
@@ -547,7 +547,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     u_int16_t rand1;
     char _tmpmsg[OS_MAXSTR + 2];
     char _finmsg[OS_MAXSTR + 2];
-    char crypto_token[6] = {0};
+    char crypto_token[TOKEN_SIZE+1] = {0};
     unsigned long crypto_length = 0;
     int crypto_method = 0;
     os_md5 md5sum;
@@ -652,10 +652,10 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
 
     /* If the IP is dynamic (not single host), append agent ID to the message */
     if (!isSingleHost(keys->keyentries[id]->ip) && isAgent) {
-        length = snprintf(msg_encrypted, 40, "!%s!%s", keys->keyentries[id]->id,crypto_token);
+        length = snprintf(msg_encrypted, ID_SIZE+TOKEN_SIZE+3, "!%s!%s", keys->keyentries[id]->id,crypto_token);
     } else {
         /* Set beginning of the message */
-        length = snprintf(msg_encrypted, 6, "%s",crypto_token);
+        length = snprintf(msg_encrypted, TOKEN_SIZE+1, "%s",crypto_token);
     }
 
     /* length is the amount of non-encrypted message appended to the buffer

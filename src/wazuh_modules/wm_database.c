@@ -257,7 +257,7 @@ void wm_sync_agents() {
     char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
-    int *agents;
+    uint32_t *agents;
     clock_t clock0 = clock();
     struct timespec spec0;
     struct timespec spec1;
@@ -302,10 +302,10 @@ void wm_sync_agents() {
         char *wdboutput = NULL;
         int error;
 
-        for (i = 0; agents[i] != -1; i++) {
+        for (i = 0; agents[i] != ID_INVALID; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
-            if (OS_IsAllowedID(&keys, id) == -1) {
+            if (OS_IsAllowedID(&keys, id) == ID_INVALID) {
                 char *name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
 
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {

@@ -278,7 +278,7 @@ w_err_t w_auth_validate_data(char *response,
                              const char *agentname,
                              const char *groups,
                              const char *key_hash) {
-    int index = 0;
+    uint32_t index = 0;
     char* str_result = NULL;
     w_err_t result = OS_SUCCESS;
 
@@ -288,7 +288,7 @@ w_err_t w_auth_validate_data(char *response,
     }
 
     /* Check for duplicate IP */
-    if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
+    if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index != ID_INVALID)) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result)) {
             minfo("Duplicate IP '%s'. %s", ip, str_result);
         } else {
@@ -306,7 +306,7 @@ w_err_t w_auth_validate_data(char *response,
     }
 
     /* Check for duplicate name */
-    if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index >= 0)) {
+    if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index != ID_INVALID)) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result)) {
             minfo("Duplicate name. %s", str_result);
         } else {
