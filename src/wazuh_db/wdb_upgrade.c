@@ -117,7 +117,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     if (version < (int)(sizeof(UPDATES)/sizeof(char*))) {
         if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
-            mdebug1("Create pre-upgrade global DB snapshot");
+            mdebug1("Create pre-upgrade global DB snapshot %s", output+3);
             post_upgrade = TRUE;
         }
     }
@@ -134,7 +134,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     if (post_upgrade) {
         if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
-            mdebug1("Create post-upgrade global DB snapshot");
+            mdebug1("Create post-upgrade global DB snapshot %s", output+3);
         }
     }
 
