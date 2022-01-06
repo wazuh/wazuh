@@ -995,24 +995,14 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
     char group[OS_SIZE_65536];
     file_sum **f_sum = NULL;
     char *end;
-    agent_group *agt_group;
     int ret = OS_INVALID;
     char *message;
     char *fmsg;
 
-    // Get agent group
-    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-        strncpy(group, agt_group->group, OS_SIZE_65536);
-        group[OS_SIZE_65536 - 1] = '\0';
-        wdb_set_agent_groups_csv(atoi(agent_id),
-                                 group,
-                                 WDB_GROUP_MODE_OVERRIDE_ALL,
-                                 w_is_worker() ? "syncreq" : "synced",
-                                 WDB_GROUP_SOURCE_REMOTE,
-                                 NULL);
-    } else if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536, wdb_sock) < 0) {
+    if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536, wdb_sock) < 0) {
         group[0] = '\0';
     }
+
     mdebug2("Agent '%s' group is '%s'", agent_id, group);
 
     if (group[0]) {
@@ -1114,7 +1104,7 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
         return;
     }
 
-    for (msg++; (*msg == '\"' || *msg == '!' || *msg == '#') && (end = strchr(msg, '\n')); msg = end + 1);
+    for (msg++; (*msg == '\"' || *msg == '!' || *msg == '#') && (end = strchr(msg, '\n')); msg = end + 1) {};
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
