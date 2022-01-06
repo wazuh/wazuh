@@ -18,6 +18,8 @@ class fakeStorage : public StorageDriverInterface
     private:
         bool thwo_exception = false;
         bool return_empty = false;
+        bool empty_schemas = false;
+        bool malformed_schemas = false;
 
     public:
         fakeStorage() = default;
@@ -42,12 +44,7 @@ class fakeStorage : public StorageDriverInterface
 
             std::string asset;
 
-            if (this->return_empty)
-            {
-                return asset;
-
-            }
-            else if (this->thwo_exception)
+            if (this->thwo_exception)
             {
                 // #TODO throw exception
                 ;;
@@ -56,7 +53,19 @@ class fakeStorage : public StorageDriverInterface
             switch (type)
             {
                 case AssetType::Decoder:
-                    asset.append(json_decoder_valid);
+                    if (assetName == "syslog2")
+                    {
+                        asset.append(yaml_decoder_valid);
+                    }
+                    else if (assetName == "syslog_malformed")
+                    {
+                        asset.append(yaml_decoder_malformed);
+                    }
+                    else if (assetName == "syslog_invalid_schema")
+                    {
+                        asset.append(yaml_decoder_invalid_schema);
+                    }
+
                     break;
 
                 case AssetType::Rule:
@@ -75,7 +84,15 @@ class fakeStorage : public StorageDriverInterface
                     break;
 
                 case AssetType::Schemas:
-                    asset.append(json_schema_decoder);
+                    if (this->malformed_schemas)
+                    {
+                        asset.append(schema_malformed);
+                    }
+                    else if (!this->empty_schemas)
+                    {
+                        asset.append(json_schema_decoder);
+                    }
+
                     break;
 
                 case AssetType::Environments:
@@ -95,11 +112,16 @@ class fakeStorage : public StorageDriverInterface
             this->thwo_exception = exception;
         }
 
-        /** @brief Set the return empty flag */
-        void set_return_empty(bool return_empty)
+        void set_empty_schemas(bool empty)
         {
-            this->return_empty = return_empty;
+            this->empty_schemas = empty;
         }
+
+        void set_malformed_schemas(bool malformed_schemas)
+        {
+            this->malformed_schemas = malformed_schemas;
+        }
+
 };
 
 #endif // __CATALOG_TEST_H__
