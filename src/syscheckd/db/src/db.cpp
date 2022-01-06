@@ -134,7 +134,7 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
     return dbsyncTxnHandle;
 }
 
-FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
+FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
 {
     std::unique_ptr<DBItem> syncItem;
     auto retval {FIMDB_OK};
@@ -171,7 +171,7 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
     return retval;
 }
 
-FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                                 result_callback_t res_callback,
                                                 void* txn_ctx)
 {

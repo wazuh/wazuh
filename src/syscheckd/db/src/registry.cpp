@@ -33,7 +33,7 @@ const char* registry_arch[] =
     [ARCH_64BIT] = "[x64]"
 };
 
-FIMDBErrorCodes fim_db_remove_registry_key(fim_registry_key* key_entry)
+FIMDBErrorCode fim_db_remove_registry_key(fim_registry_key* key_entry)
 {
 
     std::string filter = "WHERE id = " + std::to_string(key_entry->id) + " AND arch = " +
@@ -51,7 +51,7 @@ FIMDBErrorCodes fim_db_remove_registry_key(fim_registry_key* key_entry)
     }
 }
 
-FIMDBErrorCodes fim_db_remove_registry_value_data(fim_registry_value_data* value_entry)
+FIMDBErrorCode fim_db_remove_registry_value_data(fim_registry_value_data* value_entry)
 {
 
     std::string filter = "WHERE key_id = " + std::to_string(value_entry->id) + " AND name = " +
@@ -179,7 +179,7 @@ int fim_db_get_count_registry_data()
     return res;
 }
 
-FIMDBErrorCodes fim_db_insert_registry_data(fim_registry_value_data* data)
+FIMDBErrorCode fim_db_insert_registry_data(fim_registry_value_data* data)
 {
     fim_entry regValueEntry;
     regValueEntry.registry_entry.value = data;
@@ -198,7 +198,7 @@ FIMDBErrorCodes fim_db_insert_registry_data(fim_registry_value_data* data)
     return FIMDB_OK;
 }
 
-FIMDBErrorCodes fim_db_insert_registry_key(fim_registry_key* entry)
+FIMDBErrorCode fim_db_insert_registry_key(fim_registry_key* entry)
 {
 
     fim_entry regEntryKey;

@@ -20,12 +20,12 @@
 #define FIMDB_REGISTRY_VALUE_TABLENAME "registry_data"
 #define FIMDB_REGISTRY_VALUE_TXN_TABLE "{\"table\": \"registry_data\"}"
 
-typedef enum FIMDBErrorCodes
+typedef enum FIMDBErrorCode
 {
     FIMDB_OK = 0,
     FIMDB_ERR = -1,
     FIMDB_FULL = -2
-} FIMDBErrorCodes;
+} FIMDBErrorCode;
 
 typedef void((*fim_sync_callback_t)(const char *tag, const char* buffer));
 typedef void((*logging_callback_t)(const modules_log_level_t level, const char* log));

@@ -156,7 +156,7 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry);
+FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry);
 
 /**
  * @brief Function to perform the deleted rows operation.
@@ -168,7 +168,7 @@ FIMDBErrorCodes fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_en
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-FIMDBErrorCodes fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                                 result_callback_t callback,
                                                 void* txn_ctx);
 
