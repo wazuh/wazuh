@@ -184,14 +184,28 @@ int SysInfo::getCpuCores() const
 int SysInfo::getCpuMHz() const
 {
     int retVal { 0 };
-    std::map<std::string, std::string> systemInfo;
-    getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
+    int cpuFreq { 0 };
+    const auto cpusInfo { Utils::enumerateDir(WM_SYS_CPU_FREC_DIR) };
 
-    const auto& it { systemInfo.find("cpu MHz") };
-
-    if (it != systemInfo.end())
+    for (const auto cpu : cpusInfo)
     {
-        retVal = std::stoi(it->second) + 1;
+        if (cpu.size() >= 4 && cpu.rfind("cpu", 0) == 0 && ('0' <= cpu.at(3) && '9' >= cpu.at(3)))
+        {
+            std::fstream file{WM_SYS_CPU_FREC_DIR + cpu + "/cpufreq/cpuinfo_max_freq", std::ios_base::in};
+
+            if (file.is_open())
+            {
+                std::string frequency { };
+
+                std::getline(file, frequency);
+                cpuFreq = std::stoi(frequency);  // Frequency on KHz
+
+                if (cpuFreq / 1000 > retVal)
+                {
+                    retVal = static_cast<int>(cpuFreq / 1000);
+                }
+            }
+        }
     }
 
     return retVal;
