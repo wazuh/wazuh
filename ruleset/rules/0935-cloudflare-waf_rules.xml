@@ -77,7 +77,7 @@ Cloudflare WAF rules ID: 92501 - 92517
     <if_sid>92508</if_sid>
     <field name="EdgeResponseStatus">403</field>
     <description>Cloudflare WAF: $(ClientRequestURI) Permission denied.</description>
-    <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1,pci_dss_7.1,pci_dss_10.2.4,nist_800_53_AC.7</group>
+    <group>gpg13_4.3,hipaa_164.312.e.1,nist_800_53_AC.7,pci_dss_7.1,pci_dss_10.2.4,tsc_cc6.8</group>
   </rule>
 
   <rule id="92512" level="4">
