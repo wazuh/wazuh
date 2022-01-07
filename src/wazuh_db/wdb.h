@@ -73,11 +73,8 @@ typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
 } wdb_groups_set_mode_t;
 
-#define WDB_GROUP_SOURCE_MANUAL "manual"
-#define WDB_GROUP_SOURCE_REMOTE "remote"
 #define WDB_GROUP_MODE_EMPTY_ONLY "empty_only"
 #define WDB_GROUP_MODE_OVERRIDE "override"
-#define WDB_GROUP_MODE_OVERRIDE_ALL "override_all"
 #define WDB_GROUP_MODE_APPEND "append"
 
 #define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
@@ -219,8 +216,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_AGENT_GROUPS_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
-    WDB_STMT_GLOBAL_GROUP_SOURCE_GET,
-    WDB_STMT_GLOBAL_GROUP_SOURCE_SET,
     WDB_STMT_GLOBAL_GROUP_CSV_GET,
     WDB_STMT_GLOBAL_GROUP_CTX_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
@@ -1963,19 +1958,9 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id);
  * @param [in] csv String with all the groups sepparated by comma to be inserted in the group column.
  * @param [in] hash Hash calculus from the csv string to be inserted in the group_local_hash column.
  * @param [in] sync_status Tag of the sync status to be inserted in the group_sync_status column.
- * @param [in] source Tag of the source writter to be inserted in the group_source column.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status, char* source);
-
-/**
- * @brief Gets the writter source of an agent group.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id ID of the agent to obtain the source.
- * @return string with the source of the group writter. Must be de-allocated by the caller
- */
-char* wdb_global_get_agent_group_source(wdb_t *wdb, int id);
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status);
 
 /**
  * @brief Gets the maximum priority of the groups of an agent.
@@ -2006,15 +1991,13 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
  * @param [in] wdb The Global struct database.
  * @param [in] mode The mode in which the write will be performed.
  *               WDB_GROUP_OVERRIDE The existing groups will be overwritten.
-                 WDB_GROUP_OVERRIDE_ALL The existing groups will be overwritten even if the source is "remote".
                  WDB_GROUP_APPEND The existing groups are conserved and new ones are added.
                  WDB_GROUP_EMPTY_ONLY The groups are written only if the agent doesn´t have any group.
  * @param [in] sync_status The sync_status tag used to insert the groups.
- * @param [in] source The source tag of the writter used to insert the groups.
  * @param [in] j_agents_group_info JSON structure with all the agent_ids and the groups to insert.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, char* source, cJSON* j_agents_group_info);
+wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info);
 
 /**
  * @brief Function to get the information of a particular agent stored in Wazuh DB.
