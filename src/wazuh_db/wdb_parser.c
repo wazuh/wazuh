@@ -5372,8 +5372,13 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
                 sync_status = j_sync_status->valuestring;
             }
 
-            wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
-            snprintf(output, OS_MAXSTR + 1, "ok");
+            wdbc_result status = wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
+            if (status == WDBC_OK) {
+                snprintf(output, OS_MAXSTR + 1, "%s",  WDBC_RESULT[status]);
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "%s An error occurred during the set of the groups",  WDBC_RESULT[status]);
+            }
         }
         else {
             mdebug1("Missing mandatory fields in set_agent_groups command.");

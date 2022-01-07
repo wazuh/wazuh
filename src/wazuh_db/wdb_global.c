@@ -1267,6 +1267,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
 }
 
 wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info) {
+    wdbc_result ret = WDBC_OK;
     cJSON* j_group_info = NULL;
     cJSON_ArrayForEach (j_group_info, j_agents_group_info) {
         cJSON* j_agent_id = cJSON_GetObjectItem(j_group_info, "id");
@@ -1277,6 +1278,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
 
             if (mode == WDB_GROUP_OVERRIDE ) {
                 if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
+                    ret = WDBC_ERROR;
                     merror("There was an error cleaning the previous agent groups");
                 }
             }
@@ -1292,6 +1294,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
             }
 
             if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
+                ret = WDBC_ERROR;
                 merror("There was an error assigning the groups to agent '%03d'", agent_id);
             }
 
@@ -1300,20 +1303,23 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                 char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
                 OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
                 if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
+                    ret = WDBC_ERROR;
                     merror("There was an error assigning the groups context to agent '%03d'", agent_id);
                 }
                 os_free(agent_groups_csv);
             }
             else {
+                ret = WDBC_ERROR;
                 mdebug1("The agent groups where empty right after the set");
             }
         }
         else {
+            ret = WDBC_ERROR;
             mdebug1("Invalid groups set information");
             continue;
         }
     }
-    return WDBC_OK;
+    return ret;
 }
 
 wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_condition_t condition, int last_agent_id, char **output) {
