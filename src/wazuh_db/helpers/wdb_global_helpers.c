@@ -1048,14 +1048,14 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
     return result;
 }
 
-int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, char* source, int *sock) {
+int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, int *sock) {
     char** groups_array = w_string_split(groups_csv, ",", 0);
-    int ret = wdb_set_agent_groups(id, groups_array, mode, sync_status, source, sock);
+    int ret = wdb_set_agent_groups(id, groups_array, mode, sync_status, sock);
     free_strarray(groups_array);
     return ret;
 }
 
-int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, char* source, int *sock) {
+int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, int *sock) {
     int aux_sock = -1;
 
     if (!groups_array || !mode) {
@@ -1071,9 +1071,6 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
     cJSON_AddStringToObject(j_data_in, "mode", mode);
     if (sync_status) {
         cJSON_AddStringToObject(j_data_in, "sync_status", sync_status);
-    }
-    if (source) {
-        cJSON_AddStringToObject(j_data_in, "source", source);
     }
     cJSON* j_agents_array = cJSON_AddArrayToObject(j_data_in, "data");
     cJSON* j_agent_info = cJSON_CreateObject();
