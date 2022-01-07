@@ -1192,7 +1192,7 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id) {
 }
 
 
-wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status, char* source) {
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status) {
 
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_CTX_SET);
     if (stmt == NULL) {
@@ -1202,8 +1202,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
     sqlite3_bind_text(stmt, 1, csv, -1, NULL);
     sqlite3_bind_text(stmt, 2, hash, -1, NULL);
     sqlite3_bind_text(stmt, 3, sync_status, -1, NULL);
-    sqlite3_bind_text(stmt, 4, source, -1, NULL);
-    sqlite3_bind_int(stmt, 5, id);
+    sqlite3_bind_int(stmt, 4, id);
 
     if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
         return WDBC_OK;
@@ -1212,31 +1211,6 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
         mdebug1("Error executing setting the agent group context: %s", sqlite3_errmsg(wdb->db));
         return WDBC_ERROR;
     }
-}
-
-char* wdb_global_get_agent_group_source(wdb_t *wdb, int id) {
-    sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SOURCE_GET);
-
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-
-    char* group_source = NULL;
-    cJSON* j_result = wdb_exec_stmt(stmt);
-    if (j_result) {
-        group_source = cJSON_GetStringValue(cJSON_GetObjectItem(j_result->child, "group_source"));
-        if (group_source) {
-            // Detaching the string from the json structure
-            os_strdup(group_source,group_source);
-        }
-        cJSON_Delete(j_result);
-    }
-    else{
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
-    }
-
-    return group_source;
 }
 
 int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
@@ -1292,7 +1266,7 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     return result;
 }
 
-wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, char* source, cJSON* j_agents_group_info) {
+wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info) {
     cJSON* j_group_info = NULL;
     cJSON_ArrayForEach (j_group_info, j_agents_group_info) {
         cJSON* j_agent_id = cJSON_GetObjectItem(j_group_info, "id");
@@ -1300,21 +1274,8 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
         if (cJSON_IsNumber(j_agent_id) && cJSON_IsArray(j_groups)) {
             int agent_id = j_agent_id->valueint;
             int group_priority = 0;
-            if (WDB_GROUP_OVERRIDE_ALL != mode) {
-                char* actual_source = wdb_global_get_agent_group_source(wdb, agent_id);
-                if (!actual_source) {
-                    mdebug2("Agent '%02d' group set ignored because the last writer source couldn't be obtained.", agent_id);
-                    continue;
-                }
-                // Write is allowed if mode is override_all or actual source isn´t remote or if the new source is remote too.
-                bool write_allowed = (strcmp(actual_source, "remote") || !strcmp(source, "remote"));
-                os_free(actual_source);
-                if (!write_allowed) {
-                    mdebug2("Agent '%02d' group set ignored because the mode isn't override_all and last source was 'remote'", agent_id);
-                    continue;
-                }
-            }
-            if (mode == WDB_GROUP_OVERRIDE || mode == WDB_GROUP_OVERRIDE_ALL) {
+
+            if (mode == WDB_GROUP_OVERRIDE ) {
                 if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
                     merror("There was an error cleaning the previous agent groups");
                 }
@@ -1338,7 +1299,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
             if (agent_groups_csv) {
                 char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
                 OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
-                if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status, source)) {
+                if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
                     merror("There was an error assigning the groups context to agent '%03d'", agent_id);
                 }
                 os_free(agent_groups_csv);

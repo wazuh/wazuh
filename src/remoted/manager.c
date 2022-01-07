@@ -1074,7 +1074,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
                                  group,
                                  WDB_GROUP_MODE_EMPTY_ONLY,
                                  w_is_worker() ? "syncreq" : "synced",
-                                 WDB_GROUP_SOURCE_MANUAL,
                                  NULL);
 
         os_strdup(group, *r_group);
