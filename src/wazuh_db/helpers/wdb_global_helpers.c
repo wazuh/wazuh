@@ -1093,10 +1093,9 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
         wdbc_close(&aux_sock);
     }
 
-    char *payload = NULL;
     switch (result) {
         case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+            if (WDBC_OK != wdbc_parse_result(wdboutput, NULL)) {
                 mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
