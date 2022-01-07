@@ -1776,7 +1776,10 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
         unlink(path);
         if(OS_SUCCESS == result) {
             wdb_global_remove_old_backups();
-            snprintf(output, OS_MAXSTR + 1, "ok %s", file_name);
+            cJSON* j_file_name = cJSON_CreateArray();
+            cJSON_AddItemToArray(j_file_name, cJSON_CreateString(file_name));
+            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(j_file_name));
+            cJSON_Delete(j_file_name);
         } else {
             snprintf(output, OS_MAXSTR + 1, "err Failed during database backup compression");
         }
