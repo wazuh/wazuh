@@ -89,6 +89,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
     bool post_upgrade = FALSE;
+    int updates_length = (int)(sizeof(UPDATES)/sizeof(char*));
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
     case OS_INVALID:
@@ -114,15 +115,23 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     }
 
     char output[OS_MAXSTR + 1] = {0};
+    cJSON* response = NULL;
+    char* payload = NULL;
 
-    if (version < (int)(sizeof(UPDATES)/sizeof(char*))) {
+    if (version < updates_length) {
+        post_upgrade = TRUE;
         if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
-            mdebug1("Create pre-upgrade global DB snapshot %s", output+3);
-            post_upgrade = TRUE;
+            wdbc_parse_result(output, &payload);
+            response = cJSON_Parse(payload);
+            mdebug1("Creating pre-upgrade global DB snapshot %s", cJSON_GetStringValue(cJSON_GetArrayItem(response, 0)));
+            cJSON_Delete(response);
+            sleep(1);
+        } else {
+            mwarn("Creating pre-upgrade global DB snapshot failed");
         }
     }
 
-    for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
+    for (int i = version; i < updates_length; i++) {
         mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
         if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_global_upgrade(wdb, i)) {
@@ -134,10 +143,14 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     if (post_upgrade) {
         if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
-            mdebug1("Create post-upgrade global DB snapshot %s", output+3);
+            wdbc_parse_result(output, &payload);
+            response = cJSON_Parse(payload);
+            mdebug1("Creating post-upgrade global DB snapshot %s", cJSON_GetStringValue(cJSON_GetArrayItem(response, 0)));
+            cJSON_Delete(response);
+        } else {
+           mwarn("Creating post-upgrade global DB snapshot failed");
         }
     }
-
 
     return wdb;
 }
