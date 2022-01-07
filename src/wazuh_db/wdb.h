@@ -229,7 +229,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
-    WDB_STMT_GLOBAL_VACUUM_INTO,
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
@@ -892,6 +891,13 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql);
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
 int wdb_close(wdb_t * wdb, bool commit);
+
+/**
+ * @brief Finalizes all the statements in cache for a specific database.
+ *
+ * @param wdb The database struct pointer.
+ */
+void wdb_finalize_all_statements(wdb_t * wdb);
 
 void wdb_leave(wdb_t * wdb);
 

@@ -181,7 +181,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND (connection_status = 'active' OR connection_status = 'pending') AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
-    [WDB_STMT_GLOBAL_VACUUM_INTO] = "VACUUM INTO ?;",
     [WDB_STMT_TASK_INSERT_TASK] = "INSERT INTO TASKS VALUES(NULL,?,?,?,?,?,?,?,?);",
     [WDB_STMT_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ?;",
     [WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ? AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
@@ -1225,7 +1224,6 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
 
 int wdb_close(wdb_t * wdb, bool commit) {
     int result;
-    int i;
 
     w_mutex_lock(&wdb->mutex);
 
@@ -1234,24 +1232,7 @@ int wdb_close(wdb_t * wdb, bool commit) {
             wdb_commit2(wdb);
         }
 
-        for (i = 0; i < WDB_STMT_SIZE; i++) {
-            if (wdb->stmt[i]) {
-                sqlite3_finalize(wdb->stmt[i]);
-            }
-        }
-
-        struct stmt_cache_list *node_stmt = wdb->cache_list;
-        struct stmt_cache_list *temp = NULL;
-        while (node_stmt){
-            if (node_stmt->value.stmt) {
-                // value.stmt would be free in sqlite3_finalize.
-                sqlite3_finalize(node_stmt->value.stmt);
-            }
-            os_free(node_stmt->value.query);
-            temp = node_stmt->next;
-            os_free(node_stmt);
-            node_stmt = temp;
-        }
+        wdb_finalize_all_statements(wdb);
 
         result = sqlite3_close_v2(wdb->db);
         w_mutex_unlock(&wdb->mutex);
@@ -1268,6 +1249,30 @@ int wdb_close(wdb_t * wdb, bool commit) {
         w_mutex_unlock(&wdb->mutex);
         mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
         return -1;
+    }
+}
+
+void wdb_finalize_all_statements(wdb_t * wdb) {
+    for (int i = 0; i < WDB_STMT_SIZE; i++) {
+        if (wdb->stmt[i]) {
+            sqlite3_finalize(wdb->stmt[i]);
+            wdb->stmt[i] = NULL;
+        }
+    }
+
+    struct stmt_cache_list *node_stmt = wdb->cache_list;
+    struct stmt_cache_list *temp = NULL;
+    while (node_stmt){
+        if (node_stmt->value.stmt) {
+            // value.stmt would be free in sqlite3_finalize.
+            sqlite3_finalize(node_stmt->value.stmt);
+            node_stmt->value.stmt = NULL;
+        }
+        os_free(node_stmt->value.query);
+        node_stmt->value.query = NULL;
+        temp = node_stmt->next;
+        os_free(node_stmt);
+        node_stmt = temp;
     }
 }
 
