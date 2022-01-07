@@ -70,7 +70,7 @@ Cloudflare WAF rules ID: 92501 - 92517
     <if_sid>92508</if_sid>
     <field name="EdgeResponseStatus">401</field>
     <description>Cloudflare WAF: $(ClientRequestURI) Unauthorized.</description>
-    <group>gpg13_4.3,tsc_cc6.8,hipaa_164.312.e.1</group>
+    <group>gpg13_4.3,hipaa_164.312.e.1,tsc_cc6.8</group>
   </rule>
 
   <rule id="92511" level="7">
