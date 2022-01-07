@@ -51,6 +51,7 @@ std::string CreateStatement(const bool isWindows)
     {
         ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
         ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
+        ret += CREATE_REGISTRY_VIEW_STATEMENT;
     }
     return ret;
 }

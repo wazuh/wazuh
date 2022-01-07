@@ -95,9 +95,10 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 constexpr auto CREATE_REGISTRY_VIEW_STATEMENT
 {
     R"(CREATE VIEW IF NOT EXISTS registry_view (path, checksum) AS
-       SELECT arch || ' ' || replace(replace(path, '\', '\\'), ':', '\:'), checksum FROM registry_key
+       SELECT registry_key.arch || ' ' || replace(replace(registry_key.path, '\', '\\'), ':', '\:'), checksum FROM registry_key
        UNION ALL
-       SELECT arch || ' ' || replace(replace(path, '\', '\\'), ':', '\:') || ':' || replace(replace(name, '\', '\\'), ':', '\:'), registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id;)"
+       SELECT registry_key.arch || ' ' || replace(replace(registry_key.path, '\', '\\'), ':', '\:') || ':' || replace(replace(name, '\', '\\'), ':', '\:'),
+       registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.path=registry_data.path AND registry_key.arch=registry_data.arch;)"
 };
 
 constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
