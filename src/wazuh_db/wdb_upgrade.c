@@ -120,12 +120,11 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     if (version < updates_length) {
         post_upgrade = TRUE;
-        if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
+        if (OS_SUCCESS == wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
             wdbc_parse_result(output, &payload);
             response = cJSON_Parse(payload);
             mdebug1("Creating pre-upgrade global DB snapshot %s", cJSON_GetStringValue(cJSON_GetArrayItem(response, 0)));
             cJSON_Delete(response);
-            sleep(1);
         } else {
             mwarn("Creating pre-upgrade global DB snapshot failed");
         }
@@ -142,7 +141,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     }
 
     if (post_upgrade) {
-        if (OS_SUCCESS == wdb_global_create_backup(wdb, output)) {
+        if (OS_SUCCESS == wdb_global_create_backup(wdb, output, "-post_upgrade")) {
             wdbc_parse_result(output, &payload);
             response = cJSON_Parse(payload);
             mdebug1("Creating post-upgrade global DB snapshot %s", cJSON_GetStringValue(cJSON_GetArrayItem(response, 0)));
