@@ -77,12 +77,9 @@ static void wm_check_agents();
 
 /**
  * @brief Method to synchronize 'client.keys' and 'global.db'. All new agents found in 'client.keys will be added to the DB
- *        and any agent in the DB that doesn't have a key will be removed. This method runs in workers constantly, but in the master
- *        it will run only at beggining.
- *
- * @param master_first_time Parameter to run the syncronization even if it's a master node.
+ *        and any agent in the DB that doesn't have a key will be removed.
  */
-static void wm_sync_agents(bool master_first_time);
+static void wm_sync_agents();
 
 // Clean dangling database files
 static void wm_clean_dangling_legacy_dbs();
@@ -101,8 +98,7 @@ static void wm_sync_multi_groups(const char *dirname);
 void wm_sync_legacy_groups_files();
 
 /**
- * @brief Method to insert a single group file in the global.db. Like this insertion is performed for legacy group files only in the master,
- *        the group insertion overrides any existent group assignment.
+ * @brief Method to insert a single group file in the global.db. The group insertion overrides any existent group assignment.
  *
  * @param group_file The name of the group file.
  * @param group_file_path The full path of the group file.
@@ -145,8 +141,13 @@ void* wm_database_main(wm_database *data) {
         wm_sync_manager();
     }
 
-    // Synchronize client.keys at startup to insert agent groups files
-    wm_sync_agents(true);
+    // The client.keys file should only be synchronized with the database in the
+    // worker nodes. In the case of the master, this will happen in the writter
+    // thread of authd and only one time at the begining of modulesd.
+    if (!is_worker) {
+        wm_sync_agents();
+    }
+
     // If we have groups assignment in legacy files, insert them (master) or remove them (worker)
     wm_sync_legacy_groups_files();
 
@@ -165,7 +166,10 @@ void* wm_database_main(wm_database *data) {
 
 #ifndef LOCAL
             if (!strcmp(path, KEYS_FILE)) {
-                wm_sync_agents(false);
+                // The syncronization with client.keys only happens in worker nodes
+                if (is_worker) {
+                    wm_sync_agents();
+                }
             } else
 #endif // !LOCAL
             {
@@ -197,7 +201,10 @@ void* wm_database_main(wm_database *data) {
 
 #ifndef LOCAL
             if (data->sync_agents) {
-                wm_check_agents();
+                // The syncronization with client.keys only happens in worker nodes
+                if (is_worker) {
+                    wm_check_agents();
+                }
                 wm_sync_multi_groups(SHAREDCFG_DIR);
                 wm_clean_dangling_groups();
                 wm_clean_dangling_legacy_dbs();
@@ -272,7 +279,7 @@ void wm_check_agents() {
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
             /* Synchronize */
-            wm_sync_agents(false);
+            wm_sync_agents();
             timestamp = buffer.st_mtime;
             inode = buffer.st_ino;
         }
@@ -280,30 +287,25 @@ void wm_check_agents() {
 }
 
 // Synchronize agents
-void wm_sync_agents(bool master_first_time) {
+void wm_sync_agents() {
     keystore keys = KEYSTORE_INITIALIZER;
     clock_t clock0 = clock();
     struct timespec spec0;
     struct timespec spec1;
 
-    // The client.keys file should only be synchronized with the database in the
-    // worker nodes. In the case of the master, this will happen in the writter
-    // thread of authd and only one time at the begining of modulesd.
-    if (is_worker || (!is_worker && master_first_time)) {
-        gettime(&spec0);
+    gettime(&spec0);
 
-        mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, W_RAW_KEY, 0);
+    mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
+    OS_PassEmptyKeyfile();
+    OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
-        sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
+    sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
 
-        OS_FreeKeys(&keys);
-        mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
-        gettime(&spec1);
-        time_sub(&spec1, &spec0);
-        mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
-    }
+    OS_FreeKeys(&keys);
+    mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
+    gettime(&spec1);
+    time_sub(&spec1, &spec0);
+    mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
 /**
@@ -516,7 +518,6 @@ void wm_sync_legacy_groups_files() {
 
     while ((dir_entry = readdir(dir)) != NULL) {
         if (dir_entry->d_name[0] != '.') {
-            is_dir_empty = false;
             snprintf(group_file_path, OS_SIZE_512, "%s/%s", GROUPS_DIR, dir_entry->d_name);
 
             if (is_worker) {
@@ -530,6 +531,7 @@ void wm_sync_legacy_groups_files() {
                     unlink(group_file_path);
                 } else {
                     merror("Failed during the groups file '%s' syncronization.", group_file_path);
+                    is_dir_empty = false;
                 }
             }
         }
@@ -564,7 +566,6 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
 
     if (fgets(groups_csv, OS_SIZE_65536, fp)) {
         char *endl = strchr(groups_csv, '\n');
-
         if (endl) {
             *endl = '\0';
         }
@@ -785,7 +786,10 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
-        wm_sync_agents(false);
+        // The syncronization with client.keys only happens in worker nodes
+        if (is_worker) {
+            wm_sync_agents();
+        }
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
         wm_clean_dangling_groups();
