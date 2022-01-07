@@ -2371,4 +2371,26 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
 
+/**
+ * @brief Method to parse the "wazuhdb getconfig" commands.
+ *
+ * @param config_source Where the config will be read from: "internal" or "wdb"
+ * @return cJSON* Returns a cJSON object with the configuration requested or NULL on error.
+ */
+cJSON* wdb_parse_get_config(char* config_source);
+
+/**
+ * @brief Method to read the internal wazuh-db configuration.
+ *
+ * @return cJSON* Returns a cJSON object with the configuration requested.
+ */
+cJSON* wdb_get_internal_config();
+
+/**
+ * @brief Method to read the wdb configuration section.
+ *
+ * @return cJSON* Returns a cJSON object with the configuration requested.
+ */
+cJSON* wdb_get_config();
+
 #endif
