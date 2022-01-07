@@ -17,7 +17,7 @@ void FIMWrapperTest::SetUp() {}
 
 void FIMWrapperTest::TearDown() {}
 
-TEST_F(FIMHelperTest, testWinInit)
+TEST_F(FIMWrapperTest, testWinInit)
 {
     std::shared_ptr<DBSync> handlerDbsync;
     std::shared_ptr<RemoteSync> handlerRsync;
@@ -36,7 +36,7 @@ TEST_F(FIMHelperTest, testWinInit)
                                    true);
 }
 
-TEST_F(FIMHelperTest, testInit)
+TEST_F(FIMWrapperTest, testInit)
 {
     std::shared_ptr<DBSync> handlerDbsync;
     std::shared_ptr<RemoteSync> handlerRsync;
