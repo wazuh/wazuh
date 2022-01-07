@@ -50,7 +50,7 @@ Cloudflare WAF rules ID: 92501 - 92517
     <if_sid>92505</if_sid>
     <field name="EdgeResponseStatus" type="pcre2" negate="yes">200</field>
     <description>Cloudflare WAF: Authentication failure from $(OriginIP)</description>
-    <group>hipaa_164.312.e.1,gpg13_3.3,nist_800_53_AC.7,pci_dss_8.2</group>
+    <group>gpg13_3.3,hipaa_164.312.e.1,nist_800_53_AC.7,pci_dss_8.2</group>
   </rule>
 
   <rule id="92508" level="7">
