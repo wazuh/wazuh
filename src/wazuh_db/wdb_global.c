@@ -1725,22 +1725,22 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
     return result;
 }
 
-int wdb_global_create_backup(wdb_t* wdb, char* output) {
+int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
     char path[PATH_MAX-3] = {0};
     char file_name[PATH_MAX] = {0};
     char path_compressed[PATH_MAX] = {0};
-    char* timestamp = NULL;
     int result = OS_INVALID;
+    char* timestamp = NULL;
 
     timestamp = w_get_timestamp(time(NULL));
     wchr_replace(timestamp, ' ', '-');
     wchr_replace(timestamp, '/', '-');
-    snprintf(path, PATH_MAX-3, "%s/%s-%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp);
-    snprintf(file_name, PATH_MAX, "%s-%s", WDB_GLOB_BACKUP_NAME, timestamp);
+    snprintf(path, PATH_MAX-3, "%s/%s-%s%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp, tag ? tag : "");
+    snprintf(file_name, PATH_MAX, "%s-%s%s", WDB_GLOB_BACKUP_NAME, timestamp, tag ? tag : "");
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
-    if(wdb_commit2(wdb) == OS_INVALID) {
+    if (wdb_commit2(wdb) == OS_INVALID) {
         mdebug1("Cannot commit current transaction to create backup");
         snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to create backup");
         return OS_INVALID;
@@ -1770,11 +1770,11 @@ int wdb_global_create_backup(wdb_t* wdb, char* output) {
 
     sqlite3_finalize(stmt);
 
-    if(OS_SUCCESS == result) {
+    if (OS_SUCCESS == result) {
         snprintf(path_compressed, PATH_MAX, "%s.gz", path);
         result = w_compress_gzfile(path, path_compressed);
         unlink(path);
-        if(OS_SUCCESS == result) {
+        if (OS_SUCCESS == result) {
             wdb_global_remove_old_backups();
             cJSON* j_file_name = cJSON_CreateArray();
             cJSON_AddItemToArray(j_file_name, cJSON_CreateString(file_name));
@@ -1799,7 +1799,6 @@ int wdb_global_remove_old_backups() {
     int number_of_files = 0;
     struct dirent *entry = NULL;
 
-    // The pre-restore snapshot is not considered for the max_files limit
     while (entry = readdir(dp), entry) {
         if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0) {
             continue;
@@ -1812,7 +1811,7 @@ int wdb_global_remove_old_backups() {
     int backups_to_delete = number_of_files - wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files;
     char tmp_path[OS_SIZE_512] = {0};
 
-    for(int i = 0; backups_to_delete > i; i++) {
+    for (int i = 0; backups_to_delete > i; i++) {
         char* backup_to_delete_name = NULL;
         wdb_global_get_oldest_backup(&backup_to_delete_name);
         if (backup_to_delete_name) {
@@ -1838,8 +1837,7 @@ cJSON* wdb_global_get_backups() {
 
     j_backups = cJSON_CreateArray();
     while (entry = readdir(dp), entry) {
-        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0 &&
-            strncmp(entry->d_name, WDB_GLOB_PRE_RESTORE_BACKUP_NAME, sizeof(WDB_GLOB_PRE_RESTORE_BACKUP_NAME) - 1) != 0 ) {
+        if (strncmp(entry->d_name, WDB_GLOB_BACKUP_NAME, sizeof(WDB_GLOB_BACKUP_NAME) - 1) != 0) {
             continue;
         }
 
@@ -1851,42 +1849,47 @@ cJSON* wdb_global_get_backups() {
 }
 
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
-    char global_path[OS_SIZE_256] = {0};
-    char global_pre_restore_path[OS_SIZE_256] = {0};
-
-    snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-    snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s.gz", WDB_BACKUP_FOLDER, WDB_GLOB_PRE_RESTORE_BACKUP_NAME);
-
-    // Preparing DB for pre_restore backup and later removal
-    wdb_leave(*wdb);
-    wdb_close(*wdb, true);
-    *wdb = NULL;
-    if(save_pre_restore_state) {
-        unlink(global_pre_restore_path);
-        if(w_compress_gzfile(global_path, global_pre_restore_path)) {
-            mdebug1("Unable to save pre-restore DB state");
-            snprintf(output, OS_MAXSTR + 1, "err Unable to save pre-restore DB state");
-            return OS_INVALID;
-        }
-    }
+    char* backup_to_restore = NULL;
 
     // If the snapshot is not present, the most recent backup will be used
-    char* backup_to_restore = NULL;
-    if(snapshot) {
+    if (snapshot) {
         backup_to_restore = snapshot;
     } else {
         wdb_global_get_most_recent_backup(&backup_to_restore);
     }
 
+    char global_path[OS_SIZE_256] = {0};
+
+    snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+
+    cJSON* response = NULL;
+    char* payload = NULL;
+
+    if (save_pre_restore_state) {
+        if (OS_SUCCESS == wdb_global_create_backup(*wdb, output, "-pre_restore")) {
+            wdbc_parse_result(output, &payload);
+            response = cJSON_Parse(payload);
+            mdebug1("Creating pre-restore global DB snapshot %s", cJSON_GetStringValue(cJSON_GetArrayItem(response, 0)));
+            cJSON_Delete(response);
+        } else {
+            mwarn("Creating pre-restore global DB snapshot failed");
+        }
+    }
+
+    // Preparing DB for restore backup and later removal.
+    wdb_leave(*wdb);
+    wdb_close(*wdb, true);
+    *wdb = NULL;
+
     int result = OS_INVALID;
-    if(backup_to_restore) {
+    if (backup_to_restore) {
         char global_tmp_path[OS_SIZE_256] = {0};
         char backup_to_restore_path[OS_SIZE_256] = {0};
 
         snprintf(global_tmp_path, OS_SIZE_256, "%s/%s.db.back", WDB2_DIR, WDB_GLOB_NAME);
         snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
 
-        if(!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
+        if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
             unlink(global_path);
             rename(global_tmp_path, global_path);
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1902,7 +1905,7 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
         result = OS_INVALID;
     }
 
-    if(!snapshot) {
+    if (!snapshot) {
         os_free(backup_to_restore);
     }
     return result;
