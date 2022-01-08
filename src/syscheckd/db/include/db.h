@@ -24,40 +24,25 @@ extern "C" {
 
 #define EVP_MAX_MD_SIZE 64
 
-#ifndef WIN32
 /**
  * @brief Initialize the FIM database.
  *
  * It will be dbsync the responsible of managing the DB.
  * @param storage storage 1 Store database in memory, disk otherwise.
  * @param sync_interval Interval when the synchronization will be performed.
- * @param file_limit Maximum number of files to be monitored
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
+ * @param file_limit Maximum number of files to be monitored
+ * @param value_limit Maximum number of registry values to be monitored.
+ * @param is_windows True when the OS is Windows.
  */
 void fim_db_init(int storage,
                  int sync_interval,
-                 int file_limit,
                  fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback);
-#else
-/**
- * @brief Initialize the FIM database.
- *
- * It will be dbsync the responsible of managing the DB.
- * @param storage storage 1 Store database in memory, disk otherwise.
- * @param sync_interval Interval when the synchronization will be performed.
- * @param file_limit Maximum number of files to be monitored
- * @param sync_callback Callback to send the synchronization messages.
- * @param log_callback Callback to perform logging operations.
- */
-void fim_db_init(int storage,
-                 int sync_interval,
+                 logging_callback_t log_callback,
                  int file_limit,
                  int value_limit,
-                 fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback);
-#endif
+                 bool is_windows);
 
 /**
  * @brief Get entry data using path.

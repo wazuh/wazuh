@@ -26,13 +26,15 @@ class FIMDBMOCK final
             static FIMDBMOCK s_instance;
             return s_instance;
         };
-#ifndef WIN32
-        MOCK_METHOD(void, init, (unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
-                                 std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
-#else
-        MOCK_METHOD(void, init, (unsigned int, unsigned int, unsigned int, fim_sync_callback_t, logging_callback_t,
-                                 std::shared_ptr<DBSync>, std::shared_ptr<RemoteSync>), ());
-#endif
+
+        MOCK_METHOD(void, init, (unsigned int,
+                                 fim_sync_callback_t,
+                                 logging_callback_t,
+                                 std::shared_ptr<DBSync>,
+                                 std::shared_ptr<RemoteSync>,
+                                 unsigned int,
+                                 unsigned int,
+                                 bool), ());
         MOCK_METHOD(void, removeItem, (const nlohmann::json&), ());
         MOCK_METHOD(void, updateItem, (const nlohmann::json&, ResultCallbackData), ());
         MOCK_METHOD(void, executeQuery, (const nlohmann::json&, ResultCallbackData), ());
