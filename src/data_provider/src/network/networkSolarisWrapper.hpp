@@ -330,6 +330,7 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
         {
             std::string mac { UNKNOWN_VALUE };
             const auto buffer { Utils::exec("ifconfig " + this->name()) };
+
             if (!buffer.empty())
             {
                 const auto lines { Utils::split(buffer, '\n') };
@@ -337,26 +338,26 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
                 {
                     Utils::replaceAll(line, "\t", "");
                     const auto fields { Utils::split(line, ' ') };
+
                     if (fields.size() == MAC_SIZE_FIELDS && fields.front().compare("ether") == 0)
                     {
-                        const auto components { Utils::split(fields[MAC_ADDRESS], ':') };
+                        auto components { Utils::split(fields[MAC_ADDRESS], ':') };
+                        std::stringstream value { };
 
-                        for (const auto& item : components)
+                        value << std::hex << std::setfill('0');
+
+                        for (auto& item : components)
                         {
-                            if (1 == item.length())
-                            {
-                                mac.append("0" + item);
-                            }
-                            else
-                            {
-                                mac.append(item);
-                            }
+                            std::transform(item.begin(), item.end(), item.begin(), ::toupper);
+                            value << std::setw(2) << item;
 
-                            if (item.compare(components.back()))
+                            if (&item != &components.back())
                             {
-                                mac.append(":");
+                                value << ":";
                             }
                         }
+
+                        mac = value.str();
                         break;
                     }
                 }
