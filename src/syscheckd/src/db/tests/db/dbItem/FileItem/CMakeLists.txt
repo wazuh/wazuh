@@ -1,20 +1,20 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(registrykey_unit_test)
+project(fileitem_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-file(GLOB registrykey_UNIT_TEST_SRC
+file(GLOB fileitem_UNIT_TEST_SRC
     "*.cpp")
 
-file(GLOB REGISTRYKEY_SRC "${SRC_FOLDER}/syscheckd/db/src/dbRegistryKey.cpp")
+file(GLOB FILEITEM_SRC "${SRC_FOLDER}/syscheckd/src/db/src/dbFileItem.cpp")
 
-add_executable(registrykey_unit_test
-    ${registrykey_UNIT_TEST_SRC}
-    ${REGISTRYKEY_SRC})
+add_executable(fileitem_unit_test
+    ${fileitem_UNIT_TEST_SRC}
+    ${FILEITEM_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(registrykey_unit_test
+    target_link_libraries(fileitem_unit_test
         debug gtestd
         debug gmockd
         debug gtest_maind
@@ -29,7 +29,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         -static-libgcc -static-libstdc++
     )
 else()
-    target_link_libraries(registrykey_unit_test
+    target_link_libraries(fileitem_unit_test
         debug gtestd
         debug gmockd
         debug gtest_maind
@@ -45,5 +45,5 @@ else()
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-add_test(NAME registrykey_unit_test
-         COMMAND registrykey_unit_test)
+add_test(NAME fileitem_unit_test
+         COMMAND fileitem_unit_test)
