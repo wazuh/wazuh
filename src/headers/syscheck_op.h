@@ -69,7 +69,7 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 
 #endif
 
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 #include "analysisd/eventinfo.h"
 #include "os_net/os_net.h"
 

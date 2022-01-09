@@ -21,7 +21,7 @@ file(GLOB FIMDB_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB FIMDB_IMP_SRC
-     "${SRC_FOLDER}/syscheckd/db/src/fimDB.cpp"
+     "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp"
     )
 
 file(GLOB RSYNC_IMP_SRC

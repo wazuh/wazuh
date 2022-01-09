@@ -1,20 +1,23 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(registryvalue_unit_test)
+project(fim_db_wrapper_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-file(GLOB registryvalue_UNIT_TEST_SRC
+include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/FIMDB)
+
+file(GLOB fimDBHelper_UNIT_TEST_SRC
     "*.cpp")
+file(GLOB FIMDB_IMP_SRC
+    "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp")
 
-file(GLOB REGISTRYVALUE_SRC "${SRC_FOLDER}/syscheckd/db/src/dbRegistryValue.cpp")
-
-add_executable(registryvalue_unit_test
-    ${registryvalue_UNIT_TEST_SRC}
-    ${REGISTRYVALUE_SRC})
+add_executable(fim_db_wrapper_unit_test
+    ${SRC_FOLDER}/syscheckd/src/db/tests/db/FIMDB/fimDBUtilsTest.h
+    ${fimDBHelper_UNIT_TEST_SRC}
+    ${FIMDB_IMP_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(registryvalue_unit_test
+    target_link_libraries(fim_db_wrapper_unit_test
         debug gtestd
         debug gmockd
         debug gtest_maind
@@ -29,7 +32,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         -static-libgcc -static-libstdc++
     )
 else()
-    target_link_libraries(registryvalue_unit_test
+    target_link_libraries(fim_db_wrapper_unit_test
         debug gtestd
         debug gmockd
         debug gtest_maind
@@ -45,5 +48,5 @@ else()
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-add_test(NAME registryvalue_unit_test
-         COMMAND registryvalue_unit_test)
+add_test(NAME fim_db_wrapper_unit_test
+         COMMAND fim_db_wrapper_unit_test)
