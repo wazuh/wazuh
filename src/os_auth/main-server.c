@@ -70,9 +70,6 @@ extern struct keynode * volatile *remove_tail;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
-uid_t uid;
-gid_t gid;
-
 
 /* Print help statement */
 static void help_authd(char * home_path)
@@ -158,6 +155,7 @@ int main(int argc, char **argv)
     int test_config = 0;
     int status;
     int run_foreground = 0;
+    gid_t gid;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
 
@@ -386,9 +384,8 @@ int main(int argc, char **argv)
     }
 
     /* Check if the user/group given are valid */
-    uid = Privsep_GetUser(ROOTUSER);
     gid = Privsep_GetGroup(group);
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+    if (gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
@@ -400,9 +397,6 @@ int main(int argc, char **argv)
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
-    if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, ROOTUSER, errno, strerror(errno));
     }
 
     /* Signal manipulation */
@@ -797,14 +791,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
     struct timespec global_t0, global_t1;
     struct timespec t0, t1;
-
-    /* Privilege separation */
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
-    }
-    if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, ROOTUSER, errno, strerror(errno));
-    }
 
     while (running) {
         int inserted_agents = 0;
