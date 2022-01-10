@@ -570,7 +570,18 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
             *endl = '\0';
         }
 
-        result = wdb_set_agent_groups_csv(id_agent, groups_csv, "override", "synced", "manual", &wdb_wmdb_sock);
+        char** groups_array = w_string_split(groups_csv, ",", 0);
+        size_t groups_array_size = strarray_size(groups_array);
+        char** truncated_groups_array = NULL;
+        if (groups_array_size > MAX_GROUPS_PER_MULTIGROUP) {
+            truncated_groups_array = groups_array + (groups_array_size - MAX_GROUPS_PER_MULTIGROUP);
+        }
+        else {
+            truncated_groups_array = groups_array;
+        }
+        result = wdb_set_agent_groups(id_agent, truncated_groups_array, "override", "synced", "manual", &wdb_wmdb_sock);
+        free_strarray(groups_array);
+
     } else {
         mdebug1("Empty group file '%s'.", group_file_path);
         result = OS_SUCCESS;
