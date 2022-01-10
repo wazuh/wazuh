@@ -36,7 +36,7 @@ TEST(getAssetList, valid_path_wo_db)
 }
 
 // Test: get asset list from 1 decoder (1 file)
-TEST(getAssetList, one_decoder_one_file) {
+TEST(getAssetList, one_asset_one_file) {
 
     char* tmpDir = createDBtmp();
 
@@ -57,7 +57,7 @@ TEST(getAssetList, one_decoder_one_file) {
 }
 
 // Test: get asset list, 2 decoder (2 file)
-TEST(getAssetList, two_decoder_two_file) {
+TEST(getAssetList, two_asset_two_file) {
 
     char* tmpDir = createDBtmp();
 
@@ -86,7 +86,7 @@ TEST(getAssetList, two_decoder_two_file) {
 
 
 // Test: Ignore non-yml files
-TEST(getAssetList, one_decoder_and_other_file) {
+TEST(getAssetList, one_asset_and_other_file) {
 
     char* tmpDir = createDBtmp();
 
