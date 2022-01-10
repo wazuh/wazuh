@@ -27,11 +27,41 @@ extern int wdb_wmdb_sock;
 wmodule* wm_database_read();
 
 /**
- * @brief Synchronizes a keystore with the agent table of global.db.
+ * @brief Synchronizes a keystore with the agent table of global.db. It will insert
+ *        the agents that are in the keystore and are not in global.db. It also
+ *        will create all the agent artifacts.
+ *        In addition it will remove from global.db in wazuh-db all the agents that
+ *        are not in the keystore. Also it will remove all the artifacts for those
+ *        agents.
  *
  * @param keys The keystore structure to be synchronized
  * @param wdb_sock The socket to be used in the calls to Wazuh DB
  */
 void sync_keys_with_wdb(keystore *keys, int *wdb_sock);
+
+/**
+ * @brief Synchronizes a keystore with the legacy agents databases in var/db/agents.
+ *        It will create a database for the agents in the keystore that doesn't
+ *        have it created.
+ *
+ * @param keys The keystore structure to be synchronized
+ */
+void sync_keys_with_agents_db(keystore *keys);
+
+/**
+ * @brief Synchronizes the agents artifacts with wazuh-db. It will remove
+ *        the databases of agents that are not in the agent table of
+ *        global.db.
+ */
+void sync_agents_artifacts_dbs_with_wdb();
+
+/**
+ * @brief This function removes the legacy agent DB, the wazuh-db agent DB
+ *        and the diff folder of an agent.
+ *
+ * @param agent_id The ID of the agent.
+ * @param agent_name The name of the agent.
+ */
+void wm_clean_agent_artifacts(int agent_id, const char* agent_name);
 
 #endif /* WM_DATABASE */

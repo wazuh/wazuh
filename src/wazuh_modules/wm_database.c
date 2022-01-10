@@ -299,7 +299,16 @@ void wm_sync_agents() {
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
-    sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
+    // The client.keys file should only be synchronized with the database in the
+    // worker nodes. In the case of the master, we should only synchronize the
+    // agents artifacts.
+    if (is_worker) {
+        sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
+    }
+    else {
+        sync_keys_with_agents_db(&keys);
+        sync_agents_artifacts_dbs_with_wdb();
+    }
 
     OS_FreeKeys(&keys);
     mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
@@ -309,7 +318,12 @@ void wm_sync_agents() {
 }
 
 /**
- * @brief Synchronizes a keystore with the agent table of global.db.
+ * @brief Synchronizes a keystore with the agent table of global.db. It will insert
+ *        the agents that are in the keystore and are not in global.db. It also
+ *        will create all the agent artifacts.
+ *        In addition it will remove from global.db in wazuh-db all the agents that
+ *        are not in the keystore. Also it will remove all the artifacts for those
+ *        agents.
  *
  * @param keys The keystore structure to be synchronized
  * @param wdb_sock The socket to be used in the calls to Wazuh DB
@@ -329,7 +343,7 @@ void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
         entry = keys->keyentries[i];
         int id;
 
-        mdebug2("Synchronizing agent %s '%s'.", entry->id, entry->name);
+        mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s'.", entry->id, entry->name);
 
         if (!(id = atoi(entry->id))) {
             merror("At sync_keys_with_wdb(): invalid ID number.");
@@ -343,63 +357,134 @@ void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
                              entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, wdb_sock)) {
             // The agent already exists, update group only.
-            mdebug2("The agent %s '%s' already exist in the database.", entry->id, entry->name);
+            mtdebug2(WM_DATABASE_LOGTAG, "The agent %s '%s' already exist in the database.", entry->id, entry->name);
+        }
+        if (OS_INVALID == wdb_create_agent_db(id, entry->name)) {
+            mtdebug2(WM_DATABASE_LOGTAG, "Failed to create the database for agent %s '%s'.", entry->id, entry->name);
         }
     }
 
-    // Delete from the database all the agents without a key
-
+    // Delete from the database all the agents without a key and all its atirfacts
     if ((agents = wdb_get_all_agents(FALSE, wdb_sock))) {
         char id[9];
-        char wdbquery[OS_SIZE_128 + 1];
-        char *wdboutput = NULL;
-        int error;
 
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(keys, id) == -1) {
-                char *name = wdb_get_agent_name(agents[i], wdb_sock);
+                char *agent_name = wdb_get_agent_name(agents[i], wdb_sock);
 
                 if (wdb_remove_agent(agents[i], wdb_sock) < 0) {
-                    mdebug1("Couldn't remove agent %s", id);
-                    os_free(name);
+                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                    os_free(agent_name);
                     continue;
                 }
 
-                if (wdboutput == NULL) {
-                    os_malloc(OS_SIZE_1024, wdboutput);
-                }
-
-                snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", id);
-                error = wdbc_query_ex(wdb_sock, wdbquery, wdboutput, OS_SIZE_1024);
-
-                if (error == 0) {
-                    mdebug1("DB from agent %s was deleted '%s'", id, wdboutput);
-                } else {
-                    merror("Could not remove the DB of the agent %s. Error: %d.", id, error);
-                }
+                // Agent not found. Removing agent artifacts
+                wm_clean_agent_artifacts(agents[i], agent_name);
 
                 // Remove agent-related files
                 OS_RemoveCounter(id);
                 OS_RemoveAgentTimestamp(id);
 
-                if (name == NULL || *name == '\0') {
-                    os_free(name);
-                    continue;
-                }
-
-                delete_diff(name);
-
-                free(name);
+                os_free(agent_name);
             }
         }
 
-        os_free(wdboutput);
         os_free(agents);
     }
 
     os_free(group);
+}
+
+/**
+ * @brief Synchronizes a keystore with the legacy agents databases in var/db/agents.
+ *        It will create a database for the agents in the keystore that doesn't
+ *        have it created.
+ *
+ * @param keys The keystore structure to be synchronized
+ */
+void sync_keys_with_agents_db(keystore *keys) {
+    keyentry *entry = NULL;
+    unsigned int i;
+
+    // Add new agents databases
+
+    for (i = 0; i < keys->keysize; i++) {
+        entry = keys->keyentries[i];
+        int id;
+
+        mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s' database.", entry->id, entry->name);
+
+        if (!(id = atoi(entry->id))) {
+            merror("At sync_keys_with_agents_ds(): invalid ID number.");
+            continue;
+        }
+
+        if (OS_INVALID == wdb_create_agent_db(id, entry->name)) {
+            mtdebug2(WM_DATABASE_LOGTAG, "Failed to create the database for agent %s '%s'.", entry->id, entry->name);
+        }
+    }
+}
+
+/**
+ * @brief Synchronizes the agents artifacts with wazuh-db. It will remove
+ *        the databases of agents that are not in the agent table of
+ *        global.db.
+ */
+void sync_agents_artifacts_dbs_with_wdb() {
+    // Delete the databases of all the agents without a key
+    DIR *dir = NULL;
+    struct dirent * dirent = NULL;
+
+    if (!(dir = opendir(WDB_DIR "/agents"))) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", WDB_DIR "/agents", strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir)) != NULL) {
+        char *end = NULL;
+        if (end = strchr(dirent->d_name, '-'), end) {
+            int agent_id = (int)strtol(dirent->d_name, &end, 10);
+            char *agent_name = NULL;
+            if (agent_id > 0 && (agent_name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock)) != NULL) {
+                if (*agent_name == '\0') {
+                    // Agent not found. Removing agent artifacts
+                    wm_clean_agent_artifacts(agent_id, agent_name);
+                }
+                os_free(agent_name);
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+/**
+ * @brief This function removes the legacy agent DB, the wazuh-db agent DB
+ *        and the diff folder of an agent.
+ *
+ * @param agent_id The ID of the agent.
+ * @param agent_name The name of the agent.
+ */
+void wm_clean_agent_artifacts(int agent_id, const char* agent_name) {
+    int result = OS_INVALID;
+
+    // Removing legacy database
+    if (result = wdb_remove_agent_db(agent_id, agent_name), result) {
+        mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the legacy DB of the agent %d.", agent_id);
+    }
+
+    // Removing wazuh-db database
+    char wdbquery[OS_SIZE_128 + 1];
+    char *wdboutput = NULL;
+    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %d", agent_id);
+    if (result = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, OS_SIZE_1024), result) {
+        mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the wazuh-db DB of the agent %d.", agent_id);
+    }
+    os_free(wdboutput);
+
+    delete_diff(agent_name);
 }
 
 // Clean dangling database files
