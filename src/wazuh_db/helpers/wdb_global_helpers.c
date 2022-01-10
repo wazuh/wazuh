@@ -98,10 +98,7 @@ int wdb_insert_agent(int id,
 
     switch (result) {
         case OS_SUCCESS:
-            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
-                result = wdb_create_agent_db(id, name);
-            }
-            else {
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
                 mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
@@ -890,24 +887,15 @@ int wdb_remove_agent(int id, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
-    char *name = NULL;
     int aux_sock = -1;
     int* query_sock = sock?sock:&aux_sock;
-
-    // Getting the agent's name before removing it from global.db
-    name = wdb_get_agent_name(id, query_sock);
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT], id);
     result = wdbc_query_ex(query_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     switch (result) {
         case OS_SUCCESS:
-            if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
-                if (name && *name && OS_INVALID == wdb_remove_agent_db(id, name)) {
-                     mdebug1("Unable to remove agent DB: %d - %s", id, name);
-                }
-            }
-            else {
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
                 mdebug1("Global DB Error reported in the result of the query");
                 result = OS_INVALID;
             }
@@ -921,8 +909,6 @@ int wdb_remove_agent(int id, int *sock) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
-
-    os_free(name);
 
     if (!sock) {
         wdbc_close(&aux_sock);
@@ -1275,9 +1261,10 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
 
 int wdb_create_agent_db(int id, const char *name) {
     const char *ROOT = "root";
-    const int ROOT_UID = 0;
-    char path[OS_FLSIZE + 1];
+    char src_path[OS_FLSIZE + 1];
+    char dst_path[OS_FLSIZE + 1];
     char buffer[4096];
+    struct stat st_buffer;
     FILE *source;
     FILE *dest;
     size_t nbytes;
@@ -1285,31 +1272,34 @@ int wdb_create_agent_db(int id, const char *name) {
     uid_t uid;
     gid_t gid;
 
-    if (!name)
-        return -1;
+    if (!name) {
+        return OS_INVALID;
+    }
 
-    snprintf(path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
+    snprintf(dst_path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
+    if (OS_SUCCESS == stat(dst_path, &st_buffer)) {
+        mdebug2("Agent database already exist.");
+        return OS_SUCCESS;
+    }
 
-    if (!(source = fopen(path, "r"))) {
+    snprintf(src_path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
+    if (OS_SUCCESS != stat(src_path, &st_buffer)) {
         mdebug1("Profile database not found, creating.");
 
-        if (wdb_create_profile(path) < 0)
-            return -1;
-
-        // Retry to open
-
-        if (!(source = fopen(path, "r"))) {
-            merror("Couldn't open profile '%s'.", path);
-            return -1;
+        if (wdb_create_profile(src_path) < 0) {
+            return OS_INVALID;
         }
     }
 
-    snprintf(path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
+    if (!(source = fopen(src_path, "r"))) {
+        merror("Couldn't open profile '%s'.", src_path);
+        return OS_INVALID;
+    }
 
-    if (!(dest = fopen(path, "w"))) {
+    if (!(dest = fopen(dst_path, "w"))) {
         fclose(source);
-        merror("Couldn't create database '%s'.", path);
-        return -1;
+        merror("Couldn't create database '%s'.", dst_path);
+        return OS_INVALID;
     }
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
@@ -1321,29 +1311,29 @@ int wdb_create_agent_db(int id, const char *name) {
 
     fclose(source);
     if (fclose(dest) == -1 || result < 0) {
-        merror("Couldn't write/close file '%s' completely.", path);
-        return -1;
+        merror("Couldn't write/close file '%s' completely.", dst_path);
+        return OS_INVALID;
     }
 
-    uid = ROOT_UID;
+    uid = Privsep_GetUser(ROOT);
     gid = Privsep_GetGroup(GROUPGLOBAL);
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
-        return -1;
+        return OS_INVALID;
     }
 
-    if (chown(path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, path, errno, strerror(errno));
-        return -1;
+    if (chown(dst_path, uid, gid) < 0) {
+        merror(CHOWN_ERROR, dst_path, errno, strerror(errno));
+        return OS_INVALID;
     }
 
-    if (chmod(path, 0660) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-        return -1;
+    if (chmod(dst_path, 0660) < 0) {
+        merror(CHMOD_ERROR, dst_path, errno, strerror(errno));
+        return OS_INVALID;
     }
 
-    return 0;
+    return OS_SUCCESS;
 }
 
 int wdb_remove_agent_db(int id, const char * name) {
