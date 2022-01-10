@@ -6,17 +6,17 @@ import _hashlib
 import _io
 import abc
 import asyncio
-import cryptography
 import hashlib
 import json
 import logging
 import os
-import pytest
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock
-from uuid import uuid4
+from unittest.mock import patch, MagicMock, mock_open, call
+
+import cryptography
+import pytest
 from uvloop import EventLoopPolicy, new_event_loop
 from wazuh import Wazuh
 from wazuh.core import exception
@@ -387,7 +387,8 @@ def test_handler_next_counter():
     assert handler.next_counter() == (handler.counter + 1) % (2 ** 32) - 1
 
 
-def test_handler_msg_build_ok():
+@patch('struct.pack', return_value=b"v1")
+def test_handler_msg_build_ok(pack_mock):
     """Test if a message is being built with the right header and payload."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
@@ -396,9 +397,13 @@ def test_handler_msg_build_ok():
     assert isinstance(handler.msg_build(b"command", 12345, b"data")[0], bytearray)
 
     # Test first else
-    handler.request_chunk = 100
-    assert isinstance(handler.msg_build(b"command", 12345, b"data"), list)
+    handler.header_len = 1
+    handler.request_chunk = 20
+
+    assert isinstance(handler.msg_build(b"command", 12345, b"000000000000000000000"), list)
     assert isinstance(handler.msg_build(b"command", 12345, b"data")[0], bytearray)
+
+    assert pack_mock.call_count == 13
 
 
 def test_handler_msg_build_ko():
@@ -476,7 +481,6 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, wait_f
     wait_for_mock.side_effect = asyncio.TimeoutError
     assert (await handler.send_request(b'some bytes', b'some data') == b'Error sending request: '
                                                                        b'timeout expired.')
-    print(handler.box)
     assert handler.box[next_counter_mock.return_value] is None
 
     msg_build_mock.assert_called_with(b'some bytes', 30, b'some data')
@@ -499,15 +503,32 @@ async def test_handler_send_request_ko():
 
 
 @pytest.mark.asyncio
-@patch('builtins.open')
-@patch('hashlib.sha256')
 @patch('os.path.exists', return_value=True)
+@patch('builtins.open', mock_open(read_data=b"chunks"))
 @patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data")
-async def test_handler_send_file_ok(send_request_mock, exists_mock, sha256_mock, open_mock):
+async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
     """Test if a file is being correctly sent to peer."""
+
+    class MockHash:
+        """Mock class."""
+
+        def update(self, chunk=""):
+            """Auxiliary method."""
+            pass
+
+        @staticmethod
+        def digest():
+            """Auxiliary method."""
+            return b""
+
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert (await handler.send_file("some_file.txt") == b'File sent')
+    with patch('hashlib.sha256', return_value=MockHash()):
+        assert (await handler.send_file("some_file.txt") == b'File sent')
+        send_request_mock.assert_has_calls([call(command=b'file_upd', data=b'some_file.txt chunks'),
+                                            call(command=b'file_end', data=b'some_file.txt ')])
+        assert send_request_mock.call_count == 3
+        os_path_exists_mock.assert_called_once_with('some_file.txt')
 
 
 @pytest.mark.asyncio
@@ -1083,10 +1104,10 @@ def test_wazuh_json_encoder_default():
 
     with patch('builtins.callable', return_value=False):
         # Test second condition
-        assert isinstance(wazuh_encoder.default(exception.WazuhException(3011)), dict)
-        assert wazuh_encoder.default(exception.WazuhException(3011)) == \
+        assert isinstance(wazuh_encoder.default(exception.WazuhException(3012)), dict)
+        assert wazuh_encoder.default(exception.WazuhException(3012)) == \
                {'__wazuh_exception__': {'__class__': 'WazuhException',
-                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3011,
+                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3012,
                                                        'extra_message': None, 'extra_remediation': None,
                                                        'cmd_error': False, 'dapi_errors': {}}}}
 
