@@ -16,8 +16,16 @@
  * The Catalog class is used to manage the catalog and will be in charge of managing
  * the load, update and storage of all the assets needed by the engine.
  * It should support multiple storage systems and should make versioning easy to manage.
- * ----------TODO Singleton
- * The Catalog class is a singleton. (@warning not implemented yet)
+ *
+ * @note Catalog class is a singleton. Not implemented yet (#TODO this)
+ * @note The Catalog class is thread-safe. Not implemented yet (#TODO this)
+ *
+ * @warning Each asset type should have a schema associated to it.
+ *  - Decoder schema: "wazuh-decoders" (i.e. in diskDriver /schemas/wazuh-decoders.json)
+ *  - Rule schema: "wazuh-rules" (i.e. in diskDriver /schemas/wazuh-rules.json)
+ *  - Output schema: "wazuh-outputs" (i.e. in diskDriver /schemas/wazuh-outputs.json)
+ *  - Filter schema: "wazuh-filters" (i.e. in diskDriver /schemas/wazuh-filters.json)
+ *  - Environment schema: "wazuh-environments" (i.e. in diskDriver /schemas/wazuh-environments.json)
  */
 class Catalog
 {
@@ -43,8 +51,8 @@ class Catalog
             {AssetType::Rule, "wazuh-rules"},
             {AssetType::Output, "wazuh-outputs"},
             {AssetType::Filter, "wazuh-filters"},
-            {AssetType::Schemas, ""},
-            {AssetType::Environments, ""}
+            {AssetType::Environments, "wazuh-environments"},
+            {AssetType::Schemas, ""}
         };
 
     public:
