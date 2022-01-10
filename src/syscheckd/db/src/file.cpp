@@ -77,20 +77,24 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
             nlohmann::json entry_from_path;
             FIMDBHelper::getDBItem<FIMDB>(entry_from_path, query);
 
-            if (entry_from_path.empty())
+            if (entry_from_path.size() == 1)
             {
-                FIMDB::getInstance().logFunction(LOG_ERROR, "No entry found with that path");
+                const auto file { std::make_unique<FileItem>(entry_from_path.front()) };
+                callback.callback(file->toFimEntry(), callback.context);
+                retVal = FIMDB_OK;
             }
             else
             {
-                const auto file { std::make_unique<FileItem>(entry_from_path[0]) };
-                callback.callback(file->toFimEntry(), callback.context);
-                retVal = FIMDB_OK;
+                throw std::runtime_error("There are more or 0 rows");
             }
         }
         catch (const DbSync::dbsync_error& err)
         {
             FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        }
+        catch (const std::exception& ex)
+        {
+            FIMDB::getInstance().logFunction(LOG_ERROR, ex.what());
         }
     }
 

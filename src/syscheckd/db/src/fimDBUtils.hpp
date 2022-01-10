@@ -59,7 +59,7 @@ namespace FimDBUtils
 
             for (const auto& item : resultQuery)
             {
-                paths.push_back(item["path"]);
+                paths.push_back(item.at("path"));
             }
         }
         catch (const DbSync::dbsync_error& err)
@@ -96,7 +96,7 @@ namespace FimDBUtils
 
             for (const auto& item : resultQuery)
             {
-                paths.push_back(item["path"]);
+                paths.push_back(item.at("path"));
             }
 
         }
