@@ -4,7 +4,7 @@
 
 
 // Test: An asset that fails the check against the schema
-TEST(Catalog, get_asset_invalid_schema)
+TEST(getAsset, get_asset_invalid_schema)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();
@@ -26,7 +26,7 @@ TEST(Catalog, get_asset_invalid_schema)
 }
 
 // Test: Get a corrupted JSON schema
-TEST(Catalog, get_asset_corrupted_json_schema)
+TEST(getAsset, get_asset_corrupted_json_schema)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();
@@ -50,7 +50,7 @@ TEST(Catalog, get_asset_corrupted_json_schema)
 }
 
 // Test: Get a corrupted asset (YML Malformed thow an YAML::ParserException)
-TEST(Catalog, get_asset_corrupted)
+TEST(getAsset, get_asset_corrupted)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();
@@ -61,7 +61,7 @@ TEST(Catalog, get_asset_corrupted)
 }
 
 // Test: Get asset for which there is no schema
-TEST(Catalog, get_asset_schema_not_found)
+TEST(getAsset, get_asset_schema_not_found)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();
@@ -84,7 +84,7 @@ TEST(Catalog, get_asset_schema_not_found)
 }
 
 // Test: Get asset with does not exist
-TEST(Catalog, get_asset_not_found)
+TEST(getAsset, get_asset_not_found)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();
@@ -97,7 +97,7 @@ TEST(Catalog, get_asset_not_found)
 }
 
 // Test: Get a valid asset
-TEST(Catalog, get_asset_valid)
+TEST(getAsset, get_asset_valid)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();

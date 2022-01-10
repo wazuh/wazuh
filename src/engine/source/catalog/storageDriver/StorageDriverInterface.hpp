@@ -29,9 +29,9 @@ class StorageDriverInterface
          * @brief Gets a list of available assets of a specific type
          *
          * @param type The asset type
-         * @return std::vector<std::string_view> List of assets
+         * @return std::vector<std::string> List of assets
          */
-        virtual std::vector<std::string_view> getAssetList(const AssetType type) = 0;
+        virtual std::vector<std::string> getAssetList(const AssetType type) = 0;
 
         /**
          * @brief Get the Asset object
