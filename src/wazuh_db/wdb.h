@@ -2374,7 +2374,7 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
 /**
  * @brief Method to parse the "wazuhdb getconfig" commands.
  *
- * @param config_source Where the config will be read from: "internal" or "wdb"
+ * @param config_source Where the config will be read from: "internal" or "wdb" section
  * @return cJSON* Returns a cJSON object with the configuration requested or NULL on error.
  */
 cJSON* wdb_parse_get_config(char* config_source);
