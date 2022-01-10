@@ -399,6 +399,18 @@ void free_strarray(char ** array) {
     }
 }
 
+// Get the size of a string array
+size_t strarray_size(char ** array) {
+    size_t size = 0;
+
+    if (array) {
+        while (array[size]) {
+            size++;
+        }
+    }
+    return size;
+}
+
 /* Returns 0 if str is found */
 int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
     DIR *dp;
