@@ -4224,11 +4224,12 @@ void test_wdb_global_insert_agent_belong_transaction_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int id_group = 2;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4239,12 +4240,13 @@ void test_wdb_global_insert_agent_belong_cache_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int id_group = 2;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4255,6 +4257,7 @@ void test_wdb_global_insert_agent_belong_bind1_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int id_group = 2;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4265,7 +4268,7 @@ void test_wdb_global_insert_agent_belong_bind1_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4276,6 +4279,7 @@ void test_wdb_global_insert_agent_belong_bind2_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int id_group = 2;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4290,7 +4294,7 @@ void test_wdb_global_insert_agent_belong_bind2_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4301,6 +4305,7 @@ void test_wdb_global_insert_agent_belong_step_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int id_group = 2;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4316,7 +4321,7 @@ void test_wdb_global_insert_agent_belong_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -4327,6 +4332,7 @@ void test_wdb_global_insert_agent_belong_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     int id_group = 2;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -4339,7 +4345,7 @@ void test_wdb_global_insert_agent_belong_success(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent);
+    result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
     assert_int_equal(result, OS_SUCCESS);
 }

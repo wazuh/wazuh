@@ -47,7 +47,7 @@ void test_lookfor_agent_group_null_groups(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
 
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
+    int ret = lookfor_agent_group(agent_id, msg, &r_group, NULL);
     assert_int_equal(OS_SUCCESS, ret);
     assert_string_equal(r_group, "default");
 
@@ -83,7 +83,7 @@ void test_lookfor_agent_group_set_default_group(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
 
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
+    int ret = lookfor_agent_group(agent_id, msg, &r_group, NULL);
     assert_int_equal(OS_SUCCESS, ret);
     assert_string_equal(r_group, "default");
 
@@ -113,7 +113,7 @@ void test_lookfor_agent_group_get_group_from_files_yml(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'group_from_files'");
 
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
+    int ret = lookfor_agent_group(agent_id, msg, &r_group, NULL);
     assert_int_equal(OS_SUCCESS, ret);
     assert_string_equal(r_group, agt_group->group);
 
@@ -145,7 +145,7 @@ void test_lookfor_agent_group_msg_without_enter(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '002' (strchr \\n)");
 
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
+    int ret = lookfor_agent_group(agent_id, msg, &r_group, NULL);
     assert_int_equal(OS_INVALID, ret);
     assert_null(r_group);
 }
@@ -173,7 +173,7 @@ void test_lookfor_agent_group_bad_message(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '003' (strchr ' ')");
 
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
+    int ret = lookfor_agent_group(agent_id, msg, &r_group, NULL);
     assert_int_equal(OS_INVALID, ret);
     assert_null(r_group);
 }
@@ -201,7 +201,7 @@ void test_lookfor_agent_group_message_without_second_enter(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '004' (strchr \\n)");
 
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
+    int ret = lookfor_agent_group(agent_id, msg, &r_group, NULL);
     assert_int_equal(OS_INVALID, ret);
     assert_null(r_group);
 }
