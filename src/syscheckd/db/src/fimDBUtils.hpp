@@ -89,14 +89,14 @@ namespace FimDBUtils
 
         try
         {
-            const auto filter { std::string("WHERE path LIKE") + std::string(pattern) };
+            const auto filter { "WHERE path LIKE '" + std::string(pattern) + "'" };
             const auto fileColumnList = R"({"column_list":["path"]})"_json;
             const auto queryFromPattern = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<T>(resultQuery, queryFromPattern);
 
-            for (const auto& item : resultQuery["path"].items())
+            for (const auto& item : resultQuery)
             {
-                paths.push_back(item.value());
+                paths.push_back(item["path"]);
             }
 
         }
