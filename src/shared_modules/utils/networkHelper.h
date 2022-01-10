@@ -17,8 +17,6 @@
 #include <memory>
 #include <netdb.h>
 #include "makeUnique.h"
-#include <sstream>
-#include <iomanip>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -79,24 +77,6 @@ namespace Utils
                 }
 
                 return broadcastAddr;
-            }
-
-            static std::string formatMACAddress(const struct sockaddr& hwAddr)
-            {
-                std::stringstream ss;
-                ss << std::hex << std::setfill('0');
-
-                for (int i = 0; i < 6; i++)
-                {
-                    ss << std::setw(2) << (int) hwAddr.sa_data[i];
-
-                    if (i < 5)
-                    {
-                        ss << ":";
-                    }
-                }
-
-                return ss.str();
             }
     };
 }
