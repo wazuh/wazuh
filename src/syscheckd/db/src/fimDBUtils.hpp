@@ -57,9 +57,9 @@ namespace FimDBUtils
             const auto query = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
             FIMDBHelper::getDBItem<T>(resultQuery, query);
 
-            for (const auto& item : resultQuery["path"].items())
+            for (const auto& item : resultQuery)
             {
-                paths.push_back(item.value());
+                paths.push_back(item["path"]);
             }
         }
         catch (const DbSync::dbsync_error& err)
