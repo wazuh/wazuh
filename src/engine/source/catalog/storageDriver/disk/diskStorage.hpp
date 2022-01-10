@@ -39,7 +39,16 @@ class diskStorage : public StorageDriverInterface
         ~diskStorage() = default;
 
         // Overridden methods must be documented in the interface
-        std::vector<std::string_view> getAssetList(const AssetType type) override;
+
+        /**
+         * @copydoc StorageDriverInterface::getAssetList
+         * @throws std::filesystem::filesystem_error whens the file cannot be read
+        */
+        std::vector<std::string> getAssetList(const AssetType type) override;
+        /**
+         * @copydoc StorageDriverInterface::getAsset
+         * @throws std::filesystem::filesystem_error whens the file cannot be read
+         */
         std::string getAsset(const AssetType type, std::string_view assetName) override;
 
 };

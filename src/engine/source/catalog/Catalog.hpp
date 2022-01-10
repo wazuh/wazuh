@@ -86,9 +86,9 @@ class Catalog
          * @brief Get the list of assets of a given type.
          *
          * @param type The type of the asset. Only decoder, rules, filter and schema are supported.
-         * @return std::vector<std::string_view> The list of assets.
+         * @return std::vector<std::string> The list of assets.
          * @throws filesystem::filesystem_error if the storage driver fails to get the asset. Only if driver is diskDriver.
          */
-        std::vector<std::string_view> getAssetList(const AssetType type);
+        std::vector<std::string> getAssetList(const AssetType type);
 };
 #endif // __CATALOG_H__
