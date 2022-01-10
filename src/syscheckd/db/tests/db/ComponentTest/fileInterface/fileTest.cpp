@@ -69,7 +69,7 @@ void FileTest::SetUp()
                                                   FIM_DB_TEST,
                                                   CREATE_FILE_DB_STATEMENT);
     auto rsyncHandler = std::make_shared<RemoteSync>();
-    FIMDBHelper::initDB<FIMDB>(300, 10, nullptr, nullptr, dbsyncHandler, rsyncHandler);
+    FIMDBHelper::initDB<FIMDB>(300, nullptr, nullptr, dbsyncHandler, rsyncHandler, 10);
 }
 
 void FileTest::TearDown()
