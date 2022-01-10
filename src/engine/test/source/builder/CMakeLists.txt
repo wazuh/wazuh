@@ -81,6 +81,12 @@ link_libraries(
 ####################################################################################################
 # Builder targets
 ####################################################################################################
+# Operation WIP
+add_executable(operation_test ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp ${SOURCES})
+target_include_directories(operation_test PUBLIC ${BUILDER_TEST_SOURCE_DIR})
+gtest_discover_tests(operation_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp)
+
 # Builder test
 add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp ${SOURCES})
 gtest_discover_tests(builder_test)
@@ -99,9 +105,9 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp)
 ####################################################################################################
 # Engines targets
 ####################################################################################################
-add_executable(decoders_test ${BUILDER_ENGINES_TEST_SOURCE_DIR}/decoders_test.cpp ${SOURCES})
-gtest_discover_tests(decoders_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_ENGINES_TEST_SOURCE_DIR}/decoders_test.cpp)
+# add_executable(decoders_test ${BUILDER_ENGINES_TEST_SOURCE_DIR}/decoders_test.cpp ${SOURCES})
+# gtest_discover_tests(decoders_test)
+# list(APPEND ALL_BUILDER_TESTS ${BUILDER_ENGINES_TEST_SOURCE_DIR}/decoders_test.cpp)
 
 ####################################################################################################
 # Ensemble targets
