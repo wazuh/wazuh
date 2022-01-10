@@ -72,18 +72,18 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NOD
     for (int i = 0; chld_node[i]; i++) {
         if (!chld_node[i]->element) {
             merror(XML_ELEMNULL);
-            os_free(chld_node);
+            OS_ClearNode(chld_node);
             return OS_INVALID;
         } else if (!chld_node[i]->content) {
             merror(XML_VALUENULL, chld_node[i]->element);
-            os_free(chld_node);
+            OS_ClearNode(chld_node);
             return OS_INVALID;
         } else if (!strcmp(chld_node[i]->element, xml_enabled)) {
             short tmp_bool = eval_bool(chld_node[i]->content);
 
             if (tmp_bool < 0) {
                 merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                os_free(chld_node);
+                OS_ClearNode(chld_node);
                 return OS_INVALID;
             }
 
@@ -95,13 +95,13 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NOD
                 wconfig.wdb_backup_settings[BACKUP_NODE]->interval = time_value;
             } else {
                 merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                os_free(chld_node);
+                OS_ClearNode(chld_node);
                 return OS_INVALID;
             }
         } else if (!strcmp(chld_node[i]->element, xml_max_files)) {
             if (!OS_StrIsNum(chld_node[i]->content)) {
                 merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                os_free(chld_node);
+                OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
 
@@ -109,17 +109,17 @@ int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NOD
 
             if (wconfig.wdb_backup_settings[BACKUP_NODE]->max_files <= 0) {
                 merror(XML_VALUEERR, chld_node[i]->element, chld_node[i]->content);
-                os_free(chld_node);
+                OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
         } else {
             merror(XML_INVELEM, chld_node[i]->element);
-            os_free(chld_node);
+            OS_ClearNode(chld_node);
             return OS_INVALID;
         }
     }
 
-    os_free(chld_node);
+    OS_ClearNode(chld_node);
     return OS_SUCCESS;
 }
 
@@ -127,7 +127,7 @@ void wdb_init_conf() {
     os_calloc(WDB_LAST_BACKUP, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings);
 
     for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        os_calloc(1, sizeof(wdb_backup_settings_node*), wconfig.wdb_backup_settings[i]);
+        os_calloc(1, sizeof(wdb_backup_settings_node), wconfig.wdb_backup_settings[i]);
         wconfig.wdb_backup_settings[i]->enabled = true;
         wconfig.wdb_backup_settings[i]->interval = 86400;
         wconfig.wdb_backup_settings[i]->max_files = 3;
