@@ -38,54 +38,50 @@ extern "C" {
 /**
  * @brief Create the statement string to create the dbsync schema.
  *
- * @return char* Contains the dbsync's schema for FIM db.
+ * @param isWindows True if the system is windows.
+ *
+ * @return std::string Contains the dbsync's schema for FIM db.
  */
-static char* CreateStatement()
+std::string CreateStatement(const bool isWindows)
 {
 
     std::string ret = CREATE_FILE_DB_STATEMENT;
-#ifdef WIN32
-    ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
-    ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
-#endif
-    char* statement_cstr = new char[ret.length() + 1];
 
-    std::strcpy(statement_cstr, ret.c_str());
-    return statement_cstr;
+    if(isWindows)
+    {
+        ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
+        ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
+    }
+    return ret;
 }
 
-#ifndef WIN32
+
 void fim_db_init(int storage,
                  int sync_interval,
-                 int file_limit,
                  fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback)
-#else
-void fim_db_init(int storage,
-                 int sync_interval,
+                 logging_callback_t log_callback,
                  int file_limit,
                  int value_limit,
-                 fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback)
-#endif
+                 bool is_windows)
 {
     try
     {
-        const std::unique_ptr<char[]> createQuery
-        {
-            CreateStatement()
-        };
-
         auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
-        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, createQuery.get());
+        auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT,
+                                                      DbEngineType::SQLITE3,
+                                                      path,
+                                                      CreateStatement(is_windows));
+
         auto rsyncHandler = std::make_shared<RemoteSync>();
 
-#ifndef WIN32
-        FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, sync_callback, log_callback, dbsyncHandler, rsyncHandler);
-#else
-        FIMDBHelper::initDB<FIMDB>(sync_interval, file_limit, value_limit, sync_callback, log_callback, dbsyncHandler,
-                                   rsyncHandler);
-#endif
+        FIMDBHelper::initDB<FIMDB>(sync_interval,
+                                   sync_callback,
+                                   log_callback,
+                                   dbsyncHandler,
+                                   rsyncHandler,
+                                   file_limit,
+                                   value_limit,
+                                   is_windows);
     }
     catch (const DbSync::dbsync_error& ex)
     {

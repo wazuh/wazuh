@@ -13,22 +13,20 @@
 
 void FIMDB::setFileLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("file_entry", m_max_rows_file);
+    m_dbsyncHandler->setTableMaxRow("file_entry", m_fileLimit);
 }
 
-#ifdef WIN32
 void FIMDB::setRegistryLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("registry_key", m_max_rows_registry);
+    m_dbsyncHandler->setTableMaxRow("registry_key", m_registryLimit);
 
 }
 
 void FIMDB::setValueLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("registry_data", m_max_rows_registry);
+    m_dbsyncHandler->setTableMaxRow("registry_data", m_registryLimit);
 
 }
-#endif
 
 void FIMDB::registerRSync()
 {
@@ -36,21 +34,28 @@ void FIMDB::registerRSync()
                                    m_dbsyncHandler->handle(),
                                    nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
                                    m_syncFileMessageFunction);
-#ifdef WIN32
-    m_rsyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
-                                   m_dbsyncHandler->handle(),
-                                   nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                   m_syncRegistryMessageFunction);
-#endif
+    if (m_isWindows)
+    {
+        m_rsyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
+                                    m_dbsyncHandler->handle(),
+                                    nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
+                                    m_syncRegistryMessageFunction);
+    }
 }
 
 void FIMDB::sync()
 {
     m_loggingFunction(LOG_INFO, "Executing FIM sync.");
-    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), m_syncFileMessageFunction);
-#ifdef WIN32
-    m_rsyncHandler->startSync(m_dbsyncHandler->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), m_syncRegistryMessageFunction);
-#endif
+    m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
+                              nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
+                              m_syncFileMessageFunction);
+    if (m_isWindows)
+    {
+        m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
+                                  nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
+                                  m_syncRegistryMessageFunction);
+    }
+
     m_loggingFunction(LOG_INFO, "Finished FIM sync.");
 }
 
@@ -59,7 +64,7 @@ void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
     m_loggingFunction(LOG_INFO, "FIM sync module started.");
     sync();
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_interval_synchronization}, [&]()
+    while (!m_cv.wait_for(lock, std::chrono::seconds{m_syncInterval}, [&]()
 {
     return m_stopping;
 }))
@@ -69,22 +74,14 @@ void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
     m_rsyncHandler = nullptr;
 }
 
-#ifdef WIN32
-void FIMDB::init(unsigned int interval_synchronization,
-                 unsigned int max_rows_file,
-                 unsigned int max_rows_registry,
-                 fim_sync_callback_t callbackSync,
-                 logging_callback_t callbackLog,
-                 std::shared_ptr<DBSync> dbsyncHandler,
-                 std::shared_ptr<RemoteSync> rsyncHanlder)
-#else
-void FIMDB::init(unsigned int interval_synchronization,
-                 unsigned int max_rows_file,
-                 fim_sync_callback_t callbackSync,
-                 logging_callback_t callbackLog,
-                 std::shared_ptr<DBSync> dbsyncHandler,
-                 std::shared_ptr<RemoteSync> rsyncHanlder)
-#endif
+void FIMDB::init(unsigned int syncInterval,
+                  fim_sync_callback_t callbackSync,
+                  logging_callback_t callbackLog,
+                  std::shared_ptr<DBSync> dbsyncHandler,
+                  std::shared_ptr<RemoteSync> rsyncHandler,
+                  unsigned int fileLimit,
+                  unsigned int registryLimit,
+                  bool isWindows)
 {
     // LCOV_EXCL_START
     std::function<void(const std::string&)> callbackSyncFileWrapper
@@ -112,24 +109,25 @@ void FIMDB::init(unsigned int interval_synchronization,
         }
     };
 
-    m_interval_synchronization = interval_synchronization;
-    m_max_rows_file = max_rows_file;
-#ifdef WIN32
-    m_max_rows_registry = max_rows_registry;
-#endif
+    m_syncInterval = syncInterval;
+    m_fileLimit = fileLimit;
+    m_registryLimit = registryLimit;
+
+    m_isWindows = isWindows;
     m_dbsyncHandler = dbsyncHandler;
-    m_rsyncHandler = rsyncHanlder;
+    m_rsyncHandler = rsyncHandler;
     m_syncFileMessageFunction = callbackSyncFileWrapper;
     m_syncRegistryMessageFunction = callbackSyncRegistryWrapper;
     m_loggingFunction = callbackLogWrapper;
     m_stopping = false;
 
     setFileLimit();
-#ifdef WIN32
-    setRegistryLimit();
-    setValueLimit();
-#endif
 
+    if (m_isWindows)
+    {
+        setRegistryLimit();
+        setValueLimit();
+    }
 }
 
 void FIMDB::removeItem(const nlohmann::json& item)

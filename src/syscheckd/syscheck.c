@@ -78,11 +78,21 @@ void read_internal(int debug_level)
 void fim_initialize() {
     // Create store data
 #ifndef WIN32
-    fim_db_init(syscheck.database_store, syscheck.sync_interval, syscheck.file_limit,
-                fim_send_sync_state, loggingFunction);
+    fim_db_init(syscheck.database_store,
+                syscheck.sync_interval,
+                fim_send_sync_state,
+                loggingFunction,
+                syscheck.file_limit,
+                0,
+                false);
 #else
-    fim_db_init(syscheck.database_store, syscheck.sync_interval, syscheck.file_limit,
-                syscheck.reg_entry_limit, fim_send_sync_state, loggingFunction);
+    fim_db_init(syscheck.database_store,
+                syscheck.sync_interval,
+                fim_send_sync_state,
+                loggingFunction,
+                syscheck.file_limit,
+                syscheck.reg_entry_limit,
+                true);
 #endif
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
