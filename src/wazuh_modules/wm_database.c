@@ -286,38 +286,6 @@ void wm_check_agents() {
     }
 }
 
-int wm_truncate_groups_file(const char *id, char *groups) {
-    char *temp_groups;
-    os_strdup(groups, temp_groups);
-    char *group;
-    int groups_number = 0;
-    int multigroup_length = 0;
-    bool groups_number_exceeded = true;
-
-    for(groups_number = 0; groups_number < MAX_GROUPS_PER_MULTIGROUP; ++groups_number) {
-        if (group = strrchr(temp_groups, MULTIGROUP_SEPARATOR), group) {
-            multigroup_length += strlen(group);
-            temp_groups[(strlen(temp_groups)-strlen(group))] = '\0';
-        } else {
-            multigroup_length += strlen(temp_groups) + 1;
-            ++groups_number;
-            groups_number_exceeded = false;
-            break;
-        }
-    }
-
-    if (groups_number_exceeded) {
-        mwarn("Groups file for agent %s will be truncated since it exceeds the permitted maximum group number", id);
-    }
-
-    memmove(groups, groups+(strlen(groups) - multigroup_length + 1), strlen(groups));
-    set_agent_group(id, groups);
-
-    os_free(temp_groups);
-
-    return 0;
-}
-
 // Synchronize agents
 void wm_sync_agents() {
     keystore keys = KEYSTORE_INITIALIZER;
@@ -371,8 +339,6 @@ void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
         if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1, NULL) < 0) {
             *group = 0;
         }
-
-        wm_truncate_groups_file(entry->id, group);
 
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
                              entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, wdb_sock)) {
@@ -604,7 +570,18 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
             *endl = '\0';
         }
 
-        result = wdb_set_agent_groups_csv(id_agent, groups_csv, "override", "synced", "manual", &wdb_wmdb_sock);
+        char** groups_array = w_string_split(groups_csv, ",", 0);
+        size_t groups_array_size = strarray_size(groups_array);
+        char** truncated_groups_array = NULL;
+        if (groups_array_size > MAX_GROUPS_PER_MULTIGROUP) {
+            truncated_groups_array = groups_array + (groups_array_size - MAX_GROUPS_PER_MULTIGROUP);
+        }
+        else {
+            truncated_groups_array = groups_array;
+        }
+        result = wdb_set_agent_groups(id_agent, truncated_groups_array, "override", "synced", "manual", &wdb_wmdb_sock);
+        free_strarray(groups_array);
+
     } else {
         mdebug1("Empty group file '%s'.", group_file_path);
         result = OS_SUCCESS;

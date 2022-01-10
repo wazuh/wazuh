@@ -1063,9 +1063,10 @@ int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
 }
 
 int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, char* source, int *sock) {
-    char** groups_array = NULL;
-    wstr_split(groups_csv, ",", NULL, 1, &groups_array);
-    return wdb_set_agent_groups(id, groups_array, mode, sync_status, source, sock);
+    char** groups_array = w_string_split(groups_csv, ",", 0);
+    int ret = wdb_set_agent_groups(id, groups_array, mode, sync_status, source, sock);
+    free_strarray(groups_array);
+    return ret;
 }
 
 int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, char* source, int *sock) {
