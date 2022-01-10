@@ -10,6 +10,30 @@
  * #TODO Implement thread-safe mechanism
  * @warning this class is not thread-safe
  */
+
+/**
+ * @brief Disk storage driver
+ *
+ * This class is a disk storage driver.
+ * It is used to manage assets on disk.
+ *
+ * Directory structure is:
+ * - /decoders
+ *  - <decoder_name>.yml
+ * - /rules
+ *  - <rule_name>.yml
+ * - /outputs
+ *  - <output_name>.yml
+ * - /filters
+ *  - <filter_name>.yml
+ * - /environments
+ *  - <environment_name>.yml
+ * - /schemas
+ *  - <schema_name>.json
+ *
+ * @warning This class is not thread-safe
+ * @see StorageDriverInterface
+ */
 class diskStorage : public StorageDriverInterface
 {
 

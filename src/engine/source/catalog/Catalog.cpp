@@ -43,6 +43,7 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
         case AssetType::Rule:
         case AssetType::Output:
         case AssetType::Filter:
+        case AssetType::Environments:
 
             assetStr = storageDriver->getAsset(type, assetName);
 
@@ -61,9 +62,7 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
             break;
 
         case AssetType::Schemas:
-
         // #TODO add schemas
-        case AssetType::Environments:
         default:
             throw std::runtime_error("Not implemented");
             break;
