@@ -1485,3 +1485,47 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
 
     return wdb->stmt[statement_index];
 }
+
+cJSON* wdb_get_internal_config() {
+    cJSON* wazuh_db_config = cJSON_CreateObject();
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(wazuh_db_config, "commit_time_max", wconfig.commit_time_max);
+    cJSON_AddNumberToObject(wazuh_db_config, "commit_time_min", wconfig.commit_time_min);
+    cJSON_AddNumberToObject(wazuh_db_config, "open_db_limit", wconfig.open_db_limit);
+    cJSON_AddNumberToObject(wazuh_db_config, "sock_queue_size", wconfig.sock_queue_size);
+    cJSON_AddNumberToObject(wazuh_db_config, "worker_pool_size", wconfig.worker_pool_size);
+
+    cJSON_AddItemToObject(root, "wazuh_db", wazuh_db_config);
+
+    return root;
+}
+
+cJSON* wdb_get_config() {
+    cJSON *root = cJSON_CreateObject();
+    cJSON* wdb_config = cJSON_CreateObject();
+    cJSON* j_wdb_backup_settings_nodes = cJSON_CreateArray();
+
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        cJSON* j_wdb_backup_settings_node = cJSON_CreateObject();
+
+        switch (i) {
+            case WDB_GLOBAL_BACKUP:
+                cJSON_AddStringToObject(j_wdb_backup_settings_node, "node_name", "global");
+                break;
+            default:
+                break;
+        }
+
+        cJSON_AddBoolToObject(j_wdb_backup_settings_node, "enabled", wconfig.wdb_backup_settings[i]->enabled);
+        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "interval", wconfig.wdb_backup_settings[i]->interval);
+        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "max_files", wconfig.wdb_backup_settings[i]->max_files);
+
+        cJSON_AddItemToArray(j_wdb_backup_settings_nodes, j_wdb_backup_settings_node);
+    }
+
+    cJSON_AddItemToObject(wdb_config, "backup_settings_nodes", j_wdb_backup_settings_nodes);
+    cJSON_AddItemToObject(root, "wdb", wdb_config);
+
+    return root;
+}
