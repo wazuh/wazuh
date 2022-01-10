@@ -693,7 +693,6 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
         }
         result = wdb_set_agent_groups(id_agent, truncated_groups_array, "override", "synced", &wdb_wmdb_sock);
         free_strarray(groups_array);
-
     } else {
         mdebug1("Empty group file '%s'.", group_file_path);
         result = OS_SUCCESS;
