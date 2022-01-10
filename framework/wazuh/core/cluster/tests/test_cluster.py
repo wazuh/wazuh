@@ -6,9 +6,10 @@ import io
 import sys
 import zipfile
 from contextvars import ContextVar
+import os
 from datetime import datetime
 from time import time
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch, call
 
 import pytest
 
@@ -67,15 +68,6 @@ custom_incomplete_configuration = {
 }
 
 
-def test_get_localhost_ips():
-    """Check the correct output from the get_localhost_ips function."""
-    with patch("wazuh.core.cluster.cluster.check_output", return_value=b"172.19.0.1 172.17.0.1 172.18.0.1") as mock_output:
-        result = cluster.get_localhost_ips()
-        mock_output.assert_called_with(['hostname', '--all-ip-addresses'])
-        assert isinstance(result, set)
-        assert result == {"172.19.0.1", "172.17.0.1"}
-
-
 @pytest.mark.parametrize('read_config, message', [
     ({'cluster': {'key': ''}}, "Unspecified key"),
     ({'cluster': {'key': 'a' * 15}}, "Key must be"),
@@ -102,21 +94,6 @@ def test_check_cluster_config_ko(read_config, message):
             cluster.check_cluster_config(configuration)
 
 
-def test_get_cluster_items_master_intervals():
-    """Check the correct output of the get_cluster_items_master_intervals function."""
-    assert isinstance(cluster.get_cluster_items_master_intervals(), dict)
-
-
-def test_get_cluster_items_communication_intervals():
-    """Check the correct output of the get_cluster_items communication_intervals function."""
-    assert isinstance(cluster.get_cluster_items_communication_intervals(), dict)
-
-
-def test_get_cluster_items_worker_intervals():
-    """Check the correct output of the get_cluster_items_worker_intervals function."""
-    assert isinstance(cluster.get_cluster_items_worker_intervals(), dict)
-
-
 def test_get_node():
     """Check the correct output of the get_node function."""
     test_dict = {"node_name": "master", "name": "master",
@@ -135,59 +112,102 @@ def test_check_cluster_status():
     assert isinstance(cluster.check_cluster_status(), bool)
 
 
-@patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
-       ContextVar('cluster_integrity_mtime', default={"/foo/bar": {"mod_time": 45}}))
+@patch('os.path.getmtime', return_value=45)
+@patch('wazuh.core.cluster.cluster.md5', return_value="hash")
+@patch("wazuh.core.cluster.cluster.path.join", return_value="/mock/foo/bar")
 @patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ('spam', 'eggs', '.merged'))])
-@patch('os.path.join', return_value='/foo/bar')
-@patch('wazuh.core.cluster.cluster.md5', return_value="some hash")
-def test_walk_dir(mock_md5, mock_path_join, mock_walk):
+def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
     """Check the different outputs of the walk_files function."""
 
-    with patch('os.path.getmtime', return_value=45):
-        walk_dir = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-        assert isinstance(walk_dir, dict)
-        assert walk_dir == {"/foo/bar": {"mod_time": 45}}
+    all_mocks = [walk_mock, path_join_mock, md5_mock, getmtime_mock]
 
-    with patch('os.path.getmtime', return_value=35):
-        # Check that the output is a dictionary and also has the key "md5"
-        walk_md5 = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-        assert isinstance(walk_md5, dict)
-        assert "md5" in walk_md5["/foo/bar"].keys()
-        assert walk_md5["/foo/bar"]["md5"] == "some hash"
+    def reset_mocks(mocks):
+        """Auxiliary function to reset the necessary mocks."""
+        for mock in mocks:
+            mock.reset_mock()
 
-        # Check that the output is a dictionary and does not have the key "md5"
-        walk_no_md5 = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", False)
-        assert isinstance(walk_no_md5, dict)
-        assert "md5" not in walk_no_md5["/foo/bar"].keys()
+    # Check the first if and nested else
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=['ar.conf'],
+                            excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == {}
+    walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
+    path_join_mock.assert_called_once_with(common.wazuh_path, '/foo/bar')
+    md5_mock.assert_not_called()
+    getmtime_mock.assert_not_called()
 
-    with patch('os.path.join', return_value='/foo/bar/testing'):
-        walk_no_recursive = cluster.walk_dir("/foo/bar", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
-        assert isinstance(walk_no_recursive, dict)
-        assert len(walk_no_recursive.keys()) == 0
+    reset_mocks(all_mocks)
+
+    # Check nested if
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
+                            excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
+                            previous_status={path_join_mock.return_value: {'mod_time': 45}}) == {
+               path_join_mock.return_value: {'mod_time': 45}}
+
+    walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
+    path_join_mock.assert_has_calls([call(common.wazuh_path, '/foo/bar'),
+                                     call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
+                                     call('/mock/foo/bar', '.merged'),
+                                     call('/foo/bar', '.merged')], any_order=True)
+    md5_mock.assert_not_called()
+    getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
+
+    reset_mocks(all_mocks)
+
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
+                            excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
+                            previous_status={path_join_mock.return_value: {'mod_time': 35}}) == {
+               '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'agent-groups',
+                                 'merge_name': '/mock/foo/bar', 'md5': 'hash'}}
+
+    walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
+    path_join_mock.assert_has_calls([call(common.wazuh_path, '/foo/bar'),
+                                     call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
+                                     call('/mock/foo/bar', '.merged'),
+                                     call('/foo/bar', '.merged')], any_order=True)
+    md5_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
+    getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
+
+    reset_mocks(all_mocks)
+
+    # Check the key error
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
+                            excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
+                            previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == {
+               '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'agent-groups',
+                                 'merge_name': '/mock/foo/bar', 'md5': 'hash'}}
+
+    walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
+    path_join_mock.assert_has_calls([call(common.wazuh_path, '/foo/bar'),
+                                     call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
+                                     call('/mock/foo/bar', '.merged'),
+                                     call('/foo/bar', '.merged')], any_order=True)
+    md5_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
+    getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
 
 
-@patch('wazuh.core.cluster.cluster.common.cluster_integrity_mtime',
-       ContextVar('cluster_integrity_mtime', default={"/foo/bar": {"mod_time_wrong": 45}}))
 @patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ['spam'])])
 @patch('os.path.join', return_value='/foo/bar')
 def test_walk_dir_ko(mock_path_join, mock_walk):
     """Check all errors that can be raised by the function walk_dir."""
     with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
         with patch('os.path.getmtime', side_effect=FileNotFoundError):
-            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+                             {'/foo/bar/': {'mod_time': True}})
             mock_logger.assert_called_with("File spam was deleted in previous iteration: ")
 
     with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_logger:
         with patch('os.path.getmtime', side_effect=PermissionError):
-            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+                             {'/foo/bar/': {'mod_time': True}})
             mock_logger.assert_called_with("Can't read metadata from file spam: ")
 
     with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
         with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
-            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+                             {'/foo/bar/': {'mod_time': True}})
 
     with patch('os.path.getmtime', return_value=35):
-        cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", False)
+        cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+                         {'/foo/bar/': {'mod_time': False}})
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
@@ -278,36 +298,59 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
                 cluster.compress_files("some_name", ["some/path"])
 
 
-async def test_decompress_files_ok():
+@pytest.mark.asyncio
+@patch('wazuh.core.cluster.cluster.decompress_files', return_value="OK")
+async def test_async_decompress_files(decompress_files_mock):
+    """Check if the async wrapper is correctly working."""
+    zip_path = '/foo/bar/'
+    output = await cluster.async_decompress_files(zip_path=zip_path)
+    assert output == decompress_files_mock.return_value
+    decompress_files_mock.assert_called_once_with(zip_path, 'files_metadata.json')
+
+
+@patch('builtins.open')
+@patch('zipfile.ZipFile')
+@patch('os.path.exists', return_value=True)
+@patch('wazuh.core.cluster.cluster.remove')
+@patch('wazuh.core.cluster.cluster.mkdir_with_mode')
+@patch('json.loads', return_value="some string with files")
+async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove_mock, os_path_exists_mock,
+                                   zipfile_mock, open_mock):
     """Check if the decompressing function is working properly."""
+    zip_path = '/foo/bar/'
 
-    with patch('wazuh.core.cluster.cluster.mkdir_with_mode'):
-        with patch('zipfile.ZipFile'):
-            # Mock the 'os-path.exists' in order to enter the condition
-            with patch('os.path.exists', return_value=True):
-                # Mocking the 'open' function as well
-                with patch('builtins.open'):
-                    with patch('json.loads', return_value="some string with files"):
-                        with patch('wazuh.core.cluster.cluster.remove'):
-                            ko_files, zip_dir = await cluster.decompress_files('/some/path')
-                            assert ko_files == "some string with files"
-                            assert zip_dir == "/some/pathdir"
+    ko_files, zip_dir = cluster.decompress_files(zip_path=zip_path)
+    assert ko_files == "some string with files"
+    assert zip_dir == zip_path + "dir"
+    json_loads_mock.assert_called_once()
+    mkdir_with_mode_mock.assert_called_once_with(zip_dir)
+    remove_mock.assert_called_once_with(zip_path)
+    os_path_exists_mock.assert_called_once()
+    zipfile_mock.assert_called_once()
+    open_mock.assert_called_once()
 
 
-async def test_decompress_files_ko():
+@patch('shutil.rmtree')
+@patch('os.path.exists', return_value=True)
+@patch('zipfile.ZipFile', return_value=Exception)
+@patch('wazuh.core.cluster.cluster.mkdir_with_mode')
+async def test_decompress_files_ko(mkdir_with_mode_mock, zipfile_mock, os_path_exists_mock, rmtree_mock):
     """Check if the decompressing function raising the necessary exceptions."""
 
-    with patch('wazuh.core.cluster.cluster.mkdir_with_mode'):
-        with patch('zipfile.ZipFile', return_value=Exception):
-            # Raising the expected Exception
-            with pytest.raises(Exception):
-                with patch('os.path.exists', return_value=True):
-                    with patch('shutil.rmtree'):
-                        assert await cluster.decompress_files('/some/path') == "some string with files", "/some/pathdir"
+    # Raising the expected Exception
+    zip_dir = '/foo/bar/'
+
+    with pytest.raises(Exception):
+        assert cluster.decompress_files(zip_dir) == "some string with files", zip_dir + "dir"
+        mkdir_with_mode_mock.assert_called_once_with(zip_dir)
+        zipfile_mock.assert_called_once()
+        os_path_exists_mock.assert_called_once()
+        rmtree_mock.assert_called_once()
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
-def test_compare_files(mock_get_cluster_items):
+@patch('wazuh.core.cluster.cluster.WazuhDBQueryAgents')
+def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
     """Check the different outputs of the compare_files function."""
     mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
 
@@ -326,13 +369,41 @@ def test_compare_files(mock_get_cluster_items):
 
     # Second condition
     condition = {'some/path5/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
-                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
+                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
+                 os.path.relpath(common.groups_path, common.wazuh_path): {'cluster_item_key': "key",
+                                                                          'md5': 'md5 value'}}
 
     files, count = cluster.compare_files(seq, condition, 'worker1')
     assert count["missing"] == 2
     assert count["extra"] == 0
-    assert count["extra_valid"] == 2
+    assert count["extra_valid"] == 3
     assert count["shared"] == 0
+    wazuh_db_query_mock.assert_called_once_with(select=['id'], limit=None,
+                                                filters={'rbac_ids': ['agent-groups']},
+                                                rbac_negate=False)
+
+
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
+@patch.object(wazuh.core.cluster.cluster.logger, "error")
+@patch('wazuh.core.cluster.cluster.WazuhDBQueryAgents', side_effect=Exception())
+def test_compare_files_ko(wazuh_db_query_mock, logger_mock, mock_get_cluster_items):
+    """Check the different outputs of the compare_files function."""
+    mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
+
+    seq = {'some/path3/': {'cluster_item_key': 'key', 'md5': 'md5 value'},
+           'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
+    condition = {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
+                 os.path.relpath(common.groups_path, common.wazuh_path): {'cluster_item_key': "key",
+                                                                          'md5': 'md5 value'}}
+
+    # Test the exception
+    with pytest.raises(Exception):
+        cluster.compare_files(seq, condition, 'worker1')
+        logger_mock.assert_called_once_with(
+            f"Error getting agent IDs while verifying which extra-valid files are required: ")
+        mock_get_cluster_items.assert_called_once_with()
+        wazuh_db_query_mock.assert_called_once_with()
 
 
 def test_clean_up_ok():
@@ -431,3 +502,33 @@ def test_unmerge_info():
                 mock_logger.assert_called_once_with("Malformed file (not enough values to unpack "
                                                     "(expected 3, got 1)). Parsed line: rs'. "
                                                     "Some files won't be synced")
+
+
+@pytest.mark.asyncio
+async def test_run_in_pool():
+    """Test if the function is running in a process pool if it exists."""
+
+    def mock_callable(*args, **kwargs):
+        """Mock function."""
+        return "Mock callable"
+
+    class LoopMock:
+        """Mock class."""
+
+        @staticmethod
+        def partial(f, *args, **kwargs):
+            """Mock function."""
+            return "callable mock"
+
+        @staticmethod
+        async def run_in_executor(pool, partial=partial):
+            """Mock method."""
+            return None
+
+    # Test the first condition
+    with patch('wazuh.core.cluster.cluster.wait_for', return_value="OK") as wait_for_mock:
+        assert await cluster.run_in_pool(LoopMock, LoopMock, mock_callable, None) == wait_for_mock.return_value
+        wait_for_mock.assert_called_once()
+
+    # Test the second condition
+    assert await cluster.run_in_pool(LoopMock, None, mock_callable, None) == "Mock callable"
