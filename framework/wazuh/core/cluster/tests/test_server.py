@@ -270,6 +270,7 @@ def test_AbstractServer_get_connected_nodes_ko(loop_mock, mock_process_array):
             abstract_server.get_connected_nodes(filter_node="worker")
 
 
+@pytest.mark.asyncio
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
 async def test_AbstractServer_check_clients_keepalive(loop_mock, sleep_mock):
