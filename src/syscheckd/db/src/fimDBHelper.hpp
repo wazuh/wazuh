@@ -16,39 +16,37 @@
 namespace FIMDBHelper
 {
     template<typename T>
-#ifndef WIN32
     /**
     * @brief Init the FIM DB instance.
     *
-    * @param sync_interval Interval when the sync is performed
-    * @param file_limit Max number of files.
-    * @param sync_callback Synchronization callback.
+    * @param syncInterval Interval when the sync is performed
+    * @param syncCallback Synchronization callback.
     * @param logCallback Logging callback.
+    * @param handlerDBSync DBSync handler.
+    * @param handlerRSync RSync handler
+    * @param fileLimit Max number of files.
+    * @param registryLimit Max number of registries.
+    * @param isWindows True if the OS is Windows
     */
-    void initDB(const unsigned int sync_interval, const unsigned int file_limit,
-                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
+    void initDB(const unsigned int syncInterval,
+                fim_sync_callback_t syncCallback,
+                logging_callback_t logCallback,
+                std::shared_ptr<DBSync>handlerDBSync,
+                std::shared_ptr<RemoteSync>handlerRSync,
+                const unsigned int fileLimit,
+                const unsigned int registryLimit = 0,
+                const bool isWindows = false)
     {
-        T::getInstance().init(sync_interval, file_limit, sync_callback, logCallback, handler_DBSync, handler_RSync);
+        T::getInstance().init(syncInterval,
+                              syncCallback,
+                              logCallback,
+                              handlerDBSync,
+                              handlerRSync,
+                              fileLimit,
+                              registryLimit,
+                              isWindows);
     }
-#else
-    /**
-    * @brief Init the FIM DB instance.
-    *
-    * @param sync_interval Interval when the sync is performed
-    * @param file_limit Max number of files.
-    * @param registry_limit Max number of registries.
-    * @param sync_callback Synchronization callback.
-    * @param logCallback Logging callback.
-    */
-    void initDB(const unsigned int sync_interval, const unsigned int file_limit, const unsigned int registry_limit,
-                fim_sync_callback_t sync_callback, logging_callback_t logCallback,
-                std::shared_ptr<DBSync>handler_DBSync, std::shared_ptr<RemoteSync>handler_RSync)
-    {
-        T::getInstance().init(sync_interval, file_limit, registry_limit, sync_callback, logCallback, handler_DBSync,
-                              handler_RSync);
-    }
-#endif
+
 
     /**
     * @brief Delete a row from a table
