@@ -785,7 +785,8 @@ DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
 
 DBSyncTxn::~DBSyncTxn()
 {
-    if (m_shouldBeRemoved) {
+    if (m_shouldBeRemoved)
+    {
         try
         {
             PipelineFactory::instance().destroy(m_txn);
