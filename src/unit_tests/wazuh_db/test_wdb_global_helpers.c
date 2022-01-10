@@ -3218,12 +3218,13 @@ void test_wdb_update_agent_belongs_error_json(void **state)
     int ret = 0;
     int id_group = 1;
     int id_agent = 2;
+    int priority = 0;
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_update_agent_belongs(id_group, id_agent, NULL);
+    ret = wdb_update_agent_belongs(id_group, id_agent, priority, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -3233,6 +3234,7 @@ void test_wdb_update_agent_belongs_error_socket(void **state)
     int ret = 0;
     int id_group = 1;
     int id_agent = 2;
+    int priority = 0;
 
     const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
@@ -3262,7 +3264,7 @@ void test_wdb_update_agent_belongs_error_socket(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent-belong {\"id_group\":1,\"id_agent\":2}");
 
-    ret = wdb_update_agent_belongs(id_group, id_agent, NULL);
+    ret = wdb_update_agent_belongs(id_group, id_agent, priority, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -3272,6 +3274,7 @@ void test_wdb_update_agent_belongs_error_sql_execution(void **state)
     int ret = 0;
     int id_group = 1;
     int id_agent = 2;
+    int priority = 0;
 
     const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
@@ -3301,7 +3304,7 @@ void test_wdb_update_agent_belongs_error_sql_execution(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent-belong {\"id_group\":1,\"id_agent\":2}");
 
-    ret = wdb_update_agent_belongs(id_group, id_agent, NULL);
+    ret = wdb_update_agent_belongs(id_group, id_agent, priority, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -3311,6 +3314,7 @@ void test_wdb_update_agent_belongs_error_result(void **state)
     int ret = 0;
     int id_group = 1;
     int id_agent = 2;
+    int priority = 0;
 
     const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
@@ -3341,7 +3345,7 @@ void test_wdb_update_agent_belongs_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_update_agent_belongs(id_group, id_agent, NULL);
+    ret = wdb_update_agent_belongs(id_group, id_agent, priority, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -3351,6 +3355,7 @@ void test_wdb_update_agent_belongs_success(void **state)
     int ret = 0;
     int id_group = 1;
     int id_agent = 2;
+    int priority = 0;
 
     const char *json_str = strdup("{\"id_group\":1,\"id_agent\":2}");
     const char *query_str = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
@@ -3380,7 +3385,7 @@ void test_wdb_update_agent_belongs_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_update_agent_belongs(id_group, id_agent, NULL);
+    ret = wdb_update_agent_belongs(id_group, id_agent, priority, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }

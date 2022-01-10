@@ -96,29 +96,16 @@ static void test_w_auth_add_agent(void **state) {
     char response[2048] = {0};
     w_err_t err;
     /* Successful new agent */
-    err = w_auth_add_agent(response, "192.0.0.0", "agent1", NULL, &new_id, &new_key);
+    err = w_auth_add_agent(response, "192.0.0.0", "agent1", &new_id, &new_key);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
     assert_non_null(new_id);
     assert_non_null(new_key);
 }
-
-static void test_w_auth_add_agent_with_group(void **state) {
-    char response[2048] = {0};
-    w_err_t err;
-    /* Successful new agent with group */
-    err = w_auth_add_agent(response, "192.0.0.1", "agent2", "Group1,Group2,Group3", &new_id, &new_key);
-    assert_int_equal(err, OS_SUCCESS);
-    assert_string_equal(response, "");
-    assert_non_null(new_id);
-    assert_non_null(new_key);
-}
-
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_w_auth_add_agent, teardown_add_agent),
-        cmocka_unit_test_teardown(test_w_auth_add_agent_with_group, teardown_add_agent),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
