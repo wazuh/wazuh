@@ -48,6 +48,23 @@ CPMAddPackage(
       "JSON_Install OFF"
 )
 
+# Tencent/rapidjson
+CPMAddPackage(
+  NAME rapidjson
+  GITHUB_REPOSITORY Tencent/rapidjson
+  GIT_TAG v1.1.0
+  VERSION 1.1.0
+  OPTIONS
+      "RAPIDJSON_BUILD_DOC OFF"
+      "RAPIDJSON_BUILD_EXAMPLES OFF"
+      "RAPIDJSON_BUILD_TESTS OFF"
+)
+
+FetchContent_GetProperties(
+  rapidjson
+  SOURCE_DIR rapidjson_headers
+)
+
 ####################################################################################################
 # Sources -- Headers -- Libraries
 ####################################################################################################
@@ -55,6 +72,7 @@ set(SOURCES
   ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/event.cpp
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}/decoders.cpp
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}/decoder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_value.cpp
@@ -70,6 +88,7 @@ include_directories(
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
+  ${rapidjson_headers}/include
 )
 
 link_libraries(
@@ -101,6 +120,11 @@ gtest_discover_tests(registry_test)
 add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${SOURCES})
 gtest_discover_tests(utils_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp)
+
+# Event test
+add_executable(event_test ${BUILDER_TEST_SOURCE_DIR}/event_test.cpp ${SOURCES})
+gtest_discover_tests(event_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/event_test.cpp)
 
 ####################################################################################################
 # Engines targets
