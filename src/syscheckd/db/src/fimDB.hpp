@@ -258,31 +258,24 @@ class FIMDB
         /**
          * @brief Initialize the FIMDB singleton class, setting the attributes needed.
          *
-         * @param dbPath Path of the database will be created
-         * @param interval_synchronization Interval in second, to determine frequency of the synchronization
-         * @param max_rows_file Maximun number of file entries in database
-         * @param max_rows_registry Maximun number of registry values entries in database (only for Windows)
+         * @param syncInterval Interval in second, to determine frequency of the synchronization
+
          * @param callbackSync Pointer to the callback used to send sync messages
          * @param callbackLog Pointer to the callback used to send log messages
          * @param dbsyncHandler Pointer to a dbsync handler.
-         * @param rsyncHandler Pointer to a rsync handler
+         * @param rsyncHandler Pointer to a rsync handler.
+         * @param fileLimit Maximun number of file entries in database.
+         * @param registryLimit Maximun number of registry values entries in database (only for Windows).
+         * @param isWindows True if the OS is Windows.
          */
-#ifdef WIN32
-        void init(unsigned int interval_synchronization,
-                  unsigned int max_rows_file,
-                  unsigned int max_rows_registry,
+        void init(unsigned int syncInterval,
                   fim_sync_callback_t callbackSync,
                   logging_callback_t callbackLog,
                   std::shared_ptr<DBSync> dbsyncHandler,
-                  std::shared_ptr<RemoteSync> rsyncHandler);
-#else
-        void init(unsigned int interval_synchronization,
-                  unsigned int max_rows_file,
-                  fim_sync_callback_t callbackSync,
-                  logging_callback_t callbackLog,
-                  std::shared_ptr<DBSync> dbsyncHandler,
-                  std::shared_ptr<RemoteSync> rsyncHandler);
-#endif
+                  std::shared_ptr<RemoteSync> rsyncHandler,
+                  unsigned int fileLimit,
+                  unsigned int registryLimit = 0,
+                  bool isWindows = false);
 
         /**
          * @brief Remove a given item from the database
@@ -358,10 +351,11 @@ class FIMDB
 
     private:
 
-        unsigned int                                                            m_max_rows_file;
-        unsigned int                                                            m_max_rows_registry;
-        unsigned int                                                            m_interval_synchronization;
+        unsigned int                                                            m_fileLimit;
+        unsigned int                                                            m_registryLimit;
+        unsigned int                                                            m_syncInterval;
         bool                                                                    m_stopping;
+        bool                                                                    m_isWindows;
         std::mutex                                                              m_fimSyncMutex;
         std::condition_variable                                                 m_cv;
         std::shared_ptr<DBSync>                                                 m_dbsyncHandler;
