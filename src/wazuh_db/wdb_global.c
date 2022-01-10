@@ -1704,11 +1704,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
     timestamp = w_get_timestamp(time(NULL));
     wchr_replace(timestamp, ' ', '-');
     wchr_replace(timestamp, '/', '-');
-<<<<<<< HEAD
     snprintf(path, PATH_MAX-3, "%s/%s-%s%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp, tag ? tag : "");
-=======
-    snprintf(path, PATH_MAX-3, "%s/%s-%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp);
->>>>>>> Improving the delete mechanism of old backups
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
@@ -1784,20 +1780,13 @@ int wdb_global_remove_old_backups() {
     int backups_to_delete = number_of_files - wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->max_files;
     char tmp_path[OS_SIZE_512] = {0};
 
-<<<<<<< HEAD
     for (int i = 0; backups_to_delete > i; i++) {
-=======
-    for(int i = 0; backups_to_delete > i; i++) {
->>>>>>> Improving the delete mechanism of old backups
         char* backup_to_delete_name = NULL;
         wdb_global_get_oldest_backup(&backup_to_delete_name);
         if (backup_to_delete_name) {
             snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, backup_to_delete_name);
             unlink(tmp_path);
-<<<<<<< HEAD
             minfo("Deleted Global database backup: \"%s\"", tmp_path);
-=======
->>>>>>> Improving the delete mechanism of old backups
             os_free(backup_to_delete_name);
         }
     }
@@ -1831,7 +1820,6 @@ cJSON* wdb_global_get_backups() {
 }
 
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
-<<<<<<< HEAD
     char* backup_to_restore = NULL;
 
     // If the snapshot is not present, the most recent backup will be used
@@ -1839,17 +1827,10 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
         backup_to_restore = snapshot;
     } else {
         wdb_global_get_most_recent_backup(&backup_to_restore);
-=======
-    DIR* dp = opendir(WDB_BACKUP_FOLDER);
-    if(!dp) {
-        mdebug1("Unable to open backup directory '%s'", WDB_BACKUP_FOLDER);
-        return OS_INVALID;
->>>>>>> Improving the delete mechanism of old backups
     }
     closedir(dp);
 
     char global_path[OS_SIZE_256] = {0};
-<<<<<<< HEAD
 
     snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
@@ -1862,50 +1843,18 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
     }
 
     if (backup_to_restore) {
-=======
-    char global_pre_restore_path[OS_SIZE_256] = {0};
-    snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-    snprintf(global_pre_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, WDB_GLOB_PRE_RESTORE_BACKUP_NAME);
-
-    // Preparing DB for pre_restore backup and later removal
-    wdb_leave(*wdb);
-    wdb_close(*wdb, true);
-    *wdb = NULL;
-    if(save_pre_restore_state) {
-        if(w_compress_gzfile(global_path, global_pre_restore_path)) {
-            mdebug1("Unable to save pre-restore DB state");
-            snprintf(output, OS_MAXSTR + 1, "err Unable to save pre-restore DB state");
-            return OS_INVALID;
-        }
-    }
-
-    // If the snapshot is not present, the most recent backup will be used
-    char* backup_to_restore = NULL;
-    if(snapshot) {
-        backup_to_restore = snapshot;
-    } else {
-        wdb_global_get_most_recent_backup(&backup_to_restore);
-    }
-
-    int result = OS_INVALID;
-    if(backup_to_restore) {
->>>>>>> Improving the delete mechanism of old backups
         char global_tmp_path[OS_SIZE_256] = {0};
         char backup_to_restore_path[OS_SIZE_256] = {0};
 
         snprintf(global_tmp_path, OS_SIZE_256, "%s/%s.db.back", WDB2_DIR, WDB_GLOB_NAME);
         snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
 
-<<<<<<< HEAD
         if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
             // Preparing DB for restoration.
             wdb_leave(*wdb);
             wdb_close(*wdb, true);
             *wdb = NULL;
 
-=======
-        if(!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
->>>>>>> Improving the delete mechanism of old backups
             unlink(global_path);
             rename(global_tmp_path, global_path);
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1919,20 +1868,12 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
         mdebug1("Unable to found a snapshot to restore");
         snprintf(output, OS_MAXSTR + 1, "err Unable to found a snapshot to restore");
         result = OS_INVALID;
-<<<<<<< HEAD
     }
 
 end:
     if (!snapshot) {
         os_free(backup_to_restore);
     }
-=======
-    }
-
-    if(!snapshot) {
-        os_free(backup_to_restore);
-    }
->>>>>>> Improving the delete mechanism of old backups
     return result;
 }
 
@@ -1965,11 +1906,7 @@ time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
     }
 
     closedir(dp);
-<<<<<<< HEAD
     if(most_recent_backup_name && tmp_backup_name) {
-=======
-    if(most_recent_backup_name) {
->>>>>>> Improving the delete mechanism of old backups
         os_strdup(tmp_backup_name, *most_recent_backup_name);
     }
 
@@ -1986,10 +1923,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
     struct dirent *entry = NULL;
     time_t oldest_backup_time = OS_INVALID;
-<<<<<<< HEAD
     time_t aux_time_var = OS_INVALID;
-=======
->>>>>>> Improving the delete mechanism of old backups
     time_t current_time = time(NULL);
     char *tmp_backup_name = NULL;
 
@@ -2002,25 +1936,16 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
         if(!stat(tmp_path, &backup_info) ) {
-<<<<<<< HEAD
             if((current_time - backup_info.st_mtime) >= aux_time_var) {
                 aux_time_var = current_time - backup_info.st_mtime;
                 oldest_backup_time = backup_info.st_mtime;
-=======
-            if((current_time - backup_info.st_mtime) >= oldest_backup_time) {
-                oldest_backup_time = current_time - backup_info.st_mtime;
->>>>>>> Improving the delete mechanism of old backups
                 tmp_backup_name = entry->d_name;
             }
         }
     }
 
     closedir(dp);
-<<<<<<< HEAD
     if(oldest_backup_name && tmp_backup_name) {
-=======
-    if(oldest_backup_name) {
->>>>>>> Improving the delete mechanism of old backups
         os_strdup(tmp_backup_name, *oldest_backup_name);
     }
 
