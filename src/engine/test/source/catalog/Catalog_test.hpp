@@ -25,9 +25,9 @@ class fakeStorage : public StorageDriverInterface
         fakeStorage() = default;
         ~fakeStorage() = default;
 
-        std::vector<std::string_view> getAssetList(const AssetType type) override
+        std::vector<std::string> getAssetList(const AssetType type) override
         {
-            std::vector<std::string_view> assets;
+            std::vector<std::string> assets;
 
             if (!return_empty)
             {

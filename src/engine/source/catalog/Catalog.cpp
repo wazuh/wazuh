@@ -92,10 +92,10 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
     return asset;
 }
 
-std::vector<std::string_view> Catalog::getAssetList(const AssetType type)
+std::vector<std::string> Catalog::getAssetList(const AssetType type)
 {
 
-    std::vector<std::string_view> assetList {};
+    std::vector<std::string> assetList {};
 
     switch (type)
     {
