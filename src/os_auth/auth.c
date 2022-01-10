@@ -344,9 +344,9 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
-    max_multigroups++;
 
     while ( group != NULL ) {
+        max_multigroups++;
         DIR * dp;
         char dir[PATH_MAX + 1] = {0};
 
@@ -372,7 +372,6 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
 
         group = strtok_r(NULL, delim, &save_ptr);
-        max_multigroups++;
         closedir(dp);
     }
     os_free(tmp_groups);
