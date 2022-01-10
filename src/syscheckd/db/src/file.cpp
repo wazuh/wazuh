@@ -83,7 +83,7 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
             }
             else
             {
-                const auto file { std::make_unique<FileItem>(entry_from_path) };
+                const auto file { std::make_unique<FileItem>(entry_from_path[0]) };
                 callback.callback(file->toFimEntry(), callback.context);
                 retVal = FIMDB_OK;
             }
