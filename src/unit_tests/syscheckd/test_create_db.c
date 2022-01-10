@@ -1266,7 +1266,7 @@ static void test_fim_file_add(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
-
+    TXN_HANDLE txn_handle = NULL;
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -1285,7 +1285,7 @@ static void test_fim_file_add(void **state) {
 
     expect_fim_file_diff(file_path, strdup("diff"));
 
-    fim_file(file_path, &configuration, &evt_data);
+    fim_file(file_path, &configuration, &evt_data, txn_handle);
 }
 
 
@@ -1294,7 +1294,7 @@ static void test_fim_file_modify(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-
+    TXN_HANDLE txn_handle = NULL;
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -1350,7 +1350,7 @@ static void test_fim_file_modify(void **state) {
     will_return(__wrap_fim_db_file_update, fim_data->fentry);
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
-    fim_file(file_path, &configuration, &evt_data);
+    fim_file(file_path, &configuration, &evt_data, txn_handle);
 }
 
 static void test_fim_file_no_attributes(void **state) {
@@ -1359,7 +1359,7 @@ static void test_fim_file_no_attributes(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-
+    TXN_HANDLE txn_handle = NULL;
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -1398,7 +1398,7 @@ static void test_fim_file_no_attributes(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, buffer2);
 
 
-    fim_file(file_path, &configuration, &evt_data);
+    fim_file(file_path, &configuration, &evt_data, txn_handle);
 }
 
 static void test_fim_file_error_on_insert(void **state) {
@@ -1406,7 +1406,7 @@ static void test_fim_file_error_on_insert(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-
+    TXN_HANDLE txn_handle = NULL;
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -1467,13 +1467,13 @@ static void test_fim_file_error_on_insert(void **state) {
     will_return(__wrap_fim_db_file_update, fim_data->fentry);
     will_return(__wrap_fim_db_file_update, FIMDB_ERR);
 
-    fim_file(file_path, &configuration, &evt_data);
+    fim_file(file_path, &configuration, &evt_data, txn_handle);
 }
 
 static void test_fim_checker_scheduled_configuration_directory_error(void **state) {
     char * path = "/not/found/test.file";
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
-
+    TXN_HANDLE txn_handle = NULL;
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 #ifndef TEST_WINAGENT
@@ -1488,12 +1488,13 @@ static void test_fim_checker_scheduled_configuration_directory_error(void **stat
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/found/test.file'");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_not_scheduled_configuration_directory_error(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/not/found/test.file";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1509,13 +1510,14 @@ static void test_fim_checker_not_scheduled_configuration_directory_error(void **
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/found/test.file'");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 #ifndef TEST_WINAGENT
 static void test_fim_checker_over_max_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/a/test.file";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1528,7 +1530,7 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
 }
@@ -1537,6 +1539,7 @@ static void test_fim_checker_deleted_file(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     struct stat statbuf = DEFAULT_STATBUF;
     const char *path = "/media/test.file";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1553,7 +1556,7 @@ static void test_fim_checker_deleted_file(void **state) {
 
     errno = 1;
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 
     errno = 0;
 }
@@ -1563,6 +1566,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     struct stat statbuf = DEFAULT_STATBUF;
     const char *path = "/media/test.file";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1607,7 +1611,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     expect_fim_db_remove_path(fim_data->fentry->file_entry.path, FIMDB_ERR);
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 
     errno = 0;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
@@ -1617,7 +1621,7 @@ static void test_fim_checker_no_file_system(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     struct stat statbuf = DEFAULT_STATBUF;
     const char *path = "/media/test.file";
-
+    TXN_HANDLE txn_handle = NULL;
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1631,7 +1635,7 @@ static void test_fim_checker_no_file_system(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, -1);
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_fim_regular(void **state) {
@@ -1644,6 +1648,7 @@ static void test_fim_checker_fim_regular(void **state) {
                             .st_gid = 0,
                             .st_mtime = 1433395216,
                             .st_size = 1500 };
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1670,7 +1675,7 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_fim_db_file_update, NULL);
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_fim_regular_warning(void **state) {
@@ -1683,6 +1688,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
                             .st_gid = 0,
                             .st_mtime = 1433395216,
                             .st_size = 1500 };
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1709,13 +1715,14 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     will_return(__wrap_fim_db_file_update, NULL);
     will_return(__wrap_fim_db_file_update, FIMDB_ERR);
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_fim_regular_ignore(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true };
     const char *path = "/etc/mtab";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1732,13 +1739,14 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'file' '/etc/mtab' due to '/etc/mtab'");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_fim_regular_restrict(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/test";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1755,7 +1763,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6203): Ignoring entry '/media/test' due to restriction 'file$'");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_fim_directory(void **state) {
@@ -1763,6 +1771,7 @@ static void test_fim_checker_fim_directory(void **state) {
     struct stat directory_stat = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1796,7 +1805,7 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_readdir, NULL);
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) {
@@ -1804,6 +1813,7 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1841,7 +1851,7 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
 }
@@ -1849,6 +1859,7 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/test.file";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1859,13 +1870,14 @@ static void test_fim_checker_root_ignore_file_under_recursion_level(void **state
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/test.file'");
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_checker_root_file_within_recursion_level(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/test.file";
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1893,7 +1905,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     will_return(__wrap_fim_db_file_update, NULL);
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
-    fim_checker(path, &evt_data, NULL);
+    fim_checker(path, &evt_data, NULL, txn_handle);
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
@@ -3137,6 +3149,7 @@ static void test_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     int ret;
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -3162,7 +3175,7 @@ static void test_fim_directory(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test\\test'");
 #endif
 
-    ret = fim_directory("test", &evt_data, NULL);
+    ret = fim_directory("test", &evt_data, NULL, txn_handle);
 
     assert_int_equal(ret, 0);
 }
@@ -3171,6 +3184,7 @@ static void test_fim_directory_ignore(void **state) {
     fim_data_t *fim_data = *state;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     int ret;
+    TXN_HANDLE txn_handle = NULL;
 
     strcpy(fim_data->entry->d_name, ".");
 
@@ -3178,23 +3192,25 @@ static void test_fim_directory_ignore(void **state) {
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
 
-    ret = fim_directory(".", &evt_data, NULL);
+    ret = fim_directory(".", &evt_data, NULL, txn_handle);
 
     assert_int_equal(ret, 0);
 }
 
 static void test_fim_directory_nodir(void **state) {
     int ret;
+    TXN_HANDLE txn_handle = NULL;
 
     expect_string(__wrap__merror, formatted_msg, "(1105): Attempted to use null string.");
 
-    ret = fim_directory(NULL, NULL, NULL);
+    ret = fim_directory(NULL, NULL, NULL, txn_handle);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
 static void test_fim_directory_opendir_error(void **state) {
     int ret;
+    TXN_HANDLE txn_handle = NULL;
 
     will_return(__wrap_opendir, 0);
 
@@ -3202,7 +3218,7 @@ static void test_fim_directory_opendir_error(void **state) {
 
     errno = EACCES;
 
-    ret = fim_directory("test", NULL, NULL);
+    ret = fim_directory("test", NULL, NULL, txn_handle);
 
     errno = 0;
 

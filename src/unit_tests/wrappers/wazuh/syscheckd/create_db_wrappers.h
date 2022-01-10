@@ -39,4 +39,13 @@ void expect_fim_configuration_directory_call(const char *path, directory_t *ret)
 void expect_fim_checker_call(const char *path, const directory_t *configuration);
 
 void __wrap_free_entry(fim_entry *entry);
+
+
+TXN_HANDLE __wrap_fim_db_transaction_start(const char*, result_callback_t, void*);
+
+int __wrap_fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*);
+
+int __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE, result_callback_t, void*);
+
+
 #endif

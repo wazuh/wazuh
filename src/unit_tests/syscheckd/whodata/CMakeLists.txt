@@ -21,7 +21,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap,pthread_cond_timedwait -Wl,--wrap,gettime -Wl,--wrap,fim_db_init \
                         -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                         -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
-                        -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity")
+                        -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                        -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows")
 
     target_link_libraries(test_audit_healthcheck SYSCHECK_O ${TEST_DEPS})
 
@@ -43,7 +44,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
                               -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                               -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
-                              -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity")
+                              -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows")
 
     target_link_libraries(test_audit_rule_handling SYSCHECK_O ${TEST_DEPS})
 
@@ -71,7 +73,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,OS_SHA1_File -Wl,--wrap,audit_open -Wl,--wrap,audit_close \
                               -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                               -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
-                              -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity ${DEBUG_OP_WRAPPERS}")
+                              -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                              ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
 
@@ -97,7 +101,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                            -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                            -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init \
-                           -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                           ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
 
