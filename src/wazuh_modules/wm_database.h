@@ -45,14 +45,14 @@ void sync_keys_with_wdb(keystore *keys);
  *
  * @param keys The keystore structure to be synchronized
  */
-void sync_keys_with_agents_db(keystore *keys);
+void sync_keys_with_agents_artifacts(keystore *keys);
 
 /**
  * @brief Synchronizes the agents artifacts with wazuh-db. It will remove
  *        the databases of agents that are not in the agent table of
  *        global.db.
  */
-void sync_agents_artifacts_dbs_with_wdb();
+void sync_agents_artifacts_with_wdb();
 
 /**
  * @brief This function removes the legacy agent DB, the wazuh-db agent DB
