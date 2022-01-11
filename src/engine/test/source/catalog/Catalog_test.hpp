@@ -65,6 +65,10 @@ class fakeStorage : public StorageDriverInterface
                     {
                         asset.append(yaml_decoder_invalid_schema);
                     }
+                    else
+                    {
+                        throw std::runtime_error("Asset not found in file: 'decoders/not_found_asset.yml'");
+                    }
 
                     break;
 
@@ -91,6 +95,10 @@ class fakeStorage : public StorageDriverInterface
                     else if (!this->empty_schemas)
                     {
                         asset.append(json_schema_decoder);
+                    }
+                    else
+                    {
+                        throw std::runtime_error("Schema not found: 'schemas/wazuh-decoders.json'");
                     }
 
                     break;

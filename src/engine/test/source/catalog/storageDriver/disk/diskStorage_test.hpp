@@ -5,7 +5,8 @@
 #include <fstream>
 #include "catalog/storageDriver/disk/diskStorage.hpp"
 
-char * createDBtmp(){
+char* createDBtmp()
+{
 
 
     auto template_BaseDir = std::filesystem::temp_directory_path();
@@ -13,24 +14,27 @@ char * createDBtmp(){
     char* tmpDir = strdup(template_BaseDir.string().c_str());
 
     // Create base struct of tmp db from template
-    if (mkdtemp(tmpDir) == nullptr) {
+    if (mkdtemp(tmpDir) == nullptr)
+    {
         throw std::runtime_error("Failed to create temporary directory");
     }
 
     std::filesystem::path tmpDirPath {tmpDir};
-    if (!(std::filesystem::create_directory(tmpDirPath/"decoders") &&
-        std::filesystem::create_directory(tmpDirPath/"rules") &&
-        std::filesystem::create_directory(tmpDirPath/"output") &&
-        std::filesystem::create_directory(tmpDirPath/"filters")))
-        {
-            throw std::runtime_error("Failed to create temporary directory");
-        }
+
+    if (!(std::filesystem::create_directory(tmpDirPath / "decoders") &&
+            std::filesystem::create_directory(tmpDirPath / "rules") &&
+            std::filesystem::create_directory(tmpDirPath / "output") &&
+            std::filesystem::create_directory(tmpDirPath / "filters")))
+    {
+        throw std::runtime_error("Failed to create temporary directory");
+    }
 
 
     return tmpDir;
 }
 
-void removeDBtmp(char ** tmpDir){
+void removeDBtmp(char** tmpDir)
+{
 
     std::filesystem::remove_all(*tmpDir);
     free(*tmpDir);

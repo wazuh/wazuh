@@ -7,7 +7,7 @@
 #include "diskStorage_test.hpp"
 
 
-// Test: get asset list from inaccesible directory
+// Test: Get asset list from inaccesible directory
 TEST(getAssetList, invalid_path)
 {
 
@@ -36,7 +36,8 @@ TEST(getAssetList, valid_path_wo_db)
 }
 
 // Test: get asset list from 1 decoder (1 file)
-TEST(getAssetList, one_asset_one_file) {
+TEST(getAssetList, one_asset_one_file)
+{
 
     char* tmpDir = createDBtmp();
 
@@ -57,11 +58,13 @@ TEST(getAssetList, one_asset_one_file) {
 }
 
 // Test: get asset list, 2 decoder (2 file)
-TEST(getAssetList, two_asset_two_file) {
+TEST(getAssetList, two_asset_two_file)
+{
 
     char* tmpDir = createDBtmp();
 
-    auto newFile = [tmpDir](std::string name) -> void {
+    auto newFile = [tmpDir](std::string name) -> void
+    {
         auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / name;
         std::ofstream ofs {decoder_path};
         ofs << "test_decoder: {}";
@@ -86,11 +89,13 @@ TEST(getAssetList, two_asset_two_file) {
 
 
 // Test: Ignore non-yml files
-TEST(getAssetList, one_asset_and_other_file) {
+TEST(getAssetList, one_asset_and_other_file)
+{
 
     char* tmpDir = createDBtmp();
 
-    auto newFile = [tmpDir](std::string name) -> void {
+    auto newFile = [tmpDir](std::string name) -> void
+    {
         auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / name;
         std::ofstream ofs {decoder_path};
         ofs << "test_decoder: {}";
@@ -113,6 +118,106 @@ TEST(getAssetList, one_asset_and_other_file) {
 
     ASSERT_EQ(array.size(), 1);
     ASSERT_STREQ(array[0].c_str(), "test_decoder");
+
+    removeDBtmp(&tmpDir);
+
+}
+
+// Test: Asset not found then throw exception
+TEST(getAsset, asset_not_found)
+{
+    char* tmpDir = createDBtmp();
+
+    diskStorage ds(tmpDir);
+    StorageDriverInterface* dsi {&ds};
+
+    EXPECT_THROW(
+    {
+        try
+        {
+            auto asset = dsi->getAsset(AssetType::Decoder, "not_found");
+        }
+        catch (const std::runtime_error& e)
+        {
+            ASSERT_STREQ(e.what(), "Asset not found in file: 'decoders/not_found.yml'");
+            throw;
+        }}
+    , std::runtime_error);
+
+    removeDBtmp(&tmpDir);
+}
+
+// Test: Get an empty asset
+TEST(getAsset, asset_empty)
+{
+
+    char* tmpDir = createDBtmp();
+
+    diskStorage ds(tmpDir);
+    StorageDriverInterface* dsi {&ds};
+
+    auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / "empty.yml";
+    std::ofstream ofs {decoder_path};
+    ofs << "";
+    ofs.close();
+
+    auto asset = dsi->getAsset(AssetType::Decoder, "empty");
+
+    ASSERT_STREQ(asset.c_str(), "");
+
+    removeDBtmp(&tmpDir);
+
+}
+
+// Test: Get asset ok
+TEST(getAsset, asset_ok)
+{
+
+    char* tmpDir = createDBtmp();
+
+    diskStorage ds(tmpDir);
+    StorageDriverInterface* dsi {&ds};
+
+    auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / "test_ok.yml";
+    std::ofstream ofs {decoder_path};
+    ofs << "test_decoder: { 123 }";
+    ofs.close();
+
+    auto asset = dsi->getAsset(AssetType::Decoder, "test_ok");
+
+    ASSERT_STREQ(asset.c_str(), "test_decoder: { 123 }");
+
+    removeDBtmp(&tmpDir);
+
+}
+
+// Test: File/asset exist but is inaccessible/unreadable
+TEST(getAsset, asset_inaccessible)
+{
+
+    char* tmpDir = createDBtmp();
+
+    diskStorage ds(tmpDir);
+    StorageDriverInterface* dsi {&ds};
+
+    auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / "not_readable.yml";
+
+    // Create a non-regular file (socket, fifo, etc) (inaccessible)
+    mknod(decoder_path.c_str(), S_IFSOCK | (S_IRWXU | S_IRWXG | S_IRWXO), 0);
+
+    EXPECT_THROW(
+    {
+        try
+        {
+            auto asset = dsi->getAsset(AssetType::Decoder, "not_readable");
+        }
+        catch (const std::runtime_error& e)
+        {
+            ASSERT_STREQ(e.what(), "Error reading file: 'decoders/not_readable.yml'");
+            throw;
+        }}
+    , std::runtime_error);
+
 
     removeDBtmp(&tmpDir);
 
