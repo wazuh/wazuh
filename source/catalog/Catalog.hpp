@@ -83,7 +83,7 @@ class Catalog
          * @param assetName The name of the asset.
          * @return rapidjson::Document The asset object. If the asset is not found, the document is empty.
          * @throws std::runtime_error If the asset is corrupted or cannot get the json schema to validate against.
-         * @throws std::runtime_error If the asset is not valid.(i.e. Enviromenment, schemas are not supported yet)
+         * @throws std::runtime_error If the asset is not valid.
          * @throws YML::ParserException If the yaml in the storage is corrupted.
          * @throws filesystem::filesystem_error if the storage driver fails to get the asset. Only if driver is diskDriver.
          *

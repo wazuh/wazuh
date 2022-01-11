@@ -38,6 +38,7 @@ class StorageDriverInterface
          *
          * @param type Type of the asset
          * @param assetName Name of the asset
+         * @throw std::runtime_error If the asset does not exist or cannot be recovered
          * @return std::string The asset as a string
          */
         virtual std::string getAsset(const AssetType type, std::string_view assetName) = 0;
