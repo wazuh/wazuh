@@ -442,6 +442,8 @@ void * run_backup(__attribute__((unused)) void * args) {
         last_global_backup_time = time(NULL);
     }
 
+    mdebug2("Database backup thread started.");
+
     while(running) {
         for (int i = 0; i < WDB_LAST_BACKUP; i++) {
             switch (i) {
