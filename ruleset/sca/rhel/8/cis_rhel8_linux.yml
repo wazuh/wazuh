@@ -2498,7 +2498,7 @@ checks:
   - id: 5132
     title: "Ensure permissions on all logfiles are configured"
     description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitivebdata is archived and protected."
+    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     remediation: "Run the following command to set permissions on all existing log files: # find /var/log -type f -exec chmod g-wx,o-rwx {} +"
     compliance:
       - cis: ["4.2.3"]
@@ -2744,7 +2744,7 @@ checks:
       - https://www.ssh.com/ssh/sshd_config/
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
+      - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
 
 
 # 5.2.6 Ensure SSH X11 forwarding is disabled (Scored)
@@ -2764,7 +2764,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*X11Forwarding\s*\t*no'
+      - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*\t*no'
 
 # 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less (Scored)
   - id: 5147
@@ -2780,7 +2780,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -C user=root -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
 
 # 5.2.8 Ensure SSH IgnoreRhosts is enabled (Scored)
   - id: 5148
@@ -2797,7 +2797,7 @@ checks:
       - tsc: ["CC6.1","CC6.7","CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> !r:^# && r:ignorerhosts\s*\t*yes'
+      - 'c:sshd -T -C user=root -> !r:^# && r:ignorerhosts\s*\t*yes'
 
 # 5.2.9 Ensure SSH HostbasedAuthentication is disabled (Scored)
   - id: 5149
@@ -2814,7 +2814,7 @@ checks:
       - tsc: ["CC6.1","CC6.7","CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> !r:^# && r:HostbasedAuthentication\s*\t*no'
+      - 'c:sshd -T -C user=root -> !r:^# && r:HostbasedAuthentication\s*\t*no'
 
 # 5.2.10 Ensure SSH root login is disabled (Scored)
   - id: 5150
@@ -2831,7 +2831,7 @@ checks:
       - tsc: ["CC6.1","CC6.7","CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> !r:^# && r:PermitRootLogin\s*\t*no'
+      - 'c:sshd -T -C user=root -> !r:^# && r:PermitRootLogin\s*\t*no'
 
 # 5.2.11 Ensure SSH PermitEmptyPasswords is disabled (Scored)
   - id: 5151
@@ -2848,7 +2848,7 @@ checks:
       - tsc: ["CC6.1","CC6.7","CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
+      - 'c:sshd -T -C user=root -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
 
 # 5.2.12 Ensure SSH PermitUserEnvironment is disabled (Scored)
   - id: 5152
@@ -2865,7 +2865,7 @@ checks:
       - tsc: ["CC6.1","CC6.7","CC7.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s*\t*no'
+      - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*\t*no'
 
 # 5.2.13 Ensure SSH Idle Timeout Interval is configured (Scored)
   - id: 5153
@@ -2879,8 +2879,8 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
-      - 'c:sshd -T -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare <= 3'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
+      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare <= 3'
 
 # 5.2.14 Ensure SSH LoginGraceTime is set to one minute or less (Scored)
   - id: 5154
@@ -2895,7 +2895,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
+      - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
 
 # 5.2.15 Ensure SSH warning banner is configured (Scored)
   - id: 5155
@@ -2911,7 +2911,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*\t*/etc/issue.net'
 
 # 5.2.16 Ensure SSH PAM is enabled (Scored)
   - id: 5156
@@ -2927,7 +2927,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*usepam\s+yes'
+      - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
 
 # 5.2.17 Ensure SSH AllowTcpForwarding is disabled (Scored)
   - id: 5157
@@ -2946,7 +2946,7 @@ checks:
       - https://www.ssh.com/ssh/tunneling/example
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
+      - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
 
 # 5.2.19 Ensure SSH MaxSessions is set to 4 or less (Scored)
   - id: 5158
@@ -2962,7 +2962,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*MaxSessions\s+(\d+) compare <= 4'
+      - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 4'
 
 # 5.2.20 Ensure system-wide crypto policy is not over-ridden (Scored)
   - id: 5159

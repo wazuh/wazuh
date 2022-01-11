@@ -157,6 +157,9 @@ void wm_free(wmodule * c);
 // Send message to a queue with a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
+// Send message to a queue with a specific delay, and the option to stop the wait process.
+int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) __attribute__((nonnull));
+
 // Check if a path is relative or absolute.
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
