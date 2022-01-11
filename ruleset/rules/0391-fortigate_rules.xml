@@ -78,7 +78,7 @@
     <same_source_ip />
     <description>Fortigate: Multiple changed configuration events from same source.</description>
     <mitre>
-      <id>T1089</id>
+      <id>T1562.001</id>
     </mitre>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
