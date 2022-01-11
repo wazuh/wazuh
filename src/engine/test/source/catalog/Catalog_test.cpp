@@ -76,24 +76,33 @@ TEST(getAsset, get_asset_schema_not_found)
         }
         catch (const std::runtime_error& e)
         {
-            ASSERT_STREQ(e.what(), "Could not get the schema 'wazuh-decoders' for the asset type.");
+            ASSERT_STREQ(e.what(), "Could not get the schema 'wazuh-decoders' for "
+                         "the asset type. DRIVER: Schema not found: 'schemas/wazuh-decoders.json'");
             throw;
         }}
     , std::runtime_error);
 
 }
 
-// Test: Get asset with does not exist
+// Test: Get asset with does not exist (Driver should throw an exception)
 TEST(getAsset, get_asset_not_found)
 {
 
     auto storageDriver = std::make_unique<fakeStorage>();
     auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
 
-    rapidjson::Document decoder = catalog->getAsset(AssetType::Decoder, "not_found_asset");
-    ASSERT_TRUE(decoder.IsNull());
+    EXPECT_THROW(
+    {
+        try
+        {
+            auto asset = catalog->getAsset(AssetType::Decoder, "not_found_asset");
+        }
+        catch (const std::runtime_error& e)
+        {
+            ASSERT_STREQ(e.what(), "Asset not found in file: 'decoders/not_found_asset.yml'");
+            throw;
+        }}, std::runtime_error);
 
-    EXPECT_NO_THROW(catalog->getAsset(AssetType::Decoder, "not_found_asset"));
 }
 
 // Test: Get a valid asset
