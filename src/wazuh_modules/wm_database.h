@@ -35,9 +35,8 @@ wmodule* wm_database_read();
  *        agents.
  *
  * @param keys The keystore structure to be synchronized
- * @param wdb_sock The socket to be used in the calls to Wazuh DB
  */
-void sync_keys_with_wdb(keystore *keys, int *wdb_sock);
+void sync_keys_with_wdb(keystore *keys);
 
 /**
  * @brief Synchronizes a keystore with the legacy agents databases in var/db/agents.

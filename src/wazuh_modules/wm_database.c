@@ -303,7 +303,7 @@ void wm_sync_agents() {
     // worker nodes. In the case of the master, we should only synchronize the
     // agents artifacts.
     if (is_worker) {
-        sync_keys_with_wdb(&keys, &wdb_wmdb_sock);
+        sync_keys_with_wdb(&keys);
     }
     else {
         sync_keys_with_agents_db(&keys);
@@ -326,9 +326,8 @@ void wm_sync_agents() {
  *        agents.
  *
  * @param keys The keystore structure to be synchronized
- * @param wdb_sock The socket to be used in the calls to Wazuh DB
  */
-void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
+void sync_keys_with_wdb(keystore *keys) {
     keyentry *entry;
     char * group;
     char cidr[20];
@@ -355,7 +354,7 @@ void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
         }
 
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
-                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, wdb_sock)) {
+                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
             mtdebug2(WM_DATABASE_LOGTAG, "The agent %s '%s' already exist in the database.", entry->id, entry->name);
         }
@@ -365,16 +364,16 @@ void sync_keys_with_wdb(keystore *keys, int *wdb_sock) {
     }
 
     // Delete from the database all the agents without a key and all its atirfacts
-    if ((agents = wdb_get_all_agents(FALSE, wdb_sock))) {
+    if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
         char id[9];
 
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(keys, id) == -1) {
-                char *agent_name = wdb_get_agent_name(agents[i], wdb_sock);
+                char *agent_name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
 
-                if (wdb_remove_agent(agents[i], wdb_sock) < 0) {
+                if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
                     os_free(agent_name);
                     continue;
@@ -477,12 +476,11 @@ void wm_clean_agent_artifacts(int agent_id, const char* agent_name) {
 
     // Removing wazuh-db database
     char wdbquery[OS_SIZE_128 + 1];
-    char *wdboutput = NULL;
+    char wdboutput[OS_SIZE_1024];
     snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %d", agent_id);
-    if (result = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, OS_SIZE_1024), result) {
+    if (result = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, sizeof(wdboutput)), result) {
         mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the wazuh-db DB of the agent %d.", agent_id);
     }
-    os_free(wdboutput);
 
     delete_diff(agent_name);
 }
