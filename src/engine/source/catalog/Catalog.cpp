@@ -52,24 +52,26 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
                 return {};
             }
 
-            assetSchemaStr = storageDriver->getAsset(AssetType::Schemas, assetTypeToSchema.at(type));
-
-            if (assetSchemaStr.empty())
+            try
             {
-                throw std::runtime_error("Could not get the schema '" + assetTypeToSchema.at(type) + "' for the asset type.");
+                assetSchemaStr = storageDriver->getAsset(AssetType::Schemas, assetTypeToSchema.at(type));
+            }
+            catch (std::runtime_error& e)
+            {
+                throw std::runtime_error("Could not get the schema '" + assetTypeToSchema.at(type) +
+                                         "' for the asset type. DRIVER: " + e.what());
             }
 
             break;
 
         case AssetType::Schemas:
-        // #TODO add schemas
+            assetSchemaStr = storageDriver->getAsset(AssetType::Schemas, assetName);
+            break;
+
         default:
             throw std::runtime_error("Not implemented");
             break;
     }
-
-    // Parse asset. Throw a YML::ParserException if the asset is not valid
-    Document asset {yml2json::loadYMLfromString(assetStr)};
 
     // Parse schema
     Document jsonSchema {};
@@ -79,11 +81,17 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
     {
         throw std::runtime_error("Could not parse the schema for the asset type.");
     }
+    // Check if asset is the schema
+    else if  (type == AssetType::Schemas)
+    {
+        return jsonSchema;
+    }
+
+    // if not, parse asset. Throw a YML::ParserException if the asset is not valid
+    Document asset {yml2json::loadYMLfromString(assetStr)};
 
     // Validate the asset
-    auto errorStr = validateJSON(asset, jsonSchema);
-
-    if (errorStr)
+    if (auto errorStr = validateJSON(asset, jsonSchema); errorStr)
     {
         throw std::runtime_error("The asset '" + string{assetName} + "' is invalid: " + errorStr.value());
     }
@@ -95,22 +103,7 @@ std::vector<std::string> Catalog::getAssetList(const AssetType type)
 {
 
     std::vector<std::string> assetList {};
-
-    switch (type)
-    {
-        case AssetType::Decoder:
-        case AssetType::Rule:
-        case AssetType::Output:
-        case AssetType::Filter:
-        case AssetType::Schemas:
-            assetList = this->storageDriver->getAssetList(type);
-            break;
-
-        case AssetType::Environments:
-        default:
-            throw std::runtime_error("Not implemented");
-            break;
-    }
+    assetList = this->storageDriver->getAssetList(type);
 
     return assetList;
 }
