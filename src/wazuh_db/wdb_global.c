@@ -1772,7 +1772,8 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
         snprintf(path_compressed, PATH_MAX, "%s.gz", path);
         result = w_compress_gzfile(path, path_compressed);
         unlink(path);
-        if (OS_SUCCESS == result) {
+        if(OS_SUCCESS == result) {
+            minfo("Created Global database backup \"%s\"", path);
             wdb_global_remove_old_backups();
             cJSON* j_path = cJSON_CreateArray();
             cJSON_AddItemToArray(j_path, cJSON_CreateString(path));
@@ -1817,6 +1818,7 @@ int wdb_global_remove_old_backups() {
         if (backup_to_delete_name) {
             snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, backup_to_delete_name);
             unlink(tmp_path);
+            minfo("Deleted Global database backup: \"%s\"", tmp_path);
             os_free(backup_to_delete_name);
         }
     }
