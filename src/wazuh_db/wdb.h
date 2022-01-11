@@ -191,6 +191,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
+    WDB_STMT_GLOBAL_GET_AGENTS_IPC,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
@@ -844,7 +845,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
-int wdb_parse(char * input, char * output, int peer);
+int wdb_parse(char * input, char * output, int peer, char** ipc_response);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -1227,6 +1228,7 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output);
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
+int wdb_parse_global_get_all_agents_ipc(wdb_t* wdb, char** output);
 
 /**
  * @brief Function to parse the reset agent connection status request.

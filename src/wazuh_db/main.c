@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#include "shared/IPC_connection.h"
+
 #include "wdb.h"
 #include <os_net/os_net.h>
 
@@ -19,6 +21,7 @@ static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_up(void * args);
+void *ipc_handler(void *args);
 
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
@@ -39,6 +42,8 @@ int main(int argc, char ** argv)
     pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_up;
+
+    pthread_t thread_ipc;
 
     OS_SetName(ARGV0);
 
@@ -208,8 +213,24 @@ int main(int argc, char ** argv)
         goto failure;
     }
 
-    // Join threads
+    IPC_config_t server_cfg = {0};
+    server_cfg.is_server = 1;
+    server_cfg.max_queued_connections = 10;
+    server_cfg.permissions = 0660;
+    server_cfg.socket_path = "queue/db/wdb_ipc";
+    IPC_connection server = IPC_initialize(&server_cfg);
 
+    if(!IPC_is_connection_valid(server)){
+        IPC_print_error(server);
+    }
+    else{
+        printf("starting ipc server\n");
+        IPC_start_server(server, 10);
+    }
+
+    pthread_create(&thread_ipc, NULL, ipc_handler, server);
+
+    // Join threads
     pthread_join(thread_dealer, NULL);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
@@ -363,7 +384,7 @@ void * run_worker(__attribute__((unused)) void * args) {
             }
 
             *response = '\0';
-            wdb_parse(buffer, response, peer);
+            wdb_parse(buffer, response, peer, 0);
             if (length = strlen(response), length > 0) {
                 if (terminal && length < OS_MAXSTR - 1) {
                     response[length++] = '\n';
@@ -447,6 +468,20 @@ void * run_up(__attribute__((unused)) void * args) {
     return NULL;
 }
 
+void *ipc_handler(void *args) {
+    char *ipc_response = 0;
+    IPC_connection connection = (IPC_connection)args;
+    while (1) {
+        message_t request = IPC_pop_request(connection);
+        minfo("Got request: %s\n", (char *)request.data);
+        wdb_parse(request.data, 0, request.sender, &ipc_response);
+        free(request.data);
+        request.data = ipc_response;
+        request.size = strlen(ipc_response) + 1;
+        IPC_push_message(connection, request);
+    }
+}
+
 void wdb_help() {
     print_header();
 
@@ -475,4 +510,4 @@ void handler(int signum) {
 
 void cleanup() {
     DeletePID(ARGV0);
-}
+} 

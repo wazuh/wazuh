@@ -1386,7 +1386,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	else ifeq (${uname_S},Darwin)
 	    UNIT_TEST_WRAPPERS+=${wrappers_macos_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_macos_libc_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_macos_posix_o}
+		UNIT_TEST_WRAPPERS+=${wrappers_macos_posix_o 
 	else
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
@@ -1418,10 +1418,10 @@ wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 wazuh_db/%.o: wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -g -DARGV0=\"wazuh-db\" -c $^ -o $@
 
 wazuh-db: ${wdb_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} -g $^ ${OSSEC_LIBS} -o $@
 
 #### Config ##########
 

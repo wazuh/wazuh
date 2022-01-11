@@ -188,7 +188,7 @@ static struct kv_list const TABLE_MAP[] = {
 };
 
 
-int wdb_parse(char * input, char * output, int peer) {
+int wdb_parse(char * input, char * output, int peer, char** ipc_response) {
     char * actor;
     char * id;
     char * query;
@@ -878,6 +878,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = wdb_parse_global_get_all_agents(wdb, next, output);
             }
         }
+        else if (strcmp(query, "get-all-agents-ipc") == 0) {
+            result = wdb_parse_global_get_all_agents_ipc(wdb, ipc_response);
+        }
         else if (strcmp(query, "get-agent-info") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-agent-info.");
@@ -1120,6 +1123,7 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
+
         wdb_leave(wdb);
         return result;
     } else {
@@ -5495,6 +5499,26 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
 
     cJSON_Delete(result);
     os_free(out)
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_all_agents_ipc(wdb_t* wdb, char** response) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return 0;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_IPC) < 0) {
+        mdebug1("Cannot cache statement");
+        return 0;
+    }
+
+    sqlite3_stmt *stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_IPC];
+
+    cJSON *resp = wdb_exec_stmt(stmt);
+    *response = cJSON_PrintUnformatted(resp);
+    cJSON_Delete(resp);
 
     return OS_SUCCESS;
 }
