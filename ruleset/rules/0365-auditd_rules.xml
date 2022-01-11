@@ -2,7 +2,7 @@
   Copyright (C) 2015-2021, Wazuh Inc.
 -->
 
-<!-- 
+<!--
   Audit rules for:
     Audit rules ID:           80700 - 80792
     Passwd rules ID:          80793 - 80799
@@ -91,7 +91,7 @@
     <description>Auditd: File or a directory access ended abnormally.</description>
     <mitre>
       <id>T1203</id>
-      <id>T1492</id>
+      <id>T1565.001</id>
     </mitre>
     <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -150,7 +150,7 @@
     <description>Auditd: User becomes root.</description>
     <group>audit_anom,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
-      <id>T1169</id>
+      <id>T1548.003</id>
     </mitre>
   </rule>
 
@@ -218,7 +218,7 @@
   <rule id="80740" level="12">
     <if_sid>80700</if_sid>
     <field name="audit.type">CRYPTO_REPLAY_USER</field>
-    <description>Auditd: Replay attack detected.</description>      
+    <description>Auditd: Replay attack detected.</description>
     <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,nist_800_53_SI.4,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1212</id>
@@ -322,7 +322,7 @@
     <match>type=DELETE</match>
     <description>Audit: Deleted: $(audit.file.name).</description>
     <mitre>
-      <id>T1107</id>
+      <id>T1070.004</id>
     </mitre>
     <group>audit_watch_delete,audit_watch_write,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
   </rule>

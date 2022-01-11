@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Added saniziters to the unit tests execution. ([#9099](https://github.com/wazuh/wazuh/pull/9099))
 - Vulnerability Detector introduces vulnerability inventory. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
   - The manager will only deliver alerts when new vulnerabilities are detected in agents or when they stop applying.
+- Added a mechanism to ensure the worker synchronization permissions is reset after a fixed period of time. ([#11031](https://github.com/wazuh/wazuh/pull/11031))
 
 #### Changed
 
@@ -53,9 +54,13 @@ All notable changes to this project will be documented in this file.
 - Logtest now scans new ruleset files when loading a new session. ([#8892](https://github.com/wazuh/wazuh/pull/8892))
 - CVE alerts by Vulnerability Detector now include the time of detection, severity, and score. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
 - Fixed manager startup when `<database_output>` is enabled. ([#10849](https://github.com/wazuh/wazuh/pull/10849))
-- Changed the cluster "local_integrity" task to run in a separate process to improve overall performance. ([#10767](https://github.com/wazuh/wazuh/pull/10767))
-- The cluster communication with the database for agent information synchronization runs in a parallel separate process. ([#10807](https://github.com/wazuh/wazuh/pull/10807))
-- The cluster processing of the extra-valid files in the master node is carried out in a parallel separate process. ([#10920](https://github.com/wazuh/wazuh/pull/10920))
+- Improved cluster performance using multiprocessing.
+  - Changed the cluster `local_integrity` task to run in a separate process to improve overall performance. ([#10767](https://github.com/wazuh/wazuh/pull/10767))
+  - The cluster communication with the database for agent information synchronization runs in a parallel separate process. ([#10807](https://github.com/wazuh/wazuh/pull/10807))
+  - The cluster processing of the extra-valid files in the master node is carried out in a parallel separate process. ([#10920](https://github.com/wazuh/wazuh/pull/10920))
+  - The cluster's file compression task in the master node is carried out in a parallel separate process. ([#11328](https://github.com/wazuh/wazuh/pull/11328))
+  - Now the processing of Integrity files in worker nodes is carried out in a parallel separate process ([#11364](https://github.com/wazuh/wazuh/pull/11364))
+  - Use cluster and API single processing when the wazuh user doesn't have permissions to access `/dev/shm`. ([#11386](https://github.com/wazuh/wazuh/pull/11386))
 
 #### Fixed
 
@@ -86,7 +91,12 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug that caused cluster agent-groups files to be synchronized multiple times unnecessarily. ([#10866](https://github.com/wazuh/wazuh/pull/10866))
 - Fixed an issue in Wazuh DB that compiled the SQL statements multiple times unnecessarily. ([#10922](https://github.com/wazuh/wazuh/pull/10922))
 - Fixed a crash in Analysisd when setting Active Response with agent_id = 0. ([#10948](https://github.com/wazuh/wazuh/pull/10948))
-
+- Fixed an uninitialized Blowfish encryption structure warning. ([#11161](https://github.com/wazuh/wazuh/pull/11161))
+- Fixed a memory overrun hazard in Vulnerability Detector. ([#11262](https://github.com/wazuh/wazuh/pull/11262))
+- Fixed a bug when using a limit parameter higher than the total number of objects in the wazuh-db queries. ([#11282](https://github.com/wazuh/wazuh/pull/11282))
+- Prevented a false positive for MySQL in Vulnerability Detector. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
+- Fixed segmentation fault when wrong configuration is set. ([# 11448](https://github.com/wazuh/wazuh/pull/11448))
+ 
 #### Removed
 
 - The data reporting for Rootcheck scans in the agent_control tool has been deprecated. ([#8399](https://github.com/wazuh/wazuh/pull/8399))
@@ -134,6 +144,8 @@ All notable changes to this project will be documented in this file.
 - Error logs by Logcollector when a file is missing have been changed to info logs. ([#10651](https://github.com/wazuh/wazuh/pull/10651))
 - The agent MSI installer for Windows now detects the platform version to install the default configuration. ([#8724](https://github.com/wazuh/wazuh/pull/8724))
 - Agent logs for inability to resolve the manager hostname now have info level. ([#3659](https://github.com/wazuh/wazuh/pull/3659))
+- Added ID number to connection enrollment logs. ([#11276](https://github.com/wazuh/wazuh/pull/11276))
+- Standardized the use of the `only_logs_after` parameter in the external integration modules. ([#10838](https://github.com/wazuh/wazuh/pull/10838))
 
 #### Fixed
 
@@ -157,6 +169,19 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS modules' log file filtering when there are logs with and without a prefix mixed in a bucket. ([#10718](https://github.com/wazuh/wazuh/pull/10718))
 - Fixed a bug on the installation script that made upgrades not to update the code of the external integration modules. ([#10884](https://github.com/wazuh/wazuh/pull/10884))
 - Fixed issue with AWS integration module trying to parse manually created folders as if they were files. ([#10921](https://github.com/wazuh/wazuh/pull/10921))
+- Fixed installation errors in OS with no subversion. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
+- Fixed a typo in an error log about enrollment SSL certificate. ([#11115](https://github.com/wazuh/wazuh/pull/11115))
+- Fixed unit tests for Windows agent when built on MinGW 10. ([#11121](https://github.com/wazuh/wazuh/pull/11121))
+- Fixed Windows agent compilation warnings. ([#10942](https://github.com/wazuh/wazuh/pull/10942))
+- Fixed the OS version reported by the agent on OpenSUSE Tumbleweed. ([#11207](https://github.com/wazuh/wazuh/pull/11207))
+- Prevented Syscollector from truncating the open port inode numbers on Linux. ([#11329](https://github.com/wazuh/wazuh/pull/11329))
+- Fixed agent auto-restart on configuration changes when started via `wazuh-control` on a Systemd based Linux OS. ([#11365](https://github.com/wazuh/wazuh/pull/11365))
+- Fixed a bug in the AWS module resulting in unnecessary API calls when trying to obtain the different Account IDs for the bucket. ([#10952](https://github.com/wazuh/wazuh/pull/10952))
+- Fixed reparse option in the AWS VPCFlow integration. ([#11194](https://github.com/wazuh/wazuh/pull/11194))
+- Fixed Azure integration's configuration parsing to allow omitting optional parameters. ([#11278](https://github.com/wazuh/wazuh/pull/11278))
+- Fixed Azure Storage credentials validation bug. ([#11296](https://github.com/wazuh/wazuh/pull/11296))
+- Fixed the read of the hostname in the installation process for openSUSE. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
+- Fixed the graceful shutdown when agent loses connection. ([# 11425](https://github.com/wazuh/wazuh/pull/11425))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
@@ -211,6 +236,7 @@ All notable changes to this project will be documented in this file.
 - Improved API validators and related unit tests. ([#10745](https://github.com/wazuh/wazuh/pull/10745))
 - Improved specific module healthchecks in API integration tests environment. ([#10905](https://github.com/wazuh/wazuh/pull/10905))
 - Changed thread pool executors for process pool executors to improve API availability. ([#10916](https://github.com/wazuh/wazuh/pull/10916))
+- Changed HTTPS options to use files instead of relative paths. ([#11410](https://github.com/wazuh/wazuh/pull/11410))
 
 #### Fixed
 
@@ -237,11 +263,13 @@ All notable changes to this project will be documented in this file.
 - Fixed `PUT /agents/group/{group_id}/restart` endpoint to exclude exception codes properly. ([#10666](https://github.com/wazuh/wazuh/pull/10666))
 - Fixed agent endpoints `q` parameter to allow more operators when filtering by groups. ([#10656](https://github.com/wazuh/wazuh/pull/10656))
 - Fixed API integration tests related to rule, decoder and task endpoints. ([#10830](https://github.com/wazuh/wazuh/pull/10830))
+- Improved exceptions handling when starting the Wazuh API service. ([#11411](https://github.com/wazuh/wazuh/pull/11411))
 
 #### Removed
 
 - Removed select parameter from GET /agents/stats/distinct endpoint. ([#8599](https://github.com/wazuh/wazuh/pull/8599))
 - Removed `GET /mitre` endpoint. ([#8099](https://github.com/wazuh/wazuh/pull/8099))
+- Deprecated the option to set log `path` in the configuration. ([#11410](https://github.com/wazuh/wazuh/pull/11410))
 
 ### Ruleset
 
@@ -276,12 +304,16 @@ All notable changes to this project will be documented in this file.
 - Upgraded external SQLite library dependency version to 3.36. ([#10247](https://github.com/wazuh/wazuh/pull/10247))
 - Upgraded external BerkeleyDB library dependency version to 18.1.40. ([#10247](https://github.com/wazuh/wazuh/pull/10247))
 - Upgraded external OpenSSL library dependency version to 1.1.1l. ([#10247](https://github.com/wazuh/wazuh/pull/10247))
-- Upgraded external Google Test library dependency version to 1.11 ([#10927](https://github.com/wazuh/wazuh/pull/10927))
+- Upgraded external Google Test library dependency version to 1.11. ([#10927](https://github.com/wazuh/wazuh/pull/10927))
+- Upgraded external Aiohttp library dependency version to 3.8.1. ([11436]([https://github.com/wazuh/wazuh/pull/11436))
+- Upgraded external Werkzeug library dependency version to 2.0.2. ([11436]([https://github.com/wazuh/wazuh/pull/11436))
+- Upgraded embedded Python version to 3.9.9. ([11436]([https://github.com/wazuh/wazuh/pull/11436))
 
 #### Fixed
 
 - Fixed error detection in the CURL helper library. ([#9168](https://github.com/wazuh/wazuh/pull/9168))
 - Fixed external BerkeleyDB library support for GCC 11. ([#10899](https://github.com/wazuh/wazuh/pull/10899))
+- Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
 
 ## [v4.2.5]
 
