@@ -79,14 +79,14 @@ static void wm_check_agents();
  * @brief Method to synchronize 'client.keys' and 'global.db'. All new agents found
  *        in 'client.keys will be added to the DB and any agent in the DB that doesn't
  *        have a key will be removed.
- *        This method will also create and remove the agents artifacts acorting to
+ *        This method will also create and remove the agents artifacts according to
  *        the action taken in the database with the agent.
  */
 static void wm_sync_agents();
 
 /**
  * @brief Method to synchronize the agent artifacts with 'client.keys' and 'global.db'.
- *        For all new agents found in 'client.keys will be created its artifacts.
+ *        For all new agents found in 'client.keys, its artifacts will be created.
  *        All the artifacts corresponding to an agent that is not in the database will
  *        be removed.
  */
@@ -392,7 +392,7 @@ void sync_keys_with_wdb(keystore *keys) {
         }
     }
 
-    // Delete from the database all the agents without a key and all its atirfacts
+    // Delete from the database all the agents without a key and all its artifacts
     if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
         char id[9];
 
@@ -445,7 +445,7 @@ void sync_keys_with_agents_artifacts(keystore *keys) {
         mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing agent %s '%s' database.", entry->id, entry->name);
 
         if (!(id = atoi(entry->id))) {
-            merror("At sync_keys_with_agents_ds(): invalid ID number.");
+            merror("At sync_keys_with_agents_artifacts(): invalid ID number.");
             continue;
         }
 
