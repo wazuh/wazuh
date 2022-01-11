@@ -71,6 +71,7 @@ class diskStorage : public StorageDriverInterface
         std::vector<std::string> getAssetList(const AssetType type) override;
         /**
          * @copydoc StorageDriverInterface::getAsset
+         * @throws std::runtime_error when the asset does not exist
          * @throws std::filesystem::filesystem_error whens the file cannot be read
          */
         std::string getAsset(const AssetType type, std::string_view assetName) override;

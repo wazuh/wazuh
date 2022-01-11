@@ -28,13 +28,9 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
                     (entry.path().extension().string() == ext_json_schema && type == AssetType::Schemas))
             {
                 assetList.push_back(string {entry.path().stem().string()});
-                //std::cout << "Adding file: '" << entry.path() << std::endl;
             }
         }
 
-        // else {
-        //     std::cout << "ignoring file: '" << entry.path() << std::endl;
-        // }
     }
 
     return assetList;
@@ -44,7 +40,6 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
 std::string diskStorage::getAsset(const AssetType type, std::string_view assetName)
 {
     using std::string;
-    using std::string_view;
     using rapidjson::Document;
     namespace fs = std::filesystem;
 
@@ -72,7 +67,6 @@ std::string diskStorage::getAsset(const AssetType type, std::string_view assetNa
     // Throws std::filesystem::filesystem_error
     if (fs::exists(file_path))
     {
-        // Throw a
         std::ifstream ifs {file_path.string()};
 
         if (ifs)
@@ -81,16 +75,16 @@ std::string diskStorage::getAsset(const AssetType type, std::string_view assetNa
             oss << ifs.rdbuf();
             assetStr = oss.str();
         }
-
-        // else {
-        //     std::cerr << "Error reading file: " << file_path << std::endl;
-        // }
+        else
+        {
+            // Non regular file or not readable
+            throw std::runtime_error {"Error reading file: '" + assetTypeToPath.at(type) + "/" + file_name + "'"};
+        }
     }
-
-    // else
-    // {
-    //     std::cout << "Asset file not found: " << file_path << std::endl;
-    // }
+    else
+    {
+        throw std::runtime_error {"Asset not found in file: '" + assetTypeToPath.at(type) + "/" + file_name + "'"};
+    }
 
     return assetStr;
 }
