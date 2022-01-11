@@ -10,6 +10,7 @@
  */
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
@@ -193,6 +194,43 @@ int SysInfo::getCpuMHz() const
     {
         retVal = std::stoi(it->second) + 1;
     }
+    else
+    {
+        int cpuFreq { 0 };
+        const auto cpusInfo { Utils::enumerateDir(WM_SYS_CPU_FREC_DIR) };
+        constexpr auto CPU_FREQ_DIRNAME_PATTERN {"cpu[0-9]+"};
+        const std::regex cpuDirectoryRegex {CPU_FREQ_DIRNAME_PATTERN};
+
+        for (const auto cpu : cpusInfo)
+        {
+            if (std::regex_match(cpu, cpuDirectoryRegex))
+            {
+                std::fstream file{WM_SYS_CPU_FREC_DIR + cpu + "/cpufreq/cpuinfo_max_freq", std::ios_base::in};
+
+                if (file.is_open())
+                {
+                    std::string frequency;
+                    std::getline(file, frequency);
+
+                    try
+                    {
+                        cpuFreq = std::stoi(frequency);  // Frequency on KHz
+
+                        if (cpuFreq > retVal)
+                        {
+                            retVal = cpuFreq;
+                        }
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+            }
+        }
+
+        retVal /= 1000;  // Convert frequency from KHz to MHz
+    }
+
 
     return retVal;
 }
