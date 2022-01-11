@@ -76,10 +76,21 @@ static void wm_sync_manager();
 static void wm_check_agents();
 
 /**
- * @brief Method to synchronize 'client.keys' and 'global.db'. All new agents found in 'client.keys will be added to the DB
- *        and any agent in the DB that doesn't have a key will be removed.
+ * @brief Method to synchronize 'client.keys' and 'global.db'. All new agents found
+ *        in 'client.keys will be added to the DB and any agent in the DB that doesn't
+ *        have a key will be removed.
+ *        This method will also create and remove the agents artifacts acorting to
+ *        the action taken in the database with the agent.
  */
 static void wm_sync_agents();
+
+/**
+ * @brief Method to synchronize the agent artifacts with 'client.keys' and 'global.db'.
+ *        For all new agents found in 'client.keys will be created its artifacts.
+ *        All the artifacts corresponding to an agent that is not in the database will
+ *        be removed.
+ */
+static void wm_sync_agents_artifacts();
 
 // Clean dangling database files
 static void wm_clean_dangling_legacy_dbs();
@@ -141,14 +152,11 @@ void* wm_database_main(wm_database *data) {
         wm_sync_manager();
     }
 
-    // The client.keys file should only be synchronized with the database in the
-    // worker nodes. In the case of the master, this will happen in the writter
-    // thread of authd and only one time at the begining of modulesd.
-    if (!is_worker) {
-        wm_sync_agents();
-    }
-
-    // If we have groups assignment in legacy files, insert them (master) or remove them (worker)
+    // During the startup, both workers and master nodes should perform the
+    // agents synchronization with the database using the keys. In advance,
+    // the master will only synchronize the artifacts and the agent addition
+    // and removal from the database will be held by authd.
+    wm_sync_agents();
     wm_sync_legacy_groups_files();
 
 #ifdef INOTIFY_ENABLED
@@ -169,6 +177,9 @@ void* wm_database_main(wm_database *data) {
                 // The syncronization with client.keys only happens in worker nodes
                 if (is_worker) {
                     wm_sync_agents();
+                }
+                else {
+                    wm_sync_agents_artifacts();
                 }
             } else
 #endif // !LOCAL
@@ -201,10 +212,7 @@ void* wm_database_main(wm_database *data) {
 
 #ifndef LOCAL
             if (data->sync_agents) {
-                // The syncronization with client.keys only happens in worker nodes
-                if (is_worker) {
-                    wm_check_agents();
-                }
+                wm_check_agents();
                 wm_sync_multi_groups(SHAREDCFG_DIR);
                 wm_clean_dangling_groups();
                 wm_clean_dangling_legacy_dbs();
@@ -279,7 +287,12 @@ void wm_check_agents() {
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
             /* Synchronize */
-            wm_sync_agents();
+            if (is_worker) {
+                wm_sync_agents();
+            }
+            else {
+                wm_sync_agents_artifacts();
+            }
             timestamp = buffer.st_mtime;
             inode = buffer.st_ino;
         }
@@ -299,22 +312,38 @@ void wm_sync_agents() {
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
-    // The client.keys file should only be synchronized with the database in the
-    // worker nodes. In the case of the master, we should only synchronize the
-    // agents artifacts.
-    if (is_worker) {
-        sync_keys_with_wdb(&keys);
-    }
-    else {
-        sync_keys_with_agents_db(&keys);
-        sync_agents_artifacts_dbs_with_wdb();
-    }
+    sync_keys_with_wdb(&keys);
 
     OS_FreeKeys(&keys);
     mtdebug1(WM_DATABASE_LOGTAG, "Agents synchronization completed.");
     gettime(&spec1);
     time_sub(&spec1, &spec0);
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+}
+
+void wm_sync_agents_artifacts() {
+    keystore keys = KEYSTORE_INITIALIZER;
+    clock_t clock0 = clock();
+    struct timespec spec0;
+    struct timespec spec1;
+
+    gettime(&spec0);
+
+    mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents artifacts.");
+    OS_PassEmptyKeyfile();
+    OS_ReadKeys(&keys, W_RAW_KEY, 0);
+
+    // The client.keys file should only be synchronized with the database in the
+    // worker nodes. In the case of the master, we should only synchronize the
+    // agents artifacts.
+    sync_keys_with_agents_artifacts(&keys);
+    sync_agents_artifacts_with_wdb();
+
+    OS_FreeKeys(&keys);
+    mtdebug1(WM_DATABASE_LOGTAG, "Agents artifacts synchronization completed.");
+    gettime(&spec1);
+    time_sub(&spec1, &spec0);
+    mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents_artifacts(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
 /**
@@ -403,7 +432,7 @@ void sync_keys_with_wdb(keystore *keys) {
  *
  * @param keys The keystore structure to be synchronized
  */
-void sync_keys_with_agents_db(keystore *keys) {
+void sync_keys_with_agents_artifacts(keystore *keys) {
     keyentry *entry = NULL;
     unsigned int i;
 
@@ -431,7 +460,7 @@ void sync_keys_with_agents_db(keystore *keys) {
  *        the databases of agents that are not in the agent table of
  *        global.db.
  */
-void sync_agents_artifacts_dbs_with_wdb() {
+void sync_agents_artifacts_with_wdb() {
     // Delete the databases of all the agents without a key
     DIR *dir = NULL;
     struct dirent * dirent = NULL;
@@ -883,6 +912,9 @@ void wm_inotify_setup(wm_database * data) {
         // The syncronization with client.keys only happens in worker nodes
         if (is_worker) {
             wm_sync_agents();
+        }
+        else {
+            wm_sync_agents_artifacts();
         }
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
