@@ -106,6 +106,13 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
       "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
+      "${CMAKE_SOURCE_DIR}/src/*Solaris.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/networkSolarisHelper.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*Solaris.cpp")
 else()
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Unix.cpp"
