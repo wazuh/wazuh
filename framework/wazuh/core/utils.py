@@ -53,7 +53,7 @@ def check_pid(daemon):
     daemon : str
         Daemon's name.
     """
-    regex = rf'{daemon}-(.*).pid'
+    regex = rf'{daemon}-(\d+).pid'
     for pidfile in os.listdir(pidfiles_path):
         if match := re.match(regex, pidfile):
             try:
