@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
-#include "catalog/storageDriver/disk/diskStorage.hpp"
+#include "catalog/storageDriver/disk/DiskStorage.hpp"
 
 char* createDBtmp()
 {

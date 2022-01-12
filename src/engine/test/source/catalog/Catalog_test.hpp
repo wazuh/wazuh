@@ -67,7 +67,8 @@ class fakeStorage : public StorageDriverInterface
                     }
                     else
                     {
-                        throw std::runtime_error("Asset not found in file: 'decoders/not_found_asset.yml'");
+                        throw std::runtime_error("Asset not found in file:"
+                                                 " 'decoders/not_found_asset.yml'");
                     }
 
                     break;
@@ -98,7 +99,8 @@ class fakeStorage : public StorageDriverInterface
                     }
                     else
                     {
-                        throw std::runtime_error("Schema not found: 'schemas/wazuh-decoders.json'");
+                        throw std::runtime_error("Schema not found: "
+                                                 "'schemas/wazuh-decoders.json'");
                     }
 
                     break;
