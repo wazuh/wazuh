@@ -873,7 +873,7 @@ checks:
     title: "Ensure chrony is configured."
     description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly. Note: This recommendation only applies if chrony is in use on the system."
-    remediation: "1) Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server>. 2) Add or edit the OPTIONS in /etc/sysconfig/chronyd to include '-u chrony':OPTIONS=\"-u chrony\""
+    remediation: "1) Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server>. 2) Add or edit the OPTIONS in /etc/sysconfig/chronyd to include '-u chrony':OPTIONS=\" -u chrony\""
     compliance:
       - cis: ["2.1.1.2"]
       - cis_csc: ["6.1"]
@@ -2321,7 +2321,7 @@ checks:
 # 4.1.17 Ensure the audit configuration is immutable.
   - id: 20623
     title: "Ensure the audit configuration is immutable."
-    description: "Set system audit so that audit rules cannot be modified with auditctl . Setting the flag \"-e 2\" forces audit to be put in immutable mode. Audit changes can only be made on system reboot."
+    description: "Set system audit so that audit rules cannot be modified with auditctl . Setting the flag \" -e 2\" forces audit to be put in immutable mode. Audit changes can only be made on system reboot."
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Add the following line to the end of the /etc/audit/rules.d/audit.rules file: -e 2"
     compliance:
@@ -2839,7 +2839,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: none
     rules:
-      - 'c:sh -c "sshd -T | grep ciphers"-> r:3des-cbc|aes192-cbc|aes256-cbc|arcfour|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
+      - 'c:sh -c "sshd -T | grep ciphers" -> r:3des-cbc|aes192-cbc|aes256-cbc|arcfour|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
 
 # 5.3.14 Ensure only strong MAC algorithms are used.
   - id: 20654
@@ -2853,7 +2853,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: none
     rules:
-      - 'c:sh -c "sshd -T | grep macs"-> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
+      - 'c:sh -c "sshd -T | grep macs" -> r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
 
 # 5.3.15 Ensure only strong Key Exchange algorithms are used.
   - id: 20655
@@ -2867,7 +2867,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: none
     rules:
-      - 'sh -c "c:sshd -T | grep kexalgorithms"-> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
+      - 'c:sh -c "sshd -T | grep kexalgorithms" -> r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
 
 # 5.3.16 Ensure SSH Idle Timeout Interval is configured.
   - id: 20656

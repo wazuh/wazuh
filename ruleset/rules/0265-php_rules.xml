@@ -77,7 +77,7 @@
     <match>bytes written, possibly out of free disk space in</match>
     <description>PHP internal error (server out of space).</description>
     <mitre>
-      <id>T1488</id>
+      <id>T1561.001</id>
     </mitre>
     <group>low_diskspace,</group>
     <group>attack,pci_dss_6.5,pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.14,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>

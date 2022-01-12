@@ -54,14 +54,6 @@ def start(foreground: bool, root: bool, config_file: str):
             )
             api_logger.setup_logger()
 
-    # Foreground/Daemon
-    utils.check_pid('wazuh-apid')
-    if not foreground:
-        pyDaemonModule.pyDaemon()
-    pid = os.getpid()
-    if foreground:
-        print(f"Starting API in foreground (pid: {pid})")
-
     if config_file is not None:
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
@@ -87,6 +79,7 @@ def start(foreground: bool, root: bool, config_file: str):
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
+    from wazuh.rbac.orm import create_rbac_db
 
     # Check deprecated options. To delete after expected versions
     if 'use_only_authd' in api_conf:
@@ -163,7 +156,8 @@ def start(foreground: bool, root: bool, config_file: str):
                 logger.error(msg)
                 raise exc
 
-    # Drop privileges to wazuh
+    utils.check_pid('wazuh-apid')
+    # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
             os.setgid(common.wazuh_gid())
@@ -171,7 +165,14 @@ def start(foreground: bool, root: bool, config_file: str):
     else:
         print(f"Starting API as root")
 
-    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    # Foreground/Daemon
+    if not foreground:
+        pyDaemonModule.pyDaemon()
+        pid = os.getpid()
+        pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    else:
+        print(f"Starting API in foreground")
+    create_rbac_db()
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():
