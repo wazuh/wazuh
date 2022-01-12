@@ -33,8 +33,7 @@ CREATE TABLE IF NOT EXISTS agent (
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
-    group_local_hash TEXT default NULL,
-    group_sync_hash TEXT default NULL,
+    group_hash TEXT default NULL,
     group_sync_status TEXT NOT NULL CHECK (group_sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
@@ -43,8 +42,7 @@ CREATE TABLE IF NOT EXISTS agent (
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
-CREATE INDEX IF NOT EXISTS agent_group_local_hash ON agent (group_local_hash);
-CREATE INDEX IF NOT EXISTS agent_group_sync_hash ON agent (group_sync_hash);
+CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
 
 INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
 
