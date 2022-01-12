@@ -5,11 +5,18 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import os
+import signal
 import sys
 from atexit import register
 
 from api.api_exception import APIError
 from api.constants import API_LOG_FILE_PATH
+from wazuh.core import pyDaemonModule
+
+API_MAIN_PROCESS = 'wazuh-apid'
+API_LOCAL_REQUEST_PROCESS = 'wazuh-apid-exec'
+API_AUTHENTICATION_PROCESS = 'wazuh-apid-auth'
 
 
 def spawn_process_pool():
@@ -17,13 +24,21 @@ def spawn_process_pool():
     from wazuh import agent, manager  # noqa
     from wazuh.core import common  # noqa
     from wazuh.core.cluster import dapi  # noqa
-    return
+
+    pid = os.getpid()
+    pyDaemonModule.create_pid(API_LOCAL_REQUEST_PROCESS, pid)
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def spawn_authentication_pool():
     """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
     from wazuh import security  # noqa
-    return
+
+    pid = os.getpid()
+    pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, pid)
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def start(foreground: bool, root: bool, config_file: str):
@@ -42,9 +57,8 @@ def start(foreground: bool, root: bool, config_file: str):
         Path to the API config file
     """
     import logging
-    import os
     from api import alogging, configuration
-    from wazuh.core import pyDaemonModule, common, utils
+    from wazuh.core import common, utils
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -156,7 +170,11 @@ def start(foreground: bool, root: bool, config_file: str):
                 logger.error(msg)
                 raise exc
 
-    utils.check_pid('wazuh-apid')
+    # Check for unused PID files
+    utils.check_pid(API_MAIN_PROCESS)
+    utils.check_pid(API_LOCAL_REQUEST_PROCESS)
+    utils.check_pid(API_AUTHENTICATION_PROCESS)
+
     # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
@@ -168,10 +186,11 @@ def start(foreground: bool, root: bool, config_file: str):
     # Foreground/Daemon
     if not foreground:
         pyDaemonModule.pyDaemon()
-        pid = os.getpid()
-        pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
     else:
         print(f"Starting API in foreground")
+
+    pid = os.getpid()
+    pyDaemonModule.create_pid(API_MAIN_PROCESS, pid) or register(pyDaemonModule.delete_pid, API_MAIN_PROCESS, pid)
     create_rbac_db()
 
     # Spawn child processes with their own needed imports
@@ -275,6 +294,11 @@ def version():
     sys.exit(0)
 
 
+def exit_handler(signum=None, frame=None):
+    """Try to kill API child processes and remove their PID files."""
+    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, os.getpid())
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -294,6 +318,7 @@ if __name__ == '__main__':
         test_config(args.config_file)
     else:
         try:
+            signal.signal(signal.SIGTERM, exit_handler)
             start(args.foreground, args.root, args.config_file)
         except APIError as e:
             print(f"Error when trying to start the Wazuh API. {e}")
@@ -301,3 +326,5 @@ if __name__ == '__main__':
         except Exception as e:
             print(f'Internal error when trying to start the Wazuh API. {e}')
             sys.exit(1)
+        finally:
+            exit_handler()
