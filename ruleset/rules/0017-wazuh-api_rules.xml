@@ -6,7 +6,7 @@
   Wazuh API rules ID: 400 - 428
 -->
 
-<group name="wazuh-api,">
+<group name="wazuh_api,">
 
   <rule id="400" level="0">
     <decoded_as>wazuh-api</decoded_as>
@@ -37,7 +37,7 @@
     <if_sid>400</if_sid>
     <field name="type">CRITICAL</field>
     <description>Wazuh API: Critical Error event, requires inmediate atention.</description>
-    <group>gpg13_4.1,gpg13_4.3,gpg13_4.12pci_dss_10.6.1,</group>
+    <group>gpg13_4.1,gpg13_4.3,gpg13_4.12,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="405" level="7">
