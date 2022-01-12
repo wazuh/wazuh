@@ -70,7 +70,6 @@ FetchContent_GetProperties(
 ####################################################################################################
 set(SOURCES
   ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp
-  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/event.cpp
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}/decoders.cpp
@@ -112,7 +111,7 @@ gtest_discover_tests(builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
 
 # Registry test
-add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp ${SOURCES})
+add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp)
 gtest_discover_tests(registry_test)
 #list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp)
 
