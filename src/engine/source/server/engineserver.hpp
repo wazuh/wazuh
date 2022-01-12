@@ -10,6 +10,7 @@
 #ifndef _ENGINESERVER_H_
 #define _ENGINESERVER_H_
 
+
 #include <queue>
 #include <mutex>
 
@@ -22,9 +23,28 @@
 #include <uvw/timer.hpp>
 #include <uvw/udp.hpp>
 
+
+namespace protocolhandler
+{
+    /**
+     * @brief Used to differenciate the Wazuh events source
+     */
+    enum MessageQueue {UNKNOWN = 0, SYSLOG, IDS, FIREWALL, RSV1, RSV2, RSV3,
+                       APACHE, SQUID, WINDOWS, HOST_INFO, WAZUH_RULES,
+                       WAZUH_ALERTS};
+
+    /**
+     * @brief Extracts the Queue; Location and Message from the Wazuh event and creates a JSON object with them
+     *
+     * @param event String to be parsed
+     * @return nlohmann::json Object containing the event in JSON format
+     */
+    nlohmann::json parseEvent(std::string event);
+}
+
+
 namespace engineserver
 {
-
     /**
      * @brief Used to differenciate between server's endpoint types
      */
@@ -41,7 +61,7 @@ namespace engineserver
         std::shared_ptr<uvw::UDPHandle> m_udphandle;
         std::shared_ptr<uvw::PipeHandle> m_sockethandle;
 
-        rxcpp::subjects::subject<std::string> m_subject;
+        rxcpp::subjects::subject<nlohmann::json> m_subject;
 
     public:
         /**
@@ -51,10 +71,9 @@ namespace engineserver
          * @param path Defines the endpoint univocally
          * @param handle Endpoint handler
          */
-        ServerEndpoint(EndpointType type,
-                    std::string path,
-                    std::shared_ptr<uvw::TCPHandle> handle)
-                    : m_type{type}, m_path{path}, m_tcphandle{handle} { };
+        ServerEndpoint(EndpointType type, std::string path,
+                       std::shared_ptr<uvw::TCPHandle> handle)
+                       : m_type{type}, m_path{path}, m_tcphandle{handle} { };
         /**
          * @brief Construct a new Server Endpoint object given a UDPHandle
          *
@@ -62,9 +81,8 @@ namespace engineserver
          * @param path Defines the endpoint univocally
          * @param handle Endpoint handler
          */
-        ServerEndpoint(EndpointType type,
-                    std::string path,
-                    std::shared_ptr<uvw::UDPHandle> handle)
+        ServerEndpoint(EndpointType type, std::string path,
+                       std::shared_ptr<uvw::UDPHandle> handle)
                     : m_type{type}, m_path{path}, m_udphandle{handle} { };
         /**
          * @brief Construct a new Server Endpoint object given a PipeHandle (Socket)
@@ -73,10 +91,9 @@ namespace engineserver
          * @param path Defines the endpoint univocally
          * @param handle Endpoint handler
          */
-        ServerEndpoint(EndpointType type,
-                    std::string path,
-                    std::shared_ptr<uvw::PipeHandle> handle)
-                    : m_type{type}, m_path{path}, m_sockethandle{handle} { };
+        ServerEndpoint(EndpointType type, std::string path,
+                       std::shared_ptr<uvw::PipeHandle> handle)
+                       : m_type{type}, m_path{path}, m_sockethandle{handle} { };
 
         /**
          * @brief Destroy the Server Endpoint object
@@ -170,9 +187,9 @@ namespace engineserver
          *
          * @param type Endpoint's type
          * @param path Endpoint's path
-         * @return std::optional<rxcpp::subjects::subject<std::string>> Optional Endpoint's Subject object
+         * @return std::optional<rxcpp::subjects::subject<nlohmann::json>> Optional Endpoint's Subject object
          */
-        std::optional<rxcpp::subjects::subject<std::string>>
+        std::optional<rxcpp::subjects::subject<nlohmann::json>>
         getEndpointSubject(const EndpointType type, const std::string path);
         /**
          * @brief Get the Subject object from a Server's endpoint
@@ -180,9 +197,9 @@ namespace engineserver
          * @param type Endpoint's type
          * @param port Endpoint's port
          * @param ip Endpoint's ip
-         * @return std::optional<rxcpp::subjects::subject<std::string>> Optional Endpoint's Subject object
+         * @return std::optional<rxcpp::subjects::subject<nlohmann::json>> Optional Endpoint's Subject object
          */
-        std::optional<rxcpp::subjects::subject<std::string>>
+        std::optional<rxcpp::subjects::subject<nlohmann::json>>
         getEndpointSubject(const EndpointType type, const int port,
                            const std::string ip = "0.0.0.0");
 
@@ -191,9 +208,9 @@ namespace engineserver
          *
          * @param type Endpoint's type
          * @param path Endpoint's path
-         * @return std::optional<rxcpp::observable<std::string>> Optional Endpoint's Observable object
+         * @return std::optional<rxcpp::observable<nlohmann::json>> Optional Endpoint's Observable object
          */
-        std::optional<rxcpp::observable<std::string>>
+        std::optional<rxcpp::observable<nlohmann::json>>
         getEndpointObservable(const EndpointType type, const std::string path);
         /**
          * @brief Get the Observable object from a Server's endpoint
@@ -201,14 +218,14 @@ namespace engineserver
          * @param type Endpoint's type
          * @param port Endpoint's port
          * @param ip Endpoint's ip
-         * @return std::optional<rxcpp::observable<std::string>> Optional Endpoint's Observable object
+         * @return std::optional<rxcpp::observable<nlohmann::json>> Optional Endpoint's Observable object
          */
-        std::optional<rxcpp::observable<std::string>>
+        std::optional<rxcpp::observable<nlohmann::json>>
         getEndpointObservable(const EndpointType type, const int port,
                               const std::string ip = "0.0.0.0");
 
         /**
-         * @brief Opens a TCP socket and listens for the incoming events, which are then stored on the server queue
+         * @brief Opens a TCP socket and listens for the incoming events
          *
          * @param ip TCP socket interface IP
          * @param port TCP socket interface Port
@@ -216,7 +233,7 @@ namespace engineserver
         void listenTCP(const int port, const std::string ip = "0.0.0.0");
 
         /**
-        * @brief Opens a UDP socket and listens for the incoming events, which are then stored on the server queue
+        * @brief Opens a UDP socket and listens for the incoming events
         *
         * @param ip UDP socket interface IP
         * @param port UDP socket interface Port
@@ -224,7 +241,7 @@ namespace engineserver
         void listenUDP(const int port, const std::string ip = "0.0.0.0");
 
         /**
-         * @brief Opens a UNIX socket and listens for the incoming events, which are then stored on the server queue
+         * @brief Opens a UNIX socket and listens for the incoming events
          *
          * @param path Absolute path to the UNIX socket
          */
@@ -251,5 +268,6 @@ namespace engineserver
     };
 
 }
+
 
 #endif
