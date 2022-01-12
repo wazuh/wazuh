@@ -88,7 +88,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
-    bool post_upgrade = FALSE;
     int updates_length = (int)(sizeof(UPDATES)/sizeof(char*));
 
     switch (wdb_metadata_table_check(wdb,"metadata")) {
@@ -117,25 +116,26 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     char output[OS_MAXSTR + 1] = {0};
 
     if (version < updates_length) {
-        post_upgrade = TRUE;
         if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
             mwarn("Creating pre-upgrade global DB snapshot failed");
         }
-    }
 
-    for (int i = version; i < updates_length; i++) {
-        mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+        bool upgrade_success = TRUE;
+        for (int i = version; i < updates_length; i++) {
+            mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
-        if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_global_upgrade(wdb, i)) {
-            mwarn("Failed to update global.db to version %d", i + 1);
-            wdb = wdb_backup_global(wdb, version);
-            break;
+            if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_global_upgrade(wdb, i)) {
+                mwarn("Failed to update global.db to version %d", i + 1);
+                wdb = wdb_backup_global(wdb, version);
+                upgrade_success = FALSE;
+                break;
+            }
         }
-    }
 
-    if (post_upgrade) {
-        if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-post_upgrade")) {
-           mwarn("Creating post-upgrade global DB snapshot failed");
+        if (upgrade_success) {
+            if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-post_upgrade")) {
+                mwarn("Creating post-upgrade global DB snapshot failed");
+            }
         }
     }
 

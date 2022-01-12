@@ -1727,7 +1727,6 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
 
 int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
     char path[PATH_MAX-3] = {0};
-    char file_name[PATH_MAX] = {0};
     char path_compressed[PATH_MAX] = {0};
     int result = OS_INVALID;
     char* timestamp = NULL;
@@ -1736,7 +1735,6 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
     wchr_replace(timestamp, ' ', '-');
     wchr_replace(timestamp, '/', '-');
     snprintf(path, PATH_MAX-3, "%s/%s-%s%s", WDB_BACKUP_FOLDER, WDB_GLOB_BACKUP_NAME, timestamp, tag ? tag : "");
-    snprintf(file_name, PATH_MAX, "%s-%s%s", WDB_GLOB_BACKUP_NAME, timestamp, tag ? tag : "");
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
@@ -1776,10 +1774,12 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
         unlink(path);
         if (OS_SUCCESS == result) {
             wdb_global_remove_old_backups();
-            cJSON* j_file_name = cJSON_CreateArray();
-            cJSON_AddItemToArray(j_file_name, cJSON_CreateString(file_name));
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(j_file_name));
-            cJSON_Delete(j_file_name);
+            cJSON* j_path = cJSON_CreateArray();
+            cJSON_AddItemToArray(j_path, cJSON_CreateString(path));
+            char* output_str = cJSON_PrintUnformatted(j_path);
+            snprintf(output, OS_MAXSTR + 1, "ok %s", output_str);
+            cJSON_Delete(j_path);
+            os_free(output_str);
         } else {
             snprintf(output, OS_MAXSTR + 1, "err Failed during database backup compression");
         }
@@ -1862,26 +1862,14 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 
     snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-    cJSON* response = NULL;
-    char* payload = NULL;
-
+    int result = OS_INVALID;
     if (save_pre_restore_state) {
-        if (OS_SUCCESS == wdb_global_create_backup(*wdb, output, "-pre_restore")) {
-            wdbc_parse_result(output, &payload);
-            response = cJSON_Parse(payload);
-            mdebug1("Creating pre-restore global DB snapshot %s", cJSON_GetStringValue(cJSON_GetArrayItem(response, 0)));
-            cJSON_Delete(response);
-        } else {
-            mwarn("Creating pre-restore global DB snapshot failed");
+        if (OS_SUCCESS != wdb_global_create_backup(*wdb, output, "-pre_restore")) {
+            merror("Creating pre-restore Global DB snapshot failed. Backup restore stopped.");
+            goto end;
         }
     }
 
-    // Preparing DB for restore backup and later removal.
-    wdb_leave(*wdb);
-    wdb_close(*wdb, true);
-    *wdb = NULL;
-
-    int result = OS_INVALID;
     if (backup_to_restore) {
         char global_tmp_path[OS_SIZE_256] = {0};
         char backup_to_restore_path[OS_SIZE_256] = {0};
@@ -1890,6 +1878,11 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
         snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
 
         if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
+            // Preparing DB for restoration.
+            wdb_leave(*wdb);
+            wdb_close(*wdb, true);
+            *wdb = NULL;
+
             unlink(global_path);
             rename(global_tmp_path, global_path);
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1905,6 +1898,7 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
         result = OS_INVALID;
     }
 
+end:
     if (!snapshot) {
         os_free(backup_to_restore);
     }
