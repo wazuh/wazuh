@@ -1867,7 +1867,7 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
     int result = OS_INVALID;
     if (save_pre_restore_state) {
         if (OS_SUCCESS != wdb_global_create_backup(*wdb, output, "-pre_restore")) {
-            merror("Creating pre-restore Global DB snapshot failed. Backup restore stopped.");
+            merror("Creating pre-restore Global DB snapshot failed. Backup restore stopped: %s", output);
             goto end;
         }
     }
