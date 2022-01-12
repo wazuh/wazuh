@@ -23,14 +23,14 @@ Log samples:
 <!-- Group BigIP F5  decoders-->
 <decoder name="f5-bigip">
   <type>syslog</type>
-	<prematch type="pcre2">^\S+\s[^\[]+\[\d+\]:\s[0-9a-fA-F]+:\d+:\s</prematch>
+  <prematch type="pcre2">^\S+\s[^\[]+\[\d+\]:\s[0-9a-fA-F]+:\d+:\s</prematch>
 </decoder>
 
 <!-- General decoder catch all-->
 <decoder name="f5-bigip-general-fields">
-   <parent>f5-bigip</parent>
-   <regex type="pcre2">^(\S+)\s([^\[]+)\[(\d+)\]:\s([0-9a-fA-F]+):(\d+):\s(.*)$</regex>
-   <order>event.type, process.name, process.pid, event.code, log.level, message</order>
+  <parent>f5-bigip</parent>
+  <regex type="pcre2">^(\S+)\s([^\[]+)\[(\d+)\]:\s([0-9a-fA-F]+):(\d+):\s(.*)$</regex>
+  <order>event.type, process.name, process.pid, event.code, log.level, message</order>
 </decoder>
 
 <!-- 01010251 : Virtual %s exceeded configured rate limit. -->

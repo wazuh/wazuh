@@ -325,7 +325,7 @@
   <rule id="65298" level="2">
     <if_sid>65260</if_sid>
     <field name="event.type">info</field>
-    <description>F5 BigIP: Alert message detected.</description>
+    <description>F5 BigIP: Info message detected.</description>
   </rule>
 
   <rule id="65299" level="2">
