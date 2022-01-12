@@ -66,9 +66,9 @@ class MockFIMDB: public FIMDB
             FIMDB::setValueLimit();
         }
 
-        void stopSync()
+        void stopIntegrity()
         {
-            FIMDB::stopSync();
+            FIMDB::stopIntegrity();
         }
 
         void teardown()

@@ -160,7 +160,7 @@ void FIMDB::teardown()
 {
     try
     {
-        stopSync();
+        stopIntegrity();
         m_rsyncHandler.reset();
         m_dbsyncHandler.reset();
     }

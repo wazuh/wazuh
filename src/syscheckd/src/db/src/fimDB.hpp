@@ -328,7 +328,7 @@ class FIMDB
         /**
          * @brief Its the function in charge of stopping the sync flow
          */
-        inline void stopSync()
+        inline void stopIntegrity()
         {
             std::unique_lock<std::mutex> lock(m_fimSyncMutex);
             m_stopping = true;

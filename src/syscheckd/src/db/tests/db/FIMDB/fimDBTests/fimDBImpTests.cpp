@@ -284,7 +284,7 @@ TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
     std::unique_lock<std::mutex> lock{test_mutex};
     std::thread syncThread(&FIMDB::loopRSync, &fimDBMock, std::ref(lock));
 
-    fimDBMock.stopSync();
+    fimDBMock.stopIntegrity();
 
     syncThread.join();
 
@@ -302,7 +302,7 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     std::unique_lock<std::mutex> lock{test_mutex};
     std::thread syncThread(&FIMDB::loopRSync, &fimDBMock, std::ref(lock));
 
-    fimDBMock.stopSync();
+    fimDBMock.stopIntegrity();
 
     syncThread.join();
 
@@ -383,7 +383,7 @@ TEST_F(FimDBFixture, fimRunIntegritySuccess)
     {
         std::thread integrityThread(&FIMDB::runIntegrity, &fimDBMock);
 
-        fimDBMock.stopSync();
+        fimDBMock.stopIntegrity();
         integrityThread.join();
     });
 }

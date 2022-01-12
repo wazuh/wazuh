@@ -149,11 +149,14 @@ void fim_db_init(int storage,
                             is_windows);
 
     }
+    // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
         auto errorMessage { std::string("Error, id: ") + ex.what() };
         log_callback(LOG_ERROR_EXIT, errorMessage.c_str());
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void fim_run_integrity()
@@ -255,10 +258,12 @@ void fim_db_teardown()
     {
         FIMDB::instance().teardown();
     }
+    // LCOV_EXCL_START
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+    // LCOV_EXCL_STOP
 }
 
 
