@@ -15,16 +15,16 @@ sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scr
 
 if [ "$3" != "master" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/ossec.conf
-else
-    cp -rf /tmp/configuration_files/master_only/config/* /var/ossec/
-    chown root:wazuh /var/ossec/etc/client.keys
-    chown -R wazuh:wazuh /var/ossec/queue/agent-groups
-    chown -R wazuh:wazuh /var/ossec/queue/db
-    chown -R wazuh:wazuh /var/ossec/etc/shared
-    chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
-    cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh:wazuh {} \; && cd /
-    chown root:wazuh /var/ossec/etc/shared/ar.conf
 fi
+
+cp -rf /tmp/configuration_files/config/* /var/ossec/
+chown root:wazuh /var/ossec/etc/client.keys
+chown -R wazuh:wazuh /var/ossec/queue/agent-groups
+chown -R wazuh:wazuh /var/ossec/queue/db
+chown -R wazuh:wazuh /var/ossec/etc/shared
+chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
+cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh:wazuh {} \; && cd /
+chown root:wazuh /var/ossec/etc/shared/ar.conf
 
 sleep 1
 
@@ -38,7 +38,7 @@ for sh_file in /tmp/configuration_files/*.sh; do
 done
 
 echo "" > /var/ossec/logs/api.log
-/var/ossec/bin/wazuh-control restart
+/var/ossec/bin/wazuh-control start
 
 # Master-only configuration
 if [ "$3" == "master" ]; then
