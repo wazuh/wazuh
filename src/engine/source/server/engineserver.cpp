@@ -12,7 +12,29 @@
 
 
 using namespace engineserver;
+using namespace protocolhandler;
 
+
+nlohmann::json protocolhandler::parseEvent(std::string event)
+{
+    nlohmann::json object;
+
+    auto separator_pos = event.find(":");
+    auto event_slice = event.substr(separator_pos + 1);
+
+    auto queue = std::stoi(event.substr(0, separator_pos));
+
+    separator_pos = event_slice.find(":");
+    auto location = event_slice.substr(0, separator_pos);
+
+    auto message = event_slice.substr(separator_pos + 1);
+
+    object["queue"] = MessageQueue(queue);
+    object["location"] = location;
+    object["message"] = message;
+
+    return object;
+}
 
 void EngineServer::listenTCP(const int port, const std::string ip)
 {
@@ -31,19 +53,6 @@ void EngineServer::listenTCP(const int port, const std::string ip)
 
         auto client = srv.loop().resource<uvw::TCPHandle>();
 
-        client->on<uvw::DataEvent>([this, &srv](const uvw::DataEvent &event, uvw::TCPHandle &client) {
-            // std::string printStr(event.data.get(), event.length);
-            // printf("Listen %d: %s", client.sock().port, printStr.c_str());
-            // this->m_eventQueue.push(std::string(event.data.get(), event.length));
-
-            auto obs = this->getEndpointSubject(EndpointType::TCP, client.sock().port, srv.sock().ip);
-            if(obs) obs.value().get_subscriber().on_next(std::string(event.data.get(), event.length));
-        });
-
-        client->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::TCPHandle &client) {
-            client.close();
-        });
-
         client->on<uvw::ErrorEvent>([](const uvw::ErrorEvent &event, uvw::TCPHandle &client) {
             printf("TCP Client (%s:%d) error: code=%d; name=%s; message=%s\n",
                                                     client.peer().ip.c_str(),
@@ -51,6 +60,19 @@ void EngineServer::listenTCP(const int port, const std::string ip)
                                                     event.code(),
                                                     event.name(),
                                                     event.what());
+        });
+
+        client->on<uvw::DataEvent>([this, &srv](const uvw::DataEvent &event, uvw::TCPHandle &client) {
+            auto obs = this->getEndpointSubject(EndpointType::TCP, client.sock().port, srv.sock().ip);
+            if(obs)
+            {
+                auto eventObject = parseEvent(std::string(event.data.get(), event.length));
+                obs.value().get_subscriber().on_next(eventObject);
+            }
+        });
+
+        client->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::TCPHandle &client) {
+            client.close();
         });
 
         srv.accept(*client);
@@ -89,12 +111,12 @@ void EngineServer::listenUDP(const int port, const std::string ip)
                                                         event.what());
         });
 
-        // std::string printStr(event.data.get(), event.length);
-        // printf("Listen %d: %s", udp.sock().port, printStr.c_str());
-        // this->m_eventQueue.push(std::string(event.data.get(), event.length));
-
         auto obs = this->getEndpointSubject(EndpointType::UDP, udp.sock().port, udp.sock().ip);
-        if(obs) obs.value().get_subscriber().on_next(std::string(event.data.get(), event.length));
+        if(obs)
+        {
+            auto eventObject = parseEvent(std::string(event.data.get(), event.length));
+            obs.value().get_subscriber().on_next(eventObject);
+        }
     });
 
     udp->bind(ip, port);
@@ -128,13 +150,17 @@ void EngineServer::listenSocket(const std::string path)
                                                         event.what());
         });
 
-        client->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) {
-            handle.close();
-        });
-
         client->on<uvw::DataEvent>([this](const uvw::DataEvent &event, uvw::PipeHandle &client) {
             auto obs = this->getEndpointSubject(EndpointType::SOCKET, client.sock());
-            if(obs) obs.value().get_subscriber().on_next(std::string(event.data.get(), event.length));
+            if(obs)
+            {
+                auto eventObject = parseEvent(std::string(event.data.get(), event.length));
+                obs.value().get_subscriber().on_next(eventObject);
+            }
+        });
+
+        client->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &) {
+            handle.close();
         });
 
         handle.accept(*client);
@@ -143,7 +169,8 @@ void EngineServer::listenSocket(const std::string path)
 
     {
         struct stat buffer;
-        if (stat (path.c_str(), &buffer) == 0) {
+        if (stat(path.c_str(), &buffer) == 0)
+        {
             remove(path.c_str());
         }
     }
@@ -188,7 +215,7 @@ void EngineServer::setTimer(const int timeout, const int repeat, void (*const ca
 }
 
 
-std::optional<rxcpp::subjects::subject<std::string>>
+std::optional<rxcpp::subjects::subject<nlohmann::json>>
 EngineServer::getEndpointSubject(const EndpointType type, const std::string path)
 {
     std::list<ServerEndpoint>::iterator it;
@@ -202,7 +229,7 @@ EngineServer::getEndpointSubject(const EndpointType type, const std::string path
 };
 
 
-std::optional<rxcpp::subjects::subject<std::string>>
+std::optional<rxcpp::subjects::subject<nlohmann::json>>
 EngineServer::getEndpointSubject(const EndpointType type, const int port, const std::string ip)
 {
     std::list<ServerEndpoint>::iterator it;
@@ -219,7 +246,7 @@ EngineServer::getEndpointSubject(const EndpointType type, const int port, const 
 };
 
 
-std::optional<rxcpp::observable<std::string>>
+std::optional<rxcpp::observable<nlohmann::json>>
 EngineServer::getEndpointObservable(const EndpointType type, const std::string path)
 {
     auto subj = getEndpointSubject(type, path);
@@ -227,7 +254,8 @@ EngineServer::getEndpointObservable(const EndpointType type, const std::string p
     return {};
 };
 
-std::optional<rxcpp::observable<std::string>>
+
+std::optional<rxcpp::observable<nlohmann::json>>
 EngineServer::getEndpointObservable(const EndpointType type, const int port, const std::string ip)
 {
     auto subj = getEndpointSubject(type, port, ip);
@@ -243,7 +271,6 @@ void EngineServer::close(void)
     m_loop->clear();
     m_loop->close();
 }
-
 
 EngineServer::EngineServer()
 {
