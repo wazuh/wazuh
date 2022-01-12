@@ -250,46 +250,6 @@
     <group>s3,</group>
   </rule>
 
-  <!-- Error events -->
-  <rule id="80367" level="5">
-    <if_sid>80360</if_sid>
-    <field name="aws.error_code" type="pcre2">^(?!^$|^-$).*</field>
-    <description>AWS S3 Error: $(aws.error_code).</description>
-    <group>s3,</group>
-  </rule>
-
-  <!-- Access denied errors -->
-  <rule id="80368" level="5">
-    <if_sid>80367</if_sid>
-    <field name="aws.error_code" type="pcre2">^(?:AccessDenied|LambdaPermissionError|AccountNotAuthorized|OrganizationAccessDenied|UnauthorizedAccess)$</field>
-    <description>AWS S3 Error: $(aws.error_code), operation: $(aws.operation).</description>
-    <group>s3,</group>
-  </rule>
-
-  <rule id="80369" level="10" frequency="10" timeframe="60">
-    <if_matched_sid>80368</if_matched_sid>
-    <same_field>aws.error_code</same_field>
-    <description>AWS S3 Error: Multiple access denied.</description>
-    <group>s3,</group>
-  </rule>
-
-  <!-- Authentication failure -->
-  <rule id="80370" level="5">
-    <if_sid>80367</if_sid>
-    <field name="aws.error_code" type="pcre2">^InvalidSecurity$</field>
-    <description>AWS S3 Authentication Failure: $(aws.error_code), from: $(aws.requester).</description>
-    <group>s3,</group>
-  </rule>
-
-  <rule id="80371" level="10" frequency="10" timeframe="60">
-    <if_matched_sid>80370</if_matched_sid>
-    <description>AWS S3 multiple authentication failures.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
-    <group>s3,</group>
-  </rule>
-
   <rule id="80361" level="3">
     <if_sid>80360</if_sid>
     <field name="aws.operation">DELETE</field>
@@ -332,6 +292,46 @@
     <if_sid>80360</if_sid>
     <field name="aws.operation">POST</field>
     <description>AWS S3: POST operation: $(aws.request_uri).</description>
+    <group>s3,</group>
+  </rule>
+
+  <!-- Error events -->
+  <rule id="80367" level="5">
+    <if_sid>80360</if_sid>
+    <field name="aws.error_code" type="pcre2">^(?!^$|^-$).*</field>
+    <description>AWS S3 Error: $(aws.error_code).</description>
+    <group>s3,</group>
+  </rule>
+
+  <!-- Access denied errors -->
+  <rule id="80368" level="5">
+    <if_sid>80367</if_sid>
+    <field name="aws.error_code" type="pcre2">^(?:AccessDenied|LambdaPermissionError|AccountNotAuthorized|OrganizationAccessDenied|UnauthorizedAccess)$</field>
+    <description>AWS S3 Error: $(aws.error_code), operation: $(aws.operation).</description>
+    <group>s3,</group>
+  </rule>
+
+  <rule id="80369" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>80368</if_matched_sid>
+    <same_field>aws.error_code</same_field>
+    <description>AWS S3 Error: Multiple access denied.</description>
+    <group>s3,</group>
+  </rule>
+
+  <!-- Authentication failure -->
+  <rule id="80370" level="5">
+    <if_sid>80367</if_sid>
+    <field name="aws.error_code" type="pcre2">^InvalidSecurity$</field>
+    <description>AWS S3 Authentication Failure: $(aws.error_code), from: $(aws.requester).</description>
+    <group>s3,</group>
+  </rule>
+
+  <rule id="80371" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>80370</if_matched_sid>
+    <description>AWS S3 multiple authentication failures.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     <group>s3,</group>
   </rule>
 
