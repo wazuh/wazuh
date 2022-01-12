@@ -17,8 +17,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from functools import wraps
 from itertools import groupby, chain
-from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
-from os.path import join, basename, relpath
+from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk, path
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from signal import signal, alarm, SIGALRM
@@ -45,7 +44,7 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
-def check_pid(daemon):
+def check_pids(daemon):
     """Check the existence of '.pid' files for a specified daemon.
 
     Parameters
@@ -53,14 +52,14 @@ def check_pid(daemon):
     daemon : str
         Daemon's name.
     """
-    regex = rf'{daemon}-(\d+).pid'
-    for pidfile in os.listdir(pidfiles_path):
-        if match := re.match(regex, pidfile):
+    regex = rf'{daemon}[\w_]*-(\d+).pid'
+    for pid_file in os.listdir(pidfiles_path):
+        if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), 0)
             except OSError:
                 print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
-                os.remove(f'{pidfiles_path}/{pidfile}')
+                path.join(pidfiles_path, pid_file)
 
 
 def find_nth(string, substring, n):
@@ -1772,7 +1771,7 @@ def upload_file(content, path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = join(common.wazuh_path, path)
+        new_conf_path = path.join(common.wazuh_path, path)
         safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
@@ -1801,7 +1800,7 @@ def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: ca
         copyfile(abs_path, backup_file)
     except IOError:
         raise WazuhError(1019)
-    delete_function(filename=basename(abs_path))
+    delete_function(filename=path.basename(abs_path))
 
 
 def replace_in_comments(original_content, to_be_replaced, replacement):
@@ -1827,7 +1826,7 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     str
         Relative path to `full_path` from `prefix`.
     """
-    return relpath(full_path, prefix)
+    return path.relpath(full_path, prefix)
 
 
 def clear_temporary_caches():
