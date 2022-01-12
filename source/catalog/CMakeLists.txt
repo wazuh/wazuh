@@ -38,8 +38,8 @@ set(CATALOG_SOURCES
     Catalog.cpp
     yml_to_json.hpp
     storageDriver/StorageDriverInterface.hpp
-    storageDriver/disk/diskStorage.hpp
-    storageDriver/disk/diskStorage.cpp
+    storageDriver/disk/DiskStorage.hpp
+    storageDriver/disk/DiskStorage.cpp
 )
 
 target_include_directories(main PUBLIC "${RapidJSON_SOURCE_DIR}/include/")

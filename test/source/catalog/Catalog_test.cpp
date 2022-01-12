@@ -7,8 +7,8 @@
 TEST(getAsset, get_asset_invalid_schema)
 {
 
-    auto storageDriver = std::make_unique<fakeStorage>();
-    auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
+    auto spStorageDriver = std::make_unique<fakeStorage>();
+    auto catalog = std::make_unique<Catalog>(std::move(spStorageDriver));
 
     EXPECT_THROW(
     {
@@ -18,7 +18,10 @@ TEST(getAsset, get_asset_invalid_schema)
         }
         catch (const std::runtime_error& e)
         {
-            ASSERT_STREQ(e.what(), "The asset 'syslog_invalid_schema' is invalid: Invalid JSON schema: '#/properties/draft'\nInvalid keyword: 'type'\nInvalid document: '#/draft'\n");
+            ASSERT_STREQ(e.what(), "The asset 'syslog_invalid_schema' is invalid: "
+                         "Invalid JSON schema: '#/properties/draft'\n"
+                         "Invalid keyword: 'type'\n"
+                         "Invalid document: '#/draft'\n");
             throw;
         }}
     , std::runtime_error);
@@ -29,9 +32,9 @@ TEST(getAsset, get_asset_invalid_schema)
 TEST(getAsset, get_asset_corrupted_json_schema)
 {
 
-    auto storageDriver = std::make_unique<fakeStorage>();
-    storageDriver->set_malformed_schemas(true);
-    auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
+    auto spStorageDriver = std::make_unique<fakeStorage>();
+    spStorageDriver->set_malformed_schemas(true);
+    auto catalog = std::make_unique<Catalog>(std::move(spStorageDriver));
 
     EXPECT_THROW(
     {
@@ -53,10 +56,11 @@ TEST(getAsset, get_asset_corrupted_json_schema)
 TEST(getAsset, get_asset_corrupted)
 {
 
-    auto storageDriver = std::make_unique<fakeStorage>();
-    auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
+    auto spStorageDriver = std::make_unique<fakeStorage>();
+    auto catalog = std::make_unique<Catalog>(std::move(spStorageDriver));
 
-    EXPECT_THROW(catalog->getAsset(AssetType::Decoder, "syslog_malformed"), YAML::ParserException);
+    EXPECT_THROW(catalog->getAsset(AssetType::Decoder, "syslog_malformed"),
+                 YAML::ParserException);
 
 }
 
@@ -64,9 +68,9 @@ TEST(getAsset, get_asset_corrupted)
 TEST(getAsset, get_asset_schema_not_found)
 {
 
-    auto storageDriver = std::make_unique<fakeStorage>();
-    storageDriver->set_empty_schemas(true);
-    auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
+    auto spStorageDriver = std::make_unique<fakeStorage>();
+    spStorageDriver->set_empty_schemas(true);
+    auto catalog = std::make_unique<Catalog>(std::move(spStorageDriver));
 
     EXPECT_THROW(
     {
@@ -77,7 +81,8 @@ TEST(getAsset, get_asset_schema_not_found)
         catch (const std::runtime_error& e)
         {
             ASSERT_STREQ(e.what(), "Could not get the schema 'wazuh-decoders' for "
-                         "the asset type. DRIVER: Schema not found: 'schemas/wazuh-decoders.json'");
+                         "the asset type. DRIVER: Schema not found: "
+                         "'schemas/wazuh-decoders.json'");
             throw;
         }}
     , std::runtime_error);
@@ -88,8 +93,8 @@ TEST(getAsset, get_asset_schema_not_found)
 TEST(getAsset, get_asset_not_found)
 {
 
-    auto storageDriver = std::make_unique<fakeStorage>();
-    auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
+    auto spStorageDriver = std::make_unique<fakeStorage>();
+    auto catalog = std::make_unique<Catalog>(std::move(spStorageDriver));
 
     EXPECT_THROW(
     {
@@ -99,7 +104,8 @@ TEST(getAsset, get_asset_not_found)
         }
         catch (const std::runtime_error& e)
         {
-            ASSERT_STREQ(e.what(), "Asset not found in file: 'decoders/not_found_asset.yml'");
+            ASSERT_STREQ(e.what(), "Asset not found in file: "
+                         "'decoders/not_found_asset.yml'");
             throw;
         }}, std::runtime_error);
 
@@ -109,8 +115,8 @@ TEST(getAsset, get_asset_not_found)
 TEST(getAsset, get_asset_valid)
 {
 
-    auto storageDriver = std::make_unique<fakeStorage>();
-    auto catalog = std::make_unique<Catalog>(std::move(storageDriver));
+    auto spStorageDriver = std::make_unique<fakeStorage>();
+    auto catalog = std::make_unique<Catalog>(std::move(spStorageDriver));
 
     rapidjson::Document decoder = catalog->getAsset(AssetType::Decoder, "syslog2");
 
