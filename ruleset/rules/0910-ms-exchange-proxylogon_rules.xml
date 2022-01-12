@@ -1,12 +1,10 @@
 <!--
-  Microsoft Exchange proxylogon rules
-  Created by Wazuh, Inc.
-  Copyright (C) 2015-2021, Wazuh Inc.
+  Copyright (C) 2015-2022, Wazuh Inc.
 -->
 
 <!--
   Rules 
-    Microsoft exchange ID: 
+    Microsoft exchange ID: 91000 - 91008
 
   Reference:
     Based on https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/
@@ -78,7 +76,6 @@
       <id>T1210</id>
     </mitre>
   </rule>
-
 
   <!--
     CVE-2021-26857 is an insecure deserialization vulnerability in the Unified Messaging service. Insecure deserialization
