@@ -10,7 +10,7 @@ import operator
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import process, ProcessPoolExecutor
+from concurrent.futures import process
 from copy import copy, deepcopy
 from functools import reduce, partial
 from operator import or_
@@ -31,8 +31,8 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-process_pool = ProcessPoolExecutor(max_workers=1)
-authentication_pool = ProcessPoolExecutor(max_workers=1)
+pools = common.mp_pools.get()
+
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 
 
@@ -272,10 +272,12 @@ class DistributedAPI:
 
                 else:
                     loop = asyncio.get_event_loop()
-                    if self.f.__name__ not in authentication_funcs:
-                        pool = process_pool
+                    if 'thread_pool' in pools:
+                        pool = pools.get('thread_pool')
+                    elif self.f.__name__ in authentication_funcs:
+                        pool = pools.get('authentication_pool')
                     else:
-                        pool = authentication_pool
+                        pool = pools.get('process_pool')
 
                     task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
                                                               self.logger, self.rbac_permissions,

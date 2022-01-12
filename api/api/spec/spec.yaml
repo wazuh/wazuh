@@ -6675,7 +6675,7 @@ paths:
               required:
                 - group_id
             example:
-              name: NewGroup_1
+              group_id: NewGroup_1
       responses:
         '200':
           description: "Add new agent"

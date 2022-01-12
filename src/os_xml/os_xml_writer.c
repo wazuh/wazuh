@@ -49,6 +49,8 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
         return (XMLW_NOIN);
     }
 
+    setvbuf(fp_in, NULL,_IOFBF , XML_MAXSIZE + 1);
+
     /* Open outfile */
     fp_out = fopen(outfile, "w");
     if (!fp_out) {

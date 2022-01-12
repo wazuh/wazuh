@@ -293,16 +293,14 @@ int local_start()
     return (0);
 }
 
-/* SendMSG for Windows */
-int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
+/* SendMSGAction for Windows */
+int SendMSGAction(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
     const char *pl;
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
     int retval = -1;
     tmpstr[OS_MAXSTR + 1] = '\0';
-
-    os_wait();
 
     /* Using a mutex to synchronize the writes */
     while (1) {
@@ -353,6 +351,18 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         merror("Error releasing mutex.");
     }
     return retval;
+}
+
+/* SendMSG for Windows */
+int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc) {
+    os_wait();
+    return SendMSGAction(queue, message, locmsg, loc);
+}
+
+/* SendMSGPredicated for Windows */
+int SendMSGPredicated(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) {
+    os_wait_predicate(fn_ptr);
+    return SendMSGAction(queue, message, locmsg, loc);
 }
 
 /* StartMQ for Windows */
