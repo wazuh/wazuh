@@ -9,7 +9,6 @@ import logging
 import os
 import signal
 import sys
-import time
 
 from wazuh.core.utils import check_pids
 
