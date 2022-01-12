@@ -117,7 +117,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
     if (version < updates_length) {
         if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
-            mwarn("Creating pre-upgrade global DB snapshot failed");
+            mwarn("Creating pre-upgrade Global DB snapshot failed: %s", output);
         }
 
         bool upgrade_success = TRUE;
@@ -134,7 +134,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 
         if (upgrade_success) {
             if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-post_upgrade")) {
-                mwarn("Creating post-upgrade global DB snapshot failed");
+                mwarn("Creating post-upgrade Global DB snapshot failed: %s", output);
             }
         }
     }
