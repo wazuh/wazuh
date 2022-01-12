@@ -15,8 +15,8 @@ from api.constants import API_LOG_FILE_PATH
 from wazuh.core import pyDaemonModule
 
 API_MAIN_PROCESS = 'wazuh-apid'
-API_LOCAL_REQUEST_PROCESS = 'wazuh-apid-exec'
-API_AUTHENTICATION_PROCESS = 'wazuh-apid-auth'
+API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
+API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
 
 
 def spawn_process_pool():
@@ -171,9 +171,7 @@ def start(foreground: bool, root: bool, config_file: str):
                 raise exc
 
     # Check for unused PID files
-    utils.check_pid(API_MAIN_PROCESS)
-    utils.check_pid(API_LOCAL_REQUEST_PROCESS)
-    utils.check_pid(API_AUTHENTICATION_PROCESS)
+    utils.check_pids(API_MAIN_PROCESS)
 
     # Drop privileges to ossec
     if not root:
