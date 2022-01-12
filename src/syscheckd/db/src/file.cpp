@@ -111,7 +111,7 @@ FIMDBErrorCode fim_db_remove_path(const char* path)
         try
         {
             nlohmann::json removeFileCondition;
-            removeFileCondition["path"] = std::string(path);
+            removeFileCondition["path"] = path;
             FIMDBHelper::removeFromDB<FIMDB>(FIMBD_FILE_TABLE_NAME, removeFileCondition);
             retVal = FIMDB_OK;
         }
