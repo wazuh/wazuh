@@ -95,8 +95,9 @@ All notable changes to this project will be documented in this file.
 - Fixed a memory overrun hazard in Vulnerability Detector. ([#11262](https://github.com/wazuh/wazuh/pull/11262))
 - Fixed a bug when using a limit parameter higher than the total number of objects in the wazuh-db queries. ([#11282](https://github.com/wazuh/wazuh/pull/11282))
 - Prevented a false positive for MySQL in Vulnerability Detector. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
-- Fixed segmentation fault when wrong configuration is set. ([# 11448](https://github.com/wazuh/wazuh/pull/11448))
- 
+- Fixed segmentation fault in Analysisd when setting the number of queues to zero. ([#11448](https://github.com/wazuh/wazuh/pull/11448))
+- Fixed false positives in Vulnerability Detector when scanning OVAl for Ubuntu Xenial and Bionic. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
+
 #### Removed
 
 - The data reporting for Rootcheck scans in the agent_control tool has been deprecated. ([#8399](https://github.com/wazuh/wazuh/pull/8399))
@@ -177,11 +178,13 @@ All notable changes to this project will be documented in this file.
 - Prevented Syscollector from truncating the open port inode numbers on Linux. ([#11329](https://github.com/wazuh/wazuh/pull/11329))
 - Fixed agent auto-restart on configuration changes when started via `wazuh-control` on a Systemd based Linux OS. ([#11365](https://github.com/wazuh/wazuh/pull/11365))
 - Fixed a bug in the AWS module resulting in unnecessary API calls when trying to obtain the different Account IDs for the bucket. ([#10952](https://github.com/wazuh/wazuh/pull/10952))
-- Fixed reparse option in the AWS VPCFlow integration. ([#11194](https://github.com/wazuh/wazuh/pull/11194))
 - Fixed Azure integration's configuration parsing to allow omitting optional parameters. ([#11278](https://github.com/wazuh/wazuh/pull/11278))
 - Fixed Azure Storage credentials validation bug. ([#11296](https://github.com/wazuh/wazuh/pull/11296))
 - Fixed the read of the hostname in the installation process for openSUSE. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
-- Fixed the graceful shutdown when agent loses connection. ([# 11425](https://github.com/wazuh/wazuh/pull/11425))
+- Fixed the graceful shutdown when agent loses connection. ([#11425](https://github.com/wazuh/wazuh/pull/11425))
+- Fixed error "Unable to set server IP address" on the Windows agent. ([#11736](https://github.com/wazuh/wazuh/pull/11736))
+- Fixed reparse option in the AWS VPCFlow and Config integrations. ([#11608](https://github.com/wazuh/wazuh/pull/11608))
+- Removed unnecessary calls to the AWS API made by the VPCFlow and Config integration modules. ([#11644](https://github.com/wazuh/wazuh/pull/11644))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
@@ -264,6 +267,7 @@ All notable changes to this project will be documented in this file.
 - Fixed agent endpoints `q` parameter to allow more operators when filtering by groups. ([#10656](https://github.com/wazuh/wazuh/pull/10656))
 - Fixed API integration tests related to rule, decoder and task endpoints. ([#10830](https://github.com/wazuh/wazuh/pull/10830))
 - Improved exceptions handling when starting the Wazuh API service. ([#11411](https://github.com/wazuh/wazuh/pull/11411))
+- Fixed race condition while creating RBAC database. ([#11598](https://github.com/wazuh/wazuh/pull/11598))
 
 #### Removed
 
@@ -314,6 +318,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error detection in the CURL helper library. ([#9168](https://github.com/wazuh/wazuh/pull/9168))
 - Fixed external BerkeleyDB library support for GCC 11. ([#10899](https://github.com/wazuh/wazuh/pull/10899))
 - Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
+- Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
 ## [v4.2.5]
 
