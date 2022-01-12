@@ -1986,7 +1986,7 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id);
  * @param [in] wdb The Global struct database.
  * @param [in] id ID of the agent to set the information.
  * @param [in] csv String with all the groups sepparated by comma to be inserted in the group column.
- * @param [in] hash Hash calculus from the csv string to be inserted in the group_local_hash column.
+ * @param [in] hash Hash calculus from the csv string to be inserted in the group_hash column.
  * @param [in] sync_status Tag of the sync status to be inserted in the group_sync_status column.
  * @return wdbc_result representing the status of the command.
  */
