@@ -4,17 +4,17 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/schema.h"
-#include "diskStorage_test.hpp"
+#include "DiskStorage_test.hpp"
 
 
 // Test: Get asset list from inaccesible directory
 TEST(getAssetList, invalid_path)
 {
 
-    diskStorage ds("/temp123");
-    StorageDriverInterface* dsi {&ds};
+    DiskStorage ds("/temp123");
+    StorageDriverInterface* pSI {&ds};
 
-    ASSERT_THROW(dsi->getAssetList(AssetType::Decoder), std::filesystem::filesystem_error);
+    ASSERT_THROW(pSI->getAssetList(AssetType::Decoder), std::filesystem::filesystem_error);
 
 }
 
@@ -25,9 +25,9 @@ TEST(getAssetList, valid_path_wo_db)
     // Create tmp db
     char* tmpDir = createDBtmp();
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
-    auto array = dsi->getAssetList(AssetType::Decoder);
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
+    auto array = pSI->getAssetList(AssetType::Decoder);
 
     ASSERT_EQ(array.size(), 0);
 
@@ -46,9 +46,9 @@ TEST(getAssetList, one_asset_one_file)
     ofs << "test_decoder: {}";
     ofs.close();
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
-    auto array = dsi->getAssetList(AssetType::Decoder);
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
+    auto array = pSI->getAssetList(AssetType::Decoder);
 
     ASSERT_EQ(array.size(), 1);
     ASSERT_STREQ(array[0].c_str(), "test_decoder");
@@ -75,9 +75,9 @@ TEST(getAssetList, two_asset_two_file)
     newFile("test_decoder_2.yml");
 
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
-    auto array = dsi->getAssetList(AssetType::Decoder);
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
+    auto array = pSI->getAssetList(AssetType::Decoder);
 
     ASSERT_EQ(array.size(), 2);
     ASSERT_STREQ(array[0].c_str(), "test_decoder_2");
@@ -112,9 +112,9 @@ TEST(getAssetList, one_asset_and_other_file)
     newFile("test_decoder_6.YAML");
     newFile("test_decoder_6");
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
-    auto array = dsi->getAssetList(AssetType::Decoder);
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
+    auto array = pSI->getAssetList(AssetType::Decoder);
 
     ASSERT_EQ(array.size(), 1);
     ASSERT_STREQ(array[0].c_str(), "test_decoder");
@@ -128,14 +128,14 @@ TEST(getAsset, asset_not_found)
 {
     char* tmpDir = createDBtmp();
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
 
     EXPECT_THROW(
     {
         try
         {
-            auto asset = dsi->getAsset(AssetType::Decoder, "not_found");
+            auto asset = pSI->getAsset(AssetType::Decoder, "not_found");
         }
         catch (const std::runtime_error& e)
         {
@@ -153,15 +153,15 @@ TEST(getAsset, asset_empty)
 
     char* tmpDir = createDBtmp();
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
 
     auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / "empty.yml";
     std::ofstream ofs {decoder_path};
     ofs << "";
     ofs.close();
 
-    auto asset = dsi->getAsset(AssetType::Decoder, "empty");
+    auto asset = pSI->getAsset(AssetType::Decoder, "empty");
 
     ASSERT_STREQ(asset.c_str(), "");
 
@@ -175,15 +175,15 @@ TEST(getAsset, asset_ok)
 
     char* tmpDir = createDBtmp();
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
 
     auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / "test_ok.yml";
     std::ofstream ofs {decoder_path};
     ofs << "test_decoder: { 123 }";
     ofs.close();
 
-    auto asset = dsi->getAsset(AssetType::Decoder, "test_ok");
+    auto asset = pSI->getAsset(AssetType::Decoder, "test_ok");
 
     ASSERT_STREQ(asset.c_str(), "test_decoder: { 123 }");
 
@@ -197,8 +197,8 @@ TEST(getAsset, asset_inaccessible)
 
     char* tmpDir = createDBtmp();
 
-    diskStorage ds(tmpDir);
-    StorageDriverInterface* dsi {&ds};
+    DiskStorage ds(tmpDir);
+    StorageDriverInterface* pSI {&ds};
 
     auto decoder_path = std::filesystem::path(tmpDir) / "decoders" / "not_readable.yml";
 
@@ -209,7 +209,7 @@ TEST(getAsset, asset_inaccessible)
     {
         try
         {
-            auto asset = dsi->getAsset(AssetType::Decoder, "not_readable");
+            auto asset = pSI->getAsset(AssetType::Decoder, "not_readable");
         }
         catch (const std::runtime_error& e)
         {

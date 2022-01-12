@@ -2,7 +2,8 @@
 #include "rapidjson/schema.h"
 
 
-std::optional<std::string> Catalog::validateJSON(rapidjson::Document& json, rapidjson::Document& schema)
+std::optional<std::string> Catalog::validateJSON(rapidjson::Document& json,
+                                                 rapidjson::Document& schema)
 {
 
     rapidjson::SchemaDocument schemaDocument(schema);
@@ -16,7 +17,8 @@ std::optional<std::string> Catalog::validateJSON(rapidjson::Document& json, rapi
         validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
         oss << "Invalid JSON schema: '" << sb.GetString() << "'" << std::endl;
 
-        oss << "Invalid keyword: '" << validator.GetInvalidSchemaKeyword() << "'" << std::endl;
+        oss << "Invalid keyword: '" << validator.GetInvalidSchemaKeyword()
+            << "'" << std::endl;
         sb.Clear();
 
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
@@ -28,7 +30,8 @@ std::optional<std::string> Catalog::validateJSON(rapidjson::Document& json, rapi
     return {};
 }
 
-rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view assetName)
+rapidjson::Document Catalog::getAsset(const AssetType type,
+                                      std::string_view assetName)
 {
 
     using std::string;
@@ -45,7 +48,7 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
         case AssetType::Filter:
         case AssetType::Environments:
 
-            assetStr = storageDriver->getAsset(type, assetName);
+            assetStr = spStorageDriver->getAsset(type, assetName);
 
             if (assetStr.empty())
             {
@@ -54,18 +57,20 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
 
             try
             {
-                assetSchemaStr = storageDriver->getAsset(AssetType::Schemas, assetTypeToSchema.at(type));
+                assetSchemaStr = spStorageDriver->getAsset(AssetType::Schemas,
+                                                           assetTypeToSchema.at(type));
             }
             catch (std::runtime_error& e)
             {
-                throw std::runtime_error("Could not get the schema '" + assetTypeToSchema.at(type) +
+                throw std::runtime_error("Could not get the schema '" +
+                                         assetTypeToSchema.at(type) +
                                          "' for the asset type. DRIVER: " + e.what());
             }
 
             break;
 
         case AssetType::Schemas:
-            assetSchemaStr = storageDriver->getAsset(AssetType::Schemas, assetName);
+            assetSchemaStr = spStorageDriver->getAsset(AssetType::Schemas, assetName);
             break;
 
         default:
@@ -93,7 +98,8 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string_view ass
     // Validate the asset
     if (auto errorStr = validateJSON(asset, jsonSchema); errorStr)
     {
-        throw std::runtime_error("The asset '" + string{assetName} + "' is invalid: " + errorStr.value());
+        throw std::runtime_error("The asset '" + string{assetName} +
+                                 "' is invalid: " + errorStr.value());
     }
 
     return asset;
@@ -103,7 +109,7 @@ std::vector<std::string> Catalog::getAssetList(const AssetType type)
 {
 
     std::vector<std::string> assetList {};
-    assetList = this->storageDriver->getAssetList(type);
+    assetList = this->spStorageDriver->getAssetList(type);
 
     return assetList;
 }

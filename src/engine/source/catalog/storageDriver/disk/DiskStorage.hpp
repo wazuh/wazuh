@@ -34,7 +34,7 @@
  * @warning This class is not thread-safe
  * @see StorageDriverInterface
  */
-class diskStorage : public StorageDriverInterface
+class DiskStorage : public StorageDriverInterface
 {
 
     private:
@@ -59,8 +59,8 @@ class diskStorage : public StorageDriverInterface
          * @brief Instance of a database from its directory
          * @param path The path to the database directory
          */
-        diskStorage(std::string_view path) : path(path) {}
-        ~diskStorage() = default;
+        DiskStorage(std::string_view path) : path(path) {}
+        ~DiskStorage() = default;
 
         // Overridden methods must be documented in the interface
 

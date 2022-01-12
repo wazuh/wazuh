@@ -2,14 +2,14 @@
 #include <fstream>
 #include <iostream>
 
-#include "diskStorage.hpp"
+#include "DiskStorage.hpp"
 #include "rapidjson/istreamwrapper.h"
 
-constexpr std::string_view ext_json_schema {".json"};
-constexpr std::string_view ext_other_asset {".yml"};
+constexpr std::string_view EXT_JSON_SCHEMA {".json"};
+constexpr std::string_view EXT_OTHER_ASSET {".yml"};
 
 // Overridden method
-std::vector<std::string> diskStorage::getAssetList(const AssetType type)
+std::vector<std::string> DiskStorage::getAssetList(const AssetType type)
 {
     using std::string;
 
@@ -24,8 +24,10 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
         if (entry.is_regular_file() && entry.path().has_extension())
         {
             // Only the json schema has the json extension
-            if (entry.path().extension().string() == ext_other_asset ||
-                    (entry.path().extension().string() == ext_json_schema && type == AssetType::Schemas))
+            const auto extension = entry.path().extension().string();
+
+            if (extension == EXT_OTHER_ASSET ||
+                    (extension == EXT_JSON_SCHEMA && type == AssetType::Schemas))
             {
                 assetList.push_back(string {entry.path().stem().string()});
             }
@@ -37,7 +39,7 @@ std::vector<std::string> diskStorage::getAssetList(const AssetType type)
 }
 
 // Overridden method
-std::string diskStorage::getAsset(const AssetType type, std::string_view assetName)
+std::string DiskStorage::getAsset(const AssetType type, std::string_view assetName)
 {
     using std::string;
     using rapidjson::Document;
@@ -54,11 +56,11 @@ std::string diskStorage::getAsset(const AssetType type, std::string_view assetNa
 
     if (type == AssetType::Schemas)
     {
-        file_name.append(ext_json_schema);
+        file_name.append(EXT_JSON_SCHEMA);
     }
     else
     {
-        file_name.append(ext_other_asset);
+        file_name.append(EXT_OTHER_ASSET);
     }
 
     /* Get full path to the asset file */
@@ -78,12 +80,14 @@ std::string diskStorage::getAsset(const AssetType type, std::string_view assetNa
         else
         {
             // Non regular file or not readable
-            throw std::runtime_error {"Error reading file: '" + assetTypeToPath.at(type) + "/" + file_name + "'"};
+            throw std::runtime_error {"Error reading file: '" + assetTypeToPath.at(type)
+                                      + "/" + file_name + "'"};
         }
     }
     else
     {
-        throw std::runtime_error {"Asset not found in file: '" + assetTypeToPath.at(type) + "/" + file_name + "'"};
+        throw std::runtime_error {"Asset not found in file: '" + assetTypeToPath.at(type)
+                                  + "/" + file_name + "'"};
     }
 
     return assetStr;
