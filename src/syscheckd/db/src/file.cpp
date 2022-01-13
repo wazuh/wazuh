@@ -110,7 +110,8 @@ FIMDBErrorCode fim_db_remove_path(const char* path)
     {
         try
         {
-            const auto removeFileCondition { std::string("WHERE path=") + std::string(path) };
+            nlohmann::json removeFileCondition;
+            removeFileCondition["path"] = path;
             FIMDBHelper::removeFromDB<FIMDB>(FIMBD_FILE_TABLE_NAME, removeFileCondition);
             retVal = FIMDB_OK;
         }
