@@ -1356,16 +1356,6 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
 int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output);
 
 /**
- * @brief Function to parse the global create backup.
- *
- * @param [in] wdb The global struct database.
- * @param [out] output Response of the query in JSON format.
- * @retval  0 Success: Response contains 'ok'.
- * @retval -1 On error: Response contains details of the error.
- */
-int wdb_parse_global_create_backup(wdb_t* wdb, char* output);
-
-/**
  * @brief Function to parse the global get backup.
  *
  * @param [out] output Response of the query in JSON format.
@@ -1390,10 +1380,11 @@ int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output);
  *
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
+ * @param [in] tag Adds extra information to snapshot file name, used in case of upgrades and restores.
  * @retval  0 Success: Backup created successfully.
  * @retval -1 On error: The backup creation failed.
  */
-int wdb_global_create_backup(wdb_t* wdb, char* output);
+int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
 
 /**
  * @brief Function to delete old backups in case the amount exceeds the max_files limit.
