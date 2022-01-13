@@ -179,22 +179,6 @@
   <order>srcip</order>
 </decoder>
 
-<!--XXX
-<decoder name="ssh-pam">
-  <parent>sshd</parent>
-  <prematch>PAM: Module</prematch>
-  <regex>for (\S+) from (\S+)$</regex>
-  <order>user, srcip</order>
-</decoder>
-
-<decoder name="ssh-connect-to">
-  <parent>sshd</parent>
-  <prematch>connect_to</prematch>
-  <regex>connect_to: (\S+) port (\d+):</regex>
-  <order>dstip,dstport</order>
-</decoder>
--->
-
 <decoder name="sshd-ldap">
   <parent>sshd</parent>
   <prematch>^pam_ldap: </prematch>
@@ -215,15 +199,6 @@
   <regex>rhost=(\S+)\s+user=(\S+)</regex>
   <order>srcip, user</order>
 </decoder>
-
-<!--
-<decoder name="sshd-invalid">
-  <parent>sshd</parent>
-  <prematch>^input_user_auth_request: </prematch>
-  <regex offset="after_prematch"> user (\S+)</regex>
-  <order>user</order>
-</decoder>
--->
 
 <decoder name="sshd-exceed">
   <parent>sshd</parent>
