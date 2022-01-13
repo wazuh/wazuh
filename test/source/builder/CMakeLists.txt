@@ -69,7 +69,6 @@ FetchContent_GetProperties(
 # Sources -- Headers -- Libraries
 ####################################################################################################
 set(SOURCES
-  ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/event.cpp
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}/decoders.cpp
@@ -106,7 +105,7 @@ gtest_discover_tests(operation_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp)
 
 # Builder test
-add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp ${SOURCES})
+add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
 gtest_discover_tests(builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
 
