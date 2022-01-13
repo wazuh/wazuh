@@ -119,7 +119,7 @@ add_executable(registry_builder_test ${BUILDER_TEST_SOURCE_DIR}/registry_builder
 gtest_discover_tests(registry_builder_test)
 
 # Utils test
-add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${SOURCES})
+add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp)
 gtest_discover_tests(utils_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp)
 
