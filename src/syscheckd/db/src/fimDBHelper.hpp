@@ -13,6 +13,7 @@
 #define _FIMDBHELPER_HPP
 #include "fimDB.hpp"
 
+
 namespace FIMDBHelper
 {
     template<typename T>
@@ -56,20 +57,17 @@ namespace FIMDBHelper
     *
     */
     template<typename T>
-    void removeFromDB(const std::string& tableName, const std::string& filter)
+    void removeFromDB(const std::string& tableName, const nlohmann::json& filter)
     {
         const auto deleteJsonStatement = R"({
                                                 "table": "",
                                                 "query": {
-                                                    "data":[
-                                                    {
-                                                    }],
-                                                    "where_filter_opt":""
                                                 }
         })";
         auto deleteJson = nlohmann::json::parse(deleteJsonStatement);
         deleteJson["table"] = tableName;
-        deleteJson["query"]["where_filter_opt"] = filter;
+        deleteJson["query"]["data"] = nlohmann::json::array({filter});
+        deleteJson["query"]["where_filter_opt"] = "";
 
         T::getInstance().removeItem(deleteJson);
     }
