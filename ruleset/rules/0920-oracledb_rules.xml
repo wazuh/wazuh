@@ -4,7 +4,7 @@
 
 <!-- 
   Rules for:
-    OracleDB ID: 89100 - 89199
+    OracleDB 12c ID: 89100 - 89199
 -->
 
 <group name="oracle,oracledb,">
