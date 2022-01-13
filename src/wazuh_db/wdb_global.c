@@ -1239,6 +1239,33 @@ char* wdb_global_get_agent_group_source(wdb_t *wdb, int id) {
     return group_source;
 }
 
+bool wdb_get_global_group_hash(wdb_t *wdb, char *group_column_hash) {
+    //TBD
+    if (!strcmp(group_column_hash, "synced")) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+int wdb_global_groups_synced(wdb_t *wdb) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+
+    if (stmt == NULL) {
+        return FALSE;
+    }
+
+    switch (sqlite3_step(stmt)) {
+    case SQLITE_ROW:
+        return 1;
+    case SQLITE_DONE:
+        return 0;
+    default:
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
 
