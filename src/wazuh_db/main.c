@@ -442,6 +442,8 @@ void * run_backup(__attribute__((unused)) void * args) {
         last_global_backup_time = time(NULL);
     }
 
+    mdebug2("Database backup thread started.");
+
     while(running) {
         for (int i = 0; i < WDB_LAST_BACKUP; i++) {
             switch (i) {
@@ -450,8 +452,9 @@ void * run_backup(__attribute__((unused)) void * args) {
                         current_time = time(NULL);
                         if((current_time - last_global_backup_time) >= global_interval) {
                             wdb_t* wdb = wdb_open_global();
-                            wdb_global_create_backup(wdb, output, NULL);
-                            mdebug1("Backup creation result: %s", output);
+                            if (OS_SUCCESS != wdb_global_create_backup(wdb, output, NULL)) {
+                                merror("Creating Global DB snapshot by interval failed: %s", output);
+                            }
                             last_global_backup_time = current_time;
                             wdb_leave(wdb);
                         }
