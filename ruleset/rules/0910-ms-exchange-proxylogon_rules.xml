@@ -62,34 +62,19 @@
   </rule>
 
   <!--
-    CVE-2021-26858 exploitation can be detected via the Exchange log files:
-    C:\Program Files\Microsoft\Exchange Server\V15\Logging\OABGeneratorLog
-    Files should only be downloaded to the %PROGRAMFILES%\Microsoft\Exchange Server\V15\ClientAccess\OAB\Temp directory.
-    In case of exploitation, files are downloaded to other directories (UNC or local paths).
-  -->
-  <rule id="91004" level="12">
-    <decoded_as>OABGenLog</decoded_as>
-    <match>Download failed and temporary file</match>
-    <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
-    <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858).</description>
-    <mitre>
-      <id>T1210</id>
-    </mitre>
-  </rule>
-  <!--
     CVE-2021-26857 is an insecure deserialization vulnerability in the Unified Messaging service. Insecure deserialization
     is where untrusted user-controllable data is deserialized by a program. Exploiting this vulnerability gave HAFNIUM the
     ability to run code as SYSTEM on the Exchange server. This requires administrator permission or another vulnerability
     to exploit.
   -->
-  <rule id="91005" level="0">
+  <rule id="91004" level="0">
     <if_sid>60602</if_sid>
     <field name="win.system.providerName">^MSExchange Unified Messaging$</field>
     <options>no_full_log</options>
     <description>Filtering MSExchange Unified Message error events.</description>
   </rule>
 
-  <rule id="91006" level="12">
+  <rule id="91005" level="12">
     <if_sid>91005</if_sid>
     <field name="win.system.message">System.InvalidCastException</field>
     <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857).</description>
@@ -98,7 +83,7 @@
     </mitre>
   </rule>
 
-  <rule id="91007" level="12">
+  <rule id="91006" level="12">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName">cmd.exe|powershell.exe|powershell_ISE.exe</field>
     <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
@@ -109,7 +94,7 @@
     </mitre>
   </rule>
 
-  <rule id="91008" level="12">
+  <rule id="91007" level="12">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
     <field name="win.eventdata.commandLine" type="pcre2">\$client = New-Object System\.Net\.Sockets\.TCPClient</field>
