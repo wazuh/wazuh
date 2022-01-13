@@ -895,8 +895,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_set_agent_groups(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "sync-agent-info-get") == 0) {
+        } else if (strcmp(query, "sync-agent-info-get") == 0) {
             result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
@@ -906,6 +905,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
+            }
+        } else if (strcmp(query, "get-groups-integrity") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for disconnect-agents.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_groups_integrity(wdb, next, output);
             }
         } else if (strcmp(query, "disconnect-agents") == 0) {
             if (!next) {
@@ -5597,6 +5605,38 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     cJSON_Delete(root);
 
     return OS_SUCCESS;
+}
+
+int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
+    cJSON *response = NULL;
+    char *out = NULL;
+    char *hash = input;
+    int ret = OS_SUCCESS;
+
+    response = cJSON_CreateArray();
+    int groups_synced = wdb_global_groups_synced(wdb);
+
+    if (groups_synced == 1) {
+        cJSON_AddItemToArray(response, cJSON_CreateString("syncreq"));
+    } else if (groups_synced == 0) {
+        if (wdb_get_global_group_hash(wdb, hash)){
+            cJSON_AddItemToArray(response, cJSON_CreateString("synced"));
+        } else {
+            cJSON_AddItemToArray(response, cJSON_CreateString("hash_mismatch"));
+        }
+    } else {
+        snprintf(output, OS_MAXSTR + 1, "err. Error getting group sync status from global.db.");
+        ret = OS_INVALID;
+        goto end;
+    }
+
+    out = cJSON_PrintUnformatted(response);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+end:
+    cJSON_Delete(response);
+
+    return ret;
 }
 
 int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
