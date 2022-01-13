@@ -11,7 +11,7 @@
     <localfile>
       <log_format>multi-line-regex</log_format>
       <location>/tmp/oracle/*.aud</$
-      <multiline_regex match="all">(?m)\n\n</multiline_regex>
+      <multiline_regex match="all">\n\n</multiline_regex>
       <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
     </localfile>
 
@@ -37,7 +37,7 @@
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">(?Ums)^LENGTH : '(\d+)'\n</regex>
+  <regex type="pcre2">^LENGTH : '(\d+)'\n</regex>
   <order>length</order>
 </decoder>
 
@@ -89,7 +89,7 @@
   <localfile>
     <log_format>multi-line-regex</log_format>
     <location>/tmp/oracle/alert_CDBTST931.log</location>
-    <multiline_regex match="start">(?m)\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}</multiline_regex>
+    <multiline_regex match="start">\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}</multiline_regex>
     <out_format>$(timestamp) $(hostname) oracledb_alerts: $(log)</out_format>
   </localfile>
 
