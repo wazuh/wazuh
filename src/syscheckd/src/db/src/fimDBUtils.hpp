@@ -1,18 +1,48 @@
-/**
- * @file fimDBUtils.hpp
- * @brief Definition of FIM custom actions.
- * @date 2021-12-15
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * September 23, 2021.
  *
- * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
-#include "fimDBHelper.hpp"
-
+#include <string>
+#include <json.hpp>
 
 namespace FimDBUtils
 {
+    /**
+    * @brief Build query to delete a file from the database.
+    *
+    * @param tableName a string with the table name.
+    * @param filter a vector of pair strings with the filter to apply.
+    *
+    */
+
+    inline nlohmann::json buildRemoveQuery(const std::string& tableName,
+                                           const std::vector<std::pair<std::string, std::string>>& filter)
+    {
+        const auto deleteJsonStatement = R"({
+                                                "table": "",
+                                                "query": {
+                                                }
+        })";
+        auto deleteJson = nlohmann::json::parse(deleteJsonStatement);
+        deleteJson["table"] = tableName;
+
+        for (const auto& item : filter)
+        {
+            deleteJson["query"]["data"].push_back({item});
+        }
+
+        deleteJson["query"]["where_filter_opt"] = "";
+        return deleteJson;
+    }
 
     /**
-    * @brief Create a new query to database
+    * @brief Build query to select data from the database.
     *
     * @param tableName a string with table name
     * @param columnList an array with the column list
@@ -21,8 +51,10 @@ namespace FimDBUtils
     *
     * @return a nlohmann::json with a database query
     */
-    inline nlohmann::json dbQuery(const std::string& tableName, const nlohmann::json& columnList, const std::string& filter,
-                                  const std::string& order)
+    inline nlohmann::json buildSelectQuery(const std::string& tableName,
+                                           const nlohmann::json& columnList,
+                                           const std::string& filter,
+                                           const std::string& order)
     {
         nlohmann::json query;
         query["table"] = tableName;
@@ -33,82 +65,5 @@ namespace FimDBUtils
         query["query"]["count_opt"] = 100;
 
         return query;
-    }
-
-    /**
-     * @brief Get all the paths asociated to an inode
-     *
-     * @param inode Inode.
-     * @param dev Device.
-     *
-     * @return a vector with paths asociated to the inode.
-     */
-
-    template <typename T>
-    static std::vector<std::string> getPathsFromINode(const unsigned long inode, const unsigned long dev)
-    {
-        std::vector<std::string> paths;
-        nlohmann::json resultQuery;
-
-        try
-        {
-            const auto filter = "WHERE inode=" + std::to_string(inode) + " AND dev=" + std::to_string(dev);
-            const auto fileColumnList = R"({"column_list":["path"]})"_json;
-            const auto query = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
-            FIMDBHelper::getDBItem<T>(resultQuery, query);
-
-            for (const auto& item : resultQuery["path"].items())
-            {
-                paths.push_back(item.value());
-            }
-        }
-        catch (const DbSync::dbsync_error& err)
-        {
-            T::getInstance().logFunction(LOG_ERROR, err.what());
-        }
-        catch (const std::exception& ex)
-        {
-            T::getInstance().logFunction(LOG_ERROR, ex.what());
-        }
-
-        return paths;
-    }
-
-    /**
-     * @brief Get path list using the sqlite LIKE operator using @pattern. (stored in @file).
-     * @param pattern Pattern that will be used for the LIKE operation.
-     *
-     * @return a vector with every paths on success, a empty vector otherwise.
-     */
-
-    template <typename T>
-    static std::vector<std::string> getPathsFromPattern(const std::string& pattern)
-    {
-        std::vector<std::string> paths;
-        nlohmann::json resultQuery;
-
-        try
-        {
-            const auto filter { std::string("WHERE path LIKE") + std::string(pattern) };
-            const auto fileColumnList = R"({"column_list":["path"]})"_json;
-            const auto queryFromPattern = dbQuery(FIMBD_FILE_TABLE_NAME, fileColumnList, filter, FILE_PRIMARY_KEY);
-            FIMDBHelper::getDBItem<T>(resultQuery, queryFromPattern);
-
-            for (const auto& item : resultQuery["path"].items())
-            {
-                paths.push_back(item.value());
-            }
-
-        }
-        catch (const DbSync::dbsync_error& err)
-        {
-            T::getInstance().logFunction(LOG_ERROR, err.what());
-        }
-        catch (const std::exception& ex)
-        {
-            T::getInstance().logFunction(LOG_ERROR, ex.what());
-        }
-
-        return paths;
     }
 };

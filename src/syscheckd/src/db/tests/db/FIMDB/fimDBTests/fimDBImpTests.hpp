@@ -16,7 +16,6 @@
 #include "gmock/gmock.h"
 #include "fimDB.hpp"
 #include "dbItem.hpp"
-#include "syscheck-config.h"
 #include "fimCommonDefs.h"
 
 class MockDBSyncHandler: public DBSync

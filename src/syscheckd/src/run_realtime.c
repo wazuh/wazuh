@@ -453,13 +453,14 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
         FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwerror, 0, (LPTSTR) &messageBuffer, 0, NULL);
 
-        if (end = strchr(messageBuffer, '\r'), end) {
-            *end = '\0';
+        if (messageBuffer) {
+            if (end = strchr(messageBuffer, '\r'), end) {
+                *end = '\0';
+            }
+
+            merror(FIM_ERROR_REALTIME_WINDOWS_CALLBACK, messageBuffer, dwerror);
+            LocalFree(messageBuffer);
         }
-
-        merror(FIM_ERROR_REALTIME_WINDOWS_CALLBACK, messageBuffer, dwerror);
-        LocalFree(messageBuffer);
-
         return;
     }
 

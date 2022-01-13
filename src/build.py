@@ -11,7 +11,7 @@ import argparse
 from ci import utils
 
 module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync', 'shared_modules/rsync', 'shared_modules/utils',
-               'data_provider', 'syscheckd/db']
+               'data_provider', 'syscheckd']
 
 module_list_str = '|'.join(module_list)
 

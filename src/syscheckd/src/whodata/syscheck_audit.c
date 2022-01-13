@@ -517,7 +517,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
-    char * eoe_found = false;
+    char * eoe_found = NULL;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);

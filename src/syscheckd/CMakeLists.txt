@@ -25,9 +25,6 @@ link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib/)
 link_directories(${SRC_FOLDER}/)
 
-message(${SRC_FOLDER})
-message(${CMAKE_SOURCE_DIR})
-
 add_definitions(-DARGV0="wazuh-syscheckd")
 
 if(COVERITY)
@@ -57,7 +54,7 @@ add_subdirectory("src/db")
 file(GLOB SYSCHECKD_SRC
       "${CMAKE_SOURCE_DIR}/src/*.c"
       "${CMAKE_SOURCE_DIR}/src/registry/*.c"
-      "${CMAKE_SOURCE_DIR}/src/who_data/*.c")
+      "${CMAKE_SOURCE_DIR}/src/whodata/*.c")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
@@ -83,7 +80,6 @@ if (UNIX)
 endif(UNIX)
 
 if(UNIT_TEST)
-    message("Running unit tests")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(wazuh-syscheckd -fprofile-arcs)
   else()
@@ -92,7 +88,7 @@ if(UNIT_TEST)
   #add_subdirectory(tests)
 else()
   if(FSANITIZE)
-    target_link_libraries(wazuh-syscheckd gcov)
+    target_link_libraries(wazuh-syscheckd gcov asan ubsan)
   endif(FSANITIZE)
 endif(UNIT_TEST)
 

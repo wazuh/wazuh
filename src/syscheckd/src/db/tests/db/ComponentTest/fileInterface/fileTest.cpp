@@ -10,10 +10,24 @@
  */
 
 #include "fileTest.h"
-#include "fimDBHelper.hpp"
+//#include "fimDBHelper.hpp"
 #include "dbFileItem.hpp"
 #include "db.h"
+#include "db.hpp"
+#include "fimDBTests/fimDBImpTests.hpp"
 
+MockLoggingCall* mockLog;
+MockSyncMsg* mockSync;
+
+void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
+{
+    mockLog->loggingFunction(logLevel, tag);
+}
+
+void mockSyncMessage(const char* log, const char* tag)
+{
+    mockSync->syncMsg(log, tag);
+}
 
 constexpr auto FIM_DB_TEST {"test.db"};
 const auto insertStatement1 = R"({
@@ -64,17 +78,16 @@ const auto updateStatement2 = R"({
 
 void FileTest::SetUp()
 {
-    auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT,
-                                                  DbEngineType::SQLITE3,
-                                                  FIM_DB_TEST,
-                                                  CREATE_FILE_DB_STATEMENT);
-    auto rsyncHandler = std::make_shared<RemoteSync>();
-    FIMDBHelper::initDB<FIMDB>(300, nullptr, nullptr, dbsyncHandler, rsyncHandler, 10);
+    mockLog = new MockLoggingCall();
+    mockSync = new MockSyncMsg();
+
+    fim_db_init(1, 300, mockSyncMessage, mockLoggingFunction, 5000, 0, false);
 }
 
 void FileTest::TearDown()
 {
-    std::remove(FIM_DB_TEST);
+    delete mockLog;
+    delete mockSync;
 }
 
 static void callbackTestSearch(void* return_data, void* user_data)
@@ -121,11 +134,11 @@ TEST_F(FileTest, TestFimDBFileUpdate)
 {
     EXPECT_NO_THROW(
     {
-        const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"][0]) };
+        const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"].front()) };
         bool updated;
         auto result = fim_db_file_update(fileFIMTest->toFimEntry(), &updated);
         ASSERT_EQ(result, FIMDB_OK);
-        const auto fileFIMTestUpdated { std::make_unique<FileItem>(updateStatement1["data"][0]) };
+        const auto fileFIMTestUpdated { std::make_unique<FileItem>(updateStatement1["data"].front()) };
         result = fim_db_file_update(fileFIMTestUpdated->toFimEntry(), &updated);
         ASSERT_TRUE(updated);
         ASSERT_EQ(result, FIMDB_OK);
@@ -134,14 +147,18 @@ TEST_F(FileTest, TestFimDBFileUpdate)
 
 TEST_F(FileTest, TestFimDBRemovePath)
 {
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+    bool isUpdated;
     EXPECT_NO_THROW(
     {
-        auto resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement2);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement3);
-        ASSERT_FALSE(resultInsert);
+        auto resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest3->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         auto result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_remove_path("/tmp/test.txt");
@@ -153,54 +170,57 @@ TEST_F(FileTest, TestFimDBRemovePath)
 
 TEST_F(FileTest, TestFimDBGetPath)
 {
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+    bool isUpdated;
+
     EXPECT_NO_THROW(
     {
-        const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"][0]) };
-        auto resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement2);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement3);
-        ASSERT_FALSE(resultInsert);
+        auto resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest3->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"].front()) };
         callback_context_t callback_data;
         callback_data.callback = callBackTestFIMEntry;
         callback_data.context = fileFIMTest->toFimEntry();
         auto result = fim_db_get_path("/etc/wgetrc", callback_data);
-        ASSERT_EQ(result, FIMDB_OK);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(updateStatement1);
-        ASSERT_TRUE(resultInsert);
-        const auto fileUpdatedFIMTest { std::make_unique<FileItem>(updateStatement1["data"][0]) };
-        callback_data.callback = callBackTestFIMEntry;
-        callback_data.context = fileUpdatedFIMTest->toFimEntry();
-        result = fim_db_get_path("/etc/wgetrc", callback_data);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
 
 TEST_F(FileTest, TestFimDBGetCountFileEntry)
 {
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+    bool isUpdated;
+
     EXPECT_NO_THROW(
     {
         auto result = fim_db_get_count_file_entry();
         ASSERT_EQ(result, 0);
-        auto resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement2);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement3);
-        ASSERT_FALSE(resultInsert);
+        auto resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest3->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         result = fim_db_get_count_file_entry();
         ASSERT_EQ(result, 3);
         result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_get_count_file_entry();
         ASSERT_EQ(result, 2);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
+        resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         result = fim_db_get_count_file_entry();
         ASSERT_EQ(result, 3);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(updateStatement1);
-        ASSERT_TRUE(resultInsert);
+        resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         result = fim_db_get_count_file_entry();
         ASSERT_EQ(result, 3);
         result = fim_db_remove_path("/etc/wgetrc");
@@ -216,28 +236,33 @@ TEST_F(FileTest, TestFimDBGetCountFileEntry)
 
 TEST_F(FileTest, TestFimDBGetCountFileInode)
 {
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+    bool isUpdated;
+
     EXPECT_NO_THROW(
     {
         auto result = fim_db_get_count_file_inode();
         ASSERT_EQ(result, 0);
-        auto resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement2);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement3);
-        ASSERT_FALSE(resultInsert);
+        auto resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest3->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         result = fim_db_get_count_file_inode();
         ASSERT_EQ(result, 3);
         result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_get_count_file_inode();
         ASSERT_EQ(result, 2);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
+        resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         result = fim_db_get_count_file_inode();
         ASSERT_EQ(result, 3);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(updateStatement1);
-        ASSERT_TRUE(resultInsert);
+        resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         result = fim_db_get_count_file_inode();
         ASSERT_EQ(result, 3);
         result = fim_db_remove_path("/etc/wgetrc");
@@ -254,14 +279,19 @@ TEST_F(FileTest, TestFimDBGetCountFileInode)
 
 TEST_F(FileTest, TestFimDBFileInodeSearch)
 {
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+    bool isUpdated;
+
     EXPECT_NO_THROW(
     {
-        auto resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement2);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement3);
-        ASSERT_FALSE(resultInsert);
+        auto resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest3->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         char *test;
         test = strdup("/etc/wgetrc");
         callback_context_t callback_data;
@@ -276,8 +306,8 @@ TEST_F(FileTest, TestFimDBFileInodeSearch)
             os_free(test);
         }
         os_free(test);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(updateStatement2);
-        ASSERT_TRUE(resultInsert);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         callback_data.callback = callbackTestSearch;
         callback_data.context = NULL;
         fim_db_file_inode_search(18457083, 2151, callback_data);
@@ -286,14 +316,19 @@ TEST_F(FileTest, TestFimDBFileInodeSearch)
 
 TEST_F(FileTest, TestFimDBFilePatternSearch)
 {
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+    bool isUpdated;
+
     EXPECT_NO_THROW(
     {
-        auto resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement1);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement2);
-        ASSERT_FALSE(resultInsert);
-        resultInsert = FIMDBHelper::updateItem<FIMDB>(insertStatement3);
-        ASSERT_FALSE(resultInsert);
+        auto resultInsert = fim_db_file_update(fileFIMTest1->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest2->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
+        resultInsert = fim_db_file_update(fileFIMTest3->toFimEntry(), &isUpdated);
+        ASSERT_EQ(resultInsert, FIMDB_OK);
         callback_context_t callback_data;
         callback_data.callback = callbackTestSearch;
         callback_data.context = nullptr;
@@ -313,3 +348,80 @@ TEST_F(FileTest, TestFimDBFilePatternSearch)
         os_free(test);
     });
 }
+
+TEST_F(FileTest, TestFimDBFilePatternSearchNullParameters)
+{
+    callback_context_t callback_data{};
+    callback_data.callback = callbackTestSearch;
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(2));
+    EXPECT_NO_THROW(
+    {
+               ASSERT_EQ(fim_db_file_pattern_search(nullptr, callback_data), FIMDB_ERR);
+               callback_data.callback = nullptr;
+               ASSERT_EQ(fim_db_file_pattern_search("", callback_data), FIMDB_ERR);
+    });
+}
+
+TEST_F(FileTest, TestFimDBFileINodeSearchNullParameter)
+{
+    callback_context_t callback_data{};
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(1));
+    EXPECT_NO_THROW(
+    {
+               ASSERT_EQ(fim_db_file_inode_search(0, 0, callback_data), FIMDB_ERR);
+    });
+}
+
+TEST_F(FileTest, TestFimDBGetPathNullParameters)
+{
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(1));
+    EXPECT_NO_THROW(
+    {
+        callback_context_t callback_data {};
+        ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data), FIMDB_ERR);
+        callback_data.callback = callBackTestFIMEntry;
+        ASSERT_EQ(fim_db_get_path(nullptr, callback_data), FIMDB_ERR);
+    });
+}
+
+TEST_F(FileTest, TestFimDBRemovePathNullParameter)
+{
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(1));
+    EXPECT_NO_THROW(
+    {
+        ASSERT_EQ(fim_db_remove_path(nullptr), FIMDB_ERR);
+    });
+}
+
+TEST_F(FileTest, TestFimDBFileUpdateNullParameters)
+{
+    const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    bool isUpdated;
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(2));
+
+    EXPECT_NO_THROW(
+    {
+        ASSERT_EQ(fim_db_file_update(nullptr, &isUpdated), FIMDB_ERR);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), nullptr), FIMDB_ERR);
+    });
+}
+
+TEST_F(FileTest, TestFimDBGetPathNoFile)
+{
+    callback_context_t callback_data {callBackTestFIMEntry, nullptr};
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "No entry found with that path")).Times(testing::AtLeast(1));
+    EXPECT_NO_THROW(
+    {
+        ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data), FIMDB_ERR);
+    });
+}
+
+TEST_F(FileTest, TestFimDBInvalidSearchPath)
+{
+    EXPECT_THROW(
+    {
+        DB::instance().searchFile(std::make_tuple(static_cast<FILE_SEARCH_TYPE>(-1), "","",""), nullptr);
+    }, std::runtime_error);
+}
+
+

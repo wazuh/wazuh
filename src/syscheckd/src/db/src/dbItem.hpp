@@ -30,7 +30,9 @@ class DBItem
         {
         }
 
+        // LCOV_EXCL_START
         virtual ~DBItem() = default;
+        // LCOV_EXCL_STOP
         virtual fim_entry* toFimEntry() = 0;
         virtual const nlohmann::json* toJSON() const = 0;
         bool state()

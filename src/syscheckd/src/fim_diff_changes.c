@@ -335,12 +335,12 @@ int fim_diff_registry_tmp(const char *value_data,
                           const diff_data *diff) {
 
     char *aux_data = NULL;
-    FILE *fp;
+    FILE *fp = fopen(diff->file_origin, "w");
     int ret = 0;
 
     mkdir_ex(diff->tmp_folder);
 
-    if (fp = fopen(diff->file_origin, "w"), fp) {
+    if (NULL != fp) {
         switch (data_type) {
             case REG_SZ:
             case REG_EXPAND_SZ:
@@ -379,12 +379,12 @@ int fim_diff_registry_tmp(const char *value_data,
                 ret = -1;
                 break;
         }
+        fclose(fp);
     } else {
         merror(FOPEN_ERROR, diff->file_origin, errno, strerror(errno));
         return -1;
     }
 
-    fclose(fp);
     return ret;
 }
 

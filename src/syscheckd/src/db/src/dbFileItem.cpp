@@ -51,7 +51,7 @@ void FileItem::createJSON()
     nlohmann::json conf;
     nlohmann::json data;
 
-    conf["table"] = FIMBD_FILE_TABLE_NAME;
+    conf["table"] = FIMDB_FILE_TABLE_NAME;
     data["path"] = m_identifier;
     data["mode"] = m_mode;
     data["last_event"] = m_lastEvent;

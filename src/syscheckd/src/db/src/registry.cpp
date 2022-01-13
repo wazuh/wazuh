@@ -12,14 +12,13 @@
 #ifdef WAZUH_UNIT_TESTING
 #include "fimDBHelpersUTInterface.hpp"
 #else
-#include "fimDBHelper.hpp"
 #include "fimDB.hpp"
 #endif
 
 #include "dbRegistryValue.hpp"
 #include "dbRegistryKey.hpp"
 #include "fimCommonDefs.h"
-#include "registry.hpp"
+#include "db.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +32,7 @@ const char* registry_arch[] =
     [ARCH_64BIT] = "[x64]"
 };
 
-FIMDBErrorCode fim_db_remove_registry_key(fim_registry_key* key_entry)
+/*FIMDBErrorCode fim_db_remove_registry_key(fim_registry_key* key_entry)
 {
 
     std::string filter = "WHERE id = " + std::to_string(key_entry->id) + " AND arch = " +
@@ -216,6 +215,6 @@ FIMDBErrorCode fim_db_insert_registry_key(fim_registry_key* entry)
     }
 
     return FIMDB_OK;
-}
+}*/
 
 }

@@ -2,29 +2,43 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(fim_file_interface_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address --coverage")
+set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 file(GLOB FILE_UNIT_TEST_SRC
     "*.cpp")
 
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
-include_directories(${SRC_FOLDER}/syscheckd/db/tests/db/FIMDB)
-
-link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
+include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/FIMDB)
 
 file(GLOB FILE_SRC
-    "${SRC_FOLDER}/syscheckd/db/src/file.cpp"
-    "${SRC_FOLDER}/syscheckd/db/src/dbFileItem.cpp")
+    "${SRC_FOLDER}/syscheckd/src/db/src/file.cpp"
+    "${SRC_FOLDER}/syscheckd/src/db/src/db.cpp"
+    "${SRC_FOLDER}/syscheckd/src/db/src/dbFileItem.cpp")
 
 file(GLOB FIMDB_SRC
-     "${SRC_FOLDER}/syscheckd/db/src/fimDB.cpp")
+     "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp")
+
+ file(GLOB RSYNC_IMP_SRC
+    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
+
+file(GLOB DBSYNC_IMP_SRC
+    "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
+    "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    file(GLOB REGISTRY_SRC
+        "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistry*.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_executable(fim_file_interface_test
     ${FILE_UNIT_TEST_SRC}
     ${FILE_SRC}
-    ${FIMDB_SRC})
+    ${REGISTRY_SRC}
+    ${FIMDB_SRC}
+    ${RSYNC_IMP_SRC}
+    ${DBSYNC_IMP_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(fim_file_interface_test
@@ -38,9 +52,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gmock_main
         pthread
         sqlite3
-        dbsync
-        rsync
         cjson
+        crypto
+        ws2_32
+        ssl
+        crypt32
         -static-libgcc -static-libstdc++
     )
 else()
@@ -55,8 +71,7 @@ else()
         optimized gmock_main
         pthread
         sqlite3
-        dbsync
-        rsync
+        crypto
         cjson
         dl
     )

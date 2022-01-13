@@ -260,9 +260,9 @@ class FIMDB
          * @brief Initialize the FIMDB singleton class, setting the attributes needed.
          *
          * @param syncInterval Interval in second, to determine frequency of the synchronization
-
-         * @param callbackSync Pointer to the callback used to send sync messages
-         * @param callbackLog Pointer to the callback used to send log messages
+         * @param callbackSyncFileWrapper callback used to send sync messages
+         * @param callbackSyncRegistryWrapper callback used to send sync messages
+         * @param callbackLogWrapper callback used to send log messages
          * @param dbsyncHandler Pointer to a dbsync handler.
          * @param rsyncHandler Pointer to a rsync handler.
          * @param fileLimit Maximun number of file entries in database.
@@ -270,8 +270,9 @@ class FIMDB
          * @param isWindows True if the OS is Windows.
          */
         void init(unsigned int syncInterval,
-                  fim_sync_callback_t callbackSync,
-                  logging_callback_t callbackLog,
+                  std::function<void(const std::string&)> callbackSyncFileWrapper,
+                  std::function<void(const std::string&)> callbackSyncRegistryWrapper,
+                  std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   unsigned int fileLimit,
@@ -317,12 +318,12 @@ class FIMDB
          *
          * @param data Message to push
          */
-        void fimSyncPushMsg(const std::string& data);
+        void pushMessage(const std::string& data);
 
         /**
          * @brief Function in chage of run synchronization integrity
          */
-        void fimRunIntegrity();
+        void runIntegrity();
 
         /**
          * @brief Its the function in charge of stopping the sync flow
@@ -337,7 +338,10 @@ class FIMDB
          */
         inline void logFunction(const modules_log_level_t logLevel, const std::string& msg)
         {
-            m_loggingFunction(logLevel, msg);
+            if (m_loggingFunction)
+            {
+                m_loggingFunction(logLevel, msg);
+            }
         }
 
         /**
@@ -347,6 +351,10 @@ class FIMDB
          */
         DBSYNC_HANDLE DBSyncHandle()
         {
+            if (!m_dbsyncHandler)
+            {
+                throw std::runtime_error("DBSyncHandler is not initialized");
+            }
             return m_dbsyncHandler->handle();
         }
 
@@ -372,7 +380,9 @@ class FIMDB
 
     protected:
         FIMDB() = default;
+        // LCOV_EXCL_START
         ~FIMDB() = default;
+        // LCOV_EXCL_STOP
         FIMDB(const FIMDB&) = delete;
 
         /**

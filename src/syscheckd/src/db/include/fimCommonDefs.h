@@ -11,7 +11,7 @@
 #include "logging_helper.h"
 #include "commonDefs.h"
 
-#define FIMBD_FILE_TABLE_NAME "file_entry"
+#define FIMDB_FILE_TABLE_NAME "file_entry"
 #define FIMDB_FILE_TXN_TABLE "{\"table\": \"file_entry\"}"
 #define FILE_PRIMARY_KEY "path"
 
