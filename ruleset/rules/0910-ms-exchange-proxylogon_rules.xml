@@ -76,7 +76,6 @@
       <id>T1210</id>
     </mitre>
   </rule>
-
   <!--
     CVE-2021-26857 is an insecure deserialization vulnerability in the Unified Messaging service. Insecure deserialization
     is where untrusted user-controllable data is deserialized by a program. Exploiting this vulnerability gave HAFNIUM the
