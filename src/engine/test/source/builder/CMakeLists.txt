@@ -70,7 +70,7 @@ FetchContent_GetProperties(
 ####################################################################################################
 set(SOURCES
   ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp
-  ${BUILDER_ENGINE_SOURCE_DIR}/event.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/json.cpp
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}/decoders.cpp
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}/decoder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_value.cpp
@@ -123,10 +123,10 @@ add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${BUILDER_EN
 gtest_discover_tests(utils_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp)
 
-# Event test
-add_executable(event_test ${BUILDER_TEST_SOURCE_DIR}/event_test.cpp ${SOURCES})
-gtest_discover_tests(event_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/event_test.cpp)
+# Json test
+add_executable(json_test ${BUILDER_TEST_SOURCE_DIR}/json_test.cpp ${BUILDER_ENGINE_SOURCE_DIR}/json.cpp)
+gtest_discover_tests(json_test)
+list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/json_test.cpp)
 
 ####################################################################################################
 # Engines targets

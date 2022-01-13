@@ -15,24 +15,25 @@
 
 using Value = rapidjson::Value;
 
-namespace builder
+namespace builder::shared
 {
 
     /**
-     * @brief Event is an event based on the rapidjson library
+     * @brief Json is a json class based on rapidjson library
      *
      */
-    class Event {
+    class Json {
     private:
         rapidjson::Document doc;
 
     public:
-        Event(){};
-        Event(const char * json) { doc.Parse(json); };
-        Event(const Event & e) {
+        Json() {};
+        Json(const char * json) { doc.Parse(json); };
+        Json(const Json & e) 
+        {
             this->doc.CopyFrom(e.doc, this->doc.GetAllocator());
         };
-        Event(const rapidjson::Value & v) { this->doc.CopyFrom(v, this->doc.GetAllocator()); };
+        Json(const rapidjson::Value & v) { this->doc.CopyFrom(v, this->doc.GetAllocator()); };
 
         void set(std::string path, const rapidjson::Value & v);
         rapidjson::Value * get(std::string path);
