@@ -52,21 +52,21 @@
     <if_sid>91505</if_sid>
     <field name="event.id">605004</field>
     <description>FTD: Failed login attempt.</description>
-    <group>authentication_failed,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_failed,gdpr_IV_35.7.d,gdpr_IV_32.2,gpg13_7.8,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="91508" level="3">
     <if_sid>91505</if_sid>
     <field name="event.id">502103</field>
     <description>FTD: User privilege changed.</description>
-    <group>gpg13_7.9,gdpr_IV_35.7.d,gdpr_IV_32.2,pci_dss_10.2.7,pci_dss_10.6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_35.7.d,gdpr_IV_32.2,gpg13_7.9,pci_dss_10.2.7,pci_dss_10.6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="91509" level="3">
     <if_sid>91505</if_sid>
     <field name="event.id">605005</field>
     <description>FTD: Successful login.</description>
-    <group>authentication_success,gpg13_7.8,gdpr_IV_32.2,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_success,gdpr_IV_32.2,gpg13_7.8,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="91510" level="8">
@@ -76,21 +76,21 @@
     <mitre>
       <id>T1095</id>
     </mitre>
-    <group>gpg13_4.12,gdpr_IV_35.7.d,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="91511" level="8">
     <if_sid>91504</if_sid>
     <field name="event.id">401004</field>
     <description>FTD: Attempt to connect from a blocked (shunned) IP.</description>
-    <group>access_denied,gpg13_4.12,gdpr_IV_35.7.d,pci_dss_10.2.4,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>access_denied,gdpr_IV_35.7.d,gpg13_4.12,pci_dss_10.2.4,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="91512" level="8">
     <if_sid>91506</if_sid>
     <field name="event.id">710004</field>
     <description>FTD: Connection limit exceeded.</description>
-    <group>gdpr_IV_35.7.d,pci_dss_10.6.1,gpg13_4.12,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!--
@@ -116,7 +116,7 @@
     <if_sid>91501,91502,91505</if_sid>
     <field name="event.id">106012|106022|106021|106017|106020</field>
     <description>FTD: Attack in progress detected</description>
-    <group>ids,gpg13_4.12,gdpr_IV_35.7.d,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_35.7.d,gpg13_4.12,ids,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="91516" level="5">

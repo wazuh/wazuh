@@ -7,7 +7,6 @@
   <prematch type="pcre2">[^%]*%FTD-[0-7]-[^:\s]+[:\s].*</prematch>
 </decoder>
 
-
 <!--
   %ftd-2-106001: Inbound TCP connection denied from 111.93.241.59/54322 to 116.6.127.122/1433 flags SYN on interface outside
 -->
@@ -72,10 +71,10 @@
   %ftd-2-106006: Deny inbound UDP from 185.158.113.158/53306 to 116.6.127.123/53413 on interface outside
 -->
 <decoder name="cisco-ftd-deny-inbound-udp">
-    <parent>cisco-ftd</parent>
-    <prematch>2-106006|2-106007</prematch>
-    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+))</regex>
-    <order>header, product.name, event.severity, event.id, message, description, srcip, srcport, dstip, dstport</order>
+  <parent>cisco-ftd</parent>
+  <prematch>2-106006|2-106007</prematch>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+))</regex>
+  <order>header, product.name, event.severity, event.id, message, description, srcip, srcport, dstip, dstport</order>
 </decoder>
 
 <!--
@@ -323,7 +322,6 @@
   <order>header, product.name, event.severity, event.id, message, description, interface</order>
 </decoder>
 
-
 <!--
   %FTD-1-106101 The number of ACL log deny-flows has reached limit (number).
 -->
@@ -343,7 +341,6 @@
   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfor\suser\s([^:]+):(.+))</regex>
   <order>header, product.name, event.severity, event.id, message, description, username, message</order>
 </decoder>
-
 
 <!--
   %FTD-4-711004: Task ran for 435 msec, Process = DATAPATH-0-1879, PC = 0, Call stack = 0x090b0155
