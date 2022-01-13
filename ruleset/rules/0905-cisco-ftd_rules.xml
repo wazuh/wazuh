@@ -4,7 +4,7 @@
   Cisco FTD rule ID: 91500 - 91530
 -->
 
-<group name="cisco, cisco-ftd,">
+<group name="cisco,cisco-ftd,">
 
   <!-- General rule -->
   <rule id="91500" level="0">
@@ -95,17 +95,17 @@
 
   <!--
   <rule id="91513" level="8">
-      <if_sid>91501</if_sid>
-      <field name="event.id">106021|106022</field>
-      <description>FTD: Attack in progress detected.</description>
-      <group>gdpr_IV_35.7.d,</group>
+    <if_sid>91501</if_sid>
+    <field name="event.id">106021|106022</field>
+    <description>FTD: Attack in progress detected.</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="91514" level="8">
-      <if_sid>91502</if_sid>
-      <field name="event.id">106012|106017|106020</field>
-      <description>FTD: Attack in progress detected.</description>
-      <group>gdpr_IV_35.7.d,</group>
+    <if_sid>91502</if_sid>
+    <field name="event.id">106012|106017|106020</field>
+    <description>FTD: Attack in progress detected.</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
   -->
 

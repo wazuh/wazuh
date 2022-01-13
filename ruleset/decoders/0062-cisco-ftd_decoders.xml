@@ -148,7 +148,6 @@
   <order>header, product.name, event.severity, event.id, message, username, type, command</order>
 </decoder>
 
-
 <!--
   %ftd-5-502103: User priv level changed: Uname: impssnagios From: 1 To: 15
 -->
@@ -168,7 +167,6 @@
   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\sis\sdropped\sbecause\sapplication\shas\sfailed)</regex>
   <order>header, product.name, event.severity, event.id, message, description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
 </decoder>
-
 
 <!--
   %ftd-3-421007: UDP flow from WLC-LAN_inside:10.233.19.92/60803 to outside:8.8.8.8/53 is skipped because application has failed.
