@@ -179,6 +179,9 @@ if __name__ == '__main__':
     # clean
     wazuh.core.cluster.cluster.clean_up()
 
+    # Check for unused PID files
+    check_pids('wazuh-clusterd')
+
     # Foreground/Daemon
     if not args.foreground:
         pyDaemonModule.pyDaemon()
@@ -187,8 +190,6 @@ if __name__ == '__main__':
     if not args.root:
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
-
-    check_pids('wazuh-clusterd')
 
     pid = os.getpid()
     pyDaemonModule.create_pid('wazuh-clusterd', pid)

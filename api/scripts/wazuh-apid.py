@@ -295,6 +295,9 @@ if __name__ == '__main__':
                 logger.error(msg)
                 raise exc
 
+    # Check for unused PID files
+    utils.check_pids(API_MAIN_PROCESS)
+
     # Foreground/Daemon
     if not args.foreground:
         pyDaemonModule.pyDaemon()
@@ -308,9 +311,6 @@ if __name__ == '__main__':
             os.setuid(common.wazuh_uid())
     else:
         print(f"Starting API as root")
-
-    # Check for unused PID files
-    utils.check_pids(API_MAIN_PROCESS)
 
     pid = os.getpid()
     pyDaemonModule.create_pid(API_MAIN_PROCESS, pid)
