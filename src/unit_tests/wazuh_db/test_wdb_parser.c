@@ -3055,11 +3055,12 @@ void test_dbsync_delete_type_exists_data_bind_error_ports(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
     expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 4);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 4);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
 
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return_always(__wrap_sqlite3_bind_int64, SQLITE_ERROR);
 
     expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
@@ -3075,8 +3076,8 @@ void test_dbsync_delete_type_exists_data_bind_error_ports(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
     expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 4);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 4);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
 
     expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__merror, formatted_msg, error_message);
@@ -3112,8 +3113,8 @@ void test_dbsync_modify_type_exists_data_bind_error_ports(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
     expect_value(__wrap_sqlite3_bind_int, index, 4);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 5);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    expect_value(__wrap_sqlite3_bind_int64, index, 5);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
 
     will_return_always(__wrap_sqlite3_errmsg, error_value);
 
@@ -3125,6 +3126,7 @@ void test_dbsync_modify_type_exists_data_bind_error_ports(void **state) {
 
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return_always(__wrap_sqlite3_bind_int64, SQLITE_ERROR);
 
     ret = wdb_parse_dbsync(data->wdb, query, data->output);
 
@@ -3253,6 +3255,7 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
 
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return_always(__wrap_sqlite3_bind_int64, SQLITE_ERROR);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
@@ -3281,8 +3284,8 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 9);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 10);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 10);
+    expect_value(__wrap_sqlite3_bind_int64, value, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 11);
     expect_string(__wrap_sqlite3_bind_text, buffer, "");

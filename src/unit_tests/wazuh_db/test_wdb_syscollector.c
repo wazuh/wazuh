@@ -182,9 +182,9 @@ static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 23);
     expect_value(__wrap_sqlite3_bind_int, value, 123);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 24);
-    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 24);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 25);
     expect_value(__wrap_sqlite3_bind_int, value, 123);
@@ -450,9 +450,9 @@ static void wdb_syscollector_port_save2_success(cJSON *attribute) {
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 9);
     expect_value(__wrap_sqlite3_bind_int, value, 541);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 10);
-    expect_value(__wrap_sqlite3_bind_int, value, 541);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 10);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 11);
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
@@ -3390,9 +3390,9 @@ void test_wdb_port_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 9);
     expect_value(__wrap_sqlite3_bind_int, value, 10);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 10);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 10);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 11);
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
@@ -3411,7 +3411,7 @@ void test_wdb_port_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_port_save(data, "scan_id", "scan_time", "protocol", "local_ip", 541, "remote_ip", 541, 10, 10, 1, "state", 32545, "process", "checksum", "item_id", false);
+    output = wdb_port_save(data, "scan_id", "scan_time", "protocol", "local_ip", 541, "remote_ip", 541, 10, 10, 5294967296, "state", 32545, "process", "checksum", "item_id", false);
     assert_int_equal(output, 0);
 }
 
@@ -3513,9 +3513,9 @@ void test_wdb_port_insert_success(void **state) {
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 9);
     expect_value(__wrap_sqlite3_bind_int, value, 10);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 10);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 10);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 11);
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
@@ -3535,7 +3535,7 @@ void test_wdb_port_insert_success(void **state) {
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_port_insert(data, "scan_id", "scan_time", "protocol", "local_ip", 541, "remote_ip", 541, 10, 10, 1, "state", 32545, "process", "checksum", "item_id", false);
+    output = wdb_port_insert(data, "scan_id", "scan_time", "protocol", "local_ip", 541, "remote_ip", 541, 10, 10, 5294967296, "state", 32545, "process", "checksum", "item_id", false);
     assert_int_equal(output, 0);
 }
 
@@ -3704,9 +3704,9 @@ void test_wdb_process_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 23);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 24);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 24);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 25);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -3731,7 +3731,7 @@ void test_wdb_process_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_process_save(data, "scan_id", "scan_time", 1, "name", "state", 1, 1, 1, "cmd", "argvs", "euser", "ruser", "suser", "egroup", "rgroup", "sgroup", "fgroup", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, "checksum", false);
+    output = wdb_process_save(data, "scan_id", "scan_time", 1, "name", "state", 1, 1, 1, "cmd", "argvs", "euser", "ruser", "suser", "egroup", "rgroup", "sgroup", "fgroup", 1, 1, 1, 1, 1, 1, 5294967296, 1, 1, 1, 1, 1, 1, "checksum", false);
     assert_int_equal(output, 0);
 }
 
@@ -3913,9 +3913,9 @@ void test_wdb_process_insert_success(void **state) {
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 23);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 24);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 24);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 25);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -3941,7 +3941,7 @@ void test_wdb_process_insert_success(void **state) {
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    output = wdb_process_insert(data, "scan_id", "scan_time", 1, "name", "state", 1, 1, 1, "cmd", "argvs", "euser", "ruser", "suser", "egroup", "rgroup", "sgroup", "fgroup", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, "checksum", false);
+    output = wdb_process_insert(data, "scan_id", "scan_time", 1, "name", "state", 1, 1, 1, "cmd", "argvs", "euser", "ruser", "suser", "egroup", "rgroup", "sgroup", "fgroup", 1, 1, 1, 1, 1, 1, 5294967296, 1, 1, 1, 1, 1, 1, "checksum", false);
     assert_int_equal(output, 0);
 }
 
@@ -4066,6 +4066,7 @@ void test_wdb_syscollector_save2_processes_success(void **state) {
     cJSON attribute = {0};
 
     attribute.valueint = 123;
+    attribute.valuedouble = 5294967296;
 
     will_return(__wrap_cJSON_Parse, 1);
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -4162,6 +4163,8 @@ void test_wdb_syscollector_save2_port_success(void **state) {
     cJSON attribute = {0};
 
     attribute.valueint = 541;
+    attribute.valuedouble = 5294967296;
+
     will_return(__wrap_cJSON_Parse, 1);
     will_return(__wrap_cJSON_GetObjectItem, 1);
 

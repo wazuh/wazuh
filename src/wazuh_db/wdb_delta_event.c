@@ -365,7 +365,7 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
                                              const char * replace) {
 
     bool ret_val = false;
-    const char * default_values[] = {[FIELD_TEXT] = "", [FIELD_INTEGER] = "0", [FIELD_REAL] = "0"};
+    const char * default_values[] = {[FIELD_TEXT] = "", [FIELD_INTEGER] = "0", [FIELD_REAL] = "0", [FIELD_INTEGER_LONG] = "0"};
 
     if (NULL != stmt && NULL != value) {
 
@@ -400,6 +400,18 @@ STATIC bool wdb_dbsync_stmt_bind_from_string(sqlite3_stmt * stmt, int index, fie
                 char * endptr;
                 const double real_value = strtod(replaced_value_escape_pipe, &endptr);
                 if (NULL != endptr && '\0' == *endptr && SQLITE_OK == sqlite3_bind_double(stmt, index, real_value)) {
+                    ret_val = true;
+                }
+            }
+            break;
+        }
+        case FIELD_INTEGER_LONG: {
+            if ('\0' == *replaced_value_escape_pipe) {
+                ret_val = sqlite3_bind_null(stmt, index) == SQLITE_OK ? true : false;
+            } else {
+                char * endptr ;
+                const long long long_value = strtoll(replaced_value_escape_pipe, &endptr, 10);
+                if (NULL != endptr && '\0' == *endptr && SQLITE_OK == sqlite3_bind_int64(stmt, index, (sqlite3_int64) long_value)) {
                     ret_val = true;
                 }
             }

@@ -366,7 +366,8 @@ typedef struct agent_info_data {
 typedef enum {
     FIELD_INTEGER,
     FIELD_TEXT,
-    FIELD_REAL
+    FIELD_REAL,
+    FIELD_INTEGER_LONG
 } field_type_t;
 
 struct field {
