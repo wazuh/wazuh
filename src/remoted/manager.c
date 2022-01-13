@@ -142,10 +142,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     r_msg = clean;
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
-        mdebug1("Agent %s sent HC_STARTUP.", key->name);
+        char s[IPSIZE];
+        inet_ntop(key->peer_info.ss_family, (struct sockaddr *)&key->peer_info, s, sizeof s);
+        mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, s);
         is_startup = 1;
     } else if (strcmp(r_msg, HC_SHUTDOWN) == 0) {
-        mdebug1("Agent %s sent HC_SHUTDOWN.", key->name);
+        char s[IPSIZE];
+        inet_ntop(key->peer_info.ss_family, (struct sockaddr *)&key->peer_info, s, sizeof s);
+        mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, s);
         is_shutdown = 1;
     } else {
         /* Clean msg and shared files (remove random string) */

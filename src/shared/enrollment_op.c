@@ -218,7 +218,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     /* Connect via TCP */
     int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, strchr(ip_address, ':') != NULL);
     if (sock < 0) {
-        merror(AUTH_CONN_ERROR, ip_address, cfg->target_cfg->port);
+        merror(ENROLL_CONN_ERROR, ip_address, cfg->target_cfg->port);
         os_free(ip_address);
         SSL_CTX_free(ctx);
         return ENROLLMENT_CONNECTION_FAILURE;
@@ -240,7 +240,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 
-    mdebug1(AUTH_CONNECTED, ip_address, cfg->target_cfg->port);
+    mdebug1(ENROLL_CONNECTED, ip_address, cfg->target_cfg->port);
 
     w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
 
