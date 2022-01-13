@@ -5742,7 +5742,7 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
     else if (strcmp(next, "create") == 0) {
         result = wdb_global_create_backup(*wdb, output, NULL);
         if (OS_SUCCESS != result) {
-            merror("Creating Global DB snapshot by request failed: %s", output);
+            merror("Creating Global DB snapshot on demand failed: %s", output);
         }
     }
     else if (strcmp(next, "get") == 0) {
