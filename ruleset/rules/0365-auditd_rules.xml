@@ -28,7 +28,7 @@
     <field name="audit.type">DAEMON_RESUME|DAEMON_START</field>
     <field name="audit.res">failed</field>
     <description>Auditd: Daemon Start / Resume FAILED.</description>
-    <group>audit_daemon,gpg13_10.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,gpg13_4.14,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>audit_daemon,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80703" level="10">
@@ -36,14 +36,14 @@
     <field name="audit.type">DAEMON_END</field>
     <field name="audit.res">success</field>
     <description>Auditd: Daemon End.</description>
-    <group>audit_daemon,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_10.1,gpg13_4.14,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>audit_daemon,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80704" level="10">
     <if_sid>80700</if_sid>
     <field name="audit.type">DAEMON_ABORT</field>
     <description>Auditd: Daemon Abort.</description>
-    <group>audit_daemon,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_10.1,gpg13_4.14,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>audit_daemon,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,service_availability,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80705" level="3">
@@ -72,10 +72,10 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">ANOM_EXEC</field>
     <description>Auditd: Execution of a file ended abnormally.</description>
-    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_4.14,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1204</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_4.14,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80713" level="7">
@@ -121,20 +121,20 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">ANOM_ADD_ACCT</field>
     <description>Auditd: User-space account addition ended abnormally.</description>
-    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1136</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
  </rule>
 
   <rule id="80719" level="3">
     <if_sid>80700</if_sid>
     <field name="audit.type">ANOM_DEL_ACCT</field>
     <description>Auditd: User-space account deletion ended abnormally.</description>
-    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1531</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80720" level="3">
@@ -148,10 +148,10 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">ANOM_ROOT_TRANS</field>
     <description>Auditd: User becomes root.</description>
-    <group>audit_anom,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1548.003</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_35.7.d,gpg13_7.9,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80722" level="5">
@@ -219,10 +219,10 @@
     <if_sid>80700</if_sid>
     <field name="audit.type">CRYPTO_REPLAY_USER</field>
     <description>Auditd: Replay attack detected.</description>
-    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,nist_800_53_SI.4,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <mitre>
       <id>T1212</id>
     </mitre>
+    <group>audit_anom,gdpr_IV_30.1.g,gdpr_IV_35.7.d,nist_800_53_SI.4,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="80741" level="5">
@@ -334,15 +334,6 @@
     <description>Audit: Command: $(audit.exe).</description>
     <group>audit_command,gdpr_IV_30.1.g,</group>
   </rule>
-
-  <!--
-    Generic rule with dynamic description
-  <rule id="80799" level="1">
-    <if_sid>80700</if_sid>
-    <description>Audit: $(audit.type).</description>
-    <group>audit_generic,</group>
-  </rule>
-  -->
 
   <!-- Passwd rules -->
   <rule id="80793" level="8">
