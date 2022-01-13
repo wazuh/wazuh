@@ -122,6 +122,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl
                              -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND wdb_tests_names "test_wazuh_db-config")
+list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
