@@ -1,33 +1,27 @@
 #include "utils.hpp"
 
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
-
 
 using namespace std;
 
-namespace builder
-{
-    namespace utils
-    {
-        JsonPath::JsonPath(const string& json_path)
-        {
-            istringstream stream(json_path);
-            char separator = '.';
+namespace builder::internals::utils {
 
-            for (string sub_string; getline(stream, sub_string, separator); this->json_path.push_back(sub_string));
-        }
-        JsonPath::JsonPath(const JsonPath& o): json_path(o.json_path) {}
-        vector<string>::const_iterator JsonPath::begin() const noexcept
-        {
-            return this->json_path.begin();
-        }
-        vector<string>::const_iterator JsonPath::end() const noexcept
-        {
-            return this->json_path.end();
-        }
+JsonPath::JsonPath(const string &jsonPath) {
+  istringstream stream(jsonPath);
+  char separator = '.';
 
-
-    }
+  for (string subString; getline(stream, subString, separator);
+       this->m_jsonPath.push_back(subString))
+    ;
 }
+JsonPath::JsonPath(const JsonPath &o) : m_jsonPath{o.m_jsonPath} {}
+vector<string>::const_iterator JsonPath::begin() const noexcept {
+  return this->m_jsonPath.begin();
+}
+vector<string>::const_iterator JsonPath::end() const noexcept {
+  return this->m_jsonPath.end();
+}
+
+} // namespace builder::internals::utils
