@@ -87,6 +87,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     if ((tmp_str = strchr(keys->keyentries[keys->keysize]->ip->ip, '/')) != NULL) {
         *tmp_str = '\0';
     }
+
     rbtree_insert(keys->keytree_ip,
                keys->keyentries[keys->keysize]->ip->ip,
                keys->keyentries[keys->keysize]);

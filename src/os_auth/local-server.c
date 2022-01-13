@@ -388,14 +388,20 @@ cJSON* local_add(const char *id,
 
     /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
-        if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
-            minfo("Duplicate IP '%s'. %s", ip, str_result);
-        } else {
-            mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
-            ierror = EDUPIP;
-            goto fail;
+        char aux_ip[IPSIZE + 1] = {0};
+
+        if (!OS_GetIPv4FromIPv6(ip, aux_ip)) {
+            strcpy(aux_ip, ip);
         }
+
+        if (index = OS_IsAllowedIP(&keys, aux_ip), index >= 0) {
+            if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+                minfo("Duplicate IP '%s'. %s", aux_ip, str_result);
+            } else {
+                mwarn("Duplicate IP '%s', rejecting enrollment. %s", aux_ip, str_result);
+                ierror = EDUPIP;
+                goto fail;
+            }
         }
     }
 

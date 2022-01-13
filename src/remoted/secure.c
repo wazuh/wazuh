@@ -516,6 +516,13 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
     } else {
         key_lock_read();
+
+        char ipv4_from_ipv6[IPSIZE + 1] = {0};
+
+        if (OS_GetIPv4FromIPv6(srcip, ipv4_from_ipv6)) {
+            strcpy(srcip, ipv4_from_ipv6);
+        }
+
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {

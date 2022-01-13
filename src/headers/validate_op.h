@@ -49,6 +49,16 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
 
 
 /**
+ * @brief Check if an IPv4 address is embedded in an IPv6 address and resolve it
+ *
+ * @param ip_address [in] IP address.
+ * @param ipv4 [out] Buffer with the given IPv4 address resolved.
+ * @return Returns 0 if doesn't match or 1 if it does.
+ */
+int OS_GetIPv4FromIPv6(const char *ip_address, char *ipv4);
+
+
+/**
  * @brief Validate if a time is in an acceptable format.
  *
  * Acceptable formats:
