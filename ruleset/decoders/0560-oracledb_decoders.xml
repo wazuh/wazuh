@@ -37,49 +37,49 @@
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^LENGTH : '(\d+)'\n</regex>
+  <regex type="pcre2">(?m)^LENGTH : '(\d+)'\n</regex>
   <order>length</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^ACTION :\[\d+] '(.+)'\n</regex>
+  <regex type="pcre2">(?mUs)ACTION :(.*)(?:^[A-Z\s]+:)</regex>
   <order>action</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^DATABASE USER:\[\d+] '(.+)'\n</regex>
+  <regex type="pcre2">(?m)^DATABASE USER:\[\d+] '(.+)'\n</regex>
   <order>database_user</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^PRIVILEGE :\[\d+] '(.+)'\n</regex>
+  <regex type="pcre2">(?m)^PRIVILEGE :\[\d+] '(.+)'\n</regex>
   <order>privilege_level</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^CLIENT USER:\[\d+] '(.*)'\n</regex>
+  <regex type="pcre2">(?m)^CLIENT USER:\[\d+] '(.*)'\n</regex>
   <order>client_user</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
+  <regex type="pcre2">(?m)^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
   <order>client_terminal</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^STATUS:\[\d+] '(.*)'\n</regex>
+  <regex type="pcre2">(?m)^STATUS:\[\d+] '(.*)'\n</regex>
   <order>status</order>
 </decoder>
 
 <decoder name="oracledb-transaction-fields">
   <parent>oracledb-log</parent>
-  <regex type="pcre2">^DBID:\[\d+] '(.*)'</regex>
+  <regex type="pcre2">(?m)^DBID:\[\d+] '(.*)'</regex>
   <order>database_id</order>
 </decoder>
 
