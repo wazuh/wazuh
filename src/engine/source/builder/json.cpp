@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-#include "event.hpp"
+#include "json.hpp"
 
 #include "rapidjson/document.h"
 #include "rapidjson/pointer.h"
@@ -16,48 +16,60 @@
 
 using namespace std;
 
-namespace builder
+namespace builder::shared
 {
 
-    void Event::set(std::string path, const rapidjson::Value & v) {
+    void Json::set(std::string path, const rapidjson::Value & v) 
+    {
         std::replace(std::begin(path), std::end(path), '.', '/');
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
+        {
             ptr.Set(this->doc, v);
+        }
         else
-            throw std::invalid_argument("Invalid json path for this event");
+        {
+            throw std::invalid_argument("Invalid json path for this json");
+        }
     }
 
-    rapidjson::Value * Event::get(std::string path) {
+    rapidjson::Value * Json::get(std::string path) 
+    {
         std::replace(std::begin(path), std::end(path), '.', '/');
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
+        {
             return ptr.Get(this->doc);
-
-        throw std::invalid_argument("Invalid json path for this event");
+        }
+        throw std::invalid_argument("Invalid json path for this json");
     }
 
-    bool Event::check(std::string path, const rapidjson::Value & expected) {
+    bool Json::check(std::string path, const rapidjson::Value & expected) 
+    {
         std::replace(std::begin(path), std::end(path), '.', '/');
         auto ptr = rapidjson::Pointer(path.c_str());
-        if (ptr.IsValid()) {
+        if (ptr.IsValid()) 
+        {
             auto got = ptr.Get(this->doc);
             if (got)
+            {
                 return *got == expected;
+            }
         }
         return false;
     }
 
-    bool Event::check(std::string path) {
+    bool Json::check(std::string path) 
+    {
         std::replace(std::begin(path), std::end(path), '.', '/');
         auto ptr = rapidjson::Pointer(path.c_str());
         return ptr.IsValid();
     }
 
-    std::string Event::str() {
+    std::string Json::str() {
         rapidjson::StringBuffer buffer;
-        rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
-            buffer);
+        rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType,
+                          rapidjson::ASCII<>> writer(buffer);
         this->doc.Accept(writer);
         return buffer.GetString();
     }

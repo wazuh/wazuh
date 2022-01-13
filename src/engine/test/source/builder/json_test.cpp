@@ -4,7 +4,7 @@
 #include <string>
 #include <thread>
 
-#include "event.hpp"
+#include "json.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/pointer.h"
 #include "rxcpp/rx-test.hpp"
@@ -17,7 +17,7 @@
 
 using namespace std;
 using Value = rapidjson::Value;
-using Event = builder::Event;
+using Json = builder::shared::Json;
 
 auto message = R"({
     "event": {
@@ -54,23 +54,23 @@ auto message = R"({
     }
 })";
 
-TEST(EventTest, Initialize) {
+TEST(JsonTest, Initialize) {
 
-    ASSERT_NO_THROW(Event default_event());
+    ASSERT_NO_THROW(Json default_event());
 
-    ASSERT_NO_THROW(Event json_event(message));
+    ASSERT_NO_THROW(Json json_event(message));
 
-    Event json_event(message);
+    Json json_event(message);
 
-    ASSERT_NO_THROW(Event copy_event(json_event));
+    ASSERT_NO_THROW(Json copy_event(json_event));
 
-    ASSERT_NO_THROW(Event value_event(*(json_event.get(""))));
+    ASSERT_NO_THROW(Json value_event(*(json_event.get(""))));
     
 }
 
-TEST(EventTest, Operates) {
+TEST(JsonTest, Operates) {
 
-    Event e(message);
+    Json e(message);
 
     //Testing set and get
     e.set(".module.name",Value("changed"));
