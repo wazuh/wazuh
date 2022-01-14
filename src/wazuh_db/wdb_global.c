@@ -1239,30 +1239,41 @@ char* wdb_global_get_agent_group_source(wdb_t *wdb, int id) {
     return group_source;
 }
 
-bool wdb_get_global_group_hash(wdb_t *wdb, char *group_column_hash) {
+int wdb_get_global_group_hash(wdb_t *wdb, os_sha1 hexdigest) {
     //TBD
-    if (!strcmp(group_column_hash, "synced")) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
+    snprintf(hexdigest, sizeof(os_sha1), "synced");
+
+    return OS_SUCCESS;
 }
 
-int wdb_global_groups_synced(wdb_t *wdb) {
+cJSON* wdb_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
 
     if (stmt == NULL) {
-        return FALSE;
+        return NULL;
     }
+
+    cJSON* response = NULL;
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_ROW:
-        return 1;
+        response = cJSON_CreateArray();
+
+        cJSON_AddItemToArray(response, cJSON_CreateString("syncreq"));
+        return response;
     case SQLITE_DONE:
-        return 0;
+        response = cJSON_CreateArray();
+        os_sha1 hexdigest = {0};
+
+        if ( OS_SUCCESS == wdb_get_global_group_hash(wdb, hexdigest) && !strcmp(hexdigest, hash)) {
+            cJSON_AddItemToArray(response, cJSON_CreateString("synced"));
+        } else {
+            cJSON_AddItemToArray(response, cJSON_CreateString("hash_mismatch"));
+        }
+        return response;
     default:
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return -1;
+        return response;
     }
 }
 
