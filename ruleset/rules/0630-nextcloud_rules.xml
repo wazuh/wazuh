@@ -65,7 +65,7 @@
     <group>authentication_failures,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_SI.4,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="88204" level="6">
+  <rule id="88204" level="3">
     <if_sid>88200,88201</if_sid>
     <match>Passed filename is not valid, might be malicious </match>
     <options>no_full_log</options>
@@ -109,7 +109,7 @@
     <description>NextCloud DEBUG message.</description>
   </rule>
 
-  <rule id="88210" level="6">
+  <rule id="88210" level="3">
     <if_sid>88200,88201</if_sid>
     <match>Logout occurred</match>
     <options>no_full_log</options>
@@ -117,7 +117,7 @@
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="88211" level="6">
+  <rule id="88211" level="3">
     <if_sid>88200,88201</if_sid>
     <match>Login successful: </match>
     <options>no_full_log</options>
@@ -125,7 +125,7 @@
     <group>authentication_success,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="88213" level="6">
+  <rule id="88213" level="3">
     <if_sid>88200,88201</if_sid>
     <match>File accessed: </match>
     <options>no_full_log</options>
@@ -133,7 +133,7 @@
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="88214" level="6">
+  <rule id="88214" level="3">
     <if_sid>88200,88201</if_sid>
     <match>File created: </match>
     <options>no_full_log</options>
@@ -141,7 +141,7 @@
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_11.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="88215" level="6">
+  <rule id="88215" level="3">
     <if_sid>88200,88201</if_sid>
     <match>File deleted: </match>
     <options>no_full_log</options>
@@ -149,7 +149,7 @@
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,pci_dss_11.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="88216" level="6">
+  <rule id="88216" level="3">
     <if_sid>88200,88201</if_sid>
     <match>Preview accessed: </match>
     <options>no_full_log</options>
