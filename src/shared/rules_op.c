@@ -1587,7 +1587,7 @@ void _OS_FreeRule(RuleInfo *ruleinfo) {
 
     if (ruleinfo->srcip) {
         for (i = 0; ruleinfo->srcip[i]; i++) {
-            free(ruleinfo->srcip[i]);
+            w_free_os_ip(ruleinfo->srcip[i]);
         }
 
         free(ruleinfo->srcip);
@@ -1595,7 +1595,7 @@ void _OS_FreeRule(RuleInfo *ruleinfo) {
 
     if (ruleinfo->dstip) {
         for (i = 0; ruleinfo->dstip[i]; i++) {
-            free(ruleinfo->dstip[i]);
+            w_free_os_ip(ruleinfo->dstip[i]);
         }
 
         free(ruleinfo->dstip);
