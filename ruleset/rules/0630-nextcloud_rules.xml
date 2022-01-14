@@ -81,7 +81,7 @@
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="88206" level="4">
+  <rule id="88206" level="7">
     <if_sid>88200,88201</if_sid>
     <field name="level">^3$</field>
     <options>no_full_log</options>
