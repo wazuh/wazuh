@@ -17,7 +17,6 @@
 
 using namespace std;
 using Value = rapidjson::Value;
-using Json = builder::shared::Json;
 
 auto message = R"({
     "event": {
@@ -56,21 +55,21 @@ auto message = R"({
 
 TEST(JsonTest, Initialize) {
 
-    ASSERT_NO_THROW(Json default_event());
+    ASSERT_NO_THROW(Json::Document default_event());
 
-    ASSERT_NO_THROW(Json json_event(message));
+    ASSERT_NO_THROW(Json::Document json_event(message));
 
-    Json json_event(message);
+    Json::Document json_event(message);
 
-    ASSERT_NO_THROW(Json copy_event(json_event));
+    ASSERT_NO_THROW(Json::Document copy_event(json_event));
 
-    ASSERT_NO_THROW(Json value_event(*(json_event.get(""))));
+    ASSERT_NO_THROW(Json::Document value_event(*(json_event.get(""))));
     
 }
 
 TEST(JsonTest, Operates) {
 
-    Json e(message);
+    Json::Document e(message);
 
     //Testing set and get
     e.set(".module.name",Value("changed"));
