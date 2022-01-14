@@ -304,5 +304,6 @@ def process_spawn_sleep(child):
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
-    # Prevent race conditions
+    # Add a delay to force each child process create its own PID file and prevent multiple calls
+    # executed by the same child
     time.sleep(0.1)

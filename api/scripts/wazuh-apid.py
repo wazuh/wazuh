@@ -304,7 +304,7 @@ if __name__ == '__main__':
     else:
         print(f"Starting API in foreground")
 
-    # Drop privileges to ossec
+    # Drop privileges to wazuh
     if not args.root:
         if api_conf['drop_privileges']:
             os.setgid(common.wazuh_gid())
