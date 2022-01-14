@@ -11,23 +11,35 @@
     
   <rule id="65600" level="3">
     <decoded_as>json</decoded_as>
-    <field name="status">^200$</field>
+    <status>^200$</status>
+    <field name="method">\w+</field>
+    <field name="format">\w+</field>
+    <field name="controller">\.+</field>
+    <field name="path">^/gitlab/gitlab-ce/\w+/\.+</field>
     <options>no_full_log</options>
     <description>(Gitlab) $(method) request completed succesfully.</description>
   </rule>
 
   <rule id="65602" level="5">
     <decoded_as>json</decoded_as>
-    <field name="status">^400$</field>
+    <status>^400$</status>
+    <field name="method">\w+</field>
+    <field name="format">\w+</field>
+    <field name="controller">\.+</field>
+    <field name="path">^/gitlab/gitlab-ce/\w+/\.+</field>
     <options>no_full_log</options>
     <description>(Gitlab) ERROR: couldn't complete $(method) request.</description>
   </rule>
 
   <rule id="65603" level="5">
     <decoded_as>json</decoded_as>
-    <field name="status">^300$</field>
+    <status>^300$</status>
+    <field name="method">\w+</field>
+    <field name="format">\w+</field>
+    <field name="controller">\.+</field>
+    <field name="path">^/gitlab/gitlab-ce/\w+/\.+</field>
     <options>no_full_log</options>
-    <description>(Gitlab) REDIRECTION:The $(method) request has more than one possible response.</description>
+    <description>(Gitlab) REDIRECTION: The $(method) request has more than one possible response.</description>
   </rule>
 
   <rule id="65604" level="3">
@@ -174,7 +186,6 @@
   <rule id="65622" level="3">
     <decoded_as>json</decoded_as>
     <field name="query_string">\.+</field>
-    <field name="quevariablesue">\.+</field>
     <field name="complexity">\d*</field>
     <field name="depth">\d*</field>
     <field name="duration">\d*</field>
@@ -183,30 +194,30 @@
 
   <rule id="65623" level="3">
     <decoded_as>json</decoded_as>
+    <status>^200$</status>
     <field name="method">\w+</field>
     <field name="path">^/api/\w+/\.+</field>
     <field name="params">\.+</field>
-    <field name="status">^200$</field>
     <options>no_full_log</options>
     <description>(Gitlab) $(method) request completed succesfully.</description>
   </rule>
 
   <rule id="65624" level="5">
     <decoded_as>json</decoded_as>
+    <status>^400$</status>
     <field name="method">\w+</field>
     <field name="path">^/api/\w+/\.+</field>
     <field name="params">\.+</field>
-    <field name="status">^400$</field>
     <options>no_full_log</options>
     <description>(Gitlab) ERROR: couldn't complete $(method) request.</description>
   </rule>
 
   <rule id="65625" level="5">
     <decoded_as>json</decoded_as>
+    <status>^300$</status>
     <field name="method">\w+</field>
     <field name="path">^/api/\w+/\.+</field>
     <field name="params">\.+</field>
-    <field name="status">^300$</field>
     <options>no_full_log</options>
     <description>(Gitlab) REDIRECTION: The $(method) request has more than one possible response.</description>
   </rule>

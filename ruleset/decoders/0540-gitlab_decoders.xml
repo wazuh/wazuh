@@ -21,26 +21,28 @@
 
 <decoder name="gitlab-application-log-user">
   <parent>gitlab-12-application-log</parent>
-  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d:) User "(\.+)" \((\.+)\) was created</regex>
+  <prematch offset="after_parent">User "(\.+)" \((\.+)\)</prematch>
+  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d): User "(\.+)" \((\.+)\) was created</regex>
   <order>timestamp, new_user, e-mail</order>
 </decoder>
 
 <decoder name="gitlab-application-log-user">
   <parent>gitlab-12-application-log</parent>
-  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d:) User "(\.+)" \((\.+)\)\s+was removed</regex>
+  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d): User "(\.+)" \((\.+)\)\s+was removed</regex>
   <order>timestamp, removed_user, e-mail</order>
 </decoder>
 
 <decoder name="gitlab-application-log-new-project">
   <parent>gitlab-12-application-log</parent>
-  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d:) (\.+) created a new project</regex>
+  <prematch offset="after_parent">created a new project</prematch>
+  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d): (\.+) created a new project</regex>
   <order>timestamp, project_autor</order>
 </decoder>
 
-
 <decoder name="gitlab-application-log-removed-project">
   <parent>gitlab-12-application-log</parent>
-  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d:) Project "(\.*)" was removed</regex>
+  <prematch offset="after_parent">Project "(\.+)" was removed</prematch>
+  <regex>(\w+ \d+, \d\d\d\d \d\d:\d\d): Project "(\.*)" was removed</regex>
   <order>timestamp, project_removed</order>
 </decoder>
 
@@ -56,12 +58,14 @@
 
 <decoder name="gitlab-sidekiq-info">
   <parent>gitlab-sidekiq</parent>
+  <prematch offset="after_parent">INFO:</prematch>
   <regex>(\d\d\d\d-\d\d-\w+:\d\d:\w+) \w+ TID-\w+ INFO: (\.+)</regex>
   <order>timestamp, info</order>
 </decoder>
 
 <decoder name="gitlab-sidekiq-error">
   <parent>gitlab-sidekiq</parent>
+  <prematch offset="after_parent">ERROR:</prematch>
   <regex>(\d\d\d\d-\d\d-\w+:\d\d:\w+) \w+ TID-\w+ ERROR: (\.+)</regex>
   <order>timestamp, error</order>
 </decoder>
@@ -84,12 +88,14 @@
 
 <decoder name="gitlab-shell-stderr-info">
   <parent>gitlab-shell-stderr</parent>
+  <prematch>I, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
   <regex>I, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (INFO) -- : (\.+)</regex>
   <order>timestamp, severity, message</order>
 </decoder>
 
 <decoder name="gitlab-shell-stderr-warn">
   <parent>gitlab-shell-stderr</parent>
+  <prematch>W, [\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+]</prematch>
   <regex>W, ([\d\d\d\d-\d\d-\w+:\d\d:\d\d.\d+ #\d+])  (WARN) -- : (\.+)</regex>
   <order>timestamp, severity, message</order>
 </decoder>
