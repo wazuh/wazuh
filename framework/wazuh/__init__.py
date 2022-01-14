@@ -69,7 +69,7 @@ class Wazuh:
         try:
             compilation_date = datetime.strptime(self.installation_date, date_format)
         except ValueError:
-            compilation_date = datetime.now()
+            compilation_date = datetime.utcnow()
         return {'path': self.path,
                 'version': self.version,
                 'compilation_date': compilation_date,
