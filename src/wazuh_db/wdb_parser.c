@@ -5339,19 +5339,14 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
     if (args) {
         cJSON *j_mode = cJSON_GetObjectItem(args, "mode");
         cJSON *j_sync_status = cJSON_GetObjectItem(args, "sync_status");
-        cJSON *j_source = cJSON_GetObjectItem(args, "source");
         cJSON *j_groups_data = cJSON_GetObjectItem(args, "data");
 
         // Mandatory fields
         if (cJSON_IsArray(j_groups_data) && cJSON_IsString(j_mode)) {
             wdb_groups_set_mode_t mode = WDB_GROUP_INVALID_MODE;
             char* sync_status = "synced";
-            char* source = "manual";
             if (0 == strcmp(j_mode->valuestring, "override")) {
                 mode = WDB_GROUP_OVERRIDE;
-            }
-            else if (0 == strcmp(j_mode->valuestring, "override_all")) {
-                mode = WDB_GROUP_OVERRIDE_ALL;
             }
             else if (0 == strcmp(j_mode->valuestring, "append")) {
                 mode = WDB_GROUP_APPEND;
@@ -5364,12 +5359,13 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
                 sync_status = j_sync_status->valuestring;
             }
 
-            if (cJSON_IsString(j_source)){
-                source = j_source->valuestring;
+            wdbc_result status = wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
+            if (status == WDBC_OK) {
+                snprintf(output, OS_MAXSTR + 1, "%s",  WDBC_RESULT[status]);
             }
-
-            wdb_global_set_agent_groups(wdb, mode, sync_status, source, j_groups_data);
-            snprintf(output, OS_MAXSTR + 1, "ok");
+            else {
+                snprintf(output, OS_MAXSTR + 1, "%s An error occurred during the set of the groups",  WDBC_RESULT[status]);
+            }
         }
         else {
             mdebug1("Missing mandatory fields in set_agent_groups command.");

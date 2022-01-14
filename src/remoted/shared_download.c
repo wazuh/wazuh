@@ -15,7 +15,6 @@
 
 OSHash *ptable;
 static remote_files_group *agent_remote_group;
-static agent_group *agents_group;
 static char yaml_file[OS_SIZE_1024 + 1];
 static time_t yaml_file_date;
 static ino_t yaml_file_inode;
@@ -23,19 +22,6 @@ static pthread_mutex_t rem_yaml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 remote_files_group * w_parser_get_group(const char * name) {
     remote_files_group * group = NULL;
-
-    w_mutex_lock(&rem_yaml_mutex);
-
-    if (ptable) {
-        group = OSHash_Get(ptable,name);
-    }
-
-    w_mutex_unlock(&rem_yaml_mutex);
-    return group;
-}
-
-agent_group * w_parser_get_agent(const char * name) {
-    agent_group * group = NULL;
 
     w_mutex_lock(&rem_yaml_mutex);
 
@@ -67,73 +53,6 @@ int w_move_next(yaml_parser_t * parser, yaml_event_t * event){
         return W_PARSER_ERROR;
     }
     return 0;
-}
-
-agent_group * w_read_agents(yaml_parser_t * parser) {
-    agent_group * agents;
-    yaml_event_t event;
-    int index = 0;
-
-    os_calloc(1, sizeof(agent_group), agents);
-
-    if (w_move_next(parser, &event)) {
-        goto error;
-    }
-
-    switch (event.type) {
-    case YAML_MAPPING_START_EVENT:
-        do {
-            yaml_event_delete(&event);
-
-            if (w_move_next(parser, &event)) {
-                goto error;
-            }
-
-            switch (event.type) {
-            case YAML_SCALAR_EVENT:
-                os_realloc(agents, sizeof(agent_group) * (index + 2), agents);
-                memset(agents + index + 1, 0, sizeof(agent_group));
-                os_strdup(w_read_scalar_value(&event), agents[index].name);
-                yaml_event_delete(&event);
-
-                if (!(yaml_parser_parse(parser, &event) && event.type == YAML_SCALAR_EVENT)) {
-                    merror(W_PARSER_ERROR_EXPECTED_VALUE, agents[index].name);
-                    goto error;
-                }
-
-                os_strdup(w_read_scalar_value(&event), agents[index].group);
-
-                index++;
-                break;
-            case YAML_MAPPING_END_EVENT:
-                break;
-
-            default:
-                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
-                goto error;
-            }
-        } while (event.type != YAML_MAPPING_END_EVENT);
-
-        yaml_event_delete(&event);
-        return agents;
-
-    default:
-        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
-    }
-
-error:
-    if(agents)
-    {
-        int i;
-        for(i = 0; agents[i].name; i++){
-            free(agents[i].name);
-            free(agents[i].group);
-        }
-        free(agents);
-        agents = NULL;
-    }
-    yaml_event_delete(&event);
-    return NULL;
 }
 
 int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
@@ -345,14 +264,13 @@ error:
     return NULL;
 }
 
-int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group, agent_group ** agents_group) {
+int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group) {
     FILE *fh = fopen(yaml_file, "r");
     yaml_parser_t parser;
     yaml_event_t  event;
     int retval = W_PARSER_ERROR;
 
     *agent_remote_group = NULL;
-    *agents_group = NULL;
 
     if(fh == NULL){
       merror(W_PARSER_ERROR_FILE,yaml_file);
@@ -406,16 +324,6 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
                             mwarn("Parsing '%s': redefinition of 'group'. Ignoring repeated sections", yaml_file);
                         } else {
                             if (!(*agent_remote_group = w_read_groups(&parser))) {
-                                goto end;
-                            }
-                        }
-                    } else if (!strcmp(w_read_scalar_value(&event), "agents")){
-                        //Read agents
-                        if (*agents_group) {
-                            mwarn("Parsing '%s': redefinition of 'agent'. Ignoring repeated sections", yaml_file);
-                        }
-                        else {
-                            if(*agents_group = w_read_agents(&parser), !*agents_group) {
                                 goto end;
                             }
                         }
@@ -488,21 +396,10 @@ void w_free_groups(){
         free(agent_remote_group);
     }
 
-    if(agents_group)
-    {
-        for(i = 0; agents_group[i].name; i++){
-            free(agents_group[i].name);
-            free(agents_group[i].group);
-        }
-
-        free(agents_group);
-    }
-
     if(ptable){
         OSHash_Free(ptable);
     }
     agent_remote_group = NULL;
-    agents_group = NULL;
     ptable = NULL;
 }
 
@@ -571,9 +468,8 @@ void w_create_group(char *group){
  * Return 1 on parse success.
  * Return 0 if no parse was performed (missing file).
  * Return -1 on parse error.
-*/
-int w_prepare_parsing()
-{
+ */
+int w_prepare_parsing() {
 
     int parse_ok;
 
@@ -582,30 +478,25 @@ int w_prepare_parsing()
     yaml_file_date = File_DateofChange(yaml_file);
 
     if (yaml_file_inode != (ino_t)-1 && yaml_file_date != -1) {
-        if (parse_ok = w_do_parsing(yaml_file, &agent_remote_group, &agents_group), parse_ok == 1) {
+        if (parse_ok = w_do_parsing(yaml_file, &agent_remote_group), parse_ok == 1) {
             int i = 0;
 
-            minfo(W_PARSER_SUCCESS,yaml_file);
+            minfo(W_PARSER_SUCCESS, yaml_file);
 
             // Add the groups
             if (agent_remote_group) {
-                for(i = 0; agent_remote_group[i].name; i++) {
+                for (i = 0; agent_remote_group[i].name; i++) {
                     OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
                 }
             }
 
-            // Add the agents
-            if (agents_group) {
-                for(i = 0; agents_group[i].name; i++) {
-                    OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
-                }
-            }
-
             return 1;
-        } else {
+        }
+        else {
             return -1;
         }
-    } else {
+    }
+    else {
         mdebug1("Shared configuration file not found.");
         w_free_groups();
         return 0;
@@ -615,7 +506,6 @@ int w_prepare_parsing()
 int w_init_shared_download()
 {
     agent_remote_group = NULL;
-    agents_group = NULL;
 
     if (ptable = OSHash_Create(), !ptable){
         merror(W_PARSER_HASH_TABLE_ERROR);
