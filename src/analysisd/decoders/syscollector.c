@@ -1982,7 +1982,13 @@ static void fill_data_dbsync(cJSON *data, const struct deltas_fields_match_list 
         if (NULL != key) {
             if (cJSON_IsNumber(key)) {
                 char value[OS_SIZE_128] = { 0 };
-                const int value_size = os_snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
+                int value_size = 0;
+                // Check if key was originally a double or integer value
+                if ((double) key->valueint == key->valuedouble) {
+                    value_size = os_snprintf(value, OS_SIZE_128 - 1, "%d", key->valueint);
+                } else {
+                    value_size = os_snprintf(value, OS_SIZE_128 - 1, "%lf", key->valuedouble);
+                }
                 buffer_push(msg, value, value_size);
             } else if (cJSON_IsString(key)) {
                 if(strlen(key->valuestring) == 0) {

@@ -401,11 +401,11 @@ int test_setup_hardware_valid_msg(void **state)
             \"scan_time\":\"2021/10/29 14:26:24\",\
             \"board_serial\" : \"86\",\
             \"cpu_name\" : \"87\",\
-            \"cpu_cores\" : \"88\",\
-            \"cpu_MHz\" : \"89\",\
-            \"ram_total\" : \"90\",\
-            \"ram_free\" : \"91\",\
-            \"ram_usage\" : \"92\",\
+            \"cpu_cores\" : 88,\
+            \"cpu_MHz\" : 89.9,\
+            \"ram_total\" : 90,\
+            \"ram_free\" : 91,\
+            \"ram_usage\" : 92,\
             \"checksum\" : \"93\"\
     }}"), lf->log == NULL)
         return -1;
@@ -691,12 +691,12 @@ int test_setup_hardware_valid_msg_inserted(void **state)
             \"scan_time\":\"2021/10/29 14:26:24\",\
             \"board_serial\" : \"86\",\
             \"cpu_name\" : \"87\",\
-            \"cpu_cores\" : \"88\",\
-            \"cpu_MHz\" : \"89\",\
-            \"ram_total\" : \"90\",\
-            \"ram_free\" : \"91\",\
-            \"ram_usage\" : \"92\",\
-            \"checksum\" : \"93\"\
+            \"cpu_cores\" : 88,\
+            \"cpu_MHz\" : 89.9,\
+            \"ram_total\" : 90,\
+            \"ram_free\" : 91,\
+            \"ram_usage\" : 92,\
+            \"checksum\" : 93\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -1271,8 +1271,8 @@ void test_syscollector_dbsync_hardware_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hwinfo MODIFIED 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
-    const char *result = "ok 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
+    const char *query = "agent 001 dbsync hwinfo MODIFIED 2021/10/29 14:26:24|86|87|88|89.900000|90|91|92|93|";
+    const char *result = "ok 2021/10/29 14:26:24|86|87|88|89.900000|90|91|92|93|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
@@ -1432,8 +1432,8 @@ void test_syscollector_dbsync_hardware_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hwinfo INSERTED 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
-    const char *result = "ok 2021/10/29 14:26:24|86|87|88|89|90|91|92|93|";
+    const char *query = "agent 001 dbsync hwinfo INSERTED 2021/10/29 14:26:24|86|87|88|89.900000|90|91|92|93|";
+    const char *result = "ok 2021/10/29 14:26:24|86|87|88|89.900000|90|91|92|93|";
     int sock = 1;
 
     expect_any(__wrap_wdbc_query_ex, *sock);
