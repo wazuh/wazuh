@@ -32,7 +32,8 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_SYSCOLLECTOR_NETADDRESS] = "syscollector-netaddress",
     [WDB_SYSCOLLECTOR_NETINFO] = "syscollector-netinfo",
     [WDB_SYSCOLLECTOR_HWINFO] = "syscollector-hwinfo",
-    [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo"
+    [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo",
+    [WDB_GENERIC_COMPONENT] = ""
 };
 
 #ifdef WAZUH_UNIT_TESTING
@@ -637,4 +638,53 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
 
     cJSON_Delete(j_sync_info);
     return result;
+}
+
+int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest) {
+    if (OS_SUCCESS == wdb_global_group_hash_cache_operations("read", hexdigest)) {
+        mdebug2("A global group hash was found in cache");
+        return OS_SUCCESS;
+    } else {
+        if(!wdb) {
+            mdebug1("Missing DB pointer to calculate the global group hash.");
+            return OS_INVALID;
+        }
+
+        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_HASH_GET);
+        if (!stmt) {
+            return OS_INVALID;
+        }
+
+        int result = wdb_calculate_stmt_checksum(wdb, stmt, WDB_GENERIC_COMPONENT, hexdigest);
+        if(result == 1) {
+            wdb_global_group_hash_cache_operations("set", hexdigest);
+            mdebug2("New global group hash calculated and stored in cache.");
+            return OS_SUCCESS;
+        } else {
+            mdebug2("No group hash was found to calculate the global group hash.");
+            return OS_INVALID;
+        }
+    }
+}
+
+int wdb_global_group_hash_cache_operations(const char* mode, os_sha1 hexdigest) {
+    static os_sha1 global_group_hash = {0};
+
+    if (strcmp(mode, "read") == 0) {
+        if (global_group_hash[0] == 0) {
+            return OS_INVALID;
+        } else {
+            snprintf(hexdigest, sizeof(os_sha1), "%s", global_group_hash);
+            return OS_SUCCESS;
+        }
+    } else if(strcmp(mode, "set") == 0) {
+        snprintf(global_group_hash, sizeof(os_sha1), "%s", hexdigest);
+        return OS_SUCCESS;
+    } else if (strcmp(mode, "clear") == 0) {
+        global_group_hash[0] = 0;
+        return OS_SUCCESS;
+    } else {
+        mdebug1("Invalid mode for global group hash operation.");
+        return OS_INVALID;
+    }
 }

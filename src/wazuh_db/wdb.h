@@ -217,6 +217,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
     WDB_STMT_GLOBAL_GROUP_CSV_GET,
     WDB_STMT_GLOBAL_GROUP_CTX_SET,
+    WDB_STMT_GLOBAL_GROUP_HASH_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -352,6 +353,7 @@ typedef enum {
     WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
     WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
     WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
+    WDB_GENERIC_COMPONENT,           ///< Defined to re-utilize the methods outside the integrity library
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -1482,6 +1484,28 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
+
+/**
+ * @brief Method to obtain the hash of the whole group_local_hash column in agent table.
+ *        If the cache is empty, the global group hash is calculated and stored.
+ *        If the value is already in cache, it is directly returned.
+ *
+ * @param wdb The DB pointer structure.
+ * @param hexdigest Variable to return the global group hash.
+ * @return int OS_SUCCESS if the hexdigest variable was written with the global group hash value, OS_INVALID otherwise.
+ */
+int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
+
+/**
+ * @brief Method to perform all the required operations over the global group hash cache.
+ *
+ * @param mode      "read" : OS_INVALID if there is no value in cache. OS_SUCCESS if a value was found and stored in hexdigest
+ *                  "set"  : OS_SUCCESS after writting the hexdigest value in global_group_hash.
+ *                  "clear": OS_SUCCESS after clearing the global group hash cache.
+ * @param hexdigest Input/Output variable, see "mode".
+ * @return int OS_INVALID in case of an unsupported "mode". See "mode" for the rest of cases.
+ */
+int wdb_global_group_hash_cache_operations(const char* mode, os_sha1 hexdigest);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
