@@ -5399,19 +5399,35 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
     const char *error = NULL;
     cJSON *args = cJSON_ParseWithOpts(input, &error, TRUE);
     if (args) {
+        cJSON *j_sync_condition = cJSON_GetObjectItem(args, "condition");
         cJSON *j_last_id = cJSON_GetObjectItem(args, "last_id");
-        cJSON *j_sync_condition = cJSON_GetObjectItem(args, "sync_condition");
-        if (cJSON_IsNumber(j_last_id) && cJSON_IsString(j_sync_condition)) {
-            int last_id = j_last_id->valueint;
+        cJSON *j_set_synced = cJSON_GetObjectItem(args, "set_synced");
+        cJSON *j_get_hash = cJSON_GetObjectItem(args, "get_global_hash");
+        // Mandatory fields
+        if (cJSON_IsString(j_sync_condition)) {
             wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
+            int last_id = 0;
+            bool set_synced = false;
+            bool get_hash = false;
+
             if (0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
                 condition = WDB_GROUP_SYNC_STATUS;
             }
-            else if (0 == strcmp(j_sync_condition->valuestring, "cks_mismatch")) {
-                condition = WDB_GROUP_CKS_MISMATCH;
+            else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
+                condition = WDB_GROUP_ALL;
             }
+            if (cJSON_IsNumber(j_last_id)){
+                last_id = j_last_id->valueint;
+            }
+            if (cJSON_IsTrue(j_set_synced)) {
+                set_synced = true;
+            }
+            if (cJSON_IsTrue(j_get_hash)) {
+                get_hash = true;
+            }
+
             char* agent_group_sync = NULL;
-            wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, &agent_group_sync);
+            wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, set_synced, get_hash, &agent_group_sync);
             snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], agent_group_sync);
             os_free(agent_group_sync)
         }
