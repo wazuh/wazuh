@@ -1307,7 +1307,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     merror("There was an error assigning the groups context to agent '%03d'", agent_id);
                 }
                 os_free(agent_groups_csv);
-                wdb_global_group_hash_cache_operations("clear", NULL);
+                wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
             }
             else {
                 ret = WDBC_ERROR;
