@@ -44,7 +44,7 @@
     <match>Login attempt: </match>
     <options>no_full_log</options>
     <description>NextCloud authentication attempt.</description>
-    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88212" level="6">
@@ -52,7 +52,7 @@
     <match>Login failed: </match>
     <options>no_full_log</options>
     <description>NextCloud authentication failed.</description>
-    <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88203" level="10" frequency="8" timeframe="120">
@@ -62,7 +62,7 @@
     <mitre>
       <id>T1110</id>
     </mitre>
-    <group>authentication_failures,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_failures,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_SI.4,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88204" level="6">
@@ -70,7 +70,7 @@
     <match>Passed filename is not valid, might be malicious </match>
     <options>no_full_log</options>
     <description>NextCloud possible malicious request.</description>
-    <group>appsec,attack,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,pci_dss_6.5,pci_dss_11.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,web,</group>
+    <group>appsec,attack,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,pci_dss_6.5,pci_dss_11.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.1,tsc_CC7.2,tsc_CC7.3,tsc_CC8.1,web,</group>
   </rule>
 
   <rule id="88205" level="8">
@@ -114,7 +114,7 @@
     <match>Logout occurred</match>
     <options>no_full_log</options>
     <description>NextCloud logout successful.</description>
-    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88211" level="6">
@@ -122,7 +122,7 @@
     <match>Login successful: </match>
     <options>no_full_log</options>
     <description>NextCloud authentication successful.</description>
-    <group>authentication_success,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>authentication_success,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88213" level="6">
@@ -130,7 +130,7 @@
     <match>File accessed: </match>
     <options>no_full_log</options>
     <description>NextCloud file accessed.</description>
-    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88214" level="6">
@@ -138,7 +138,7 @@
     <match>File created: </match>
     <options>no_full_log</options>
     <description>NextCloud file created.</description>
-    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,pci_dss_11.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_11.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88215" level="6">
@@ -154,7 +154,7 @@
     <match>Preview accessed: </match>
     <options>no_full_log</options>
     <description>NextCloud preview accessed.</description>
-    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>
