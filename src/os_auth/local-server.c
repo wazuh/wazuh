@@ -412,7 +412,7 @@ cJSON* local_add(const char *id,
             }
         }
     } else {
-        strcpy(aux_ip, ip);
+        strcpy(_ip, ip);
     }
 
     /* Check whether the agent name is the same as the manager */

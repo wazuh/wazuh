@@ -477,10 +477,14 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
                 ret = 1;
 
-                if (final_ip) {
-                    /* number of regex captures */
-                    int sub_strings_num = regex_match->d_size.prts_str_alloc_size/sizeof(char*);
+                /* number of regex captures */
+                const int sub_strings_num = regex_match->d_size.prts_str_alloc_size/sizeof(char*);
 
+                if(sub_strings_num == 2) {
+                    ret = 2;
+                }
+
+                if (final_ip) {
                     /* Regex 0 (i = 0) match IPv4, superior regex match IPv6 */
                     if (i > 0) {
                         /* IPv6 */
@@ -509,7 +513,6 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                     ret = 0;
                                     break;
                                 }
-                                ret = 2;
                             } else if (convertNetmask(DEFAULT_IPV6_PREFIX, &nmask6)) {
                                 ret = 0;
                                 break;
@@ -566,7 +569,6 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                                     ret = 0;
                                     break;
                                 }
-                                ret = 2;
                             } else {
                                 if (!_mask_inited) {
                                     _init_masks();
