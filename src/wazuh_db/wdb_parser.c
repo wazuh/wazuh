@@ -896,7 +896,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "get-groups-integrity") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for disconnect-agents.");
+                mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -5595,35 +5595,22 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 }
 
 int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
-    cJSON *response = NULL;
-    char *out = NULL;
-    char *hash = input;
-    int ret = OS_SUCCESS;
+    os_sha1 hash = {0};
+    strncpy(hash, input, strlen(input));
 
-    response = cJSON_CreateArray();
-    int groups_synced = wdb_global_groups_synced(wdb);
-
-    if (groups_synced == 1) {
-        cJSON_AddItemToArray(response, cJSON_CreateString("syncreq"));
-    } else if (groups_synced == 0) {
-        if (wdb_get_global_group_hash(wdb, hash)){
-            cJSON_AddItemToArray(response, cJSON_CreateString("synced"));
-        } else {
-            cJSON_AddItemToArray(response, cJSON_CreateString("hash_mismatch"));
-        }
-    } else {
-        snprintf(output, OS_MAXSTR + 1, "err. Error getting group sync status from global.db.");
-        ret = OS_INVALID;
-        goto end;
+    cJSON *result = NULL;
+    if (result = wdb_get_groups_integrity(wdb, hash), !result) {
+        mdebug1("Error getting groups integrity information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
+        return OS_INVALID;
     }
 
-    out = cJSON_PrintUnformatted(response);
+    char* out = cJSON_PrintUnformatted(result);
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(result);
 
-end:
-    cJSON_Delete(response);
-
-    return ret;
+    return OS_SUCCESS;
 }
 
 int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
