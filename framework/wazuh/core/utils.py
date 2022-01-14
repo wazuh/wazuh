@@ -20,7 +20,7 @@ from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from signal import signal, alarm, SIGALRM
-from xml.etree.ElementTree import ElementTree
+from subprocess import CalledProcessError, check_output
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
