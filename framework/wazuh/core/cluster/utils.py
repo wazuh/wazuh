@@ -304,6 +304,6 @@ def process_spawn_sleep(child):
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
-    # Add a delay to force each child process create its own PID file and prevent multiple calls
+    # Add a delay to force each child process to create its own PID file, preventing multiple calls
     # executed by the same child
     time.sleep(0.1)
