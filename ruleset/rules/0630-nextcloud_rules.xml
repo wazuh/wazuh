@@ -39,20 +39,20 @@
     <description>NextCloud messages grouped.</description>
   </rule>
 
-  <rule id="88202" level="1">
-    <if_sid>88200,88201</if_sid>
-    <match>Login attempt: </match>
-    <options>no_full_log</options>
-    <description>NextCloud authentication attempt.</description>
-    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-  </rule>
-
   <rule id="88212" level="6">
     <if_sid>88200,88201</if_sid>
     <match>Login failed: </match>
     <options>no_full_log</options>
     <description>NextCloud authentication failed.</description>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+  
+  <rule id="88202" level="1">
+    <if_sid>88200,88201</if_sid>
+    <match>Login attempt: </match>
+    <options>no_full_log</options>
+    <description>NextCloud authentication attempt.</description>
+    <group>gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="88203" level="10" frequency="8" timeframe="120">
@@ -124,6 +124,7 @@
     <description>NextCloud authentication successful.</description>
     <group>authentication_success,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
+
 
   <rule id="88213" level="3">
     <if_sid>88200,88201</if_sid>
