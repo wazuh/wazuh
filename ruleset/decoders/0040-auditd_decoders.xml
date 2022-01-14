@@ -18,14 +18,14 @@
   <parent>auditd</parent>
   <prematch offset="after_parent">^SYSCALL </prematch>
   <regex offset="after_parent">^(SYSCALL) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <!-- SYSCALL -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">^arch=(\S+) syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p</regex>
-  <order>audit.arch,audit.auid,audit.command,audit.egid,audit.euid,audit.exe,audit.exit,audit.fsgid,audit.fsuid,audit.gid,audit.pid,audit.ppid,audit.session,audit.sgid,audit.success,audit.suid,audit.syscall,audit.tty,audit.uid</order>
+  <order>audit.arch,audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
 <!-- SYSCALL - command -->
@@ -109,7 +109,7 @@
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
   <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)" inode=(\S+) dev=\S+ mode=(04\S+) ouid=\S+ ogid=\S+ </regex>
-  <order>audit.directory.inode,audit.directory.mode,audit.directory.name</order>
+  <order>audit.directory.name, audit.directory.inode, audit.directory.mode</order>
 </decoder>
 
 <!-- PATH - FILE -->
@@ -126,7 +126,7 @@
   <parent>auditd</parent>
   <prematch offset="after_parent">^CONFIG_CHANGE </prematch>
   <regex offset="after_parent">^(CONFIG_CHANGE) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <decoder name="auditd-config_change">
@@ -160,7 +160,7 @@
   <parent>auditd</parent>
   <prematch offset="after_parent">^ANOM_PROMISCUOUS </prematch>
   <regex offset="after_parent">^(ANOM_PROMISCUOUS) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <decoder name="auditd-promiscuous">
@@ -177,19 +177,19 @@
   <parent>auditd</parent>
   <prematch offset="after_parent">^MAC_STATUS </prematch>
   <regex offset="after_parent">^(MAC_STATUS) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <decoder name="auditd-selinux_macstatus">
   <parent>auditd</parent>
   <regex offset="after_regex">^enforcing=(\S+) old_enforcing=(\S+) auid=(\S+) ses=(\S+)</regex>
-  <order>audit.auid,audit.enforcing,audit.old_enforcing,audit.session</order>
+  <order>audit.enforcing,audit.old_enforcing,audit.auid,audit.session</order>
 </decoder>
 
 <decoder name="auditd-selinux_macstatus">
   <parent>auditd</parent>
   <regex offset="after_regex">ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm="(\S+)" exe="(\S+)"</regex>
-  <order>audit.auid,audit.command,audit.egid,audit.euid,audit.exe,audit.fsgid,audit.fsuid,audit.gid,audit.pid,audit.ppid,audit.session,audit.sgid,audit.suid,audit.tty,audit.uid</order>
+  <order>audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
 <decoder name="auditd-selinux_macstatus">
@@ -216,7 +216,7 @@
   <parent>auditd</parent>
   <prematch offset="after_parent">^USER_ACCT |^CRED_ACQ |^USER_START |^CRED_REFR|^CRYPTO_KEY_USER|^CRYPTO_SESSION |^USER_AUTH |^USER_ROLE_CHANGE </prematch>
   <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <decoder name="auditd-user_and_cred">
@@ -257,7 +257,7 @@
   <parent>auditd</parent>
   <prematch offset="after_parent">^LOGIN </prematch>
   <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <decoder name="auditd-login">
@@ -275,7 +275,7 @@
 <decoder name="auditd-login">
   <parent>auditd</parent>
   <regex offset="after_regex">old-auid=(\S+) auid=(\S+) old-ses=(\S+) ses=(\S+) res=(\S+)</regex>
-  <order>audit.auid,audit.old-auid,audit.old-ses,audit.res,audit.session</order>
+  <order>audit.old-auid,audit.auid,audit.old-ses,audit.session,audit.res</order>
 </decoder>
 
 <!--
@@ -285,7 +285,7 @@
 <decoder name="auditd-generic">
   <parent>auditd</parent>
   <regex offset="after_parent">^(\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): </regex>
-  <order>audit.id,audit.type</order>
+  <order>audit.type,audit.id</order>
 </decoder>
 
 <decoder name="auditd-generic">
