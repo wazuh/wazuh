@@ -8,7 +8,7 @@ import subprocess
 import sys
 from unittest.mock import mock_open
 from unittest.mock import patch, MagicMock
-from xml.etree.ElementTree import fromstring
+from defusedxml.ElementTree import fromstring
 
 from wazuh.core.common import ossec_conf
 
