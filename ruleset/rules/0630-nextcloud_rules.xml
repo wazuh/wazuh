@@ -125,7 +125,6 @@
     <group>authentication_success,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-
   <rule id="88213" level="3">
     <if_sid>88200,88201</if_sid>
     <match>File accessed: </match>
