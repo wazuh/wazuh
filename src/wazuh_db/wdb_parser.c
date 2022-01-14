@@ -5610,20 +5610,20 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
     os_sha1 hash = {0};
     strncpy(hash, input, strlen(input));
-
-    cJSON *result = NULL;
-    if (result = wdb_get_groups_integrity(wdb, hash), !result) {
+    int ret = OS_SUCCESS;
+    cJSON *j_result = wdb_get_groups_integrity(wdb, hash);
+    if (j_result) {
+        char* out = cJSON_PrintUnformatted(j_result);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        os_free(out);
+        cJSON_Delete(j_result);
+    } else {
         mdebug1("Error getting groups integrity information from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
-        return OS_INVALID;
+        ret = OS_INVALID;
     }
 
-    char* out = cJSON_PrintUnformatted(result);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(result);
-
-    return OS_SUCCESS;
+    return ret;
 }
 
 int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
