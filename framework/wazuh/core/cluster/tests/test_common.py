@@ -18,6 +18,7 @@ from unittest.mock import patch, MagicMock, mock_open, call
 import cryptography
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
+
 from wazuh import Wazuh
 from wazuh.core import exception
 
