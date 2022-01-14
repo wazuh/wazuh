@@ -420,6 +420,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
+    char ipv4_from_ipv6[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *tmp_msg;
     size_t msg_length;
@@ -433,6 +434,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
         break;
     case AF_INET6:
         get_ipv6_string(((struct sockaddr_in6 *)peer_info)->sin6_addr, srcip, IPSIZE - 1);
+        if (OS_GetIPv4FromIPv6(srcip, ipv4_from_ipv6)) {
+            strcpy(srcip, ipv4_from_ipv6);
+        }
         break;
     default:
         merror("IP address family not supported.");
@@ -516,12 +520,6 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
     } else {
         key_lock_read();
-
-        char ipv4_from_ipv6[IPSIZE + 1] = {0};
-
-        if (OS_GetIPv4FromIPv6(srcip, ipv4_from_ipv6)) {
-            strcpy(srcip, ipv4_from_ipv6);
-        }
 
         agentid = OS_IsAllowedIP(&keys, srcip);
 
