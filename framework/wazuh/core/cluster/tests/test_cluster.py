@@ -3,16 +3,14 @@
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of GPLv2
 import io
+import os
 import sys
 import zipfile
-from contextvars import ContextVar
-import os
 from datetime import datetime
 from time import time
 from unittest.mock import MagicMock, mock_open, patch, call
 
 import pytest
-
 from wazuh.core import common
 
 with patch('wazuh.common.wazuh_uid'):
