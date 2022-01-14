@@ -511,6 +511,71 @@ void test_wdb_dbsync_stmt_bind_from_string_type_text_bind_error(void ** state) {
     assert_false(wdb_dbsync_stmt_bind_from_string(test_stmt, test_index, FIELD_TEXT, test_value, NULL));
 }
 
+void test_wdb_dbsync_stmt_bind_from_string_type_integer_long(void ** state) {
+
+    sqlite3_stmt * test_stmt = (sqlite3_stmt *) 1;
+    const char * test_value_str = "5294967296";
+    const long long test_value = 5294967296;
+
+    const int test_index = 1;
+
+    expect_value(__wrap_sqlite3_bind_int64, index, test_index);
+    expect_value(__wrap_sqlite3_bind_int64, value, test_value);
+    will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
+
+    assert_true(wdb_dbsync_stmt_bind_from_string(test_stmt, test_index, FIELD_INTEGER_LONG, test_value_str, NULL));
+}
+
+void test_wdb_dbsync_stmt_bind_from_string_type_integer_long_replace(void ** state) {
+
+    sqlite3_stmt * test_stmt = (sqlite3_stmt *) 1;
+    const char * test_value_str = "NULL";
+    const long long test_value_replace = 0;
+
+    const int test_index = 1;
+
+    expect_value(__wrap_sqlite3_bind_int64, index, test_index);
+    expect_value(__wrap_sqlite3_bind_int64, value, test_value_replace);
+    will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
+
+    assert_true(wdb_dbsync_stmt_bind_from_string(test_stmt, test_index, FIELD_INTEGER_LONG, test_value_str, test_value_str));
+}
+
+void test_wdb_dbsync_stmt_bind_from_string_type_integer_long_invalid(void ** state) {
+
+    sqlite3_stmt * test_stmt = (sqlite3_stmt *) 1;
+    const char * test_value = "this is a string";
+    const int test_index = 1;
+
+    assert_false(wdb_dbsync_stmt_bind_from_string(test_stmt, test_index, FIELD_INTEGER_LONG, test_value, NULL));
+}
+
+void test_wdb_dbsync_stmt_bind_from_string_type_integer_long_bind_error(void ** state) {
+
+    sqlite3_stmt * test_stmt = (sqlite3_stmt *) 1;
+    const char * test_value_str = "5294967296";
+    const long long test_value = 5294967296;
+    const int test_index = 1;
+
+    expect_value(__wrap_sqlite3_bind_int64, index, test_index);
+    expect_value(__wrap_sqlite3_bind_int64, value, test_value);
+    will_return(__wrap_sqlite3_bind_int64, SQLITE_ERROR);
+
+    assert_false(wdb_dbsync_stmt_bind_from_string(test_stmt, test_index, FIELD_INTEGER_LONG, test_value_str, NULL));
+}
+
+void test_wdb_dbsync_stmt_bind_from_string_type_integer_long_bind_null(void ** state) {
+
+    sqlite3_stmt * test_stmt = (sqlite3_stmt *) 1;
+    const char * test_value_str = "";
+    const int test_index = 1;
+
+    expect_value(__wrap_sqlite3_bind_null, index, test_index);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+
+    assert_true(wdb_dbsync_stmt_bind_from_string(test_stmt, test_index, FIELD_INTEGER_LONG, test_value_str, NULL));
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -528,6 +593,11 @@ int main()
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_text),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_text_replace),
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_text_bind_error),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_integer_long),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_integer_long_replace),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_integer_long_invalid),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_integer_long_bind_error),
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_from_string_type_integer_long_bind_null),
         /* wdb_single_row_insert_dbsync */
         cmocka_unit_test_setup_teardown(test_wdb_single_row_insert_dbsync_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_single_row_insert_dbsync_get_cache_stmt_fail, test_setup, test_teardown),

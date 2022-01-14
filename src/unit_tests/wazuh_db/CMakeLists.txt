@@ -134,8 +134,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_delta_event")
-list(APPEND wdb_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_int \
--Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_bind_double -Wl,--wrap,sqlite3_changes")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 \
+                            -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_bind_double -Wl,--wrap,sqlite3_changes \
+                            -Wl,--wrap,sqlite3_bind_null ${DEBUG_OP_WRAPPERS}")
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
