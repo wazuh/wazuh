@@ -28,3 +28,4 @@ gtest_discover_tests(unit_tests)
 
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
 add_subdirectory(${TEST_SOURCE_DIR}/graph)
+add_subdirectory(${TEST_SOURCE_DIR}/json)
