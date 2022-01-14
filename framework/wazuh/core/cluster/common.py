@@ -343,13 +343,13 @@ class Handler(asyncio.Protocol):
         # Adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        message_size = self.header_len + len(encrypted_data)
+        encrypted_message_size = self.header_len + len(encrypted_data)
 
         # Message size is <= request_chunk, send the message
-        if message_size <= self.request_chunk:
-            msg = bytearray(message_size)
+        if len(data) <= self.request_chunk:
+            msg = bytearray(encrypted_message_size)
             msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
-            msg[self.header_len:message_size] = encrypted_data
+            msg[self.header_len:encrypted_message_size] = encrypted_data
             return [msg]
 
         # Message size > request_chunk, send the message divided
@@ -499,9 +499,9 @@ class Handler(asyncio.Protocol):
         # Send each chunk so it is updated in the destination.
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
-            data = f.read()
-            await self.send_request(command=b'file_upd', data=relative_path + b' ' + data)
-            file_hash.update(data)
+            for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
+                await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
+                file_hash.update(chunk)
 
         # Close the destination file descriptor so the file in memory is dumped to disk.
         await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
@@ -529,7 +529,10 @@ class Handler(asyncio.Protocol):
             self.logger.error(f'There was an error while trying to send a string: {task_id}')
             await self.send_request(command=b'err_str', data=str(total).encode())
         else:
-            await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str)
+            # Send chunks of the string to the destination node, indicating the ID of the string.
+            local_req_chunk = self.request_chunk - len(task_id) - 1
+            for c in range(0, total, local_req_chunk):
+                await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
 
         return task_id
 

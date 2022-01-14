@@ -65,17 +65,13 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
     return (rc);
 }
 
-/* Send a message to the queue */
-int SendMSG(int queue, const char *message, const char *locmsg, char loc)
-{
+/* Send message primitive. */
+static int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
     static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
-
-    /* Check for global locks */
-    os_wait();
 
     if (loc == SECURE_MQ) {
         loc = message[0];
@@ -119,6 +115,20 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
     }
 
     return (0);
+}
+
+/* Send a message with predicated to run out from while. */
+int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) {
+    /* Check for global locks */
+    os_wait_predicate(fn_ptr);
+    return SendMSGAction(queue, message, locmsg, loc);
+}
+
+/* Send a message to the queue */
+int SendMSG(int queue, const char *message, const char *locmsg, char loc) {
+    /* Check for global locks */
+    os_wait();
+    return SendMSGAction(queue, message, locmsg, loc);
 }
 
 /* Send a message to socket */

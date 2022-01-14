@@ -160,7 +160,7 @@ class WindowsPortWrapper final : public IPortWrapper
         {
             return {};
         }
-        int32_t inode() const override
+        int64_t inode() const override
         {
             return {};
         }

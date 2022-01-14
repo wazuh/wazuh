@@ -4,12 +4,11 @@ import asyncio
 import itertools
 import logging
 import ssl
-import time
 import traceback
+from datetime import datetime
 from typing import Tuple, Dict, List
 
 import uvloop
-
 from wazuh.core.cluster import common
 from wazuh.core.cluster.utils import context_tag
 
@@ -312,9 +311,9 @@ class AbstractClient(common.Handler):
             Payload length.
         """
         while not self.on_con_lost.done():
-            before = time.time()
+            before = datetime.utcnow().timestamp()
             result = await self.send_request(b'echo', b'a' * test_size)
-            after = time.time()
+            after = datetime.utcnow().timestamp()
             if len(result) != test_size:
                 self.logger.error(result)
             else:
@@ -332,10 +331,10 @@ class AbstractClient(common.Handler):
             Number of requests to send.
         """
         while not self.on_con_lost.done():
-            before = time.time()
+            before = datetime.utcnow().timestamp()
             for i in range(n_msgs):
                 await self.send_request(b'echo', f'concurrency {i}'.encode())
-            self.logger.info(f"Time sending {n_msgs} messages: {time.time() - before}")
+            self.logger.info(f"Time sending {n_msgs} messages: {datetime.utcnow().timestamp() - before}")
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename: str):
@@ -348,9 +347,9 @@ class AbstractClient(common.Handler):
         filename : str
             Filename to send.
         """
-        before = time.time()
+        before = datetime.utcnow().timestamp()
         response = await self.send_file(filename)
-        after = time.time()
+        after = datetime.utcnow().timestamp()
         self.logger.debug(response)
         self.logger.debug(f"Time: {after - before}")
 
@@ -364,8 +363,8 @@ class AbstractClient(common.Handler):
         string_size : int
             String length.
         """
-        before = time.time()
+        before = datetime.utcnow().timestamp()
         response = await self.send_string(my_str=b'a' * string_size)
-        after = time.time()
+        after = datetime.utcnow().timestamp()
         self.logger.debug(response)
         self.logger.debug(f"Time: {after - before}")

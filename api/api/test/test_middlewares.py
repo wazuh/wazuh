@@ -2,8 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from copy import copy
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
-
+from freezegun import freeze_time
 import pytest
 
 from api.middlewares import set_user_name, unlock_ip, _cleanup_detail_field, prevent_bruteforce_attack, \
@@ -61,9 +62,9 @@ async def test_middlewares_set_user_name(req):
 
 @patch("api.middlewares.ip_stats", new={'ip': {'timestamp': 5}})
 @patch("api.middlewares.ip_block", new={"ip"})
-@patch("api.middlewares.time", return_value=10)
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 @pytest.mark.asyncio
-async def test_middlewares_unlock_ip(time_mock):
+async def test_middlewares_unlock_ip():
     from api.middlewares import ip_stats, ip_block
     # Assert they are not empty
     assert ip_stats and ip_block
@@ -74,9 +75,9 @@ async def test_middlewares_unlock_ip(time_mock):
 
 @patch("api.middlewares.ip_stats", new={"ip": {'timestamp': 5}})
 @patch("api.middlewares.ip_block", new={"ip"})
-@patch("api.middlewares.time", return_value=0)
+@freeze_time(datetime(1970, 1, 1))
 @pytest.mark.asyncio
-async def test_middlewares_unlock_ip_ko(time_mock):
+async def test_middlewares_unlock_ip_ko():
     """Test if `unlock_ip` raises an exception if the IP is still blocked."""
     with patch("api.middlewares.raise_if_exc") as raise_mock:
         await unlock_ip(DummyRequest({'remote': "ip"}), 5)
@@ -106,19 +107,19 @@ async def test_middlewares_prevent_bruteforce_attack(stats):
             assert 'ip' not in ip_block
 
 
-@pytest.mark.parametrize("time, current_time, max_requests", [
-    (70, 5, 300),
-    (0, 0, 0),
+@freeze_time(datetime(1970, 1, 1))
+@pytest.mark.parametrize("current_time, max_requests", [
+    (-80, 300),
+    (0, 0),
 ])
 @pytest.mark.asyncio
-async def test_middlewares_prevent_denial_of_service(time, current_time, max_requests):
+async def test_middlewares_prevent_denial_of_service(current_time, max_requests):
     """Test if the DOS mechanism triggers when the `max_requests` are reached."""
-    with patch("api.middlewares.time", return_value=time):
-        with patch("api.middlewares.current_time", new=current_time):
-            with patch("api.middlewares.raise_if_exc") as raise_mock:
-                await prevent_denial_of_service(DummyRequest({'remote': 'ip'}), max_requests=max_requests)
-                if max_requests == 0:
-                    raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
+    with patch("api.middlewares.current_time", new=current_time):
+        with patch("api.middlewares.raise_if_exc") as raise_mock:
+            await prevent_denial_of_service(DummyRequest({'remote': 'ip'}), max_requests=max_requests)
+            if max_requests == 0:
+                raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
 
 
 @patch("api.middlewares.unlock_ip")

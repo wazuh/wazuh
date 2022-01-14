@@ -10,7 +10,7 @@ import logging
 import pytz
 import sqlite3
 from sys import exit, path
-from datetime import datetime
+from datetime import datetime, timezone
 from json import dumps
 from os.path import join, dirname, realpath
 
@@ -45,7 +45,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             Expected prefix for the logs. It can be used to specify the relative path where the logs are stored.
         delete_file : bool
             Indicate whether blobs should be deleted after being processed.
-        only_logs_after : str
+        only_logs_after : datetime
             Date after which obtain logs.
         """
         super().__init__(logger)
@@ -53,10 +53,10 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.bucket = None
         self.client = storage.client.Client.from_service_account_json(credentials_file)
         self.project_id = self.client.project
-        self.prefix = prefix
+        self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
         self.only_logs_after = only_logs_after
-
+        self.default_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
@@ -159,6 +159,28 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                                                                                 creation_time=blob.time_created))
     processed_files = list()
 
+    def _get_last_creation_time(self):
+        """Get the latest creation time value stored in the database for the given project, bucket_name and
+        prefix.
+
+        Returns
+        -------
+        datetime or None
+            The datetime of the last log parsed or None if no log have been parsed yet for that bucket.
+        """
+        creation_time = datetime.min.replace(tzinfo=pytz.UTC)
+        query_creation_time = self.db_connector.execute(
+            self.sql_find_last_creation_time.format(table_name=self.db_table_name,
+                                                    project_id=self.project_id,
+                                                    bucket_name=self.bucket_name,
+                                                    prefix=self.prefix))
+        try:
+            creation_time_result = query_creation_time.fetchone()[0]
+            creation_time = datetime.strptime(creation_time_result, self.datetime_format)
+        except (TypeError, IndexError):
+            pass
+        return creation_time
+
     def check_permissions(self):
         """Check if the Service Account has access to the bucket."""
         try:
@@ -193,31 +215,15 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         int
             Number of blobs processed.
         """
-        def get_last_creation_time():
-            """Get the latest creation time value stored in the database for the given project, bucket_name and
-            prefix."""
-            creation_time = datetime.min.replace(tzinfo=pytz.UTC)
-            query_creation_time = self.db_connector.execute(
-                self.sql_find_last_creation_time.format(table_name=self.db_table_name,
-                                                        project_id=self.project_id,
-                                                        bucket_name=self.bucket_name,
-                                                        prefix=self.prefix))
-            try:
-                creation_time = query_creation_time.fetchone()[0]
-                creation_time = datetime.strptime(creation_time, self.datetime_format)
-            except (TypeError, IndexError):
-                pass
-            return creation_time
 
-        processed_files = []
         try:
-            bucket_contents = self.bucket.list_blobs(prefix=self.prefix)
-
+            bucket_contents = self.bucket.list_blobs(prefix=self.prefix, delimiter='/')
+            processed_files = []
             processed_messages = 0
             new_creation_time = datetime.min.replace(tzinfo=pytz.UTC)
 
             self.init_db()
-            last_creation_time = get_last_creation_time()
+            last_creation_time = self._get_last_creation_time()
             previous_processed_files = self._get_last_processed_files()
 
             for blob in bucket_contents:
@@ -226,8 +232,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                     continue
 
                 current_creation_time = blob.time_created
+                comparison_date = self.only_logs_after if self.only_logs_after else self.default_date
 
-                if current_creation_time >= self.only_logs_after:
+                if current_creation_time >= comparison_date:
                     if (current_creation_time > last_creation_time) or \
                             (current_creation_time == last_creation_time and blob.name not in previous_processed_files):
                         self.logger.info(f'Processing {blob.name}')
@@ -241,8 +248,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                     else:
                         self.logger.info(f'Skipping previously processed file: {blob.name}')
                 else:
-                    self.logger.info(f'The creation time of {blob.name} is older than {self.only_logs_after}. '
+                    self.logger.info(f'The creation time of {blob.name} is older than {comparison_date}. '
                                      f'Skipping it...')
+
         finally:
             # Ensure the changes are committed to the database even if an exception was raised
             if self.db_connector:

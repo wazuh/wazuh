@@ -74,10 +74,6 @@ def cleanDR():
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?)_decoders.xml$',file):
             os.remove(file_fullpath)
 
-def restart_analysisd():
-    print("Restarting wazuh-manager...")
-    ret = os.system('systemctl restart wazuh-manager')
-
 class OssecTester(object):
     def __init__(self, bdir):
         self._error = False
@@ -166,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument('--testfile', '-t', action='store', type=str, dest='testfile',
                         help='Use -t or --testfile to pass the ini file to test')
     parser.add_argument('--custom-ruleset', '-c', action='store_true', dest='custom',
-                        help='Use -c or --custom-ruleset to test custom rules and decoders. WARNING: This will cause wazuh-manager restart')
+                        help='Use -c or --custom-ruleset to test custom rules and decoders.')
     args = parser.parse_args()
     selective_test = False
     if args.testfile:
@@ -182,11 +178,9 @@ if __name__ == "__main__":
         signal.signal(sig, cleanup)
     if args.custom:
         provisionDR()
-        restart_analysisd()
     OT = OssecTester(args.wazuh_home)
     error = OT.run(selective_test, args.geoip, args.custom)
     if args.custom:
         cleanDR()
-        restart_analysisd()
     if error:
         sys.exit(1)
