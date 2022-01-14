@@ -296,7 +296,7 @@ if __name__ == '__main__':
                 raise exc
 
     # Check for unused PID files
-    utils.check_pids(API_MAIN_PROCESS)
+    utils.clean_pid_files(API_MAIN_PROCESS)
 
     # Foreground/Daemon
     if not args.foreground:

@@ -10,7 +10,7 @@ import os
 import signal
 import sys
 
-from wazuh.core.utils import check_pids
+from wazuh.core.utils import clean_pid_files
 
 
 #
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     wazuh.core.cluster.cluster.clean_up()
 
     # Check for unused PID files
-    check_pids('wazuh-clusterd')
+    clean_pid_files('wazuh-clusterd')
 
     # Foreground/Daemon
     if not args.foreground:

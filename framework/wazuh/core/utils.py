@@ -44,7 +44,7 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
-def check_pids(daemon):
+def clean_pid_files(daemon):
     """Check the existence of '.pid' files for a specified daemon.
 
     Parameters
