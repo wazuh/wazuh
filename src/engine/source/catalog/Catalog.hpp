@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-
+#include <optional>
 #include "yml_to_json.hpp"
 #include "rapidjson/document.h"
 #include "catalogSharedDef.hpp"
