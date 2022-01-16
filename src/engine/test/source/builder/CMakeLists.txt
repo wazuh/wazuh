@@ -174,3 +174,5 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_referenc
 ####################################################################################################
 # add_executable(all_builder_tests ${ALL_BUILDER_TESTS} ${SOURCES})
 # gtest_discover_tests(all_builder_tests)
+
+add_subdirectory(${BUILDER_TEST_SOURCE_DIR}/outputs/file)
