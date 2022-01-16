@@ -20,7 +20,7 @@ using Value = rapidjson::Value;
  * @brief Contains Json functionality.
  *
  */
-namespace Json
+namespace json
 {
 
     /**

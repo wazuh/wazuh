@@ -14,7 +14,7 @@
 TEST(Graph, Node)
 {
     using con_t = fakeConnectable<int>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
 
     auto n{node_t(std::make_shared<con_t>(con_t("decoder")))};
 }
@@ -22,7 +22,7 @@ TEST(Graph, Node)
 TEST(Graph, Connect_two_nodes)
 {
     using con_t = fakeConnectable<int>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
 
     auto pf1{std::make_shared<con_t>(con_t("decoder_1"))};
     auto pf2{std::make_shared<con_t>(con_t("decoder_2"))};
@@ -37,7 +37,7 @@ TEST(Graph, Connect_two_nodes)
 TEST(Graph, Connect_two_nodes_loop)
 {
     using con_t = fakeConnectable<int>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
 
     auto pf1{std::make_shared<con_t>(con_t("decoder_1"))};
     auto pf2{std::make_shared<con_t>(con_t("decoder_2"))};
@@ -52,7 +52,7 @@ TEST(Graph, Connect_two_nodes_loop)
 TEST(Graph, Connect_two_check_result)
 {
     using con_t = fakeConnectable<int>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
 
     int expected(10);
     auto source = rxcpp::observable<>::create<int>([expected](rxcpp::subscriber<int> s)
@@ -90,7 +90,7 @@ TEST(Graph, Connect_two_check_result)
 TEST(Graph, Connect_a_simple_graph_to_result)
 {
     using con_t = fakeConnectable<int>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
 
     int expected(10);
     auto source = rxcpp::observable<>::create<int>([expected](rxcpp::subscriber<int> s)
@@ -152,7 +152,7 @@ TEST(Graph, Connect_a_simple_graph_to_result)
 TEST(Graph, Connect_all_leaves)
 {
     using con_t = fakeConnectable<int>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
 
     int expected(10);
     auto source = rxcpp::observable<>::create<int>([expected](rxcpp::subscriber<int> s)
@@ -212,7 +212,7 @@ TEST(Graph, Connect_all_leaves)
 TEST(Graph, Connect_a_big_graph)
 {
     using con_t = fakeConnectable<std::string>;
-    using node_t = Graph::Node<con_t>;
+    using node_t = graph::Node<con_t>;
     using pNode_t = std::shared_ptr<node_t>;
 
     int expected(10000);

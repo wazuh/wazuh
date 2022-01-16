@@ -2,7 +2,7 @@
 
 #include "rxcpp/rx.hpp"
 
-namespace Graph
+namespace graph
 {
     template <typename T, typename F>
     constexpr auto has_member_impl(F &&f) -> decltype(f(std::declval<T>()), true)
