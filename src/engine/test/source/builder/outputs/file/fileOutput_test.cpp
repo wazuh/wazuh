@@ -54,22 +54,22 @@ auto compact_message = R"({"event":{"original":"::1 - - [26/Dec/2016:16:16:29 +0
 
 TEST(FileOutput, Create)
 {
-    auto output = Outputs::FileOutput<Json::Document>("/tmp/file");
+    auto output = outputs::FileOutput<json::Document>("/tmp/file");
     std::filesystem::remove("/tmp/file");
 }
 
 TEST(FileOutput, Unknown_path)
 {
-    ASSERT_THROW(Outputs::FileOutput<Json::Document>("/tmp45/file"), std::runtime_error);
+    ASSERT_THROW(outputs::FileOutput<json::Document>("/tmp45/file"), std::runtime_error);
 }
 
 
 TEST(FileOutput, Write)
 {
-    using event_t = Json::Document;
+    using event_t = json::Document;
     auto filepath = "/tmp/file";
 
-    auto output = Outputs::FileOutput<event_t>(filepath);
+    auto output = outputs::FileOutput<event_t>(filepath);
     auto obs = rxcpp::observable<>::create<event_t>([](rxcpp::subscriber<event_t> s){
         s.on_next(event_t(message));
         s.on_completed();
@@ -87,10 +87,10 @@ TEST(FileOutput, Write)
 
 TEST(FileOutput, BufferedWrite)
 {
-    using event_t = Json::Document;
+    using event_t = json::Document;
     auto filepath = "/tmp/file";
 
-    auto output = Outputs::BufferedFileOutput<event_t>(filepath, 1);
+    auto output = outputs::BufferedFileOutput<event_t>(filepath, 1);
     auto obs = rxcpp::observable<>::create<event_t>([](rxcpp::subscriber<event_t> s){
         s.on_next(event_t(message));
         s.on_completed();
@@ -108,12 +108,12 @@ TEST(FileOutput, BufferedWrite)
 
 TEST(FileOutput, RotatingFileOutput)
 {
-    using event_t = Json::Document;
+    using event_t = json::Document;
     auto filepath = "/tmp/file";
     auto rotatedFile1 = "/tmp/file.0";
     auto rotatedFile2 = "/tmp/file.1";
 
-    auto output = Outputs::RotatingFileOutput<event_t>(filepath, 500);
+    auto output = outputs::RotatingFileOutput<event_t>(filepath, 500);
     auto obs = rxcpp::observable<>::create<event_t>([](rxcpp::subscriber<event_t> s){
         s.on_next(event_t(message));
         s.on_next(event_t(message));
