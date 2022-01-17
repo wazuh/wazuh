@@ -297,7 +297,7 @@ All notable changes to this project will be documented in this file.
 - Added ruleset for ESET Remote console. ([#11013](https://github.com/wazuh/wazuh/pull/11013))
 - Added ruleset for GITHUB audit logs. ([#8532](https://github.com/wazuh/wazuh/pull/8532))
 - Added ruleset for Palo Alto v8.X - v10.X. ([#11137](https://github.com/wazuh/wazuh/pull/11137))
-- Added SCA policy for Amazon Linux 1.  ([#11431](https://github.com/wazuh/wazuh/pull/11431))
+- Added SCA policy for Amazon Linux 1. ([#11431](https://github.com/wazuh/wazuh/pull/11431))
 - Added SCA policy for Amazon Linux 2. ([#11480](https://github.com/wazuh/wazuh/pull/11480))
 - Added SCA policy for apple macOS 10.14 Mojave. ([#7035](https://github.com/wazuh/wazuh/pull/7035))
 - Added SCA policy for apple macOS 10.15 Catalina. ([#7036](https://github.com/wazuh/wazuh/pull/7036))
@@ -314,7 +314,7 @@ All notable changes to this project will be documented in this file.
 - Added SCA policy for Ubuntu 18. ([#11453](https://github.com/wazuh/wazuh/pull/11453))
 - Added SCA policy for Ubuntu 20. ([#11430](https://github.com/wazuh/wazuh/pull/11430))
 - Added SCA policy for. Solaris 11.4. ([#11286](https://github.com/wazuh/wazuh/pull/11286))
-- Added Sophos UTM Firewall ruleset.  ([#11122](https://github.com/wazuh/wazuh/pull/11122))
+- Added Sophos UTM Firewall ruleset. ([#11122](https://github.com/wazuh/wazuh/pull/11122))
 - Added Wazuh-api ruleset. ([#11357](https://github.com/wazuh/wazuh/pull/11357))
 
 #### Changed
@@ -335,7 +335,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed bad character on rules 60908 and 60884 - win-application rules.  ([#11117](https://github.com/wazuh/wazuh/pull/11117))
+- Fixed bad character on rules 60908 and 60884 - win-application rules. ([#11117](https://github.com/wazuh/wazuh/pull/11117))
 - Fixed Microsoft logs rules. ([#11369](https://github.com/wazuh/wazuh/pull/11369))
 - Fixed PHP rules for MITRE and groups. ([#11405](https://github.com/wazuh/wazuh/pull/11405))
 - Fixed rules id for Microsoft Windows Powershell.  ([#11214](https://github.com/wazuh/wazuh/pull/11214))
