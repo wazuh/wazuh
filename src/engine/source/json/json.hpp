@@ -1,3 +1,6 @@
+#ifndef _JSON_H
+#define _JSON_H
+
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -136,3 +139,5 @@ namespace json
     };
 
 };
+
+#endif // _JSON_H
