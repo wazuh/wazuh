@@ -21,7 +21,7 @@ namespace graph
 
         // static_assert(utils::has_member(T, output()), "Type T requires a method called output()");
         // static_assert(utils::has_member(T, input()), "Type T requires a method called input()");
-        // static_assert(utils::has_member(T, m_name), "Type T requires a member called m_name");
+        // static_assert(utils::has_member(T, name()), "Type T requires a member called m_name");
         // static_assert(utils::has_member(T, m_value), "Type T requires a member called m_value");
 
     private:
@@ -50,7 +50,7 @@ namespace graph
             AdjList nc = n->adjacents();
             auto res = std::find_if(std::begin(nc), std::end(nc),
                                     [&](const NodePtr &e)
-                                    { return this->m_value->m_name == e->m_value->m_name; });
+                                    { return this->m_value->name() == e->m_value->name(); });
 
             if (res != std::end(nc))
             {
@@ -68,7 +68,7 @@ namespace graph
          *
          * @return std::string
          */
-        auto name() const { return this->m_value->m_name; }
+        auto name() const { return this->m_value->name(); }
 
         /**
          * @brief return the list of adjacent nodes, ie. all nodes

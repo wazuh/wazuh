@@ -14,8 +14,8 @@ set(BUILDER_OPERATIONS_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/operations
 set(BUILDER_ENSEMBLES_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/ensembles)
 set(BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/ensembles)
 
-set(BUILDER_ENGINES_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/engines)
-set(BUILDER_ENGINES_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/engines)
+set(BUILDER_BUILDERS_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/builders)
+set(BUILDER_BUILDERS_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/builders)
 
 ####################################################################################################
 # Dependencies -- assuming cpm is available
@@ -60,7 +60,7 @@ FetchContent_GetProperties(
 ####################################################################################################
 set(SOURCES
   ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp
-  ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}/decoders.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/decoders.cpp
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}/decoder.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_value.cpp
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_builder.cpp
@@ -71,9 +71,9 @@ set(SOURCES
 )
 
 include_directories(
+  ${ENGINE_SOURCE_DIR}
   ${BUILDER_ENGINE_SOURCE_DIR}
-  ${ENGINE_SOURCE_DIR}/json
-  ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
   ${BUILDER_TEST_SOURCE_DIR}
@@ -111,6 +111,10 @@ gtest_discover_tests(registry_builder_test)
 add_executable(utils_test ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp ${BUILDER_ENGINE_SOURCE_DIR}/utils.cpp)
 gtest_discover_tests(utils_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/utils_test.cpp)
+
+# Builder test
+add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
+gtest_discover_tests(builder_test)
 
 ####################################################################################################
 # Engines targets
