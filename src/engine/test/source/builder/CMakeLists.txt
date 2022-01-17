@@ -105,9 +105,8 @@ gtest_discover_tests(operation_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp)
 
 # Builder test
-add_executable(builder_test ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
-gtest_discover_tests(builder_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp)
+add_executable(component_builder_test ${BUILDER_TEST_SOURCE_DIR}/component_builder_test.cpp)
+gtest_discover_tests(component_builder_test)
 
 # Registry test
 add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp)
