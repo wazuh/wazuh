@@ -712,7 +712,7 @@ int wm_sync_shared_group(const char *fname) {
     DIR *dp;
     clock_t clock0 = clock();
 
-    snprintf(path,PATH_MAX, "%s/%s",SHAREDCFG_DIR, fname);
+    snprintf(path, PATH_MAX, "%s/%s", SHAREDCFG_DIR, fname);
 
     dp = opendir(path);
 
@@ -721,7 +721,7 @@ int wm_sync_shared_group(const char *fname) {
         wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
     else {
-        if(wdb_find_group(fname, &wdb_wmdb_sock) <= 0){
+        if(wdb_find_group(fname, &wdb_wmdb_sock) <= 0) {
             wdb_insert_group(fname, &wdb_wmdb_sock);
         }
         closedir(dp);
@@ -898,11 +898,6 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
 
-        if ((wd_groups = inotify_add_watch(inotify_fd, GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
-            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
-
-        mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
-
         if ((wd_shared_groups = inotify_add_watch(inotify_fd, SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 
@@ -976,8 +971,6 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     } else {
                         continue;
                     }
-                } else if (event->wd == wd_groups) {
-                    dirname = GROUPS_DIR;
                 } else if (event->wd == wd_shared_groups) {
                     dirname = SHAREDCFG_DIR;
                 } else

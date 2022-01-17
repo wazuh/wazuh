@@ -552,7 +552,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         group = strtok_r(multi_group, delim, &save_ptr);
 
         /* Delete agent.conf from multi group before appending to it */
-        snprintf(multi_path, PATH_MAX,"%s/%s",MULTIGROUPS_DIR, hash_multigroup);
+        snprintf(multi_path, PATH_MAX, "%s/%s", MULTIGROUPS_DIR, hash_multigroup);
         cldir_ex(multi_path);
 
         while( group != NULL ) {
