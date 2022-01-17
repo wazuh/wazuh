@@ -73,6 +73,13 @@ typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
 } wdb_groups_set_mode_t;
 
+/// Operations with the global group hash cache
+typedef enum wdb_global_group_hash_operations_t {
+    WDB_GLOBAL_GROUP_HASH_READ,  ///< Reads the global group hash value in cache if any
+    WDB_GLOBAL_GROUP_HASH_WRITE, ///< Saves a new global group hash value in cache
+    WDB_GLOBAL_GROUP_HASH_CLEAR  ///< Erases the global group hash value in cache
+} wdb_global_group_hash_operations_t;
+
 #define WDB_GROUP_MODE_EMPTY_ONLY "empty_only"
 #define WDB_GROUP_MODE_OVERRIDE "override"
 #define WDB_GROUP_MODE_APPEND "append"
@@ -217,6 +224,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
     WDB_STMT_GLOBAL_GROUP_CSV_GET,
     WDB_STMT_GLOBAL_GROUP_CTX_SET,
+    WDB_STMT_GLOBAL_GROUP_HASH_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -352,6 +360,7 @@ typedef enum {
     WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
     WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
     WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
+    WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -1482,6 +1491,27 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
+
+/**
+ * @brief Method to obtain and cache the hash of the whole group_local_hash column in agent table.
+ *        If the cache is empty, the global group hash is calculated and stored.
+ *
+ * @param wdb The DB pointer structure.
+ * @param hexdigest Variable to return the global group hash.
+ * @return int OS_SUCCESS if the hexdigest variable was written with the global group hash value, OS_INVALID otherwise.
+ */
+int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
+
+/**
+ * @brief Method to perform all the required operations over the global group hash cache.
+ *
+ * @param operation      WDB_GLOBAL_GROUP_HASH_READ : OS_INVALID if there is no value in cache. OS_SUCCESS if a value was found and stored in hexdigest
+ *                       WDB_GLOBAL_GROUP_HASH_WRITE: OS_SUCCESS after writting the hexdigest value in global_group_hash.
+ *                       WDB_GLOBAL_GROUP_HASH_CLEAR: OS_SUCCESS after clearing the global group hash cache.
+ * @param hexdigest Input/Output variable, see "operation".
+ * @return int OS_INVALID in case of an unsupported "operation". See "operation" for the rest of cases.
+ */
+int wdb_global_group_hash_cache(wdb_global_group_hash_operations_t operation, os_sha1 hexdigest);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
