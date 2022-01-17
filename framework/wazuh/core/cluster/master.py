@@ -19,7 +19,7 @@ from uuid import uuid4
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
-from wazuh.core.cluster import server, common as c_common
+from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import decimals_date_format
@@ -591,11 +591,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Update chunks in local wazuh-db
         try:
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(self.send_data_to_wdb, data, self.cluster_items['intervals']['master']['timeout_agent_info'])
-            )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.send_data_to_wdb, data,
+                                               self.cluster_items['intervals']['master']['timeout_agent_info'])
         except Exception as e:
             await self.send_request(command=b'syn_m_a_err',
                                     data=f'error processing agent-info chunks in process pool: {str(e)}'.encode())
@@ -667,7 +664,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug(f"Received file from worker: '{received_filename}'")
 
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
-        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
+            received_filename)
         # There are no files inside decompressed_files_path, only files_metadata.json which has already been loaded.
         shutil.rmtree(decompressed_files_path)
 
@@ -702,15 +700,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             # Compress data: master files (only KO shared and missing).
             logger.debug("Compressing files to be synced in worker.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
+            compressed_data = await cluster.run_in_pool(self.loop, self.server.task_pool,
+                                                        wazuh.core.cluster.cluster.compress_files, self.name,
+                                                        master_files_paths, worker_files_ko)
 
-            # Create and add the file synchronization task to the process pool
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(wazuh.core.cluster.cluster.compress_files, self.name, master_files_paths, worker_files_ko)
-            )
-            compressed_data = await asyncio.wait_for(task, timeout=None)
-
-            logger.debug("Zip with files to be synced sent to worker.")
             try:
                 # Start the synchronization process with the worker and get a taskID.
                 task_id = await self.send_request(command=b'syn_m_c', data=b'')
@@ -722,6 +715,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 # Send zip file to the worker into chunks.
                 await self.send_file(compressed_data)
+                logger.debug("Zip with files to be synced sent to worker.")
 
                 # Finish the synchronization process and notify where the file corresponding to the taskID is located.
                 result = await self.send_request(command=b'syn_m_c_e',
@@ -806,17 +800,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug(f"Received extra-valid file from worker: '{received_filename}'")
 
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
-        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
+            received_filename)
         logger.debug(f"Received {len(files_metadata)} extra-valid files to check.")
 
         # Create a child process to run the task.
         try:
-            task = self.loop.run_in_executor(
-                self.server.task_pool,
-                partial(self.process_files_from_worker, files_metadata, decompressed_files_path, self.cluster_items,
-                        self.name, self.cluster_items['intervals']['master']['timeout_extra_valid'])
-            )
-            result = await asyncio.wait_for(task, timeout=None)
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.process_files_from_worker,
+                                               files_metadata, decompressed_files_path, self.cluster_items, self.name,
+                                               self.cluster_items['intervals']['master']['timeout_extra_valid'])
         except Exception as e:
             raise exception.WazuhClusterError(3038, extra_message=str(e))
         finally:
@@ -969,8 +961,18 @@ class Master(server.AbstractServer):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.handler_class = MasterHandler
-        self.task_pool = ProcessPoolExecutor(
-            max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        try:
+            self.task_pool = ProcessPoolExecutor(
+                max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+        # Handle exception when the user running Wazuh cannot access /dev/shm
+        except (FileNotFoundError, PermissionError):
+            self.logger.warning(
+                "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
+                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "Changing the file permissions to 777 will solve this issue.")
+            self.logger.warning(
+                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
+            self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
@@ -1002,12 +1004,13 @@ class Master(server.AbstractServer):
             before = datetime.now()
             file_integrity_logger.info("Starting.")
             try:
-                task = self.loop.run_in_executor(self.task_pool, wazuh.core.cluster.cluster.get_files_status)
-                # With this we avoid that each worker starts integrity_check more than once per local_integrity
-                self.integrity_control = await asyncio.wait_for(task, timeout=None)
+                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
+                                                                   wazuh.core.cluster.cluster.get_files_status,
+                                                                   self.integrity_control)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:
+                # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_already_executed.clear()
 
             file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "

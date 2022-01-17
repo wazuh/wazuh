@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+import api.constants
 from api import configuration, api_exception
 from wazuh.core import common
 
@@ -18,16 +19,15 @@ custom_api_configuration = {
     "max_upload_size": 10485760,
     "https": {
         "enabled": True,
-        "key": "api/configuration/ssl/server.key",
-        "cert": "api/configuration/ssl/server.crt",
+        "key": "server.key",
+        "cert": "server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt",
+        "ca": "ca.crt",
         "ssl_protocol": "TLSv1.2",
         "ssl_ciphers": ""
     },
     "logs": {
-        "level": "info",
-        "path": "logs/api.log"
+        "level": "info"
     },
     "cors": {
         "enabled": False,
@@ -87,8 +87,9 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     with patch('api.configuration.yaml.safe_load') as m:
         m.return_value = copy.deepcopy(read_config)
         config = configuration.read_yaml_config()
-        for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
-            config[section][subsection] = config[section][subsection].replace(common.wazuh_path+'/', '')
+        # Currently we only add SSL path to HTTPS options
+        for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
+            config[section][subsection] = config[section][subsection].replace(f'{api.constants.API_SSL_PATH}/', '')
 
         check_config_values(config, {}, read_config)
 

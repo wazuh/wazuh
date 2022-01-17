@@ -56,6 +56,7 @@ def reload_default_rbac_resources():
             with patch('shutil.chown'), patch('os.chmod'):
                 import wazuh.rbac.orm as orm
                 reload(orm)
+                orm.create_rbac_db()
                 import wazuh.rbac.decorators as decorators
                 from wazuh.tests.util import RBAC_bypasser
 
@@ -72,6 +73,7 @@ def db_setup():
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
                     reload(orm)
+                    orm.create_rbac_db()
                     import wazuh.rbac.decorators as decorators
                     from wazuh.tests.util import RBAC_bypasser
 

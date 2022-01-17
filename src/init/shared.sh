@@ -22,8 +22,14 @@ else
     fi
 fi
 
+# If hostname does not exist, try 'uname -n'
+if command -v hostname > /dev/null 2>&1 ; then
+    HOST=`hostname`
+else
+    HOST=`uname -n`
+fi
+
 OSSEC_INIT="/etc/ossec-init.conf"
-HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`

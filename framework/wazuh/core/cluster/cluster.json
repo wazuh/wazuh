@@ -107,7 +107,6 @@
             "timeout_agent_info": 40,
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,
-            "process_pool_debug": false,
             "max_locked_integrity_time": 1000
         },
 
