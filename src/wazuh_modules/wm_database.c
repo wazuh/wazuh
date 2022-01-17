@@ -96,9 +96,6 @@ static void wm_sync_agents_artifacts();
 static void wm_clean_dangling_legacy_dbs();
 static void wm_clean_dangling_wdb_dbs();
 
-// Clean dangling group files
-void wm_clean_dangling_groups();
-
 static void wm_sync_multi_groups(const char *dirname);
 
 /**
@@ -166,9 +163,6 @@ void* wm_database_main(wm_database *data) {
 
         wm_inotify_setup(data);
 
-#ifndef LOCAL
-        wm_clean_dangling_groups();
-#endif
         while (1) {
             path = wm_inotify_pop();
 
@@ -214,7 +208,6 @@ void* wm_database_main(wm_database *data) {
             if (data->sync_agents) {
                 wm_check_agents();
                 wm_sync_multi_groups(SHAREDCFG_DIR);
-                wm_clean_dangling_groups();
                 wm_clean_dangling_legacy_dbs();
                 wm_clean_dangling_wdb_dbs();
             }
@@ -563,51 +556,6 @@ void wm_clean_dangling_wdb_dbs() {
     closedir(dir);
 }
 
-// Clean dangling group files
-void wm_clean_dangling_groups() {
-    char path[PATH_MAX];
-    char * name;
-    int agent_id;
-    struct dirent * dirent = NULL;
-    DIR * dir;
-
-    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", GROUPS_DIR);
-    dir = opendir(GROUPS_DIR);
-
-    if (dir == NULL) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
-        return;
-    }
-
-    while ((dirent = readdir(dir)) != NULL) {
-        if (dirent->d_name[0] != '.') {
-            os_snprintf(path, sizeof(path), GROUPS_DIR "/%s", dirent->d_name);
-            agent_id = atoi(dirent->d_name);
-
-            if (agent_id <= 0) {
-                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", GROUPS_DIR, dirent->d_name);
-                continue;
-            }
-
-            name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
-
-            if (name == NULL) {
-                mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", agent_id);
-                continue;
-            }
-
-            if (*name == '\0') {
-                mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", dirent->d_name);
-                unlink(path);
-            }
-
-            free(name);
-        }
-    }
-
-    closedir(dir);
-}
-
 void wm_sync_multi_groups(const char *dirname) {
 
     wdb_update_groups(dirname, &wdb_wmdb_sock);
@@ -912,7 +860,6 @@ void wm_inotify_setup(wm_database * data) {
         }
         wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
-        wm_clean_dangling_groups();
         wm_clean_dangling_legacy_dbs();
         wm_clean_dangling_wdb_dbs();
     }

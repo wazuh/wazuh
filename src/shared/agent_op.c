@@ -312,9 +312,6 @@ int set_agent_multigroup(char * group) {
         *endl = '\0';
     }
 
-    /* Remove multigroup if it's not used on any other agent */
-    w_remove_multigroup(group);
-
     /* Check if the multigroup dir is created */
     os_sha256 multi_group_hash;
     char multigroup_path[PATH_MAX + 1] = {0};
@@ -339,50 +336,6 @@ int set_agent_multigroup(char * group) {
         } else {
             mwarn("Could not create directory '%s': %s (%d)", multigroup_path, strerror(errno), errno);
         }
-    } else {
-        closedir(dp);
-    }
-
-    return 0;
-}
-
-/* Create multigroup dir. Returns 0 on success or -1 on failure. */
-int create_multigroup_dir(const char * multigroup) {
-    char path[PATH_MAX];
-    DIR *dp;
-    char *has_multigroup =  strchr(multigroup,MULTIGROUP_SEPARATOR);
-
-    if (!has_multigroup) {
-        return 0;
-    }
-    mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
-
-    if (snprintf(path, PATH_MAX, MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
-        merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
-        return -1;
-    }
-
-    dp = opendir(path);
-
-    /* Multigroup doesnt exists, create the directory */
-    if (!dp) {
-       if (mkdir(path, 0770) == -1) {
-            merror("At create_multigroup_dir(): couldn't create directory '%s'", path);
-            return -1;
-        }
-
-        if (chmod(path,0770) < 0) {
-            merror("At create_multigroup_dir(): Error in chmod setting permissions for path: %s",path);
-        }
-
-        uid_t uid = Privsep_GetUser(USER);
-        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-
-        if (chown(path, uid, gid) == -1) {
-            merror(CHOWN_ERROR, path, errno, strerror(errno));
-            return -1;
-        }
-        mdebug1("Multigroup dir created: '%s'",multigroup);
     } else {
         closedir(dp);
     }
@@ -511,35 +464,6 @@ int w_validate_group_name(const char *group, char *response) {
     free(multi_group_cpy);
     return 0;
 }
-
-#ifndef CLIENT
-void w_remove_multigroup(const char *group) {
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char path[PATH_MAX + 1] = {0};
-
-    if (multigroup) {
-        sprintf(path, "%s", GROUPS_DIR);
-
-        if (wstr_find_in_folder(path,group,1) < 0) {
-            /* Remove the DIR */
-            os_sha256 multi_group_hash;
-            OS_SHA256_String(group,multi_group_hash);
-            char _hash[9] = {0};
-
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
-
-            strncpy(_hash,multi_group_hash,8);
-
-            sprintf(path, "%s/%s", MULTIGROUPS_DIR, _hash);
-
-            if (rmdir_ex(path) != 0) {
-                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
-            }
-        }
-    }
-}
-#endif
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect() {
