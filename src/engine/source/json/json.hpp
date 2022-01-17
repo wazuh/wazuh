@@ -14,10 +14,6 @@
 
 #include "rxcpp/rx.hpp"
 
-/**
- * @brief Contains Json functionality.
- *
- */
 namespace json {
 using Value = rapidjson::Value;
 
@@ -143,7 +139,7 @@ public:
   auto begin() const -> decltype(this->m_doc.MemberBegin()) {
     return this->m_doc.MemberBegin();
   }
-  auto end() { return this->m_doc.MemberEnd(); }
+  auto end() const -> decltype(this->m_doc.MemberEnd()) { return this->m_doc.MemberEnd(); }
   auto getObject() { return this->m_doc.GetObject(); }
 };
 

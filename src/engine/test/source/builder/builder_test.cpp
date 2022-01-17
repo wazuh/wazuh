@@ -10,9 +10,11 @@
 
 TEST(Builder, Constructor)
 {
-
   auto builder = builder::Builder<FakeCatalog>(FakeCatalog());
-
-  
 }
 
+TEST(Builder, Build)
+{
+  auto builder = builder::Builder<FakeCatalog>(FakeCatalog());
+  builder.build("environment_0");
+}
