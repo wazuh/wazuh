@@ -83,6 +83,9 @@ static  char *ip_address_regex[] = {
 NULL,
 };
 
+static bool regex_initialized = 0;
+static w_expression_t * g_exp[sizeof(ip_address_regex)];
+
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
  * If return is not null, value must be freed
@@ -421,20 +424,25 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
     if (strcmp(ip_address, "any") != 0) {
 
-        w_expression_t * exp;
         unsigned int i = 0;
 
         regex_matching * regex_match = NULL;
         os_calloc(1, sizeof(regex_matching), regex_match);
 
+        while (ip_address_regex[i] != NULL && !regex_initialized) {
+            w_calloc_expression_t(&g_exp[i], EXP_TYPE_PCRE2);
+            w_expression_compile(g_exp[i], ip_address_regex[i], 0);
+            if(ip_address_regex[++i] == NULL) {
+                regex_initialized = 1;
+                i = 0;
+            }
+        }
+
         while (ip_address_regex[i] != NULL) {
 
-            w_calloc_expression_t(&exp, EXP_TYPE_PCRE2);
-            if (w_expression_compile(exp, ip_address_regex[i], 0) &&
-                 w_expression_match(exp, ip_address, NULL, regex_match)) {
+            if (w_expression_match(g_exp[i], ip_address, NULL, regex_match)) {
 
                 ret = 1;
-
                 /* number of regex captures */
                 const int sub_strings_num = regex_match->d_size.prts_str_alloc_size/sizeof(char*);
 
@@ -545,7 +553,6 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                 }
                 break;
             }
-            w_free_expression_t(&exp);
             i++;
         }
 
@@ -558,7 +565,6 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
             }
             os_free(regex_match);
         }
-        w_free_expression_t(&exp);
     }
     else {
         /* any case */

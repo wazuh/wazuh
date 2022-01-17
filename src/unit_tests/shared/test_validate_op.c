@@ -138,8 +138,13 @@ void OS_IsValidIP_valid_multi_ipv4(void **state)
         will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, 1);
 
-        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-        will_return(__wrap_w_expression_compile, 1);
+        regex_initialized = 0;
+
+        for (int a = 0; ip_address_regex[a] != NULL; a++) {
+            expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+            will_return(__wrap_w_expression_compile, 1);
+        }
+
         will_return(__wrap_w_expression_match, -1);
         will_return(__wrap_w_expression_match, ip_to_test);
 
@@ -197,6 +202,8 @@ void OS_IsValidIP_not_valid_multi_ipv4(void **state)
         will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, 1);
 
+        regex_initialized = 0;
+
         unsigned int a = 0;
         while (ip_address_regex[a] != NULL) {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -224,8 +231,13 @@ void OS_IsValidIP_valid_ipv4_CIDR(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "192.168.10.12");
     will_return(__wrap_w_expression_match, "32");
@@ -251,8 +263,13 @@ void OS_IsValidIP_valid_ipv4_fail(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "192.168.10.12");
     will_return(__wrap_w_expression_match, "32");
@@ -276,8 +293,13 @@ void OS_IsValidIP_valid_ipv4_zero_fail(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "0.0.0");
     will_return(__wrap_w_expression_match, "32");
@@ -301,8 +323,13 @@ void OS_IsValidIP_valid_ipv4_zero_pass(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "0.0.0.0");
     will_return(__wrap_w_expression_match, "32");
@@ -326,8 +353,13 @@ void OS_IsValidIP_valid_ipv4_netmask(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "32.32.32.32");
     will_return(__wrap_w_expression_match, "255.255.255.255");
@@ -355,8 +387,13 @@ void OS_IsValidIP_valid_ipv4_0_netmask(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "0.0.0.0");
     will_return(__wrap_w_expression_match, "255.255.255.255");
@@ -383,8 +420,13 @@ void OS_IsValidIP_valid_ipv4_netmask_0(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "16.16.16.16");
     will_return(__wrap_w_expression_match, "255.255.255.0");
@@ -411,8 +453,13 @@ void OS_IsValidIP_valid_ipv4_netmask_fail(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "32.32.32.32");
     will_return(__wrap_w_expression_match, "255.255.255.255");
@@ -438,8 +485,13 @@ void OS_IsValidIP_valid_ipv4_sub_string_0(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, -3);
 
     int ret = OS_IsValidIP(ip_to_test, ret_ip);
@@ -452,8 +504,13 @@ void OS_IsValidIP_valid_ipv4_netmask_0_NULL_struct(void **state)
 {
     char ip_to_test[] = {"16.16.16.16/255.255.255.0"};
 
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     will_return(__wrap_w_expression_match, 1);
 
     int ret = OS_IsValidIP(ip_to_test, NULL);
@@ -515,14 +572,17 @@ void OS_IsValidIP_valid_multi_ipv6(void **state)
         will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, 1);
 
+        regex_initialized = 0;
+
+        for (int a = 0; ip_address_regex[a] != NULL; a++) {
+            expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+            will_return(__wrap_w_expression_compile, 1);
+        }
+
         /* First call to __wrap_w_expression_match fail */
-        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-        will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, 0);
 
         /* Second call to __wrap_w_expression_match pass */
-        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-        will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, -1);
         will_return(__wrap_w_expression_match, ip_to_test);
 
@@ -565,6 +625,8 @@ void OS_IsValidIP_not_valid_multi_ipv6(void **state)
         will_return(__wrap_w_expression_compile, 1);
         will_return(__wrap_w_expression_match, 1);
 
+        regex_initialized = 0;
+
         int a = 0;
         while (ip_address_regex[a] != NULL) {
             expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
@@ -593,14 +655,17 @@ void OS_IsValidIP_valid_ipv6_prefix(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     /* First call to __wrap_w_expression_match fail */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 0);
 
     /* Second call to __wrap_w_expression_match pass */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "2001:db8:abcd:0012:0000:0000:0000:0000");
     will_return(__wrap_w_expression_match, "60");
@@ -621,14 +686,17 @@ void OS_IsValidIP_valid_ipv6_prefix_NULL_struct(void **state)
 {
     char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
 
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     /* First call to __wrap_w_expression_match fail */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 0);
 
     /* Second call to __wrap_w_expression_match pass */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
     int ret = OS_IsValidIP(ip_to_test, NULL);
@@ -647,14 +715,17 @@ void OS_IsValidIP_valid_ipv6_numeric_fail(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     /* First call to __wrap_w_expression_match fail */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 0);
 
     /* Second call to __wrap_w_expression_match pass */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -1);
     will_return(__wrap_w_expression_match, "2001:db8:abcd:0012:0000:0000:0000:0000");
 
@@ -678,14 +749,17 @@ void OS_IsValidIP_valid_ipv6_converNetmask_fail(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     /* First call to __wrap_w_expression_match fail */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 0);
 
     /* Second call to __wrap_w_expression_match pass */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -2);
     will_return(__wrap_w_expression_match, "2001:db8:abcd:0012:0000:0000:0000:0000");
     will_return(__wrap_w_expression_match, "644");
@@ -710,14 +784,17 @@ void OS_IsValidIP_valid_ipv6_sub_string_0(void **state)
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 1);
 
+    regex_initialized = 0;
+
+    for (int a = 0; ip_address_regex[a] != NULL; a++) {
+        expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
+        will_return(__wrap_w_expression_compile, 1);
+    }
+
     /* First call to __wrap_w_expression_match fail */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, 0);
 
     /* Second call to __wrap_w_expression_match pass */
-    expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
-    will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -3);
 
     ret = OS_IsValidIP(ip_to_test, ret_ip);
