@@ -11,8 +11,6 @@
 
 #include "rxcpp/rx.hpp"
 
-#define GTEST_COUT std::cerr << "[          ] [ INFO ] "
-
 using Value = rapidjson::Value;
 
 

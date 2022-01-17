@@ -82,6 +82,7 @@ set(SOURCES
 
 include_directories(
   ${BUILDER_ENGINE_SOURCE_DIR}
+  ${ENGINE_SOURCE_DIR}/json
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
@@ -160,7 +161,7 @@ gtest_discover_tests(map_builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp)
 
 # map_value test
-add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp ${SOURCES})
+add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_value.cpp)
 gtest_discover_tests(map_value_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp)
 
