@@ -20,17 +20,12 @@ public:
     fakeConnectable(std::string name) : m_name(name), m_obs(m_subj.get_observable()){};
     fakeConnectable(std::string name, rxcpp::subjects::subject<E> subj, rxcpp::observable<E> obs) : m_name(name), m_subj(subj), m_obs(obs){};
 
-    fakeConnectable<E> map(std::function<E(E)> fn)
-    {
-        return fakeConnectable(this->m_name, this->m_subj, this->m_obs | rxcpp::operators::map(fn));
+    void connect( std::shared_ptr<fakeConnectable<E>> other) {
+        this->m_obs.subscribe(other->input());
     }
 
-    fakeConnectable<E> filter(std::function<bool(E)> fn)
-    {
-        return fakeConnectable(this->m_name, this->m_subj, this->m_obs | rxcpp::operators::filter(fn));
-    }
-
-    auto observable() const { return this->m_obs; }
-    auto subscriber() const { return this->m_subj.get_subscriber(); }
+    auto set(rxcpp::observable<E> obs) { this->m_obs = obs; }
+    auto output() const { return this->m_obs; }
+    auto input() const { return this->m_subj.get_subscriber(); }
 };
 

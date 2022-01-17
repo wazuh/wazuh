@@ -1,25 +1,10 @@
 #include <type_traits>
 
+#include "templcheck/templcheck.hpp"
 #include "rxcpp/rx.hpp"
 
 namespace graph
 {
-    template <typename T, typename F>
-    constexpr auto has_member_impl(F &&f) -> decltype(f(std::declval<T>()), true)
-    {
-        return true;
-    }
-
-    template <typename>
-    constexpr bool has_member_impl(...) { return false; }
-
-    /**
-     * @brief returns true if T has a member called EXPR
-     *
-     */
-    #define HAS_MEMBER(T, EXPR) \
-        has_member_impl<T>([](auto &&obj) -> decltype(obj.EXPR) {})
-
     /**
      * @brief A node connects two connectables between them. if a connectable
      * type T. A connectable type has a method to get its observer and the node
@@ -34,15 +19,17 @@ namespace graph
         typedef std::shared_ptr<Node<T>> NodePtr;
         typedef std::vector<NodePtr> AdjList;
 
-        static_assert(HAS_MEMBER(T, observable()), "Type T requires a method called observable()");
-        static_assert(HAS_MEMBER(T, subscriber()), "Type T requires a method called subscriber()");
-        static_assert(HAS_MEMBER(T, m_name), "Type T requires a member called m_name");
+        // static_assert(utils::has_member(T, output()), "Type T requires a method called output()");
+        // static_assert(utils::has_member(T, input()), "Type T requires a method called input()");
+        // static_assert(utils::has_member(T, m_name), "Type T requires a member called m_name");
+        // static_assert(utils::has_member(T, m_value), "Type T requires a member called m_value");
 
     private:
         AdjList m_adj;
-        std::shared_ptr<T> m_value;
 
     public:
+        std::shared_ptr<T> m_value;
+
         /**
          * @brief Construct a new Node object from a T. It expects a
          * std::shared_ptr<T> because it will take ownership of T, and will
@@ -70,24 +57,11 @@ namespace graph
                 throw std::invalid_argument("Loop detected.");
             }
 
-            this->m_value->observable().subscribe(n->subscriber());
+            this->m_value->connect(n->m_value);
 
             this->m_adj.push_back(n);
         }
-        /**
-         * @brief returns the underlying observable of this node so
-         * other node can subscribe to it.
-         *
-         * @return rxcpp::observable<E>
-         */
-        auto observable() const { return this->m_value->observable(); }
-        /**
-         * @brief returns the underlying subscriber of this node so
-         * it can be subscribed to other node.
-         *
-         * @return rxcpp::subscriber<T>
-         */
-        auto subscriber() const { return this->m_value->subscriber(); }
+
         /**
          * @brief returns the name of the underlying asset, to check
          * for identity. The graph node uses the asset identity as its own.
@@ -95,6 +69,7 @@ namespace graph
          * @return std::string
          */
         auto name() const { return this->m_value->m_name; }
+
         /**
          * @brief return the list of adjacent nodes, ie. all nodes
          * subscribed to this one.
