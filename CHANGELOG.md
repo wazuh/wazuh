@@ -316,6 +316,7 @@ All notable changes to this project will be documented in this file.
 - Added SCA policy for. Solaris 11.4. ([#11286](https://github.com/wazuh/wazuh/pull/11286))
 - Added Sophos UTM Firewall ruleset.  ([#11122](https://github.com/wazuh/wazuh/pull/11122))
 - Added Wazuh-api ruleset. ([#11357](https://github.com/wazuh/wazuh/pull/11357))
+
 #### Changed
 
 - Updated audit rules. ([#11016](https://github.com/wazuh/wazuh/pull/11016))
@@ -331,12 +332,14 @@ All notable changes to this project will be documented in this file.
 - Updated SCA policy for CentOS 8. ([#](https://github.com/wazuh/wazuh/pull/))
 - Updated SonicWall rules decoder. ([#11263](https://github.com/wazuh/wazuh/pull/11263))
 - Updated SSHD ruleset. ([#11388](https://github.com/wazuh/wazuh/pull/11388))
+
 #### Fixed
 
 - Fixed bad character on rules 60908 and 60884 - win-application rules.  ([#11117](https://github.com/wazuh/wazuh/pull/11117))
 - Fixed Microsoft logs rules ([#11369](https://github.com/wazuh/wazuh/pull/11369))
 - Fixed PHP rules for MITRE and groups. ([#11405](https://github.com/wazuh/wazuh/pull/11405))
 - Fixed rules id for Microsoft Windows Powershell.  ([#11214](https://github.com/wazuh/wazuh/pull/11214))
+
 ### Other
 
 #### Changed
