@@ -75,7 +75,7 @@
   </rule>
 
   <rule id="91005" level="12">
-    <if_sid>91005</if_sid>
+    <if_sid>91004</if_sid>
     <field name="win.system.message">System.InvalidCastException</field>
     <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857).</description>
     <mitre>
