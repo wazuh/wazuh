@@ -25,7 +25,6 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
-    [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
     [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
@@ -441,63 +440,6 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_update_agent_group(int id, char *group, int *sock) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-    char *data_in_str = NULL;
-    cJSON *data_in = cJSON_CreateObject();
-
-    if (!data_in) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
-
-    cJSON_AddNumberToObject(data_in, "id", id);
-    cJSON_AddStringToObject(data_in, "group", group);
-
-    data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_GROUP], data_in_str);
-    os_free(data_in_str);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            else if (wdb_update_agent_multi_group(id, group, sock?sock:&aux_sock) < 0) {
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            if (!sock) {
-                wdbc_close(&aux_sock);
-            }
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            if (!sock) {
-                wdbc_close(&aux_sock);
-            }
-            return OS_INVALID;
-    }
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    return result;
-}
-
 int wdb_set_agent_labels(int id, const char *labels, int *sock) {
     int result = 0;
     // Making use of a big buffer for the query because it
@@ -804,10 +746,9 @@ int wdb_update_groups(const char *dirname, int *sock) {
     }
 
     item = root->child;
-    os_calloc(cJSON_GetArraySize(root) + 1 , sizeof(char *),array);
+    os_calloc(cJSON_GetArraySize(root) + 1 , sizeof(char *), array);
 
-    while (item)
-    {
+    while (item) {
         json_name = cJSON_GetObjectItem(item,"name");
 
         if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
@@ -826,7 +767,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
         char group_path[PATH_MAX + 1] = {0};
         DIR *dp;
 
-        if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname,array[i]) > PATH_MAX) {
+        if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname, array[i]) > PATH_MAX) {
             merror("At wdb_update_groups(): path too long.");
             continue;
         }
@@ -864,7 +805,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     while ((dirent = readdir(dir))) {
         if (dirent->d_name[0] != '.') {
             char path[PATH_MAX];
-            snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);
+            snprintf(path, PATH_MAX, "%s/%s", dirname, dirent->d_name);
 
             if (!IsDir(path)) {
                 if (wdb_find_group(dirent->d_name, query_sock) <= 0){
@@ -1430,7 +1371,7 @@ int wdb_agent_belongs_first_time(int *sock){
             group = wdb_get_agent_group(agents[i], query_sock);
 
             if (group) {
-                wdb_update_agent_multi_group(agents[i],group, query_sock);
+                wdb_update_agent_multi_group(agents[i], group, query_sock);
                 os_free(group);
             }
         }
