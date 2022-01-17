@@ -233,7 +233,7 @@ int add_agent(int json_output)
                 }
                 os_free(aux_ip->ip);
                 if (!OS_IsValidIP(_ip, aux_ip)) {
-                    printf(IP_ERROR, ip);
+                    printf(IP_ERROR, _ip);
                     w_free_os_ip(aux_ip);
                     _ip = NULL;
                     continue;

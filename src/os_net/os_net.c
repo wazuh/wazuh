@@ -365,7 +365,6 @@ int OS_SendUDPbySize(int socket, int size, const char *msg)
 /* Accept a TCP connection */
 int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
 {
-    char aux_ip[IPSIZE + 1];
     int clientsocket;
     struct sockaddr_storage _nc;
     socklen_t _ncl;
@@ -384,9 +383,6 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         break;
     case AF_INET6:
         get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, addrsize - 1);
-        if (OS_GetIPv4FromIPv6(srcip, aux_ip)) {
-            strcpy(srcip, aux_ip);
-        }
         break;
     default:
         close(clientsocket);
@@ -527,11 +523,11 @@ char *OS_GetHost(const char *host, unsigned int attempts)
         for(p = addr; p != NULL; p = p->ai_next) {
             if (p->ai_family == AF_INET) {
                 os_calloc(IPSIZE + 1, sizeof(char), ip);
-                get_ipv4_string(((struct sockaddr_in *)p->ai_addr)->sin_addr, ip, IPSIZE - 1);
+                get_ipv4_string(((struct sockaddr_in *)p->ai_addr)->sin_addr, ip, IPSIZE);
                 break;
             } else if (p->ai_family == AF_INET6) {
                 os_calloc(IPSIZE + 1, sizeof(char), ip);
-                get_ipv6_string(((struct sockaddr_in6 *)p->ai_addr)->sin6_addr, ip, IPSIZE - 1);
+                get_ipv6_string(((struct sockaddr_in6 *)p->ai_addr)->sin6_addr, ip, IPSIZE);
                 break;
             }
         }
@@ -995,6 +991,7 @@ int get_ipv4_string(struct in_addr addr, char *address, size_t address_size) {
 
 int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
     int ret = OS_INVALID;
+    char aux_ip[IPSIZE + 1] = {0};
 
 #ifdef WIN32
     if (checkVista()) {
@@ -1016,6 +1013,10 @@ int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
         ret = OS_SUCCESS;
     }
 #endif
+
+    if (ret == OS_SUCCESS && (OS_GetIPv4FromIPv6(address, aux_ip, IPSIZE) || !OS_ExpandIPv6(address, 0, aux_ip, IPSIZE))) {
+        strncpy(address, aux_ip, address_size);
+    }
 
     return ret;
 }

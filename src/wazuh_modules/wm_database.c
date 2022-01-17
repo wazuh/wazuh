@@ -254,7 +254,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char * group;
-    char cidr[IPSIZE];
+    char cidr[IPSIZE + 1];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
     int *agents;

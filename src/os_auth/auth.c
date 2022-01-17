@@ -168,7 +168,7 @@ w_err_t w_auth_parse_data(const char* buf,
                 w_free_os_ip(aux_ip);
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE + 1, "%s", aux_ip->ip);
+            snprintf(ip, IPSIZE, "%s", aux_ip->ip);
             w_free_os_ip(aux_ip);
         }
 

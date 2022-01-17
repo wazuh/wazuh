@@ -39,7 +39,6 @@ void HandleSyslog()
 {
     char buffer[OS_MAXSTR + 2];
     char srcip[IPSIZE + 1];
-    char aux_ip[IPSIZE + 1];
     char *buffer_pt = NULL;
     ssize_t recv_b;
     struct sockaddr_storage _nc;
@@ -78,13 +77,10 @@ void HandleSyslog()
         /* Set the source IP */
         switch (_nc.ss_family) {
         case AF_INET:
-            get_ipv4_string(((struct sockaddr_in *)&_nc)->sin_addr, srcip, IPSIZE - 1);
+            get_ipv4_string(((struct sockaddr_in *)&_nc)->sin_addr, srcip, IPSIZE);
             break;
         case AF_INET6:
-            get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, IPSIZE - 1);
-            if (OS_GetIPv4FromIPv6(srcip, aux_ip)) {
-                strcpy(srcip, aux_ip);
-            }
+            get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, IPSIZE);
             break;
         default:
             continue;

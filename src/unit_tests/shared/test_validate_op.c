@@ -1220,7 +1220,7 @@ void OS_GetIPv4FromIPv6_success(void **state) {
     will_return(__wrap_w_expression_match, -1);
     will_return(__wrap_w_expression_match, "10.2.2.3");
 
-    int ret = OS_GetIPv4FromIPv6("::ffff:10.2.2.3", ipv4);
+    int ret = OS_GetIPv4FromIPv6("::ffff:10.2.2.3", ipv4, IPSIZE);
 
     assert_string_equal("10.2.2.3", ipv4);
     assert_int_equal(ret, 1);

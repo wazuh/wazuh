@@ -88,7 +88,7 @@ void run_notify()
     static char tmp_labels[OS_MAXSTR - OS_SIZE_2048] = { '\0' };
     os_md5 md5sum;
     time_t curr_time;
-    static char agent_ip[IPSIZE] = { '\0' };
+    static char agent_ip[IPSIZE + 1] = { '\0' };
     static time_t last_update = 0;
     static const char no_hash_value[] = "x merged.mg\n";
 
@@ -169,7 +169,7 @@ void run_notify()
         char *tmp_agent_ip = get_agent_ip();
 
         if (tmp_agent_ip) {
-            strncpy(agent_ip, tmp_agent_ip, IPSIZE - 1);
+            strncpy(agent_ip, tmp_agent_ip, IPSIZE);
             os_free(tmp_agent_ip);
         } else {
            mdebug1("Cannot update host IP.");

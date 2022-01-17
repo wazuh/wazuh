@@ -23,6 +23,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
@@ -685,6 +686,13 @@ void get_ipv6_string_success(void ** state) {
 #endif
 
     }
+
+    expect_string(__wrap_OS_GetIPv4FromIPv6, ip_address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    will_return(__wrap_OS_GetIPv4FromIPv6, 0);
+
+    expect_string(__wrap_OS_ExpandIPv6, ip_address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    expect_value(__wrap_OS_ExpandIPv6, cidr, 0);
+    will_return(__wrap_OS_ExpandIPv6, 0);
 
     int ret = get_ipv6_string(addr6, address, IPSIZE);
 

@@ -571,7 +571,7 @@ int OS_WriteKeys(const keystore *keys) {
 
     unsigned int i;
     File file;
-    char cidr[IPSIZE];
+    char cidr[IPSIZE + 1];
 
     if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
@@ -809,7 +809,7 @@ int OS_WriteTimestamps(keystore * keys) {
         }
 
         char timestamp[40];
-        char cidr[IPSIZE];
+        char cidr[IPSIZE + 1];
         struct tm tm_result = { .tm_sec = 0 };
 
         strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));

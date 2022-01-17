@@ -420,7 +420,6 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
-    char ipv4_from_ipv6[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *tmp_msg;
     size_t msg_length;
@@ -430,13 +429,10 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     /* Set the source IP */
     switch (peer_info->ss_family) {
     case AF_INET:
-        get_ipv4_string(((struct sockaddr_in *)peer_info)->sin_addr, srcip, IPSIZE - 1);
+        get_ipv4_string(((struct sockaddr_in *)peer_info)->sin_addr, srcip, IPSIZE);
         break;
     case AF_INET6:
-        get_ipv6_string(((struct sockaddr_in6 *)peer_info)->sin6_addr, srcip, IPSIZE - 1);
-        if (OS_GetIPv4FromIPv6(srcip, ipv4_from_ipv6)) {
-            strcpy(srcip, ipv4_from_ipv6);
-        }
+        get_ipv6_string(((struct sockaddr_in6 *)peer_info)->sin6_addr, srcip, IPSIZE);
         break;
     default:
         merror("IP address family not supported.");

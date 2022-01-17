@@ -399,7 +399,7 @@ cJSON* local_add(const char *id,
             goto fail;
         }
 
-        strcpy(_ip, aux_ip->ip);
+        strncpy(_ip, aux_ip->ip, IPSIZE);
         w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
@@ -412,7 +412,7 @@ cJSON* local_add(const char *id,
             }
         }
     } else {
-        strcpy(_ip, ip);
+        strncpy(_ip, ip, IPSIZE);
     }
 
     /* Check whether the agent name is the same as the manager */
