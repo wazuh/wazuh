@@ -14,7 +14,7 @@
 
 #include "rxcpp/rx.hpp"
 
-using Value = rapidjson::Value;
+
 
 
 /**
@@ -23,7 +23,8 @@ using Value = rapidjson::Value;
  */
 namespace json
 {
-
+    using Value = rapidjson::Value;
+    
     /**
      * @brief Document is a json class based on rapidjson library.
      *
@@ -136,6 +137,9 @@ namespace json
             return buffer.GetString();
         }
 
+        auto begin() { return this->m_doc.MemberBegin(); }
+        auto end() { return this->m_doc.MemberEnd(); }
+        auto getObject() { return this->m_doc.GetObject(); }
     };
 
 };
