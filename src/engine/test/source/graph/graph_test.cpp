@@ -65,10 +65,10 @@ TEST(Graph, Connect_two_check_result)
     auto pf1{std::make_shared<con_t>(con_t("decoder_1"))};
     auto pf2{std::make_shared<con_t>(con_t("decoder_2"))};
 
-    pf1->map([](int i)
+    pf1->set(pf1->output().map([](int i)
              { return i * 2; })
         .filter([](int i)
-                { return i % 2 == 0; });
+                { return i % 2 == 0; }));
 
     auto pNode1{std::make_shared<node_t>(node_t(pf1))};
     auto pNode2{std::make_shared<node_t>(node_t(pf2))};
@@ -77,13 +77,13 @@ TEST(Graph, Connect_two_check_result)
 
     int got(0);
 
-    pNode2->observable().subscribe(
+    pNode2->m_value->output().subscribe(
         [&got](const int &i)
         { got++; },
         [&got]()
         { GTEST_COUT << "completed " << got << std::endl; });
 
-    source.subscribe(pNode1->subscriber());
+    source.subscribe(pNode1->m_value->input());
     ASSERT_EQ(expected, got);
 }
 
@@ -100,24 +100,28 @@ TEST(Graph, Connect_a_simple_graph_to_result)
         }
         s.on_completed(); });
 
-    auto plus{con_t("plus").map([](int i)
-                                { return i + 1; })};
+    auto plus{con_t("plus")};
+    plus.set(plus.output().map([](int i){ return i + 1; }));
     auto pPlusDec{std::make_shared<con_t>(plus)};
 
-    auto odd{con_t("odd").filter([](int i)
-                                 { return i % 2 == 0; })
-                 .map([](int i)
-                      { return i * 2; })};
+    auto odd{con_t("odd")};
+    odd.set(odd.output().filter([](int i) { return i % 2 == 0; })
+                 .map([](int i) { return i * 2; }));
+
     auto pOddDec{std::make_shared<con_t>(odd)};
 
-    auto even{con_t("even").filter([](int i)
+    auto even{con_t("even")};
+    even.set(even.output().filter([](int i)
                                    { return i % 2 != 0; })
                   .map([](int i)
-                       { return i * 3; })};
+                       { return i * 3; }));
+
     auto pEvenDec{std::make_shared<con_t>(even)};
 
-    auto minus{con_t("minus").map([](int i)
-                                  { return i - 1; })};
+    auto minus{con_t("minus")};
+    minus.set(minus.output().map([](int i)
+                                  { return i - 1; }));
+
     auto pMinusDec{std::make_shared<con_t>(minus)};
 
     auto pOddNode{std::make_shared<node_t>(node_t(pOddDec))};
@@ -139,13 +143,13 @@ TEST(Graph, Connect_a_simple_graph_to_result)
 
     int got(0);
 
-    pMinusNode->observable().subscribe(
+    pMinusNode->m_value->output().subscribe(
         [&got](const int &i)
         { got++; },
         [&got]()
         { GTEST_COUT << "completed " << got << std::endl; });
 
-    source.subscribe(pPlusNode->subscriber());
+    source.subscribe(pPlusNode->m_value->input());
     ASSERT_EQ(expected, got);
 }
 
@@ -162,19 +166,17 @@ TEST(Graph, Connect_all_leaves)
         }
         s.on_completed(); });
 
-    auto plus{con_t("plus").map([](int i)
-                                { return i + 1; })};
+    auto plus{con_t("plus")};
+    plus.set(plus.output().map([](int i) { return i + 1; }));
     auto plusPtr{std::make_shared<con_t>(plus)};
 
-    auto oddPtr(std::make_shared<con_t>(con_t("odd").filter([](int i)
-                                                            { return i % 2 == 0; })
-                                            .map([](int i)
-                                                 { return i * 2; })));
+    auto odd{con_t("odd")};
+    odd.set(odd.output().filter([](int i) { return i % 2 == 0; }).map([](int i) { return i * 2; }));
+    auto oddPtr(std::make_shared<con_t>(odd));
 
-    auto even{con_t("even").filter([](int i)
-                                   { return i % 2 != 0; })
-                  .map([](int i)
-                       { return i * 3; })};
+    auto even{con_t("even")};
+    even.set(even.output().filter([](int i) { return i % 2 != 0; }).map([](int i) { return i * 3; }));
+
     auto evenPtr{std::make_shared<con_t>(even)};
 
     auto output{std::make_shared<con_t>(con_t("output"))};
@@ -199,13 +201,13 @@ TEST(Graph, Connect_all_leaves)
     nodePlus->visitLeaves([nodeOutput](auto leaf)
                           { leaf->connect(nodeOutput); });
 
-    nodeOutput->observable().subscribe(
+    nodeOutput->m_value->output().subscribe(
         [&got](const int &i)
         { got++; },
         [&got]()
         { GTEST_COUT << "completed " << got << std::endl; });
 
-    source.subscribe(nodePlus->subscriber());
+    source.subscribe(nodePlus->m_value->input());
     ASSERT_EQ(expected, got);
 }
 
@@ -236,13 +238,10 @@ TEST(Graph, Connect_a_big_graph)
 
     for (int i = 0; i < size; i++)
     {
-        auto pNode{std::make_shared<node_t>(
-            std::make_shared<con_t>(
-                con_t("decoder " + std::to_string(i))
-                    .filter([i](std::string s)
-                            { return i % 2 == 0; })
-                    .map([i](std::string s)
-                         { return s + "decoder " + std::to_string(i) + "-->"; })))};
+        auto dec = con_t("decoder " + std::to_string(i));
+        dec.set(dec.output().filter([i](std::string s) { return i % 2 == 0; })
+                    .map([i](std::string s) { return s + "decoder " + std::to_string(i) + "-->"; }));
+        auto pNode{std::make_shared<node_t>(std::make_shared<con_t>(dec))};
 
         nodes.push_back(pNode);
     }
@@ -260,12 +259,12 @@ TEST(Graph, Connect_a_big_graph)
 
     int got(0);
 
-    pOutputNode->observable().subscribe(
+    pOutputNode->m_value->output().subscribe(
         [&got](std::string s)
         { got++; },
         [](std::exception_ptr &e) {},
         [&got, expected, heigh]()
         { GTEST_COUT << "Completed! "<< got <<  " through " << 2*heigh+1 << " decoders" << std::endl; ASSERT_EQ(expected, got); });
 
-    source.subscribe(nodes[0]->subscriber());
+    source.subscribe(nodes[0]->m_value->input());
 }
