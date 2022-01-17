@@ -5384,6 +5384,7 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
 }
 
 int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output) {
+    int ret = OS_SUCCESS;
     const char *error = NULL;
     cJSON *args = cJSON_ParseWithOpts(input, &error, TRUE);
     if (args) {
@@ -5414,24 +5415,39 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
                 get_hash = true;
             }
 
-            char* agent_group_sync = NULL;
+            cJSON* agent_group_sync = NULL;
             wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, set_synced, get_hash, &agent_group_sync);
-            snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], agent_group_sync);
-            os_free(agent_group_sync)
+            if (agent_group_sync) {
+                char* response = cJSON_PrintUnformatted(agent_group_sync);
+                cJSON_Delete(agent_group_sync);
+                if (strlen(response) <= WDB_MAX_RESPONSE_SIZE) {
+                    snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], response);
+                }
+                else {
+                    snprintf(output, OS_MAXSTR + 1, "err %s", "Invalid response from wdb_global_ync_agent_groups_get");
+                    ret = OS_INVALID;
+                }
+                os_free(response);
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "err %s", "Could not obtain a response from wdb_global_ync_agent_groups_get");
+            }
         }
         else {
             mdebug1("Missing mandatory fields in agent_groups_get_sync command.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
+            ret = OS_INVALID;
         }
-    cJSON_Delete(args);
+        cJSON_Delete(args);
     }
     else {
         mdebug1("Global DB Invalid JSON syntax when parsing agent_groups_get_sync");
         mdebug2("Global DB JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        ret = OS_INVALID;
     }
 
-    return OS_SUCCESS;
+    return ret;
 }
 
 int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
