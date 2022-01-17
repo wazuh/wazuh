@@ -67,7 +67,6 @@ typedef enum wdb_groups_sync_condition_t {
 /// Enumeration of agent groups set mode
 typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_OVERRIDE,     ///< Re-write the group assignment
-        WDB_GROUP_OVERRIDE_ALL, ///< Re-write the group assignment ignoring the source of the last write
         WDB_GROUP_APPEND,       ///< Add group assignment to the existent one
         WDB_GROUP_EMPTY_ONLY,   ///< Write a group assignment only if the agent doesn´t have one
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
@@ -1966,15 +1965,15 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] set_synced Indicates if the obtained groups must be set as synced.
  * @param [in] get_hash Indicates if the response must append the group_hash once all the groups have been obtained.
- * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
+ * @param [out] output A cJSON pointer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all agents has being obtained.
  */
-wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb,
+wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
                                              wdb_groups_sync_condition_t condition,
                                              int last_agent_id,
                                              bool set_synced,
                                              bool get_hash,
-                                             char **output);
+                                             cJSON** output);
 /**
  * @brief Function to update group_sync_status of a particular agent.
  *
@@ -1983,9 +1982,9 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb,
  * @param [in] sync_status The value of sync_status
  * @return OS_SUCCESS On success. OS_ERROR On error.
  */
-int wdb_global_set_groups_sync_status(wdb_t *wdb,
-                                      int id,
-                                      const char* sync_status);
+int wdb_global_set_agent_groups_sync_status(wdb_t *wdb,
+                                            int id,
+                                            const char* sync_status);
 
 
 /**
@@ -2040,8 +2039,6 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
 /**
  * @brief Sets the belongship af a set of agents.
  *          If any of the groups doesn´t exist, this command creates it.
- *          If the current groups where previously written by "remote" source, only another "remote" source can write groups on the agent,
- *          or WDB_GROUP_OVERRIDE_ALL mode must be used.
  * @param [in] wdb The Global struct database.
  * @param [in] mode The mode in which the write will be performed.
  *               WDB_GROUP_OVERRIDE The existing groups will be overwritten.
