@@ -86,4 +86,11 @@ cJSON* __wrap_wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id);
+
+cJSON* __wrap_wdb_global_get_backups();
+
+int __wrap_wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
+
+int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
+
 #endif
