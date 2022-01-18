@@ -12,7 +12,24 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <cJSON.h>
 
 void __wrap_fim_registry_scan() {
     return;
+}
+
+cJSON* __wrap_fim_dbsync_registry_key_json_event(){
+    return mock();
+}
+
+cJSON* __wrap_fim_dbsync_registry_value_json_event(){
+    return mock();
+}
+
+void __wrap_fim_diff_process_delete_registry(){
+    function_called();
+}
+
+void __wrap_fim_diff_process_delete_value(){
+    function_called();
 }
