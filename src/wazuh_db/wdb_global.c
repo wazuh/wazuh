@@ -1230,7 +1230,7 @@ cJSON* wdb_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
     case SQLITE_DONE:
         response = cJSON_CreateArray();
         os_sha1 hexdigest = {0};
-        if ( OS_SUCCESS == wdb_get_global_group_hash(wdb, hexdigest) && !strcmp(hexdigest, hash)) {
+        if (OS_SUCCESS == wdb_get_global_group_hash(wdb, hexdigest) && !strcmp(hexdigest, hash)) {
             cJSON_AddItemToArray(response, cJSON_CreateString("synced"));
         } else {
             cJSON_AddItemToArray(response, cJSON_CreateString("hash_mismatch"));
