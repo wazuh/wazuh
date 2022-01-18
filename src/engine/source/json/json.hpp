@@ -51,6 +51,18 @@ public:
     }
   }
 
+  void set(const Document &v) {
+    std::string path = "/";
+    path += v.m_doc.MemberBegin()->name.GetString();
+    std::replace(std::begin(path), std::end(path), '.', '/');
+    auto ptr = rapidjson::Pointer(path.c_str());
+    if (ptr.IsValid()) {
+      ptr.Set(this->m_doc, v.m_doc.MemberBegin()->value);
+    } else {
+      throw std::invalid_argument("Invalid json path for this json");
+    }
+  }
+
   /**
    * @brief Method that returns a pointer to the value of a given json path.
    *
@@ -139,7 +151,9 @@ public:
   auto begin() const -> decltype(this->m_doc.MemberBegin()) {
     return this->m_doc.MemberBegin();
   }
-  auto end() const -> decltype(this->m_doc.MemberEnd()) { return this->m_doc.MemberEnd(); }
+  auto end() const -> decltype(this->m_doc.MemberEnd()) {
+    return this->m_doc.MemberEnd();
+  }
   auto getObject() { return this->m_doc.GetObject(); }
 };
 
