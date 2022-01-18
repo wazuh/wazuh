@@ -97,6 +97,11 @@ char* getPrimaryIP(){
 
 #endif
 
+    if (agent_ip && (strchr(agent_ip, ':') != NULL)) {
+        os_realloc(agent_ip, IPSIZE + 1, agent_ip);
+        OS_ExpandIPv6(agent_ip, 0, IPSIZE);
+    }
+
     return agent_ip;
 }
 

@@ -430,6 +430,10 @@ char *get_agent_ip()
         }
     }
 
+    if (strchr(agent_ip, ':') != NULL) {
+        OS_ExpandIPv6(agent_ip, 0, IPSIZE);
+    }
+
     return strdup(agent_ip);
 }
 
