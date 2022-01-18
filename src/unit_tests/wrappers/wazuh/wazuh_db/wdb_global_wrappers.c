@@ -261,3 +261,23 @@ int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     check_expected(agent_id);
     return mock();
 }
+
+cJSON* __wrap_wdb_global_get_backups() {
+    return mock_ptr_type(cJSON*);
+}
+
+int __wrap_wdb_global_create_backup(__attribute__((unused)) wdb_t* wdb,
+                                    char* output,
+                                    const char* tag) {
+    snprintf(output, OS_MAXSTR + 1, "%s%s", mock_ptr_type(char*), tag ? tag : "");
+    return mock();
+}
+
+int __wrap_wdb_global_restore_backup(__attribute__((unused)) wdb_t** wdb,
+                                     char* snapshot,
+                                     bool save_pre_restore_state,
+                                     __attribute__((unused)) char* output) {
+    if (snapshot) {check_expected(snapshot);}
+    check_expected(save_pre_restore_state);
+    return mock();
+}
