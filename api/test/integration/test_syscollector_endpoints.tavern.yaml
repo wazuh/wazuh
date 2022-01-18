@@ -3,6 +3,7 @@ test_name: GET /syscollector/{agent_id}/os
 
 marks:
   - base_tests
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -59,7 +60,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -95,6 +96,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -144,7 +148,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -175,6 +179,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/packages
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -532,6 +539,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/packages?{select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -565,6 +573,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/processes
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -995,6 +1006,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/processes?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -1060,6 +1072,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/ports
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -1267,6 +1282,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/port?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -1318,6 +1334,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -1660,6 +1679,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -1707,6 +1727,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -1989,6 +2012,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -2035,6 +2059,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -2645,6 +2672,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -2701,6 +2729,9 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/os
 
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+
 stages:
 
   - name: Get the OS of an agent
@@ -2750,6 +2781,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -2787,6 +2819,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -2832,6 +2867,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -2862,6 +2898,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -3162,6 +3201,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -3195,6 +3235,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -3492,6 +3535,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
@@ -3537,6 +3581,9 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
 
 stages:
 
@@ -4132,6 +4179,7 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
   - parametrize:
       key: field
       vals:
