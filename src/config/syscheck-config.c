@@ -79,7 +79,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->nodiff_regex                    = NULL;
     syscheck->scan_day                        = NULL;
     syscheck->scan_time                       = NULL;
-    syscheck->db_entry_limit_enabled              = true;
+    syscheck->db_entry_limit_enabled          = true;
     syscheck->db_entry_file_limit             = 100000;
     syscheck->directories                     = OSList_Create();
 

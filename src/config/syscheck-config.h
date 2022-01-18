@@ -383,7 +383,7 @@ typedef struct _config {
     char *scan_time;                                   /* run syscheck at this time */
 
     unsigned int db_entry_limit_enabled;               /* Enable FIM entry max limits */
-    int db_entry_file_limit;                           /* maximun number of files to monitor */
+    int db_entry_file_limit;                           /* maximum number of files to monitor */
 
     char **ignore;                                     /* list of files/dirs to ignore */
     OSMatch **ignore_regex;                            /* regex of files/dirs to ignore */
@@ -410,7 +410,7 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
-    int db_entry_registry_limit;                       /* maximun number of registries to monitor */
+    int db_entry_registry_limit;                       /* maximum number of registries to monitor */
     registry_ignore *key_ignore;                       /* List of registry keys to ignore */
     registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
     registry_ignore *value_ignore;                     /* List of registry values to ignore*/
