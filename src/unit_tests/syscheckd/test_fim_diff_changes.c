@@ -28,7 +28,7 @@
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
 
-static registry default_reg_config[] = {
+static registry_t default_reg_config[] = {
     { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
     { "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0", ARCH_64BIT, CHECK_REGISTRY_ALL, 0, 0, NULL, NULL, NULL },
     { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
@@ -40,7 +40,7 @@ static registry_ignore default_reg_ignore[] = { { "HKEY_LOCAL_MACHINE\\Software\
                                             { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT},
                                             { NULL, 0} };
 
-static registry default_reg_nodiff[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_32BIT},
+static registry_t default_reg_nodiff[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_32BIT},
                                             { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT},
                                             { NULL, 0} };
 
@@ -89,7 +89,7 @@ typedef struct gen_diff_struct {
 
 #ifdef TEST_WINAGENT
 char *adapt_win_fc_output(char *command_output);
-diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration);
+diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry_t*configuration);
 int fim_diff_registry_tmp(const char *value_data, DWORD data_type, const diff_data *diff);
 #endif
 
@@ -518,7 +518,7 @@ void test_adapt_win_fc_output_no_differences(void **state) {
 
 void test_initialize_registry_diff_data(void **state) {
     diff_data *diff = *state;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
 
     diff = initialize_registry_diff_data("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", "valuename", configuration);
 
@@ -1252,7 +1252,7 @@ void test_fim_registry_value_diff_wrong_data_type(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_NONE;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
@@ -1264,7 +1264,7 @@ void test_fim_registry_value_diff_wrong_registry_tmp(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, NULL, value_data);
 
@@ -1281,7 +1281,7 @@ void test_fim_registry_value_diff_wrong_too_big_file(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
     configuration->diff_size_limit = 1024;
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, (FILE *)1234, value_data);
@@ -1303,7 +1303,7 @@ void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
     configuration->diff_size_limit = 1024;
     syscheck.comp_estimation_perc = 0.4;
 
@@ -1326,7 +1326,7 @@ void test_fim_registry_value_diff_uncompress_fail(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, (FILE *)1234, value_data);
 
@@ -1353,7 +1353,7 @@ void test_fim_registry_value_diff_create_compress_fail(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
 
     expect_fim_diff_registry_tmp("queue/diff/tmp", "queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, (FILE *)1234, value_data);
 
@@ -1380,7 +1380,7 @@ void test_fim_registry_value_diff_compare_fail(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "3c183a30cffcda1408daf1c61d47b274";
 
@@ -1411,7 +1411,7 @@ void test_fim_registry_value_diff_nodiff(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+   registry_t*configuration = &syscheck.registry[0];
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
 
@@ -1442,7 +1442,7 @@ void test_fim_registry_value_diff_generate_fail(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+    registry_t*configuration = &syscheck.registry[0];
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
 
@@ -1481,7 +1481,7 @@ void test_fim_registry_value_diff_generate_diff_str(void **state) {
     const char *value_name = "valuename";
     const char *value_data = "value_data";
     DWORD data_type = REG_EXPAND_SZ;
-    registry *configuration = &syscheck.registry[0];
+    registry_t *configuration = &syscheck.registry[0];
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
 
