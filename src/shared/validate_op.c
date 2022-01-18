@@ -409,14 +409,9 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
     /* Assign the IP address */
     if (final_ip) {
         memset(final_ip, 0, sizeof(os_ip));
-
-        char aux_ip[IPSIZE + 1] = {0};
-
-        if (!OS_GetIPv4FromIPv6(ip_address, aux_ip, IPSIZE)) {
-            strncpy(aux_ip, ip_address, IPSIZE);
-        }
-
-        os_strdup(aux_ip, final_ip->ip);
+        os_calloc(IPSIZE + 1, sizeof(char), final_ip->ip);
+        strncpy(final_ip->ip, ip_address, IPSIZE);
+        OS_GetIPv4FromIPv6(final_ip->ip, IPSIZE);
     }
 
     if (strcmp(ip_address, "any") != 0) {
@@ -486,8 +481,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
-                            os_realloc(final_ip->ip, IPSIZE + 1, final_ip->ip);
-                            OS_ExpandIPv6(regex_match->sub_strings[0], cidr, final_ip->ip, IPSIZE);
+                            OS_ExpandIPv6(final_ip->ip, cidr, IPSIZE);
 
                         } else {
                             ret = 0;
@@ -574,7 +568,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 }
 
 /* Extract embedded IPv4 from IPv6 */
-int OS_GetIPv4FromIPv6(const char *ip_address, char *dst_ip, size_t dst_size)
+int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
 {
     w_expression_t * exp;
     int ret = 0;
@@ -588,8 +582,8 @@ int OS_GetIPv4FromIPv6(const char *ip_address, char *dst_ip, size_t dst_size)
 
         /* number of regex captures */
         if (regex_match->d_size.prts_str_alloc_size/sizeof(char*)) {
+            strncpy(ip_address, regex_match->sub_strings[0], size);
             ret = 1;
-            strncpy(dst_ip, regex_match->sub_strings[0], dst_size);
         }
     }
 
@@ -606,8 +600,8 @@ int OS_GetIPv4FromIPv6(const char *ip_address, char *dst_ip, size_t dst_size)
 }
 
 /* Expand IPv6 address */
-int OS_ExpandIPv6(const char *ip_address, int cidr, char *dst_ip, size_t dst_size) {
-
+int OS_ExpandIPv6(char *ip_address, int cidr, size_t size)
+{
     struct in6_addr net6;
     memset(&net6, 0, sizeof(net6));
 
@@ -624,15 +618,18 @@ int OS_ExpandIPv6(const char *ip_address, int cidr, char *dst_ip, size_t dst_siz
 #endif
     }
 
-    snprintf(dst_ip, dst_size, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
-         (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
-         (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
-         (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
-         (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15]);
-
     if (cidr) {
-        char *aux_ip = dst_ip;
-        snprintf(dst_ip, dst_size, "%s/%u", aux_ip, cidr);
+        snprintf(ip_address, size, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X/%u",
+            (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
+            (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
+            (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
+            (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15], cidr);
+    } else {
+        snprintf(ip_address, size, "%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+            (int)aux[0], (int)aux[1], (int)aux[2], (int)aux[3],
+            (int)aux[4], (int)aux[5], (int)aux[6], (int)aux[7],
+            (int)aux[8], (int)aux[9], (int)aux[10], (int)aux[11],
+            (int)aux[12], (int)aux[13], (int)aux[14], (int)aux[15]);
     }
 
     return OS_SUCCESS;

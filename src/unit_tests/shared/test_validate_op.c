@@ -1213,16 +1213,17 @@ void OS_CIDRtoStr_valid_ipv4_CIDR_0(void **state)
 
 void OS_GetIPv4FromIPv6_success(void **state) {
 
-    char ipv4[IPSIZE] = {0};
+    char address[IPSIZE + 1] = {0};
+    strncpy(address, "::ffff:10.2.2.3", IPSIZE);
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
     will_return(__wrap_w_expression_match, -1);
     will_return(__wrap_w_expression_match, "10.2.2.3");
 
-    int ret = OS_GetIPv4FromIPv6("::ffff:10.2.2.3", ipv4, IPSIZE);
+    int ret = OS_GetIPv4FromIPv6(address, IPSIZE);
 
-    assert_string_equal("10.2.2.3", ipv4);
+    assert_string_equal("10.2.2.3", address);
     assert_int_equal(ret, 1);
 }
 

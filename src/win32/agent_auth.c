@@ -79,7 +79,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
     // Connect via TCP
     *socket = OS_ConnectTCP(port, manager, strchr(manager, ':') != NULL);
     if (*socket < 0)
-        merror_exit("Unable to connect to %s:%d", manager, port);
+        merror_exit("Unable to connect to [%s]:%d", manager, port);
 
     // Setting authentication credentials
     ZeroMemory(&auth_cred, sizeof (auth_cred));
@@ -166,7 +166,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
     // Send remaining tokens if any
     SendSecurityToken(*socket, OutBuffers);
 
-    printf("INFO: Connected to %s:%d\n", manager, port);
+    printf("INFO: Connected to [%s]:%d\n", manager, port);
     LocalFree(buffer);
 }
 

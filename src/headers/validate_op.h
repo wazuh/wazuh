@@ -51,24 +51,22 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
 /**
  * @brief Check if an IPv4 address is embedded in an IPv6 address and resolve it.
  *
- * @param ip_address [in] IPv6 address.
- * @param dst_ip [out] Buffer with the given IPv4 address resolved.
- * @param dst_size [out] Size of the output buffer.
+ * @param ip_address IPv6 address to be analized, if it contains an IPv4, it will be modified with it.
+ * @param size Size of the address buffer.
  * @return Returns 0 if doesn't match or 1 if it does.
  */
-int OS_GetIPv4FromIPv6(const char *ip_address, char *dst_ip, size_t dst_size);
+int OS_GetIPv4FromIPv6(char *ip_address, size_t size);
 
 
 /**
  * @brief Expand IPv6 to its full representation.
  *
- * @param ip_address [in] IPv6 address.
- * @param cidr [in] Integer value of the netmask.
- * @param dst_ip [out] Buffer with the given IPv6 address expanded.
- * @param dst_size [out] Size of the output buffer.
+ * @param ip_address IPv6 address to be expanded, it will be modified with its full representation.
+ * @param cidr Integer value of the netmask.
+ * @param size Size of the address buffer.
  * @return Returns 0 on success or -1 on failure.
  */
-int OS_ExpandIPv6(const char *ip_address, int cidr, char *dst_ip, size_t dst_size);
+int OS_ExpandIPv6(char *ip_address, int cidr, size_t size);
 
 
 /**

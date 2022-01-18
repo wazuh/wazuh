@@ -23,8 +23,8 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip);
 
-int __wrap_OS_GetIPv4FromIPv6(const char *ip_address, char *dst_ip, size_t dst_size);
+int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size);
 
-int __wrap_OS_ExpandIPv6(const char *ip_address, int cidr, char *dst_ip, size_t dst_size);
+int __wrap_OS_ExpandIPv6(char *ip_address, int cidr, size_t size);
 
 #endif

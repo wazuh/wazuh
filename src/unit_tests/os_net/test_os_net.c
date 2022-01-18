@@ -688,10 +688,12 @@ void get_ipv6_string_success(void ** state) {
     }
 
     expect_string(__wrap_OS_GetIPv4FromIPv6, ip_address, "1010:1010:1010:1010:1010:1010:1010:1010");
+    expect_value(__wrap_OS_GetIPv4FromIPv6, size, IPSIZE);
     will_return(__wrap_OS_GetIPv4FromIPv6, 0);
 
     expect_string(__wrap_OS_ExpandIPv6, ip_address, "1010:1010:1010:1010:1010:1010:1010:1010");
     expect_value(__wrap_OS_ExpandIPv6, cidr, 0);
+    expect_value(__wrap_OS_ExpandIPv6, size, IPSIZE);
     will_return(__wrap_OS_ExpandIPv6, 0);
 
     int ret = get_ipv6_string(addr6, address, IPSIZE);

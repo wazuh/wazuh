@@ -192,15 +192,15 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     char *ip_address = NULL;
     char *tmp_str = strchr(server_address, '/');
     if (tmp_str) {
-        // server_address comes in {hostname}/{ip} fomat
+        // server_address comes in {hostname}/{ip} format
         ip_address = strdup(++tmp_str);
     }
-    if(!ip_address){
+    if (!ip_address) {
         // server_address is either a host or a ip
         ip_address = OS_GetHost(server_address, 3);
     }
 
-    /* Translate hostname to an ip_adress */
+    /* Translate hostname to an ip_address */
     if (!ip_address) {
         merror("Could not resolve hostname: %s\n", server_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
@@ -540,8 +540,7 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const i
 
     if(sender_ip && !use_src_ip) { // Force an IP
         /* Check if this is strictly an IP address using a regex */
-        if (OS_IsValidIP(sender_ip, NULL))
-        {
+        if (OS_IsValidIP(sender_ip, NULL) == 1) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
             strncat(buff,opt_buf,254);

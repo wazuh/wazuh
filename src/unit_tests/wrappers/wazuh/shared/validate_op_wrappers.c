@@ -47,25 +47,15 @@ int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     return ret;
 }
 
-int __wrap_OS_GetIPv4FromIPv6(const char *ip_address, char *dst_ip, size_t dst_size) {
+int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size) {
     check_expected(ip_address);
-
-    int ret = mock();
-    if(ret == 1){
-        strncpy(dst_ip, ip_address, dst_size);
-    }
-
-    return ret;
+    check_expected(size);
+    return mock();
 }
 
-int __wrap_OS_ExpandIPv6(const char *ip_address, int cidr, char *dst_ip, size_t dst_size) {
+int __wrap_OS_ExpandIPv6(char *ip_address, int cidr, size_t size) {
     check_expected(ip_address);
     check_expected(cidr);
-
-    int ret = mock();
-    if(ret == 0){
-        strncpy(dst_ip, ip_address, dst_size);
-    }
-
-    return ret;
+    check_expected(size);
+    return mock();
 }

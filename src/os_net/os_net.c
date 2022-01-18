@@ -991,7 +991,6 @@ int get_ipv4_string(struct in_addr addr, char *address, size_t address_size) {
 
 int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
     int ret = OS_INVALID;
-    char aux_ip[IPSIZE + 1] = {0};
 
 #ifdef WIN32
     if (checkVista()) {
@@ -1014,8 +1013,8 @@ int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
     }
 #endif
 
-    if (ret == OS_SUCCESS && (OS_GetIPv4FromIPv6(address, aux_ip, IPSIZE) || !OS_ExpandIPv6(address, 0, aux_ip, IPSIZE))) {
-        strncpy(address, aux_ip, address_size);
+    if ((ret == OS_SUCCESS) && !OS_GetIPv4FromIPv6(address, IPSIZE)) {
+        OS_ExpandIPv6(address, 0, IPSIZE);
     }
 
     return ret;
