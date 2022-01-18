@@ -147,7 +147,6 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_
 # map_value test
 add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_value.cpp)
 gtest_discover_tests(map_value_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp)
 
 # map_reference test
 add_executable(map_reference_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp )

@@ -1,35 +1,29 @@
-#include <string>
 #include <rxcpp/rx.hpp>
+#include <string>
 
-#include "builder.hpp"
-#include "utils.hpp"
+#include "asset_builder.hpp"
 #include "json.hpp"
-
-#include "rapidjson/document.h"
-#include "rapidjson/pointer.h"
 
 using namespace std;
 using namespace rxcpp;
 
-namespace
-{
-    string name("map.value");
-    observable<json::Document> build(const observable<json::Document> &input_observable,
-                                     const rapidjson::Value &input_json)
-    {
-        auto iter = input_json.MemberBegin();
-        auto output_observable = input_observable.map([iter](json::Document e)
-        {
+using namespace std;
+using namespace rxcpp;
+using namespace builder::internals;
 
-            e.set(iter->name.GetString(),iter->value);
-
-            return e;
-
-        });
-        return output_observable;
-    }
-
-    builder::internals::Builder<observable<json::Document>(observable<json::Document>,
-                                       rapidjson::Value)>
-    map_value(name, build);
+using event_t = json::Document;
+using value_t = const json::Value *;
+namespace {
+observable<event_t> build(const observable<event_t> &input_observable,
+                          value_t input_json) {
+  auto valDoc = json::Document(*input_json);
+  auto output_observable = input_observable.map([valDoc](event_t e) {
+    e.set(valDoc);
+    return e;
+  });
+  return output_observable;
 }
+
+AssetBuilder<observable<event_t>(observable<event_t>, value_t)>
+    map_value("map.value", build);
+} // namespace
