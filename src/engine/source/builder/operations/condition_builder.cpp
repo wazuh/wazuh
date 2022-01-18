@@ -1,66 +1,66 @@
-#include <string>
-#include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
+#include <string>
 
-#include "builder.hpp"
+#include "asset_builder.hpp"
+#include "json.hpp"
 #include "registry.hpp"
 #include "syntax.hpp"
-#include "utils.hpp"
 
-
-using json = nlohmann::json;
 using namespace std;
 using namespace rxcpp;
+using namespace builder::internals;
 
-namespace
-{
-    string name("condition");
-    observable<json> build(const observable<json>& input_observable, const json& input_json)
-    {
-        // Check that input is as expected and throw exception otherwise
-        if (!input_json.is_object())
-        {
-            throw builder::BuildError(name, "build expects json with an object");
-        }
+using event_t = json::Document;
+using value_t = const json::Value *;
+using condition_builder_t =
+    AssetBuilder<observable<event_t>(observable<event_t>, value_t)>;
 
-        if (input_json.size() != 1)
-        {
-            throw builder::BuildError(name, "build expects json with only one key");
-        }
+namespace {
+observable<event_t> build(const observable<event_t> &input_observable,
+                          value_t input_json) {
+  // Check that input is as expected and throw exception otherwise
+  if (!input_json->IsObject()) {
+    throw invalid_argument(
+        "condition build expects json with an object, but got " +
+        input_json->GetType());
+  }
 
-        auto it = begin(input_json);
-        auto field =  builder::utils::JsonPath(it.key());
-        // Todo validate json path
-        auto value = it.value();
-        builder::Registry& registry = builder::Registry::instance();
+  if (input_json->GetObject().MemberCount() != 1) {
+    throw invalid_argument(
+        "condition build expects json with only one key, but got" +
+        input_json->GetObject().MemberCount());
+  }
 
-        observable<json> output_observable;
+  value_t value = &input_json->MemberBegin()->value;
 
-        // Deduce builder from value anchors, only if it is string
-        if (value.is_string())
-        {
-            auto str_value = value.get<string>();
+  observable<event_t> output_observable;
 
-            if (str_value.compare(0, builder::syntax::REFERENCE_ANCHOR.size(), builder::syntax::REFERENCE_ANCHOR) == 0)
-            {
-                /* TODO */
-            }
-            else if (str_value.compare(0, builder::syntax::HELPER_ANCHOR.size(), builder::syntax::HELPER_ANCHOR) == 0)
-            {
-                output_observable = static_cast<const builder::JsonBuilder*>(registry.get_builder("helper."+str_value.replace(0, builder::syntax::HELPER_ANCHOR.size(), "")))->build(input_observable, input_json);
-            }
-            else
-            {
-                output_observable = static_cast<const builder::JsonBuilder*>(registry.get_builder("condition.value"))->build(input_observable, input_json);
-            }
-        }
-        else
-        {
-            output_observable = static_cast<const builder::JsonBuilder*>(registry.get_builder("condition.value"))->build(input_observable, input_json);
-        }
+  // Deduce builder from value anchors, only if it is string
+  if (value->IsString()) {
+    string str_value = value->GetString();
 
-        return output_observable;
+    if (str_value.compare(0, syntax::REFERENCE_ANCHOR.size(),
+                          syntax::REFERENCE_ANCHOR) == 0) {
+      /* TODO */
+    } else if (str_value.compare(0, syntax::HELPER_ANCHOR.size(),
+                                 syntax::HELPER_ANCHOR) == 0) {
+      output_observable = Registry::instance().builder<condition_builder_t>(
+          "condition." + str_value.replace(0, syntax::HELPER_ANCHOR.size(), ""))(
+          input_observable, input_json);
+
+    } else {
+      output_observable = Registry::instance().builder<condition_builder_t>(
+          "condition.value")(input_observable, input_json);
     }
+  } else if (value->IsArray()) {
+    /* TODO */
+  } else {
+    output_observable = Registry::instance().builder<condition_builder_t>(
+        "condition.value")(input_observable, input_json);
+  }
 
-    builder::JsonBuilder condition_builder(name, build);
+  return output_observable;
 }
+
+condition_builder_t conditionBuilder("condition", build);
+} // namespace

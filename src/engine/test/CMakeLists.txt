@@ -23,6 +23,6 @@ file(GLOB SOURCE_FILES ${TEST_SOURCE_DIR}/*.cpp)
 # Build unit tests
 include(GoogleTest)
 
+add_subdirectory(${TEST_SOURCE_DIR}/json)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
 add_subdirectory(${TEST_SOURCE_DIR}/graph)
-add_subdirectory(${TEST_SOURCE_DIR}/json)
