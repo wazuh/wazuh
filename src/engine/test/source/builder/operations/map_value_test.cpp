@@ -10,12 +10,12 @@
 using condition_builder_t =
     AssetBuilder<observable<event>(observable<event>, value_t)>;
 
-TEST(ConditionValueTest, Initializes) {
+TEST(MapValueTest, Initializes) {
   ASSERT_NO_THROW(
       Registry::instance().builder<condition_builder_t>("map.value"));
 }
 
-TEST(ConditionValueTest, Builds) {
+TEST(MapValueTest, Builds) {
   // Fake entry poing
   auto entry_point = rxcpp::observable<>::create<event>(handler);
 
@@ -38,7 +38,7 @@ TEST(ConditionValueTest, Builds) {
                       _builder(entry_point, fake_j.get(".check")));
 }
 
-TEST(ConditionValueTest, Operates) {
+TEST(MapValueTest, Operates) {
   // Fake entry poing
   rxcpp::observable<event> entry_point =
       rxcpp::observable<>::create<event>([](subscriber<event> o) {
