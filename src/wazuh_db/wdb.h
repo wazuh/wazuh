@@ -218,6 +218,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND,
     WDB_STMT_GLOBAL_AGENT_GROUPS_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
@@ -1065,7 +1066,18 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to get all the agent information in global.db.
+ * @brief Function to get the groups integrity information in global.db.
+ *
+ * @param wdb The global struct database.
+ * @param input String with 'hash'.
+ * @param output Response of the query in JSON format.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_get_groups_integrity(wdb_t * wdb, char * input, char* output);
+
+/**
+ * @brief Function to get all the agent information.
  *
  * @param wdb The global struct database.
  * @param input String with 'agent_id'.
@@ -2005,12 +2017,14 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id);
 wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status);
 
 /**
- * @brief
+ * @brief Verifies if at least one entry in the Global DB has the group_sync_status as "syncreq".
+ *        If not, it compares a received hash that represents the group column against a calculated hash.
  *
- * @param wdb The Global struct database
- * @return A cached group hash.
+ * @param wdb The Global struct database.
+ * @param hash Received group column hash.
+ * @return cJSON* Returns a cJSON object with the groups integrity status or NULL on error.
  */
-int wdb_get_global_group_hash(wdb_t *wdb, os_sha1 hash);
+cJSON* wdb_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
 
 /**
  * @brief Gets the maximum priority of the groups of an agent.

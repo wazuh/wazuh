@@ -883,8 +883,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_set_agent_groups(wdb, next, output);
             }
-        }
-        else if (strcmp(query, "sync-agent-info-get") == 0) {
+        } else if (strcmp(query, "sync-agent-info-get") == 0) {
             result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             if (!next) {
@@ -894,6 +893,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
+            }
+        } else if (strcmp(query, "get-groups-integrity") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_get_groups_integrity(wdb, next, output);
             }
         } else if (strcmp(query, "disconnect-agents") == 0) {
             if (!next) {
@@ -5584,6 +5592,25 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     cJSON_Delete(root);
 
     return OS_SUCCESS;
+}
+
+int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
+    os_sha1 hash = {0};
+    strncpy(hash, input, strlen(input));
+    int ret = OS_SUCCESS;
+    cJSON *j_result = wdb_get_groups_integrity(wdb, hash);
+    if (j_result) {
+        char* out = cJSON_PrintUnformatted(j_result);
+        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        os_free(out);
+        cJSON_Delete(j_result);
+    } else {
+        mdebug1("Error getting groups integrity information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
+        ret = OS_INVALID;
+    }
+
+    return ret;
 }
 
 int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {

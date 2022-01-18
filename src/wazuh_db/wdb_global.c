@@ -1213,6 +1213,35 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
     }
 }
 
+cJSON* wdb_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+
+    if (stmt == NULL) {
+        return NULL;
+    }
+
+    cJSON* response = NULL;
+
+    switch (sqlite3_step(stmt)) {
+    case SQLITE_ROW:
+        response = cJSON_CreateArray();
+        cJSON_AddItemToArray(response, cJSON_CreateString("syncreq"));
+        return response;
+    case SQLITE_DONE:
+        response = cJSON_CreateArray();
+        os_sha1 hexdigest = {0};
+        if (OS_SUCCESS == wdb_get_global_group_hash(wdb, hexdigest) && !strcmp(hexdigest, hash)) {
+            cJSON_AddItemToArray(response, cJSON_CreateString("synced"));
+        } else {
+            cJSON_AddItemToArray(response, cJSON_CreateString("hash_mismatch"));
+        }
+        return response;
+    default:
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return response;
+    }
+}
+
 int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
 
