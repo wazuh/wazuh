@@ -10,6 +10,9 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "wazuhdb_op.h"
 
 extern void __real_cJSON_Delete(cJSON *item);
@@ -38,6 +41,13 @@ static int test_teardown(void **state){
     os_free(data->wdb);
     os_free(data);
     return 0;
+}
+
+/* wrappers */
+
+// Re-definition to avoid checking the time variable. It requires less changes than mocking time()
+char* __wrap_w_get_timestamp(time_t time) {
+    return mock_type(char*);
 }
 
 /* Tests wdb_global_get_agent_labels */
@@ -5439,6 +5449,146 @@ void test_wdb_global_get_agents_by_connection_status_err(void **state)
     assert_null(result);
 }
 
+/* Tests wdb_global_create_backup */
+
+void test_wdb_global_create_backup_commit_failed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char* test_date = strdup("2015/11/23 12:00:00");
+
+    will_return(__wrap_w_get_timestamp, test_date);
+    will_return(__wrap_wdb_commit2, OS_INVALID);
+
+    result = wdb_global_create_backup(data->wdb, data->output, "-tag");
+
+    assert_string_equal(data->output, "err Cannot commit current transaction to create backup");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_create_backup_prepare_failed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char* test_date = strdup("2015/11/23 12:00:00");
+
+    will_return(__wrap_w_get_timestamp, test_date);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    result = wdb_global_create_backup(data->wdb, data->output, "-tag");
+
+    assert_string_equal(data->output, "err DB(global) sqlite3_prepare_v2(): ERROR MESSAGE");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_create_bind_failed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char* test_date = strdup("2015/11/23 12:00:00");
+
+    will_return(__wrap_w_get_timestamp, test_date);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    result = wdb_global_create_backup(data->wdb, data->output, "-tag");
+
+    assert_string_equal(data->output, "err DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_create_exec_failed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char* test_date = strdup("2015/11/23 12:00:00");
+
+    will_return(__wrap_w_get_timestamp, test_date);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    result = wdb_global_create_backup(data->wdb, data->output, "-tag");
+
+    assert_string_equal(data->output, "err SQLite: ERROR MESSAGE");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_create_compress_failed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char* test_date = strdup("2015/11/23 12:00:00");
+
+    will_return(__wrap_w_get_timestamp, test_date);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap_w_compress_gzfile, filesrc, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    expect_string(__wrap_w_compress_gzfile, filedst, "backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz");
+    will_return(__wrap_w_compress_gzfile, OS_INVALID);
+    expect_string(__wrap_unlink, file, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    will_return(__wrap_unlink, OS_SUCCESS);
+
+    result = wdb_global_create_backup(data->wdb, data->output, "-tag");
+
+    assert_string_equal(data->output, "err Failed during database backup compression");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_create_compress_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char* test_date = strdup("2015/11/23 12:00:00");
+
+    will_return(__wrap_w_get_timestamp, test_date);
+    will_return(__wrap_wdb_commit2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_finalize_all_statements);
+    will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+    will_return(__wrap_sqlite3_finalize, SQLITE_OK);
+
+    expect_string(__wrap_w_compress_gzfile, filesrc, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    expect_string(__wrap_w_compress_gzfile, filedst, "backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz");
+    will_return(__wrap_w_compress_gzfile, OS_SUCCESS);
+    expect_string(__wrap_unlink, file, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
+    will_return(__wrap_unlink, OS_SUCCESS);
+    expect_string(__wrap__minfo, formatted_msg, "Created Global database backup \"backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz\"");
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // wdb_global_remove_old_backups
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to open backup directory 'backup/db'");
+
+    result = wdb_global_create_backup(data->wdb, data->output, "-tag");
+
+    assert_string_equal(data->output, "ok [\"backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz\"]");
+    assert_int_equal(result, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -5665,7 +5815,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_due, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_err, test_setup, test_teardown),
-        };
-
+        /* Tests wdb_global_create_backup */
+        cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_commit_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_prepare_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_create_bind_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_create_exec_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_create_compress_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_create_compress_success, test_setup, test_teardown),
+    };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
