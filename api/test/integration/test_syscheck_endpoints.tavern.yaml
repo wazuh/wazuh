@@ -490,9 +490,6 @@ stages:
 ---
 test_name: PUT /syscheck
 
-marks:
-  - xfail # Review and fix syscheck API integration test - https://github.com/wazuh/wazuh/issues/10913
-
 stages:
 
   - name: Try to run a syscheck scan in agent 000
