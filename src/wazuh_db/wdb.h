@@ -2020,23 +2020,6 @@ char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id);
 wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status);
 
 /**
- * @brief
- *
- * @param wdb The Global struct database
- * @return A cached group hash.
- */
-int wdb_get_global_group_hash(wdb_t *wdb, os_sha1 hash);
-
-/**
- * @brief Calculates a hash of the group column.
- *
- * @param wdb The Global struct database.
- * @param hexdigest Calculated hash that represent the group column.
- * @return OS_SUCCESS if the hexdigest variable was written with the global group hash value, OS_INVALID otherwise.
- */
-int wdb_get_global_group_hash(wdb_t *wdb, os_sha1 hexdigest);
-
-/**
  * @brief Verifies if at least one entry in the Global DB has the group_sync_status as "syncreq".
  *        If not, it compares a received hash that represents the group column against a calculated hash.
  *
