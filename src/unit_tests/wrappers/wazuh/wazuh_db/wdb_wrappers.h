@@ -87,4 +87,8 @@ cJSON *__wrap_wdb_get_config();
 
 int __wrap_wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
 
+int __wrap_wdb_commit2(wdb_t * wdb);
+
+void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb);
+
 #endif

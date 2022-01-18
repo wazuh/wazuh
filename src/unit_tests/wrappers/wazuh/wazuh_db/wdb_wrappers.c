@@ -356,3 +356,11 @@ int __wrap_wdb_get_global_group_hash(__attribute__((unused))wdb_t * wdb,
     check_expected(hexdigest);
     return mock();
 }
+
+int __wrap_wdb_commit2(__attribute__((unused))wdb_t * wdb) {
+    return mock();
+}
+
+void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb) {
+    function_called();
+}
