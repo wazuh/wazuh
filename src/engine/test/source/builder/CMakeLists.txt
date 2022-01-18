@@ -140,7 +140,7 @@ add_executable(helper_exists_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_e
 gtest_discover_tests(helper_exists_test)
 
 # map_builder test
-add_executable(map_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp)
+add_executable(map_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_builder.cpp ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_value.cpp)
 gtest_discover_tests(map_builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp)
 
