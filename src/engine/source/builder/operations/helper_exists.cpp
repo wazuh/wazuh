@@ -1,106 +1,48 @@
-#include <string>
-#include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
+#include <string>
 
-#include "builder.hpp"
-#include "utils.hpp"
+#include "asset_builder.hpp"
+#include "json.hpp"
 
-using json = nlohmann::json;
 using namespace std;
 using namespace rxcpp;
+using namespace builder::internals;
 
-namespace
-{
-    /**********************************************************************************************/
-    /* Helper exists
-    /**********************************************************************************************/
-    string name_exists("helper.exists");
-    observable<json> build_exists(const observable<json>& input_observable, const json& input_json)
-    {
-        // Check that input is as expected and throw exception otherwise
-        if (!input_json.is_object())
-        {
-            throw builder::BuildError(name_exists, "build expects json with an object");
-        }
+using event_t = json::Document;
+using value_t = const json::Value *;
 
-        if (input_json.size() != 1)
-        {
-            throw builder::BuildError(name_exists, "build expects json with only one key");
-        }
+namespace {
 
-        auto it = begin(input_json);
-        auto field =  builder::utils::JsonPath(it.key());
-        // Todo validate json path
-        // value is ignored
-        // auto value = it.value();
-        auto output_observable = input_observable.filter([field](json e)
-        {
-            const json* actual = &e;
+/**********************************************************************************************/
+/* Helper exists
+/**********************************************************************************************/
+observable<event_t> buildExists(const observable<event_t> &input_observable,
+                                value_t input_json) {
+  string field = "/";
+  field += input_json->MemberBegin()->name.GetString();
 
-            for (auto field_name : field)
-            {
-
-                if (!actual->contains(field_name))
-                {
-                    return false;
-                }
-                else
-                {
-                    actual = &(*actual)[field_name];
-                }
-            }
-
-            return true;
-        });
-        return output_observable;
-    }
-
-    builder::JsonBuilder helper_exists_builder(name_exists, build_exists);
-
-
-    /**********************************************************************************************/
-    /* Helper not_exists
-    /**********************************************************************************************/
-    string name_not_exists("helper.not_exists");
-    observable<json> build_not_exists(const observable<json>& input_observable, const json& input_json)
-    {
-        // Check that input is as expected and throw exception otherwise
-        if (!input_json.is_object())
-        {
-            throw builder::BuildError(name_not_exists, "build expects json with an object");
-        }
-
-        if (input_json.size() != 1)
-        {
-            throw builder::BuildError(name_not_exists, "build expects json with only one key");
-        }
-
-        auto it = begin(input_json);
-        auto field =  builder::utils::JsonPath(it.key());
-        // Todo validate json path
-        // value is ignored
-        // auto value = it.value();
-        auto output_observable = input_observable.filter([field](json e)
-        {
-            const json* actual = &e;
-
-            for (auto field_name : field)
-            {
-
-                if (actual->contains(field_name))
-                {
-                    return false;
-                }
-                else
-                {
-                    actual = &(*actual)[field_name];
-                }
-            }
-
-            return true;
-        });
-        return output_observable;
-    }
-
-    builder::JsonBuilder helper_not_exists_builder(name_not_exists, build_not_exists);
+  auto output_observable =
+      input_observable.filter([field](event_t e) { return e.check(field); });
+  return output_observable;
 }
+
+AssetBuilder<observable<event_t>(observable<event_t>, value_t)>
+    conditionExists("condition.exists", buildExists);
+
+/**********************************************************************************************/
+/* Helper not_exists
+/**********************************************************************************************/
+observable<event_t> buildNotExists(const observable<event_t> &input_observable,
+                                   value_t input_json) {
+  string field = "/";
+  field += input_json->MemberBegin()->name.GetString();
+
+  auto output_observable =
+      input_observable.filter([field](event_t e) { return !e.check(field); });
+  return output_observable;
+}
+
+AssetBuilder<observable<event_t>(observable<event_t>, value_t)>
+    conditionNotExists("condition.not_exists", buildNotExists);
+
+} // namespace
