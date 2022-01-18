@@ -90,7 +90,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
         }
         if (configuration->opts & CHECK_SHA256SUM) {
             if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
-                cJSON_AddStringToObject(attributes, "value_type", sha256->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_sha256", sha256->valuestring);
             }
         }
 
@@ -153,17 +153,17 @@ cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
  * @param diff A string holding the change in the value content.
  * @return A pointer to a cJSON object holding the FIM event, NULL on error or if no event is generated.
  */
+cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
+                                            const fim_registry_value_data *value,
+                                            const registry_t *configuration,
+                                            const event_data_t *evt_data,
+                                            __attribute__((unused)) whodata_evt *w_evt,
+                                            const char* diff)
+{
 
-cJSON *fim_registry_value_json_event(const fim_entry *new_data,
-                                     const fim_entry *old_data,
-                                     const registry_t *configuration,
-                                     fim_event_mode mode,
-                                     unsigned int type,
-                                     __attribute__((unused)) whodata_evt *w_evt,
-                                     const char *diff) {
-    cJSON *changed_attributes = NULL;
+    //cJSON *changed_attributes = NULL;
 
-    if (old_data != NULL && old_data->registry_entry.value != NULL) {
+    /*if (old_data != NULL && old_data->registry_entry.value != NULL) {
         changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
                                                               old_data->registry_entry.value, configuration);
 
@@ -171,7 +171,12 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
             cJSON_Delete(changed_attributes);
             return NULL;
         }
+        if (old_data != NULL && old_data->registry_entry.value != NULL) {
+            cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+            cJSON_AddItemToObject(data, "old_attributes",
+                                  fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
     }
+    }*/
 
     cJSON *json_event = cJSON_CreateObject();
     cJSON_AddStringToObject(json_event, "type", "event");
@@ -179,22 +184,44 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(json_event, "data", data);
 
-    cJSON_AddStringToObject(data, "path", new_data->registry_entry.key->path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[type]);
-    cJSON_AddStringToObject(data, "arch", new_data->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(data, "value_name", new_data->registry_entry.value->name);
-    cJSON_AddNumberToObject(data, "timestamp", new_data->registry_entry.value->last_event);
+    if (value)
+    {
+        cJSON_AddStringToObject(data, "path", value->path);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
+        cJSON_AddStringToObject(data, "value_name", value->name);
 
-    //cJSON_AddItemToObject(data, "attributes",
-    //                      fim_registry_value_attributes_json(new_data->registry_entry.value, configuration));
+    } else
+    {
 
-    if (old_data != NULL && old_data->registry_entry.value != NULL) {
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        //cJSON_AddItemToObject(data, "old_attributes",
-        //                      fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
+        cJSON *path, *arch, *value_name;
+
+        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
+        {
+            cJSON_AddStringToObject(data, "path", path->valuestring);
+        }
+
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+
+        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
+        {
+            cJSON_AddStringToObject(data, "arch", arch->valuestring);
+        }
+
+        if (value_name = cJSON_GetObjectItem(dbsync_event, "name"), value_name != NULL)
+        {
+            cJSON_AddStringToObject(data, "value_name", value_name->valuestring);
+        }
+
     }
+
+    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(dbsync_event, "last_event")->valuestring);
+
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
 
     if (diff != NULL) {
         cJSON_AddStringToObject(data, "content_changes", diff);
@@ -255,7 +282,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
         if (configuration->opts & CHECK_PERM) {
             if (perm = cJSON_GetObjectItem(dbsync_event, "perm"), perm != NULL) {
-                cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(perm->valuestring));
+                cJSON_AddItemToObject(attributes, "perm", perm);
             }
         }
 
@@ -355,14 +382,13 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
  * @param w_evt A whodata object holding information corresponding to the event.
  * @return A pointer to a cJSON object holding the FIM event, NULL on error.
  */
-cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
-                                   const fim_registry_key *old_data,
-                                   const registry_t *configuration,
-                                   fim_event_mode mode,
-                                   unsigned int type,
-                                   __attribute__((unused)) whodata_evt *w_evt) {
-    cJSON *changed_attributes;
-
+cJSON* fim_dbsync_registry_key_json_event(const cJSON* dbsync_event,
+                                          const fim_registry_key* key,
+                                          const registry_t* configuration,
+                                          const event_data_t* evt_data)
+{
+    /*
+    cJSON* changed_attributes = NULL;
     if (old_data != NULL) {
         changed_attributes = fim_registry_compare_key_attrs(new_data, old_data, configuration);
 
@@ -372,67 +398,56 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
         }
     }
 
-    cJSON *json_event = cJSON_CreateObject();
-    cJSON_AddStringToObject(json_event, "type", "event");
-
-    cJSON *data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    cJSON_AddStringToObject(data, "path", new_data->path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[type]);
-    cJSON_AddStringToObject(data, "arch", new_data->arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
-
-    //cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(new_data, configuration));
-
     if (old_data) {
         cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        //cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
+        cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
+    }
+    */
+
+    cJSON* json_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    if (key != NULL)
+    {
+        cJSON_AddStringToObject(data, "path", key->path);
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+        cJSON_AddStringToObject(data, "arch", (key->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
+
+    }
+    else
+    {
+        cJSON *path, *arch;
+
+        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
+        {
+            cJSON_AddStringToObject(data, "path", path->valuestring);
+        }
+
+        cJSON_AddNumberToObject(data, "version", 2.0);
+        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
+        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
+
+        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
+        {
+            cJSON_AddStringToObject(data, "arch", arch->valuestring);
+        }
     }
 
-    if (configuration->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", configuration->tag);
-    }
+    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(fim_entry, "last_event")->valuestring);
 
-    return json_event;
-}
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
 
-cJSON *fim_registry_event(const fim_entry *new,
-                          const fim_entry *saved,
-                          const registry_t *configuration,
-                          fim_event_mode mode,
-                          unsigned int event_type,
-                          __attribute__((unused)) whodata_evt *w_evt,
-                          const char *diff) {
-    cJSON *json_event = NULL;
+    char* tags = NULL;
 
-    if (new == NULL) {
-        mwarn(FIM_REGISTRY_EVENT_NULL_ENTRY);
-        return NULL;
-    }
+    tags = configuration->tag;
 
-    if (new->registry_entry.key == NULL) {
-        mwarn(FIM_REGISTRY_EVENT_NULL_ENTRY_KEY);
-        return NULL;
-    }
-
-    if (new->type != FIM_TYPE_REGISTRY) {
-        mwarn(FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
-        return NULL;
-    }
-
-    if (saved && saved->type != FIM_TYPE_REGISTRY) {
-        mwarn(FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE);
-        return NULL;
-    }
-
-    if (new->registry_entry.value != NULL) {
-        json_event = fim_registry_value_json_event(new, saved, configuration, mode, event_type, w_evt, diff);
-    } else {
-        json_event = fim_registry_key_json_event(new->registry_entry.key, saved ? saved->registry_entry.key : NULL,
-                                                 configuration, mode, event_type, w_evt);
+    if (tags != NULL) {
+        cJSON_AddStringToObject(data, "tags", tags);
     }
 
     return json_event;
