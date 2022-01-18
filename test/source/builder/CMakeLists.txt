@@ -149,9 +149,8 @@ add_executable(map_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_te
 gtest_discover_tests(map_value_test)
 
 # map_reference test
-add_executable(map_reference_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp )
+add_executable(map_reference_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/map_reference.cpp)
 gtest_discover_tests(map_reference_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp)
 
 ####################################################################################################
 # Special targets WIP
