@@ -31,7 +31,11 @@ set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl
                             -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,resolve_hostname \
                             -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
                             -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select \
-                            -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid -Wl,--wrap,fim_db_init \
+                            -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                            -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                            -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update \
+                            -Wl,--wrap,fim_db_file_pattern_search ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random")
 else()
@@ -40,7 +44,11 @@ endif()
 
 list(APPEND client-agent_names "test_notify")
 list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix,--wrap,close \
-                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time -Wl,--wrap,fim_db_init \
+                                -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                                -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                                -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update \
+                                -Wl,--wrap,fim_db_file_pattern_search ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agentd_state")
 if(${TARGET} STREQUAL "winagent")
@@ -51,7 +59,11 @@ if(${TARGET} STREQUAL "winagent")
                                 -Wl,--wrap,cJSON_AddItemToObject@12 -Wl,--wrap,cJSON_AddStringToObject@12 \
                                 -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime \
                                 -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
-                                -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--enable-stdcall-fixup -Wl,--wrap,fim_db_init \
+                                -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                                -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                                -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update \
+                                -Wl,--wrap,fim_db_file_pattern_search ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                 -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \
@@ -61,7 +73,11 @@ else()
 endif()
 
 list(APPEND client-agent_names "test_buffer")
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_db_init \
+                               -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                               -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                               -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update \
+                               -Wl,--wrap,fim_db_file_pattern_search")
 
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")

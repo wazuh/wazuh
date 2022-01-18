@@ -4,8 +4,12 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Tests list and flags
 list(APPEND shared_tests_names "test_list_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
-    -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
-    -Wl,--wrap,pthread_rwlock_wrlock ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
+                                -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
@@ -19,20 +23,38 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit ${DEBUG_OP_WRAPPERS}")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 ${DEBUG_OP_WRAPPERS}")
+    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2
+                                    -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                    -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                    -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                    -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                    -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg
+                                    ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_rbtree_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_validate_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_string_op")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_expression")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
@@ -46,14 +68,26 @@ list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
 
 list(APPEND shared_tests_names "test_queue_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
-                                -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
+                                -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_queue_linked_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
-                                -Wl,--wrap=pthread_cond_signal")
+                                -Wl,--wrap=pthread_cond_signal -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_set_agent_group")
@@ -70,7 +104,11 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                                 -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                                -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket")
+                                -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
@@ -79,19 +117,39 @@ else()
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+-Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+-Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+-Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+-Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_buffer_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_utf8_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_log_builder")
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int")
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_custom_output_search_replace")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
@@ -169,7 +227,12 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
 endif()
 
 list(APPEND shared_tests_names "test_atomic")
-list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
@@ -185,7 +248,11 @@ if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
                                 -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
                                 -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
-                                -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4")
+                                -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4 -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
                                 -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \

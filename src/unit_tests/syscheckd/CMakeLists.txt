@@ -105,7 +105,10 @@ add_subdirectory(whodata)
 list(APPEND syscheckd_tests_names "syscom")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
-                                   -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+                                   -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                                   -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                                   -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
+                                   -Wl,--wrap,fim_db_init ${DEBUG_OP_WRAPPERS}")
 
 # create_db.c tests
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
@@ -132,10 +135,10 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
 
 list(APPEND syscheckd_tests_names "create_db")
 if(${TARGET} STREQUAL "winagent")
-    list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
-                                       -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
-                                       -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
-                                       -Wl,--wrap,get_UTC_modification_time")
+    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
+                                          -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                          -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
+                                          -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg")
 else()
     list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                        -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
@@ -162,7 +165,7 @@ list(APPEND syscheckd_tests_names "fim_diff_changes")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
 endif()
@@ -183,12 +186,13 @@ list(APPEND syscheckd_tests_names "run_realtime")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
-                                           -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists")
+                                           -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists \
+                                           -Wl,--wrap,fim_sync_push_msg")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
@@ -207,7 +211,7 @@ list(APPEND syscheckd_tests_names "config")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 else()
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg")
 endif()
 
 # syscheck.c tests
@@ -228,7 +232,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap,getpid,--wrap,realtime_start \
                                     -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
                                     -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
-                                    -Wl,--wrap,pthread_mutex_unlock")
+                                    -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_sync_push_msg")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -254,7 +258,8 @@ if(${TARGET} STREQUAL "agent")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start \
                                      -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
-                                     -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock")
+                                     -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
+                                     -Wl,--wrap,fim_sync_push_msg")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
@@ -264,7 +269,8 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap,pthread_rwlock_unlock \
                                                                    -Wl,--wrap,pthread_mutex_lock \
                                                                    -Wl,--wrap,pthread_rwlock_wrlock \
-                                                                   -Wl,--wrap,pthread_mutex_unlock")
+                                                                   -Wl,--wrap,pthread_mutex_unlock \
+                                                                   -Wl,--wrap,fim_sync_push_msg")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()

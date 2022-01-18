@@ -14,7 +14,11 @@ list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merro
                         -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,StartMQ -Wl,--wrap,sleep \
                         -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg -Wl,--wrap,OSRegex_Compile \
                         -Wl,--wrap,wm_state_io -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
-                        -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,localtime_r")
+                        -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,localtime_r
+                        -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                        -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                        -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
+                        -Wl,--wrap,fim_db_init")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
