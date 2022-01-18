@@ -77,23 +77,18 @@ include_directories(
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
   ${BUILDER_TEST_SOURCE_DIR}
+  ${ENGINE_SOURCE_DIR}/json
   ${rapidjson_headers}/include
 )
 
 link_libraries(
   gtest_main
   rxcpp
-  nlohmann_json::nlohmann_json
 )
 
 ####################################################################################################
 # Builder targets
 ####################################################################################################
-# Operation WIP
-add_executable(operation_test ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp ${SOURCES})
-target_include_directories(operation_test PUBLIC ${BUILDER_TEST_SOURCE_DIR})
-gtest_discover_tests(operation_test)
-
 # Asset Builder test
 add_executable(asset_builder_test ${BUILDER_TEST_SOURCE_DIR}/asset_builder_test.cpp)
 gtest_discover_tests(asset_builder_test)
@@ -126,7 +121,7 @@ gtest_discover_tests(builder_test)
 ####################################################################################################
 # Ensemble targets
 ####################################################################################################
-add_executable(decoder_test ${BUILDER_ENSEMBLES_TEST_SOURCE_DIR}/decoder_test.cpp ${SOURCES})
+add_executable(decoder_test ${BUILDER_ENSEMBLES_TEST_SOURCE_DIR}/decoder_test.cpp)
 gtest_discover_tests(decoder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_ENSEMBLES_TEST_SOURCE_DIR}/decoder_test.cpp)
 
@@ -134,7 +129,7 @@ list(APPEND ALL_BUILDER_TESTS ${BUILDER_ENSEMBLES_TEST_SOURCE_DIR}/decoder_test.
 # Operations targets
 ####################################################################################################
 # condition_builder test
-add_executable(condition_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_builder_test.cpp ${SOURCES})
+add_executable(condition_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_builder_test.cpp)
 gtest_discover_tests(condition_builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_builder_test.cpp)
 
@@ -147,7 +142,7 @@ add_executable(helper_exists_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_e
 gtest_discover_tests(helper_exists_test)
 
 # map_builder test
-add_executable(map_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp ${SOURCES})
+add_executable(map_builder_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp)
 gtest_discover_tests(map_builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_builder_test.cpp)
 
@@ -157,7 +152,7 @@ gtest_discover_tests(map_value_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_value_test.cpp)
 
 # map_reference test
-add_executable(map_reference_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp ${SOURCES})
+add_executable(map_reference_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp)
 gtest_discover_tests(map_reference_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/map_reference_test.cpp)
 
