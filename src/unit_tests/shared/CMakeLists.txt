@@ -31,9 +31,6 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 list(APPEND shared_tests_names "test_validate_op")
 list(APPEND shared_tests_flags " ")
 
-list(APPEND shared_tests_names "test_string_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
-
 list(APPEND shared_tests_names "test_expression")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
                              -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
