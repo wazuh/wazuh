@@ -14,33 +14,6 @@
 
 #include "rxcpp/rx.hpp"
 
-// namespace definitive {
-// class Document {
-// private:
-//   shared_ptr<rapidjson::Document> m_doc;
-//   const rapidjson::Value *m_val;
-
-// public:
-//   Document(const char *json): m_doc{std::make_shared<rapidjson::Document>()}{
-//     this->m_doc->Parse(json);
-//     auto ptr = rapidjson::Pointer("/");
-//     if (ptr.IsValid()) {
-//       this->m_val = ptr.Get(this->m_doc);
-//     } else {
-//       throw std::invalid_argument(
-//           "Invalid value inicialization on construction");
-//     }
-//   }
-
-//   bool operator==(const Document &rhs) const {
-//     return *this->m_val == *rhs.m_val;
-//   }
-//   bool operator==(const rapidjson::Value &rhs) const {
-//     return *this->m_val == rhs;
-//   }
-// };
-
-//} // namespace definitive
 /**
  * @brief Contains Json functionality.
  *
@@ -121,7 +94,8 @@ public:
   }
 
   bool check(const Document &expected) const {
-    std::string path = '/' + expected.begin()->name.GetString();
+    std::string path = "/";
+    path += expected.begin()->name.GetString();
     std::replace(std::begin(path), std::end(path), '.', '/');
     auto ptr = rapidjson::Pointer(path.c_str());
     if (ptr.IsValid()) {
@@ -145,7 +119,11 @@ public:
   bool check(std::string path) const {
     std::replace(std::begin(path), std::end(path), '.', '/');
     auto ptr = rapidjson::Pointer(path.c_str());
-    return ptr.IsValid();
+    if (ptr.IsValid() && ptr.Get(this->m_doc)) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /**

@@ -1,4 +1,3 @@
-#include <memory>
 #include <rxcpp/rx.hpp>
 #include <string>
 
