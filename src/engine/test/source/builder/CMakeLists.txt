@@ -76,6 +76,7 @@ include_directories(
   ${BUILDER_ENGINES_ENGINE_SOURCE_DIR}
   ${BUILDER_ENSEMBLES_ENGINE_SOURCE_DIR}
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
+  ${BUILDER_TEST_SOURCE_DIR}
   ${rapidjson_headers}/include
 )
 
@@ -92,7 +93,6 @@ link_libraries(
 add_executable(operation_test ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp ${SOURCES})
 target_include_directories(operation_test PUBLIC ${BUILDER_TEST_SOURCE_DIR})
 gtest_discover_tests(operation_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp)
 
 # Asset Builder test
 add_executable(asset_builder_test ${BUILDER_TEST_SOURCE_DIR}/asset_builder_test.cpp)
@@ -135,9 +135,8 @@ gtest_discover_tests(condition_builder_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_builder_test.cpp)
 
 # condition_value test
-add_executable(condition_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_value_test.cpp ${SOURCES})
+add_executable(condition_value_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_value_test.cpp ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}/condition_value.cpp)
 gtest_discover_tests(condition_value_test)
-list(APPEND ALL_BUILDER_TESTS ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/condition_value_test.cpp)
 
 # helper_exists test
 add_executable(helper_exists_test ${BUILDER_OPERATIONS_TEST_SOURCE_DIR}/helper_exists_test.cpp ${SOURCES})
