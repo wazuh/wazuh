@@ -1,56 +1,27 @@
-#include <string>
-#include <nlohmann/json.hpp>
+#include <memory>
 #include <rxcpp/rx.hpp>
+#include <string>
 
-#include "builder.hpp"
-#include "utils.hpp"
+#include "asset_builder.hpp"
+#include "json.hpp"
 
-
-using json = nlohmann::json;
 using namespace std;
 using namespace rxcpp;
+using namespace builder::internals;
 
-namespace
-{
-    string name("condition.value");
-    observable<json> build(const observable<json>& input_observable, const json& input_json)
-    {
-        // Check that input is as expected and throw exception otherwise
-        if (!input_json.is_object())
-        {
-            throw builder::BuildError(name, "build expects json with an object");
-        }
+using event_t = json::Document;
+using value_t = const json::Value *;
 
-        if (input_json.size() != 1)
-        {
-            throw builder::BuildError(name, "build expects json with only one key");
-        }
+namespace {
+observable<event_t> build(const observable<event_t> &input_observable,
+                          value_t input_json) {
+  auto valDoc = json::Document(*input_json);
 
-        auto it = begin(input_json);
-        auto field =  builder::utils::JsonPath(it.key());
-        // Todo validate json path
-        auto value = it.value();
-        auto output_observable = input_observable.filter([field, value](json e)
-        {
-            const json* actual = &e;
-
-            for (auto field_name : field)
-            {
-
-                if (!actual->contains(field_name))
-                {
-                    return false;
-                }
-                else
-                {
-                    actual = &(*actual)[field_name];
-                }
-            }
-
-            return *actual == value;
-        });
-        return output_observable;
-    }
-
-    builder::JsonBuilder condition_value_builder(name, build);
+  auto output_observable =
+      input_observable.filter([valDoc](event_t e) { return e.check(valDoc); });
+  return output_observable;
 }
+
+AssetBuilder<observable<event_t>(observable<event_t>, value_t)>
+    condition_value("condition.value", build);
+} // namespace
