@@ -153,10 +153,9 @@ static void test_create_sendsync_payload(void **state) {
     cJSON_Delete(payload);
 }
 
-static void test_get_agent_group(void **state) {
-    char* group;
+static void test_get_agent_group_success(void **state) {
+    char* group = NULL;
     int agent_id = 1;
-    int wdb_sock = -1;
     size_t size = OS_SIZE_65536 + 1;
     int res;
 
@@ -165,18 +164,27 @@ static void test_get_agent_group(void **state) {
 
     cJSON *agent_info_correct = cJSON_CreateArray();
     cJSON *agent_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(agent_info, "group", group);
+    cJSON_AddStringToObject(agent_info, "group", "default");
     cJSON_AddItemToArray(agent_info_correct, agent_info);
 
-    cJSON *agent_info_no_field = cJSON_CreateArray();
-    cJSON *agent_info_ver = cJSON_CreateObject();
-    cJSON_AddStringToObject(agent_info_ver, "version", "1.2");
-    cJSON_AddItemToArray(agent_info_no_field, agent_info_ver);
+    /* Success agent group assignment and return value  */
+    expect_value(__wrap_wdb_get_agent_info, id, agent_id);
+    will_return(__wrap_wdb_get_agent_info, agent_info_correct);
+    res = get_agent_group(agent_id, group, size, NULL);
+    assert_string_equal("default", group);
+    assert_int_equal(res, OS_SUCCESS);
 
-    cJSON *agent_info_several_correct = cJSON_CreateArray();
-    cJSON *agent_info_several_ok = cJSON_CreateObject();
-    cJSON_AddStringToObject(agent_info_several_ok, "group", "default,Group1");
-    cJSON_AddItemToArray(agent_info_several_correct, agent_info_several_ok);
+    os_free(group);
+}
+
+static void test_get_agent_group_missing_agent_info(void **state) {
+    char* group = NULL;
+    int agent_id = 1;
+    size_t size = OS_SIZE_65536 + 1;
+    int res;
+
+    os_calloc(size, sizeof(char), group);
+    snprintf(group, size, "%s","default");
 
     /* Unable to get agent info */
     expect_value(__wrap_wdb_get_agent_info, id, agent_id);
@@ -186,28 +194,29 @@ static void test_get_agent_group(void **state) {
 
     assert_int_equal(res, OS_INVALID);
 
+    os_free(group);
+}
+
+static void test_get_agent_group_missing_group(void **state) {
+    char* group = NULL;
+    int agent_id = 1;
+    size_t size = OS_SIZE_65536 + 1;
+    int res;
+
+    os_calloc(size, sizeof(char), group);
+    snprintf(group, size, "%s","default");
+
+    cJSON *agent_info_no_field = cJSON_CreateArray();
+    cJSON *agent_info_ver = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info_ver, "version", "1.2");
+    cJSON_AddItemToArray(agent_info_no_field, agent_info_ver);
+
     /* Unable to get agent group  */
     expect_value(__wrap_wdb_get_agent_info, id, agent_id);
     will_return(__wrap_wdb_get_agent_info, agent_info_no_field);
     res = get_agent_group(agent_id, group, size, NULL);
 
     assert_int_equal(res, OS_INVALID);
-
-    /* Correct single group  */
-    expect_value(__wrap_wdb_get_agent_info, id, agent_id);
-    will_return(__wrap_wdb_get_agent_info, agent_info_correct);
-    res = get_agent_group(agent_id, group, size, NULL);
-    assert_string_equal("default", group);
-    assert_int_equal(res, OS_SUCCESS);
-
-    snprintf(group, size, "%s","default,Group2");
-
-    /* return OK, Wrong groups string  */
-    expect_value(__wrap_wdb_get_agent_info, id, agent_id);
-    will_return(__wrap_wdb_get_agent_info, agent_info_several_correct);
-    res = get_agent_group(agent_id, group, size, NULL);
-    assert_string_not_equal("default,Group2", group);
-    assert_int_equal(res, OS_SUCCESS);
 
     os_free(group);
 }
@@ -295,7 +304,9 @@ static void test_parse_agent_add_response(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_get_agent_group),
+        cmocka_unit_test(test_get_agent_group_success),
+        cmocka_unit_test(test_get_agent_group_missing_agent_info),
+        cmocka_unit_test(test_get_agent_group_missing_group),
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_parse_agent_add_response),
         #ifndef WIN32
