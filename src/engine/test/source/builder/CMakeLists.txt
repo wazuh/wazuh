@@ -29,23 +29,13 @@ CPMAddPackage(
   OPTIONS
       "INSTALL_GTEST OFF"
 )
+
 # ReactiveX/RxCpp
 CPMAddPackage(
   NAME RxCpp
   GITHUB_REPOSITORY ReactiveX/RxCpp
   GIT_TAG v4.1.1
   VERSION 4.1.1
-)
-
-# nlohmann/json
-CPMAddPackage(
-  NAME json
-  GITHUB_REPOSITORY nlohmann/json
-  GIT_TAG v3.10.4
-  VERSION 3.10.4
-  OPTIONS
-      "JSON_BuildTests OFF"
-      "JSON_Install OFF"
 )
 
 # Tencent/rapidjson
@@ -104,9 +94,9 @@ target_include_directories(operation_test PUBLIC ${BUILDER_TEST_SOURCE_DIR})
 gtest_discover_tests(operation_test)
 list(APPEND ALL_BUILDER_TESTS ${BUILDER_TEST_SOURCE_DIR}/operation_test.cpp)
 
-# Builder test
-add_executable(component_builder_test ${BUILDER_TEST_SOURCE_DIR}/component_builder_test.cpp)
-gtest_discover_tests(component_builder_test)
+# Asset Builder test
+add_executable(asset_builder_test ${BUILDER_TEST_SOURCE_DIR}/asset_builder_test.cpp)
+gtest_discover_tests(asset_builder_test)
 
 # Registry test
 add_executable(registry_test ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp)
