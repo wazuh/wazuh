@@ -8,6 +8,7 @@ from logging import Logger
 from unittest.mock import call, patch
 
 import pytest
+from freezegun import freeze_time
 from uvloop import EventLoopPolicy, new_event_loop
 
 with patch('wazuh.common.wazuh_uid'):
@@ -92,14 +93,16 @@ def test_AbstractServerHandler_process_request(mock_process_request, mock_echo_m
     mock_process_request.assert_called_once_with(b"process", b"request")
 
 
+@freeze_time("1970-01-01")
 def test_AbstractServerHandler_echo_master():
     """Check that the echo_master function updates the last_keepalive variable and returns a confirmation message."""
+
     abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
                                                     cluster_items={"test": "server"})
 
-    with patch("time.time", return_value=0.777):
-        assert abstract_server_handler.echo_master(data=b"wazuh") == (b"ok-m ", b"wazuh")
-        assert abstract_server_handler.last_keepalive == 0.777
+    assert abstract_server_handler.echo_master(data=b"wazuh") == (b"ok-m ", b"wazuh")
+    abstract_server_handler.echo_master(data=b"wazuh")
+    assert abstract_server_handler.last_keepalive == 0.0
 
 
 def test_AbstractServerHandler_hello():
@@ -313,6 +316,7 @@ async def test_AbstractServer_check_clients_keepalive(loop_mock, sleep_mock):
                                                    "worker_test in the last minute. Disconnecting")
 
 
+@pytest.mark.asyncio
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
 async def test_AbstractServer_echo(loop_mock, sleep_mock):
@@ -336,6 +340,7 @@ async def test_AbstractServer_echo(loop_mock, sleep_mock):
             mock_info.assert_called_once_with("keepalive worker_test mock")
 
 
+@freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
 async def test_AbstractServer_performance_test(loop_mock, sleep_mock):
@@ -347,19 +352,19 @@ async def test_AbstractServer_performance_test(loop_mock, sleep_mock):
             return data * 10
 
     logger = Logger("test_echo")
-    with patch("time.time", return_value=2.5):
-        with patch.object(logger, "info") as mock_info:
-            abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                             cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
-            abstract_server.clients = {b"worker_test": ClientMock()}
-            abstract_server.performance = 2
-            try:
-                await abstract_server.performance_test()
-            except IndexError:
-                pass
-            mock_info.assert_called_once_with("Received size: 20 // Time: 0.0")
+    with patch.object(logger, "info") as mock_info:
+        abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                         cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+        abstract_server.clients = {b"worker_test": ClientMock()}
+        abstract_server.performance = 2
+        try:
+            await abstract_server.performance_test()
+        except IndexError:
+            pass
+        mock_info.assert_called_once_with("Received size: 20 // Time: 0.0")
 
 
+@freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
 async def test_AbstractServer_concurrency_test(loop_mock, sleep_mock):
@@ -371,17 +376,16 @@ async def test_AbstractServer_concurrency_test(loop_mock, sleep_mock):
             pass
 
     logger = Logger("test_echo")
-    with patch("time.time", return_value=2.5):
-        with patch.object(logger, "info") as mock_info:
-            abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                             cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
-            abstract_server.clients = {b"worker_test": ClientMock()}
-            abstract_server.concurrency = 777
-            try:
-                await abstract_server.concurrency_test()
-            except IndexError:
-                pass
-            mock_info.assert_called_once_with("Time sending 777 messages: 0.0")
+    with patch.object(logger, "info") as mock_info:
+        abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                         cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+        abstract_server.clients = {b"worker_test": ClientMock()}
+        abstract_server.concurrency = 777
+        try:
+            await abstract_server.concurrency_test()
+        except IndexError:
+            pass
+        mock_info.assert_called_once_with("Time sending 777 messages: 0.0")
 
 
 @pytest.mark.asyncio
