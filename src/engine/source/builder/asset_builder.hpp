@@ -1,29 +1,29 @@
-#ifndef _COMPONENT_BUILDER_H
-#define _COMPONENT_BUILDER_H
+#ifndef _ASSET_BUILDER_H
+#define _ASSET_BUILDER_H
 
 #include <functional>
 #include <string>
 
 namespace builder::internals {
 
-template <class> class ComponentBuilder;
+template <class> class AssetBuilder;
 template <class Operation, class... BuildArgs>
-class ComponentBuilder<Operation(BuildArgs...)> {
+class AssetBuilder<Operation(BuildArgs...)> {
 private:
   std::string m_name;
   std::function<Operation(BuildArgs...)> m_build;
 
 public:
-  ComponentBuilder(){};
-  ComponentBuilder(const std::string &name,
+  AssetBuilder(){};
+  AssetBuilder(const std::string &name,
           std::function<Operation(BuildArgs...)> buildFunction)
       : m_name{name}, m_build{buildFunction} {}
 
-  ComponentBuilder(const ComponentBuilder<Operation(BuildArgs...)> &other)
+  AssetBuilder(const AssetBuilder<Operation(BuildArgs...)> &other)
       : m_name{other.m_name}, m_build{other.m_build} {}
 
-  ComponentBuilder<Operation(BuildArgs...)> &
-  operator=(const ComponentBuilder<Operation(BuildArgs...)> &other) {
+  AssetBuilder<Operation(BuildArgs...)> &
+  operator=(const AssetBuilder<Operation(BuildArgs...)> &other) {
     this->m_name = other.m_name;
     this->m_build = other.m_build;
     return *this;
@@ -35,4 +35,4 @@ public:
 };
 } // namespace builder::internals
 
-#endif // _COMPONENT_BUILDER_H
+#endif // _ASSET_BUILDER_H
