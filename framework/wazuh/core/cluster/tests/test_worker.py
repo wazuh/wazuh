@@ -4,13 +4,13 @@
 import asyncio
 import json
 import logging
-import pytest
 import sys
-import threading
-import time
+from unittest.mock import patch, MagicMock, call
+
+import pytest
 import uvloop
 import wazuh.core.exception as exception
-from unittest.mock import patch, MagicMock, call
+from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -73,7 +73,28 @@ def test_rit_set_up_coro(create_task_mock):
     receive_task.wazuh_common = WazuhCommonMock
 
     assert receive_task.set_up_coro() == WazuhCommonMock.process_files_from_master
-    # create_task_mock.assert_called_once()
+    create_task_mock.assert_called_once()
+
+
+@patch('asyncio.create_task')
+@patch('wazuh.core.cluster.worker.c_common.ReceiveFileTask.done_callback')
+def test_rit_done_callback(super_done_callback_mock, create_task_mock):
+    """Check if a callable is being returned by this method."""
+
+    class WazuhCommonMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.check_integrity_free = False
+
+    receive_task = worker.ReceiveIntegrityTask(wazuh_common=worker_handler, logger=None)
+    receive_task.wazuh_common = WazuhCommonMock
+
+    receive_task.done_callback()
+
+    create_task_mock.assert_called_once()
+    assert receive_task.wazuh_common.check_integrity_free is True
+    super_done_callback_mock.assert_called_once()
 
 
 # Test SyncTask class methods
@@ -123,7 +144,7 @@ async def test_sync_task_sync():
 # Test SyncFiles class methods
 
 @pytest.mark.asyncio
-@patch("json.dumps", return_value="")
+@patch("json.dumps", return_value='')
 @patch("os.path.relpath", return_value="path")
 @patch("os.unlink", return_value="unlinked path")
 @patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
@@ -255,9 +276,10 @@ def test_sync_wazuh_db_init():
 
 
 @pytest.mark.asyncio
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch("json.dumps", return_value="")
-async def test_sync_wazuh_db_sync_ok(json_dumps_mock, time_mock):
+@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value=True)
+async def test_sync_wazuh_db_sync_ok(run_in_pool_mock, json_dumps_mock):
     """Check if the information is being properly sent to the master node."""
     chunks = True
 
@@ -274,7 +296,7 @@ async def test_sync_wazuh_db_sync_ok(json_dumps_mock, time_mock):
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_debug_mock:
         with patch("wazuh.core.cluster.worker.WorkerHandler.send_string", return_value=b"OK") as send_string_mock:
             with patch("wazuh.core.cluster.worker.WorkerHandler.send_request") as send_request_mock:
-                assert await sync_wazuh_db.sync(10) is True
+                assert await sync_wazuh_db.sync(start_time=10) is True
                 send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
                 json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
                 logger_debug_mock.assert_has_calls(
@@ -282,29 +304,26 @@ async def test_sync_wazuh_db_sync_ok(json_dumps_mock, time_mock):
 
             send_string_mock.assert_called_with(b"")
 
-    # Test except
-    time_mock.side_effect = exception.WazuhException(1001)
-    with patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock:
-        await sync_wazuh_db.sync(10)
-        logger_error_mock.assert_called_once_with(
-            f"Error obtaining data from wazuh-db: {exception.WazuhException(1001)}")
+            # Test except
+        logger_debug_mock.side_effect = exception.WazuhException(1001)
+        with patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock:
+            assert await sync_wazuh_db.sync(start_time=10) is None
+            logger_error_mock.assert_called_once_with(
+                f"Error obtaining data from wazuh-db: {exception.WazuhException(1001)}")
 
     # Test else
     chunks = False
-    time_mock.side_effect = None
     with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock:
-        assert await sync_wazuh_db.sync(10) is True
+        assert await sync_wazuh_db.sync(start_time=10) is True
         logger_info_mock.assert_called_once_with(f"Finished in -10.000s (0 chunks sent).")
-
-    time_mock.assert_any_call()
 
 
 @pytest.mark.asyncio
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch("json.dumps", return_value="")
 @patch.object(logging.getLogger("wazuh"), "debug")
 @patch("wazuh.core.cluster.worker.WorkerHandler.send_string", return_value=b"Error")
-async def test_sync_wazuh_db_sync_ko(send_string_mock, logger_debug_mock, json_dumps_mock, time_mock):
+async def test_sync_wazuh_db_sync_ko(send_string_mock, logger_debug_mock, json_dumps_mock):
     """Test if the proper exceptions are raised when needed."""
 
     def callable_mock(data):
@@ -315,13 +334,11 @@ async def test_sync_wazuh_db_sync_ko(send_string_mock, logger_debug_mock, json_d
 
     # Test try and if
     with pytest.raises(exception.WazuhClusterError, match=r".* 3016 .*"):
-        await sync_wazuh_db.sync(10)
+        await sync_wazuh_db.sync(start_time=10)
         json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
         logger_debug_mock.assert_called_once_with(f"Obtained {1} chunks of data in 0.000s.")
 
     send_string_mock.assert_called_with(b"")
-
-    time_mock.assert_any_call()
 
 
 # Test WorkerHandler class methods.
@@ -484,10 +501,10 @@ def test_worker_handler_get_manager():
     assert isinstance(get_worker_handler().get_manager(), client.AbstractClientManager)
 
 
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch.object(logging.getLogger("wazuh.Integrity check"), "info")
 @patch("wazuh.core.cluster.common.WazuhCommon.setup_receive_file", return_value="OK")
-def test_worker_handler_setup_receive_files_from_master(setup_receive_file_mock, logger_mock, time_mock):
+def test_worker_handler_setup_receive_files_from_master(setup_receive_file_mock, logger_mock):
     """Check is a task was set up to wait until the integrity information has been received from the master and
     processed."""
 
@@ -495,7 +512,6 @@ def test_worker_handler_setup_receive_files_from_master(setup_receive_file_mock,
     assert worker_handler.setup_receive_files_from_master() == "OK"
     logger_mock.assert_called_once_with("Finished in 0.000s. Sync required.")
     setup_receive_file_mock.assert_called_once()
-    time_mock.assert_called_once()
 
 
 @patch("wazuh.core.cluster.common.WazuhCommon.end_receiving_file", return_value=(b"OK", b"OK"))
@@ -514,20 +530,19 @@ def test_worker_handler_error_receiving_integrity(error_receiving_file_mock):
     error_receiving_file_mock.assert_called_once_with("file_name_and_errors")
 
 
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch.object(logging.getLogger("wazuh.Integrity check"), "info")
-def test_worker_handler_sync_integrity_ok_from_master(logger_mock, time_mock):
+def test_worker_handler_sync_integrity_ok_from_master(logger_mock):
     """Check the correct output message when a command 'sync_m_c_ok' takes place."""
 
     worker_handler.integrity_check_status = {"date_start": 0}
     assert worker_handler.sync_integrity_ok_from_master() == (b'ok', b'Thanks')
     logger_mock.assert_called_once_with("Finished in 0.000s. Sync not required.")
-    time_mock.assert_called_once()
 
 
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch("json.loads", return_value={"updated_chunks": 10, "error_messages": None})
-def test_worker_handler_sync_agent_info_from_master(json_loads_mock, time_mock):
+def test_worker_handler_sync_agent_info_from_master(json_loads_mock):
     """Check the correct output message when a command 'syn_m_a_e' takes place."""
 
     worker_handler.agent_info_sync_status = {"date_start": 0}
@@ -535,7 +550,6 @@ def test_worker_handler_sync_agent_info_from_master(json_loads_mock, time_mock):
     with patch.object(logging.getLogger("wazuh.Agent-info sync"), "info") as logger_info_mock:
         assert worker_handler.sync_agent_info_from_master("response") == (b'ok', b'Thanks')
         json_loads_mock.assert_called_once_with("response")
-        time_mock.assert_called_once()
         logger_info_mock.assert_called_once_with("Finished in 0.000s (10 chunks updated).")
 
     with patch.object(logging.getLogger("wazuh.Agent-info sync"), "error") as logger_error_mock:
@@ -554,82 +568,68 @@ def test_worker_handler_error_receiving_agent_info(logger_mock):
 
 
 @pytest.mark.asyncio
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch("json.dumps", return_value="")
-@patch("asyncio.sleep", return_value=500)
 @patch("wazuh.core.cluster.worker.SyncFiles.sync")
-@patch("wazuh.core.cluster.worker.SyncFiles.request_permission")
+@patch.object(logging.getLogger("wazuh.Integrity check"), "error")
 @patch("wazuh.core.cluster.cluster.get_files_status", return_value={})
-async def test_worker_handler_sync_integrity(get_files_status, request_permission_mock, sync_mock, sleep_mock,
-                                             json_dumps_mock, time_mock):
+@patch("wazuh.core.cluster.worker.client.common.Handler.send_request")
+@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value=True)
+@patch("wazuh.core.cluster.worker.SyncFiles.request_permission", return_value=True)
+async def test_worker_handler_sync_integrity(request_permission_mock, run_in_pool_mock, send_request_mock,
+                                             get_files_status, error_mock, sync_mock, json_dumps_mock):
     """Check if files status are correctly obtained and sent to the master."""
+    async def asyncio_sleep_mock(delay, result=None, *, loop=None):
+        assert delay == worker_handler.cluster_items['intervals']['worker']['sync_agent_info']
+        raise Exception()
 
-    async def request_permission_callable():
-        """Auxiliary method."""
+    class ManagerMock:
+        """Auxiliary class."""
 
-        return True
+        def __init__(self):
+            self.task_pool = None
 
-    async def final_function():
-        """Auxiliary method."""
-
-        await worker_handler.sync_integrity()
-
-    def middle_function():
-        """Auxiliary method."""
-
-        _loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(_loop)
-
-        _loop.run_until_complete(final_function())
-        _loop.close()
-
-    request_permission_mock.return_value = request_permission_callable
+    worker_handler.check_integrity_free = True
+    worker_handler.manager = ManagerMock()
 
     # Test the try
     with patch.object(logging.getLogger("wazuh.Integrity check"), "info") as logger_info_mock:
-        _thread = threading.Thread(target=middle_function)
-        _thread.start()
-        time.sleep(5)
+        with patch('asyncio.sleep', asyncio_sleep_mock):
+            try:
+                await worker_handler.sync_integrity()
+            except Exception:
+                pass
 
-        request_permission_mock.assert_any_call()
-        get_files_status.assert_any_call()
-        sync_mock.assert_called_with(files_metadata=get_files_status.return_value, files_to_sync={})
-        logger_info_mock.assert_called_with("Starting.")
-        assert worker_handler.integrity_check_status["date_start"] == time_mock.return_value
+            request_permission_mock.assert_any_call()
+            sync_mock.assert_called_with(files_metadata=worker_handler.check_integrity_free, files_to_sync={})
+            logger_info_mock.assert_called_with("Starting.")
+            assert worker_handler.integrity_check_status["date_start"] == 0.0
 
-    with patch.object(logging.getLogger("wazuh.Integrity check"), "error") as logger_error_mock:
-        with patch("wazuh.core.cluster.worker.client.common.Handler.send_request") as send_request_mock:
-            # Test the first exception
-            request_permission_mock.side_effect = exception.WazuhException(1001)
+            run_in_pool_mock.side_effect = exception.WazuhException(1001)
+            try:
+                await worker_handler.sync_integrity()
+            except Exception:
+                pass
 
-            _thread = threading.Thread(target=middle_function)
-            _thread.start()
-            time.sleep(5)
-
-            logger_error_mock.assert_called_with(f"Error synchronizing integrity: {exception.WazuhException(1001)}")
+            error_mock.assert_called_with(f"Error synchronizing integrity: {exception.WazuhException(1001)}")
             json_dumps_mock.assert_called_with(exception.WazuhException(1001), cls=common.WazuhJSONEncoder)
             send_request_mock.assert_called_with(command=b'syn_i_w_m_r', data=b'None ' + "".encode())
 
-            # Test the second exception
-            request_permission_mock.side_effect = Exception()
+            run_in_pool_mock.side_effect = Exception
+            try:
+                await worker_handler.sync_integrity()
+            except Exception:
+                pass
 
-            _thread = threading.Thread(target=middle_function)
-            _thread.start()
-            time.sleep(5)
-
-            logger_error_mock.assert_called_with("Error synchronizing integrity: ")
+            error_mock.assert_called_with("Error synchronizing integrity: ")
             json_dumps_mock.assert_called_with(exception.WazuhClusterError(code=1000, extra_message=str(Exception())),
                                                cls=common.WazuhJSONEncoder)
             send_request_mock.assert_called_with(command=b'syn_i_w_m_r', data=b'None ' + "".encode())
 
-    time_mock.assert_any_call()
-    sleep_mock.assert_called_with(2)
-
 
 @pytest.mark.asyncio
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch("wazuh.core.wdb.socket.socket")
-@patch("asyncio.sleep", return_value=500)
 @patch("wazuh.core.wdb.WazuhDBConnection._send")
 @patch("wazuh.core.wdb.WazuhDBConnection.execute")
 @patch("wazuh.core.cluster.worker.SyncWazuhdb.sync")
@@ -638,9 +638,12 @@ async def test_worker_handler_sync_integrity(get_files_status, request_permissio
 @patch.object(logging.getLogger("wazuh.Agent-info sync"), "error")
 @patch("wazuh.core.cluster.worker.SyncWazuhdb.request_permission")
 async def test_worker_handler_sync_agent_info(request_permission_mock, logger_error_mock, logger_info_mock,
-                                              run_wdb_command_mock, sync_mock, execute_mock, send_mock, sleep_mock,
-                                              socket_mock, time_mock):
+                                              run_wdb_command_mock, sync_mock, execute_mock, send_mock, socket_mock):
     """Check if information is obtained from this worker and send to manager."""
+
+    async def asyncio_sleep_mock(delay, result=None, *, loop=None):
+        assert delay == worker_handler.cluster_items['intervals']['worker']['sync_agent_info']
+        raise Exception()
 
     async def request_permission_callable():
         """Auxiliary method."""
@@ -652,42 +655,34 @@ async def test_worker_handler_sync_agent_info(request_permission_mock, logger_er
 
         return True
 
-    async def final_function():
-        """Auxiliary method."""
-        await worker_handler.sync_agent_info()
-
-    def middle_function():
-        """Auxiliary method."""
-
-        _loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(_loop)
-
-        _loop.run_until_complete(final_function())
-        _loop.close()
-
     request_permission_mock.return_value = request_permission_callable
     sync_mock.return_value = sync_callable
 
-    _thread = threading.Thread(target=middle_function)
-    _thread.daemon = True
-    _thread.start()
-    time.sleep(2)
-    sync_mock.side_effect = Exception()
-    time.sleep(2)
+    with patch('asyncio.sleep', asyncio_sleep_mock):
+        try:
+            await worker_handler.sync_agent_info()
+        except Exception:
+            pass
 
-    logger_info_mock.assert_called_with("Starting.")
-    logger_error_mock.assert_called_with("Error synchronizing agent info: ")
-    sync_mock.assert_called_with(start_time=0)
-    sleep_mock.assert_called_with(cluster_items['intervals']['worker']['sync_agent_info'])
-    assert worker_handler.agent_info_sync_status['date_start'] == time_mock.return_value
+        logger_info_mock.assert_called_with("Starting.")
+        sync_mock.assert_called_with(start_time=0)
+        assert worker_handler.agent_info_sync_status['date_start'] == 0.0
+
+        sync_mock.side_effect = Exception
+        try:
+            await worker_handler.sync_agent_info()
+        except Exception:
+            pass
+
+        logger_error_mock.assert_called_with("Error synchronizing agent info: ")
 
 
 @pytest.mark.asyncio
-@patch("time.time", return_value=0)
+@freeze_time('1970-01-01')
 @patch.object(logging.getLogger("wazuh.Integrity sync"), "debug")
 @patch("wazuh.core.cluster.worker.SyncFiles.sync", return_value=True)
 @patch("wazuh.core.cluster.cluster.merge_info", return_value=("n_files", "merged_file"))
-async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger_debug_mock, time_mock):
+async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger_debug_mock):
     """Test the 'sync_extra_valid' method."""
 
     extra_valid = {"/missing/path": 0, "missing/path2": 1}
@@ -697,7 +692,6 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger
         logger_debug_mock.assert_has_calls([call("Starting sending extra valid files to master."),
                                             call("Finished sending extra valid files in 0.000s.")])
         logger_info_mock.assert_called_once_with("Finished in 0.000s.")
-        time_mock.assert_any_call()
         merge_info_mock.assert_called_once_with(merge_type='agent-groups', node_name="Testing",
                                                 files=extra_valid.keys())
         sync_mock.assert_called_once_with(files_to_sync={
@@ -729,10 +723,10 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger
 
 
 @pytest.mark.asyncio
+@freeze_time('1970-01-01')
 @patch("shutil.rmtree")
 @patch("asyncio.wait_for")
 @patch("asyncio.create_task")
-@patch("time.time", return_value=0)
 @patch("json.dumps", return_value="")
 @patch("wazuh.core.cluster.cluster.decompress_files")
 @patch.object(logging.getLogger("wazuh.Integrity sync"), "info")
@@ -741,7 +735,7 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger
 @patch("wazuh.core.cluster.worker.WorkerHandler.update_master_files_in_worker")
 async def test_worker_handler_process_files_from_master_ok(update_files_mock, send_request_mock, logger_debug_mock,
                                                            logger_info_mock, decompress_files_mock, json_dumps_mock,
-                                                           time_mock, create_task_mock, wait_mock, rmtree_mock):
+                                                           create_task_mock, wait_mock, rmtree_mock):
     """Test if relevant actions are being performed for a file according to its status."""
 
     class EventMock:
@@ -768,14 +762,15 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     zip_path = "/zip/path"
 
     all_mocks = [update_files_mock, send_request_mock, logger_debug_mock, logger_info_mock, decompress_files_mock,
-                 json_dumps_mock, time_mock, create_task_mock, wait_mock, rmtree_mock]
+                 json_dumps_mock, create_task_mock, wait_mock, rmtree_mock]
 
     # Test try and nested if
     worker_handler.sync_tasks["task_id"] = TaskMock()
     decompress_files_mock.return_value = (ko_files[0], zip_path)
     await worker_handler.process_files_from_master(name="task_id", file_received=EventMock())
 
-    update_files_mock.assert_called_once_with(ko_files[0], zip_path)
+    update_files_mock.assert_called_once_with(ko_files[0], zip_path, cluster_items,
+                                              worker_handler.task_loggers['Integrity sync'])
     send_request_mock.assert_not_called()
     logger_debug_mock.assert_has_calls(
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
@@ -785,7 +780,6 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
          call("Files to create: 13 | Files to update: 12 | Files to delete: 11 | Files to send: 17")])
     decompress_files_mock.assert_called_once_with("path of the zip")
     json_dumps_mock.assert_not_called()
-    time_mock.assert_called_with()
     create_task_mock.assert_called_once()
     wait_mock.assert_called_once_with("something", timeout=1)
     rmtree_mock.assert_called_once_with(zip_path)
@@ -799,7 +793,8 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     decompress_files_mock.return_value = (ko_files[1], zip_path)
     await worker_handler.process_files_from_master(name="task_id", file_received=EventMock())
 
-    update_files_mock.assert_called_once_with(ko_files[1], zip_path)
+    update_files_mock.assert_called_once_with(ko_files[1], zip_path, cluster_items,
+                                              worker_handler.task_loggers['Integrity sync'])
     send_request_mock.assert_not_called()
     logger_debug_mock.assert_has_calls(
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
@@ -809,7 +804,6 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
         call("Finished in 0.000s.")])
     decompress_files_mock.assert_called_once_with("path of the zip")
     json_dumps_mock.assert_not_called()
-    time_mock.assert_called_with()
     create_task_mock.assert_not_called()
     wait_mock.assert_called_once_with("something", timeout=1)
     rmtree_mock.assert_called_once_with(zip_path)
@@ -828,7 +822,6 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     logger_debug_mock.assert_not_called()
     logger_info_mock.assert_called_once_with("Starting.")
     json_dumps_mock.assert_called_once_with(exception.WazuhException(1001), cls=common.WazuhJSONEncoder)
-    time_mock.assert_called_with()
     create_task_mock.assert_not_called()
     wait_mock.assert_called_once_with("something", timeout=1)
     rmtree_mock.assert_not_called()
@@ -848,7 +841,6 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     logger_info_mock.assert_called_once_with("Starting.")
     json_dumps_mock.assert_called_once_with(exception.WazuhClusterError(code=1000, extra_message=str(Exception())),
                                             cls=common.WazuhJSONEncoder)
-    time_mock.assert_called_with()
     create_task_mock.assert_not_called()
     wait_mock.assert_called_once_with("something", timeout=1)
     rmtree_mock.assert_not_called()
@@ -890,6 +882,12 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock, js
         wait_mock.assert_called_once_with(event_mock.wait(),
                                           timeout=cluster_items['intervals']['communication']['timeout_receiving_file'])
 
+    wait_mock.side_effect = Exception
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
+        await worker_handler.process_files_from_master(name="task_id", file_received=event_mock)
+
+        send_request_mock.assert_called_once_with(command=b'syn_i_w_m_r', data=b'None ' + "".encode())
+
 
 @patch("builtins.open")
 @patch("os.path.exists", return_value=False)
@@ -907,18 +905,19 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
         """Auxiliary class."""
 
         def __init__(self):
-            pass
+            self._debug2 = []
+            self._debug = []
+            self._error = []
 
         def debug(self, debug):
-            pass
+            self._debug.append(debug)
 
         def debug2(self, debug):
-            pass
+            self._debug2.append(debug)
 
         def error(self, error):
-            pass
+            self._error.append(error)
 
-    worker_handler.task_loggers = {"Integrity sync": LoggerMock()}
     all_mocks = [wazuh_gid_mock, wazuh_uid_mock, path_join_mock, mkdir_with_mode_mock, safe_move_mock, open_mock,
                  path_exists_mock]
 
@@ -934,11 +933,12 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 with patch("wazuh.core.cluster.cluster.unmerge_info", return_value=[("name", "content", "_")]):
                     with patch("os.remove") as os_remove_mock:
                         worker_handler.update_master_files_in_worker(
-                            {"shared": {
+                            ko_files={"shared": {
                                 "filename1": {"merged": "value", "cluster_item_key": "cluster_item_key"}},
                                 "missing": {
                                     "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
-                                "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path")
+                                "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
+                            cluster_items=cluster_items, logger=LoggerMock())
 
                         os_remove_mock.assert_any_call("queue/agent-groups/")
                         logger_error_mock.assert_not_called()
@@ -968,7 +968,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> if
                 worker_handler.update_master_files_in_worker(
                     {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
-                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path")
+                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                    cluster_items=cluster_items, logger=LoggerMock())
 
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
@@ -1006,7 +1007,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 path_join_mock.return_value = "queue/agent-groups_mock/"
                 worker_handler.update_master_files_in_worker(
                     {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
-                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path")
+                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                    cluster_items=cluster_items, logger=LoggerMock())
 
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
@@ -1058,7 +1060,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 with patch("os.listdir", return_value="dir_files") as listdir_mock:
                     with patch("shutil.rmtree") as rmtree_mock:
                         worker_handler.update_master_files_in_worker(
-                            {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path")
+                            {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                            cluster_items=cluster_items, logger=LoggerMock())
                         rmtree_mock.assert_called_once()
                         listdir_mock.assert_called_once()
 
@@ -1108,7 +1111,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
 
                 # Test the exception
                 worker_handler.update_master_files_in_worker(
-                    {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path")
+                    {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                    cluster_items=cluster_items, logger=LoggerMock())
 
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
@@ -1171,8 +1175,10 @@ def test_worker_handler_get_logger():
 def test_worker_init(api_request_queue, running_loop_mock):
     """Check if the object Worker is being properly initialized."""
 
+    task_pool = {'task_pool': ''}
     nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
-                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20)
+                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
+                                  task_pool=task_pool)
 
     assert nested_worker.cluster_name == "wazuh"
     assert nested_worker.node_type == "master"
@@ -1185,7 +1191,6 @@ def test_worker_init(api_request_queue, running_loop_mock):
     assert nested_worker.extra_args["node_type"] == nested_worker.node_type
     assert nested_worker.dapi == api_request_queue.return_value
     assert nested_worker.version == "1.0.0"
-
 
 @patch('asyncio.get_running_loop', return_value=loop)
 @patch("wazuh.core.cluster.client.AbstractClientManager.add_tasks", return_value=["task"])
@@ -1206,8 +1211,11 @@ def test_worker_add_tasks(api_request_queue, acm_mock, running_loop_mock):
             self.sync_integrity = "0101"
             self.sync_agent_info = "info"
 
+    task_pool = {'task_pool': ''}
+
     nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
-                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20)
+                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
+                                  task_pool=task_pool)
 
     nested_worker.client = ClientMock()
     nested_worker.dapi = DapiMock()
@@ -1218,9 +1226,11 @@ def test_worker_add_tasks(api_request_queue, acm_mock, running_loop_mock):
 @patch("wazuh.core.cluster.worker.dapi.APIRequestQueue", return_value="APIRequestQueue object")
 def test_worker_get_node(api_request_queue, running_loop_mock):
     """Check if the basic cluster information is returned."""
+    task_pool = {'task_pool': ''}
 
     nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
-                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20)
+                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
+                                  task_pool=task_pool)
 
     assert nested_worker.get_node() == {'type': nested_worker.configuration['node_type'],
                                         'cluster': nested_worker.configuration['name'],
