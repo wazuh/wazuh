@@ -293,6 +293,8 @@ class Handler(asyncio.Protocol):
         self.cluster_items = cluster_items
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
+        # Tasks to be interrupted.
+        self.interrupted_tasks = set()
 
     def push(self, message: bytes):
         """Send a message to peer.
@@ -475,13 +477,15 @@ class Handler(asyncio.Protocol):
             return b'Error sending request: timeout expired.'
         return response_data
 
-    async def send_file(self, filename: str) -> bytes:
+    async def send_file(self, filename: str, task_id: bytes = None) -> bytes:
         """Send a file to peer, slicing it into chunks.
 
         Parameters
         ----------
         filename : str
             Full path of the file to send.
+        task_id : bytes
+            Task identifier to stop sending file if needed.
 
         Returns
         -------
@@ -502,6 +506,8 @@ class Handler(asyncio.Protocol):
             for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
                 await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                 file_hash.update(chunk)
+                if task_id in self.interrupted_tasks:
+                    break
 
         # Close the destination file descriptor so the file in memory is dumped to disk.
         await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
@@ -696,8 +702,10 @@ class Handler(asyncio.Protocol):
             return self.str_upd(data)
         elif command == b'err_str':
             return self.process_error_str(data)
-        elif command == b"file_end":
+        elif command == b'file_end':
             return self.end_file(data)
+        elif command == b'cancel_task':
+            return self.cancel_task(data)
         else:
             return self.process_unknown_cmd(command)
 
@@ -801,6 +809,31 @@ class Handler(asyncio.Protocol):
         else:
             del self.in_file[name]
             return b"err", b"File wasn't correctly received. Checksums aren't equal."
+
+    def cancel_task(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Add task_id to interrupted_tasks and log the error message.
+
+        Parameters
+        ----------
+        data : bytes
+            String containing task_id and WazuhJSONEncoded object with the exception details.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        task_id, error_details = data.split(b' ', 1)
+        error_json = json.loads(error_details, object_hook=as_wazuh_object)
+        if task_id != b'None':
+            self.interrupted_tasks.add(task_id)
+            self.logger.error(f'The task was canceled due to the following error on the remote node: {error_json}')
+        else:
+            self.logger.error(f'The task was requested to be canceled but no task_id was received: {error_json}')
+
+        return b'ok', b'Request received correctly'
 
     def receive_str(self, data: bytes) -> Tuple[bytes, bytes]:
         """Create a bytearray with the string size.
