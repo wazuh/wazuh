@@ -153,3 +153,18 @@ void FIMDB::pushMessage(const std::string& data)
         // LCOV_EXCL_STOP
     }
 }
+
+void FIMDB::teardown()
+{
+    try
+    {
+        stopSync();
+        m_rsyncHandler->teardown();
+        m_dbsyncHandler->teardown();
+    }
+    catch (const std::exception& ex)
+    {
+        auto errmsg { "There is a problem to close FIMDB " + std::string(ex.what()) };
+        m_loggingFunction(LOG_ERROR, errmsg);
+    }
+}

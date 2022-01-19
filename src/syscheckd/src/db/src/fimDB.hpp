@@ -330,7 +330,10 @@ class FIMDB
          */
         inline void stopSync()
         {
+            std::unique_lock<std::mutex> lock(m_fimSyncMutex);
             m_stopping = true;
+            m_cv.notify_all();
+            lock.unlock();
         };
 
         /**
