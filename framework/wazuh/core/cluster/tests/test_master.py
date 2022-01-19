@@ -7,6 +7,9 @@ import logging
 import sys
 import threading
 import time
+from typing import Dict
+
+import pandas as pd
 from collections import defaultdict
 from contextvars import ContextVar
 from datetime import datetime
@@ -1757,14 +1760,31 @@ async def test_master_file_status_update_ok(run_in_pool_mock, sleep_mock):
 @patch("wazuh.core.agent.Agent.get_agents_overview", return_value={'items': [{'node_name': '1'}]})
 def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     """Check if nodes and the synchronization information is properly obtained."""
+    class MockDict(Dict):
+        def __init__(self, kwargs):
+            super().__init__(**kwargs)
 
-    master_class = master.Master(performance_test=False, concurrency_test=False,
-                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
-                                                "node_type": "master"},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+        def to_dict(self):
+            return {'info': {'n_active_agents': 4, 'type': 'worker'}, 'status': {'last_keep_alive': 0}}
+
+    class MockMaster(master.Master):
+        def to_dict(self):
+            return {'testing': 'get_health', 'info': {'type': 'master'}}
+
+
+    master_class = MockMaster(performance_test=False, concurrency_test=False,
+                              configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
+                                             'node_type': 'master'},
+                              cluster_items=cluster_items, enable_ssl=False)
+    master_class.clients = {'1': MockDict({'testing': 'dict'})}
 
     assert master_class.get_health({'jey': 'value', 'hoy': 'value'}) == {'n_connected_nodes': 0, 'nodes': {}}
+    assert master_class.get_health(None) == {'n_connected_nodes': 1,
+                                             'nodes': {'1': {'info': {'n_active_agents': 5, 'type': 'worker'},
+                                                             'status':
+                                                                 {'last_keep_alive': '1970-01-01T00:00:00.000000Z'}},
+                                                       'master': {'testing': 'get_health',
+                                                                  'info': {'type': 'master', 'n_active_agents': 0}}}}
 
 
 @patch('asyncio.get_running_loop', return_value=loop)
