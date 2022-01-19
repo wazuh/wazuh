@@ -49,6 +49,18 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE   handle,
     ctx->m_dbEngine->bulkInsert(json.at("table"), json.at("data"));
 }
 
+static bool shouldReturnOldData(const nlohmann::json& data)
+{
+    auto it { data.find("return_old_data") };
+
+    if (it != data.end())
+    {
+        return *it;
+    }
+
+    return false;
+}
+
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
                                        const nlohmann::json&    json,
                                        const ResultCallback     callback)
@@ -56,7 +68,9 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
     const auto ctx{ dbEngineContext(handle) };
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
                                       json.at("data"),
-                                      callback);
+                                      callback,
+                                      false,
+                                      shouldReturnOldData(json));
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
@@ -75,7 +89,8 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
                                       json.at("data"),
                                       callback,
-                                      true);
+                                      true,
+                                      shouldReturnOldData(json));
 }
 
 void DBSyncImplementation::deleteRowsData(const DBSYNC_HANDLE   handle,

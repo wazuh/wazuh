@@ -38,7 +38,8 @@ namespace DbSync
             virtual void syncTableRowData(const std::string& table,
                                           const nlohmann::json& data,
                                           const ResultCallback callback,
-                                          const bool inTransaction = false) = 0;
+                                          const bool inTransaction = false,
+                                          const bool returnOldData = false) = 0;
 
             virtual void setMaxRows(const std::string& table,
                                     const unsigned long long maxRows) = 0;
