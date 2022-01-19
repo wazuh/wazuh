@@ -355,6 +355,7 @@ class FIMDB
             {
                 throw std::runtime_error("DBSyncHandler is not initialized");
             }
+
             return m_dbsyncHandler->handle();
         }
 

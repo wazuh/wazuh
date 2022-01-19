@@ -54,14 +54,14 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
                                                     std::string("WHERE path=\"") + std::string(path) + "\"",
                                                     FILE_PRIMARY_KEY);
 
-    nlohmann::json entryFromPath;
+    std::vector<nlohmann::json> entryFromPath;
     const auto internalCallback
     {
         [&entryFromPath](ReturnTypeCallback type, const nlohmann::json & jsonResult)
         {
             if (ReturnTypeCallback::SELECTED == type)
             {
-                entryFromPath = jsonResult;
+                entryFromPath.push_back(jsonResult);
             }
         }
     };
@@ -69,13 +69,13 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     FIMDB::getInstance().executeQuery(query, internalCallback);
 
 
-    if (!entryFromPath.empty())
+    if (entryFromPath.size() == 1)
     {
-        callback(entryFromPath);
+        callback(entryFromPath.front());
     }
     else
     {
-        throw std::runtime_error{ "No entry found with that path" };
+        throw std::runtime_error{ "There ar more or 0 rows" };
     }
 }
 
@@ -97,7 +97,7 @@ int DB::countFiles(const COUNT_SELECT_TYPE selectType)
         {
             if (ReturnTypeCallback::SELECTED == type)
             {
-                count = jsonResult["count"];
+                count = jsonResult.at("count");
             }
         }
     };
@@ -151,7 +151,7 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         {
             if (ReturnTypeCallback::SELECTED == type)
             {
-                callback(jsonResult["path"]);
+                callback(jsonResult.at("path"));
             }
         }
     };
@@ -215,6 +215,7 @@ FIMDBErrorCode fim_db_remove_path(const char* path)
         {
             FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
+
         // LCOV_EXCL_STOP
     }
 
@@ -234,6 +235,7 @@ int fim_db_get_count_file_inode()
     {
         FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
+
     // LCOV_EXCL_STOP
 
     return count;
@@ -252,6 +254,7 @@ int fim_db_get_count_file_entry()
     {
         FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
     }
+
     // LCOV_EXCL_STOP
 
     return count;
@@ -278,6 +281,7 @@ FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated)
         {
             FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
+
         // LCOV_EXCL_STOP
     }
 
@@ -309,8 +313,10 @@ FIMDBErrorCode fim_db_file_inode_search(const unsigned long inode, const unsigne
         {
             FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
+
         // LCOV_EXCL_STOP
     }
+
     return retVal;
 }
 
@@ -339,6 +345,7 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_
         {
             FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
         }
+
         // LCOV_EXCL_STOP
     }
 

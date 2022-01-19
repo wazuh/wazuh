@@ -507,11 +507,11 @@ def runASAN(moduleName):
     :param moduleName: Lib to be analyzed using ASAN dynamic analysis tool.
     """
     printHeader(moduleName, 'asan')
-    #cleanInternals()
-    #makeTarget('agent', False, True)
-    #cleanFolder(str(moduleName), "build")
-    #configureCMake(str(moduleName), True, False, True)
-    #makeLib(str(moduleName))
+    cleanInternals()
+    makeTarget('agent', False, True)
+    cleanFolder(str(moduleName), "build")
+    configureCMake(str(moduleName), True, False, True)
+    makeLib(str(moduleName))
 
     for element in smokeTestsDic[moduleName]:
         path = os.path.join(currentDirPathBuild(moduleName),
