@@ -6410,6 +6410,10 @@ int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output) {
 }
 
 cJSON* wdb_parse_get_config(char* config_source) {
+    if (config_source == 0) {
+        return NULL;
+    }
+
     cJSON* j_wdb_config = NULL;
 
     if (strcmp(config_source, "internal") == 0) {

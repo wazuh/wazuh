@@ -342,3 +342,11 @@ int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
 sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
     return mock_ptr_type(sqlite3_stmt*);
 }
+
+cJSON *__wrap_wdb_get_internal_config() {
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_get_config() {
+    return mock_ptr_type(cJSON *);
+}
