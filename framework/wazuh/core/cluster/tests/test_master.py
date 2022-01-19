@@ -9,7 +9,6 @@ import threading
 import time
 from typing import Dict
 
-import pandas as pd
 from collections import defaultdict
 from contextvars import ContextVar
 from datetime import datetime
@@ -1103,9 +1102,10 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mo
 
 
 @pytest.mark.asyncio
-@patch("shutil.rmtree")
 @freeze_time("2021-11-02")
+@patch("shutil.rmtree")
 @patch("asyncio.wait_for")
+@patch('os.path.relpath', return_value='')
 @patch("functools.reduce", return_value=False)
 @patch.object(logging.getLogger("wazuh"), "info")
 @patch.object(logging.getLogger("wazuh"), "debug")
@@ -1115,7 +1115,7 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mo
 @patch("wazuh.core.cluster.cluster.decompress_files", return_value=("files_metadata", "/decompressed/files/path"))
 async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_files_mock, run_in_pool_mock,
                                                 send_request_mock, debug_mock, info_mock, reduce_mock,
-                                                wait_for_mock, rmtree_mock):
+                                                relpath_mock, wait_for_mock, rmtree_mock):
     """Test if the comparison between the local and received files is properly done."""
 
     master_handler = get_master_handler()
@@ -1190,7 +1190,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                 decompress_files_mock.assert_called_once_with(TaskMock().filename, 'files_metadata.json')
                 compare_files_mock.assert_called_once_with(True, decompress_files_mock.return_value[0], None)
                 send_request_mock.assert_has_calls(
-                    [call(command=b"syn_m_c", data=b""), call(command=b"syn_m_c_e", data=b"ok compressed_data")])
+                    [call(command=b"syn_m_c", data=b""), call(command=b"syn_m_c_e", data=b"ok ")])
                 info_mock.assert_has_calls(
                     [call('Starting.'),
                      call('Finished in 0.000s. Received metadata of 14 files. Sync required.'),
@@ -1301,7 +1301,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                         compare_files_mock.assert_called_once_with(True, decompress_files_mock.return_value[0], None)
                         send_request_mock.assert_has_calls(
                             [call(command=b'syn_m_c', data=b''),
-                             call(command=b'syn_m_c_e', data=b'ok compressed_data'),
+                             call(command=b'syn_m_c_e', data=b'ok '),
                              call(command=b'syn_m_c_r', data=b'ok error')])
                         info_mock.assert_has_calls(
                             [call("Starting."),
@@ -1337,7 +1337,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                         compare_files_mock.assert_called_once_with(True, decompress_files_mock.return_value[0], None)
                         send_request_mock.assert_has_calls(
                             [call(command=b'syn_m_c', data=b''),
-                             call(command=b'syn_m_c_e', data=b'ok compressed_data'),
+                             call(command=b'syn_m_c_e', data=b'ok '),
                              call(command=b'syn_m_c_r', data=b'ok error')])
                         info_mock.assert_has_calls(
                             [call("Starting."),
