@@ -338,3 +338,11 @@ int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
     check_expected(scan_id);
     return mock();
 }
+
+cJSON *__wrap_wdb_get_internal_config() {
+    return mock_ptr_type(cJSON *);
+}
+
+cJSON *__wrap_wdb_get_config() {
+    return mock_ptr_type(cJSON *);
+}

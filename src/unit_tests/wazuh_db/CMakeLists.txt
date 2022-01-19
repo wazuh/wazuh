@@ -29,6 +29,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdb_agents_get_packages -Wl,--wrap,wdb_agents_get_hotfixes -Wl,--wrap,close -Wl,--wrap,getpid \
                         -Wl,--wrap,wdb_package_save -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_package_update -Wl,--wrap,wdb_package_delete \
                         -Wl,--wrap,wdb_hotfix_delete -Wl,--wrap,time -Wl,--wrap,wdbi_update_attempt  -Wl,--wrap,wdbi_update_completion \
+                        -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config \
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
