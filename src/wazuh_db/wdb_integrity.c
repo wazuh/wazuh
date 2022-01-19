@@ -40,6 +40,8 @@ static const char * COMPONENT_NAMES[] = {
 /* Remove static qualifier when unit testing */
 #define static
 
+os_sha1 global_group_hash;
+
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
                         const char * const file, const int line);
@@ -666,7 +668,9 @@ int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest) {
 }
 
 int wdb_global_group_hash_cache(wdb_global_group_hash_operations_t operation, os_sha1 hexdigest) {
-    static os_sha1 global_group_hash = {0};
+    #ifndef WAZUH_UNIT_TESTING
+        static os_sha1 global_group_hash = {0};
+    #endif
 
     if (WDB_GLOBAL_GROUP_HASH_READ == operation) {
         if (global_group_hash[0] == 0) {
