@@ -121,6 +121,12 @@ class SyncFiles(SyncTask):
         bool
             True if files were correctly sent to the master node, None otherwise.
         """
+        self.logger.debug(
+            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
+        )
+        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
+                                                      cluster_control_json=files_metadata)
+
         # Start the synchronization process with the master and get a taskID.
         task_id = await self.worker.send_request(command=self.cmd, data=b'')
         if isinstance(task_id, Exception):
@@ -132,16 +138,10 @@ class SyncFiles(SyncTask):
             await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
             return
 
-        self.logger.debug(
-            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
-        )
-        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
-                                                      cluster_control_json=files_metadata)
-
         try:
             # Send zip file to the master into chunks.
             self.logger.debug("Sending zip file to master.")
-            await self.worker.send_file(filename=compressed_data_path)
+            await self.worker.send_file(filename=compressed_data_path, task_id=task_id)
             self.logger.debug("Zip file sent to master.")
 
             # Finish the synchronization process and notify where the file corresponding to the taskID is located.
@@ -165,6 +165,8 @@ class SyncFiles(SyncTask):
             await self.worker.send_request(command=self.cmd+b'_r', data=task_id + b' ' + exc_info)
         finally:
             os.unlink(compressed_data_path)
+            # In case task was interrupted, remove its ID from the interrupted set.
+            self.worker.interrupted_tasks.discard(task_id)
 
 
 class SyncWazuhdb(SyncTask):
@@ -726,10 +728,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             await asyncio.wait_for(file_received.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         except Exception:
+            # Notify the sending node to stop its task.
             await self.send_request(
-                command=b'syn_i_w_m_r',
-                data=b'None ' + json.dumps(timeout_exc := WazuhClusterError(
-                    3039, extra_message=f'Integrity sync at {self.name}'), cls=c_common.WazuhJSONEncoder).encode())
+                command=b'cancel_task',
+                data=name.encode() + b' ' + json.dumps(timeout_exc := WazuhClusterError(3039),
+                                                       cls=c_common.WazuhJSONEncoder).encode())
             raise timeout_exc
 
         if isinstance(self.sync_tasks[name].filename, Exception):
