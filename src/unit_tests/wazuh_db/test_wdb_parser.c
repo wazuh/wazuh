@@ -3670,12 +3670,34 @@ void test_dbsync_modify_type_exists_data_null_value_from_json(void **state) {
     os_free(query);
 }
 
+void test_wdb_parse_get_config_internal(){
+    will_return(__wrap_wdb_get_internal_config, 1);
+    cJSON *ret = wdb_parse_get_config("internal");
+    assert_int_equal(ret, 1);
+}
 
+/* Tests wdb_parse_get_config */
+
+void test_wdb_parse_get_config_wdb(){
+    will_return(__wrap_wdb_get_config, 1);
+    cJSON *ret = wdb_parse_get_config("wdb");
+    assert_int_equal(ret, 1);
+}
+
+void test_wdb_parse_get_config_arg_null(){
+    cJSON *ret = wdb_parse_get_config(0);
+    assert_int_equal(ret, NULL);
+}
+
+void test_wdb_parse_get_config_bad_arg(){
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid configuration source for wazuh-db");
+    cJSON *ret = wdb_parse_get_config("BAD_ARG");
+    assert_int_equal(ret, NULL);
+}
 
 int main()
 {
-    const struct CMUnitTest tests[] =
-    {
+    const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wdb_parse_syscheck_no_space, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_scan_info_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_scan_info_ok, test_setup, test_teardown),
@@ -3716,7 +3738,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_date_max_long, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_cache_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error,
+                                        test_setup,
+                                        test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_success, test_setup, test_teardown),
         /* Tests osinfo */
         cmocka_unit_test_setup_teardown(test_osinfo_syntax_error, test_setup, test_teardown),
@@ -3763,7 +3787,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_success, test_setup, test_teardown),
         // wdb_parse_agents_update_vuln_cves_status_by_type
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success,
+                                        test_setup,
+                                        test_teardown),
         // wdb_parse_agents_remove_vuln_cves
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_json_data_error, test_setup, test_teardown),
@@ -3840,6 +3866,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_dbsync_delete_type_exists_data_null_value_from_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_data_null_value_from_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_avoid_old_implementation, test_setup, test_teardown)
+        /* Tests wdb_parse_get_config */
+        cmocka_unit_test(test_wdb_parse_get_config_wdb),
+        cmocka_unit_test(test_wdb_parse_get_config_internal),
+        cmocka_unit_test(test_wdb_parse_get_config_arg_null),
+        cmocka_unit_test(test_wdb_parse_get_config_bad_arg)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
