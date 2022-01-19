@@ -18,10 +18,9 @@
 #include "fimDB.hpp"
 #include <thread>
 #include "dbFileItem.hpp"
-#ifdef WIN32
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
-#endif
+
 
 struct CJsonDeleter
 {
@@ -205,8 +204,6 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
     {
         syncItem = std::make_unique<FileItem>(entry);
     }
-
-#ifdef WIN32
     else
     {
         if (entry->registry_entry.key == NULL)
@@ -219,7 +216,6 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
         }
     }
 
-#endif
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput
     {
         cJSON_Parse((*syncItem->toJSON()).dump().c_str())
