@@ -13,8 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-cJSON_wrappers_use_real_flags_t cJSON_wrappers_use_real_flags = {0};
-
 cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {
     function_called();
@@ -84,13 +82,8 @@ cJSON * __wrap_cJSON_CreateString(const char *string) {
     return mock_type(cJSON *);
 }
 
-extern void __real_cJSON_Delete(cJSON *item);
 void __wrap_cJSON_Delete(__attribute__ ((__unused__)) cJSON *item) {
-    if(cJSON_wrappers_use_real_flags.cJSON_Delete_use_real) {
-        __real_cJSON_Delete(item);
-    } else {
-        function_called();
-    }
+    function_called();
     return;
 }
 

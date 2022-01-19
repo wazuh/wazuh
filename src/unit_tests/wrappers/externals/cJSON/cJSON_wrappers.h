@@ -19,12 +19,6 @@
 #define WSTD_CALL
 #endif
 
-typedef struct cJSON_wrappers_use_real_flags_t {
-    bool cJSON_Delete_use_real;
-} cJSON_wrappers_use_real_flags_t;
-extern cJSON_wrappers_use_real_flags_t cJSON_wrappers_use_real_flags;
-
-
 cJSON_bool __wrap_cJSON_AddItemToArray(cJSON *array, cJSON *item);
 
 extern cJSON_bool __real_cJSON_AddItemToArray(cJSON *array, cJSON *item);
