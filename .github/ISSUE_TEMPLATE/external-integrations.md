@@ -43,7 +43,9 @@ In case of a bug report:
 -->
 
 ## Tasks
-- [ ] Test in a manager
-- [ ] Test in an agent
-- [ ] Update the documentation if necessary
-- [ ] Add entry to the changelog if necessary
+- [ ] Test in a manager.
+- [ ] Test in an agent.
+- [ ] Unit tests without failures. Updated if there are any relevant changes.
+- [ ] API integration tests without failures. Updated if there are any relevant changes.
+- [ ] Update the documentation if necessary.
+- [ ] Add entry to the changelog if necessary.
