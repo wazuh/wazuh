@@ -87,7 +87,7 @@
     <field name="win.system.eventID">^4106$</field>
     <description>Active protection disabled</description>
     <mitre>
-      <id>T1089</id>
+      <id>T1562.001</id>
     </mitre>
     <options>no_full_log</options>
 </rule>
@@ -286,7 +286,7 @@
     <field name="win.system.eventID">^4141$</field>
     <description>An item has been deleted from quarantine</description>
     <mitre>
-        <id>T1107</id>
+        <id>T1070.004</id>
     </mitre>
     <options>no_full_log</options>
 </rule>

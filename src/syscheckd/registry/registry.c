@@ -461,13 +461,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
     if (configuration->opts & CHECK_PERM) {
         int error;
 
-        key->perm_json = cJSON_CreateObject();
-        if (key->perm_json == NULL) {
-            mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
-            fim_registry_free_key(key);
-            return NULL;
-        }
-
+        key->perm_json = NULL;
         error = get_registry_permissions(key_handle, &(key->perm_json));
         if (error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, path, error);

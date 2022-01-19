@@ -624,7 +624,7 @@
     <options>no_full_log</options>
     <description>The EventSystem service is disabled or attempting to start during safe mode.</description>
     <mitre>
-      <id>T1031</id>
+      <id>T1543.003</id>
     </mitre>
   </rule>
 
@@ -634,7 +634,7 @@
     <options>no_full_log</options>
     <description>Volume Shadow Copy Service: COM+ database corrupted, writers will not receive events.</description>
     <mitre>
-      <id>T1031</id>
+      <id>T1543.003</id>
     </mitre>
   </rule>
 
@@ -679,7 +679,7 @@
     <options>no_full_log</options>
     <description>Bad return code detected during internal processing of the EventSystem service.</description>
     <mitre>
-      <id>T1031</id>
+      <id>T1543.003</id>
     </mitre>
   </rule>
 

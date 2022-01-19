@@ -170,7 +170,7 @@
         <field name="event.id">111005|111004|111002|111007</field>
         <description>FTD: Firewall configuration changed.</description>
         <mitre>
-            <id>T1089</id>
+            <id>T1562.001</id>
         </mitre>
         <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
@@ -192,7 +192,7 @@
         <field name="event.id">502101|502102</field>
         <description>FTD: User created or modified on the Firewall.</description>
         <mitre>
-            <id>T1089</id>
+            <id>T1562.001</id>
         </mitre>
         <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>

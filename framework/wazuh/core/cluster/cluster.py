@@ -14,7 +14,6 @@ from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
-from time import time
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
@@ -70,7 +69,7 @@ def check_cluster_config(config):
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-            format(config['nodes'][0]))
+                format(config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
@@ -267,7 +266,8 @@ def compress_files(name, list_path, cluster_control_json=None):
         Path where the zip file has been saved.
     """
     failed_files = list()
-    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
+    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
+                              f'{name}-{datetime.utcnow().timestamp()}-{str(random())[2:]}.zip')
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
     with zipfile.ZipFile(zip_file_path, 'x') as zf:

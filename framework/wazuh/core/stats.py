@@ -71,7 +71,7 @@ def weekly_():
     return weekly_results
 
 
-def totals_(date=datetime.now()):
+def totals_(date=datetime.utcnow()):
     """Compute statistical information for the current or specified date.
 
     Parameters
