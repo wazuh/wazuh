@@ -154,14 +154,6 @@ cJSON* __wrap_wdb_global_find_agent(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_global_update_agent_group(__attribute__((unused)) wdb_t *wdb,
-                                         int id,
-                                         char *group) {
-    check_expected(id);
-    check_expected(group);
-    return mock();
-}
-
 cJSON* __wrap_wdb_global_find_group(__attribute__((unused)) wdb_t *wdb,
                                     char *group_name) {
     check_expected(group_name);
