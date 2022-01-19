@@ -28,6 +28,8 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -67,6 +69,17 @@ int teardown_wdb(void **state) {
     return 0;
 }
 
+int wazuh_db_config_setup() {
+    wdb_init_conf();
+
+    return OS_SUCCESS;
+}
+
+int  wazuh_db_config_teardown() {
+    wdb_free_conf();
+
+    return OS_SUCCESS;
+}
 /* Tests wdb_open_global */
 
 void test_wdb_open_tasks_pool_success(void **state)
@@ -694,36 +707,82 @@ void test_wdb_init_stmt_in_cache_invalid_statement(void **state) {
     assert_null(result);
 }
 
-int main()
-{
-    const struct CMUnitTest tests[] =
-    {
-        //wdb_open_tasks
+void test_wdb_get_internal_config() {
+    cJSON *ret = wdb_get_internal_config();
+    assert_true(cJSON_IsObject(ret));
+
+    cJSON* root = cJSON_GetObjectItem(ret, "wazuh_db");
+    assert_true(cJSON_IsObject(root));
+
+    cJSON *c1 = cJSON_GetObjectItem(root, "commit_time_max");
+    assert_true(cJSON_IsNumber(c1));
+    cJSON *c2 = cJSON_GetObjectItem(root, "commit_time_min");
+    assert_true(cJSON_IsNumber(c2));
+    cJSON *c3 = cJSON_GetObjectItem(root, "open_db_limit");
+    assert_true(cJSON_IsNumber(c3));
+    cJSON *c4 = cJSON_GetObjectItem(root, "sock_queue_size");
+    assert_true(cJSON_IsNumber(c4));
+    cJSON *c5 = cJSON_GetObjectItem(root, "worker_pool_size");
+    assert_true(cJSON_IsNumber(c5));
+
+    cJSON_Delete(ret);
+}
+
+void test_wdb_get_config(){
+    cJSON *ret = wdb_get_config();
+
+    cJSON *root = cJSON_GetObjectItem(ret, "wdb");
+    assert_true(cJSON_IsObject(root));
+
+    cJSON *cfg_array = cJSON_GetObjectItem(root, "backup_settings_nodes");
+    assert_true(cJSON_IsArray(cfg_array));
+
+    int size = cJSON_GetArraySize(cfg_array);
+    for (int i = 0; i < size; ++i) {
+        cJSON *cfg = cJSON_GetArrayItem(cfg_array, i);
+        assert_true(cJSON_IsObject(cfg));
+
+        cJSON *c0 = cJSON_GetObjectItem(cfg, "node_name");
+        assert_true(cJSON_IsString(c0));
+        cJSON *c1 = cJSON_GetObjectItem(cfg, "enabled");
+        assert_true(cJSON_IsBool(c1));
+        cJSON *c2 = cJSON_GetObjectItem(cfg, "interval");
+        assert_true(cJSON_IsNumber(c2));
+        cJSON *c3 = cJSON_GetObjectItem(cfg, "max_files");
+        assert_true(cJSON_IsNumber(c3));
+    }
+
+    cJSON_Delete(ret);
+}
+
+int main() {
+    const struct CMUnitTest tests[] = {
+        // wdb_open_tasks
         cmocka_unit_test_setup_teardown(test_wdb_open_tasks_pool_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_open_tasks_create_error, setup_wdb, teardown_wdb),
-        //wdb_open_global
+        // wdb_open_global
         cmocka_unit_test_setup_teardown(test_wdb_open_global_pool_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_open_global_create_fail, setup_wdb, teardown_wdb),
-        //wdb_exec_row_stm
+        // wdb_exec_row_stm
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_one_int, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_multiple_int, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_one_text, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_done, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_error, setup_wdb, teardown_wdb),
-        //wdb_exec_stmt
+        // wdb_exec_stmt
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_invalid_statement, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_error, setup_wdb, teardown_wdb),
-        //wdb_exec_stmt_sized
+        // wdb_exec_stmt_sized
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_limited, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_invalid_statement, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_error, setup_wdb, teardown_wdb),
-        //wdb_exec_stmt_silent
+        // wdb_exec_stmt_silent
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success_sqlite_done, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success_sqlite_row, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_invalid, setup_wdb, teardown_wdb),
-        //wdb_exec_stmt_send
+        // wdb_exec_stmt_send
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_single_row_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_multiple_rows_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_no_rows_success, setup_wdb, teardown_wdb),
@@ -731,10 +790,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_socket_err, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_timeout_set_err, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_statement_invalid, setup_wdb, teardown_wdb),
-        //wdb_init_stmt_in_cache
+        // wdb_init_stmt_in_cache
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_transaction, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_statement, setup_wdb, teardown_wdb)
+        cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_statement, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_get_config, wazuh_db_config_setup, wazuh_db_config_teardown),
+        cmocka_unit_test(test_wdb_get_internal_config)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
