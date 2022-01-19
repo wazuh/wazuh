@@ -97,6 +97,11 @@ All notable changes to this project will be documented in this file.
 - Prevented a false positive for MySQL in Vulnerability Detector. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
 - Fixed segmentation fault in Analysisd when setting the number of queues to zero. ([#11448](https://github.com/wazuh/wazuh/pull/11448))
 - Fixed false positives in Vulnerability Detector when scanning OVAl for Ubuntu Xenial and Bionic. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
+- Fixed an argument injection hazard in the Pagerduty integration script. Reported by Jose Maria Zaragoza (@JoseMariaZ). ([#11835](https://github.com/wazuh/wazuh/pull/11835))
+- Fixed memory leaks in the feed parser at Vulnerability Detector. ([#11863](https://github.com/wazuh/wazuh/pull/11863))
+  - Architecture data member from the RHEL 5 feed.
+  - RHSA items containing no CVEs.
+  - Unused RHSA data member when parsing Debian feeds.
 
 #### Removed
 
