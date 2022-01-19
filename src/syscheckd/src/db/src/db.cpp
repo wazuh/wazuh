@@ -74,7 +74,7 @@ void DB::init(const int storage,
 
     auto rsyncHandler { std::make_shared<RemoteSync>() };
 
-    FIMDB::getInstance().init(syncInterval,
+    FIMDB::instance().init(syncInterval,
                               callbackSyncFileWrapper,
                               callbackSyncRegistryWrapper,
                               callbackLogWrapper,
@@ -87,18 +87,18 @@ void DB::init(const int storage,
 
 void DB::runIntegrity()
 {
-    std::thread syncThread(&FIMDB::runIntegrity, &FIMDB::getInstance());
+    std::thread syncThread(&FIMDB::runIntegrity, &FIMDB::instance());
     syncThread.detach();
 }
 
 void DB::pushMessage(const std::string& message)
 {
-    FIMDB::getInstance().pushMessage(message);
+    FIMDB::instance().pushMessage(message);
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
 {
-    return FIMDB::getInstance().DBSyncHandle();
+    return FIMDB::instance().DBSyncHandle();
 }
 
 #ifdef __cplusplus
@@ -165,7 +165,7 @@ void fim_run_integrity()
     }
     catch (const std::exception& err)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 }
 
@@ -177,7 +177,7 @@ void fim_sync_push_msg(const char* msg)
     }
     catch (const std::exception& err)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 }
 

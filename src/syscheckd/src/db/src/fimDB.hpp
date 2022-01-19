@@ -250,7 +250,7 @@ constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
 class FIMDB
 {
     public:
-        static FIMDB& getInstance()
+        static FIMDB& instance()
         {
             static FIMDB s_instance;
             return s_instance;

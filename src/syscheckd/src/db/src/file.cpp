@@ -147,7 +147,7 @@ bool DB::updateFile(const nlohmann::json& file)
         }
     };
 
-    FIMDB::getInstance().updateItem(file, callback);
+    FIMDB::instance().updateItem(file, callback);
     return updated;
 }
 
@@ -206,7 +206,7 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
 
     if (!file_path || !callback.callback)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -221,7 +221,7 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
         }
         catch (const std::exception& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
     }
 
@@ -234,7 +234,7 @@ FIMDBErrorCode fim_db_remove_path(const char* path)
 
     if (!path)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -246,7 +246,7 @@ FIMDBErrorCode fim_db_remove_path(const char* path)
         // LCOV_EXCL_START
         catch (const std::exception& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
 
         // LCOV_EXCL_STOP
@@ -266,7 +266,7 @@ int fim_db_get_count_file_inode()
     // LCOV_EXCL_START
     catch (const std::exception& err)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 
     // LCOV_EXCL_STOP
@@ -285,7 +285,7 @@ int fim_db_get_count_file_entry()
     // LCOV_EXCL_START
     catch (const std::exception& err)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 
     // LCOV_EXCL_STOP
@@ -299,7 +299,7 @@ FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated)
 
     if (!data || !updated)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -312,7 +312,7 @@ FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated)
         // LCOV_EXCL_START
         catch (const std::exception& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
 
         // LCOV_EXCL_STOP
@@ -327,7 +327,7 @@ FIMDBErrorCode fim_db_file_inode_search(const unsigned long inode, const unsigne
 
     if (!callback.callback)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -344,7 +344,7 @@ FIMDBErrorCode fim_db_file_inode_search(const unsigned long inode, const unsigne
         // LCOV_EXCL_START
         catch (const std::exception& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
 
         // LCOV_EXCL_STOP
@@ -359,7 +359,7 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_
 
     if (!pattern || !callback.callback)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, "Invalid parameters");
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
     }
     else
     {
@@ -376,7 +376,7 @@ FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_
         // LCOV_EXCL_START
         catch (const std::exception& err)
         {
-            FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
 
         // LCOV_EXCL_STOP
