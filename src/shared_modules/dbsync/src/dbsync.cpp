@@ -887,6 +887,12 @@ SyncRowQuery& SyncRowQuery::ignoreColumn(const std::string& column)
     return *this;
 }
 
+SyncRowQuery& SyncRowQuery::returnOldData()
+{
+    m_jsQuery["options"]["return_old_data"] = true;
+    return *this;
+}
+
 SyncRowQuery& SyncRowQuery::reset()
 {
     m_jsQuery["data"].clear();
@@ -910,6 +916,28 @@ std::set<std::string> SyncRowQuery::getIgnoredColumns(const nlohmann::json& js)
                 {
                     result.insert(std::string(column));
                 }
+            }
+        }
+    }
+
+    return result;
+}
+
+bool SyncRowQuery::shouldReturnOldData(const nlohmann::json& js)
+{
+    bool result = false;
+
+    auto it { js.find("options") };
+
+    if (it != js.end())
+    {
+        auto flag { it->find("return_old_data") };
+
+        if (flag != it->end())
+        {
+            if (flag->is_boolean())
+            {
+                result = *flag;
             }
         }
     }

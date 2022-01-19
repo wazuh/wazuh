@@ -654,13 +654,48 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
     EXPECT_NE(0, dbsync_sync_row(handle, jsInsert2.get(), callbackEmpty));
 }
 
-TEST_F(DBSyncTest, syncRowIgnoreFields)
+TEST_F(DBSyncTest, syncRowInsertAndModifiedWithOldData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
     CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":100},{"pid":5,"name":"System","tid":101}, {"pid":6,"name":"System","tid":102}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"new":{"pid":4,"tid":101},"old":{"pid":4,"tid":100}}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"new":{"name":"Systemmm","pid":4,"tid":105},"old":{"name":"System","pid":4,"tid":101}}])"))).Times(1);
+
+
+    auto insertionQuery1 = InsertQuery::builder().table("processes")
+                           .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100})"))
+                           .data(nlohmann::json::parse(R"({"pid":5,"name":"System", "tid":101})"))
+                           .data(nlohmann::json::parse(R"({"pid":6,"name":"System", "tid":102})"));
+    auto updateQuery1 = SyncRowQuery::builder().table("processes")
+                        .returnOldData()
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":101})"));
+    auto updateQuery2 = SyncRowQuery::builder().table("processes")
+                        .returnOldData()
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"Systemmm", "tid":105})"));
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
+
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Expect a modified event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Expect a modified event
+}
+
+TEST_F(DBSyncTest, syncRowIgnoreFields)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+
     auto insertionQuery = InsertQuery::builder().table("processes")
                           .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100})"))
                           .data(nlohmann::json::parse(R"({"pid":5,"name":"System", "tid":101})"))
@@ -677,12 +712,12 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
 
-    callback_data_t callbackData { callback, &wrapper };
 
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Expect a modified event
-    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Expect a modified event
 }
+
 
 
 TEST_F(DBSyncTest, syncRowInvalidData)

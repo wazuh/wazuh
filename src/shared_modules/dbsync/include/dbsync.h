@@ -147,7 +147,7 @@ EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
  *
  * @param handle         Handle instance assigned as part of the \ref dbsync_create method().
  * @param input          JSON information used to add/modified a database record.
- * @param callback_data  This struct contain the result callback will be called for each result
+ * @param callback_data  This struct contains the result callback that will be called for each result
  *                       and user data space returned in each callback call.
  *
  * @return 0 if succeeded,
@@ -161,7 +161,7 @@ EXPORTED int dbsync_sync_row(const DBSYNC_HANDLE handle,
  * @brief Select data, based in \p json_data_input data, from the database table.
  *
  * @param handle          Handle assigned as part of the \ref dbsync_create method().
- * @param js_data_input   JSON with table name, fields and filters to apply in the query.
+ * @param js_data_input   JSON with table name, fields, filters and options to apply in the query.
  * @param callback_data   This struct contain the result callback will be called for each result
  *                        and user data space returned in each callback call.
  *

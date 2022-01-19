@@ -58,7 +58,9 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
                                       SyncRowQuery::getIgnoredColumns(json),
                                       json.at("data"),
-                                      callback);
+                                      callback,
+                                      false,
+                                      SyncRowQuery::shouldReturnOldData(json));
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
@@ -78,7 +80,8 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
                                       SyncRowQuery::getIgnoredColumns(json),
                                       json.at("data"),
                                       callback,
-                                      true);
+                                      true,
+                                      SyncRowQuery::shouldReturnOldData(json));
 }
 
 void DBSyncImplementation::deleteRowsData(const DBSYNC_HANDLE   handle,

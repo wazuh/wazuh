@@ -380,6 +380,11 @@ class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
         SyncRowQuery & ignoreColumn(const std::string &column);
 
         /**
+         * @brief Make this query return the old data as well.
+         */
+        SyncRowQuery & returnOldData();
+
+        /**
          * @brief Reset all data to be inserted.
          *
          */
@@ -392,6 +397,7 @@ class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
          * @return A set of all ignored columns.
          */
         static std::set<std::string> getIgnoredColumns(const nlohmann::json &js);
+        static bool shouldReturnOldData(const nlohmann::json& js);
 };
 
 #endif // _DBSYNC_HPP_
