@@ -43,7 +43,7 @@ send_payload () {
         #echo  -n "-------\nSending:\n${payload}\n"
 
         # Send the pagerduty notification
-        curl -H "Content-type: application/json" -X POST --data "@$postfile" $WEBHOOK
+        curl -H "Content-type: application/json" -X POST --data "@$postfile" "$WEBHOOK"
 
         if [ ! $? = 0 ]; then
             echo "Error sending the alert to pagerduty"

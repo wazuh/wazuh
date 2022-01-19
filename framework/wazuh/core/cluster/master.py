@@ -1005,7 +1005,8 @@ class Master(server.AbstractServer):
             file_integrity_logger.info("Starting.")
             try:
                 self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
-                                                                   wazuh.core.cluster.cluster.get_files_status)
+                                                                   wazuh.core.cluster.cluster.get_files_status,
+                                                                   self.integrity_control)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:
