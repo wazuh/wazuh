@@ -344,4 +344,29 @@
    <group>attack,sqlinjection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
   </rule>
 
+  <!--
+    Log4Shell exploit attempt
+  -->
+  <rule id="31172" level="7">
+    <if_group>web|accesslog|attack</if_group>
+    <regex type="pcre2">(?i)(((\$|24)\S*)((\{|7B)\S*)((\S*j\S*n\S*d\S*i))|JHtqbmRp)</regex>
+    <description>Possible Log4j RCE attack attempt detected.</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1210</id>
+      <id>T1211</id>
+    </mitre>
+  </rule>
+
+  <rule id="31173" level="12">
+    <if_sid>31172</if_sid>
+    <regex type="pcre2">ldap[s]?|rmi|dns|nis|iiop|corba|nds|http|lower|upper|(\$\{\S*\w\}\S*)+</regex>
+    <description>Log4j RCE attack attempt detected.</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1210</id>
+      <id>T1211</id>
+    </mitre>
+  </rule>
+
 </group>
