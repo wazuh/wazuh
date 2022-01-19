@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * July 12, 2019.
  *
  * This program is a free software; you can redistribute it

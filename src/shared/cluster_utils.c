@@ -1,6 +1,6 @@
 /*
  * URL download support library
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * October 26, 2018.
  *
  * This program is free software; you can redistribute it

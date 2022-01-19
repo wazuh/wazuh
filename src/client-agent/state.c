@@ -1,7 +1,7 @@
 /* Agent state management functions
  * August 2, 2017
  *
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it

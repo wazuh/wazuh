@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022
+ * Copyright (C) 2015
  * January 17
  *
  * This program is free software; you can redistribute it

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for SQLite database syncing
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 29, 2016
  *
  * This program is free software; you can redistribute it

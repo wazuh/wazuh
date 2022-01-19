@@ -3,7 +3,7 @@
  * @brief Definition of FIM database for registries library.
  * @date 2020-09-9
  *
- * @copyright Copyright (C) 2015-2022 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 #ifndef FIM_DB_REGISTRIES_H

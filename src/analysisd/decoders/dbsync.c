@@ -3,7 +3,7 @@
  * @brief Database synchronization decoder
  * @date 2019-09-03
  *
- * @copyright Copyright (C) 2015-2022 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 /*

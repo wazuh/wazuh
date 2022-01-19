@@ -3,7 +3,7 @@
  * @brief DB integrity synchronization library definition.
  * @date 2019-08-14
  *
- * @copyright Copyright (C) 2015-2022 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 /*

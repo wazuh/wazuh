@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2012 Daniel B. Cid (http://dcid.me)
  * All right reserved.
  *

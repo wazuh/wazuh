@@ -3,7 +3,7 @@
  * @brief Binary queue type definition
  * @date 2020-09-20
  *
- * @copyright Copyright (C) 2015-2022 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 /*

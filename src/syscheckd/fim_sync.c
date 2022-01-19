@@ -3,7 +3,7 @@
  * @brief Definition of FIM data synchronization library
  * @date 2019-08-28
  *
- * @copyright Copyright (C) 2015-2022 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

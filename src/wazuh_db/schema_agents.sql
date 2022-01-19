@@ -1,6 +1,6 @@
 /*
  * SQL Schema for global database
- * Copyright (C) 2015-2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * June 30, 2016.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.

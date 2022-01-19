@@ -3,7 +3,7 @@
  * @brief Definition of the shared log builder library
  * @date 2019-12-06
  *
- * @copyright Copyright (C) 2015-2022 Wazuh, Inc.
+ * @copyright Copyright (C) 2015 Wazuh, Inc.
  */
 
 /*
