@@ -169,6 +169,13 @@ FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                                 result_callback_t callback,
                                                 void* txn_ctx);
 
+/**
+ * @brief Turns off the services provided.
+ *
+ * It will be responsible to close sync and release resources
+ */
+void fim_db_teardown();
+
 #ifdef WIN32
 
 // Registry functions.

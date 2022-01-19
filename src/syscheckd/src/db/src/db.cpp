@@ -249,6 +249,18 @@ FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
     return retval;
 }
 
+void fim_db_teardown()
+{
+    try
+    {
+        FIMDB::instance().teardown();
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+}
+
 
 #ifdef __cplusplus
 }
