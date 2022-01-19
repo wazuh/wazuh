@@ -481,7 +481,10 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
-                            OS_ExpandIPv6(final_ip->ip, cidr, IPSIZE);
+                            char aux_ip[IPSIZE + 1] = {0};
+                            strncpy(aux_ip, regex_match->sub_strings[0], IPSIZE);
+                            OS_ExpandIPv6(aux_ip, cidr, IPSIZE);
+                            strncpy(final_ip->ip, aux_ip, IPSIZE);
 
                         } else {
                             ret = 0;
