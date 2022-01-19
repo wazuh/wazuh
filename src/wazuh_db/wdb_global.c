@@ -1921,6 +1921,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
     struct dirent *entry = NULL;
     time_t oldest_backup_time = OS_INVALID;
+    time_t aux_time_var = OS_INVALID;
     time_t current_time = time(NULL);
     char *tmp_backup_name = NULL;
 
@@ -1933,8 +1934,9 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
         if(!stat(tmp_path, &backup_info) ) {
-            if((current_time - backup_info.st_mtime) >= oldest_backup_time) {
-                oldest_backup_time = current_time - backup_info.st_mtime;
+            if((current_time - backup_info.st_mtime) >= aux_time_var) {
+                aux_time_var = current_time - backup_info.st_mtime;
+                oldest_backup_time = backup_info.st_mtime;
                 tmp_backup_name = entry->d_name;
             }
         }
