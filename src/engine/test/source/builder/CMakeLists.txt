@@ -124,7 +124,15 @@ gtest_discover_tests(check_stage_test)
 add_executable(normalize_stage_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/normalize_stage_test.cpp)
 gtest_discover_tests(normalize_stage_test)
 
+# file_output test
+add_executable(file_output_builder_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/file_output_test.cpp)
+gtest_discover_tests(file_output_builder_test)
+
+# output test
+add_executable(output_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/output_test.cpp)
+gtest_discover_tests(output_test)
+
 ####################################################################################################
-# Special targets WIP
+# Output targets
 ####################################################################################################
-add_subdirectory(${BUILDER_TEST_SOURCE_DIR}/outputs/file)
+add_subdirectory(outputs)
