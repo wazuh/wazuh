@@ -31,7 +31,13 @@ Connectable ruleBuilder(const json::Document & inputJson)
             parents.push_back(it->GetString());
         }
     }
-    Connectable connectable(inputJson.get(".name")->GetString(), parents);
+    auto name = inputJson.get(".name");
+    if (!name)
+    {
+        throw std::invalid_argument("Rule builder expects decoder to have a name entry.");
+    }
+    Connectable connectable(name->GetString(), parents);
+
     // Check stage is mandatory in a rule
     auto checkVal = inputJson.get(".check");
     if (!checkVal)
