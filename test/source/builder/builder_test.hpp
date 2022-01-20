@@ -1,12 +1,15 @@
+
+#include "connectable.hpp"
+#include "rxcpp/rx.hpp"
 #include "json/json.hpp"
 
 std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                 {
                     "name": "decoder_0",
-                    "check": {
-                        "field": "value"
-                    },
-                    "map": [
+                    "check": [
+                        {"field": "value" }
+                    ],
+                    "normalize": [
                         { "new_dec_field": "new_dec_value" }
                     ]
                 }
@@ -15,10 +18,10 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
 std::map<std::string, std::string> rules = {{"rule_0", R"(
                     {
                     "name": "rule_0",
-                    "check": {
-                        "field": "value"
-                    },
-                    "map": [
+                    "check": [
+                        {"field": "value"}
+                    ],
+                    "normalize": [
                         { "new_rule_field": "new_rule_value" }
                     ]
                 }
@@ -27,16 +30,21 @@ std::map<std::string, std::string> rules = {{"rule_0", R"(
 std::map<std::string, std::string> filters = {{"filter_0", R"(
                 {
                     "name": "filter_0",
-                    "after": "decoder_1",
-                    "allow": {
-                        "field": "value"
-                    }
+                    "after": [
+                        "decoder_1"
+                    ],
+                    "allow": [
+                        {"field": "value"}
+                    ]
                 }
     )"}};
 
 std::map<std::string, std::string> outputs = {{"output_0", R"(
                 {
                     "name": "output_0",
+                    "check": [
+                        {"field": "value"}
+                    ],
                     "file": {
                         "filepath": "/tmp/filepath.txt"
                     }
@@ -87,7 +95,7 @@ public:
         throw std::invalid_argument("fakeCatalog does not support asset type " + atype);
     }
 
-    std::vector<std::string> getAssetList(const std::string atype)
+    std::vector<std::string> getAssetList(const std::string)
     {
         throw std::runtime_error("not implemented");
         return {"not", "implemented"};
