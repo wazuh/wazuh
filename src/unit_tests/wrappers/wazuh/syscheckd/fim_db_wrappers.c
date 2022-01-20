@@ -150,7 +150,7 @@ int __wrap_fim_db_file_pattern_search(const char* pattern,
 }
 
 void expect_fim_db_file_pattern_search(const char* pattern, int ret_val) {
-    expect_value(__wrap_fim_db_file_pattern_search, pattern, pattern);
+    expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
     will_return(__wrap_fim_db_file_pattern_search, ret_val);
 }
 

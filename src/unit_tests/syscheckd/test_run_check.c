@@ -27,6 +27,7 @@
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
+#include "../config/syscheck-config.h"
 #include "db/include/db.h"
 
 #ifdef TEST_WINAGENT
@@ -900,11 +901,16 @@ void test_fim_send_scan_info(void **state) {
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
+    char pattern[PATH_MAX] = {0};
+
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", affected_config->symbolic_links, PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     expect_fim_checker_call(new_path, affected_config);
     expect_realtime_adddir_call(new_path, 0);
@@ -940,6 +946,7 @@ void test_fim_link_update_already_added(void **state) {
 void test_fim_link_check_delete(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+    char pattern[PATH_MAX] = {0};
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -950,6 +957,9 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", affected_config->symbolic_links, PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     expect_fim_configuration_directory_call("data", NULL);
     fim_link_check_delete(affected_config);
@@ -1026,7 +1036,10 @@ void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
     char pattern[PATH_MAX] = {0};
 
-    snprintf(pattern, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "test");
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", "/folder", PATH_SEP);
     expect_fim_db_file_pattern_search(pattern, 0);
 
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
@@ -1124,12 +1137,11 @@ void test_send_sync_control(void **state) {
 void test_send_sync_state(void **state) {
     char debug_msg[OS_SIZE_256] = {0};
     char *event = "{\"data\":\"random_string\"}";
-    char *ret_msg = "{\"component\":\"fim_file\",\"type\":\"state\",\"data\":{\"data\":\"random_string\"}}";
 
     snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+    expect_SendMSG_call(event, "fim_file", DBSYNC_MQ, 0);
 
     fim_send_sync_state("fim_file", event);
 }
