@@ -112,6 +112,10 @@ gtest_discover_tests(decoder_test)
 add_executable(rule_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/rule_test.cpp)
 gtest_discover_tests(rule_test)
 
+# filter test
+add_executable(filter_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/filter_test.cpp)
+gtest_discover_tests(filter_test)
+
 ####################################################################################################
 # Special targets WIP
 ####################################################################################################
