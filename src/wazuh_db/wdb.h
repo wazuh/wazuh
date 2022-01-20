@@ -211,7 +211,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
-    WDB_STMT_GLOBAL_DELETE_GROUP_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
@@ -1213,22 +1212,7 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
 int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
- * @brief Function to parse the delete group from belongs table request.
  *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the delete group request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
@@ -1854,15 +1838,6 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
-
-/**
- * @brief Function to delete a group from belongs table using the group name.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] group_name The group name.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.

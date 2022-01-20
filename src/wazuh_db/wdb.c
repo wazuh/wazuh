@@ -159,7 +159,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_SELECT_GROUP_BELONG] = "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ? order by priority;",
     [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT OR REPLACE INTO belongs (id_group, id_agent, priority) VALUES(?,?,?);",
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
-    [WDB_STMT_GLOBAL_DELETE_GROUP_BELONG] = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
