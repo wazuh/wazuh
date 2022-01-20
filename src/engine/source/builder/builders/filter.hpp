@@ -41,7 +41,7 @@ Connectable filterBuilder(const json::Document & inputJson)
     auto checkVal = inputJson.get(".allow");
     if (!checkVal)
     {
-        throw std::invalid_argument("Rule builder expects rule definition to have a check section. ");
+        throw std::invalid_argument("Filter builder expects filter definition to have allow section. ");
     }
     auto outputObs = checkStageBuilder(connectable.output(), checkVal);
 
