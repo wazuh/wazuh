@@ -290,7 +290,7 @@ All notable changes to this project will be documented in this file.
 - Added Oracle Database 12c rules and decoders. ([#11274](https://github.com/wazuh/wazuh/pull/11274))
 - Added rules for Carbanak step 1.A - User Execution: Malicious File. ([#8476](https://github.com/wazuh/wazuh/pull/8476))
 - Added rules for Carbanak step 2.A - Local Discovery. ([#11212](https://github.com/wazuh/wazuh/pull/11212))
-- Added rules for Carbanak step 2.B - Screen Capture ([#9075](https://github.com/wazuh/wazuh/pull/9075))
+- Added rules for Carbanak step 2.B - Screen Capture. ([#9075](https://github.com/wazuh/wazuh/pull/9075))
 - Added rules for Carbanak step 5.B - Lateral Movement via SSH. ([#9097](https://github.com/wazuh/wazuh/pull/9097))
 - Added rules for Carbanak step 9.A - User Monitoring. ([#11342](https://github.com/wazuh/wazuh/pull/11342))
 - Added rules for Cloudflare WAF. ([#11373](https://github.com/wazuh/wazuh/pull/11373))
