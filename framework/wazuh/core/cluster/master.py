@@ -639,13 +639,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             ID of the asyncio task in charge of doing the sync process.
         received_file : asyncio.Event
             Asyncio event that is holding a lock while the files are not received.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
         """
         logger = self.task_loggers['Integrity check']
         date_start_master = datetime.now()
@@ -759,8 +752,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         'tmp_date_start_master'].strftime(decimals_date_format)
                     self.integrity_sync_status['date_end_master'] = \
                         self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
-
-        return b'ok'
 
     async def sync_extra_valid(self, task_id: str, received_file: asyncio.Event):
         """Run extra valid sync process and set up necessary parameters.
