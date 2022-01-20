@@ -22,7 +22,7 @@ rxcpp::observable<json::Document> helperExistsBuilder(const rxcpp::observable<js
     std::string field = "/";
     field += input_json->MemberBegin()->name.GetString();
 
-    auto output_observable = input_observable.filter([field](json::Document e) { return e.check(field); });
+    auto output_observable = input_observable.filter([field](json::Document e) { return e.exists(field); });
     return output_observable;
 }
 
@@ -39,7 +39,7 @@ rxcpp::observable<json::Document> helperNotExistsBuilder(const rxcpp::observable
     std::string field = "/";
     field += input_json->MemberBegin()->name.GetString();
 
-    auto output_observable = input_observable.filter([field](json::Document e) { return !e.check(field); });
+    auto output_observable = input_observable.filter([field](json::Document e) { return !e.exists(field); });
     return output_observable;
 }
 
