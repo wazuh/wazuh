@@ -116,6 +116,14 @@ gtest_discover_tests(rule_test)
 add_executable(filter_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/filter_test.cpp)
 gtest_discover_tests(filter_test)
 
+# check_stage_test test
+add_executable(check_stage_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/check_stage_test.cpp)
+gtest_discover_tests(check_stage_test)
+
+# normalize_stage test
+add_executable(normalize_stage_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/normalize_stage_test.cpp)
+gtest_discover_tests(normalize_stage_test)
+
 ####################################################################################################
 # Special targets WIP
 ####################################################################################################
