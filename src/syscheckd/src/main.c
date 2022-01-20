@@ -14,6 +14,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
+#include "db.h"
 
 #ifndef WIN32
 
@@ -34,6 +35,15 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
     exit(1);
+}
+
+/* Shut down syscheckd properly */
+static void fim_shutdown(int sig)
+{
+    /* Close sync thread and release dbsync and rsync */
+    minfo(SK_SHUTDOWN);
+    fim_db_teardown();
+    HandleSIG(sig);
 }
 
 /* Syscheck unix main */
@@ -155,7 +165,7 @@ int main(int argc, char **argv)
     }
 
     /* Start signal handling */
-    StartSIG(ARGV0);
+    StartSIG2(ARGV0, fim_shutdown);
 
     // Start com request thread
     w_create_thread(syscom_main, NULL);

@@ -362,6 +362,11 @@ class FIMDB
             return m_dbsyncHandler->handle();
         }
 
+        /**
+        * @brief Turns off the services provided.
+        */
+        void teardown();
+
     private:
 
         unsigned int                                                            m_fileLimit;

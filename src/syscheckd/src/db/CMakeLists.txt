@@ -22,7 +22,9 @@ else()
   add_library(fimdb SHARED ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
                            ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp
                            ${CMAKE_SOURCE_DIR}/src/db/src/fimDB.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbFileItem.cpp)
+                           ${CMAKE_SOURCE_DIR}/src/db/src/dbFileItem.cpp
+                           ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryKey.cpp
+                           ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryValue.cpp)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
