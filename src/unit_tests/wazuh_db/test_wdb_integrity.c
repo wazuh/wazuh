@@ -27,6 +27,7 @@
 #include "os_err.h"
 
 int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest);
+extern os_sha1 global_group_hash;
 
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
@@ -1535,16 +1536,20 @@ void test_wdb_global_group_hash_cache_clear_success(void **state)
     int ret;
 
     ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_false(global_group_hash[0]);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
 void test_wdb_global_group_hash_cache_read_fail(void **state)
 {
     wdb_global_group_hash_operations_t operation = WDB_GLOBAL_GROUP_HASH_READ;
-    os_sha1 hexdigest = "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64";
+    os_sha1 hexdigest;
     int ret;
 
     ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_false(global_group_hash[0]);
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -1555,6 +1560,8 @@ void test_wdb_global_group_hash_cache_write_success(void **state)
     int ret;
 
     ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_string_equal(global_group_hash, hexdigest);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -1565,6 +1572,8 @@ void test_wdb_global_group_hash_cache_read_success(void **state)
     int ret;
 
     ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_string_equal(hexdigest, "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -1577,6 +1586,7 @@ void test_wdb_global_group_hash_cache_invalid_mode(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Invalid mode for global group hash operation.");
 
     ret = wdb_global_group_hash_cache(operation, hexdigest);
+
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -1591,16 +1601,16 @@ void wdb_get_global_group_hash_read_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Using global group hash from cache");
 
     ret = wdb_get_global_group_hash(data, hexdigest);
+
     assert_int_equal(ret, OS_SUCCESS);
 }
 
 void wdb_get_global_group_hash_invalid_db_structure(void **state)
 {
-    wdb_global_group_hash_operations_t operation = WDB_GLOBAL_GROUP_HASH_CLEAR;
     os_sha1 hexdigest;
     int ret;
 
-    wdb_global_group_hash_cache(operation, hexdigest);
+    global_group_hash[0] = 0;
 
     expect_string(__wrap__mdebug1, formatted_msg, "Database structure not initialized. Unable to calculate global group hash.");
 
