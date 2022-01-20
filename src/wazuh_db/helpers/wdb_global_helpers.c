@@ -38,7 +38,6 @@ static const char *global_db_commands[] = {
     [WDB_DELETE_GROUP] = "global delete-group %s",
     [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
     [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
-    [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
@@ -724,16 +723,11 @@ int wdb_update_groups(const char *dirname, int *sock) {
 
         dp = opendir(group_path);
 
-        /* Group doesnt exists anymore, delete it */
+        /* Group doesn't exists anymore, delete it */
         if (!dp) {
-            if (wdb_remove_group_db((char *)array[i], query_sock) < 0) {
-                free_strarray(array);
-                if (!sock) {
-                    wdbc_close(&aux_sock);
-                }
-                return OS_INVALID;
-            }
-        } else {
+            wdb_remove_group_db((char *)array[i], query_sock);
+        }
+        else {
             closedir(dp);
         }
     }
@@ -815,14 +809,6 @@ int wdb_remove_group_db(const char *name, int *sock) {
     char *payload = NULL;
     int aux_sock = -1;
 
-    if (OS_INVALID == wdb_remove_group_from_belongs_db(name, sock?sock:&aux_sock)) {
-        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
-        if (!sock) {
-            wdbc_close(&aux_sock);
-        }
-        return OS_INVALID;
-    }
-
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP], name);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
@@ -879,40 +865,6 @@ int wdb_delete_agent_belongs(int id, int *sock) {
     int aux_sock = -1;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT_BELONG], id);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
-
-int wdb_remove_group_from_belongs_db(const char *name, int *sock) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP_BELONG], name);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
