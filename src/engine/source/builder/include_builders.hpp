@@ -1,15 +1,11 @@
 #ifndef _INCLUDE_BUILDERS_H
 #define _INCLUDE_BUILDERS_H
 
-#include "builders/condition.hpp"
-#include "builders/condition_value.hpp"
-#include "builders/helper_exists.hpp"
-
-#include "builders/map.hpp"
-#include "builders/map_reference.hpp"
-#include "builders/map_value.hpp"
-
 #include "builders/decoder.hpp"
+#include "builders/filter.hpp"
+#include "builders/output.hpp"
+#include "builders/rule.hpp"
+
 /**
  * @brief defines all operation builders
  *
