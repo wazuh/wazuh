@@ -307,7 +307,7 @@ All notable changes to this project will be documented in this file.
 - Added SCA policy for Mongo Database 3.6. ([#11247](https://github.com/wazuh/wazuh/pull/11247))
 - Added SCA policy for NGINX. ([#11248](https://github.com/wazuh/wazuh/pull/11248))
 - Added SCA policy for Oracle Database 19c. ([#11245](https://github.com/wazuh/wazuh/pull/11245))
-- Added SCA policy for PostgreSQL 13 ([#11154](https://github.com/wazuh/wazuh/pull/11154))
+- Added SCA policy for PostgreSQL 13. ([#11154](https://github.com/wazuh/wazuh/pull/11154))
 - Added SCA policy for SUSE Linux Enterprise Server 15. ([#11223](https://github.com/wazuh/wazuh/pull/11223))
 - Added SCA policy for Ubuntu 14. ([#11432](https://github.com/wazuh/wazuh/pull/11432))
 - Added SCA policy for Ubuntu 16. ([#11452](https://github.com/wazuh/wazuh/pull/11452))
