@@ -31,6 +31,46 @@ TEST(DecoderBuilderTest, Builds)
     ASSERT_NO_THROW(auto obs = decoderBuilder(fake_j));
 }
 
+TEST(DecoderBuilderTest, BuildsErrorNoName){
+      // Fake entry point
+    auto entry_point = observable<>::empty<event_t>();
+
+    // Fake input json
+    auto fake_jstring = R"(
+    {
+      "parents": [],
+      "check": [
+        {"field": 1}
+      ],
+      "normalize": [
+        {"mapped_field": 1}
+      ]
+    }
+  )";
+    json::Document fake_j{fake_jstring};
+
+    ASSERT_THROW(auto obs = decoderBuilder(fake_j), invalid_argument);
+}
+
+TEST(DecoderBuilderTest, BuildsErrorNoCheck){
+      // Fake entry point
+    auto entry_point = observable<>::empty<event_t>();
+
+    // Fake input json
+    auto fake_jstring = R"(
+    {
+      "name": "name",
+      "parents": [],
+      "normalize": [
+        {"mapped_field": 1}
+      ]
+    }
+  )";
+    json::Document fake_j{fake_jstring};
+
+    ASSERT_THROW(auto obs = decoderBuilder(fake_j), invalid_argument);
+}
+
 TEST(DecoderBuilderTest, OperatesAndConnects)
 {
     // Fake entry point
