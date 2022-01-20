@@ -1,4 +1,4 @@
 *:*src/syscheckd/db/src/fimDBHelper.hpp:116
 *:*src/syscheckd/db/src/fimDBHelper.hpp:143
 *:*src/syscheckd/db/src/fimDBHelper.hpp:169
-*:*src/syscheckd/src/db/src/file.cpp:62
+*:*src/syscheckd/src/db/src/file.cpp:78

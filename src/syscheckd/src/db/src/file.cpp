@@ -95,7 +95,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
 }
 
 
-const std::unordered_map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
+const std::map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
 {
     { COUNT_SELECT_TYPE::COUNT_ALL, {"count(*) AS count"} },
     { COUNT_SELECT_TYPE::COUNT_INODE, {"count(DISTINCT (inode || ',' || dev)) AS count"} },
