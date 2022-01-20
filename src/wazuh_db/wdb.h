@@ -69,6 +69,7 @@ typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_OVERRIDE,     ///< Re-write the group assignment
         WDB_GROUP_APPEND,       ///< Add group assignment to the existent one
         WDB_GROUP_EMPTY_ONLY,   ///< Write a group assignment only if the agent doesn´t have one
+        WDB_GROUP_REMOVE,       ///< Removes a list of group assignments
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
 } wdb_groups_set_mode_t;
 
@@ -209,6 +210,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
+    WDB_STMT_GLOBAL_DELETE_ALL_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
     WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
@@ -1838,6 +1840,16 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
 
 /**
+ * @brief Function to remove an agent from the belongs table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id_group The group id.
+ * @param [in] id_agent The agent id..
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_remove_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+
+/**
  * @brief Function to check if a group is empty.
  *
  * @param [in] wdb The Global struct database.
@@ -1980,6 +1992,17 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
  * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority);
+
+/**
+ * @brief Writes the groups of an agent.
+ *        If the group doesn´t exists it creates it.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the priority.
+ * @param [in] j_groups JSON array with all the groups to remove from the agent.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
 
 /**
  * @brief Sets the belongship af a set of agents.
