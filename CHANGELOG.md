@@ -338,7 +338,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bad character on rules 60908 and 60884 - win-application rules. ([#11117](https://github.com/wazuh/wazuh/pull/11117))
 - Fixed Microsoft logs rules. ([#11369](https://github.com/wazuh/wazuh/pull/11369))
 - Fixed PHP rules for MITRE and groups. ([#11405](https://github.com/wazuh/wazuh/pull/11405))
-- Fixed rules id for Microsoft Windows Powershell.  ([#11214](https://github.com/wazuh/wazuh/pull/11214))
+- Fixed rules id for Microsoft Windows Powershell. ([#11214](https://github.com/wazuh/wazuh/pull/11214))
 
 ### Other
 
