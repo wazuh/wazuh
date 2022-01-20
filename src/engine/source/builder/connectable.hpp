@@ -33,10 +33,12 @@ public:
      * @param parents
      */
     Connectable(std::string name, const std::vector<std::string> & parents)
-        : m_name(name), m_obs(m_subj.get_observable())
+        : m_name(name), m_parents(parents), m_obs(m_subj.get_observable())
     {
     }
-
+    Connectable(std::string name) : m_name(name), m_obs(m_subj.get_observable())
+    {
+    }
     /**
      * @brief connects the ouput of this connectable to the input
      * og the other connectable. This does not check against
