@@ -161,7 +161,7 @@ private:
     bool m_shouldBeRemoved;
 };
 
-class EXPORTED DBSyncTxn 
+class EXPORTED DBSyncTxn
 {
 public:
     /**
