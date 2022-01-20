@@ -74,14 +74,14 @@ void DB::init(const int storage,
     auto rsyncHandler { std::make_shared<RemoteSync>() };
 
     FIMDB::instance().init(syncInterval,
-                              callbackSyncFileWrapper,
-                              callbackSyncRegistryWrapper,
-                              callbackLogWrapper,
-                              dbsyncHandler,
-                              rsyncHandler,
-                              fileLimit,
-                              valueLimit,
-                              isWindows);
+                           callbackSyncFileWrapper,
+                           callbackSyncRegistryWrapper,
+                           callbackLogWrapper,
+                           dbsyncHandler,
+                           rsyncHandler,
+                           fileLimit,
+                           valueLimit,
+                           isWindows);
 }
 
 void DB::runIntegrity()
