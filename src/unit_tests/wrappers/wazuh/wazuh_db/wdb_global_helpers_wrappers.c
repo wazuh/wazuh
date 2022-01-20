@@ -45,3 +45,12 @@ int* __wrap_wdb_get_all_agents(bool include_manager, __attribute__((unused)) int
 
     return mock_ptr_type(int*);
 }
+
+int __wrap_wdb_set_agent_groups_csv(int id,
+                                    __attribute__((unused)) char *groups_csv,
+                                    __attribute__((unused)) char *mode,
+                                    __attribute__((unused)) char *sync_status,
+                                    __attribute__((unused)) int *sock) {
+    check_expected(id);
+    return mock();
+}
