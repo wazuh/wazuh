@@ -30,13 +30,19 @@ Connectable outputBuilder(const json::Document & inputJson)
             parents.push_back(it->GetString());
         }
     }
-    Connectable connectable(inputJson.get(".name")->GetString(), parents);
 
-    // Check stage is mandatory in a rule
+    auto name = inputJson.get(".name");
+    if (!name)
+    {
+        throw std::invalid_argument("Output builder must have a name entry.");
+    }
+    Connectable connectable(name->GetString(), parents);
+
+    // Check stage is mandatory in output
     auto checkVal = inputJson.get(".check");
     if (!checkVal)
     {
-        throw std::invalid_argument("Output builder expects rule definition to have a check section. ");
+        throw std::invalid_argument("Output builder expects output definition to have a check section. ");
     }
     auto outputObs = checkStageBuilder(connectable.output(), checkVal);
 
