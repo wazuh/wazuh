@@ -5,66 +5,13 @@
 #include <stdexcept>
 #include <string>
 
+#include "builders/check_stage.hpp"
+#include "builders/normalize_stage.hpp"
 #include "connectable.hpp"
 #include "json.hpp"
 
-#include "builders/condition.hpp"
-#include "builders/map.hpp"
-
 namespace builder::internals::builders
 {
-
-/**
- * @brief Builds stage check
- *
- * @param inputObs
- * @param inputJson
- * @return rxcpp::observable<json::Document>
- */
-rxcpp::observable<json::Document> decoderCheckBuilder(rxcpp::observable<json::Document> inputObs,
-                                                      const json::Value * inputJson)
-{
-    if (!inputJson->IsArray())
-    {
-        throw std::invalid_argument("Check builder expects and array, but got " + inputJson->GetType());
-    }
-
-    auto outputObs = inputObs;
-    for (rapidjson::Value::ConstValueIterator it = inputJson->GetArray().Begin(); it != inputJson->GetArray().End();
-         it++)
-    {
-        const json::Value * valueRef = static_cast<const json::Value *>(it);
-        outputObs = conditionBuilder(outputObs, valueRef);
-    }
-
-    return outputObs;
-}
-
-/**
- * @brief Bluilds stage normalize
- *
- * @param inputObs
- * @param inputJson
- * @return rxcpp::observable<json::Document>
- */
-rxcpp::observable<json::Document> decoderNormalizeBuilder(rxcpp::observable<json::Document> inputObs,
-                                                          const json::Value * inputJson)
-{
-    if (!inputJson->IsArray())
-    {
-        throw std::invalid_argument("Check builder expects and array, but got " + inputJson->GetType());
-    }
-
-    auto outputObs = inputObs;
-    for (rapidjson::Value::ConstValueIterator it = inputJson->GetArray().Begin(); it != inputJson->GetArray().End();
-         it++)
-    {
-        const json::Value * valueRef = static_cast<const json::Value *>(it);
-        outputObs = mapBuilder(outputObs, valueRef);
-    }
-
-    return outputObs;
-}
 
 /**
  * @brief Builds decoder connectable
@@ -75,9 +22,7 @@ rxcpp::observable<json::Document> decoderNormalizeBuilder(rxcpp::observable<json
 Connectable decoderBuilder(const json::Document & inputJson)
 {
     std::vector<std::string> parents;
-    // Needed because check function is ambigous, need to look for constructors to be explicited
-    std::string tmpStr{".parents"};
-    if (inputJson.check(tmpStr))
+    if (inputJson.exists("/parents"))
     {
         for (rapidjson::Value::ConstValueIterator it = inputJson.get(".parents")->GetArray().Begin();
              it != inputJson.get(".parents")->GetArray().End(); it++)
@@ -85,13 +30,27 @@ Connectable decoderBuilder(const json::Document & inputJson)
             parents.push_back(it->GetString());
         }
     }
-    Connectable connectable(inputJson.get(".name")->GetString(), parents);
+    auto name = inputJson.get(".name");
+    if (!name)
+    {
+        throw std::invalid_argument("Decoder builder expects decoder to have a name entry.");
+    }
+    Connectable connectable(name->GetString(), parents);
 
-    // Build check
-    auto outputObs = decoderCheckBuilder(connectable.output(), inputJson.get(".check"));
+    // Check stage is mandatory in a decoder
+    auto checkVal = inputJson.get(".check");
+    if (!checkVal)
+    {
+        throw std::invalid_argument("Decoder builder expects decoder definition to have a check section. ");
+    }
+    auto outputObs = checkStageBuilder(connectable.output(), checkVal);
 
-    // Build normalize
-    outputObs = decoderNormalizeBuilder(outputObs, inputJson.get(".normalize"));
+    // Normalize stage is optional
+    auto normalizeVal = inputJson.get(".normalize");
+    if (normalizeVal)
+    {
+        outputObs = normalizeStageBuilder(outputObs, normalizeVal);
+    }
 
     // Update connectable and return
     connectable.set(outputObs);
