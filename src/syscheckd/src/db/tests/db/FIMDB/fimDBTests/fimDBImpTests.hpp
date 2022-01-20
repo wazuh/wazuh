@@ -70,6 +70,16 @@ class MockFIMDB: public FIMDB
         {
             FIMDB::stopSync();
         }
+
+        void teardown()
+        {
+            FIMDB::teardown();
+        }
+
+        void runIntegrity()
+        {
+            FIMDB::runIntegrity();
+        }
 };
 
 class MockLoggingCall
