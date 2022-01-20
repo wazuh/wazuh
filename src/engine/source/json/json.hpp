@@ -8,10 +8,10 @@
 #include <thread>
 
 #include "rapidjson/document.h"
+#include "rapidjson/error/en.h"
 #include "rapidjson/pointer.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
-
 #include "rxcpp/rx.hpp"
 
 namespace json
@@ -31,7 +31,13 @@ public:
     Document(){};
     explicit Document(const char * json)
     {
-        m_doc.Parse(json);
+        rapidjson::ParseResult ok = m_doc.Parse(json);
+        if (!ok)
+        {
+            std::string err = rapidjson::GetParseError_En(ok.Code());
+            throw std::invalid_argument("Unable to build json document because: " + err + " at " +
+                                        std::to_string(ok.Offset()));
+        }
     };
     Document(const Document & e)
     {
