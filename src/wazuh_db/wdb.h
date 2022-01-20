@@ -211,6 +211,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
+    WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
@@ -1835,6 +1836,15 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
+
+/**
+ * @brief Function to check if a group is empty.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] group_name The group name.
+ * @return Returns true if the group is empty, false if it isn´t empty or error.
+ */
+bool wdb_is_group_empty(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.
