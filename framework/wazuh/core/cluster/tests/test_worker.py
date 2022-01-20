@@ -664,7 +664,7 @@ async def test_worker_handler_sync_agent_info(request_permission_mock, logger_er
         except Exception:
             pass
 
-        logger_info_mock.assert_called_with("Starting.")
+        logger_info_mock.assert_called_with('Starting.')
         sync_mock.assert_called_with(start_time=0)
         assert worker_handler.agent_info_sync_status['date_start'] == 0.0
 
