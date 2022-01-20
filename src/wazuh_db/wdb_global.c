@@ -793,7 +793,30 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
     }
 }
 
+bool wdb_is_group_empty(wdb_t *wdb, char* group_name) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
+    if (stmt == NULL) {
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, group_name, -1, NULL);
+    switch (wdb_step(stmt)) {
+    case SQLITE_DONE:
+        return true;
+    case SQLITE_ROW:
+        return false;
+    default:
+        mdebug1("SQL statement execution failed");
+        return false;
+    }
+}
+
 int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
+    if (!wdb_is_group_empty(wdb, group_name)) {
+        mdebug1("Unable to delete group '%s', an agent is still belonging to it", group_name);
+        return OS_INVALID;
+    }
+
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
