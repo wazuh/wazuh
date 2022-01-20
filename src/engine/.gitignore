@@ -82,3 +82,6 @@ _deps
 
 # Support for Project snippet scope
 !.vscode/*.code-snippets
+
+# Personal
+_*.*pp
