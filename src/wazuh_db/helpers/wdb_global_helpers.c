@@ -26,23 +26,23 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
     [WDB_UPDATE_AGENT_GROUP] = "global update-agent-group %s",
-    [WDB_SET_AGENT_LABELS] = "global set-labels %u %s",
-    [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %u",
+    [WDB_SET_AGENT_LABELS] = "global set-labels %lu %s",
+    [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %lu",
     [WDB_FIND_AGENT] = "global find-agent %s",
-    [WDB_GET_AGENT_INFO] = "global get-agent-info %u",
-    [WDB_GET_AGENT_LABELS] = "global get-labels %u",
-    [WDB_SELECT_AGENT_NAME] = "global select-agent-name %u",
-    [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %u",
+    [WDB_GET_AGENT_INFO] = "global get-agent-info %lu",
+    [WDB_GET_AGENT_LABELS] = "global get-labels %lu",
+    [WDB_SELECT_AGENT_NAME] = "global select-agent-name %lu",
+    [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %lu",
     [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
-    [WDB_DELETE_AGENT] = "global delete-agent %u",
+    [WDB_DELETE_AGENT] = "global delete-agent %lu",
     [WDB_DELETE_GROUP] = "global delete-group %s",
-    [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %u",
+    [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %lu",
     [WDB_DELETE_GROUP_BELONG] = "global delete-group-belong %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
-    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %u %s",
-    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %u %d %s"
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %lu %s",
+    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %lu %d %s"
 };
 
 int wdb_insert_agent(uint32_t id,
@@ -1130,8 +1130,8 @@ wdbc_result wdb_parse_chunk_to_id(char* input, uint32_t** output, const char* it
             cJSON_ArrayForEach(agent, response) {
                 cJSON* json_item = cJSON_GetObjectItem(agent, item);
                 if (cJSON_IsNumber(json_item)) {
-                    (*output)[len] = json_item->valueint;
-                    _last_item = json_item->valueint;
+                    (*output)[len] = json_item->valuedouble;
+                    _last_item = json_item->valuedouble;
                     len++;
                 }
             }

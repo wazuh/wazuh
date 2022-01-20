@@ -51,7 +51,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 
 
 /* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
-int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description,
+int wdb_sca_save(wdb_t *wdb, uint32_t id, int scan_id, char *title, char *description,
         char *rationale, char *remediation, char *condition, char *file,
         char *directory, char *process, char *registry, char *reference,
         char *result, char *policy_id, char *command, char *status, char *reason)
@@ -70,7 +70,7 @@ int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description
 
     stmt = wdb->stmt[WDB_STMT_SCA_INSERT];
 
-    sqlite3_bind_int(stmt, 1, id);
+    sqlite3_bind_int64(stmt, 1, id);
     sqlite3_bind_int(stmt, 2, scan_id);
     sqlite3_bind_text(stmt, 3, title, -1, NULL);
     sqlite3_bind_text(stmt, 4, description, -1, NULL);
@@ -656,7 +656,7 @@ end:
 }
 
 /* Update a configuration assessment entry. Returns affected rows on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * status, char * reason) {
+int wdb_sca_update(wdb_t * wdb, char * result, uint32_t id, int scan_id, char * status, char * reason) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -677,7 +677,7 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * statu
     sqlite3_bind_int(stmt, 2, scan_id);
     sqlite3_bind_text(stmt, 3, status,-1, NULL);
     sqlite3_bind_text(stmt, 4, reason,-1, NULL);
-    sqlite3_bind_int(stmt, 5, id);
+    sqlite3_bind_int64(stmt, 5, id);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);

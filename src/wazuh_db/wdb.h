@@ -466,10 +466,10 @@ int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event);
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
 
 /* Update a configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id, char * status, char * reason);
+int wdb_sca_update(wdb_t * wdb, char * result, uint32_t id,int scan_id, char * status, char * reason);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description, char *rationale,
+int wdb_sca_save(wdb_t *wdb, uint32_t id, int scan_id, char *title, char *description, char *rationale,
         char *remediation, char *condition, char *file, char *directory, char *process, char *registry,
         char *reference, char *result, char *policy_id, char *command, char *status, char *reason);
 

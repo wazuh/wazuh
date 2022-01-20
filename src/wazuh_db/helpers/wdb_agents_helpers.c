@@ -13,12 +13,12 @@
 #include "wazuhdb_op.h"
 
 static const char *agents_db_commands[] = {
-    [WDB_AGENTS_SYS_OSINFO_GET] = "agent %u osinfo get",
-    [WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED] = "agent %u osinfo set_triaged",
-    [WDB_AGENTS_VULN_CVES_INSERT] = "agent %u vuln_cves insert %s",
-    [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %u vuln_cves update_status %s",
-    [WDB_AGENTS_VULN_CVES_REMOVE] = "agent %u vuln_cves remove %s",
-    [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %u vuln_cves clear"
+    [WDB_AGENTS_SYS_OSINFO_GET] = "agent %lu osinfo get",
+    [WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED] = "agent %lu osinfo set_triaged",
+    [WDB_AGENTS_VULN_CVES_INSERT] = "agent %lu vuln_cves insert %s",
+    [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %lu vuln_cves update_status %s",
+    [WDB_AGENTS_VULN_CVES_REMOVE] = "agent %lu vuln_cves remove %s",
+    [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %lu vuln_cves clear"
 };
 
 cJSON* wdb_get_agent_sys_osinfo(uint32_t id,
@@ -66,18 +66,18 @@ int wdb_set_agent_sys_osinfo_triaged(uint32_t id,
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                mdebug1("Agents DB (%u) Error reported in the result of the query", id);
                 result = OS_INVALID;
             }
             break;
         case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Error in the response from socket", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
             break;
         default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
     }
 
@@ -145,7 +145,7 @@ cJSON* wdb_insert_vuln_cves(uint32_t id,
     }
 
     if (!result) {
-        merror("Agents DB (%d) Error querying Wazuh DB to insert vuln_cves", id);
+        merror("Agents DB (%u) Error querying Wazuh DB to insert vuln_cves", id);
     }
 
     return result;
@@ -188,13 +188,13 @@ int wdb_update_vuln_cves_status(uint32_t id,
             }
             break;
         case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Error in the response from socket", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
             break;
         default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
     }
 
@@ -242,18 +242,18 @@ int wdb_update_vuln_cves_status_by_type(uint32_t id,
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                mdebug1("Agents DB (%u) Error reported in the result of the query", id);
                 result = OS_INVALID;
             }
             break;
         case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Error in the response from socket", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
             break;
         default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
     }
 
@@ -301,18 +301,18 @@ int wdb_remove_vuln_cves(uint32_t id,
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                mdebug1("Agents DB (%u) Error reported in the result of the query", id);
                 result = OS_INVALID;
             }
             break;
         case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Error in the response from socket", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
             break;
         default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
     }
 
@@ -428,18 +428,18 @@ int wdb_clear_vuln_cves(uint32_t id,
     switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                mdebug1("Agents DB (%u) Error reported in the result of the query", id);
                 result = OS_INVALID;
             }
             break;
         case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Error in the response from socket", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
             break;
         default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            mdebug1("Agents DB (%u) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%u) SQL query: %s", id, wdbquery);
             result = OS_INVALID;
     }
 

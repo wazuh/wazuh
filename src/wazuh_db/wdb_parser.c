@@ -1632,7 +1632,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 return -1;
             }
 
-            if( !id->valueint ) {
+            if( !id->valuedouble ) {
                 mdebug1("Malformed JSON: field 'id' must be a string");
                 return -1;
             }
@@ -1741,7 +1741,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
 
-        if (result = wdb_sca_save(wdb, id->valueint, scan_id->valueint, title->valuestring,
+        if (result = wdb_sca_save(wdb, id->valuedouble, scan_id->valueint, title->valuestring,
                     description ? description->valuestring : NULL,
                     rationale ? rationale->valuestring : NULL,
                     remediation ? remediation->valuestring : NULL,
@@ -4629,7 +4629,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
             cJSON_IsNumber(j_date_add)) {
 
             // Getting each field
-            uint32_t id = j_id->valueint;
+            uint32_t id = j_id->valuedouble;
             char* name = j_name->valuestring;
             char* ip = cJSON_IsString(j_ip) ? j_ip->valuestring : NULL;
             char* register_ip = cJSON_IsString(j_register_ip) ? j_register_ip->valuestring : NULL;
@@ -4677,7 +4677,7 @@ int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output)
             cJSON_IsString(j_name) && j_name->valuestring) {
 
             // Getting each field
-            int32_t id = j_id->valueint;
+            int32_t id = j_id->valuedouble;
             char* name = j_name->valuestring;
 
             if (OS_SUCCESS != wdb_global_update_agent_name(wdb, id, name)) {
@@ -4752,7 +4752,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 
         if (cJSON_IsNumber(j_id)) {
             // Getting each field
-            int32_t id = j_id->valueint;
+            uint32_t id = j_id->valuedouble;
             char *os_name = cJSON_IsString(j_os_name) ? j_os_name->valuestring : NULL;
             char *os_version = cJSON_IsString(j_os_version) ? j_os_version->valuestring : NULL;
             char *os_major = cJSON_IsString(j_os_major) ? j_os_major->valuestring : NULL;
@@ -4786,7 +4786,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
                 // The output string will be filled by the labels setter method.
                 char *labels_data = NULL;
                 os_calloc(OS_MAXSTR, sizeof(char), labels_data);
-                snprintf(labels_data, OS_MAXSTR, "%d", id);
+                snprintf(labels_data, OS_MAXSTR, "%u", id);
                 wm_strcat(&labels_data, labels, ' ');
 
                 int result = wdb_parse_global_set_agent_labels(wdb, labels_data, output);
@@ -4807,11 +4807,11 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 }
 
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output) {
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
     cJSON *labels = NULL;
     char *out = NULL;
 
-    agent_id = atoi(input);
+    agent_id = strtoul(input, NULL, 10);
 
     if (labels = wdb_global_get_agent_labels(wdb, agent_id), !labels) {
         mdebug1("Error getting agent labels from global.db.");
@@ -4847,7 +4847,7 @@ int wdb_parse_global_set_agent_labels(wdb_t * wdb, char * input, char * output) 
         return OS_INVALID;
     }
 
-    int32_t agent_id = strtol(id, NULL, 10);
+    uint32_t agent_id = strtoul(id, NULL, 10);
 
     // Removing old labels from the labels table
     if (OS_SUCCESS != wdb_global_del_agent_labels(wdb, agent_id)) {
@@ -4901,7 +4901,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
 
         if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
             // Getting each field
-            int32_t id = j_id->valueint;
+            uint32_t id = j_id->valuedouble;
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
 
@@ -4945,7 +4945,7 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
 
         if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
             // Getting each field
-            int32_t id = j_id->valueint;
+            uint32_t id = j_id->valuedouble;
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
 
@@ -4970,9 +4970,9 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
 }
 
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
 
-    agent_id = strtol(input, NULL, 10);
+    agent_id = strtoul(input, NULL, 10);
 
     if (OS_SUCCESS != wdb_global_delete_agent(wdb, agent_id)) {
         mdebug1("Error deleting agent from agent table in global.db.");
@@ -4986,11 +4986,11 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
 }
 
 int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output) {
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
     cJSON *name = NULL;
     char *out = NULL;
 
-    agent_id = strtol(input, NULL, 10);
+    agent_id = strtoul(input, NULL, 10);
 
     if (name = wdb_global_select_agent_name(wdb, agent_id), !name) {
         mdebug1("Error getting agent name from global.db.");
@@ -5007,11 +5007,11 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
 }
 
 int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output) {
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
     cJSON *name = NULL;
     char *out = NULL;
 
-    agent_id = strtol(input, NULL, 10);
+    agent_id = strtoul(input, NULL, 10);
 
     if (name = wdb_global_select_agent_group(wdb, agent_id), !name) {
         mdebug1("Error getting agent group from global.db.");
@@ -5107,7 +5107,7 @@ int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output
 
         if (cJSON_IsNumber(j_id)) {
             // Getting each field
-            int32_t id = j_id->valueint;
+            uint32_t id = j_id->valuedouble;
             char *group = cJSON_IsString(j_group) ? j_group->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_group(wdb, id, group)) {
@@ -5186,7 +5186,7 @@ int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * outpu
         if (cJSON_IsNumber(j_id_group) && cJSON_IsNumber(j_id_agent)) {
             // Getting each field
             int id_group = j_id_group->valueint;
-            uint32_t id_agent = j_id_agent->valueint;
+            uint32_t id_agent = j_id_agent->valuedouble;
 
             if (OS_SUCCESS != wdb_global_insert_agent_belong(wdb, id_group, id_agent)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
@@ -5315,7 +5315,7 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
 
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output){
     const char *error = NULL;
-    int32_t agent_id = 0;
+    uint32_t agent_id = 0;
     cJSON *root = NULL;
     cJSON *json_agent = NULL;
     cJSON *json_field = NULL;
@@ -5353,9 +5353,9 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                 // The JSON has a label array
                 // Removing old labels from the labels table before inserting
                 json_field = cJSON_GetObjectItem(json_agent, "id");
-                agent_id = cJSON_IsNumber(json_field) ? json_field->valueint : -1;
+                agent_id = cJSON_IsNumber(json_field) ? json_field->valuedouble : ID_INVALID;
 
-                if (agent_id == -1){
+                if (agent_id == ID_INVALID){
                     mdebug1("Global DB Cannot execute SQL query; incorrect agent id in labels array.");
                     snprintf(output, OS_MAXSTR + 1, "err Cannot update labels due to invalid id.");
                     cJSON_Delete(root);
@@ -5377,7 +5377,7 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
                     if(cJSON_IsString(json_key) && json_key->valuestring != NULL && cJSON_IsString(json_value) &&
                         json_value->valuestring != NULL && cJSON_IsNumber(json_id)){
                         // Inserting labels in the database
-                        if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valueint, json_key->valuestring, json_value->valuestring)) {
+                        if (OS_SUCCESS != wdb_global_set_agent_label(wdb, json_id->valuedouble, json_key->valuestring, json_value->valuestring)) {
                             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                             snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                             cJSON_Delete(root);
@@ -5635,7 +5635,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
 
 int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
     int result = OS_INVALID;
-    int32_t agent_id = OS_INVALID;
+    uint32_t agent_id = OS_INVALID;
     char *node = NULL;
     char *module = NULL;
 
@@ -5644,7 +5644,7 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *comm
         snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing agent error'");
         return OS_INVALID;
     }
-    agent_id = agent_id_json->valueint;
+    agent_id = agent_id_json->valuedouble;
 
     cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
     if (!node_json || (node_json->type != cJSON_String)) {
@@ -5684,7 +5684,7 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *comm
 
 int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output) {
     int result = OS_INVALID;
-    int32_t agent_id = OS_INVALID;
+    uint32_t agent_id = OS_INVALID;
     char *node = NULL;
     char *task_status = NULL;
 
@@ -5693,7 +5693,7 @@ int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char*
         snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing agent error'");
         return OS_INVALID;
     }
-    agent_id = agent_id_json->valueint;
+    agent_id = agent_id_json->valuedouble;
 
     cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
     if (!node_json || (node_json->type != cJSON_String)) {
@@ -5725,7 +5725,7 @@ int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char*
 
 int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output) {
     int result = OS_INVALID;
-    int32_t agent_id = OS_INVALID;
+    uint32_t agent_id = OS_INVALID;
     char *node = NULL;
     char *status = NULL;
     char *error = NULL;
@@ -5735,7 +5735,7 @@ int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, ch
         snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing agent error'");
         return OS_INVALID;
     }
-    agent_id = agent_id_json->valueint;
+    agent_id = agent_id_json->valuedouble;
 
     cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
     if (!node_json || (node_json->type != cJSON_String)) {
@@ -5774,7 +5774,7 @@ int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, ch
 
 int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output) {
     int result = OS_INVALID;
-    int32_t agent_id = OS_INVALID;
+    uint32_t agent_id = OS_INVALID;
     char *node_result = NULL;
     char *module_result = NULL;
     char *command_result = NULL;
@@ -5788,7 +5788,7 @@ int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* out
         snprintf(output, OS_MAXSTR + 1, "err Error upgrade result task: 'parsing agent error'");
         return OS_INVALID;
     }
-    agent_id = agent_id_json->valueint;
+    agent_id = agent_id_json->valuedouble;
 
     result = wdb_task_get_upgrade_task_by_agent_id(wdb, agent_id, &node_result, &module_result, &command_result, &status, &error, &create_time, &last_update_time);
 

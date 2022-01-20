@@ -381,7 +381,7 @@ wdb_t * wdb_open_agent2(uint32_t agent_id) {
     sqlite3 * db;
     wdb_t * wdb = NULL;
 
-    snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
+    snprintf(sagent_id, sizeof(sagent_id), "%03u", agent_id);
 
     // Find BD in pool
 
@@ -1287,7 +1287,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     char *json_formated;
     char path[PATH_MAX];
     char agent[OS_SIZE_128];
-    int32_t agent_id;
+    uint32_t agent_id;
     int n = 0;
 
     if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
@@ -1303,7 +1303,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     for (n = 0; agents && agents[n]; n++) {
         if (strcmp(agents[n], "") != 0) {
             next = agents[n + 1];
-            agent_id = strtol(agents[n], &next, 10);
+            agent_id = strtoul(agents[n], &next, 10);
             const char * result = "ok";
 
             // Check for valid ID
@@ -1311,8 +1311,8 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
                 mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
                 result = "Invalid agent ID";
             } else {
-                snprintf(path, PATH_MAX, "%s/%03d.db", WDB2_DIR, agent_id);
-                snprintf(agent, OS_SIZE_128, "%03d", agent_id);
+                snprintf(path, PATH_MAX, "%s/%03u.db", WDB2_DIR, agent_id);
+                snprintf(agent, OS_SIZE_128, "%03u", agent_id);
 
                 // Close the database only if it was open
 

@@ -29,7 +29,7 @@ int wdb_task_insert_task(wdb_t* wdb, uint32_t agent_id, const char *node, const 
 
     stmt = wdb->stmt[WDB_STMT_TASK_INSERT_TASK];
 
-    sqlite3_bind_int(stmt, 1, agent_id);
+    sqlite3_bind_int64(stmt, 1, agent_id);
     sqlite3_bind_text(stmt, 2, node, -1, NULL);
     sqlite3_bind_text(stmt, 3, module, -1, NULL);
     sqlite3_bind_text(stmt, 4, command, -1, NULL);
@@ -48,7 +48,7 @@ int wdb_task_insert_task(wdb_t* wdb, uint32_t agent_id, const char *node, const 
 
     stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_TASK];
 
-    sqlite3_bind_int(stmt, 1, agent_id);
+    sqlite3_bind_int64(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
@@ -83,7 +83,7 @@ int wdb_task_get_upgrade_task_status(wdb_t* wdb, uint32_t agent_id, const char *
 
     stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK];
 
-    sqlite3_bind_int(stmt, 1, agent_id);
+    sqlite3_bind_int64(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
@@ -150,7 +150,7 @@ int wdb_task_update_upgrade_task_status(wdb_t* wdb, uint32_t agent_id, const cha
 
     stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK];
 
-    sqlite3_bind_int(stmt, 1, agent_id);
+    sqlite3_bind_int64(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
@@ -213,7 +213,7 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, uint32_t agent_id, char **
 
     stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK];
 
-    sqlite3_bind_int(stmt, 1, agent_id);
+    sqlite3_bind_int64(stmt, 1, agent_id);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
