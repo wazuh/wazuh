@@ -11,7 +11,9 @@
 #include "rxcpp/rx.hpp"
 #include "gtest/gtest.h"
 #include "json/json.hpp"
-#include "builder/outputs/file/fileOutput.hpp"
+#include "outputs/file_output.hpp"
+
+#include "test_utils.hpp"
 
 
 auto message = R"({
@@ -138,6 +140,5 @@ TEST(FileOutput, RotatingFileOutput)
 
     std::filesystem::remove(filepath);
     std::filesystem::remove(rotatedFile1);
-    std::filesystem::remove(rotatedFile2); 
+    std::filesystem::remove(rotatedFile2);
 }
-
