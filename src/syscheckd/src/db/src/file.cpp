@@ -1,10 +1,14 @@
-/**
- * @file file.cpp
- * @brief Definition of FIM database for files library.
- * @date 2021-09-9
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * September 9, 2021.
  *
- * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
+
 #include "fimCommonDefs.h"
 #include "json.hpp"
 #include "db.h"
@@ -23,36 +27,49 @@ enum SEARCH_FIELDS
 
 void DB::removeFile(const std::string& path)
 {
-    FIMDB::getInstance().removeItem(FimDBUtils::buildRemoveQuery(FIMDB_FILE_TABLE_NAME,
-                                                                 std::vector<std::pair<std::string, std::string>>({std::make_pair("path", path)})));
+    auto deleteQuery
+    {
+        DeleteQuery::builder()
+        .table(FIMDB_FILE_TABLE_NAME)
+        .data({{"path", path}})
+        .rowFilter("")
+        .build()
+    };
+
+    FIMDB::getInstance().removeItem(deleteQuery.query());
 }
 
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
 {
-    const auto fileColumnList = R"({"column_list":["path",
-                                                   "mode",
-                                                   "last_event",
-                                                   "scanned",
-                                                   "options",
-                                                   "checksum",
-                                                   "dev",
-                                                   "inode",
-                                                   "size",
-                                                   "perm",
-                                                   "attributes",
-                                                   "uid",
-                                                   "gid",
-                                                   "user_name",
-                                                   "group_name",
-                                                   "hash_md5",
-                                                   "hash_sha1",
-                                                   "hash_sha256",
-                                                   "mtime"]})"_json;
-
-    const auto query = FimDBUtils::buildSelectQuery(FIMDB_FILE_TABLE_NAME,
-                                                    fileColumnList,
-                                                    std::string("WHERE path=\"") + std::string(path) + "\"",
-                                                    FILE_PRIMARY_KEY);
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table(FIMDB_FILE_TABLE_NAME)
+        .columnList({"path",
+            "mode",
+            "last_event",
+            "scanned",
+            "options",
+            "checksum",
+            "dev",
+            "inode",
+            "size",
+            "perm",
+            "attributes",
+            "uid",
+            "gid",
+            "user_name",
+            "group_name",
+            "hash_md5",
+            "hash_sha1",
+            "hash_sha256",
+            "mtime"})
+        .rowFilter(std::string("WHERE path=\"") + std::string(path) + "\"")
+        .orderByOpt(FILE_PRIMARY_KEY)
+        .distinctOpt(false)
+        .countOpt(100)
+        .build()
+    };
 
     std::vector<nlohmann::json> entryFromPath;
     const auto internalCallback
@@ -66,8 +83,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
         }
     };
 
-    FIMDB::getInstance().executeQuery(query, internalCallback);
-
+    FIMDB::getInstance().executeQuery(selectQuery.query(), internalCallback);
 
     if (entryFromPath.size() == 1)
     {
@@ -75,15 +91,15 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     }
     else
     {
-        throw std::runtime_error{ "There ar more or 0 rows" };
+        throw std::runtime_error{ "There are more or 0 rows" };
     }
 }
 
 
-const std::unordered_map<COUNT_SELECT_TYPE, nlohmann::json> COUNT_SELECT_TYPE_MAP
+const std::unordered_map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
 {
-    { COUNT_SELECT_TYPE::COUNT_ALL, R"({"column_list":["count(*) AS count"]})"_json },
-    { COUNT_SELECT_TYPE::COUNT_INODE, R"({"column_list":["count(DISTINCT (inode || ',' || dev)) AS count"]})"_json },
+    { COUNT_SELECT_TYPE::COUNT_ALL, {"count(*) AS count"} },
+    { COUNT_SELECT_TYPE::COUNT_INODE, {"count(DISTINCT (inode || ',' || dev)) AS count"} },
 };
 
 
@@ -102,10 +118,18 @@ int DB::countFiles(const COUNT_SELECT_TYPE selectType)
         }
     };
 
-    FIMDB::getInstance().executeQuery(FimDBUtils::buildSelectQuery(FIMDB_FILE_TABLE_NAME,
-                                                                   COUNT_SELECT_TYPE_MAP.at(selectType),
-                                                                   "",
-                                                                   ""), callback);
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table(FIMDB_FILE_TABLE_NAME)
+        .columnList(COUNT_SELECT_TYPE_MAP.at(selectType))
+        .rowFilter("")
+        .orderByOpt("")
+        .distinctOpt(false)
+        .build()
+    };
+
+    FIMDB::getInstance().executeQuery(selectQuery.query(), callback);
     return count;
 }
 
@@ -130,7 +154,7 @@ bool DB::updateFile(const nlohmann::json& file)
 void DB::searchFile(const SearchData& data, std::function<void(const std::string&)> callback)
 {
     const auto searchType { std::get<SEARCH_FIELD_TYPE>(data) };
-    nlohmann::json filter;
+    std::string filter;
 
     if (SEARCH_TYPE_INODE == searchType)
     {
@@ -138,12 +162,24 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
     }
     else if (SEARCH_TYPE_PATH == searchType)
     {
-        filter = R"(WHERE path LIKE ")" + std::get<SEARCH_FIELD_PATH>(data) + R"(")";
+        filter = "WHERE path LIKE \"" + std::get<SEARCH_FIELD_PATH>(data) + "\"";
     }
     else
     {
         throw std::runtime_error{ "Invalid search type" };
     }
+
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table(FIMDB_FILE_TABLE_NAME)
+        .columnList({"path"})
+        .rowFilter(filter)
+        .orderByOpt(FILE_PRIMARY_KEY)
+        .distinctOpt(false)
+        .build()
+    };
+
 
     const auto localCallback
     {
@@ -156,10 +192,7 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         }
     };
 
-    FIMDB::getInstance().executeQuery(FimDBUtils::buildSelectQuery(FIMDB_FILE_TABLE_NAME,
-                                                                   R"({"column_list":["path"]})"_json,
-                                                                   filter,
-                                                                   FILE_PRIMARY_KEY), localCallback);
+    FIMDB::getInstance().executeQuery(selectQuery.query(), localCallback);
 }
 
 

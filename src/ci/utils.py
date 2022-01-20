@@ -114,7 +114,7 @@ deleteFolderDic = {
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
     'shared_modules/utils':         ['build'],
-    'syscheckd':                 ['build']
+    'syscheckd':                    ['build']
 }
 
 currentBuildDir = Path(__file__).parent

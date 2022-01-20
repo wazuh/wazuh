@@ -8,8 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #include "dbRegistryValue.hpp"
 #include "fimCommonDefs.h"
+
 void RegistryValue::createFimEntry()
 {
     fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;

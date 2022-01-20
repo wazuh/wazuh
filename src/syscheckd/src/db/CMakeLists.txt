@@ -4,23 +4,11 @@ project(fimdb)
 
 enable_testing()
 
-if(SOLARIS)
-  add_definitions(-DSOLARIS=ON)
-endif(SOLARIS)
-
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-endif(APPLE)
-
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp

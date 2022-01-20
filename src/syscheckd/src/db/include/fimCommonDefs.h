@@ -1,9 +1,12 @@
-/**
- * @file fimCommonDefs.h
- * @brief Common definitions for FIM
- * @date 2021-09-06
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * September 6, 2021.
  *
- * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
 
 #ifndef DB_COMMONDEFS_H

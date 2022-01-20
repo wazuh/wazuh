@@ -10,7 +10,6 @@
  */
 
 #include "fileTest.h"
-//#include "fimDBHelper.hpp"
 #include "dbFileItem.hpp"
 #include "db.h"
 #include "db.hpp"
@@ -409,7 +408,7 @@ TEST_F(FileTest, TestFimDBFileUpdateNullParameters)
 TEST_F(FileTest, TestFimDBGetPathNoFile)
 {
     callback_context_t callback_data {callBackTestFIMEntry, nullptr};
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "There ar more or 0 rows")).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "There are more or 0 rows")).Times(testing::AtLeast(1));
     EXPECT_NO_THROW(
     {
         ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data), FIMDB_ERR);

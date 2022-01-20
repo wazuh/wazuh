@@ -1,9 +1,12 @@
-/**
- * @file fim_db_registries.c
- * @brief Definition of FIM database for registries library.
- * @date 2020-09-9
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * September 9, 2021.
  *
- * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
 
 #include <iostream>

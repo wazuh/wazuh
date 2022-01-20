@@ -31,16 +31,21 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-else()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
-endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
 if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+else()
+ set(CMAKE_CXX_FLAGS_DEBUG "-g")
+ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+ else()
+   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+ endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif(FSANITIZE)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
@@ -48,6 +53,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_FLAGS
     "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
 )
+
+if(SOLARIS)
+  add_definitions(-DSOLARIS=ON)
+endif(SOLARIS)
+
+if(APPLE)
+  set(CMAKE_MACOSX_RPATH 1)
+endif(APPLE)
 
 add_subdirectory("src/db")
 
@@ -57,11 +70,11 @@ file(GLOB SYSCHECKD_SRC
       "${CMAKE_SOURCE_DIR}/src/whodata/*.c")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
     add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC})
 else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck)
 
 if (UNIX)
@@ -85,7 +98,6 @@ if(UNIT_TEST)
   else()
     target_link_libraries(wazuh-syscheckd asan ubsan cmocka gcov)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  #add_subdirectory(tests)
 else()
   if(FSANITIZE)
     target_link_libraries(wazuh-syscheckd gcov asan ubsan)

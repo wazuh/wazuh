@@ -1,9 +1,12 @@
-/**
- * @file db.cpp
- * @brief Definition of FIM database library.
- * @date 2019-08-28
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * August 28, 2021.
  *
- * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
 
 #include "commonDefs.h"
@@ -63,13 +66,13 @@ void DB::init(const int storage,
               const int valueLimit,
               const bool isWindows)
 {
-    auto path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
-    auto dbsyncHandler = std::make_shared<DBSync>(HostType::AGENT,
-                                                  DbEngineType::SQLITE3,
-                                                  path,
-                                                  CreateStatement(isWindows));
+    auto path { storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH };
+    auto dbsyncHandler
+    {
+        std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement(isWindows))
+    };
 
-    auto rsyncHandler = std::make_shared<RemoteSync>();
+    auto rsyncHandler { std::make_shared<RemoteSync>() };
 
     FIMDB::getInstance().init(syncInterval,
                               callbackSyncFileWrapper,

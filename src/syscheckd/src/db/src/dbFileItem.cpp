@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #include "dbFileItem.hpp"
 
 void FileItem::createFimEntry()
