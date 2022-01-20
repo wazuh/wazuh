@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Vulnerability Detector introduces vulnerability inventory. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
   - The manager will only deliver alerts when new vulnerabilities are detected in agents or when they stop applying.
 - Added a mechanism to ensure the worker synchronization permissions is reset after a fixed period of time. ([#11031](https://github.com/wazuh/wazuh/pull/11031))
+- Included mechanism to create and handle PID files for each child process of the API and cluster. ([#11799](https://github.com/wazuh/wazuh/pull/11799))
 
 #### Changed
 
