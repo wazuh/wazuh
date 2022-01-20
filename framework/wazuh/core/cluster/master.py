@@ -547,7 +547,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     try:
                         wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                         result['updated_chunks'] += 1
-                    except TimeoutError:
+                    except TimeoutError as e:
                         raise e
                     except Exception as e:
                         result['error_messages']['chunks'].append((i, str(e)))
