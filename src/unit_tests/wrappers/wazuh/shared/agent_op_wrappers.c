@@ -31,14 +31,8 @@ int __wrap_control_check_connection() {
     return mock();
 }
 
-int __wrap_get_agent_group(const char *id, char *group, __attribute__((unused)) size_t size) {
+int __wrap_get_agent_group(int id, char *group, __attribute__((unused)) size_t size, int *wdb_sock) {
     check_expected(id);
     strncpy(group, mock_type(char *), OS_SIZE_65536);
-    return mock();
-}
-
-int __wrap_set_agent_group(const char * id, const char * group) {
-    check_expected(id);
-    check_expected(group);
     return mock();
 }

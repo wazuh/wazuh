@@ -13,11 +13,16 @@
 
 #include "wazuh_db/wdb.h"
 
-cJSON* __wrap_wdb_get_agent_labels(int id, int *sock);
+cJSON *__wrap_wdb_get_agent_labels(int id, int *sock);
 int __wrap_wdb_find_agent(const char *name, const char *ip, __attribute__((unused)) int *sock);
-int* __wrap_wdb_disconnect_agents(int keepalive, const char *sync_status, __attribute__((unused)) int *sock);
-cJSON* __wrap_wdb_get_agent_info(int id,  __attribute__((unused)) int *sock);
-int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int *sock);
-int* __wrap_wdb_get_all_agents(bool include_manager, int *sock);
+int *__wrap_wdb_disconnect_agents(int keepalive, const char *sync_status, __attribute__((unused)) int *sock);
+cJSON *__wrap_wdb_get_agent_info(int id, __attribute__((unused)) int *sock);
+int *__wrap_wdb_get_agents_by_connection_status(const char *status, __attribute__((unused)) int *sock);
+int *__wrap_wdb_get_all_agents(bool include_manager, int *sock);
 
+int __wrap_wdb_set_agent_groups_csv(int id,
+                                    __attribute__((unused)) char *groups_csv,
+                                    __attribute__((unused)) char *mode,
+                                    __attribute__((unused)) char *sync_status,
+                                    __attribute__((unused)) int *sock);
 #endif
