@@ -272,13 +272,13 @@ time_t fim_scan() {
 #ifdef WIN32
     fim_registry_scan();
 #endif
-    if (syscheck.file_limit_enabled) {
+    if (syscheck.db_entry_limit_enabled) {
         /* DEPRECATED CODE
         nodes_count = fim_db_get_count_entries(syscheck.database);
         */
     }
 
-    if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
+    if (syscheck.db_entry_limit_enabled && (nodes_count >= syscheck.db_entry_file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
 
         db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
@@ -326,7 +326,7 @@ time_t fim_scan() {
     gettime(&end);
     end_of_scan = time(NULL);
 
-    if (syscheck.file_limit_enabled) {
+    if (syscheck.db_entry_limit_enabled) {
         fim_check_db_state();
     }
 
@@ -748,17 +748,17 @@ void fim_check_db_state() {
 
     switch (_db_state) {
     case FIM_STATE_DB_FULL:
-        if (nodes_count >= syscheck.file_limit) {
+        if (nodes_count >= syscheck.db_entry_file_limit) {
             return;
         }
         break;
     case FIM_STATE_DB_90_PERCENTAGE:
-        if ((nodes_count < syscheck.file_limit) && (nodes_count >= syscheck.file_limit * 0.9)) {
+        if ((nodes_count < syscheck.db_entry_file_limit) && (nodes_count >= syscheck.db_entry_file_limit * 0.9)) {
             return;
         }
         break;
     case FIM_STATE_DB_80_PERCENTAGE:
-        if ((nodes_count < syscheck.file_limit * 0.9) && (nodes_count >= syscheck.file_limit * 0.8)) {
+        if ((nodes_count < syscheck.db_entry_file_limit * 0.9) && (nodes_count >= syscheck.db_entry_file_limit * 0.8)) {
             return;
         }
         break;
@@ -767,7 +767,7 @@ void fim_check_db_state() {
             _db_state = FIM_STATE_DB_EMPTY;
             return;
         }
-        else if (nodes_count < syscheck.file_limit * 0.8) {
+        else if (nodes_count < syscheck.db_entry_file_limit * 0.8) {
             return;
         }
         break;
@@ -775,7 +775,7 @@ void fim_check_db_state() {
         if (nodes_count == 0) {
             return;
         }
-        else if (nodes_count < syscheck.file_limit * 0.8) {
+        else if (nodes_count < syscheck.db_entry_file_limit * 0.8) {
             _db_state = FIM_STATE_DB_NORMAL;
             return;
         }
@@ -785,20 +785,20 @@ void fim_check_db_state() {
     }
 
     json_event = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json_event, "file_limit", syscheck.file_limit);
+    cJSON_AddNumberToObject(json_event, "db_entry_file_limit", syscheck.db_entry_file_limit);
     cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
 
-    if (nodes_count >= syscheck.file_limit) {
+    if (nodes_count >= syscheck.db_entry_file_limit) {
         _db_state = FIM_STATE_DB_FULL;
         mwarn(FIM_DB_FULL_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
-    else if (nodes_count >= syscheck.file_limit * 0.9) {
+    else if (nodes_count >= syscheck.db_entry_file_limit * 0.9) {
         _db_state = FIM_STATE_DB_90_PERCENTAGE;
         minfo(FIM_DB_90_PERCENTAGE_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
     }
-    else if (nodes_count >= syscheck.file_limit * 0.8) {
+    else if (nodes_count >= syscheck.db_entry_file_limit * 0.8) {
         _db_state = FIM_STATE_DB_80_PERCENTAGE;
         minfo(FIM_DB_80_PERCENTAGE_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");

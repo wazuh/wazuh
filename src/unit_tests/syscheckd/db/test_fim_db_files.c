@@ -794,7 +794,7 @@ static void test_fim_db_file_update_new_entry(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    syscheck.file_limit = 50000;
+    syscheck.db_entry_file_limit = 50000;
 
     expect_fim_db_clean_stmt();
 
