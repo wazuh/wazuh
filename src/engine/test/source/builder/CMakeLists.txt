@@ -108,6 +108,10 @@ gtest_discover_tests(map_test)
 add_executable(decoder_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/decoder_test.cpp)
 gtest_discover_tests(decoder_test)
 
+# rule test
+add_executable(rule_test ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/rule_test.cpp)
+gtest_discover_tests(rule_test)
+
 ####################################################################################################
 # Special targets WIP
 ####################################################################################################
