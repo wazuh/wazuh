@@ -42,13 +42,18 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
 
 void __wrap_fim_db_init(int storage,
                         int sync_interval,
-                        int file_limit,
                         fim_sync_callback_t sync_callback,
-                        logging_callback_t log_callback);
+                        logging_callback_t log_callback,
+                        int file_limit,
+                        int value_limit,
+                        bool is_windows);
 
 void expect_wrapper_fim_db_init(int storage,
                                 int sync_interval,
-                                int file_limit);
+                                int file_limit,
+                                int value_limit,
+                                bool is_windows
+                                );
 
 int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,

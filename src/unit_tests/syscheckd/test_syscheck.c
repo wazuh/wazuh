@@ -18,16 +18,25 @@
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
 
+syscheck_config syscheck;
+
 /* setup/teardowns */
 static int setup_group(void **state) {
+
+    if (initialize_syscheck_configuration(&syscheck) == OS_INVALID) {
+        return OS_INVALID;
+    }
+
     fdb_t *fdb = calloc(1, sizeof(fdb_t));
     if (fdb == NULL)
         return -1;
 
     *state = fdb;
+
     return 0;
 }
 
@@ -35,6 +44,27 @@ static int teardown_group(void **state) {
     fdb_t *fdb = *state;
 
     free(fdb);
+
+    return 0;
+}
+
+static int setup_syscheck_config(void **state) {
+    syscheck_config *syscheck_conf = calloc(1, sizeof(syscheck_config));
+
+    syscheck_conf->database_store   = FIM_DB_DISK;
+    syscheck_conf->sync_interval    = 300;
+    syscheck_conf->file_limit       = 100000;
+#ifdef WIN32
+    syscheck_conf->reg_entry_limit  = 100000;
+
+    *state = syscheck_conf;
+    return 0;
+}
+
+static int teardown_syscheck_config(void **state) {
+    syscheck_config *syscheck_conf = *state;
+
+    free(syscheck_conf);
 
     return 0;
 }
@@ -68,24 +98,23 @@ static int teardown_group_win(void **state) {
 
 void test_fim_initialize(void **state)
 {
-    fdb_t *fdb = *state;
+    syscheck_config *syscheck_conf = *state;
 
-    expect_wrapper_fim_db_init(1, 300, 100000);
+#ifdef WIN32
+    expect_wrapper_fim_db_init(syscheck_conf->database_store,
+                               syscheck_conf->sync_interval,
+                               syscheck_conf->file_limit,
+                               syscheck_conf->reg_entry_limit,
+                               true);
+#else
+    expect_wrapper_fim_db_init(syscheck_conf->database_store,
+                               syscheck_conf->sync_interval,
+                               syscheck_conf->file_limit,
+                               0,
+                               false);
+#endif
 
     fim_initialize();
-
-    assert_ptr_equal(syscheck.database, fdb);
-}
-
-void test_fim_initialize_error(void **state)
-{
-    expect_wrapper_fim_db_init(1, 300, 100000);
-
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-
-    expect_assert_failure(fim_initialize());
-
-    assert_null(syscheck.database);
 }
 
 void test_read_internal(void **state)
@@ -372,9 +401,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 int main(void) {
     int ret;
     const struct CMUnitTest tests[] = {
-            cmocka_unit_test(test_fim_initialize),
-            cmocka_unit_test(test_fim_initialize),
-            cmocka_unit_test(test_fim_initialize_error),
+            cmocka_unit_test_setup_teardown(test_fim_initialize, setup_syscheck_config, teardown_syscheck_config),
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
     };

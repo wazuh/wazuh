@@ -27,20 +27,29 @@ fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
 
 void __wrap_fim_db_init(int storage,
                         int sync_interval,
-                        int file_limit,
                         __attribute__((unused)) fim_sync_callback_t sync_callback,
-                        __attribute__((unused)) logging_callback_t log_callback) {
+                        __attribute__((unused)) logging_callback_t log_callback,
+                        int file_limit,
+                        int value_limit,
+                        bool is_windows
+                        ) {
     check_expected(storage);
     check_expected(sync_interval);
     check_expected(file_limit);
+    check_expected(value_limit);
+    check_expected(is_windows);
 }
 
 void expect_wrapper_fim_db_init(int storage,
                                 int sync_interval,
-                                int file_limit) {
+                                int file_limit,
+                                int value_limit,
+                                bool is_windows) {
     expect_value(__wrap_fim_db_init, storage, storage);
     expect_value(__wrap_fim_db_init, sync_interval, sync_interval);
     expect_value(__wrap_fim_db_init, file_limit, file_limit);
+    expect_value(__wrap_fim_db_init, value_limit, value_limit);
+    expect_value(__wrap_fim_db_init, is_windows, is_windows);
 }
 
 int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
