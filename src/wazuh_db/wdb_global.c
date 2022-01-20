@@ -793,6 +793,17 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
     }
 }
 
+int wdb_global_remove_agent_belong(wdb_t *wdb, int id_group, int id_agent) {
+    sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_DELETE_AGENT_BELONG);
+    if (stmt == NULL) {
+        return OS_INVALID;
+    }
+    sqlite3_bind_int(stmt, 1, id_group);
+    sqlite3_bind_int(stmt, 2, id_agent);
+
+    return wdb_exec_stmt_silent(stmt);
+}
+
 bool wdb_is_group_empty(wdb_t *wdb, char* group_name) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_BELONG_FIND);
     if (stmt == NULL) {
@@ -918,12 +929,12 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_DELETE_AGENT_BELONG) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_DELETE_ALL_AGENT_BELONG) < 0) {
         mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_DELETE_AGENT_BELONG];
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_DELETE_ALL_AGENT_BELONG];
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -1169,7 +1180,6 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     return group_priority;
 }
 
-
 wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority) {
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
@@ -1198,6 +1208,29 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     return result;
 }
 
+wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups) {
+    cJSON* j_group_name = NULL;
+    wdbc_result result = WDBC_OK;
+    cJSON_ArrayForEach (j_group_name, j_groups) {
+        if (cJSON_IsString(j_group_name)){
+            char* group_name = j_group_name->valuestring;
+            cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
+            cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
+            int group_id = j_group_id->valueint;
+            cJSON_Delete(j_find_response);
+            if (OS_INVALID == wdb_global_remove_agent_belong(wdb, group_id, id)) {
+                result = WDBC_ERROR;
+            }
+        }
+        else {
+            mdebug1("Invalid groups remove information");
+            result = WDBC_ERROR;
+            continue;
+        }
+    }
+    return result;
+}
+
 wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info) {
     wdbc_result ret = WDBC_OK;
     cJSON* j_group_info = NULL;
@@ -1208,26 +1241,34 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
             int agent_id = j_agent_id->valueint;
             int group_priority = 0;
 
-            if (mode == WDB_GROUP_OVERRIDE ) {
-                if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
+            if (mode == WDB_GROUP_REMOVE) {
+                if (WDBC_ERROR ==  wdb_global_unassign_agent_group(wdb, agent_id, j_groups)) {
                     ret = WDBC_ERROR;
-                    merror("There was an error cleaning the previous agent groups");
+                    merror("There was an error un-assigning the groups to agent '%03d'", agent_id);
                 }
             }
             else {
-                int last_group_priority = wdb_global_get_agent_max_group_priority(wdb, agent_id);
-                if (last_group_priority >= 0) {
-                    if (mode == WDB_GROUP_EMPTY_ONLY) {
-                        mdebug2("Agent group set in empty_only mode ignored because the agent already contains groups");
-                        continue;
+                if (mode == WDB_GROUP_OVERRIDE ) {
+                    if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
+                        ret = WDBC_ERROR;
+                        merror("There was an error cleaning the previous agent groups");
                     }
-                    group_priority = last_group_priority+1;
                 }
-            }
+                else {
+                    int last_group_priority = wdb_global_get_agent_max_group_priority(wdb, agent_id);
+                    if (last_group_priority >= 0) {
+                        if (mode == WDB_GROUP_EMPTY_ONLY) {
+                            mdebug2("Agent group set in empty_only mode ignored because the agent already contains groups");
+                            continue;
+                        }
+                        group_priority = last_group_priority+1;
+                    }
+                }
 
-            if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
-                ret = WDBC_ERROR;
-                merror("There was an error assigning the groups to agent '%03d'", agent_id);
+                if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
+                    ret = WDBC_ERROR;
+                    merror("There was an error assigning the groups to agent '%03d'", agent_id);
+                }
             }
 
             char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);

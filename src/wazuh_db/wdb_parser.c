@@ -5240,6 +5240,9 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
             else if (0 == strcmp(j_mode->valuestring, "empty_only")) {
                 mode = WDB_GROUP_EMPTY_ONLY;
             }
+            else if (0 == strcmp(j_mode->valuestring, "remove")) {
+                mode = WDB_GROUP_REMOVE;
+            }
 
             if (cJSON_IsString(j_sync_status)){
                 sync_status = j_sync_status->valuestring;
