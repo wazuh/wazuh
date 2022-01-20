@@ -1955,6 +1955,15 @@ int wdb_global_set_agent_groups_sync_status(wdb_t *wdb,
                                             const char* sync_status);
 
 /**
+ * @brief It gets all the groups of an agent and returns them in a comma sepparated string
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the group.
+ * @return char* String with the groups of the agent in CSV format. Must be de-allocated by the caller. It returns NULL on error.
+ */
+char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id);
+
+/**
  * @brief Sets the group information in the agent table.
  * @param [in] wdb The Global struct database.
  * @param [in] id ID of the agent to set the information.
