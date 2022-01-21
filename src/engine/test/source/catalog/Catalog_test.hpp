@@ -1,5 +1,5 @@
-#ifndef __CATALOG_TEST_H__
-#define __CATALOG_TEST_H__
+#ifndef _CATALOG_TEST_H
+#define _CATALOG_TEST_H
 
 #include <gtest/gtest.h>
 #include <string>
@@ -39,7 +39,7 @@ class fakeStorage : public StorageDriverInterface
             return assets;
         }
 
-        std::string getAsset(const AssetType type, std::string_view assetName) override
+        std::string getAsset(const AssetType type, std::string assetName) override
         {
 
             std::string asset;
@@ -134,4 +134,4 @@ class fakeStorage : public StorageDriverInterface
 
 };
 
-#endif // __CATALOG_TEST_H__
+#endif // _CATALOG_TEST_H
