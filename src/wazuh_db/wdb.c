@@ -297,13 +297,16 @@ wdb_t * wdb_open_global() {
 
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
-
         }
         else {
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
-            wdb = wdb_upgrade_global(wdb);
+            if (wdb = wdb_upgrade_global(wdb), !wdb) {
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+            }
         }
+
         wdb_enable_foreign_keys(wdb->db);
     }
 
@@ -834,6 +837,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * id) {
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(id, wdb->id);
+    wdb->enabled = true;
     return wdb;
 }
 
