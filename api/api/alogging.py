@@ -23,6 +23,7 @@ class AccessLogger(AbstractAccessLogger):
     def log(self, request, response, time):
         query = dict(request.query)
         body = request.get("body", dict())
+        hash_auth_context = request.get('hash_auth_context', '-')
         if 'password' in query:
             query['password'] = '****'
         if 'password' in body:
@@ -38,11 +39,9 @@ class AccessLogger(AbstractAccessLogger):
             except (KeyError, IndexError, binascii.Error):
                 user = UNKNOWN_USER_STRING
 
-        self.logger.info(f'{user} '
-                         f'{request.remote} '
-                         f'"{request.method} {request.path}" '
-                         f'with parameters {json.dumps(query)} and body {json.dumps(body)} '
-                         f'done in {time:.3f}s: {response.status}')
+        self.logger.info(f'{user} {hash_auth_context} {request.remote} "{request.method} {request.path}" with '
+                         f'parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: '
+                         f'{response.status}')
 
 
 class APILogger(WazuhLogger):

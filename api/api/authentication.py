@@ -135,7 +135,7 @@ def get_security_conf():
     return conf.security_conf
 
 
-def generate_token(user_id=None, data=None, run_as=False):
+def generate_token(user_id=None, data=None, auth_context=None):
     """Generate an encoded jwt token. This method should be called once a user is properly logged on.
 
     Parameters
@@ -166,7 +166,8 @@ def generate_token(user_id=None, data=None, run_as=False):
         "nbf": timestamp,
         "exp": timestamp + result['auth_token_exp_timeout'],
         "sub": str(user_id),
-        "run_as": run_as,
+        "run_as": True if auth_context else False,
+        "hash_auth_context": auth_context,
         "rbac_roles": data['roles'],
         "rbac_mode": result['rbac_mode']
     }

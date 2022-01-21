@@ -30,6 +30,7 @@ def _cleanup_detail_field(detail):
 async def set_user_name(request, handler):
     if 'token_info' in request:
         request['user'] = request['token_info']['sub']
+        request['hash_auth_token'] = request['token_info']['hash_auth_context']
     return await handler(request)
 
 
