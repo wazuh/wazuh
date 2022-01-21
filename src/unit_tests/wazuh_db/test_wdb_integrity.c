@@ -1535,9 +1535,12 @@ void test_wdb_global_group_hash_cache_clear_success(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Storing a dummy hash value before clearing it */
+    snprintf(global_group_hash, sizeof(global_group_hash), "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+
     ret = wdb_global_group_hash_cache(operation, hexdigest);
 
-    assert_false(global_group_hash[0]);
+    assert_int_equal(global_group_hash[0], 0);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -1547,9 +1550,12 @@ void test_wdb_global_group_hash_cache_read_fail(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
     ret = wdb_global_group_hash_cache(operation, hexdigest);
 
-    assert_false(global_group_hash[0]);
+    assert_int_equal(global_group_hash[0], 0);
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -1563,6 +1569,9 @@ void test_wdb_global_group_hash_cache_write_success(void **state)
 
     assert_string_equal(global_group_hash, hexdigest);
     assert_int_equal(ret, OS_SUCCESS);
+
+    /* Clearing the variable after writing it */
+    global_group_hash[0] = 0;
 }
 
 void test_wdb_global_group_hash_cache_read_success(void **state)
@@ -1571,10 +1580,16 @@ void test_wdb_global_group_hash_cache_read_success(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Storing a dummy hash value before reading it */
+    snprintf(global_group_hash, sizeof(global_group_hash), "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+
     ret = wdb_global_group_hash_cache(operation, hexdigest);
 
     assert_string_equal(hexdigest, "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
     assert_int_equal(ret, OS_SUCCESS);
+
+    /* Clearing the variable after reading it */
+    global_group_hash[0] = 0;
 }
 
 void test_wdb_global_group_hash_cache_invalid_mode(void **state)
@@ -1598,11 +1613,17 @@ void wdb_get_global_group_hash_read_success(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Storing a dummy hash value before reading it */
+    snprintf(global_group_hash, sizeof(global_group_hash), "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Using global group hash from cache");
 
     ret = wdb_get_global_group_hash(data, hexdigest);
 
     assert_int_equal(ret, OS_SUCCESS);
+
+    /* Clearing the variable after reading it */
+    global_group_hash[0] = 0;
 }
 
 void wdb_get_global_group_hash_invalid_db_structure(void **state)
@@ -1610,6 +1631,7 @@ void wdb_get_global_group_hash_invalid_db_structure(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Clearing the variable before reading it */
     global_group_hash[0] = 0;
 
     expect_string(__wrap__mdebug1, formatted_msg, "Database structure not initialized. Unable to calculate global group hash.");
@@ -1625,6 +1647,9 @@ void wdb_get_global_group_hash_invalid_statement(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
 
@@ -1639,11 +1664,14 @@ void wdb_get_global_group_hash_calculate_fail(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, 1);
 
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, 101);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     expect_string(__wrap__mdebug2, formatted_msg, "No group hash was found to calculate the global group hash.");
 
@@ -1659,13 +1687,16 @@ void wdb_get_global_group_hash_calculate_success(void **state)
     os_sha1 hexdigest;
     int ret;
 
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, 1);
 
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, 100);
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, NULL);
 
