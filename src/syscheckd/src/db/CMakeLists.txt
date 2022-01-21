@@ -10,6 +10,10 @@ include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  add_definitions(-DSOLARIS=ON)
+endif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
                            ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp

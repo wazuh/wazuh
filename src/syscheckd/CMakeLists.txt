@@ -55,10 +55,6 @@ set(CMAKE_CXX_FLAGS
     "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
 )
 
-if(SOLARIS)
-  add_definitions(-DSOLARIS=ON)
-endif(SOLARIS)
-
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif(APPLE)
@@ -81,6 +77,12 @@ target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck)
 if (UNIX)
     target_link_libraries(wazuh-syscheckd dl)
     if (NOT APPLE)
+        if (CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+            target_link_libraries(wazuh-syscheckd socket nsl resolv rt)
+            if (CMAKE_SYSTEM_VERSION STRGREATER "5.10")
+                string(APPEND CMAKE_EXE_LINKER_FLAGS " -z relax=secadj")
+            endif(CMAKE_SYSTEM_VERSION STRGREATER "5.10")
+        endif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
         if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
             string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
         else()
