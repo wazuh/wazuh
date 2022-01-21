@@ -9,6 +9,7 @@
 #include "json.hpp"
 
 #include "builders/check_stage.hpp"
+#include "builders/file_output.hpp"
 
 namespace builder::internals::builders
 {
@@ -46,7 +47,35 @@ Connectable outputBuilder(const json::Document & inputJson)
     }
     auto outputObs = checkStageBuilder(connectable.output(), checkVal);
 
-    // TODO: outputStageBuilder
+    // Outputs stage is mandatory
+    checkVal = inputJson.get(".outputs");
+    if (!checkVal)
+    {
+        throw std::invalid_argument("Output builder expects to have outputs section. ");
+    }
+    else if (!checkVal->IsArray())
+    {
+        throw std::invalid_argument("Output builder expects outputs section to be an array, but got " +
+                                    checkVal->GetType());
+    }
+
+    // Iterate and build every output type
+    // TODO: once more outputs are added may be better to define a common class for them
+    // Only file output supported
+    for (auto out = checkVal->Begin(); out != checkVal->End(); ++out)
+    {
+        // TODO: Check that every item is an object
+        // This check must be delegated to its builder once registry is implemented
+        std::string outputName = out->MemberBegin()->name.GetString();
+        if (outputName == "file")
+        {
+            fileOutputBuilder(outputObs, &out->MemberBegin()->value);
+        }
+        else
+        {
+            throw std::invalid_argument("Output " + outputName + " not supported");
+        }
+    }
 
     // Update connectable and return
     connectable.set(outputObs);
