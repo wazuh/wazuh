@@ -1,15 +1,15 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <math.h>
 #include <string>
 #include <thread>
-#include <math.h>
 
+#include "graph/graph.hpp"
+#include "graph_test.hpp"
 #include "rxcpp/rx-test.hpp"
 #include "rxcpp/rx.hpp"
 #include "gtest/gtest.h"
-#include "graph_test.hpp"
-#include "graph/graph.hpp"
 
 TEST(Graph, Node)
 {
@@ -55,20 +55,20 @@ TEST(Graph, Connect_two_check_result)
     using node_t = graph::Node<con_t>;
 
     int expected(10);
-    auto source = rxcpp::observable<>::create<int>([expected](rxcpp::subscriber<int> s)
-                                                   {
-        for(int i=0; i<expected; i++) {
-            s.on_next(i);
-        }
-        s.on_completed(); });
+    auto source = rxcpp::observable<>::create<int>(
+        [expected](rxcpp::subscriber<int> s)
+        {
+            for (int i = 0; i < expected; i++)
+            {
+                s.on_next(i);
+            }
+            s.on_completed();
+        });
 
     auto pf1{std::make_shared<con_t>(con_t("decoder_1"))};
     auto pf2{std::make_shared<con_t>(con_t("decoder_2"))};
 
-    pf1->set(pf1->output().map([](int i)
-             { return i * 2; })
-        .filter([](int i)
-                { return i % 2 == 0; }));
+    pf1->set(pf1->output().map([](int i) { return i * 2; }).filter([](int i) { return i % 2 == 0; }));
 
     auto pNode1{std::make_shared<node_t>(node_t(pf1))};
     auto pNode2{std::make_shared<node_t>(node_t(pf2))};
@@ -77,11 +77,8 @@ TEST(Graph, Connect_two_check_result)
 
     int got(0);
 
-    pNode2->m_value->output().subscribe(
-        [&got](const int &i)
-        { got++; },
-        [&got]()
-        { GTEST_COUT << "completed " << got << std::endl; });
+    pNode2->m_value->output().subscribe([&got](const int & i) { got++; },
+                                        [&got]() { GTEST_COUT << "completed " << got << std::endl; });
 
     source.subscribe(pNode1->m_value->input());
     ASSERT_EQ(expected, got);
@@ -93,34 +90,32 @@ TEST(Graph, Connect_a_simple_graph_to_result)
     using node_t = graph::Node<con_t>;
 
     int expected(10);
-    auto source = rxcpp::observable<>::create<int>([expected](rxcpp::subscriber<int> s)
-                                                   {
-        for(int i=0; i<expected; i++) {
-            s.on_next(i);
-        }
-        s.on_completed(); });
+    auto source = rxcpp::observable<>::create<int>(
+        [expected](rxcpp::subscriber<int> s)
+        {
+            for (int i = 0; i < expected; i++)
+            {
+                s.on_next(i);
+            }
+            s.on_completed();
+        });
 
     auto plus{con_t("plus")};
-    plus.set(plus.output().map([](int i){ return i + 1; }));
+    plus.set(plus.output().map([](int i) { return i + 1; }));
     auto pPlusDec{std::make_shared<con_t>(plus)};
 
     auto odd{con_t("odd")};
-    odd.set(odd.output().filter([](int i) { return i % 2 == 0; })
-                 .map([](int i) { return i * 2; }));
+    odd.set(odd.output().filter([](int i) { return i % 2 == 0; }).map([](int i) { return i * 2; }));
 
     auto pOddDec{std::make_shared<con_t>(odd)};
 
     auto even{con_t("even")};
-    even.set(even.output().filter([](int i)
-                                   { return i % 2 != 0; })
-                  .map([](int i)
-                       { return i * 3; }));
+    even.set(even.output().filter([](int i) { return i % 2 != 0; }).map([](int i) { return i * 3; }));
 
     auto pEvenDec{std::make_shared<con_t>(even)};
 
     auto minus{con_t("minus")};
-    minus.set(minus.output().map([](int i)
-                                  { return i - 1; }));
+    minus.set(minus.output().map([](int i) { return i - 1; }));
 
     auto pMinusDec{std::make_shared<con_t>(minus)};
 
@@ -143,11 +138,8 @@ TEST(Graph, Connect_a_simple_graph_to_result)
 
     int got(0);
 
-    pMinusNode->m_value->output().subscribe(
-        [&got](const int &i)
-        { got++; },
-        [&got]()
-        { GTEST_COUT << "completed " << got << std::endl; });
+    pMinusNode->m_value->output().subscribe([&got](const int & i) { got++; },
+                                            [&got]() { GTEST_COUT << "completed " << got << std::endl; });
 
     source.subscribe(pPlusNode->m_value->input());
     ASSERT_EQ(expected, got);
@@ -159,12 +151,15 @@ TEST(Graph, Connect_all_leaves)
     using node_t = graph::Node<con_t>;
 
     int expected(10);
-    auto source = rxcpp::observable<>::create<int>([expected](rxcpp::subscriber<int> s)
-                                                   {
-        for(int i=0; i<expected; i++) {
-            s.on_next(i);
-        }
-        s.on_completed(); });
+    auto source = rxcpp::observable<>::create<int>(
+        [expected](rxcpp::subscriber<int> s)
+        {
+            for (int i = 0; i < expected; i++)
+            {
+                s.on_next(i);
+            }
+            s.on_completed();
+        });
 
     auto plus{con_t("plus")};
     plus.set(plus.output().map([](int i) { return i + 1; }));
@@ -198,14 +193,10 @@ TEST(Graph, Connect_all_leaves)
 
     int got(0);
 
-    nodePlus->visitLeaves([nodeOutput](auto leaf)
-                          { leaf->connect(nodeOutput); });
+    nodePlus->visitLeaves([nodeOutput](auto leaf) { leaf->connect(nodeOutput); });
 
-    nodeOutput->m_value->output().subscribe(
-        [&got](const int &i)
-        { got++; },
-        [&got]()
-        { GTEST_COUT << "completed " << got << std::endl; });
+    nodeOutput->m_value->output().subscribe([&got](const int & i) { got++; },
+                                            [&got]() { GTEST_COUT << "completed " << got << std::endl; });
 
     source.subscribe(nodePlus->m_value->input());
     ASSERT_EQ(expected, got);
@@ -239,7 +230,8 @@ TEST(Graph, Connect_a_big_graph)
     for (int i = 0; i < size; i++)
     {
         auto dec = con_t("decoder " + std::to_string(i));
-        dec.set(dec.output().filter([i](std::string s) { return i % 2 == 0; })
+        dec.set(dec.output()
+                    .filter([i](std::string s) { return i % 2 == 0; })
                     .map([i](std::string s) { return s + "decoder " + std::to_string(i) + "-->"; }));
         auto pNode{std::make_shared<node_t>(std::make_shared<con_t>(dec))};
 
@@ -254,17 +246,84 @@ TEST(Graph, Connect_a_big_graph)
 
     auto pOutputNode{std::make_shared<node_t>(node_t(std::make_shared<con_t>(con_t("output"))))};
 
-    nodes[0]->visitLeaves([&pOutputNode](auto leaf)
-                          { leaf->connect(pOutputNode); });
+    nodes[0]->visitLeaves([&pOutputNode](auto leaf) { leaf->connect(pOutputNode); });
 
     int got(0);
 
-    pOutputNode->m_value->output().subscribe(
-        [&got](std::string s)
-        { got++; },
-        [](std::exception_ptr &e) {},
-        [&got, expected, heigh]()
-        { GTEST_COUT << "Completed! "<< got <<  " through " << 2*heigh+1 << " decoders" << std::endl; ASSERT_EQ(expected, got); });
+    pOutputNode->m_value->output().subscribe([&got](std::string s) { got++; }, [](std::exception_ptr & e) {},
+                                             [&got, expected, heigh]()
+                                             {
+                                                 GTEST_COUT << "Completed! " << got << " through " << 2 * heigh + 1
+                                                            << " decoders" << std::endl;
+                                                 ASSERT_EQ(expected, got);
+                                             });
 
     source.subscribe(nodes[0]->m_value->input());
+}
+
+TEST(Graph, Group_by)
+{
+    using con_t = fakeConnectable<std::string>;
+    using node_t = graph::Node<con_t>;
+
+    int expected(10);
+
+    auto source = rxcpp::observable<>::create<std::string>(
+        [expected](rxcpp::subscriber<std::string> s)
+        {
+            for (int i = 0; i < expected; i++)
+            {
+                s.on_next(std::to_string(i));
+            }
+            s.on_completed();
+        });
+
+    auto plus{con_t("plus")};
+    plus.set(plus.output().map([](std::string i) { return i; }));
+    auto pPlusDec{std::make_shared<con_t>(plus)};
+
+    auto odd{con_t("odd")};
+    odd.set(odd.output().map([](std::string i) { return i + " odd"; }));
+
+    auto pOddDec{std::make_shared<con_t>(odd)};
+
+    auto even{con_t("even")};
+    even.set(even.output().map([](std::string i) { return i + " even"; }));
+
+    auto pEvenDec{std::make_shared<con_t>(even)};
+
+    auto minus{con_t("minus")};
+    minus.set(minus.output().map([](std::string i) { return i; }));
+
+    auto pMinusDec{std::make_shared<con_t>(minus)};
+
+    auto pOddNode{std::make_shared<node_t>(node_t(pOddDec))};
+    auto pEvenNode{std::make_shared<node_t>(node_t(pEvenDec))};
+    auto pPlusNode{std::make_shared<node_t>(node_t(pPlusDec))};
+    auto pMinusNode{std::make_shared<node_t>(node_t(pMinusDec))};
+
+    // graph
+    //               odd
+    //             |     |
+    // source -> plus    minus  -> result
+    //             |     |
+    //              even
+
+    pPlusNode->connect(pOddNode);
+    pPlusNode->connect(pEvenNode);
+    pOddNode->connect(pMinusNode);
+    pEvenNode->connect(pMinusNode);
+
+    int got(0);
+
+    pMinusNode->m_value->output().subscribe(
+        [&got](const std::string & i)
+        {
+            got++;
+            GTEST_COUT << i << std::endl;
+        },
+        [&got]() { GTEST_COUT << "completed " << got << std::endl; });
+
+    source.subscribe(pPlusNode->m_value->input());
+    ASSERT_EQ(expected * 2, got);
 }
