@@ -2407,6 +2407,9 @@ void test_wdb_parse_get_config_bad_arg(){
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid configuration source for wazuh-db");
     cJSON *ret = wdb_parse_get_config("BAD_ARG");
     assert_int_equal(ret, NULL);
+
+}
+
 /* wdb_parse_global_backup */
 
 void test_wdb_parse_global_backup_invalid_syntax(void **state) {
@@ -2636,7 +2639,7 @@ int main()
         cmocka_unit_test(test_wdb_parse_get_config_wdb),
         cmocka_unit_test(test_wdb_parse_get_config_internal),
         cmocka_unit_test(test_wdb_parse_get_config_arg_null),
-        cmocka_unit_test(test_wdb_parse_get_config_bad_arg)
+        cmocka_unit_test(test_wdb_parse_get_config_bad_arg),
         /* wdb_parse_global_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup, test_teardown),
