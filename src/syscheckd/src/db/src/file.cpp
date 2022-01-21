@@ -36,7 +36,7 @@ void DB::removeFile(const std::string& path)
         .build()
     };
 
-    FIMDB::getInstance().removeItem(deleteQuery.query());
+    FIMDB::instance().removeItem(deleteQuery.query());
 }
 
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
@@ -83,7 +83,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
         }
     };
 
-    FIMDB::getInstance().executeQuery(selectQuery.query(), internalCallback);
+    FIMDB::instance().executeQuery(selectQuery.query(), internalCallback);
 
     if (entryFromPath.size() == 1)
     {
@@ -129,7 +129,7 @@ int DB::countFiles(const COUNT_SELECT_TYPE selectType)
         .build()
     };
 
-    FIMDB::getInstance().executeQuery(selectQuery.query(), callback);
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
     return count;
 }
 
@@ -192,7 +192,7 @@ void DB::searchFile(const SearchData& data, std::function<void(const std::string
         }
     };
 
-    FIMDB::getInstance().executeQuery(selectQuery.query(), localCallback);
+    FIMDB::instance().executeQuery(selectQuery.query(), localCallback);
 }
 
 

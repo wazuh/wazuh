@@ -10,21 +10,20 @@ include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
+file(GLOB DB_SRC
+     ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
+     ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp
+     ${CMAKE_SOURCE_DIR}/src/db/src/fimDB.cpp
+     ${CMAKE_SOURCE_DIR}/src/db/src/dbFileItem.cpp
+     ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryKey.cpp
+     ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryValue.cpp)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/fimDB.cpp
+  add_library(fimdb STATIC ${DB_SRC}
                            # ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbFileItem.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryKey.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryValue.cpp)
+                           )
 else()
-  add_library(fimdb SHARED ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/fimDB.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbFileItem.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryKey.cpp
-                           ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryValue.cpp)
+  add_library(fimdb SHARED ${DB_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 

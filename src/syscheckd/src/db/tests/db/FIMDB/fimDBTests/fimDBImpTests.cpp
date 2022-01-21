@@ -373,6 +373,12 @@ TEST(FimDB, notInitalizedDbSyncException)
 
 TEST_F(FimDBFixture, fimRunIntegritySuccess)
 {
+
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
+    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
     EXPECT_NO_THROW(
     {
         std::thread integrityThread(&FIMDB::runIntegrity, &fimDBMock);

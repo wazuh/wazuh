@@ -161,8 +161,8 @@ void FIMDB::teardown()
     try
     {
         stopSync();
-        m_rsyncHandler->teardown();
-        m_dbsyncHandler->teardown();
+        m_rsyncHandler.reset();
+        m_dbsyncHandler.reset();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
