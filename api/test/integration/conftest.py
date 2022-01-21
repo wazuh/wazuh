@@ -74,7 +74,7 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
     os.chdir(pwd)
     values = {
         'interval': interval,
-        'max_retries': 60,
+        'max_retries': 90,
         'retries': 0
     }
     values_build_env = {
