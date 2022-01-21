@@ -859,7 +859,6 @@ void wm_inotify_setup(wm_database * data) {
             wm_sync_agents_artifacts();
         }
         wm_sync_multi_groups(SHAREDCFG_DIR);
-        wdb_agent_belongs_first_time(&wdb_wmdb_sock);
         wm_clean_dangling_legacy_dbs();
         wm_clean_dangling_wdb_dbs();
     }

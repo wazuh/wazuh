@@ -17,7 +17,6 @@
 typedef enum global_db_access {
     WDB_INSERT_AGENT,
     WDB_INSERT_AGENT_GROUP,
-    WDB_INSERT_AGENT_BELONG,
     WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
@@ -73,17 +72,6 @@ int wdb_insert_agent(int id,
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_insert_group(const char *name, int *sock);
-
-/**
- * @brief Update agent belongs table.
- *
- * @param[in] id_group Id of the group to be updated.
- * @param[in] id_agent Id of the agent to be updated.
- * @param[in] priority Priority of the agent group to be updated.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_update_agent_belongs(int id_group, int id_agent, int priority, int *sock);
 
 /**
  * @brief Update agent name in global.db.
@@ -325,24 +313,6 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
  * @return Pointer to the array, on success. NULL if no agents were set as disconnected or an error ocurred.
  */
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
-
-/**
- * @brief Update agent multi group.
- *
- * @param[in] id The agent id.
- * @param[in] group The group name.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_update_agent_multi_group(int id, char *group, int *sock);
-
-/**
- * @brief Fill belongs table on start.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- *
- * @return Returns OS_SUCCESS.
- */
-int wdb_agent_belongs_first_time(int *sock);
 
 /**
  * @brief Get the agent first registration date.

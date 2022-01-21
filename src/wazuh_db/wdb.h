@@ -1209,17 +1209,6 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
 int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
- * @brief Function to parse the insert agent to belongs table request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group id and agent id in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the delete group from belongs table request.
  *
  * @param [in] wdb The global struct database.
