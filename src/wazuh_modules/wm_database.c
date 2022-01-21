@@ -351,12 +351,9 @@ void wm_sync_agents_artifacts() {
  */
 void sync_keys_with_wdb(keystore *keys) {
     keyentry *entry;
-    char * group;
     char cidr[20];
     int *agents;
     unsigned int i;
-
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
 
     // Add new agents to the database
 
@@ -371,15 +368,14 @@ void sync_keys_with_wdb(keystore *keys) {
             continue;
         }
 
-        if (get_agent_group(atoi(entry->id), group, OS_SIZE_65536 + 1, NULL) < 0) {
-            *group = 0;
-        }
-
+        char* group = wdb_get_agent_group(atoi(entry->id), NULL);
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
-                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
+                             entry->ip->ip : cidr, entry->raw_key, group, 1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
             mtdebug2(WM_DATABASE_LOGTAG, "The agent %s '%s' already exist in the database.", entry->id, entry->name);
         }
+        os_free(group);
+
         if (OS_INVALID == wdb_create_agent_db(id, entry->name)) {
             mtdebug2(WM_DATABASE_LOGTAG, "Failed to create the database for agent %s '%s'.", entry->id, entry->name);
         }
@@ -414,8 +410,6 @@ void sync_keys_with_wdb(keystore *keys) {
 
         os_free(agents);
     }
-
-    os_free(group);
 }
 
 /**

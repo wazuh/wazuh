@@ -272,32 +272,6 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 }
 
 #ifndef CLIENT
-/* Read group. Returns 0 on success or -1 on failure. */
-int get_agent_group(int id, char *group, size_t size, int* wdb_sock) {
-    cJSON* j_agent_info = NULL;
-    char* agent_group = NULL;
-    int result = OS_INVALID;
-
-    j_agent_info = wdb_get_agent_info(id, wdb_sock);
-
-    if(!j_agent_info) {
-        mdebug1("Unable to get agent info of agent '%d'", id);
-        return OS_INVALID;
-    }
-
-    agent_group = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child,"group"));
-
-    if(agent_group) {
-        snprintf(group, size, "%s", agent_group);
-        result = OS_SUCCESS;
-    } else {
-        result = OS_INVALID;
-    }
-
-    cJSON_Delete(j_agent_info);
-    return result;
-}
-
 int set_agent_multigroup(char * group) {
     int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);

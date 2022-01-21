@@ -992,21 +992,17 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 /* look for agent group */
 STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock)
 {
-    char group[OS_SIZE_65536];
+    char* group = NULL;
     file_sum **f_sum = NULL;
     char *end;
     int ret = OS_INVALID;
     char *message;
     char *fmsg;
 
-    if (get_agent_group(atoi(agent_id), group, OS_SIZE_65536, wdb_sock) < 0) {
-        group[0] = '\0';
-    }
-
-    mdebug2("Agent '%s' group is '%s'", agent_id, group);
-
-    if (group[0]) {
-        os_strdup(group, *r_group);
+    group = wdb_get_agent_group(atoi(agent_id), wdb_sock);
+    if (group) {
+        mdebug2("Agent '%s' group is '%s'", agent_id, group);
+        *r_group = group;
         return OS_SUCCESS;
     }
 
@@ -1055,17 +1051,16 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         file++;
 
         // If group was not got, guess it by matching sum
-        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
-
+        os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
         /* Lock mutex */
         w_mutex_lock(&files_mutex);
-
         if (!guess_agent_group || groups == NULL || (f_sum = find_group(file, md5, group), !f_sum)) {
             // If the group could not be guessed, set to "default"
             // or if the user requested not to guess the group, through the internal
             // option 'guess_agent_group', set to "default"
             strncpy(group, "default", OS_SIZE_65536);
         }
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
 
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
@@ -1076,7 +1071,7 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
                                  w_is_worker() ? "syncreq" : "synced",
                                  NULL);
 
-        os_strdup(group, *r_group);
+        *r_group = group;
         ret = OS_SUCCESS;
         break;
     }
