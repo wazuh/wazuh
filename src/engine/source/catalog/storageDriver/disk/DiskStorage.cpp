@@ -39,7 +39,7 @@ std::vector<std::string> DiskStorage::getAssetList(const AssetType type)
 }
 
 // Overridden method
-std::string DiskStorage::getAsset(const AssetType type, std::string_view assetName)
+std::string DiskStorage::getAsset(const AssetType type, std::string assetName)
 {
     using std::string;
     using rapidjson::Document;
@@ -51,20 +51,17 @@ std::string DiskStorage::getAsset(const AssetType type, std::string_view assetNa
     /* Get the path to the asset directory */
     base_dir /= assetTypeToPath.at(type);
 
-    /* Get the file name to the asset file */
-    string file_name {assetName};
-
     if (type == AssetType::Schemas)
     {
-        file_name.append(EXT_JSON_SCHEMA);
+        assetName.append(EXT_JSON_SCHEMA);
     }
     else
     {
-        file_name.append(EXT_OTHER_ASSET);
+        assetName.append(EXT_OTHER_ASSET);
     }
 
     /* Get full path to the asset file */
-    fs::path file_path {base_dir / file_name};
+    fs::path file_path {base_dir / assetName};
 
     // Throws std::filesystem::filesystem_error
     if (fs::exists(file_path))
@@ -81,13 +78,13 @@ std::string DiskStorage::getAsset(const AssetType type, std::string_view assetNa
         {
             // Non regular file or not readable
             throw std::runtime_error {"Error reading file: '" + assetTypeToPath.at(type)
-                                      + "/" + file_name + "'"};
+                                      + "/" + assetName + "'"};
         }
     }
     else
     {
         throw std::runtime_error {"Asset not found in file: '" + assetTypeToPath.at(type)
-                                  + "/" + file_name + "'"};
+                                  + "/" + assetName + "'"};
     }
 
     return assetStr;
