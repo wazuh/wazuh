@@ -11,7 +11,6 @@
 
 #include <map>
 #include <mutex>
-#include <variant>
 #include "dbsync.h"
 #include "dbsync.hpp"
 #include "dbsync_implementation.h"

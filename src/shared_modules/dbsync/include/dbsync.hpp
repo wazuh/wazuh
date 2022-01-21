@@ -33,7 +33,7 @@
 
 using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >;
 
-class EXPORTED DBSync 
+class EXPORTED DBSync
 {
 public:
     /**
@@ -161,7 +161,7 @@ private:
     bool m_shouldBeRemoved;
 };
 
-class EXPORTED DBSyncTxn 
+class EXPORTED DBSyncTxn
 {
 public:
     /**
