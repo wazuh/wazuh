@@ -3,7 +3,8 @@ test_name: GET OS SYSCOLLECTOR RBAC
 
 marks:
   - rbac_tests
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -58,7 +59,8 @@ stages:
 test_name: GET HARDWARE SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -104,7 +106,8 @@ stages:
 test_name: GET NETADDR SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -144,7 +147,8 @@ stages:
 test_name: GET NETIFACE SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -195,7 +199,8 @@ stages:
 test_name: GET NETPROTO SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -234,7 +239,8 @@ stages:
 test_name: GET PACKAGES SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -283,7 +289,8 @@ stages:
 test_name: GET PORTS SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -332,7 +339,8 @@ stages:
 test_name: GET PROCESSES SYSCOLLECTOR RBAC
 
 marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
