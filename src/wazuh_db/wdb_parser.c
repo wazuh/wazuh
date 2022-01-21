@@ -260,7 +260,7 @@ int wdb_parse(char * input, char * output, int peer) {
 
         // Don't perform this check if it's a manager.
         if (agent_id != 0) {
-            if (wdb_global = wdb_open_global(), !wdb_global) {
+            if (wdb_global = wdb_open_global(), !wdb_global || !wdb_global->enabled) {
                 mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
                 snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
                 return -1;
@@ -664,7 +664,7 @@ int wdb_parse(char * input, char * output, int peer) {
 
         mdebug2("Global query: %s", query);
 
-        if (wdb = wdb_open_global(), !wdb) {
+        if (wdb = wdb_open_global(), !wdb || !wdb->enabled) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return OS_INVALID;
