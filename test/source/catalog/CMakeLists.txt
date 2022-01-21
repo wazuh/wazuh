@@ -46,7 +46,6 @@ add_executable(DiskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/StorageDriverInterface.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/DiskStorage.hpp
   ${ENGINE_SOURCE_DIR}/catalog/storageDriver/disk/DiskStorage.cpp
-  ${TEST_SOURCE_DIR}/catalog/storageDriver/disk/DiskStorage_test.hpp
   ${TEST_SOURCE_DIR}/catalog/storageDriver/disk/DiskStorage_test.cpp
 )
 

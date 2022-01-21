@@ -2,6 +2,7 @@
 #include "rapidjson/writer.h"
 #include "gtest/gtest.h"
 
+using namespace catalog;
 
 // Test: An asset that fails the check against the schema
 TEST(getAsset, get_asset_invalid_schema)

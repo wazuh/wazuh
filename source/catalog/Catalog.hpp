@@ -1,5 +1,5 @@
-#ifndef __CATALOG_H__
-#define __CATALOG_H__
+#ifndef _CATALOG_H
+#define _CATALOG_H
 
 #include <string>
 #include <vector>
@@ -10,6 +10,9 @@
 #include "catalogSharedDef.hpp"
 #include "storageDriver/StorageDriverInterface.hpp"
 
+namespace catalog
+{
+
 /**
  * @brief The Catalog class
  *
@@ -17,7 +20,6 @@
  * the load, update and storage of all the assets needed by the engine.
  * It should support multiple storage systems and should make versioning easy to manage.
  *
- * @note Catalog class is a singleton. Not implemented yet (#TODO this)
  * @note The Catalog class is thread-safe. Not implemented yet (#TODO this)
  *
  * @warning Each asset type should have a schema associated to it.
@@ -95,7 +97,7 @@ class Catalog
          *                                      the asset. Only if driver is diskDriver.
          *
          */
-        rapidjson::Document getAsset(const AssetType type, std::string_view assetName);
+        rapidjson::Document getAsset(const AssetType type, std::string assetName);
 
         /**
          * @brief Get the list of assets of a given type.
@@ -108,4 +110,7 @@ class Catalog
          */
         std::vector<std::string> getAssetList(const AssetType type);
 };
-#endif // __CATALOG_H__
+
+} // namespace catalog
+
+#endif // _CATALOG_H
