@@ -5183,7 +5183,7 @@ int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) 
     cJSON *agent_groups = NULL;
 
     if (agent_groups = wdb_global_select_group_belong(wdb, agent_id), !agent_groups) {
-        mdebug1("Error getting agent information from global.db.");
+        mdebug1("Error getting agent groups information from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agent groups information from global.db.");
         return OS_INVALID;
     }
