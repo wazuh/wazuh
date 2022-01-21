@@ -37,8 +37,7 @@ int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
                                   char *top,
                                   int *count);
 
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
-                                  const char *file_path);
+FIMDBErrorCode __wrap_fim_db_get_path(const char *file_path);
 
 void __wrap_fim_db_init(int storage,
                         int sync_interval,
@@ -104,10 +103,7 @@ int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
                                           OSList *list,
                                           rb_tree *tree);
 
-int __wrap_fim_db_file_update(fdb_t *fim_sql,
-                              const char *path,
-                              const __attribute__((unused)) fim_file_data *data,
-                              fim_entry **saved);
+int __wrap_fim_db_file_update(fim_entry* new, bool *saved);
 
 int __wrap_fim_db_file_pattern_search(const char* pattern,
                                       __attribute__((unused)) callback_context_t callback);

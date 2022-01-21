@@ -17,12 +17,10 @@ int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
     return mock();
 }
 
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
-                                  const char *file_path) {
-    check_expected_ptr(fim_sql);
+FIMDBErrorCode __wrap_fim_db_get_path(const char *file_path) {
     check_expected(file_path);
 
-    return mock_type(fim_entry*);
+    return mock();
 }
 
 void __wrap_fim_db_init(int storage,
@@ -128,17 +126,8 @@ void expect_fim_db_remove_path(char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-int __wrap_fim_db_file_update(fdb_t *fim_sql,
-                              const char *path,
-                              const __attribute__((unused)) fim_file_data *data,
-                              fim_entry **saved) {
-    check_expected_ptr(fim_sql);
-    check_expected(path);
-
-    if (saved != NULL) {
-        *saved = mock_type(fim_entry *);
-    }
-
+int __wrap_fim_db_file_update(fim_entry* new,
+                              bool* saved) {
     return mock();
 }
 
