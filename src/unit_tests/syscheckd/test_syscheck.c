@@ -56,7 +56,7 @@ static int setup_syscheck_config(void **state) {
     syscheck_conf->file_limit       = 100000;
 #ifdef WIN32
     syscheck_conf->reg_entry_limit  = 100000;
-
+#endif
     *state = syscheck_conf;
     return 0;
 }
@@ -197,11 +197,12 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     will_return(__wrap_rootcheck_init, 1);
 
-    expect_wrapper_fim_db_init(1, 300, 100000);
+    expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-
-    expect_assert_failure(Start_win32_Syscheck());
+    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_start_daemon);
+    assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
@@ -224,9 +225,9 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(1, 300, 100000);
+    expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
@@ -234,8 +235,9 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-
-    expect_assert_failure(Start_win32_Syscheck());
+    expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_start_daemon);
+    assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
@@ -256,9 +258,9 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(1, 300, 100000);
+    expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
@@ -266,7 +268,9 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-    expect_assert_failure(Start_win32_Syscheck());
+   expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_start_daemon);
+    assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
 void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
@@ -287,7 +291,8 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     char *syscheck_ignore[] = {"dir1", NULL};
     syscheck.ignore = syscheck_ignore;
-
+    syscheck.file_size_enabled = 0;
+    syscheck.disk_quota_enabled = 0;
     OSMatch regex;
     regex.raw = "^regex$";
     OSMatch *syscheck_ignore_regex[] = {&regex, NULL};
@@ -312,7 +317,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     will_return(__wrap_rootcheck_init, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6002): Monitoring registry entry: 'Entry1 [x64]', with options ''");
-
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options ''.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
@@ -327,15 +331,16 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
 
-    expect_wrapper_fim_db_init(1, 300, 100000);
+    expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
-
-    expect_assert_failure(Start_win32_Syscheck());
+    expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_start_daemon);
+    assert_int_equal(Start_win32_Syscheck(), 0);
 
     free_directory(directory0);
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);
@@ -379,9 +384,9 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'realtime'.");
 
-    expect_wrapper_fim_db_init(1, 300, 100000);
+    expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
@@ -389,8 +394,9 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-
-    expect_assert_failure(Start_win32_Syscheck());
+    expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_start_daemon);
+    assert_int_equal(Start_win32_Syscheck(), 0);
 
     free_directory(directory0);
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);
@@ -409,7 +415,7 @@ int main(void) {
 #ifdef TEST_WINAGENT
     const struct CMUnitTest tests_win[] = {
             cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
-            cmocka_unit_test(test_Start_win32_Syscheck_corrupted_config_file),
+            cmocka_unit_test_setup_teardown(test_Start_win32_Syscheck_corrupted_config_file, setup_syscheck_config, teardown_syscheck_config),
             cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
             cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
