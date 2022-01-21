@@ -1976,6 +1976,43 @@ void test_wdb_update_agent_connection_status_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_select_group_belong */
+
+void test_wdb_select_group_belong_error_no_json_response(void **state)
+{
+    int id = 1;
+    cJSON* j_data = NULL;
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get groups from agent 1.");
+
+    j_data = wdb_select_group_belong(id, NULL);
+
+    assert_null(j_data);
+}
+
+void test_wdb_select_group_belong_success(void **state) {
+    cJSON *root = NULL;
+    cJSON *response = NULL;
+    int id = 1;
+
+    root = __real_cJSON_CreateArray();
+    __real_cJSON_AddItemToArray(root, __real_cJSON_CreateString("default"));
+    __real_cJSON_AddItemToArray(root, __real_cJSON_CreateString("new_group"));
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    response = wdb_select_group_belong(id, NULL);
+
+    assert_ptr_equal(response, root);
+    __real_cJSON_Delete(root);
+}
+
 /* Tests wdb_delete_agent_belongs */
 
 void test_wdb_delete_agent_belongs_error_socket(void **state)
@@ -4822,6 +4859,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_select_group_belong */
+        cmocka_unit_test_setup_teardown(test_wdb_select_group_belong_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_select_group_belong_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_delete_agent_belongs */
         cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),

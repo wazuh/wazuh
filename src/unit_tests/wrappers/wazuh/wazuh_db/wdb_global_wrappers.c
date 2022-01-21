@@ -174,6 +174,12 @@ int __wrap_wdb_global_insert_agent_group(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+cJSON* __wrap_wdb_global_select_group_belong(__attribute__((unused)) wdb_t *wdb,
+                                             int id_agent) {
+    check_expected(id_agent);
+    return mock_ptr_type(cJSON*);
+}
+
 int __wrap_wdb_global_insert_agent_belong(__attribute__((unused)) wdb_t *wdb,
                                           int id_group,
                                           int id_agent) {

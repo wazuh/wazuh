@@ -254,6 +254,14 @@ int wdb_remove_agent(int id, int *sock);
  */
 int wdb_remove_group_db(const char *name, int *sock);
 
+/**
+ * @brief Get groups from agent id in belongs table.
+ *
+ * @param id Id of the agent to get the groups from.
+ * @param sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return JSON* with the information on success or NULL on failure.
+ */
+cJSON* wdb_select_group_belong(int id, int *sock);
 
 /**
  * @brief Delete an agent from belongs table in global.db by using its ID.
