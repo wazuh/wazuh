@@ -324,6 +324,7 @@ typedef struct wdb_t {
     pthread_mutex_t mutex;
     struct stmt_cache_list *cache_list;
     struct wdb_t * next;
+    bool enabled;
 } wdb_t;
 
 typedef enum wdb_backup_db {
@@ -1537,22 +1538,12 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 int wdb_create_backup(const char * agent_id, int version);
 
 /**
- * @brief Function to backup Global DB in case of an upgrade failure.
+ * @brief Function to recreate Global DB in case of an upgrading an old version.
  *
  * @param [in] wdb The global.db database to backup.
- * @param [in] version The global.db database version to backup.
  * @return wdb The new empty global.db database on success or NULL on error
  */
-wdb_t * wdb_backup_global(wdb_t *wdb, int version);
-
-/**
- * @brief Function to create the Global DB backup file.
- *
- * @param [in] wdb The global.db database to backup.
- * @param [in] version The global.db database version to backup.
- * @return wdb OS_SUCESS on success or OS_INVALID on error.
- */
-int wdb_create_backup_global(int version);
+wdb_t * wdb_recreate_global(wdb_t *wdb);
 
 /**
  * @brief Check the agent 0 status in the global database
