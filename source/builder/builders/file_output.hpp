@@ -1,13 +1,16 @@
 #ifndef _BUILDERS_FILE_OUTPUT_H
 #define _BUILDERS_FILE_OUTPUT_H
 
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <memory>
 #include <rxcpp/rx.hpp>
 #include <stdexcept>
 #include <string>
 
 #include "connectable.hpp"
 #include "json.hpp"
-
 #include "outputs/file_output.hpp"
 
 namespace builder::internals::builders
@@ -20,7 +23,7 @@ namespace builder::internals::builders
  * @param inputJson
  * @return rxcpp::observable<json::Document>
  */
-outputs::FileOutput<json::Document> fileOutputBuilder(const json::Value * inputJson)
+void fileOutputBuilder(const rxcpp::observable<json::Document> & inputObs, const json::Value * inputJson)
 {
     if (!inputJson->IsObject())
     {
@@ -37,8 +40,9 @@ outputs::FileOutput<json::Document> fileOutputBuilder(const json::Value * inputJ
     {
         throw std::invalid_argument("File output builder expects path attribute");
     }
-
-    return outputs::FileOutput<json::Document>{inputJson->GetObject().FindMember("path")->value.GetString()};
+    std::string path = inputJson->GetObject().FindMember("path")->value.GetString();
+    std::shared_ptr<outputs::FileOutput> filePtr = std::make_shared<outputs::FileOutput>(path);
+    inputObs.subscribe([filePtr](json::Document e) { filePtr->write(e); }, []() {});
 }
 
 } // namespace builder::internals::builders
