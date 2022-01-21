@@ -1,5 +1,5 @@
-#ifndef __STORAGEDRIVERINTERFACE_H__
-#define __STORAGEDRIVERINTERFACE_H__
+#ifndef _STORAGE_DRIVER_INTERFACE_H
+#define _STORAGE_DRIVER_INTERFACE_H
 
 #include <vector>
 #include <string>
@@ -41,7 +41,7 @@ class StorageDriverInterface
          * @throw std::runtime_error If the asset does not exist or cannot be recovered
          * @return std::string The asset as a string
          */
-        virtual std::string getAsset(const AssetType type, std::string_view assetName) = 0;
+        virtual std::string getAsset(const AssetType type, std::string assetName) = 0;
 };
 
-#endif // __STORAGEDRIVERINTERFACE_H__
+#endif // _STORAGEDRIVERINTERFACE_H

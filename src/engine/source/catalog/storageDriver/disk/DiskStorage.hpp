@@ -1,5 +1,5 @@
-#ifndef __DISKSTORAGE_H__
-#define __DISKSTORAGE_H__
+#ifndef _DISK_STORAGE_H
+#define _DISK_STORAGE_H
 
 #include <iostream>
 #include <vector>
@@ -74,8 +74,8 @@ class DiskStorage : public StorageDriverInterface
          * @throws std::runtime_error when the asset does not exist
          * @throws std::filesystem::filesystem_error whens the file cannot be read
          */
-        std::string getAsset(const AssetType type, std::string_view assetName) override;
+        std::string getAsset(const AssetType type, std::string assetName) override;
 
 };
 
-#endif // __DISKSTORAGE_H__
+#endif // _DISKSTORAGE_H

@@ -4,7 +4,13 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/schema.h"
-#include "DiskStorage_test.hpp"
+#include <gtest/gtest.h>
+#include <fstream>
+#include "catalog/storageDriver/disk/DiskStorage.hpp"
+
+char* createDBtmp();
+void removeDBtmp(char** tmpDir);
+
 
 
 // Test: Get asset list from inaccesible directory
@@ -221,4 +227,40 @@ TEST(getAsset, asset_inaccessible)
 
     removeDBtmp(&tmpDir);
 
+}
+
+char* createDBtmp()
+{
+
+
+    auto template_BaseDir = std::filesystem::temp_directory_path();
+    template_BaseDir /= "wazuh_catalog_disk_test_XXXXXXXXX";
+    char* tmpDir = strdup(template_BaseDir.string().c_str());
+
+    // Create base struct of tmp db from template
+    if (mkdtemp(tmpDir) == nullptr)
+    {
+        throw std::runtime_error("Failed to create temporary directory");
+    }
+
+    std::filesystem::path tmpDirPath {tmpDir};
+
+    if (!(std::filesystem::create_directory(tmpDirPath / "decoders") &&
+            std::filesystem::create_directory(tmpDirPath / "rules") &&
+            std::filesystem::create_directory(tmpDirPath / "output") &&
+            std::filesystem::create_directory(tmpDirPath / "filters")))
+    {
+        throw std::runtime_error("Failed to create temporary directory");
+    }
+
+
+    return tmpDir;
+}
+
+void removeDBtmp(char** tmpDir)
+{
+
+    std::filesystem::remove_all(*tmpDir);
+    free(*tmpDir);
+    *tmpDir = nullptr;
 }

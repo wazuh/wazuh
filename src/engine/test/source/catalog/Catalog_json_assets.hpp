@@ -1,5 +1,5 @@
-#ifndef __CATALOG_JSON_ASSETS_H__
-#define __CATALOG_JSON_ASSETS_H__
+#ifndef _CATALOG_JSON_ASSETS_H
+#define _CATALOG_JSON_ASSETS_H
 
 
 /** @brief malformed schemas */
@@ -262,4 +262,4 @@ constexpr auto json_schema_decoder = R"(
   }
 }
 )";
-#endif // __CATALOG_JSON_ASSETS_H__
+#endif // _CATALOG_JSON_ASSETS_H

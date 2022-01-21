@@ -1,5 +1,5 @@
-#ifndef __YML_TO_JSON_H__
-#define __YML_TO_JSON_H__
+#ifndef _YML_TO_JSON_H
+#define _YML_TO_JSON_H
 
 #include <iostream>
 #include "yaml-cpp/yaml.h"
@@ -130,4 +130,4 @@ namespace yml2json
 
 }
 
-#endif // __YML_TO_JSON_H__
+#endif // _YML_TO_JSON_H

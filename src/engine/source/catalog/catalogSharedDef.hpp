@@ -1,5 +1,5 @@
-#ifndef __CATALOGSHAREDDEF_H__
-#define __CATALOGSHAREDDEF_H__
+#ifndef _CATALOG_SHARED_DEF_H
+#define _CATALOG_SHARED_DEF_H
 
 /*
  * The catalog shared defines.
@@ -16,4 +16,4 @@ enum class AssetType
     Environments
 };
 
-#endif // __CATALOGSHAREDDEF_H__
+#endif // _CATALOGSHAREDDEF_H
