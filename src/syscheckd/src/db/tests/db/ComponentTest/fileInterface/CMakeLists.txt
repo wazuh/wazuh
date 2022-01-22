@@ -27,10 +27,8 @@ file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
     "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    file(GLOB REGISTRY_SRC
-        "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistry*.cpp")
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+file(GLOB REGISTRY_SRC
+    "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistry*.cpp")
 
 add_executable(fim_file_interface_test
     ${FILE_UNIT_TEST_SRC}

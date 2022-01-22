@@ -102,6 +102,7 @@ class FimDBWinFixture : public ::testing::Test
 
         void TearDown() override
         {
+            fimDBMock.teardown();
             std::remove(MOCK_DB_PATH);
             delete mockLog;
             delete mockSync;
@@ -178,6 +179,7 @@ class FimDBFixture : public ::testing::Test
 
         void TearDown() override
         {
+            fimDBMock.teardown();
             std::remove(MOCK_DB_PATH);
             delete mockLog;
             delete mockSync;
@@ -271,7 +273,6 @@ TEST_F(FimDBFixture, registerSyncIDError)
 
 TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
 {
-    nlohmann::json itemJson;
     std::mutex test_mutex;
 
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
@@ -291,7 +292,6 @@ TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
 
 TEST_F(FimDBFixture, loopRSyncSuccess)
 {
-    nlohmann::json itemJson;
     std::mutex test_mutex;
 
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
@@ -370,5 +370,23 @@ TEST(FimDB, notInitalizedDbSyncException)
         ASSERT_EQ(fimDBMock.DBSyncHandle(), nullptr);
     }, std::runtime_error);
 }
+
+TEST_F(FimDBFixture, fimRunIntegritySuccess)
+{
+
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
+    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_NO_THROW(
+    {
+        std::thread integrityThread(&FIMDB::runIntegrity, &fimDBMock);
+
+        fimDBMock.stopSync();
+        integrityThread.join();
+    });
+}
+
 
 #endif

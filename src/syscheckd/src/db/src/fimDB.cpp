@@ -71,7 +71,9 @@ void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
     return m_stopping;
 }))
     {
+        // LCOV_EXCL_START
         sync();
+        // LCOV_EXCL_STOP
     }
     m_rsyncHandler = nullptr;
 }
@@ -152,4 +154,22 @@ void FIMDB::pushMessage(const std::string& data)
 
         // LCOV_EXCL_STOP
     }
+}
+
+void FIMDB::teardown()
+{
+    try
+    {
+        stopSync();
+        m_rsyncHandler.reset();
+        m_dbsyncHandler.reset();
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& ex)
+    {
+        auto errmsg { "There is a problem to close FIMDB " + std::string(ex.what()) };
+        m_loggingFunction(LOG_ERROR, errmsg);
+    }
+
+    // LCOV_EXCL_STOP
 }
