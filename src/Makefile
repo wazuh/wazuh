@@ -42,6 +42,10 @@ EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
+ifeq (${uname_S},Linux)
+EXTERNAL_RPM=external/rpm/
+EXTERNAL_POPT=external/popt/
+endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
@@ -321,7 +325,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -797,6 +801,9 @@ LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
+POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
+RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
+
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -815,6 +822,9 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
+ifneq ($(CHECK_CENTOS5),YES)
+EXTERNAL_LIBS += ${RPM_LIB} ${POPT_LIB}
+endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
@@ -829,6 +839,7 @@ endif
 ifeq (${uname_S},Darwin)
 EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
+
 
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS)
@@ -1081,6 +1092,39 @@ else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
 endif
 
+### popt lib ###
+
+POPT_BUILD_DIR = $(EXTERNAL_POPT)build/
+
+$(POPT_LIB): $(POPT_BUILD_DIR)Makefile
+	 $(MAKE) -C $(POPT_BUILD_DIR)
+$(POPT_BUILD_DIR)Makefile:
+	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
+
+### rpm lib ###
+
+RPM_BUILD_DIR = ${EXTERNAL_RPM}/builddir
+
+RPM_INC_PATHS = -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
+				-I${ROUTE_PATH}/${EXTERNAL_ZLIB} \
+				-I${ROUTE_PATH}/${EXTERNAL_POPT}/src \
+				-I${ROUTE_PATH}/${EXTERNAL_SQLITE}
+
+RPM_LIB_PATHS = -L${ROUTE_PATH}/${EXTERNAL_OPENSSL} \
+				-L${ROUTE_PATH}/${EXTERNAL_ZLIB} \
+				-L${ROUTE_PATH}/${EXTERNAL_POPT}/build/output/src/.libs/ \
+				-L${ROUTE_PATH}/${EXTERNAL_SQLITE}
+
+RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}
+RPM_CC = gcc
+
+${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
+	cd ${RPM_BUILD_DIR} && ${MAKE}
+
+${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
+	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="${RPM_CFLAGS}" CC=${RPM_CC} cmake ..
+
+
 ################################
 #### External dependencies  ####
 ################################
@@ -1089,7 +1133,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 15
+DEPS_VERSION = 16
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
@@ -1133,7 +1177,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -2290,6 +2334,8 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
+	rm -rf ${POPT_BUILD_DIR}
+	rm -rf ${RPM_BUILD_DIR}
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
