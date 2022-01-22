@@ -18,6 +18,10 @@ file(GLOB DB_SRC
      ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryKey.cpp
      ${CMAKE_SOURCE_DIR}/src/db/src/dbRegistryValue.cpp)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  add_definitions(-DSOLARIS=ON)
+endif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${DB_SRC}
                            # ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
