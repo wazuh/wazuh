@@ -31,7 +31,7 @@ std::map<std::string, std::string> filters = {{"filter_0", R"(
                 {
                     "name": "filter_0",
                     "after": [
-                        "decoder_1"
+                        "decoder_0"
                     ],
                     "allow": [
                         {"field": "value"}
@@ -51,14 +51,13 @@ std::map<std::string, std::string> outputs = {{"output_0", R"(
                 }
     )"}};
 
-std::map<std::string, std::string> environments = {{"environment_0", R"(
-        {
-            "decoders": [ "decoder_0" ],
-            "rules": [ "rule_0" ],
-            "filters": [ "filter_0" ],
-            "outputs": [ "output_0" ]
-        }
-    )"}};
+std::map<std::string, std::string> environments = {
+    {"environment_1", R"( { "decoders": [ "decoder_0"] })"},
+    {"environment_2", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ] })"},
+    {"environment_3", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
+    {"environment_4",
+     R"({  "decoders": [ "decoder_0" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
+};
 
 class FakeCatalog
 {
