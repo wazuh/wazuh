@@ -5,60 +5,47 @@
 namespace graph
 {
 /**
- * @brief A node connects two connectables between them. if a connectable
- * type T. A connectable type has a method to get its observer and the node
- * will connect to other connectable types by chaining their
- * observers together.
+ * @brief The node class is the building block of a graph. In this
+ * implementation a graph is a network of connected nodes.
+ *
+ * The implementation allow loops.
  *
  * @tparam T
  */
 template <class T> class Node
 {
-    typedef std::shared_ptr<Node<T>> NodePtr;
-    typedef std::vector<NodePtr> AdjList;
+    using node_ptr_t = std::shared_ptr<Node<T>>;
+    using node_ptr_list_t = std::vector<node_ptr_t>;
 
 private:
-    AdjList m_adj;
+    node_ptr_list_t m_childs;
 
 public:
     std::shared_ptr<T> m_value;
-
     /**
-     * @brief Construct a new Node object from a T. It expects a
-     * std::shared_ptr<T> because it will take ownership of T, and will
-     * change it by making the appropriate subscriptions.
+     * @brief A node contains a pointer to a value and a list
+     * of of pointers to its child nodes.
      *
      * @param value
      */
     Node(std::shared_ptr<T> value) : m_value(value){};
 
     /**
-     * @brief connects node n as a subscriber to the events this node might
-     * generate.
+     * @brief connects this to node n.
      *
      * @param n
      */
-    void connect(const NodePtr n)
+    void connect(node_ptr_t n)
     {
-        AdjList nc = n->adjacents();
-        auto res = std::find_if(std::begin(nc), std::end(nc),
-                                [&](const NodePtr & e) { return this->m_value->name() == e->m_value->name(); });
-
-        if (res != std::end(nc))
-        {
-            throw std::invalid_argument("Loop detected.");
-        }
-
         this->m_value->connect(n->m_value);
-
-        this->m_adj.push_back(n);
+        this->m_childs.push_back(n);
     }
 
     /**
      * @brief returns the name of the underlying asset, to check
-     * for identity. The graph node uses the asset identity as its own.
+     * for its identity. The node uses the asset identity as its own.
      *
-     * @return std::string
+     * @return std::string name of the underlaying value
      */
     auto name() const
     {
@@ -73,25 +60,95 @@ public:
      */
     auto adjacents() const
     {
-        return this->m_adj;
+        return this->m_childs;
     }
+};
 
-    /**
-     * @brief visit all leaves of the graph to which this node
-     * is the root node.
-     *
-     * @param fn
-     */
-    void visitLeaves(std::function<void(Node<T> *)> fn)
+/**
+ * @brief visit all leaves of the graph to which this node
+ * is the root node, only once.
+ *
+ * @param n root node
+ * @param fn visitor function
+ */
+template <class T> void visitLeaves(std::shared_ptr<Node<T>> n, std::function<void(std::shared_ptr<Node<T>>)> fn)
+{
+    using node_ptr_t = std::shared_ptr<Node<T>>;
+    std::map<node_ptr_t, bool> v;
+    std::function<void(node_ptr_t, std::function<void(node_ptr_t)>)> inner_visit;
+
+    inner_visit = [&](node_ptr_t curr, std::function<void(node_ptr_t)> fn)
     {
-        if (this->m_adj.size() > 0)
+        auto adj = curr->adjacents();
+        if (adj.size() > 0)
         {
-            std::for_each(this->m_adj.begin(), this->m_adj.end(), [fn](auto c) { c->visitLeaves(fn); });
+            std::for_each(adj.begin(), adj.end(),
+                          [&](auto c)
+                          {
+                              if (v.find(c) == v.end())
+                              {
+                                  v.insert(std::pair(c, true));
+                                  inner_visit(c, fn);
+                              }
+                          });
         }
         else
         {
-            fn(this);
+            v.insert(std::pair(curr, true));
+            fn(curr);
         }
-    }
-};
+    };
+    inner_visit(n, fn);
+}
+
+/**
+ * @brief Visit all edges of the graph, only once
+ *
+ * @param n root node
+ * @param fn visitor function
+ */
+template <class T>
+void visit(std::shared_ptr<Node<T>> n,
+           std::function<void(std::pair<std::shared_ptr<Node<T>>, std::shared_ptr<Node<T>>>)> fn)
+{
+
+    using pNode_t = std::shared_ptr<Node<T>>;
+    using Edge_t = std::pair<pNode_t, pNode_t>;
+    using Fn_t = std::function<void(Edge_t)>;
+
+    std::map<Edge_t, bool> visited;
+
+    std::function<void(Edge_t, Fn_t)> inner_visit;
+
+    inner_visit = [&](Edge_t curr, Fn_t fn)
+    {
+        if (visited.find(curr) == visited.end())
+        {
+            fn(curr);
+            visited.insert(std::pair(curr, true));
+            auto adj = curr.second->adjacents();
+            std::for_each(adj.begin(), adj.end(), [&](auto next) { inner_visit(Edge_t(curr.second, next), fn); });
+        }
+    };
+    inner_visit(Edge_t(n, n), fn);
+}
+
+/**
+ * @brief returns a string stream with a graphviz representation of
+ * the graph starting an the node root
+ *
+ * @tparam T
+ * @param root of the graph to represent
+ * @return std::stringstream containing the representation
+ */
+template <class T> std::stringstream print(std::shared_ptr<Node<T>> root)
+{
+    std::stringstream diagraph;
+    diagraph << "digraph G {" << std::endl;
+    graph::visit<T>(root, [&](auto pair)
+                    { diagraph << pair.first->name() << " -> " << pair.second->name() << ";" << std::endl; });
+    diagraph << "}" << std::endl;
+    return diagraph;
+}
+
 } // namespace graph
