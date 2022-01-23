@@ -32,8 +32,7 @@ rxcpp::observable<json::Document> normalizeStageBuilder(rxcpp::observable<json::
     for (rapidjson::Value::ConstValueIterator it = inputJson->GetArray().Begin(); it != inputJson->GetArray().End();
          it++)
     {
-        const json::Value * valueRef = static_cast<const json::Value *>(it);
-        outputObs = mapBuilder(outputObs, valueRef);
+        outputObs = mapBuilder(outputObs, it);
     }
 
     return outputObs;
