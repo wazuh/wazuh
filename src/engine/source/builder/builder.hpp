@@ -10,103 +10,148 @@
 
 namespace builder
 {
-
+using namespace builder::internals::builders;
 template <class C> class Builder
 {
+    using Event_t = json::Document;
+    using Asset_t = json::Document;
 
-    using event_t = json::Document;
-    using asset_t = json::Document;
-    using connectable_t = builder::internals::Connectable;
-    using connectable_ptr = std::shared_ptr<connectable_t>;
-    using node_t = graph::Node<connectable_t>;
-    using node_ptr = std::shared_ptr<node_t>;
-    using asset_builder_t = std::function<connectable_t(asset_t)>;
+    using Con_t = builder::internals::Connectable;
+    using pCon_t = std::shared_ptr<Con_t>;
+
+    using AssetBuilder_t = std::function<Con_t(Asset_t)>;
+
+    using Node_t = graph::Node<Con_t>;
+    using pNode_t = std::shared_ptr<Node_t>;
+
+    using NodeMap_t = std::map<std::string, pNode_t>;
 
 private:
     C m_catalog;
 
-    node_ptr assets_builder(std::string atype, const json::Value * v, asset_builder_t make)
+    pNode_t newNode(std::string name)
     {
-        // check v is an array
-        if (!v->IsArray())
-        {
-            throw std::invalid_argument("asset_builder did not get an array of assets to build!");
-        }
+        auto pCon = std::make_shared<Con_t>(name);
+        return std::make_shared<Node_t>(pCon);
+    }
 
-        std::map<std::string, node_ptr> nodes;
+    pNode_t connectGraph(std::string atype, NodeMap_t & nodes, NodeMap_t & filters)
+    {
+        auto input = newNode(atype + "_input");
+        auto output = newNode(atype + "_output");
 
-        connectable_ptr con = std::make_shared<connectable_t>(atype + "_root");
-        node_ptr root(std::make_shared<node_t>(node_t(con)));
-
-        std::transform(v->Begin(), v->End(), std::inserter(nodes, nodes.begin()),
-                       [=](const auto & m)
-                       {
-                           auto asset = m_catalog.getAsset(atype, m.GetString());
-                           auto con_ptr = std::make_shared<connectable_t>(make(asset));
-                           auto pNode = std::make_shared<node_t>(con_ptr);
-                           return std::make_pair(pNode->name(), pNode);
-                       });
-
-        // connect all nodes
         std::for_each(nodes.begin(), nodes.end(),
                       [&](const auto & pair)
                       {
-                          auto parents = pair.second->m_value->parents();
-                          if (parents.empty())
-                              root->connect(pair.second);
-                          else
-                              std::for_each(parents.begin(), parents.end(),
-                                            [&](const auto & p)
-                                            {
-                                                auto parent = nodes.find(p);
-                                                if (parent != nodes.end())
-                                                {
-                                                    parent->second->connect(pair.second);
-                                                }
-                                            });
+                          auto node = pair.second;
+
+                          auto f = filters.find(node->name());
+                          if (f != filters.end())
+                          {
+                              node->connect(f->second);
+                              // If a node is filtered, other nodes will be connected to
+                              // the filter instead of the node itself
+                              nodes.at(node->name()) = f->second;
+                          }
+
+                          auto parents = node->m_value->parents();
+                          if (parents.size() == 0)
+                          {
+                              input->connect(node);
+                          }
+                          for (auto & p : parents)
+                          {
+                              auto parentNode = nodes.find(p);
+                              if (parentNode != nodes.end())
+                              {
+                                  parentNode->second->connect(node);
+                              }
+                          }
                       });
 
-        return root;
+        graph::visitLeaves<Con_t>(input, [&](auto leaf) { leaf->connect(output); });
+        return input;
+    }
+
+    NodeMap_t assetsBuilder(std::string atype, const json::Value * v, AssetBuilder_t make)
+    {
+
+        NodeMap_t nodes;
+        if (v && v->IsArray())
+        {
+            for (auto & m : v->GetArray())
+            {
+                auto asset = m_catalog.getAsset(atype, m.GetString());
+                auto conPtr = std::make_shared<Con_t>(make(asset));
+                auto pNode = std::make_shared<Node_t>(conPtr);
+                nodes.insert(std::pair<std::string, pNode_t>(pNode->name(), pNode));
+            }
+        }
+        return nodes;
     };
+
+    NodeMap_t filterNodesBuild(std::string atype, const json::Value * v, AssetBuilder_t make)
+    {
+
+        NodeMap_t nodes;
+        if (v && v->IsArray())
+        {
+            for (auto & m : v->GetArray())
+            {
+                auto asset = m_catalog.getAsset(atype, m.GetString());
+                auto conPtr = std::make_shared<Con_t>(make(asset));
+                auto pNode = std::make_shared<Node_t>(conPtr);
+                auto parents = conPtr->parents();
+                std::for_each(parents.begin(), parents.end(),
+                              [&](auto parentName)
+                              { nodes.insert(std::pair<std::string, pNode_t>(parentName, pNode)); });
+            }
+        };
+        return nodes;
+    }
 
 public:
     Builder(C catalog) : m_catalog(catalog){};
 
-    node_ptr build(std::string name)
+    /**
+     * @brief An environment might have decoders, rules, filters and outputs,
+     * but only an output is mandatory. All of them are arranged into a graph.
+     * Each graph leaf is connected with the root of the next tree.
+     *
+     * If the environment has other stages, they're ignored. The order of the
+     *  tree is:
+     *  server · router · decoders · ---------------> · outputs
+     *                             \---> · rules · --/
+     *
+     * Filters can be connected to decoders and rules leaves, to discard some
+     * events. They cannot attach themselves between two decoders or two rules.
+     *
+     * @param name
+     * @return node_ptr execution graph of an environment
+     */
+    pNode_t build(std::string name)
     {
         json::Document environment = this->m_catalog.getAsset("environment", name);
 
-        std::vector<node_ptr> nodes;
+        auto filterNodes = this->filterNodesBuild("filter", environment.get("/filters"), filterBuilder);
+        auto decNodes = this->assetsBuilder("decoder", environment.get("/decoders"), decoderBuilder);
+        auto ruleNodes = this->assetsBuilder("rule", environment.get("/rules"), ruleBuilder);
+        auto outputNodes = this->assetsBuilder("output", environment.get("/outputs"), outputBuilder);
 
-        connectable_ptr con = std::make_shared<connectable_t>("environment_root");
-        node_ptr root(std::make_shared<node_t>(node_t(con)));
+        auto gDecoders = this->connectGraph("decoder", decNodes, filterNodes);
+        auto gRules = this->connectGraph("rule", ruleNodes, filterNodes);
+        auto gOutputs = this->connectGraph("output", outputNodes, filterNodes);
 
-        std::transform(environment.begin(), environment.end(), std::back_inserter(nodes),
-                       [&](const auto & m)
-                       {
-                           std::string key;
-                           key = m.name.GetString();
-                           if (key == "decoders")
-                               return this->assets_builder("decoder", environment.get(std::string("/") + key),
-                                                           builder::internals::builders::decoderBuilder);
-                           else if (key == "rules")
-                               return this->assets_builder("rule", environment.get(std::string("/") + key),
-                                                           builder::internals::builders::ruleBuilder);
-                           else if (key == "filters")
-                               return this->assets_builder("filter", environment.get(std::string("/") + key),
-                                                           builder::internals::builders::filterBuilder);
-                           else if (key == "outputs")
-                               return this->assets_builder("output", environment.get(std::string("/") + key),
-                                                           builder::internals::builders::outputBuilder);
-                           else
-                               throw std::runtime_error("Environment " + name + " has an unknown member: " + key);
-                       });
+        graph::visitLeaves<Con_t>(gDecoders,
+                                  [&](auto leaf)
+                                  {
+                                      leaf->connect(gOutputs);
+                                      leaf->connect(gRules);
+                                  });
 
-        return root;
-    }
+        graph::visitLeaves<Con_t>(gRules, [&](auto leaf) { leaf->connect(gOutputs); });
 
-    template <class E> std::function<bool(E)> filter(json::Document filter)
-    {
+        return gDecoders;
     }
 };
 
