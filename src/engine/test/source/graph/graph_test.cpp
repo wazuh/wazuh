@@ -34,19 +34,28 @@ TEST(Graph, Connect_two_nodes)
     ASSERT_EQ(pNode1->adjacents().size(), 1);
 }
 
-TEST(Graph, Connect_two_nodes_loop)
+TEST(Graph, CanVisitLoops)
 {
     using con_t = fakeConnectable<int>;
     using node_t = graph::Node<con_t>;
 
-    auto pf1{std::make_shared<con_t>(con_t("decoder_1"))};
-    auto pf2{std::make_shared<con_t>(con_t("decoder_2"))};
+    auto pf1{std::make_shared<con_t>("decoder_1")};
+    auto pf2{std::make_shared<con_t>("decoder_2")};
+    auto pf3{std::make_shared<con_t>("decoder_3")};
+    auto pf4{std::make_shared<con_t>("decoder_4")};
 
-    auto pNode1{std::make_shared<node_t>(node_t(pf1))};
-    auto pNode2{std::make_shared<node_t>(node_t(pf2))};
+    auto pNode1{std::make_shared<node_t>(pf1)};
+    auto pNode2{std::make_shared<node_t>(pf2)};
+    auto pNode3{std::make_shared<node_t>(pf3)};
+    auto pNode4{std::make_shared<node_t>(pf4)};
 
     pNode1->connect(pNode2);
-    EXPECT_THROW(pNode2->connect(pNode1), std::invalid_argument);
+    pNode2->connect(pNode3);
+    pNode3->connect(pNode4);
+    pNode1->connect(pNode1);
+    graph::visit<con_t>(pNode1,
+                        [](auto n) { GTEST_COUT << n.first->name() << " --> " << n.second->name() << std::endl; });
+    graph::visitLeaves<con_t>(pNode1, [](auto n) { GTEST_COUT << n->name() << std::endl; });
 }
 
 TEST(Graph, Connect_two_check_result)
@@ -193,7 +202,7 @@ TEST(Graph, Connect_all_leaves)
 
     int got(0);
 
-    nodePlus->visitLeaves([nodeOutput](auto leaf) { leaf->connect(nodeOutput); });
+    graph::visitLeaves<con_t>(nodePlus, [nodeOutput](auto leaf) { leaf->connect(nodeOutput); });
 
     nodeOutput->m_value->output().subscribe([&got](const int & i) { got++; },
                                             [&got]() { GTEST_COUT << "completed " << got << std::endl; });
@@ -246,7 +255,7 @@ TEST(Graph, Connect_a_big_graph)
 
     auto pOutputNode{std::make_shared<node_t>(node_t(std::make_shared<con_t>(con_t("output"))))};
 
-    nodes[0]->visitLeaves([&pOutputNode](auto leaf) { leaf->connect(pOutputNode); });
+    graph::visitLeaves<con_t>(nodes[0], [&pOutputNode](auto leaf) { leaf->connect(pOutputNode); });
 
     int got(0);
 
