@@ -32,8 +32,7 @@ rxcpp::observable<json::Document> checkStageBuilder(rxcpp::observable<json::Docu
     for (rapidjson::Value::ConstValueIterator it = inputJson->GetArray().Begin(); it != inputJson->GetArray().End();
          it++)
     {
-        const json::Value * valueRef = static_cast<const json::Value *>(it);
-        outputObs = conditionBuilder(outputObs, valueRef);
+        outputObs = conditionBuilder(outputObs, it);
     }
 
     return outputObs;
