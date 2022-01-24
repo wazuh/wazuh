@@ -10,7 +10,21 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         {"field": "value" }
                     ],
                     "normalize": [
-                        { "new_dec_field": "new_dec_value" }
+                        { "new_dec_field0": "new_dec_value0" }
+                    ]
+                }
+    )"},
+                                               {"decoder_1", R"(
+                {
+                    "name": "decoder_1",
+                    "parents": [
+                        "decoder_0"
+                    ],
+                    "check": [
+                        {"field": "value" }
+                    ],
+                    "normalize": [
+                        { "new_dec_field1": "new_dec_value1" }
                     ]
                 }
     )"}};
@@ -31,7 +45,7 @@ std::map<std::string, std::string> filters = {{"filter_0", R"(
                 {
                     "name": "filter_0",
                     "after": [
-                        "decoder_0"
+                        "decoder_1"
                     ],
                     "allow": [
                         {"field": "value"}
@@ -56,7 +70,7 @@ std::map<std::string, std::string> environments = {
     {"environment_2", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ] })"},
     {"environment_3", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
     {"environment_4",
-     R"({  "decoders": [ "decoder_0" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
+     R"({  "decoders": [ "decoder_0" , "decoder_1" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
 };
 
 class FakeCatalog
