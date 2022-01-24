@@ -129,6 +129,39 @@ void test_get_unix_version_centos(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
+void test_get_unix_version_opensuse_tumbleweed(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"openSUSE Tumbleweed\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "# VERSION=\"20211202\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=opensuse-tumbleweed");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "openSUSE Tumbleweed");
+    assert_string_equal(ret->os_version, "");
+    assert_string_equal(ret->os_platform, "opensuse-tumbleweed");
+    assert_string_equal(ret->sysname, "Linux");
+    assert_string_equal(ret->os_build, "rolling");
+}
+
 void test_get_unix_version_fail_os_release_centos(void **state)
 {
     (void) state;
@@ -1418,6 +1451,7 @@ int main(void) {
 #ifdef __linux__
             cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_centos, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_fedora, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_centos, delete_os_info),

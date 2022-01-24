@@ -8,10 +8,25 @@ import argparse
 import sys
 from atexit import register
 
-from wazuh.core import common, utils
+from api.api_exception import APIError
+from api.constants import API_LOG_FILE_PATH
 
 
-def start(foreground, root, config_file):
+def spawn_process_pool():
+    """Import necessary basic Wazuh SDK modules for the local request pool and spawn child."""
+    from wazuh import agent, manager  # noqa
+    from wazuh.core import common  # noqa
+    from wazuh.core.cluster import dapi  # noqa
+    return
+
+
+def spawn_authentication_pool():
+    """Import necessary basic Wazuh security modules for the authentication tasks pool and spawn child."""
+    from wazuh import security  # noqa
+    return
+
+
+def start(foreground: bool, root: bool, config_file: str):
     """Run the Wazuh API.
 
     If another Wazuh API is running, this function fails.
@@ -26,28 +41,10 @@ def start(foreground, root, config_file):
     config_file : str
         Path to the API config file
     """
-    import asyncio
     import logging
     import os
-    import ssl
-
-    import connexion
-    import uvloop
-    from aiohttp_cache import setup_cache
     from api import alogging, configuration
-
-    import wazuh.security
-    from api import __path__ as api_path
-    # noinspection PyUnresolvedReferences
-    from api import validator
-    from api.api_exception import APIError
-    from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
-        set_secure_headers
-    from api.signals import modify_response_headers
-    from api.uri_parser import APIUriParser
-    from api.util import to_relative_path
-    from wazuh.core import pyDaemonModule
+    from wazuh.core import pyDaemonModule, common, utils
 
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
@@ -61,21 +58,43 @@ def start(foreground, root, config_file):
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
-    log_path = api_conf['logs']['path']
 
     # Set up logger
-    set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
+    set_logging(log_path=API_LOG_FILE_PATH, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
 
-    # `use_only_authd` deprecated on v4.3.0. To be removed
-    if "use_only_authd" in api_conf:
-        del api_conf["use_only_authd"]
+    import asyncio
+    import ssl
+
+    import connexion
+    import uvloop
+    from aiohttp_cache import setup_cache
+    from api import __path__ as api_path
+    # noinspection PyUnresolvedReferences
+    from api import validator
+    from api.api_exception import APIError
+    from api.constants import CONFIG_FILE_PATH
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
+        set_secure_headers
+    from api.signals import modify_response_headers
+    from api.uri_parser import APIUriParser
+    from api.util import to_relative_path
+    from wazuh.rbac.orm import create_rbac_db
+
+    # Check deprecated options. To delete after expected versions
+    if 'use_only_authd' in api_conf:
+        del api_conf['use_only_authd']
         logger.warning("'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
 
+    if 'path' in api_conf['logs']:
+        del api_conf['logs']['path']
+        logger.warning("Log 'path' option was deprecated on v4.3.0. Default path will always be used: "
+                       f"{API_LOG_FILE_PATH}")
+
     # Set correct permissions on api.log file
-    if os.path.exists(os.path.join(common.wazuh_path, log_path)):
-        os.chown(os.path.join(common.wazuh_path, log_path), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(os.path.join(common.wazuh_path, log_path), 0o660)
+    if os.path.exists(os.path.join(common.wazuh_path, API_LOG_FILE_PATH)):
+        os.chown(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
+        os.chmod(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), 0o660)
 
     # Configure https
     ssl_context = None
@@ -113,23 +132,32 @@ def start(foreground, root, config_file):
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
                 except ssl.SSLError:
-                    logger.error(str(APIError(2003, details='SSL ciphers cannot be selected')))
-                    sys.exit(1)
+                    error = APIError(2003, details='SSL ciphers cannot be selected')
+                    logger.error(error)
+                    raise error
 
         except ssl.SSLError:
-            logger.error(str(APIError(2003, details='Private key does not match with the certificate')))
-            sys.exit(1)
-        except IOError as e:
-            if e.errno == 22:
-                logger.error(str(APIError(2003, details='PEM phrase is not correct')))
-            elif e.errno == 13:
-                logger.error(str(APIError(2003, details='Ensure the certificates have the correct permissions')))
+            error = APIError(2003, details='Private key does not match with the certificate')
+            logger.error(error)
+            raise error
+        except IOError as exc:
+            if exc.errno == 22:
+                error = APIError(2003, details='PEM phrase is not correct')
+                logger.error(error)
+                raise error
+            elif exc.errno == 13:
+                error = APIError(2003, details='Ensure the certificates have the correct permissions')
+                logger.error(error)
+                raise error
             else:
-                print('Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration '
-                      f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
-            sys.exit(1)
+                msg = f'Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration ' \
+                      f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+                print(msg)
+                logger.error(msg)
+                raise exc
 
-    # Drop privileges to wazuh
+    utils.check_pid('wazuh-apid')
+    # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
             os.setgid(common.wazuh_gid())
@@ -138,16 +166,20 @@ def start(foreground, root, config_file):
         print(f"Starting API as root")
 
     # Foreground/Daemon
-    utils.check_pid('wazuh-apid')
     if not foreground:
         pyDaemonModule.pyDaemon()
-    pid = os.getpid()
-    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
-    if foreground:
-        print(f"Starting API in foreground (pid: {pid})")
+        pid = os.getpid()
+        pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    else:
+        print(f"Starting API in foreground")
+    create_rbac_db()
 
-    # Load the SPEC file into memory to use as a reference for future calls
-    wazuh.security.load_spec()
+    # Spawn child processes with their own needed imports
+    if 'thread_pool' not in common.mp_pools.get():
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            asyncio.wait([loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
+                          for name, pool in common.mp_pools.get().items()]))
 
     # Set up API
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -198,12 +230,21 @@ def start(foreground, root, config_file):
     logger.debug(f'Loaded security API configuration: {security_conf}')
 
     # Start API
-    app.run(port=api_conf['port'],
-            host=api_conf['host'],
-            ssl_context=ssl_context,
-            access_log_class=alogging.AccessLogger,
-            use_default_access_log=True
-            )
+    try:
+        app.run(port=api_conf['port'],
+                host=api_conf['host'],
+                ssl_context=ssl_context,
+                access_log_class=alogging.AccessLogger,
+                use_default_access_log=True
+                )
+    except OSError as exc:
+        if exc.errno == 98:
+            error = APIError(2010)
+            logger.error(error)
+            raise error
+        else:
+            logger.error(exc)
+            raise exc
 
 
 def print_version():
@@ -211,7 +252,7 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
 
 
-def test_config(config_file):
+def test_config(config_file: str):
     """Make an attempt to read the API config file. Exits with 0 code if successful, 1 otherwise.
 
     Arguments
@@ -219,11 +260,11 @@ def test_config(config_file):
     config_file : str
         Path of the file
     """
-    from api.configuration import read_yaml_config
     try:
+        from api.configuration import read_yaml_config
         read_yaml_config(config_file=config_file)
-    except Exception as e:
-        print(f"Configuration not valid: {e}")
+    except Exception as exc:
+        print(f"Configuration not valid. ERROR: {exc}")
         sys.exit(1)
     sys.exit(0)
 
@@ -252,4 +293,11 @@ if __name__ == '__main__':
     elif args.test_config:
         test_config(args.config_file)
     else:
-        start(args.foreground, args.root, args.config_file)
+        try:
+            start(args.foreground, args.root, args.config_file)
+        except APIError as e:
+            print(f"Error when trying to start the Wazuh API. {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f'Internal error when trying to start the Wazuh API. {e}')
+            sys.exit(1)

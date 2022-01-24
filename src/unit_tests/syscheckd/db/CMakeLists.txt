@@ -41,7 +41,7 @@ set(FIM_DB_FILES_LINUX_FLAGS "-Wl,--wrap=usleep,--wrap=time,--wrap=sqlite3_bind_
                               -Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,--wrap=rmdir_ex,--wrap=opendir \
                               -Wl,--wrap=readdir,--wrap=closedir")
 
-set(FIM_DB_FILES_WINDOWS_FLAG "-Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,,--wrap=rmdir_ex,--wrap=opendir \
+set(FIM_DB_FILES_WINDOWS_FLAG "-Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,--wrap=rmdir_ex,--wrap=opendir \
                                -Wl,--wrap=readdir,--wrap=closedir,--wrap=sqlite3_bind_null")
 
 if(${TARGET} STREQUAL "winagent")

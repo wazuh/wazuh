@@ -1,10 +1,11 @@
-aiohttp==3.7.4
+aiohttp==3.8.1
 aiohttp-cache==2.2.0
 aiohttp-cors==0.7.0
 aiohttp-jinja2==1.4.2
 aioredis==1.3.1
+aiosignal==1.2.0
 asn1crypto==1.3.0
-async-timeout==3.0.1
+async-timeout==4.0.2
 attrs==20.3.0
 azure-common==1.1.25
 azure-storage-blob==2.1.0
@@ -28,6 +29,7 @@ docutils==0.15.2
 ecdsa==0.16.1
 envparse==0.2.0
 Flask==1.1.2
+frozenlist==1.2.0
 future==0.17.1
 google-api-core==1.30.0
 googleapis-common-protos==1.51.0
@@ -71,13 +73,12 @@ s3transfer==0.4.2
 secure==0.2.1
 six==1.14.0
 SQLAlchemy==1.3.11
-swagger-ui-bundle==0.0.3
 tabulate==0.8.9
 typing-extensions==3.10.0.2
 typing-inspect==0.7.1
 urllib3==1.26.5
 uvloop==0.15.2
 websocket-client==0.57.0
-Werkzeug==1.0.1
+Werkzeug==2.0.2
 xmltodict==0.12.0
 yarl==1.6.3

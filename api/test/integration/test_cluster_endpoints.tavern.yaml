@@ -856,7 +856,6 @@ stages:
                   ssl_ciphers: !anystr
                 logs:
                   level: !anystr
-                  path: !anystr
                 cors:
                   enabled: !anybool
                   source_route: !anystr

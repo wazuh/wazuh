@@ -5,13 +5,12 @@ import itertools
 import logging
 import os
 import ssl
-import time
 import traceback
+from datetime import datetime
 from typing import Tuple, Dict
 from uuid import uuid4
 
 import uvloop
-
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
@@ -45,7 +44,7 @@ class AbstractServerHandler(c_common.Handler):
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop
-        self.last_keepalive = time.time()
+        self.last_keepalive = datetime.utcnow().timestamp()
         self.tag = tag
         context_tag.set(self.tag)
         self.name = None
@@ -114,7 +113,7 @@ class AbstractServerHandler(c_common.Handler):
         data : bytes
             Response message.
         """
-        self.last_keepalive = time.time()
+        self.last_keepalive = datetime.utcnow().timestamp()
         return b'ok-m ', data
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -339,7 +338,7 @@ class AbstractServer:
         keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
             keep_alive_logger.debug("Calculating.")
-            curr_timestamp = time.time()
+            curr_timestamp = datetime.utcnow().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.
             for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
@@ -361,19 +360,19 @@ class AbstractServer:
         """Send a big message to all clients every 3 seconds."""
         while True:
             for client_name, client in self.clients.items():
-                before = time.time()
+                before = datetime.utcnow().timestamp()
                 response = await client.send_request(b'echo', b'a' * self.performance)
-                self.logger.info(f"Received size: {len(response)} // Time: {time.time() - before}")
+                self.logger.info(f"Received size: {len(response)} // Time: {datetime.utcnow().timestamp() - before}")
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
         """Send lots of messages in a row to all clients. Then rests for 10 seconds."""
         while True:
-            before = time.time()
+            before = datetime.utcnow().timestamp()
             for i in range(self.concurrency):
                 for client_name, client in self.clients.items():
                     await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
-            self.logger.info(f"Time sending {self.concurrency} messages: {time.time() - before}")
+            self.logger.info(f"Time sending {self.concurrency} messages: {datetime.utcnow().timestamp() - before}")
             await asyncio.sleep(10)
 
     async def start(self):

@@ -442,34 +442,40 @@ os_info *get_unix_version()
         fclose(os_release);
 
         // If the OS is CentOS, try to get the version from the 'centos-release' file.
-        if (info->os_platform && strcmp(info->os_platform, "centos") == 0) {
-            regex_t regexCompiled;
-            regmatch_t match[2];
-            int match_size;
-            if (version_release = fopen("/etc/centos-release","r"), version_release){
-                os_free(info->os_version);
-                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-                if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                    merror_exit("Cannot compile regular expression.");
-                }
-                while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
-                        match_size = match[1].rm_eo - match[1].rm_so;
-                        os_malloc(match_size + 1, info->os_version);
-                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                        break;
+        if (info->os_platform) {
+            if (strcmp(info->os_platform, "centos") == 0) {
+                regex_t regexCompiled;
+                regmatch_t match[2];
+                int match_size;
+                if (version_release = fopen("/etc/centos-release","r"), version_release){
+                    os_free(info->os_version);
+                    static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                        merror_exit("Cannot compile regular expression.");
                     }
+                    while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                        if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                            match_size = match[1].rm_eo - match[1].rm_so;
+                            os_malloc(match_size + 1, info->os_version);
+                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                            break;
+                        }
+                    }
+                    regfree(&regexCompiled);
+                    fclose(version_release);
                 }
-                regfree(&regexCompiled);
-                fclose(version_release);
+            }
+            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0) {
+                os_strdup("rolling", info->os_build);
             }
         }
     }
 
-    if (!info->os_name || !info->os_version || !info->os_platform) {
+    if (!info->os_name || (!info->os_version && !info->os_build) || !info->os_platform) {
         os_free(info->os_name);
         os_free(info->os_version);
         os_free(info->os_platform);
+        os_free(info->os_build);
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
@@ -837,6 +843,9 @@ os_info *get_unix_version()
                 info->os_version = tmp_os_version;
             }
         }
+    } else if (info->os_build && strcmp(info->os_build, "rolling") == 0) {
+        // Rolling releases doesn't have a version.
+        info->os_version = strdup("");
     } else {
         // Empty version
         info->os_version = strdup("0.0");

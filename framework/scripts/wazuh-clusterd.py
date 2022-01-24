@@ -78,6 +78,9 @@ async def master_main(args, cluster_config, cluster_items, logger):
                                                      concurrency_test=args.concurrency_test, node=my_server,
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
+    # Spawn pool processes
+    if my_server.task_pool is not None:
+        my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
@@ -86,16 +89,32 @@ async def master_main(args, cluster_config, cluster_items, logger):
 #
 async def worker_main(args, cluster_config, cluster_items, logger):
     from wazuh.core.cluster import worker, local_server
+    from concurrent.futures import ProcessPoolExecutor
     cluster_utils.context_tag.set('Worker')
+
+    # Pool is defined here so the child process is not recreated when the connection with master node is broken.
+    try:
+        task_pool = ProcessPoolExecutor(max_workers=1)
+    # Handle exception when the user running Wazuh cannot access /dev/shm
+    except (FileNotFoundError, PermissionError):
+        main_logger.warning(
+            "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
+            "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+            "Changing the file permissions to 777 will solve this issue.")
+        main_logger.warning(
+            "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
+        task_pool = None
+
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                                   file=args.send_file, string=args.send_string, logger=logger,
-                                  cluster_items=cluster_items)
+                                  cluster_items=cluster_items, task_pool=task_pool)
         my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
                                                          cluster_items=cluster_items)
+
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:

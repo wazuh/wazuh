@@ -50,6 +50,7 @@ class SysInfoProcess final
         SysInfoProcess(const DWORD pId, const HANDLE processHandle)
             : m_pId{ pId },
               m_hProcess{ processHandle },
+              m_creationTime{},
               m_kernelModeTime{},
               m_userModeTime{}
         {
@@ -74,6 +75,13 @@ class SysInfoProcess final
 
             // else: Unable to retrieve executable path from current process.
             return ret;
+        }
+
+        ULONGLONG creationTime() const
+        {
+            //convert Win32 Epoch(1 January 1601 00:00:00) to Unix Epoch(1 January 1970 00:00:00)
+            constexpr auto WINDOWS_UNIX_EPOCH_DIFF_SECONDS { 11644473600ULL };
+            return m_creationTime.QuadPart - WINDOWS_UNIX_EPOCH_DIFF_SECONDS;
         }
 
         ULONGLONG kernelModeTime() const
@@ -130,6 +138,12 @@ class SysInfoProcess final
                 m_userModeTime.LowPart = lpUserTime.dwLowDateTime;
                 m_userModeTime.HighPart = lpUserTime.dwHighDateTime;
                 m_userModeTime.QuadPart /= TO_SECONDS_VALUE;
+
+                // Copy the creation filetime high and low parts and convert it to seconds
+                m_creationTime.LowPart = lpCreationTime.dwLowDateTime;
+                m_creationTime.HighPart = lpCreationTime.dwHighDateTime;
+                m_creationTime.QuadPart /= TO_SECONDS_VALUE;
+
             }
 
             // else: Unable to retrieve kernel mode and user mode times from current process.
@@ -227,6 +241,7 @@ class SysInfoProcess final
 
         const DWORD     m_pId;
         HANDLE          m_hProcess;
+        ULARGE_INTEGER  m_creationTime;
         ULARGE_INTEGER  m_kernelModeTime;
         ULARGE_INTEGER  m_userModeTime;
         DWORD           m_pageFileUsage;
@@ -349,6 +364,7 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["nlwp"]       = processEntry.cntThreads;
         jsProcessInfo["utime"]      = process.userModeTime();
         jsProcessInfo["vm_size"]    = process.virtualSize();
+        jsProcessInfo["start_time"] = process.creationTime();
         CloseHandle(processHandle);
     }
 
@@ -774,10 +790,20 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
 nlohmann::json SysInfo::getHotfixes() const
 {
+    std::set<std::string> hotfixes;
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes);
+    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, hotfixes);
+
     nlohmann::json ret;
-    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
-    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, ret);
-    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, ret);
+
+    for (auto& hotfix : hotfixes)
+    {
+        nlohmann::json hotfixValue;
+        hotfixValue["hotfix"] = std::move(hotfix);
+        ret.push_back(std::move(hotfixValue));
+    }
+
     return ret;
 }

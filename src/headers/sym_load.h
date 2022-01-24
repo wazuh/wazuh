@@ -14,6 +14,7 @@
 #ifndef WIN32
 #include <dlfcn.h>
 #else
+#include <winsock2.h>
 #include <windows.h>
 #endif
 

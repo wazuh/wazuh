@@ -94,6 +94,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     jsProcessInfo["priority"]   = taskInfo.ptinfo.pti_priority;
     jsProcessInfo["nice"]       = taskInfo.pbsd.pbi_nice;
     jsProcessInfo["vm_size"]    = taskInfo.ptinfo.pti_virtual_size / KByte;
+    jsProcessInfo["start_time"] = taskInfo.pbsd.pbi_start_tvsec;
     return jsProcessInfo;
 }
 

@@ -17,7 +17,7 @@ from integration import WazuhGCloudIntegration
 try:
     from google.cloud import pubsub_v1 as pubsub
 except ImportError:
-    raise Exception('ERROR: google-cloud-storage module is required.')
+    raise Exception('ERROR: google-cloud-pubsub module is required.')
 
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
@@ -110,7 +110,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         ack_ids = []
         for received_message in response.received_messages:
-            formatted_message = self.format_msg(received_message.message.data)
+            formatted_message = self.format_msg(received_message.message.data.decode(errors='replace'))
             self.logger.debug(f'Processing event: {formatted_message}')
             ack_ids.append(received_message.ack_id)
             self.send_msg(formatted_message)

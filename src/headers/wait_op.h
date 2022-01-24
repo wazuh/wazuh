@@ -14,6 +14,7 @@
 void os_setwait(void);
 void os_delwait(void);
 void os_wait(void);
+void os_wait_predicate(bool (*fn_ptr)());
 
 /**
  * @brief Check whether the agent wait mark is on (manager is disconnected)
