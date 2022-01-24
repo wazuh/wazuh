@@ -18,10 +18,9 @@
 #include "fimDB.hpp"
 #include <thread>
 #include "dbFileItem.hpp"
-#ifdef WIN32
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
-#endif
+
 
 struct CJsonDeleter
 {
@@ -74,31 +73,31 @@ void DB::init(const int storage,
 
     auto rsyncHandler { std::make_shared<RemoteSync>() };
 
-    FIMDB::getInstance().init(syncInterval,
-                              callbackSyncFileWrapper,
-                              callbackSyncRegistryWrapper,
-                              callbackLogWrapper,
-                              dbsyncHandler,
-                              rsyncHandler,
-                              fileLimit,
-                              valueLimit,
-                              isWindows);
+    FIMDB::instance().init(syncInterval,
+                           callbackSyncFileWrapper,
+                           callbackSyncRegistryWrapper,
+                           callbackLogWrapper,
+                           dbsyncHandler,
+                           rsyncHandler,
+                           fileLimit,
+                           valueLimit,
+                           isWindows);
 }
 
 void DB::runIntegrity()
 {
-    std::thread syncThread(&FIMDB::runIntegrity, &FIMDB::getInstance());
+    std::thread syncThread(&FIMDB::runIntegrity, &FIMDB::instance());
     syncThread.detach();
 }
 
 void DB::pushMessage(const std::string& message)
 {
-    FIMDB::getInstance().pushMessage(message);
+    FIMDB::instance().pushMessage(message);
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
 {
-    return FIMDB::getInstance().DBSyncHandle();
+    return FIMDB::instance().DBSyncHandle();
 }
 
 #ifdef __cplusplus
@@ -165,7 +164,7 @@ void fim_run_integrity()
     }
     catch (const std::exception& err)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 }
 
@@ -177,7 +176,7 @@ void fim_sync_push_msg(const char* msg)
     }
     catch (const std::exception& err)
     {
-        FIMDB::getInstance().logFunction(LOG_ERROR, err.what());
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 }
 
@@ -205,8 +204,6 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
     {
         syncItem = std::make_unique<FileItem>(entry);
     }
-
-#ifdef WIN32
     else
     {
         if (entry->registry_entry.key == NULL)
@@ -219,7 +216,6 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
         }
     }
 
-#endif
     const std::unique_ptr<cJSON, CJsonDeleter> jsInput
     {
         cJSON_Parse((*syncItem->toJSON()).dump().c_str())
@@ -251,6 +247,18 @@ FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
     }
 
     return retval;
+}
+
+void fim_db_teardown()
+{
+    try
+    {
+        FIMDB::instance().teardown();
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
 }
 
 

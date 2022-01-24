@@ -250,7 +250,7 @@ constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
 class FIMDB
 {
     public:
-        static FIMDB& getInstance()
+        static FIMDB& instance()
         {
             static FIMDB s_instance;
             return s_instance;
@@ -330,7 +330,10 @@ class FIMDB
          */
         inline void stopSync()
         {
+            std::unique_lock<std::mutex> lock(m_fimSyncMutex);
             m_stopping = true;
+            m_cv.notify_all();
+            lock.unlock();
         };
 
         /**
@@ -358,6 +361,11 @@ class FIMDB
 
             return m_dbsyncHandler->handle();
         }
+
+        /**
+        * @brief Turns off the services provided.
+        */
+        void teardown();
 
     private:
 
