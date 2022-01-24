@@ -68,8 +68,8 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             not_replaced = True
             for each ip in ip_list
                 If not_replaced Then
-                  strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
-                  not_replaced = False
+                    strText = Replace(strText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
+                    not_replaced = False
                 Else
                     formatted_list = formatted_list & "    <server>" & vbCrLf
                     formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
@@ -154,8 +154,8 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         strText = Replace(strText, "  </client>", enrollment_list)
 
         If WAZUH_REGISTRATION_SERVER <> "" Then
-              auth_list = auth_list & " -m " & WAZUH_REGISTRATION_SERVER
-              strText = Replace(strText, "    </enrollment>", "        <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
+            auth_list = auth_list & " -m " & WAZUH_REGISTRATION_SERVER
+            strText = Replace(strText, "    </enrollment>", "        <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
         End If  
         
         If WAZUH_REGISTRATION_PORT <> "" Then
@@ -164,35 +164,35 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         End If
         
         If WAZUH_REGISTRATION_PASSWORD <> "" Then
-          auth_list = auth_list & " -P " & WAZUH_REGISTRATION_PASSWORD
-          Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
-          objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
-          objFile.Close
+            auth_list = auth_list & " -P " & WAZUH_REGISTRATION_PASSWORD
+            Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
+            objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
+            objFile.Close
         End If
 
         If WAZUH_REGISTRATION_CA <> "" Then
-          auth_list = auth_list & " -v " & WAZUH_REGISTRATION_CA
-          strText = Replace(strText, "    </enrollment>", "        <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
+            auth_list = auth_list & " -v " & WAZUH_REGISTRATION_CA
+            strText = Replace(strText, "    </enrollment>", "        <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_REGISTRATION_CERTIFICATE <> "" Then
-          auth_list = auth_list & " -x  " & WAZUH_REGISTRATION_CERTIFICATE
-          strText = Replace(strText, "    </enrollment>", "        <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
+            auth_list = auth_list & " -x  " & WAZUH_REGISTRATION_CERTIFICATE
+            strText = Replace(strText, "    </enrollment>", "        <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_REGISTRATION_KEY <> "" Then
-          auth_list = auth_list & " -k " & WAZUH_REGISTRATION_KEY
-          strText = Replace(strText, "    </enrollment>", "        <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
+            auth_list = auth_list & " -k " & WAZUH_REGISTRATION_KEY
+            strText = Replace(strText, "    </enrollment>", "        <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
         End If
-      
+
         If WAZUH_AGENT_NAME <> "" Then
-          auth_list = auth_list & " -A " & WAZUH_AGENT_NAME
-          strText = Replace(strText, "    </enrollment>", "        <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
+            auth_list = auth_list & " -A " & WAZUH_AGENT_NAME
+            strText = Replace(strText, "    </enrollment>", "        <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_AGENT_GROUP <> "" Then
-          auth_list = auth_list & " -G " & WAZUH_AGENT_GROUP
-          strText = Replace(strText, "    </enrollment>", "        <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
+            auth_list = auth_list & " -G " & WAZUH_AGENT_GROUP
+            strText = Replace(strText, "    </enrollment>", "        <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
         End If
 
     End If
@@ -205,35 +205,35 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 
 
     If WAZUH_REGISTRATION_SERVER = "" and WAZUH_MANAGER <> "" Then
-      auth_list = auth_list & " -m " & WAZUH_MANAGER
+        auth_list = auth_list & " -m " & WAZUH_MANAGER
     End If
 
     If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
 
-      If objFSO.fileExists(home_dir & "default-local_internal_options.conf") Then
-        ' Reading default-local_internal_options.conf file
-        Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
-        strText = objFile.ReadAll
-        objFile.Close
+        If objFSO.fileExists(home_dir & "default-local_internal_options.conf") Then
+            ' Reading default-local_internal_options.conf file
+            Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
+            strText = objFile.ReadAll
+            objFile.Close
 
-        ' Writing the local_internal_options.conf file
-        Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
-        objFile.WriteLine strText
-        objFile.Close
-      Else
-        Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
-        objFile.WriteLine("# local_internal_options.conf")
-        objFile.WriteLine("#")
-        objFile.WriteLine("# This file should be handled with care. It contains")
-        objFile.WriteLine("# run time modifications that can affect the use")
-        objFile.WriteLine("# of OSSEC. Only change it if you know what you")
-        objFile.WriteLine("# are doing. Look first at ossec.conf")
-        objFile.WriteLine("# for most of the things you want to change.")
-        objFile.WriteLine("#")
-        objFile.WriteLine("# This file will not be overwritten during upgrades")
-        objFile.WriteLine("# but will be removed when the agent is un-installed.")
-        objFile.Close
-      End If
+            ' Writing the local_internal_options.conf file
+            Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
+            objFile.WriteLine strText
+            objFile.Close
+        Else
+            Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
+            objFile.WriteLine("# local_internal_options.conf")
+            objFile.WriteLine("#")
+            objFile.WriteLine("# This file should be handled with care. It contains")
+            objFile.WriteLine("# run time modifications that can affect the use")
+            objFile.WriteLine("# of OSSEC. Only change it if you know what you")
+            objFile.WriteLine("# are doing. Look first at ossec.conf")
+            objFile.WriteLine("# for most of the things you want to change.")
+            objFile.WriteLine("#")
+            objFile.WriteLine("# This file will not be overwritten during upgrades")
+            objFile.WriteLine("# but will be removed when the agent is un-installed.")
+            objFile.Close
+        End If
 
     End If
 
@@ -342,9 +342,9 @@ End If
     objFile.Close
 
 If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_MANAGER <> ""  Then
-  Set WshShellReg = CreateObject("WScript.Shell")
-  registerAgent = """" & home_dir & "agent-auth.exe""" & auth_list
-  WshShellReg.run registerAgent, 0, True
+    Set WshShellReg = CreateObject("WScript.Shell")
+    registerAgent = """" & home_dir & "agent-auth.exe""" & auth_list
+    WshShellReg.run registerAgent, 0, True
 End If
 
 

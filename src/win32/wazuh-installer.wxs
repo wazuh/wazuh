@@ -296,7 +296,7 @@
                         <File Id="WVISTA_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\Vista\profile.template"/>
                         <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
-                   <Component Id="W2008_CONF_PROFILE" DiskId="1" Guid="89BC9CB1-065E-4808-8B8F-70C22F500B4A">
+                    <Component Id="W2008_CONF_PROFILE" DiskId="1" Guid="89BC9CB1-065E-4808-8B8F-70C22F500B4A">
                         <File Id="W2008_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2008\profile.template"/>
                         <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Condition>
                     </Component>
@@ -312,27 +312,27 @@
                         <File Id="W8_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\8\profile.template"/>
                         <Condition>( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
-                   <Component Id="W2012_CONF_PROFILE" DiskId="1" Guid="757D2306-1821-462F-B4CC-1ED947FC8AA2">
+                    <Component Id="W2012_CONF_PROFILE" DiskId="1" Guid="757D2306-1821-462F-B4CC-1ED947FC8AA2">
                         <File Id="W2012_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2012\profile.template"/>
                         <Condition>VersionNT64 = 602 AND MsiNTProductType &gt; 1</Condition>
                     </Component>
-                   <Component Id="W8.1_CONF_PROFILE" DiskId="1" Guid="AF637857-14A3-437E-9D23-CDFB4453CFA8">
+                    <Component Id="W8.1_CONF_PROFILE" DiskId="1" Guid="AF637857-14A3-437E-9D23-CDFB4453CFA8">
                         <File Id="W8.1_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\8.1\profile.template"/>
                         <Condition>( VersionNT = 603 OR VersionNT64 = 603) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType = 1</Condition>
                     </Component>
-                   <Component Id="W2012R2_CONF_PROFILE" DiskId="1" Guid="D1E8FBD0-3382-43E4-81FD-EE168402DF94">
+                    <Component Id="W2012R2_CONF_PROFILE" DiskId="1" Guid="D1E8FBD0-3382-43E4-81FD-EE168402DF94">
                         <File Id="W2012R2_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2012R2\profile.template"/>
                         <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
-                   <Component Id="W10_CONF_PROFILE" DiskId="1" Guid="5FD334C9-8EA1-4575-826C-C18804A2BEA7">
+                    <Component Id="W10_CONF_PROFILE" DiskId="1" Guid="5FD334C9-8EA1-4575-826C-C18804A2BEA7">
                         <File Id="W10_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\10\profile.template"/>
                         <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                     </Component>
-                   <Component Id="W2016_CONF_PROFILE" DiskId="1" Guid="CDE13E2B-04F7-435A-9CDB-894FA55F932E">
+                    <Component Id="W2016_CONF_PROFILE" DiskId="1" Guid="CDE13E2B-04F7-435A-9CDB-894FA55F932E">
                         <File Id="W2016_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2016\profile.template"/>
                         <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
-                   <Component Id="W2019_CONF_PROFILE" DiskId="1" Guid="7D21C1E6-7307-43C8-9EA8-47202379DF37">
+                    <Component Id="W2019_CONF_PROFILE" DiskId="1" Guid="7D21C1E6-7307-43C8-9EA8-47202379DF37">
                         <File Id="W2019_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2019\profile.template"/>
                         <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
@@ -377,30 +377,30 @@
                         </Component>
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
-                      <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
-                        <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
-                          <RemoveFile Id="remove_policies" Name="*" On="install"/>
-                        </Component>
-                        <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
-                          <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
-                        </Component>
-                        <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
-                            <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
-                            <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
-                        </Component>
-                        <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
-                            <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
-                            <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
-                        </Component>
-                        <Component Id="SCA_WIN2016" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
-                            <File Id="SCA_WIN2016" Name="cis_win2016.yml" Source="..\..\ruleset\sca\windows\cis_win2016.yml" />
-                            <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
-                        </Component>
-                        <Component Id="SCA_WIN2019" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C706">
-                            <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
-                            <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
-                        </Component>
-                      </Directory>
+                        <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
+                            <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
+                                <RemoveFile Id="remove_policies" Name="*" On="install"/>
+                            </Component>
+                            <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
+                                <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
+                            </Component>
+                            <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
+                                <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
+                                <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                                <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
+                                <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2016" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
+                                <File Id="SCA_WIN2016" Name="cis_win2016.yml" Source="..\..\ruleset\sca\windows\cis_win2016.yml" />
+                                <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                            <Component Id="SCA_WIN2019" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C706">
+                                <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
+                                <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
+                        </Directory>
                     </Directory>
                     <Directory Id="TMP" Name="tmp" />
                     <Directory Id="QUEUE" Name="queue">
