@@ -5,6 +5,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import glob
+import logging
 import os
 import sys
 from os import path
@@ -81,12 +82,15 @@ def delete_pid(name, pid):
 
 def delete_child_pids(name, ppid):
     filenames = glob.glob(path.join(common.wazuh_path, common.os_pidfile, f'{name}*.pid'))
+    logger = logging.getLogger('wazuh') if 'clusterd' in name else logging.getLogger('wazuh-api')
 
     for process in psutil.Process(ppid).children(recursive=True):
         try:
             process.kill()
         except psutil.Error:
-            pass
+            logger.error(f'Error while trying to terminate the process with ID {process.pid}.')
+        except Exception as exc:
+            logger.error(f'Unhandled exception: {exc}')
         for filename in filenames[:]:
             if str(process.pid) in filename:
                 try:
