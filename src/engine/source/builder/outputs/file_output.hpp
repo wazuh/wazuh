@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-namespace outputs
+namespace builder::internals::outputs
 {
 
 /**
@@ -154,4 +154,4 @@ public:
 //     }
 // };
 
-} // namespace outputs
+} // namespace builder::internals::outputs
