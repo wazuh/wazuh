@@ -335,19 +335,6 @@ main () {
     edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
     edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
-    if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
-        # Options to be used in register time.
-        OPTIONS="-m ${WAZUH_REGISTRATION_SERVER}"
-        OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_REGISTRATION_PORT}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_REGISTRATION_PASSWORD}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-A" "${WAZUH_AGENT_NAME}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-G" "${WAZUH_AGENT_GROUP}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_REGISTRATION_CA}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_REGISTRATION_KEY}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_REGISTRATION_CERTIFICATE}")
-        ${INSTALLDIR}/bin/agent-auth ${OPTIONS} >> ${INSTALLDIR}/logs/ossec.log 2>/dev/null
-    fi
-
     unset_vars ${uname_s}
 }
 

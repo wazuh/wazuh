@@ -341,13 +341,6 @@ End If
     objFile.WriteLine strNewText
     objFile.Close
 
-If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_MANAGER <> ""  Then
-    Set WshShellReg = CreateObject("WScript.Shell")
-    registerAgent = """" & home_dir & "agent-auth.exe""" & auth_list
-    WshShellReg.run registerAgent, 0, True
-End If
-
-
 If GetVersion() >= 6 Then
 	Set WshShell = CreateObject("WScript.Shell")
 
