@@ -241,7 +241,7 @@
 
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
-#define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of entries to be monitored: '%u'"
+#define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of files to be monitored: '%u'"
 #define FIM_FILE_LIMIT_UNLIMITED            "(6343): No limit set to maximum number of entries to be monitored"
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
@@ -265,6 +265,7 @@
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
+#define FIM_REGISTRY_LIMIT_VALUE            "(6366): Maximum number of registry values to be monitored: '%u'"
 
 
 /* Modules messages */

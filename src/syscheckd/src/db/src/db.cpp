@@ -103,6 +103,41 @@ void DB::teardown()
     FIMDB::instance().teardown();
 }
 
+const std::map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
+{
+    { COUNT_SELECT_TYPE::COUNT_ALL, {"count(*) AS count"} },
+    { COUNT_SELECT_TYPE::COUNT_INODE, {"count(DISTINCT (inode || ',' || dev)) AS count"} },
+};
+
+int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType)
+{
+    auto count { 0 };
+    auto callback
+    {
+        [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            if (ReturnTypeCallback::SELECTED == type)
+            {
+                count = jsonResult.at("count");
+            }
+        }
+    };
+
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table(tableName)
+        .columnList(COUNT_SELECT_TYPE_MAP.at(selectType))
+        .rowFilter("")
+        .orderByOpt("")
+        .distinctOpt(false)
+        .build()
+    };
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+    return count;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

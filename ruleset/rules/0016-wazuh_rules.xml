@@ -154,28 +154,28 @@
   <rule id="231" level="7">
     <if_sid>230</if_sid>
     <field name="alert_type">80_percentage</field>
-    <description>The file limit set for this agent is $(db_entry_file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <description>The limit of entries of fim DB table $(fim_db_table) is close to being reached. At this moment there are $(entries_count) entries and the limit is $(entries_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
     <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="232" level="9">
     <if_sid>230</if_sid>
     <field name="alert_type">90_percentage</field>
-    <description>The file limit set for this agent is $(db_entry_file_limit). Now, $(file_count) files are being monitored and all files that come after the limit will not be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <description>The limit of entries of fim DB table $(fim_db_table) is close to being reached. At this moment there are $(entries_count) entries and the limit is $(entries_limit). If the limit is reached some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
     <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="233" level="12">
     <if_sid>230</if_sid>
     <field name="alert_type">full</field>
-    <description>The file limit set for this agent is $(db_entry_file_limit). Now, $(file_count) files are being monitored and no more files will be monitored. Change this setting in centralized configuration or locally on the agent.</description>
+    <description>The limit of entries of fim DB table $(fim_db_table) has been reached. At this moment there are $(entries_count) entries and the limit is $(entries_limit). From this moment some events can be lost. You can modify this setting in the centralized configuration or locally in the agent.</description>
     <group>syscheck,fim_db_state,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="234" level="3">
     <if_sid>230</if_sid>
     <field name="alert_type">normal</field>
-    <description>The file limit set for this agent is $(db_entry_file_limit). Now, $(file_count) files are being monitored.</description>
+    <description>At this moment there are $(entries_count) entries in the fim DB table $(fim_db_table) and the limit is $(entries_limit).</description>
     <group>syscheck,fim_db_state,</group>
   </rule>
 

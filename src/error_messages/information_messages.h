@@ -50,9 +50,9 @@
 #define FIM_LINKCHECK_CHANGED               "(6034): Updating symbolic link '%s': from '%s' to '%s'."
 #define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
-#define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert."
-#define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert."
-#define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert."
+#define FIM_DB_NORMAL_ALERT                 "(6038): Sending DB back to normal alert. Table: '%s'."
+#define FIM_DB_80_PERCENTAGE_ALERT          "(6039): Sending DB 80%% full alert. Table: '%s'."
+#define FIM_DB_90_PERCENTAGE_ALERT          "(6039): Sending DB 90%% full alert. Table: '%s'."
 
 
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
