@@ -44,6 +44,7 @@ WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
 WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
 WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
 WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
+ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
 
 ' Only try to set the configuration if variables are setted
 
@@ -142,10 +143,8 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         End If
 
     End If
-
-    auth_list = ""
     
-    If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> ""Then
+    If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
         enrollment_list = "    <enrollment>" & vbCrLf
         enrollment_list = enrollment_list & "        <enabled>yes</enabled>" & vbCrLf
         enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf
@@ -154,45 +153,41 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         strText = Replace(strText, "  </client>", enrollment_list)
 
         If WAZUH_REGISTRATION_SERVER <> "" Then
-            auth_list = auth_list & " -m " & WAZUH_REGISTRATION_SERVER
             strText = Replace(strText, "    </enrollment>", "        <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
         End If  
         
         If WAZUH_REGISTRATION_PORT <> "" Then
-            auth_list = auth_list & " -p " & WAZUH_REGISTRATION_PORT
             strText = Replace(strText, "    </enrollment>", "  <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
         End If
         
         If WAZUH_REGISTRATION_PASSWORD <> "" Then
-            auth_list = auth_list & " -P " & WAZUH_REGISTRATION_PASSWORD
             Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
             objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
             objFile.Close
         End If
 
         If WAZUH_REGISTRATION_CA <> "" Then
-            auth_list = auth_list & " -v " & WAZUH_REGISTRATION_CA
             strText = Replace(strText, "    </enrollment>", "        <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_REGISTRATION_CERTIFICATE <> "" Then
-            auth_list = auth_list & " -x  " & WAZUH_REGISTRATION_CERTIFICATE
             strText = Replace(strText, "    </enrollment>", "        <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_REGISTRATION_KEY <> "" Then
-            auth_list = auth_list & " -k " & WAZUH_REGISTRATION_KEY
             strText = Replace(strText, "    </enrollment>", "        <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_AGENT_NAME <> "" Then
-            auth_list = auth_list & " -A " & WAZUH_AGENT_NAME
             strText = Replace(strText, "    </enrollment>", "        <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
         End If
 
         If WAZUH_AGENT_GROUP <> "" Then
-            auth_list = auth_list & " -G " & WAZUH_AGENT_GROUP
             strText = Replace(strText, "    </enrollment>", "        <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
+        End If
+
+        If ENROLLMENT_DELAY <> "" Then
+            strText = Replace(strText, "    </enrollment>", "        <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
         End If
 
     End If
@@ -202,11 +197,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
     objFile.WriteLine strText
     objFile.Close
-
-
-    If WAZUH_REGISTRATION_SERVER = "" and WAZUH_MANAGER <> "" Then
-        auth_list = auth_list & " -m " & WAZUH_MANAGER
-    End If
 
     If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
 

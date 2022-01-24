@@ -173,6 +173,7 @@ set_vars () {
     export WAZUH_REGISTRATION_KEY=$(launchctl getenv WAZUH_REGISTRATION_KEY)
     export WAZUH_AGENT_NAME=$(launchctl getenv WAZUH_AGENT_NAME)
     export WAZUH_AGENT_GROUP=$(launchctl getenv WAZUH_AGENT_GROUP)
+    export ENROLLMENT_DELAY=$(launchctl getenv ENROLLMENT_DELAY)
 
     # The following variables are yet supported but all of them are deprecated
     export WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
@@ -195,8 +196,8 @@ unset_vars() {
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
           WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
-          WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP)
-
+          WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP \
+          ENROLLMENT_DELAY)
 
     for var in "${vars[@]}"; do
         if [ "${OS}" = "Darwin" ]; then
@@ -208,7 +209,7 @@ unset_vars() {
 
 # Function to convert strings to lower version
 tolower () {
-   echo $1 | tr '[:upper:]' '[:lower:]'
+    echo $1 | tr '[:upper:]' '[:lower:]'
 }
 
 
@@ -233,6 +234,7 @@ add_auto_enrollment () {
         echo "      <server_ca_path>/path/to/server_ca</server_ca_path>" >> "${TMP_ENROLLMENT}"
         echo "      <agent_certificate_path>/path/to/agent.cert</agent_certificate_path>" >> "${TMP_ENROLLMENT}"
         echo "      <agent_key_path>/path/to/agent.key</agent_key_path>" >> "${TMP_ENROLLMENT}"
+        echo "      <delay_after_enrollment>20</delay_after_enrollment>" >> "${TMP_ENROLLMENT}"
         echo "    </enrollment>" >> "${TMP_ENROLLMENT}"
         echo "  </client>" >> "${TMP_ENROLLMENT}"
         echo "</ossec_config>" >> "${TMP_ENROLLMENT}"
@@ -294,6 +296,7 @@ main () {
         set_auto_enrollment_tag_value "agent_key_path" ${WAZUH_REGISTRATION_KEY}
         set_auto_enrollment_tag_value "agent_name" ${WAZUH_AGENT_NAME}
         set_auto_enrollment_tag_value "groups" ${WAZUH_AGENT_GROUP}
+        set_auto_enrollment_tag_value "delay_after_enrollment" ${ENROLLMENT_DELAY}
         delete_blank_lines ${TMP_ENROLLMENT}
         concat_conf
     fi
