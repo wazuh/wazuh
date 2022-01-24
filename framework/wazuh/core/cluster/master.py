@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -1006,7 +1006,8 @@ class Master(server.AbstractServer):
             file_integrity_logger.info("Starting.")
             try:
                 self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
-                                                                   wazuh.core.cluster.cluster.get_files_status)
+                                                                   wazuh.core.cluster.cluster.get_files_status,
+                                                                   self.integrity_control)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:

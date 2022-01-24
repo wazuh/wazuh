@@ -49,6 +49,7 @@ include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 
 link_directories(${SRC_FOLDER})
@@ -61,8 +62,10 @@ link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
+link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
+
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -78,14 +81,16 @@ elseif(CMAKE_CHECK_CENTOS5)
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParser.cpp")
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParser.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParserRpmLegacy.cpp")
   add_definitions(-DLINUX_TYPE=LinuxType::LEGACY) # Partial compilation in legacy systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinux*.cpp")
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinux*.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
   add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
