@@ -575,13 +575,15 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
         OS_SHA256_String_sized(groups_string, groups_hash, WDB_GROUP_HASH_SIZE);
     }
     else {
-        char* agent_group_csv = wdb_global_get_agent_group_csv(wdb, agent_id);
-        if (agent_group_csv) {
-            OS_SHA256_String_sized(agent_group_csv, groups_hash, WDB_GROUP_HASH_SIZE);
-            os_free(agent_group_csv);
+        cJSON* root_j = wdb_global_select_agent_group(wdb, agent_id);
+        cJSON* agent_group_j = NULL;
+        if (root_j && (agent_group_j = cJSON_GetObjectItem(root_j->child,"group")) && cJSON_IsString(agent_group_j)) {
+            OS_SHA256_String_sized(agent_group_j->valuestring, groups_hash, WDB_GROUP_HASH_SIZE);
+            cJSON_Delete(root_j);
         }
         else {
-            mdebug2("Empty group column for agent '%d'. The groups_hash column won't be updated", agent_id);
+            mdebug2("Unable to get group column for agent '%d'. The groups_hash column won't be updated", agent_id);
+            cJSON_Delete(root_j);
             return OS_SUCCESS;
         }
 	}
@@ -1100,33 +1102,6 @@ char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id) {
     }
     return result;
 }
-
-
-char* wdb_global_get_agent_group_csv(wdb_t *wdb, int id) {
-    sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-
-    if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return NULL;
-    }
-
-    char* group_csv = NULL;
-    cJSON* j_result = wdb_exec_stmt(stmt);
-    if (j_result) {
-        group_csv = cJSON_GetStringValue(cJSON_GetObjectItem(j_result->child, "group"));
-        if (group_csv) {
-            // Detaching the string from the json structure
-            os_strdup(group_csv,group_csv);
-        }
-        cJSON_Delete(j_result);
-    }
-    else{
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
-    }
-
-    return group_csv;
-}
-
 
 wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status) {
 
