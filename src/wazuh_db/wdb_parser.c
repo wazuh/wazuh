@@ -253,12 +253,17 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
                 return -1;
             }
+            else if (!wdb_global->enabled) {
+                mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
+                snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
+                wdb_leave(wdb_global);
+                return -1;
+            }
 
             if (wdb_global_agent_exists(wdb_global, agent_id) <= 0) {
                 mdebug2("No agent with id %s found.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Agent not found");
                 wdb_leave(wdb_global);
-
                 return -1;
             }
             wdb_leave(wdb_global);
@@ -655,6 +660,12 @@ int wdb_parse(char * input, char * output, int peer) {
         if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
+            return OS_INVALID;
+        }
+        else if (!wdb->enabled) {
+            mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
+            snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
+            wdb_leave(wdb);
             return OS_INVALID;
         }
         // Add the current peer to wdb structure
