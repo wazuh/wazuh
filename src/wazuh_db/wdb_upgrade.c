@@ -99,14 +99,14 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
          * If we recreate the database, we have the risk of loosing data of the newer database
          * versions. We should block the usage until determine whether we should upgrade or not.
          */
-        mwarn("DB(%s) Error trying to find metadata table", wdb->id);
+        merror("DB(%s) Error trying to find metadata table", wdb->id);
         wdb->enabled = false;
         return wdb;
     case 0:
         /**
          * The table doesn't exist. Checking if version is 3.10 to upgrade. In case of
          * having a version lower than 3.10, we recreate the global.db database as we
-         * can't upgrade and we will not loose critical data.
+         * can't upgrade and we will not lose critical data.
          */
         if (wdb_upgrade_check_manager_keepalive(wdb) != 1) {
             if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
@@ -148,15 +148,17 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                     if (OS_INVALID != wdb_global_get_most_recent_backup(&bkp_name) &&
                         OS_INVALID != wdb_global_restore_backup(&wdb, bkp_name, false, output)) {
                         merror("Failed to update global.db to version %d. The global.db was restored to the original state.", i + 1);
+                        wdb->enabled = true;
                     }
                     else if (bkp_name) {
-                        merror("Failed to update global.db to version %d. The global.db should be restored to %s.", i + 1, bkp_name);
+                        merror("Failed to update global.db to version %d. The global.db should be restored from %s.", i + 1, bkp_name);
+                        wdb->enabled = false;
                     }
                     else {
                         merror("Failed to update global.db to version %d.", i + 1);
+                        wdb->enabled = false;
                     }
                     os_free(bkp_name);
-                    wdb->enabled = false;
                     break;
                 }
             }
