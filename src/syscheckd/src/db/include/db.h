@@ -176,6 +176,11 @@ FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
  */
 void fim_db_teardown();
 
+/**
+ * @brief registerRSync Execute the logging mechanism in rsync.
+*/
+void register_rsync();
+
 #ifdef WIN32
 
 // Registry functions.

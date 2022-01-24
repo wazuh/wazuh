@@ -100,6 +100,11 @@ DBSYNC_HANDLE DB::DBSyncHandle()
     return FIMDB::instance().DBSyncHandle();
 }
 
+void DB::registerRSync()
+{
+    FIMDB::instance().registerRSync();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -177,10 +182,28 @@ void fim_sync_push_msg(const char* msg)
     {
         DB::instance().pushMessage(msg);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
+    // LCOV_EXCL_STOP
+}
+
+void register_rsync()
+{
+    try
+    {
+        DB::instance().registerRSync();
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
 }
 
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)
@@ -263,6 +286,7 @@ void fim_db_teardown()
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
     // LCOV_EXCL_STOP
 }
 

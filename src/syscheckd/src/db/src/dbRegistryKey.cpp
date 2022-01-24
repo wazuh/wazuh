@@ -16,20 +16,22 @@ void RegistryKey::createFimEntry()
 {
     fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
     fim_registry_key* key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
+    auto uid_size = std::to_string(m_uid).size();
+    auto gid_size = std::to_string(m_gid).size();
 
     fim->type = FIM_TYPE_REGISTRY;
     key->arch = m_arch;
     std::strncpy(key->checksum, m_checksum.c_str(), sizeof(key->checksum));
-    key->gid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
-    std::strncpy(key->gid, std::to_string(m_gid).c_str(), sizeof(std::to_string(m_gid).size()));
+    key->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
+    std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
     key->group_name = const_cast<char*>(m_groupname.c_str());
     key->last_event = m_lastEvent;
     key->mtime = m_time;
     key->path = const_cast<char*>(m_identifier.c_str());
     key->perm = const_cast<char*>(m_perm.c_str());
     key->scanned =  m_scanned;
-    key->uid = reinterpret_cast<char*>(std::calloc(1, sizeof(char*)));
-    std::strncpy(key->uid, std::to_string(m_uid).c_str(), sizeof(std::to_string(m_uid).size()));
+    key->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
+    std::strncpy(key->uid, std::to_string(m_uid).c_str(), uid_size);
     key->user_name = const_cast<char*>(m_username.c_str());
     fim->registry_entry.key = key;
 

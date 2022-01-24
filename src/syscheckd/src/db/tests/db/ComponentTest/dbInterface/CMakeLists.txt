@@ -10,6 +10,7 @@ file(GLOB DB_INTERFACE_TEST_SRC
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
+include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/FIMDB)
 
 
 file(GLOB FILE_SRC

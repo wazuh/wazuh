@@ -93,11 +93,17 @@ TEST_F(DBTestWinFixture, TestFimDBInitWindows)
     });
 }
 
-TEST_F(DBTestFixture, DISABLED_TestFimSyncPushMsg)
+TEST_F(DBTestFixture, TestFimSyncPushMsg)
 {
-    constexpr auto test{R"({"component":"fim_file","data":{"begin":"/bin","checksum":"88f127efa6329743d539ebd88e1d1ea3ca2a12e7","end":"/usr/sbin/zramctl","id":1642671764},"type":"integrity_check_global"})"};
+    const auto test{R"(fim_file no_data {"begin":"a2fbef8f81af27155dcee5e3927ff6243593b91a","end":"a2fbef8f81af27155dcee5e3927ff6243593b91b","id":1})"};
+    const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
+    bool updated;
+    auto result = fim_db_file_update(fileFIMTest->toFimEntry(), &updated);
+    ASSERT_EQ(result, FIMDB_OK);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(testing::AtLeast(1));
     EXPECT_NO_THROW(
     {
+        register_rsync();
         fim_sync_push_msg(test);
     });
 }
@@ -165,18 +171,6 @@ TEST_F(DBTestWinFixture, DISABLED_TestTransactionsRegistryValue)
         result = fim_db_transaction_deleted_rows(handler, transaction_callback, &txn_ctx);
         ASSERT_EQ(result, FIMDB_OK);
     });
-}
-
-TEST_F(DBTestWinFixture, DISABLED_TestFimRunIntegrityError)
-{
-    try
-    {
-        fim_run_integrity();
-    }
-    catch(std::exception const & err)
-    {
-        ASSERT_NE(err.what(), std::string(""));
-    }
 }
 
 TEST_F(DBTestWinFixture, TestInitTransactionWithInvalidParameters)
