@@ -784,9 +784,6 @@ stages:
 ---
 test_name: PUT /agents/node/{node_id}/restart
 
-marks:
-  - xfail # Agents stay with "pending" status for too long - https://github.com/wazuh/wazuh/issues/10162
-
 stages:
 
   - name: Get agents belonging to a node
@@ -844,9 +841,6 @@ stages:
 
 ---
 test_name: PUT /agents/upgrade
-
-marks:
-  - xfail # Agents stay with "pending" status for too long - https://github.com/wazuh/wazuh/issues/10162
 
 stages:
 
@@ -1135,9 +1129,6 @@ stages:
 
 ---
 test_name: PUT /agents/{agent_id}/upgrade_custom
-
-marks:
-  - xfail # Agents stay with "pending" status for too long - https://github.com/wazuh/wazuh/issues/10162
 
 stages:
 
