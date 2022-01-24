@@ -1,6 +1,6 @@
 /*
  * SQL Schema for global database
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * June 30, 2016.
  *

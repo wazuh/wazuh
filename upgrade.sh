@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 
 # validate OS, linux or macos
 if [ "X$(uname)" = "XLinux" ] ; then
