@@ -27,6 +27,35 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         { "new_dec_field1": "new_dec_value1" }
                     ]
                 }
+    )"},
+                                               {"decoder_2", R"(
+                {
+                    "name": "decoder_2",
+                    "parents": [
+                        "decoder_0"
+                    ],
+                    "check": [
+                        {"field": "value" }
+                    ],
+                    "normalize": [
+                        { "new_dec_field2": "new_dec_value2" }
+                    ]
+                }
+    )"},
+                                               {"decoder_3", R"(
+                {
+                    "name": "decoder_3",
+                    "parents": [
+                        "decoder_1",
+                        "decoder_2"
+                    ],
+                    "check": [
+                        {"field": "value" }
+                    ],
+                    "normalize": [
+                        { "new_dec_field3": "new_dec_value3" }
+                    ]
+                }
     )"}};
 
 std::map<std::string, std::string> rules = {{"rule_0", R"(
@@ -45,7 +74,7 @@ std::map<std::string, std::string> filters = {{"filter_0", R"(
                 {
                     "name": "filter_0",
                     "after": [
-                        "decoder_1"
+                        "decoder_0"
                     ],
                     "allow": [
                         {"field": "value"}
@@ -70,8 +99,19 @@ std::map<std::string, std::string> environments = {
     {"environment_2", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ] })"},
     {"environment_3", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
     {"environment_4",
-     R"({  "decoders": [ "decoder_0" , "decoder_1" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
-};
+     R"({  "decoders": [ "decoder_0" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
+    {"environment_5", R"({  
+     "decoders": [ "decoder_0" , "decoder_1" ], 
+     "rules": [ "rule_0" ], 
+     "filters": [  ], 
+     "outputs": [ "output_0" ] 
+     })"},
+    {"environment_6", R"({  
+     "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ], 
+     "rules": [ "rule_0" ], 
+     "filters": [ "filter_0" ], 
+     "outputs": [ "output_0" ] 
+     })"}};
 
 class FakeCatalog
 {
