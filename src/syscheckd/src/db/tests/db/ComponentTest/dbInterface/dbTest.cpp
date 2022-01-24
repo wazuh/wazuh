@@ -103,7 +103,7 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(testing::AtLeast(1));
     EXPECT_NO_THROW(
     {
-        register_rsync();
+        fim_run_integrity();
         fim_sync_push_msg(test);
     });
 }
