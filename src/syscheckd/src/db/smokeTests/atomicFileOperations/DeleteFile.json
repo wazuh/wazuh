@@ -1,0 +1,6 @@
+{
+    "action":"RemoveFile",
+    "body": {
+        "file_path":"/tmp/test.txt"
+    }
+}

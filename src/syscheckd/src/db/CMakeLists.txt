@@ -67,6 +67,7 @@ if(UNIT_TEST)
 
   add_subdirectory(tests)
 else()
+  add_subdirectory(testtool)
   if(FSANITIZE)
     target_link_libraries(fimdb gcov)
   endif(FSANITIZE)
