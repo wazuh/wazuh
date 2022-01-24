@@ -45,9 +45,9 @@ std::map<std::string, std::string> outputs = {{"output_0", R"(
                     "check": [
                         {"field": "value"}
                     ],
-                    "file": {
-                        "filepath": "/tmp/filepath.txt"
-                    }
+                    "outputs": [
+                        {"file": { "path": "/tmp/filepath.txt" }}
+                    ]
                 }
     )"}};
 

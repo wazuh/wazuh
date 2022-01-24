@@ -15,7 +15,7 @@
 
 namespace builder::internals::builders
 {
-
+using namespace builder::internals::outputs;
 /**
  * @brief Builds file output
  *
