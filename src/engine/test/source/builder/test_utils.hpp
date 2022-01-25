@@ -1,3 +1,6 @@
+#ifndef _TEST_UTILS_H
+#define _TEST_UTILS_H
+
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -72,3 +75,5 @@ json::Document generate_pair(const string & name, const string & value)
     string j_string = "{\"" + name + "\": " + "\"" + value + "\"}";
     return json::Document{j_string.c_str()};
 }
+
+#endif //_TEST_UTILS_H

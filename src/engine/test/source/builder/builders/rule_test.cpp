@@ -31,8 +31,9 @@ TEST(RuleBuilderTest, Builds)
     ASSERT_NO_THROW(auto obs = ruleBuilder(fake_j));
 }
 
-TEST(RuleBuilderTest, BuildsErrorNoName){
-      // Fake entry point
+TEST(RuleBuilderTest, BuildsErrorNoName)
+{
+    // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
 
     // Fake input json
@@ -52,8 +53,9 @@ TEST(RuleBuilderTest, BuildsErrorNoName){
     ASSERT_THROW(auto obs = ruleBuilder(fake_j), invalid_argument);
 }
 
-TEST(RuleBuilderTest, BuildsErrorNoCheck){
-      // Fake entry point
+TEST(RuleBuilderTest, BuildsErrorNoCheck)
+{
+    // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
 
     // Fake input json

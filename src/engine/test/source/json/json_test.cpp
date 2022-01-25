@@ -53,7 +53,8 @@ auto message = R"({
     }
 })";
 
-TEST(JsonTest, Initialize) {
+TEST(JsonTest, Initialize)
+{
 
     ASSERT_NO_THROW(json::Document default_event());
 
@@ -64,15 +65,15 @@ TEST(JsonTest, Initialize) {
     ASSERT_NO_THROW(json::Document copy_event(json_event));
 
     ASSERT_NO_THROW(json::Document value_event(*(json_event.get(""))));
-
 }
 
-TEST(JsonTest, Operates) {
+TEST(JsonTest, Operates)
+{
 
     json::Document e(message);
 
-    //Testing set and get
-    e.set(".module.name",Value("changed"));
+    // Testing set and get
+    e.set(".module.name", Value("changed"));
 
     ASSERT_EQ(*(e.get(".module.name")), Value("changed"));
 

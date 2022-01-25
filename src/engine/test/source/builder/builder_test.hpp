@@ -1,4 +1,7 @@
 
+#ifndef _BUILDER_TEST_H
+#define _BUILDER_TEST_H
+
 #include "connectable.hpp"
 #include "rxcpp/rx.hpp"
 #include "json/json.hpp"
@@ -100,17 +103,17 @@ std::map<std::string, std::string> environments = {
     {"environment_3", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
     {"environment_4",
      R"({  "decoders": [ "decoder_0" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
-    {"environment_5", R"({  
-     "decoders": [ "decoder_0" , "decoder_1" ], 
-     "rules": [ "rule_0" ], 
-     "filters": [  ], 
-     "outputs": [ "output_0" ] 
+    {"environment_5", R"({
+     "decoders": [ "decoder_0" , "decoder_1" ],
+     "rules": [ "rule_0" ],
+     "filters": [  ],
+     "outputs": [ "output_0" ]
      })"},
-    {"environment_6", R"({  
-     "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ], 
-     "rules": [ "rule_0" ], 
-     "filters": [ "filter_0" ], 
-     "outputs": [ "output_0" ] 
+    {"environment_6", R"({
+     "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ],
+     "rules": [ "rule_0" ],
+     "filters": [ "filter_0" ],
+     "outputs": [ "output_0" ]
      })"}};
 
 class FakeCatalog
@@ -154,3 +157,5 @@ public:
         return {"not", "implemented"};
     }
 };
+
+#endif // _BUILDER_TEST_H
