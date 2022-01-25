@@ -1,3 +1,6 @@
+#ifndef _FILE_OUTPUT_H
+#define _FILE_OUTPUT_H
+
 #include "rxcpp/rx.hpp"
 #include <filesystem>
 #include <fstream>
@@ -155,3 +158,5 @@ public:
 // };
 
 } // namespace builder::internals::outputs
+
+#endif // _FILE_OUTPUT_H

@@ -37,7 +37,7 @@ TEST(CheckStageTest, BuildsErrorExpectsArray)
     auto fake_jstring = R"(
     {
       "name": "test_check",
-      "check": 
+      "check":
         {"field": 1}
     }
     )";
@@ -60,7 +60,7 @@ TEST(CheckStageTest, Operates)
   )"});
             o.on_next(event_t{R"(
       {
-              "field": "2" 
+              "field": "2"
       }
   )"});
             o.on_next(event_t{R"(
