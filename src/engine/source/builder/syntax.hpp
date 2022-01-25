@@ -9,7 +9,8 @@
  * This namespace contains all anchors and syntax elements that identify
  * different objects.
  */
-namespace builder::internals::syntax {
+namespace builder::internals::syntax
+{
 
 const std::string REFERENCE_ANCHOR("$");
 const std::string HELPER_ANCHOR("+");
