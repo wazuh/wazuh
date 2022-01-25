@@ -67,7 +67,7 @@ public:
      *
      * @param obs
      */
-    void set(const rxcpp::observable<json::Document>& obs)
+    void set(const rxcpp::observable<json::Document> & obs)
     {
         this->m_obs = obs;
     }
