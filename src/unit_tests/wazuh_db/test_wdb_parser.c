@@ -2386,28 +2386,27 @@ void test_hotfixes_no_action(void **state) {
     os_free(query);
 }
 
-void test_wdb_parse_get_config_internal(){
+void test_wdb_parse_get_config_internal() {
     will_return(__wrap_wdb_get_internal_config, 1);
     cJSON *ret = wdb_parse_get_config("internal");
     assert_int_equal(ret, 1);
 }
 
-void test_wdb_parse_get_config_wdb(){
+void test_wdb_parse_get_config_wdb() {
     will_return(__wrap_wdb_get_config, 1);
     cJSON *ret = wdb_parse_get_config("wdb");
     assert_int_equal(ret, 1);
 }
 
-void test_wdb_parse_get_config_arg_null(){
+void test_wdb_parse_get_config_arg_null() {
     cJSON *ret = wdb_parse_get_config(0);
     assert_int_equal(ret, NULL);
 }
 
-void test_wdb_parse_get_config_bad_arg(){
+void test_wdb_parse_get_config_bad_arg() {
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid configuration source for wazuh-db");
     cJSON *ret = wdb_parse_get_config("BAD_ARG");
     assert_int_equal(ret, NULL);
-
 }
 
 /* wdb_parse_global_backup */
