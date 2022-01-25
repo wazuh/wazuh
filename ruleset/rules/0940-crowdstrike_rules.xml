@@ -1,0 +1,77 @@
+<!--
+  -  Crowdstrike rules
+  -  Author: Mauricio Ruben Santillan
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2022, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="crowdstrike">
+
+  <rule id="45000" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="metadata.customerIDString">\.+</field>
+    <field name="metadata.offset">\.+</field>
+    <field name="metadata.eventType">\.+</field>
+    <field name="metadata.eventCreationTime">\.+</field>
+    <field name="metadata.version">\.+</field>
+    <description>Crowdstrike parent alert</description>
+  </rule>
+
+  <rule id="45001" level="0">
+    <if_sid>45000</if_sid>
+    <field name="metadata.eventType">DetectionSummaryEvent</field>
+    <description>Crowdstrike alert - DetectionSummaryEvent:- $(event.DetectDescription)</description>
+  </rule>
+
+  <rule id="45002" level="0">
+    <if_sid>45000</if_sid>
+    <field name="metadata.eventType">AuthActivityAuditEvent</field>
+    <description>Crowdstrike alert - AuthActivityAuditEvent: $(event.DetectDescription)</description>
+  </rule>
+
+  <rule id="45003" level="3">
+    <if_sid>45000</if_sid>
+    <field name="metadata.eventType">UserActivityAuditEvent</field>
+    <description>Crowdstrike alert - UserActivityAuditEvent: $(event.OperationName)</description>
+  </rule>
+
+  <rule id="45004" level="5">
+    <if_sid>45000</if_sid>
+    <field name="metadata.eventType">IncidentSummaryEvent</field>
+    <description>Crowdstrike alert - IncidentSummaryEvent: $(event.DetectDescription)</description>
+  </rule>
+
+  <rule id="45010" level="3">
+    <if_sid>45001</if_sid>
+    <field name="event.SeverityName">Low</field>
+    <description>Crowdstrike alert - Low severity detection: $(event.DetectDescription)</description>
+  </rule>
+
+  <rule id="45011" level="5">
+    <if_sid>45001</if_sid>
+    <field name="event.SeverityName">Medium</field>
+    <description>Crowdstrike alert - Medium severity detection: $(event.DetectDescription)</description>
+  </rule>
+
+  <rule id="45012" level="7">
+    <if_sid>45001</if_sid>
+    <field name="event.SeverityName">High</field>
+    <description>Crowdstrike alert - High severity detection: $(event.DetectDescription)</description>
+  </rule>
+
+  <rule id="45020" level="3">
+    <if_sid>45002</if_sid>
+    <field name="event.Success">true</field>
+    <description>Crowdstrike alert - User authentication success - UserId: $(event.UserId)</description>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="45021" level="6">
+    <if_sid>45002</if_sid>
+    <field name="event.Success">false</field>
+    <description>Crowdstrike alert - User authentication failed - UserId: $(event.UserId)</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+</group>
