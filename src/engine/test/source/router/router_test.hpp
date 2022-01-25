@@ -1,10 +1,13 @@
-#include <iostream>
-#include <string>
+#ifndef _ROUTER_TEST_H
+#define _ROUTER_TEST_H
+
 #include <algorithm>
 #include <chrono>
-#include <thread>
-#include <rxcpp/rx.hpp>
+#include <iostream>
 #include <nlohmann/json.hpp>
+#include <rxcpp/rx.hpp>
+#include <string>
+#include <thread>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
@@ -15,11 +18,8 @@ using json = nlohmann::ordered_json;
 template <class F> class FakeProtocolHandler
 {
 private:
-
 public:
-
-    FakeProtocolHandler<F>(std::function<F(int)> g)
-        : generate(g) {};
+    FakeProtocolHandler<F>(std::function<F(int)> g) : generate(g){};
 
     // Called when a new subscription is open
     std::function<void()> on_open;
@@ -37,46 +37,44 @@ public:
     // A future is returned so tests can wait for its completion.
     // Note that on linux, if the future does not wait, the code
     // in the async block is not executed.
-    auto run(int n) {
-        return std::async([&, n, this]() {
-            for(int i = 0; i < n; i++) {
-                this->on_message(generate(i));
-            }
-            this->on_close();
-        });
+    auto run(int n)
+    {
+        return std::async(
+            [&, n, this]()
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    this->on_message(generate(i));
+                }
+                this->on_close();
+            });
     };
-
 };
-
 
 // Fake Builder simulates the behaviour of a builder
 // as a router expects it.
 template <class F> class FakeBuilder
 {
 private:
-    
-
 public:
-    FakeBuilder() {};
+    FakeBuilder(){};
 
-    rxcpp::subjects::subject<F> build(std::string id, std::string source) {
+    rxcpp::subjects::subject<F> build(std::string id, std::string source)
+    {
 
         rxcpp::subjects::subject<F> subject;
 
-        auto from = [=](const json j) {
-            return j.at("wazuh").at("module").at("name") == source;
-        };
+        auto from = [=](const json j) { return j.at("wazuh").at("module").at("name") == source; };
 
-
-        auto res = subject.get_observable().filter(from).subscribe([](const F j) {
-            // GTEST_COUT << "test output got an event" << std::endl;
-        },
-        []() {
-            GTEST_COUT << "test output finalized" << std::endl;
-        });
+        auto res = subject.get_observable().filter(from).subscribe(
+            [](const F j)
+            {
+                // GTEST_COUT << "test output got an event" << std::endl;
+            },
+            []() { GTEST_COUT << "test output finalized" << std::endl; });
 
         return subject;
     };
-
 };
 
+#endif // _ROUTER_TEST_H
