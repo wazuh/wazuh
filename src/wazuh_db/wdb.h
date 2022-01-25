@@ -210,8 +210,8 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
-    WDB_STMT_GLOBAL_DELETE_ALL_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
+    WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
     WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
@@ -1840,14 +1840,14 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
 
 /**
- * @brief Function to remove an agent from the belongs table.
+ * @brief Function to remove an agent-group tuple from the belongs table.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id_group The group id.
- * @param [in] id_agent The agent id..
+ * @param [in] id_agent The agent id.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_remove_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+int wdb_global_remove_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
 
 /**
  * @brief Function to check if a group is empty.
@@ -1982,11 +1982,11 @@ cJSON* wdb_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
 int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
 
 /**
- * @brief Writes the groups of an agent.
+ * @brief Writes groups to an agent.
  *        If the group doesn´t exists it creates it.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] id ID of the agent to obtain the priority.
+ * @param [in] id ID of the agent to add new groups.
  * @param [in] j_groups JSON array with all the groups of the agent.
  * @param [in] priority Initial priority to insert the groups.
  * @return wdbc_result representing the status of the command.
@@ -1994,11 +1994,10 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
 wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority);
 
 /**
- * @brief Writes the groups of an agent.
- *        If the group doesn´t exists it creates it.
+ * @brief Deletes groups of an agent.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] id ID of the agent to obtain the priority.
+ * @param [in] id ID of the agent to remove the groups.
  * @param [in] j_groups JSON array with all the groups to remove from the agent.
  * @return wdbc_result representing the status of the command.
  */
