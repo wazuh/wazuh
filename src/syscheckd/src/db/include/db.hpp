@@ -128,6 +128,11 @@ public:
     * @param callback Callback return the file data.
     */
     void searchFile(const SearchData& data, std::function<void(const std::string &)> callback);
+
+    /**
+    * @brief teardown Close the fimdb instances.
+    */
+    void teardown();
 private:
     DB() = default;
     ~DB() = default;

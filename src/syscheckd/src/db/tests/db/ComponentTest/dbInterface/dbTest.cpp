@@ -10,8 +10,8 @@
  */
 
 #include "dbTest.h"
+#include "db.h"
 #include <iostream>
-
 
 const auto insertFileStatement = R"({
         "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2456, "gid":0, "group_name":"root",
@@ -100,7 +100,11 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     bool updated;
     auto result = fim_db_file_update(fileFIMTest->toFimEntry(), &updated);
     ASSERT_EQ(result, FIMDB_OK);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
     EXPECT_NO_THROW(
     {
         fim_run_integrity();
@@ -108,10 +112,28 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     });
 }
 
-TEST_F(DBTestWinFixture, DISABLED_TestFimRunIntegrity)
+TEST_F(DBTestFixture, TestFimRunIntegrity)
 {
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync.")).Times(1);
+
     EXPECT_NO_THROW(
     {
+        fim_run_integrity();
+    });
+}
+
+TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
+{
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "FIM integrity thread already running.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync.")).Times(1);
+
+    EXPECT_NO_THROW(
+    {
+        fim_run_integrity();
         fim_run_integrity();
     });
 }
@@ -159,7 +181,7 @@ TEST_F(DBTestWinFixture, TestTransactionsRegistryKey)
     });
 }
 
-TEST_F(DBTestWinFixture, DISABLED_TestTransactionsRegistryValue)
+TEST_F(DBTestWinFixture, TestTransactionsRegistryValue)
 {
     EXPECT_NO_THROW(
     {
@@ -186,7 +208,7 @@ TEST_F(DBTestWinFixture, TestSyncRowTransactionWithInvalidHandler)
     ASSERT_EQ(result, FIMDB_ERR);
 }
 
-TEST_F(DBTestWinFixture, DISABLED_TestSyncRowTransactionWithInvalidFimEntry)
+TEST_F(DBTestWinFixture, TestSyncRowTransactionWithInvalidFimEntry)
 {
     auto handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
     ASSERT_TRUE(handler);

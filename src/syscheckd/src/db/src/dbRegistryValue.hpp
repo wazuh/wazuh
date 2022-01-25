@@ -35,20 +35,20 @@ class RegistryValue final : public DBItem
 {
     public:
         RegistryValue(const fim_entry* const fim)
-            : DBItem(std::string(fim->registry_entry.value->name)
+            : DBItem(fim->registry_entry.value->name ? fim->registry_entry.value->name : ""
                      , fim->registry_entry.value->scanned
                      , fim->registry_entry.value->last_event
                      , fim->registry_entry.value->checksum
                      , fim->registry_entry.value->mode)
         {
             m_registryKey = 0;
-            m_path = std::string(fim->registry_entry.value->path);
+            m_path = fim->registry_entry.value->path ? fim->registry_entry.value->path : "";
             m_arch = fim->registry_entry.value->arch;
             m_size = fim->registry_entry.value->size;
             m_type = fim->registry_entry.value->type;
-            m_md5 = std::string(fim->registry_entry.value->hash_md5);
-            m_sha1 = std::string(fim->registry_entry.value->hash_sha1);
-            m_sha256 = std::string(fim->registry_entry.value->hash_sha256);
+            m_md5 = fim->registry_entry.value->hash_md5;
+            m_sha1 = fim->registry_entry.value->hash_sha1;
+            m_sha256 = fim->registry_entry.value->hash_sha256;
             createJSON();
             createFimEntry();
         }

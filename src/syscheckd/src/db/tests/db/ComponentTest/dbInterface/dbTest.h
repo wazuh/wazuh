@@ -56,6 +56,7 @@ class DBTestFixture : public testing::Test {
                         MAX_FILE_LIMIT,
                         0,
                         false);
+
             evt_data = {};
             evt_data.report_event = true;
             evt_data.mode = FIM_SCHEDULED;
@@ -64,9 +65,9 @@ class DBTestFixture : public testing::Test {
         }
         void TearDown() override
         {
+            fim_db_teardown();
             delete mockLog;
             delete mockSync;
-            fim_db_teardown();
         }
 };
 

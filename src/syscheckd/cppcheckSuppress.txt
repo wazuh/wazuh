@@ -1,3 +1,4 @@
 *:*src/syscheckd/src/db/src/file.cpp:78
 *:*src/syscheckd/src/db/src/file.cpp:114
 *:*src/syscheckd/src/db/src/file.cpp:188
+*:*src/syscheckd/src/db/src/db.cpp:125

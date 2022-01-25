@@ -15,6 +15,7 @@
 #include "rsync.hpp"
 #include <condition_variable>
 #include <mutex>
+#include <thread>
 
 #ifdef __cplusplus
 extern "C"
@@ -330,10 +331,17 @@ class FIMDB
          */
         inline void stopIntegrity()
         {
-            std::unique_lock<std::mutex> lock(m_fimSyncMutex);
-            m_stopping = true;
+            {
+                std::lock_guard<std::mutex> lock(m_fimSyncMutex);
+                m_stopping = true;
+            }
+
             m_cv.notify_all();
-            lock.unlock();
+
+            if (m_integrityThread.joinable())
+            {
+                m_integrityThread.join();
+            }
         };
 
         /**
@@ -381,6 +389,8 @@ class FIMDB
         std::function<void(const std::string&)>                                 m_syncFileMessageFunction;
         std::function<void(const std::string&)>                                 m_syncRegistryMessageFunction;
         std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
+        bool                                                                    m_runIntegrity;
+        std::thread                                                             m_integrityThread;
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager

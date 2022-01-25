@@ -16,7 +16,6 @@
 #include "db.hpp"
 #include "fimCommonDefs.h"
 #include "fimDB.hpp"
-#include <thread>
 #include "dbFileItem.hpp"
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
@@ -86,8 +85,7 @@ void DB::init(const int storage,
 
 void DB::runIntegrity()
 {
-    std::thread syncThread(&FIMDB::runIntegrity, &FIMDB::instance());
-    syncThread.detach();
+    FIMDB::instance().runIntegrity();
 }
 
 void DB::pushMessage(const std::string& message)
@@ -98,6 +96,11 @@ void DB::pushMessage(const std::string& message)
 DBSYNC_HANDLE DB::DBSyncHandle()
 {
     return FIMDB::instance().DBSyncHandle();
+}
+
+void DB::teardown()
+{
+    FIMDB::instance().teardown();
 }
 
 #ifdef __cplusplus
@@ -119,7 +122,10 @@ void fim_db_init(int storage,
         {
             [sync_callback](const std::string & msg)
             {
-                sync_callback(FIM_COMPONENT_FILE, msg.c_str());
+                if (sync_callback)
+                {
+                    sync_callback(FIM_COMPONENT_FILE, msg.c_str());
+                }
             }
         };
 
@@ -127,7 +133,10 @@ void fim_db_init(int storage,
         {
             [sync_callback](const std::string & msg)
             {
-                sync_callback(FIM_COMPONENT_REGISTRY, msg.c_str());
+                if (sync_callback)
+                {
+                    sync_callback(FIM_COMPONENT_REGISTRY, msg.c_str());
+                }
             }
         };
         // LCOV_EXCL_STOP
@@ -136,7 +145,10 @@ void fim_db_init(int storage,
         {
             [log_callback](modules_log_level_t level, const std::string & log)
             {
-                log_callback(level, log.c_str());
+                if (log_callback)
+                {
+                    log_callback(level, log.c_str());
+                }
             }
         };
         DB::instance().init(storage,
@@ -203,33 +215,37 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
 
 FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)
 {
-    std::unique_ptr<DBItem> syncItem;
-    auto retval { FIMDB_OK };
+    auto retval { FIMDB_ERR };
 
-    if (entry->type == FIM_TYPE_FILE)
+    if (entry)
     {
-        syncItem = std::make_unique<FileItem>(entry);
-    }
-    else
-    {
-        if (entry->registry_entry.key == NULL)
+        std::unique_ptr<DBItem> syncItem;
+
+        if (entry->type == FIM_TYPE_FILE)
         {
-            syncItem = std::make_unique<RegistryValue>(entry);
+            syncItem = std::make_unique<FileItem>(entry);
         }
         else
         {
-            syncItem = std::make_unique<RegistryKey>(entry);
+            if (entry->registry_entry.key == NULL)
+            {
+                syncItem = std::make_unique<RegistryValue>(entry);
+            }
+            else
+            {
+                syncItem = std::make_unique<RegistryKey>(entry);
+            }
         }
-    }
 
-    const std::unique_ptr<cJSON, CJsonDeleter> jsInput
-    {
-        cJSON_Parse((*syncItem->toJSON()).dump().c_str())
-    };
+        const std::unique_ptr<cJSON, CJsonDeleter> jsInput
+        {
+            cJSON_Parse((*syncItem->toJSON()).dump().c_str())
+        };
 
-    if (dbsync_sync_txn_row(txn_handler, jsInput.get()) != 0)
-    {
-        retval = FIMDB_ERR;
+        if (dbsync_sync_txn_row(txn_handler, jsInput.get()) == 0)
+        {
+            retval = FIMDB_OK;
+        }
     }
 
     return retval;
@@ -259,7 +275,7 @@ void fim_db_teardown()
 {
     try
     {
-        FIMDB::instance().teardown();
+        DB::instance().teardown();
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)

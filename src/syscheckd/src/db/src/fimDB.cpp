@@ -76,6 +76,7 @@ void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
         // LCOV_EXCL_STOP
     }
     m_rsyncHandler = nullptr;
+    m_dbsyncHandler = nullptr;
 }
 
 void FIMDB::init(unsigned int syncInterval,
@@ -99,6 +100,7 @@ void FIMDB::init(unsigned int syncInterval,
     m_syncRegistryMessageFunction = callbackSyncRegistryWrapper;
     m_loggingFunction = callbackLogWrapper;
     m_stopping = false;
+    m_runIntegrity = false;
 
     setFileLimit();
 
@@ -128,8 +130,20 @@ void FIMDB::runIntegrity()
 {
     std::unique_lock<std::mutex> lock{m_fimSyncMutex};
 
-    registerRSync();
-    loopRSync(lock);
+    if (!m_runIntegrity)
+    {
+        m_runIntegrity = true;
+        registerRSync();
+
+        m_integrityThread = std::thread([&]()
+        {
+            loopRSync(lock);
+        });
+    }
+    else
+    {
+        throw std::runtime_error("FIM integrity thread already running.");
+    }
 }
 
 void FIMDB::pushMessage(const std::string& data)
@@ -161,8 +175,6 @@ void FIMDB::teardown()
     try
     {
         stopIntegrity();
-        m_rsyncHandler.reset();
-        m_dbsyncHandler.reset();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
