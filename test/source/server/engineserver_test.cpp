@@ -16,7 +16,7 @@ using namespace protocolhandler;
  * @brief Test parsing a protocl event
  *
  */
-TEST(EngineServer, parse_event)
+TEST(ProtocolHandler, parse_event)
 {
     MessageQueue queue = SYSLOG;
     std::string location{"/var/log/syslog"};
@@ -45,6 +45,7 @@ TEST(EngineServer, parse_event)
 TEST(EngineServer, listen_TCP)
 {
     const int tcpPort{5050};
+
     EngineServer server;
 
     try
@@ -69,6 +70,7 @@ TEST(EngineServer, listen_TCP)
 TEST(EngineServer, subscribe_TCP)
 {
     const int tcpPort{5051};
+
     EngineServer server;
 
     try
@@ -153,6 +155,7 @@ TEST(EngineServer, listen_subscribe_publish_TCP)
 TEST(EngineServer, listen_UDP)
 {
     const int udpPort{5060};
+
     EngineServer server;
 
     try
@@ -177,6 +180,7 @@ TEST(EngineServer, listen_UDP)
 TEST(EngineServer, subscribe_UDP)
 {
     const int udpPort{5061};
+
     EngineServer server;
 
     try
@@ -261,6 +265,7 @@ TEST(EngineServer, listen_subscribe_publish_UDP)
 TEST(EngineServer, listen_Socket)
 {
     const std::string sockPath{"/tmp/test_listen.sock"};
+
     EngineServer server;
 
     try
@@ -285,6 +290,7 @@ TEST(EngineServer, listen_Socket)
 TEST(EngineServer, subscribe_Socket)
 {
     const std::string socketPath{"/tmp/test_subscribe.sock"};
+
     EngineServer server;
 
     try
@@ -403,22 +409,10 @@ TEST(EngineServer, listen_and_subscribe_multiple_endpoints)
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        auto subscriber = server.getEndpointSubscriber(engineserver::EndpointType::TCP, tcpPort);
-        if (subscriber)
-        {
-            nlohmann::json jsonEvent;
-            jsonEvent["message"] = std::string("Hello");
-            subscriber->on_next(jsonEvent);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-        else
-        {
-            std::cerr << "Subscriber was not found." << std::endl;
-        }
         server.close();
     }
     catch (const std::exception & e)
     {
-        std::cerr << e.what() << '\n';
+        std::cerr << e.what() << std::endl;
     }
 }
