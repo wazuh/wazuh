@@ -1367,20 +1367,18 @@ void test_wdb_parse_global_select_group_belong_success(void **state)
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global select-group-belong 1";
-    cJSON *j_object = NULL;
+    cJSON *j_response = NULL;
 
-    j_object = cJSON_CreateObject();
-    cJSON_AddItemToArray(j_object, cJSON_CreateString("default"));
-    cJSON_AddItemToArray(j_object, cJSON_CreateString("new_group"));
+    j_response = cJSON_Parse("[\"default\",\"new_group\"]");
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-group-belong 1");
     expect_value(__wrap_wdb_global_select_group_belong, id_agent, 1);
-    will_return(__wrap_wdb_global_select_group_belong, j_object);
+    will_return(__wrap_wdb_global_select_group_belong, j_response);
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "ok {\"\":\"default\",\"\":\"new_group\"}");
+    assert_string_equal(data->output, "ok [\"default\",\"new_group\"]");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
