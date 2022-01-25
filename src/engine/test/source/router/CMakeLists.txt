@@ -11,8 +11,7 @@ CPMAddPackage(
 
 
 # Configuration router test
-add_executable(router_test 
-  ${ENGINE_SOURCE_DIR}/router/router.cpp
+add_executable(router_test
   ${ENGINE_SOURCE_DIR}/router/router.hpp
   ${TEST_SOURCE_DIR}/router/router_test.cpp
   ${TEST_SOURCE_DIR}/router/router_test.hpp

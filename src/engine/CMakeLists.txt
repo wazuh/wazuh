@@ -112,9 +112,6 @@ set(SOURCE_FILES "${ENGINE_SOURCE_DIR}/main.cpp")
 
 add_executable(main ${SOURCE_FILES})
 
-# Build sandbox
-add_subdirectory(${ENGINE_SOURCE_DIR}/router)
-
 target_link_libraries(main "-static" ${EXTERNAL_DEPS})
 
 # Build test
