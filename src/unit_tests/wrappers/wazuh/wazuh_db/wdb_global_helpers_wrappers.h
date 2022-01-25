@@ -25,4 +25,6 @@ int __wrap_wdb_set_agent_groups_csv(int id,
                                     __attribute__((unused)) char *mode,
                                     __attribute__((unused)) char *sync_status,
                                     __attribute__((unused)) int *sock);
+
+char* __wrap_wdb_get_agent_group(int id, int *wdb_sock);
 #endif

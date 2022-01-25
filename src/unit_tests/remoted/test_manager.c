@@ -25,6 +25,26 @@
 int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock);
 
 /* Tests lookfor_agent_group */
+void test_lookfor_agent_group_with_group()
+{
+    const int agent_id = 1;
+    const char agent_id_str[] = "001";
+    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
+    char *r_group = NULL;
+    char *test_group = strdup("TESTGROUP");
+
+    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
+    will_return(__wrap_wdb_get_agent_group, test_group);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'TESTGROUP'");
+
+    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
+    assert_int_equal(OS_SUCCESS, ret);
+    assert_string_equal(r_group, test_group);
+
+    os_free(r_group);
+}
+
 void test_lookfor_agent_group_null_groups()
 {
     const int agent_id = 1;
@@ -35,8 +55,7 @@ void test_lookfor_agent_group_null_groups()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is ''");
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group '' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group 'default' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -60,8 +79,7 @@ void test_lookfor_agent_group_set_default_group()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is ''");
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group '' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group 'default' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
     will_return(__wrap_w_is_worker, 0);
 
@@ -85,8 +103,6 @@ void test_lookfor_agent_group_msg_without_enter()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '002' group is ''");
-
     expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '002' (strchr \\n)");
 
     int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
@@ -104,9 +120,7 @@ void test_lookfor_agent_group_bad_message()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '003' group is ''");
-
-    expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '003' (strchr ' ')");
+     expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '003' (strchr ' ')");
 
     int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
     assert_int_equal(OS_INVALID, ret);
@@ -123,8 +137,6 @@ void test_lookfor_agent_group_message_without_second_enter()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '004' group is ''");
-
     expect_string(__wrap__merror, formatted_msg, "Invalid message from agent ID '004' (strchr \\n)");
 
     int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
@@ -136,6 +148,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         // Tests lookfor_agent_group
+        cmocka_unit_test(test_lookfor_agent_group_with_group),
         cmocka_unit_test(test_lookfor_agent_group_null_groups),
         cmocka_unit_test(test_lookfor_agent_group_set_default_group),
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
