@@ -153,7 +153,7 @@ TEST_F(DBTestWinFixture, TestTransactionsRegistryKey)
     });
 }
 
-TEST_F(DBTestWinFixture, DISABLED_TestTransactionsRegistryValue)
+TEST_F(DBTestWinFixture, TestTransactionsRegistryValue)
 {
     EXPECT_NO_THROW(
     {
