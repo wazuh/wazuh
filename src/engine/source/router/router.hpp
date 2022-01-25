@@ -35,13 +35,13 @@ namespace Router
 template <class F> struct route
 {
     route(std::string n, std::function<bool(F)> f, std::string e, rxcpp::composite_subscription s)
-        : name(n), from(f), to(e), subscription(s)
+        : m_name(n), m_from(f), m_to(e), m_subscription(s)
     {
     }
-    std::string name;
-    std::string to;
-    std::function<bool(F)> from;
-    rxcpp::composite_subscription subscription;
+    std::string m_name;
+    std::string m_to;
+    std::function<bool(F)> m_from;
+    rxcpp::composite_subscription m_subscription;
 };
 
 /**
@@ -52,11 +52,11 @@ template <class F> struct route
  */
 template <class F> struct environment
 {
-    environment(std::string n, rxcpp::subjects::subject<F> s) : name(n), subject(s)
+    environment(std::string n, rxcpp::subjects::subject<F> s) : m_name(n), m_subject(s)
     {
     }
-    std::string name;
-    rxcpp::subjects::subject<F> subject;
+    std::string m_name;
+    rxcpp::subjects::subject<F> m_subject;
 };
 
 /**
@@ -74,20 +74,20 @@ private:
      * is tied to the routes.
      *
      */
-    std::vector<environment<F>> environments;
+    std::vector<environment<F>> m_environments;
 
     /**
      * @brief a route maps an environment name, a filter function and
      * and environment implementation as operations.
      */
-    std::vector<route<F>> routes;
+    std::vector<route<F>> m_routes;
 
     /**
      * @brief a router send all events published through all the
      * enabled routes. It is implmented by a rxcpp::observable.
      *
      */
-    rxcpp::observable<F> router;
+    rxcpp::observable<F> m_router;
 
     /**
      * @brief a builder function to get the environment
@@ -95,7 +95,7 @@ private:
      * construction.
      *
      */
-    std::function<rxcpp::subjects::subject<F>(std::string)> build;
+    std::function<rxcpp::subjects::subject<F>(std::string)> m_build;
 
 public:
     /**
@@ -106,10 +106,10 @@ public:
      */
     Router<F>(const std::function<void(rxcpp::subscriber<F>)> h,
               std::function<rxcpp::subjects::subject<F>(std::string)> b)
-        : build(b)
+        : m_build(b)
     {
         auto threads = rxcpp::observe_on_event_loop();
-        router = rxcpp::observable<>::create<F>(h).publish().ref_count().subscribe_on(threads);
+        m_router = rxcpp::observable<>::create<F>(h).publish().ref_count().subscribe_on(threads);
     };
 
     /**
@@ -127,28 +127,28 @@ public:
     {
         rxcpp::subjects::subject<F> envSub;
 
-        if (std::any_of(std::begin(this->routes), std::end(this->routes),
-                        [name](const auto & r) { return r.name == name; }))
+        if (std::any_of(std::begin(this->m_routes), std::end(this->m_routes),
+                        [name](const auto & r) { return r.m_name == name; }))
             throw std::invalid_argument("Tried to add a route, but it's name is already in use by another route");
 
-        auto res = std::find_if(std::begin(this->environments), std::end(this->environments),
-                                [to](const auto & e) { return e.name == to; });
+        auto res = std::find_if(std::begin(this->m_environments), std::end(this->m_environments),
+                                [to](const auto & e) { return e.m_name == to; });
 
-        if (res == std::end(this->environments))
+        if (res == std::end(this->m_environments))
         {
-            envSub = this->build(name);
-            this->environments.push_back(environment(to, envSub));
+            envSub = this->m_build(name);
+            this->m_environments.push_back(environment(to, envSub));
         }
         else
         {
-            envSub = (*res).subject;
+            envSub = (*res).m_subject;
         }
 
-        auto r = this->router.filter(from);
+        auto r = this->m_router.filter(from);
 
         auto sub = r.subscribe(envSub.get_subscriber());
 
-        this->routes.push_back(route(name, from, to, sub));
+        this->m_routes.push_back(route(name, from, to, sub));
     }
 
     /**
@@ -159,28 +159,28 @@ public:
      */
     void remove(std::string name)
     {
-        auto it = std::find_if(std::begin(this->routes), std::end(this->routes),
-                               [name](const auto & r) { return r.name == name; });
+        auto it = std::find_if(std::begin(this->m_routes), std::end(this->m_routes),
+                               [name](const auto & r) { return r.m_name == name; });
 
-        if (it == std::end(this->routes))
+        if (it == std::end(this->m_routes))
         {
             throw std::invalid_argument("Tried to delete a route, but it's name is not in the route table.");
         }
 
-        (*it).subscription.unsubscribe();
+        (*it).m_subscription.unsubscribe();
 
-        auto to = (*it).to;
-        this->routes.erase(it);
+        auto to = (*it).m_to;
+        this->m_routes.erase(it);
 
         auto s =
-            std::any_of(std::begin(this->routes), std::end(this->routes), [to](const auto & r) { return r.to == to; });
+            std::any_of(std::begin(this->m_routes), std::end(this->m_routes), [to](const auto & r) { return r.m_to == to; });
 
         if (!s)
         {
-            auto it = std::remove_if(std::begin(this->environments), std::end(this->environments),
-                                     [to](const auto & e) { return e.name == to; });
+            auto it = std::remove_if(std::begin(this->m_environments), std::end(this->m_environments),
+                                     [to](const auto & e) { return e.m_name == to; });
             // remove_if does not re
-            this->environments.erase(it);
+            this->m_environments.erase(it);
         }
     }
 
@@ -191,7 +191,7 @@ public:
      */
     std::vector<route<F>> list()
     {
-        return this->routes;
+        return this->m_routes;
     }
 };
 
