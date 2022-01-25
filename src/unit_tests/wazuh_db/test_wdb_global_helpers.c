@@ -1981,7 +1981,7 @@ void test_wdb_update_agent_connection_status_success(void **state)
 void test_wdb_select_group_belong_error_no_json_response(void **state)
 {
     int id = 1;
-    cJSON* j_data = NULL;
+    cJSON* j_response = NULL;
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
@@ -1989,28 +1989,26 @@ void test_wdb_select_group_belong_error_no_json_response(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get groups from agent 1.");
 
-    j_data = wdb_select_group_belong(id, NULL);
+    j_response = wdb_select_group_belong(id, NULL);
 
-    assert_null(j_data);
+    assert_null(j_response);
 }
 
 void test_wdb_select_group_belong_success(void **state) {
-    cJSON *root = NULL;
-    cJSON *response = NULL;
+    cJSON *j_root = NULL;
+    cJSON *j_response = NULL;
     int id = 1;
 
-    root = __real_cJSON_CreateArray();
-    __real_cJSON_AddItemToArray(root, __real_cJSON_CreateString("default"));
-    __real_cJSON_AddItemToArray(root, __real_cJSON_CreateString("new_group"));
+    j_root = __real_cJSON_Parse("[\"default\",\"new_group\"]");
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
+    will_return(__wrap_wdbc_query_parse_json, j_root);
 
-    response = wdb_select_group_belong(id, NULL);
+    j_response = wdb_select_group_belong(id, NULL);
 
-    assert_ptr_equal(response, root);
-    __real_cJSON_Delete(root);
+    assert_non_null(j_response);
+    __real_cJSON_Delete(j_root);
 }
 
 /* Tests wdb_delete_agent_belongs */
