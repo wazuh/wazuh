@@ -243,6 +243,13 @@ cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)
     return mock_ptr_type(cJSON*);
 }
 
+cJSON* __wrap_wdb_global_get_groups_integrity(__attribute__((unused)) wdb_t *wdb,
+                                              os_sha1 hash) {
+
+    check_expected(hash);
+    return mock_ptr_type(cJSON*);
+}
+
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t *wdb,
                                                   int last_agent_id,
                                                   int keep_alive,

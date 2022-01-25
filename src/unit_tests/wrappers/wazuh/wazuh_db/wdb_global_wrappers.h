@@ -83,6 +83,8 @@ int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_statu
 
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
 
+cJSON* __wrap_wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
+
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
 int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id);

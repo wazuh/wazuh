@@ -83,4 +83,6 @@ cJSON *__wrap_wdb_get_internal_config();
 
 cJSON *__wrap_wdb_get_config();
 
+int __wrap_wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
+
 #endif

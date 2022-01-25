@@ -1124,7 +1124,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
     }
 }
 
-cJSON* wdb_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
+cJSON* wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
 
     if (stmt == NULL) {
@@ -1133,7 +1133,7 @@ cJSON* wdb_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
 
     cJSON* response = NULL;
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         response = cJSON_CreateArray();
         cJSON_AddItemToArray(response, cJSON_CreateString("syncreq"));
