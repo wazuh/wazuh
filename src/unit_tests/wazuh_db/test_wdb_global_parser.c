@@ -27,6 +27,7 @@ static int test_setup(void **state) {
     os_strdup("000",init_data->wdb->id);
     os_calloc(OS_MAXSTR,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
+    init_data->wdb->enabled=true;
     *state = init_data;
     return 0;
 }
@@ -1815,6 +1816,97 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wbb_parse_global_get_groups_integrity */
+
+void test_wdb_parse_global_get_groups_integrity_syntax_error(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-groups-integrity.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-groups-integrity");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-groups-integrity'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_groups_integrity_query_error(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    will_return(__wrap_wdb_global_get_groups_integrity, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting groups integrity information from global.db.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting groups integrity information from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_groups_integrity_success_syncreq(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    cJSON* j_response = cJSON_Parse("[\"syncreq\"]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    will_return(__wrap_wdb_global_get_groups_integrity, j_response);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [\"syncreq\"]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_get_groups_integrity_success_synced(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    cJSON* j_response = cJSON_Parse("[\"synced\"]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    will_return(__wrap_wdb_global_get_groups_integrity, j_response);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [\"synced\"]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_get_groups_integrity_success_hash_mismatch(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    cJSON* j_response = cJSON_Parse("[\"hash_mismatch\"]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    will_return(__wrap_wdb_global_get_groups_integrity, j_response);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [\"hash_mismatch\"]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_disconnect_agents */
 
 void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
@@ -2262,6 +2354,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_get_groups_integrity */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_syncreq, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_hash_mismatch, test_setup, test_teardown),
         /* Tests wdb_parse_global_disconnect_agents */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_last_id_error, test_setup, test_teardown),
