@@ -108,6 +108,37 @@ namespace Utils
                 return ret;
             }
 
+            std::vector<std::string> enumerateValueKey() const
+            {
+                std::vector<std::string> ret;
+                constexpr auto MAX_KEY_NAME_VALUE {260}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+                char buffer[MAX_KEY_NAME_VALUE];
+                DWORD size {MAX_KEY_NAME_VALUE};
+                DWORD index {0};
+
+                auto result {RegEnumValue(m_registryKey, index, buffer, &size, nullptr,  nullptr, nullptr, nullptr)};
+
+                while (ERROR_SUCCESS == result)
+                {
+                    ret.push_back(buffer);
+                    size = MAX_KEY_NAME_VALUE;
+                    index++;
+                    result = RegEnumValue(m_registryKey, index, buffer, &size, nullptr,  nullptr, nullptr, nullptr);
+                }
+
+                if (result != ERROR_NO_MORE_ITEMS)
+                {
+                    throw std::system_error
+                    {
+                        result,
+                        std::system_category(),
+                        "Error enumerating Values in registry."
+                    };
+                }
+
+                return ret;
+            }
+
             void enumerate(const std::function<void(const std::string&)>& callback) const
             {
                 std::vector<std::string> ret;
@@ -143,6 +174,22 @@ namespace Utils
                 try
                 {
                     values = this->enumerate();
+                }
+                catch (...)
+                {
+                    ret = false;
+                }
+
+                return ret;
+            }
+
+            bool enumerateValueKey(std::vector<std::string>& values) const
+            {
+                bool ret{true};
+
+                try
+                {
+                    values = this->enumerateValueKey();
                 }
                 catch (...)
                 {

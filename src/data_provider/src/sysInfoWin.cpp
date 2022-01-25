@@ -37,6 +37,8 @@
 #include "ports/portWindowsWrapper.h"
 #include "ports/portImpl.h"
 #include "packages/packagesWindowsParserHelper.h"
+#include "packages/packagesWindows.h"
+#include "packages/appxWindowsWrapper.h"
 
 constexpr int BASEBOARD_INFORMATION_TYPE { 2 };
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -450,6 +452,41 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
     }
 }
 
+static void getStorePackages(const HKEY key, const std::string& user, std::function<void(nlohmann::json&)> returnCallback)
+{
+    std::set<std::string> cacheReg;
+
+    try
+    {
+        for (const auto& registry : Utils::Registry{key, user + "\\" + CACHE_NAME_REGISTRY, KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+        {
+            cacheReg.insert(registry);
+        }
+
+        const auto callback
+        {
+            [&](const std::string & nameApp)
+            {
+                nlohmann::json jsPackage;
+
+                FactoryWindowsPackage::create(key, user, nameApp, cacheReg)->buildPackageData(jsPackage);
+
+                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                {
+                    // Only return valid content packages
+                    returnCallback(jsPackage);
+                }
+            }
+        };
+
+        Utils::Registry root(key, user + "\\" + APPLICATION_STORE_REGISTRY, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
+        root.enumerate(callback);
+    }
+    catch (...)
+    {
+    }
+}
+
 std::string SysInfo::getSerialNumber() const
 {
     std::string ret;
@@ -779,12 +816,29 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, callback, KEY_WOW64_64KEY);
-    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, callback, KEY_WOW64_32KEY);
+    std::set<std::string> set;
+
+    auto fillList
+    {
+        [&callback, &set](nlohmann::json & data)
+        {
+            const std::string key { data.at("name").get_ref<const std::string&>() + data.at("version").get_ref<const std::string&>() };
+            const auto result = set.insert(key);
+
+            if (result.second)
+            {
+                callback(data);
+            }
+        }
+    };
+
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_64KEY);
+    getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_32KEY);
 
     for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
     {
-        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, callback);
+        getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
+        getStorePackages(HKEY_USERS, user, fillList);
     }
 }
 
