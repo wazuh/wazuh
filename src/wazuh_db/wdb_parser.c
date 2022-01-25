@@ -5492,7 +5492,7 @@ int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
     os_sha1 hash = {0};
     strncpy(hash, input, strlen(input));
     int ret = OS_SUCCESS;
-    cJSON *j_result = wdb_get_groups_integrity(wdb, hash);
+    cJSON *j_result = wdb_global_get_groups_integrity(wdb, hash);
     if (j_result) {
         char* out = cJSON_PrintUnformatted(j_result);
         snprintf(output, OS_MAXSTR + 1, "ok %s", out);

@@ -784,6 +784,92 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     __real_cJSON_Delete(root);
 }
 
+/* Tests wdb_global_get_groups_integrity */
+
+void test_wdb_global_get_groups_integrity_statement_fail(void **state)
+{
+    cJSON* result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    result = wdb_global_get_groups_integrity(data->wdb, NULL);
+
+    assert_null(result);
+}
+
+void test_wdb_global_get_groups_integrity_syncreq(void **state)
+{
+    cJSON* j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    will_return(__wrap_wdb_step, SQLITE_ROW);
+
+    j_result = wdb_global_get_groups_integrity(data->wdb, NULL);
+
+    char *result = cJSON_PrintUnformatted(j_result);
+    assert_string_equal(result, "[\"syncreq\"]");
+    os_free(result);
+    __real_cJSON_Delete(j_result);
+}
+
+void test_wdb_global_get_groups_integrity_hash_mismatch(void **state)
+{
+    cJSON* j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
+
+    j_result = wdb_global_get_groups_integrity(data->wdb, "");
+
+    char *result = cJSON_PrintUnformatted(j_result);
+    assert_string_equal(result, "[\"hash_mismatch\"]");
+    os_free(result);
+    __real_cJSON_Delete(j_result);
+}
+
+void test_wdb_global_get_groups_integrity_synced(void **state)
+{
+    cJSON* j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
+
+    j_result = wdb_global_get_groups_integrity(data->wdb, "");
+
+    char *result = cJSON_PrintUnformatted(j_result);
+    assert_string_equal(result, "[\"synced\"]");
+    os_free(result);
+    __real_cJSON_Delete(j_result);
+}
+
+void test_wdb_global_get_groups_integrity_error(void **state)
+{
+    cJSON* result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(global) sqlite3_step(): ERROR MESSAGE");
+
+    result = wdb_global_get_groups_integrity(data->wdb, NULL);
+
+    assert_null(result);
+}
+
 /* Tests wdb_global_sync_agent_info_set */
 
 void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
@@ -5318,6 +5404,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_sync_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_full, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_size_limit, test_setup, test_teardown),
+        /* Tests wdb_global_get_groups_integrity */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_statement_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_syncreq, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_hash_mismatch, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_error, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_info_set */
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_cache_fail, test_setup, test_teardown),
