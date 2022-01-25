@@ -356,55 +356,51 @@ class AWSBucket(WazuhIntegration):
     """
     Represents a bucket with events on the inside.
 
-    This is an abstract class
+    This is an abstract class.
+
+    Parameters
+    ----------
+    reparse : bool
+        Whether to parse already parsed logs or not.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    bucket : str
+        Bucket name to extract logs from.
+    only_logs_after : str
+        Date after which obtain logs.
+    skip_on_error : bool
+        Whether to continue processing logs or stop when an error takes place.
+    account_alias: str
+        Alias of the AWS account where the bucket is.
+    prefix : str
+        Prefix to filter files in bucket.
+    suffix : str
+        Suffix to filter files in bucket.
+    delete_file : bool
+        Whether to delete an already processed file from a bucket or not.
+    aws_organization_id : str
+        The AWS organization ID.
+    discard_field : str
+        Name of the event field to apply the regex value on.
+    discard_regex : str
+        REGEX value to determine whether an event should be skipped.
+
+    Attributes
+    ----------
+    date_format : str
+        The format that the service uses to store the date in the bucket's path.
     """
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  prefix, suffix, delete_file, aws_organization_id, region,
                  discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
-        """
-        AWS Bucket constructor.
-
-        Parameters
-        ----------
-        reparse : bool
-            Whether to parse already parsed logs or not.
-        access_key : str
-            AWS access key id.
-        secret_key : str
-            AWS secret access key.
-        profile : str
-            AWS profile.
-        iam_role_arn : str
-            IAM Role.
-        bucket : str
-            Bucket name to extract logs from.
-        only_logs_after : str
-            Date after which obtain logs.
-        skip_on_error : bool
-            Whether to continue processing logs or stop when an error takes place.
-        account_alias: str
-            Alias of the AWS account where the bucket is.
-        prefix : str
-            Prefix to filter files in bucket.
-        suffix : str
-            Suffix to filter files in bucket.
-        delete_file : bool
-            Whether to delete an already processed file from a bucket or not.
-        aws_organization_id : str
-            The AWS organization ID.
-        discard_field : str
-            Name of the event field to apply the regex value on.
-        discard_regex : str
-            REGEX value to determine whether an event should be skipped.
-
-        Attributes
-        ----------
-        date_format : str
-            The format that the service uses to store the date in the bucket's path.
-        """
-
         # common SQL queries
         self.sql_already_processed = """
                           SELECT
