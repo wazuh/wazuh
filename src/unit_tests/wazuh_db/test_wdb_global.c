@@ -7,12 +7,14 @@
 #include <string.h>
 
 #include "wazuh_db/wdb.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
-#include "../wrappers/posix/unistd_wrappers.h"
-#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/time_op_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/posix/time_wrappers.h"
 #include "wazuhdb_op.h"
 
 extern void __real_cJSON_Delete(cJSON *item);
@@ -44,13 +46,6 @@ static int test_teardown(void **state){
     os_free(data);
     wdb_free_conf();
     return 0;
-}
-
-/* wrappers */
-
-// Re-definition to avoid checking the time variable. It requires less changes than mocking time()
-char* __wrap_w_get_timestamp(time_t time) {
-    return mock_type(char*);
 }
 
 /* Tests wdb_global_get_agent_labels */
@@ -4864,6 +4859,7 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Setting agents as disconnected
     for (int i=0; i<agents_amount; i++){
+        will_return(__wrap_time, (time_t)0);
         will_return(__wrap_wdb_begin2, 1);
         will_return(__wrap_wdb_stmt_cache, 1);
         expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -4873,7 +4869,7 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
         expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
         will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 3);
-        expect_value(__wrap_sqlite3_bind_int, value, time(NULL));
+        expect_value(__wrap_sqlite3_bind_int, value, (time_t)0);
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 4);
         expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
@@ -4919,6 +4915,7 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Setting agents as disconnected
     for (int i=0; i<agents_amount; i++){
+        will_return(__wrap_time, (time_t)0);
         will_return(__wrap_wdb_begin2, 1);
         will_return(__wrap_wdb_stmt_cache, 1);
         expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -4928,7 +4925,7 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
         expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
         will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 3);
-        expect_value(__wrap_sqlite3_bind_int, value, time(NULL));
+        expect_value(__wrap_sqlite3_bind_int, value, (time_t)0);
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 4);
         expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
@@ -5033,6 +5030,7 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Disconnect query error
+    will_return(__wrap_time, (time_t)0);
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_any(__wrap__mdebug1, formatted_msg);
@@ -5459,6 +5457,8 @@ void test_wdb_global_create_backup_commit_failed(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_INVALID);
 
@@ -5473,6 +5473,8 @@ void test_wdb_global_create_backup_prepare_failed(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
@@ -5490,6 +5492,8 @@ void test_wdb_global_create_backup_bind_failed(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
@@ -5512,6 +5516,8 @@ void test_wdb_global_create_backup_exec_failed(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
@@ -5535,6 +5541,8 @@ void test_wdb_global_create_backup_compress_failed(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
@@ -5563,6 +5571,8 @@ void test_wdb_global_create_backup_success(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_wdb_finalize_all_statements);
@@ -5633,6 +5643,7 @@ void test_wdb_global_remove_old_backups_success(void **state) {
     will_return(__wrap_opendir, (DIR*)1);
     will_return(__wrap_readdir, entry);
     will_return(__wrap_readdir, NULL);
+    will_return(__wrap_time, (time_t)0);
     struct stat* file_info = calloc(1, sizeof(struct stat));
     file_info->st_mtime = 0;
     expect_string(__wrap_stat, __file, "backup/db/global.db-backup-TIMESTAMP");
@@ -5690,6 +5701,8 @@ void test_wdb_global_restore_backup_pre_restore_failed(void **state) {
     int result = OS_INVALID;
     char* test_date = strdup("2015/11/23 12:00:00");
 
+    will_return(__wrap_time, (time_t)0);
+    expect_value(__wrap_w_get_timestamp, time, 0);
     will_return(__wrap_w_get_timestamp, test_date);
     will_return(__wrap_wdb_commit2, OS_INVALID);
     expect_string(__wrap__merror, formatted_msg, "Creating pre-restore Global DB snapshot failed. Backup restore stopped: "
@@ -5816,6 +5829,7 @@ void test_wdb_global_get_oldest_backup_success(void **state) {
 
     test_mode = 1;
     will_return(__wrap_opendir, (DIR*)1);
+    will_return(__wrap_time, (time_t)123);
     snprintf(entry->d_name, OS_SIZE_256, "%s", "global.db-backup-TIMESTAMP");
     will_return(__wrap_readdir, entry);
     will_return(__wrap_readdir, NULL);
