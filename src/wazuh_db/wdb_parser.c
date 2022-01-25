@@ -829,15 +829,6 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_select_group_belong(wdb, next, output);
             }
-        } else if (strcmp(query, "insert-agent-belong") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for insert-agent-belong.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_insert_agent_belong(wdb, next, output);
-            }
         } else if (strcmp(query, "delete-group-belong") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for delete-group-belong.");
@@ -5198,50 +5189,6 @@ int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) 
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(agent_groups);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output) {
-    cJSON *agent_data = NULL;
-    const char *error = NULL;
-    cJSON *j_id_group = NULL;
-    cJSON *j_id_agent = NULL;
-    cJSON *j_priority = NULL;
-
-    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
-    if (!agent_data) {
-        mdebug1("Global DB Invalid JSON syntax when inserting agent to belongs table.");
-        mdebug2("Global DB JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-        return OS_INVALID;
-    } else {
-        j_id_group = cJSON_GetObjectItem(agent_data, "id_group");
-        j_id_agent = cJSON_GetObjectItem(agent_data, "id_agent");
-        j_priority = cJSON_GetObjectItem(agent_data, "priority");
-
-        if (cJSON_IsNumber(j_id_group) && cJSON_IsNumber(j_id_agent) && cJSON_IsNumber(j_priority)) {
-            // Getting each field
-            int id_group = j_id_group->valueint;
-            int id_agent = j_id_agent->valueint;
-            int priority = j_priority->valueint;
-
-            if (OS_SUCCESS != wdb_global_insert_agent_belong(wdb, id_group, id_agent, priority)) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agent_data);
-                return OS_INVALID;
-            }
-        } else {
-            mdebug1("Global DB Invalid JSON data when inserting agent to belongs table.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
-            cJSON_Delete(agent_data);
-            return OS_INVALID;
-        }
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
-    cJSON_Delete(agent_data);
 
     return OS_SUCCESS;
 }

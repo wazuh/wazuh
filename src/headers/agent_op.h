@@ -58,9 +58,6 @@ int os_write_agent_info(const char *agent_name, const char *agent_ip, const char
                         const char *cfg_profile_name) __attribute__((nonnull(1, 3)));
 
 #ifndef CLIENT
-/* Read agent group. Returns 0 on success or -1 on failure. */
-int get_agent_group(int id, char *group, size_t size, int* wdb_sock);
-
 int set_agent_multigroup(char * group);
 
 #endif
