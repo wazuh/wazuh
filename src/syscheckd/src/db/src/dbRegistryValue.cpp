@@ -18,7 +18,7 @@ void RegistryValue::createFimEntry()
     fim_registry_value_data* value = reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
 
     fim->type = FIM_TYPE_REGISTRY;
-    value->path = const_cast<char *>(m_path.c_str());
+    value->path = const_cast<char*>(m_path.c_str());
     value->size = m_size;
     value->name = const_cast<char*>(m_identifier.c_str());
     std::strncpy(value->hash_md5, m_md5.c_str(), sizeof(value->hash_md5));

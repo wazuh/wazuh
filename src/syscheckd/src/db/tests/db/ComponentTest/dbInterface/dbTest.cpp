@@ -11,7 +11,7 @@
 
 #include "dbTest.h"
 #include "db.h"
-#include <iostream>
+
 
 const auto insertFileStatement = R"({
         "attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2456, "gid":0, "group_name":"root",
