@@ -77,6 +77,7 @@ private:
     std::shared_ptr<uvw::PipeHandle> m_sockethandle;
 
     rxcpp::subjects::subject<nlohmann::json> m_subject;
+    rxcpp::subscriber<nlohmann::json> m_subscriber;
 
 public:
     /**
@@ -87,7 +88,7 @@ public:
      * @param handle Endpoint handler
      */
     ServerEndpoint(EndpointType type, std::string path, std::shared_ptr<uvw::TCPHandle> handle)
-        : m_type{type}, m_path{path}, m_tcphandle{handle} {};
+        : m_type{type}, m_path{path}, m_tcphandle{handle}, m_subscriber(m_subject.get_subscriber()){};
     /**
      * @brief Construct a new Server Endpoint object given a UDPHandle
      *
@@ -96,7 +97,7 @@ public:
      * @param handle Endpoint handler
      */
     ServerEndpoint(EndpointType type, std::string path, std::shared_ptr<uvw::UDPHandle> handle)
-        : m_type{type}, m_path{path}, m_udphandle{handle} {};
+        : m_type{type}, m_path{path}, m_udphandle{handle}, m_subscriber(m_subject.get_subscriber()){};
     /**
      * @brief Construct a new Server Endpoint object given a PipeHandle (Socket)
      *
@@ -105,7 +106,7 @@ public:
      * @param handle Endpoint handler
      */
     ServerEndpoint(EndpointType type, std::string path, std::shared_ptr<uvw::PipeHandle> handle)
-        : m_type{type}, m_path{path}, m_sockethandle{handle} {};
+        : m_type{type}, m_path{path}, m_sockethandle{handle}, m_subscriber(m_subject.get_subscriber()){};
 
     /**
      * @brief Destroy the Server Endpoint object
@@ -173,6 +174,16 @@ public:
     };
 
     /**
+     * @brief Get the Subscriber object
+     *
+     * @return auto Subscriber object
+     */
+    auto getSubscriber(void)
+    {
+        return m_subscriber;
+    };
+
+    /**
      * @brief Get the Observable object
      *
      * @return auto Observable object
@@ -234,6 +245,26 @@ public:
      */
     std::optional<rxcpp::subjects::subject<nlohmann::json>> getEndpointSubject(const EndpointType type, const int port,
                                                                                const std::string ip = "0.0.0.0");
+
+    /**
+     * @brief Get the Subscriber object from a Server's endpoint
+     *
+     * @param type Endpoint's type
+     * @param path Endpoint's path
+     * @return std::optional<rxcpp::subscriber<nlohmann::json>> Optional Endpoint's Subject object
+     */
+    std::optional<rxcpp::subscriber<nlohmann::json>> getEndpointSubscriber(const EndpointType type,
+                                                                           const std::string path);
+    /**
+     * @brief Get the Subscriber object from a Server's endpoint
+     *
+     * @param type Endpoint's type
+     * @param port Endpoint's port
+     * @param ip Endpoint's ip
+     * @return std::optional<rxcpp::subscriber<nlohmann::json>> Optional Endpoint's Subject object
+     */
+    std::optional<rxcpp::subscriber<nlohmann::json>> getEndpointSubscriber(const EndpointType type, const int port,
+                                                                           const std::string ip = "0.0.0.0");
 
     /**
      * @brief Get the Observable object from a Server's endpoint
