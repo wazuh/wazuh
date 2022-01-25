@@ -186,5 +186,5 @@ TEST(OutputBuilderTest, OperatesAndConnects)
         ASSERT_EQ(observed[i].str(), expected);
     }
 
-    //std::filesystem::remove("/tmp/file");
+    // std::filesystem::remove("/tmp/file");
 }
