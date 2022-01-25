@@ -800,13 +800,13 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
             elif token_response['error'] == 'invalid_client':
                 err_msg = "The application key provided is not valid."
             elif token_response['error'] == 'invalid_request' and 90002 in token_response['error_codes']:
-                err_msg = "The tenant domain used was not found."
+                err_msg = f"The '{domain}' tenant domain was not found."
             else:
                 err_msg = "Couldn't get the token for authentication."
             logging.error(f"Error: {err_msg}")
         sys.exit(1)
     except RequestException as e:
-        logging.error(f"Error: An error occurred while trying to connect with Azure: {e}")
+        logging.error(f"Error: An error occurred while trying to obtain the authentication token: {e}")
         sys.exit(1)
 
 
