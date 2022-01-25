@@ -20,13 +20,15 @@
 #include "hash_op.h"
 
 #include "../wrappers/common.h"
-#include "../wrappers/posix/pthread_wrappers.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
-#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
+#include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/posix/time_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 
 typedef struct test_struct {
     wdb_t *wdb;
@@ -36,11 +38,16 @@ typedef struct test_struct {
 /* setup/teardown */
 
 int setup_wdb(void **state) {
+
     test_mode = 1;
+
+    will_return(__wrap_time, 0);
+
     open_dbs = __real_OSHash_Create();
     if (open_dbs == NULL) {
         return -1;
     }
+
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
@@ -657,6 +664,8 @@ void test_wdb_exec_stmt_send_statement_invalid(void **state) {
 void test_wdb_init_stmt_in_cache_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
+    will_return_always(__wrap_time, 0);
+
     // wdb_begin2
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
     expect_sqlite3_step_call(SQLITE_DONE);
@@ -690,6 +699,8 @@ void test_wdb_init_stmt_in_cache_invalid_statement(void **state) {
     int STR_SIZE = 48;
     char error_message[STR_SIZE];
     snprintf(error_message, STR_SIZE, "DB(000) SQL statement index (%d) out of bounds", WDB_STMT_SIZE);
+
+    will_return_always(__wrap_time, 0);
 
     // wdb_begin2
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -752,6 +763,143 @@ void test_wdb_get_config(){
     cJSON_Delete(ret);
 }
 
+void test_wdb_exec_single_column(){
+    char col_text[4][16] = { 0 };
+
+    for (int i = 0; i < 4; ++i) {
+        expect_sqlite3_step_call(SQLITE_ROW);
+        will_return(__wrap_sqlite3_column_count, 1);
+        expect_value(__wrap_sqlite3_column_type, i, 0);
+        will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
+        snprintf(col_text[i], 16, "COL_TEXT_%d", i);
+        expect_value(__wrap_sqlite3_column_text, iCol, 0);
+        will_return(__wrap_sqlite3_column_text, col_text[i]);
+    }
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    sqlite3_stmt *stmt = (sqlite3_stmt *)1;
+    cJSON *ret = wdb_exec_stmt_single_column(stmt);
+    char *ret_str = cJSON_PrintUnformatted(ret);
+
+    assert_string_equal("[\"COL_TEXT_0\",\"COL_TEXT_1\",\"COL_TEXT_2\",\"COL_TEXT_3\"]", ret_str);
+
+    cJSON_Delete(ret);
+    free(ret_str);
+}
+
+void test_wdb_exec_single_column_invalid_stmt(){
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
+
+    cJSON *ret = wdb_exec_stmt_single_column(0);
+
+    assert_null(ret);
+}
+
+void test_wdb_exec_single_column_sql_error(){
+    expect_sqlite3_step_call(SQLITE_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
+
+    sqlite3_stmt *stmt = (sqlite3_stmt *)1;
+    cJSON *ret = wdb_exec_stmt_single_column(stmt);
+    assert_null(ret);
+}
+
+void test_wdb_leave(){
+    wdb_t wdb;
+    wdb.refcount = 1;
+    wdb.last = 1;
+
+    will_return(__wrap_time, 0);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_leave(&wdb);
+
+    assert_null(wdb.refcount);
+    assert_null(wdb.last);
+}
+
+void test_wdb_finalize_all_statements(){
+    const int kMaxStmt = 10;
+    wdb_t wdb = {0};
+
+    for (int i = 0; i < kMaxStmt; ++i) { wdb.stmt[i] = (sqlite3_stmt *)0xDEADBEEF; }
+
+    struct stmt_cache_list** c = &(wdb.cache_list);
+    for(int i = 0; i < kMaxStmt; ++i){
+        *c = calloc(1, sizeof(struct stmt_cache_list));
+
+        (*c)->value.stmt = (sqlite3_stmt*) 0xDEADBEEF;
+
+        c = &((*c)->next);
+    }
+
+    *c = 0;
+
+    // free the prepared statements
+    will_return_count(__wrap_sqlite3_finalize, 1, kMaxStmt);
+
+    // free the statement cache
+    will_return_count(__wrap_sqlite3_finalize, 1, kMaxStmt);
+
+    wdb_finalize_all_statements(&wdb);
+
+    for (int i = 0; i < kMaxStmt; ++i) { assert_null(wdb.stmt[i]); }
+    assert_null(wdb.cache_list);
+}
+
+void test_wdb_close_refcount_error(){
+    wdb_t wdb = {0};
+    wdb.refcount = 1;
+    wdb.id = "agent";
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_string(__wrap__mdebug1, formatted_msg, "Couldn't close database for agent agent: refcount = 1");
+
+    assert_int_equal(-1, wdb_close(&wdb, 0));
+}
+
+void test_wdb_close_no_commit_sqlerror(){
+    wdb_t wdb = {0};
+    wdb.id = "agent";
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_sqlite3_close_v2, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "mock_error");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(agent) wdb_close(): mock_error");
+
+    assert_int_equal(-1, wdb_close(&wdb, 0));
+}
+
+void test_wdb_close(){
+    wdb_t *wdb = calloc(1, sizeof(wdb_t));
+    wdb->id = strdup("agent");
+
+    test_mode = 1;
+
+    open_dbs = (OSHash *)0xDEADBEEF;
+
+    expect_string(__wrap_OSHash_Add, key, wdb->id);
+    will_return(__wrap_OSHash_Add, 2);
+    wdb_pool_append(wdb);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_sqlite3_close_v2, SQLITE_OK);
+
+    expect_value(__wrap_OSHash_Delete, self, open_dbs);
+    expect_string(__wrap_OSHash_Delete, key, wdb->id);
+    will_return(__wrap_OSHash_Delete, 1);
+
+    assert_int_equal(0, wdb_close(wdb, 0));
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         // wdb_open_tasks
@@ -791,8 +939,22 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_transaction, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_statement, setup_wdb, teardown_wdb),
+        // wdb_get_config
         cmocka_unit_test_setup_teardown(test_wdb_get_config, wazuh_db_config_setup, wazuh_db_config_teardown),
-        cmocka_unit_test(test_wdb_get_internal_config)
+        // wdb_get_internal_config
+        cmocka_unit_test(test_wdb_get_internal_config),
+        // wdb_exec_single_conlumn
+        cmocka_unit_test(test_wdb_exec_single_column),
+        cmocka_unit_test(test_wdb_exec_single_column_invalid_stmt),
+        cmocka_unit_test(test_wdb_exec_single_column_sql_error),
+        // wdb_leave
+        cmocka_unit_test(test_wdb_leave),
+        // wdb_finalize_all_statements
+        cmocka_unit_test(test_wdb_finalize_all_statements),
+        // wdb_close
+        cmocka_unit_test(test_wdb_close_refcount_error),
+        cmocka_unit_test(test_wdb_close_no_commit_sqlerror),
+        cmocka_unit_test(test_wdb_close),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
