@@ -69,6 +69,7 @@ typedef enum wdb_groups_set_mode_t {
         WDB_GROUP_OVERRIDE,     ///< Re-write the group assignment
         WDB_GROUP_APPEND,       ///< Add group assignment to the existent one
         WDB_GROUP_EMPTY_ONLY,   ///< Write a group assignment only if the agent doesn´t have one
+        WDB_GROUP_REMOVE,       ///< Removes a list of group assignments
         WDB_GROUP_INVALID_MODE  ///< Invalid mode
 } wdb_groups_set_mode_t;
 
@@ -210,8 +211,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
-    WDB_STMT_GLOBAL_DELETE_GROUP_BELONG,
+    WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
+    WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
@@ -1210,22 +1212,7 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
 int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
- * @brief Function to parse the delete group from belongs table request.
  *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the delete group request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
@@ -1853,13 +1840,23 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
 int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
 
 /**
- * @brief Function to delete a group from belongs table using the group name.
+ * @brief Function to remove an agent-group tuple from the belongs table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id_group The group id.
+ * @param [in] id_agent The agent id.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_remove_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
+
+/**
+ * @brief Function to check if a group is empty.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] group_name The group name.
- * @return Returns 0 on success or -1 on error.
+ * @return Returns true if the group is empty, false if it isn´t empty or error.
  */
-int wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
+bool wdb_is_group_empty(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.
@@ -1985,16 +1982,26 @@ cJSON* wdb_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
 int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
 
 /**
- * @brief Writes the groups of an agent.
+ * @brief Writes groups to an agent.
  *        If the group doesn´t exists it creates it.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] id ID of the agent to obtain the priority.
+ * @param [in] id ID of the agent to add new groups.
  * @param [in] j_groups JSON array with all the groups of the agent.
  * @param [in] priority Initial priority to insert the groups.
  * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority);
+
+/**
+ * @brief Deletes groups of an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to remove the groups.
+ * @param [in] j_groups JSON array with all the groups to remove from the agent.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
 
 /**
  * @brief Sets the belongship af a set of agents.
