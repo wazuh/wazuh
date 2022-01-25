@@ -73,6 +73,11 @@ void EngineServer::listenTCP(const int port, const std::string ip)
                         auto eventObject = parseEvent(std::string(event.data.get(), event.length));
                         obs.value().on_next(eventObject);
                     }
+                    else
+                    {
+                        std::cerr << "Endpoint could not be found: " << client.sock().port << ":" << srv.sock().ip
+                                  << std::endl;
+                    }
                 });
 
             client->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::TCPHandle & client) { client.close(); });
@@ -116,6 +121,10 @@ void EngineServer::listenUDP(const int port, const std::string ip)
                 auto eventObject = parseEvent(std::string(event.data.get(), event.length));
                 obs.value().on_next(eventObject);
             }
+            else
+            {
+                std::cerr << "Endpoint could not be found: " << udp.sock().port << ":" << udp.sock().ip << std::endl;
+            }
         });
 
     udp->bind(ip, port);
@@ -155,6 +164,10 @@ void EngineServer::listenSocket(const std::string path)
                     {
                         auto eventObject = parseEvent(std::string(event.data.get(), event.length));
                         obs.value().on_next(eventObject);
+                    }
+                    else
+                    {
+                        std::cerr << "Endpoint could not be found: " << client.sock() << std::endl;
                     }
                 });
 
