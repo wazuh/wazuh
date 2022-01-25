@@ -1,3 +1,6 @@
+#ifndef _GRAPH_TEST_H
+#define _GRAPH_TEST_H
+
 #include <chrono>
 #include <thread>
 #include <type_traits>
@@ -41,3 +44,5 @@ public:
         return this->m_subj.get_subscriber();
     }
 };
+
+#endif // _GRAPH_TEST_H

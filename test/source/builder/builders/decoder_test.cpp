@@ -31,8 +31,9 @@ TEST(DecoderBuilderTest, Builds)
     ASSERT_NO_THROW(auto obs = decoderBuilder(fake_j));
 }
 
-TEST(DecoderBuilderTest, BuildsErrorNoName){
-      // Fake entry point
+TEST(DecoderBuilderTest, BuildsErrorNoName)
+{
+    // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
 
     // Fake input json
@@ -52,8 +53,9 @@ TEST(DecoderBuilderTest, BuildsErrorNoName){
     ASSERT_THROW(auto obs = decoderBuilder(fake_j), invalid_argument);
 }
 
-TEST(DecoderBuilderTest, BuildsErrorNoCheck){
-      // Fake entry point
+TEST(DecoderBuilderTest, BuildsErrorNoCheck)
+{
+    // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
 
     // Fake input json
