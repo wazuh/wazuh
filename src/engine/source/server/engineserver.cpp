@@ -27,6 +27,8 @@ nlohmann::json protocolhandler::parseEvent(std::string event)
     catch (const std::exception & e)
     {
         std::cerr << "ERROR (" << e.what() << "): Can not extract queue from the event: \"" << event << "\"\n";
+        object["error"] = e.what();
+        return object;
     }
 
     separator_pos = event_slice.find(":");
@@ -48,8 +50,9 @@ void EngineServer::listenTCP(const int port, const std::string ip)
     tcp->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::TCPHandle & tcp)
         {
-            printf("TCP Server (%s:%d) error: code=%d; name=%s; message=%s\n", tcp.sock().ip.c_str(), tcp.sock().port,
-                   event.code(), event.name(), event.what());
+            std::cerr << "TCP Server (" << tcp.sock().ip.c_str() << ":" << tcp.sock().port
+                      << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
+                      << std::endl;
         });
 
     tcp->on<uvw::ListenEvent>(
@@ -60,8 +63,9 @@ void EngineServer::listenTCP(const int port, const std::string ip)
             client->on<uvw::ErrorEvent>(
                 [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
                 {
-                    printf("TCP Client (%s:%d) error: code=%d; name=%s; message=%s\n", client.peer().ip.c_str(),
-                           client.peer().port, event.code(), event.name(), event.what());
+                    std::cerr << "TCP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
+                              << ") error: code=" << event.code() << "; name=" << event.name()
+                              << "; message=" << event.what() << std::endl;
                 });
 
             client->on<uvw::DataEvent>(
@@ -71,7 +75,14 @@ void EngineServer::listenTCP(const int port, const std::string ip)
                     if (obs)
                     {
                         auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                        obs.value().on_next(eventObject);
+                        if (!eventObject.contains("error"))
+                        {
+                            obs.value().on_next(eventObject);
+                        }
+                        else
+                        {
+                            // TODO: complete this case
+                        }
                     }
                     else
                     {
@@ -99,8 +110,9 @@ void EngineServer::listenUDP(const int port, const std::string ip)
     udp->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::UDPHandle & udp)
         {
-            printf("UDP Server (%s:%d) error: code=%d; name=%s; message=%s\n", udp.sock().ip.c_str(), udp.sock().port,
-                   event.code(), event.name(), event.what());
+            std::cerr << "UDP Server (" << udp.sock().ip.c_str() << ":" << udp.sock().port
+                      << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
+                      << std::endl;
         });
 
     udp->on<uvw::UDPDataEvent>(
@@ -111,15 +123,23 @@ void EngineServer::listenUDP(const int port, const std::string ip)
             client->on<uvw::ErrorEvent>(
                 [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
                 {
-                    printf("UDP Client (%s:%d) error: code=%d; name=%s; message=%s\n", client.peer().ip.c_str(),
-                           client.peer().port, event.code(), event.name(), event.what());
+                    std::cerr << "UDP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
+                              << ") error: code=" << event.code() << "; name=" << event.name()
+                              << "; message=" << event.what() << std::endl;
                 });
 
             auto obs = this->getEndpointSubscriber(EndpointType::UDP, udp.sock().port, udp.sock().ip);
             if (obs)
             {
                 auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                obs.value().on_next(eventObject);
+                if (!eventObject.contains("error"))
+                {
+                    obs.value().on_next(eventObject);
+                }
+                else
+                {
+                    // TODO: complete this case
+                }
             }
             else
             {
@@ -140,8 +160,8 @@ void EngineServer::listenSocket(const std::string path)
     socket->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)
         {
-            printf("FIFO Server (%s) error: code=%d; name=%s; message=%s\n", socket.sock().c_str(), event.code(),
-                   event.name(), event.what());
+            std::cerr << "FIFO Server (" << socket.sock().c_str() << ") error: code=" << event.code()
+                      << "; name=" << event.name() << "; message=" << event.what() << std::endl;
         });
 
     socket->on<uvw::ListenEvent>(
@@ -152,8 +172,8 @@ void EngineServer::listenSocket(const std::string path)
             client->on<uvw::ErrorEvent>(
                 [](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)
                 {
-                    printf("FIFO Client (%s) error: code=%d; name=%s; message=%s\n", socket.peer().c_str(),
-                           event.code(), event.name(), event.what());
+                    std::cerr << "FIFO Client (" << socket.peer().c_str() << ") error: code=" << event.code()
+                              << "; name=" << event.name() << "; message=" << event.what() << std::endl;
                 });
 
             client->on<uvw::DataEvent>(
@@ -163,7 +183,14 @@ void EngineServer::listenSocket(const std::string path)
                     if (obs)
                     {
                         auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                        obs.value().on_next(eventObject);
+                        if (!eventObject.contains("error"))
+                        {
+                            obs.value().on_next(eventObject);
+                        }
+                        else
+                        {
+                            // TODO: complete this case
+                        }
                     }
                     else
                     {
@@ -198,8 +225,8 @@ void EngineServer::listenSignal(const int signum, void (*const signal_wrapper)(v
     signal->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::SignalHandle & signal)
         {
-            printf("Signal (%d) error: code=%d; name=%s; message=%s\n", signal.signal(), event.code(), event.name(),
-                   event.what());
+            std::cerr << "Signal (" << signal.signal() << ") error: code=" << event.code() << "; name=" << event.name()
+                      << "; message=" << event.what() << std::endl;
         });
 
     signal->on<uvw::SignalEvent>([signal_wrapper](const uvw::SignalEvent & event, uvw::SignalHandle & signal)
@@ -214,7 +241,10 @@ void EngineServer::setTimer(const int timeout, const int repeat, void (*const ca
 
     timer->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::TimerHandle & timer)
-        { printf("Timer error: code=%d; name=%s; message=%s\n", event.code(), event.name(), event.what()); });
+        {
+            std::cerr << "Timer error: code=" << event.code() << "; name=" << event.name()
+                      << "; message=" << event.what() << std::endl;
+        });
 
     timer->on<uvw::TimerEvent>([callback](const uvw::TimerEvent & event, uvw::TimerHandle & signal)
                                { callback(nullptr); });
@@ -339,8 +369,5 @@ EngineServer::EngineServer()
 
 EngineServer::~EngineServer()
 {
-    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Closes all the handles
-    m_loop->stop();
-    m_loop->clear();
-    m_loop->close();
+    close();
 }
