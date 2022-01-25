@@ -788,15 +788,15 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
 
 void test_wdb_global_get_groups_integrity_statement_fail(void **state)
 {
-    cJSON* result = NULL;
+    cJSON* j_result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
 
-    result = wdb_global_get_groups_integrity(data->wdb, NULL);
+    j_result = wdb_global_get_groups_integrity(data->wdb, NULL);
 
-    assert_null(result);
+    assert_null(j_result);
 }
 
 void test_wdb_global_get_groups_integrity_syncreq(void **state)
@@ -856,7 +856,7 @@ void test_wdb_global_get_groups_integrity_synced(void **state)
 
 void test_wdb_global_get_groups_integrity_error(void **state)
 {
-    cJSON* result = NULL;
+    cJSON* j_result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
@@ -865,9 +865,9 @@ void test_wdb_global_get_groups_integrity_error(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(global) sqlite3_step(): ERROR MESSAGE");
 
-    result = wdb_global_get_groups_integrity(data->wdb, NULL);
+    j_result = wdb_global_get_groups_integrity(data->wdb, NULL);
 
-    assert_null(result);
+    assert_null(j_result);
 }
 
 /* Tests wdb_global_sync_agent_info_set */
