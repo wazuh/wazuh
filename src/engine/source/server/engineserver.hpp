@@ -11,6 +11,7 @@
 #define _ENGINESERVER_H_
 
 #include <mutex>
+#include <optional>
 #include <queue>
 
 #include <nlohmann/json.hpp>
