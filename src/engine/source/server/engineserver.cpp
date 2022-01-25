@@ -67,11 +67,11 @@ void EngineServer::listenTCP(const int port, const std::string ip)
             client->on<uvw::DataEvent>(
                 [this, &srv](const uvw::DataEvent & event, uvw::TCPHandle & client)
                 {
-                    auto obs = this->getEndpointSubject(EndpointType::TCP, client.sock().port, srv.sock().ip);
+                    auto obs = this->getEndpointSubscriber(EndpointType::TCP, client.sock().port, srv.sock().ip);
                     if (obs)
                     {
                         auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                        obs.value().get_subscriber().on_next(eventObject);
+                        obs.value().on_next(eventObject);
                     }
                 });
 
@@ -110,11 +110,11 @@ void EngineServer::listenUDP(const int port, const std::string ip)
                            client.peer().port, event.code(), event.name(), event.what());
                 });
 
-            auto obs = this->getEndpointSubject(EndpointType::UDP, udp.sock().port, udp.sock().ip);
+            auto obs = this->getEndpointSubscriber(EndpointType::UDP, udp.sock().port, udp.sock().ip);
             if (obs)
             {
                 auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                obs.value().get_subscriber().on_next(eventObject);
+                obs.value().on_next(eventObject);
             }
         });
 
@@ -150,11 +150,11 @@ void EngineServer::listenSocket(const std::string path)
             client->on<uvw::DataEvent>(
                 [this](const uvw::DataEvent & event, uvw::PipeHandle & client)
                 {
-                    auto obs = this->getEndpointSubject(EndpointType::SOCKET, client.sock());
+                    auto obs = this->getEndpointSubscriber(EndpointType::SOCKET, client.sock());
                     if (obs)
                     {
                         auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                        obs.value().get_subscriber().on_next(eventObject);
+                        obs.value().on_next(eventObject);
                     }
                 });
 
@@ -241,6 +241,42 @@ std::optional<rxcpp::subjects::subject<nlohmann::json>> EngineServer::getEndpoin
             continue;
         else
             return it->getSubject();
+    }
+    return {};
+};
+
+std::optional<rxcpp::subscriber<nlohmann::json>> EngineServer::getEndpointSubscriber(const EndpointType type,
+                                                                                     const std::string path)
+{
+    std::list<ServerEndpoint>::iterator it;
+    for (it = m_endpointList.begin(); it != m_endpointList.end(); ++it)
+    {
+        if (it->getType() != type)
+            continue;
+        if (it->getPath().compare(path))
+            continue;
+        else
+            return it->getSubscriber();
+    }
+    return {};
+};
+
+std::optional<rxcpp::subscriber<nlohmann::json>> EngineServer::getEndpointSubscriber(const EndpointType type,
+                                                                                     const int port,
+                                                                                     const std::string ip)
+{
+    std::list<ServerEndpoint>::iterator it;
+
+    auto path = std::string() + ip + ":" + std::to_string(port);
+
+    for (it = m_endpointList.begin(); it != m_endpointList.end(); ++it)
+    {
+        if (it->getType() != type)
+            continue;
+        if (it->getPath().compare(path))
+            continue;
+        else
+            return it->getSubscriber();
     }
     return {};
 };
