@@ -37,7 +37,7 @@ TEST(NormalizeStageTest, BuildsErrorExpectsArray)
     auto fake_jstring = R"(
     {
       "name": "test_normalize_stage",
-      "map": 
+      "map":
         {"mapped": 2}
     }
     )";
@@ -93,5 +93,5 @@ TEST(NormalizeStageTest, Operates)
     // Operate
     ASSERT_NO_THROW(_observable.subscribe(subscriber));
     ASSERT_EQ(observed.size(), 3);
-    for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped")->GetInt(),1); });
+    for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped")->GetInt(), 1); });
 }

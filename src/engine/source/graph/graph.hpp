@@ -1,3 +1,6 @@
+#ifndef _GRAPH_H
+#define _GRAPH_H
+
 #include <type_traits>
 
 #include "rxcpp/rx.hpp"
@@ -152,3 +155,5 @@ template <class T> std::stringstream print(std::shared_ptr<Node<T>> root)
 }
 
 } // namespace graph
+
+#endif // _GRAPH_H
