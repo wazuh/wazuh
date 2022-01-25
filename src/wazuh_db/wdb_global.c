@@ -793,8 +793,8 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
     }
 }
 
-int wdb_global_remove_agent_belong(wdb_t *wdb, int id_group, int id_agent) {
-    sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_DELETE_AGENT_BELONG);
+int wdb_global_remove_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
+    sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG);
     if (stmt == NULL) {
         return OS_INVALID;
     }
@@ -824,7 +824,7 @@ bool wdb_is_group_empty(wdb_t *wdb, char* group_name) {
 
 int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     if (!wdb_is_group_empty(wdb, group_name)) {
-        mdebug1("Unable to delete group '%s', an agent is still belonging to it", group_name);
+        mdebug1("Unable to delete group '%s', the group isn't empty", group_name);
         return OS_INVALID;
     }
 
@@ -929,12 +929,12 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_DELETE_ALL_AGENT_BELONG) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_DELETE_AGENT_BELONG) < 0) {
         mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_DELETE_ALL_AGENT_BELONG];
+    stmt = wdb->stmt[WDB_STMT_GLOBAL_DELETE_AGENT_BELONG];
 
     if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -1218,7 +1218,7 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
             cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
             int group_id = j_group_id->valueint;
             cJSON_Delete(j_find_response);
-            if (OS_INVALID == wdb_global_remove_agent_belong(wdb, group_id, id)) {
+            if (OS_INVALID == wdb_global_remove_tuple_belong(wdb, group_id, id)) {
                 result = WDBC_ERROR;
             }
         }
