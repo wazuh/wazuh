@@ -368,7 +368,7 @@ void sync_keys_with_wdb(keystore *keys) {
             continue;
         }
 
-        char* group = wdb_get_agent_group(atoi(entry->id), NULL);
+        char* group = wdb_get_agent_group(atoi(entry->id), &wdb_wmdb_sock);
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
                              entry->ip->ip : cidr, entry->raw_key, group, 1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
