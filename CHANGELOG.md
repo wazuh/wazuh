@@ -365,7 +365,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
-## [v4.2.5]
+## [v4.2.5] - 2021-11-15
 
 ### Manager
 

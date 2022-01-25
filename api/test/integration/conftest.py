@@ -25,6 +25,7 @@ login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
+agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
 
 
 def pytest_addoption(parser):
@@ -259,10 +260,11 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
 
 
 def save_logs(test_name: str):
-    """Save API, cluster and Wazuh logs from every node in the cluster if tests fail.
+    """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
 
-    Example:
-    "test_{test_name}-{node}-{log}" -> "test_decoder-worker1-api.log"
+    Examples:
+    "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
+    "test_{test_name}-{node/agent}-{log}" -> "test_decoder-agent4-ossec.log"
 
     Parameters
     ----------
@@ -270,6 +272,8 @@ def save_logs(test_name: str):
         Name of the test.
     """
     logs_path = '/var/ossec/logs'
+
+    # Save cluster nodes' logs
     logs = ['api.log', 'cluster.log', 'ossec.log']
     for node in env_cluster_nodes:
         for log in logs:
@@ -280,6 +284,16 @@ def save_logs(test_name: str):
                     shell=True)
             except subprocess.CalledProcessError:
                 continue
+
+    # Save agents' logs
+    for agent in agent_names:
+        try:
+            subprocess.check_output(
+                f"docker cp env_wazuh-{agent}_1:{os.path.join(logs_path, 'ossec.log')} "
+                f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
+                shell=True)
+        except subprocess.CalledProcessError:
+            continue
 
 
 @pytest.fixture(scope='session', autouse=True)
