@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -16,9 +16,11 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
+
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
         import wazuh.core.cluster.cluster
         import wazuh.core.cluster.utils
         from wazuh import WazuhException

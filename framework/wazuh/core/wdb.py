@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -104,7 +104,7 @@ class WazuhDBConnection:
         elif raw:
             return data
         else:
-            return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+            return WazuhDBConnection.loads(data[1])
 
     def _recvall(self, data_size, buffer_size=4096):
         data = bytearray()
@@ -127,6 +127,28 @@ class WazuhDBConnection:
                 result[k] = v
 
         return result
+
+    @staticmethod
+    def loads(string):
+        """Custom implementation for the JSON loads method with the class decoder.
+        This method takes care of the possible emtpy objects that may be load.
+
+        Parameters
+        ----------
+        string : str
+            String response from `wazuh-db`. It must be a dumped JSON.
+
+        Returns
+        -------
+        JSON
+            JSON object.
+        """
+        data = json.loads(string, object_hook=WazuhDBConnection.json_decoder)
+        if '"(null)"' in string:
+            # To prevent empty dictionaries, clean data if there was any `"(null)"` within the string
+            data = [item for item in data if item]
+
+        return data
 
     def __query_lower(self, query):
         """
@@ -222,7 +244,7 @@ class WazuhDBConnection:
             try:
                 request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset', 'offset {}'.format(off))
                 request_response = self._send(request, raw=True)[1]
-                response.extend(json.loads(request_response, object_hook=WazuhDBConnection.json_decoder))
+                response.extend(WazuhDBConnection.loads(request_response))
                 if len(request_response)*2 < MAX_SOCKET_BUFFER_SIZE:
                     return step*2
                 else:
@@ -288,7 +310,7 @@ class WazuhDBConnection:
             except IndexError:
                 total = 0
 
-            limit = lim if lim != 0 else total
+            limit = lim if lim != 0 and lim < total else total
 
             response = []
             if ':limit' not in query_lower:

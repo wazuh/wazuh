@@ -1,11 +1,10 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import concurrent.futures
 from json import JSONDecodeError
 from logging import getLogger
-from time import time
+from datetime import datetime
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPException
@@ -21,7 +20,6 @@ from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
 
 logger = getLogger('wazuh-api')
-pool = concurrent.futures.ThreadPoolExecutor()
 
 
 def _cleanup_detail_field(detail):
@@ -52,7 +50,7 @@ async def unlock_ip(request, block_time):
     """This function blocks/unblocks the IPs that are requesting an API token"""
     global ip_block, ip_stats
     try:
-        if time() - block_time >= ip_stats[request.remote]['timestamp']:
+        if datetime.utcnow().timestamp() - block_time >= ip_stats[request.remote]['timestamp']:
             del ip_stats[request.remote]
             ip_block.remove(request.remote)
     except (KeyError, ValueError):
@@ -70,7 +68,7 @@ async def prevent_bruteforce_attack(request, attempts=5):
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
-            ip_stats[request.remote]['timestamp'] = time()
+            ip_stats[request.remote]['timestamp'] = datetime.utcnow().timestamp()
         else:
             ip_stats[request.remote]['attempts'] += 1
 
@@ -96,13 +94,13 @@ async def prevent_denial_of_service(request, max_requests=300):
     """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
     global current_time, request_counter
     if not current_time:
-        current_time = time()
+        current_time = datetime.utcnow().timestamp()
 
-    if time() - 60 <= current_time:
+    if datetime.utcnow().timestamp() - 60 <= current_time:
         request_counter += 1
     else:
         request_counter = 0
-        current_time = time()
+        current_time = datetime.utcnow().timestamp()
 
     if request_counter > max_requests:
         logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')

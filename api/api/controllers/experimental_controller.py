@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -24,7 +24,7 @@ def check_experimental_feature_value(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not configuration.api_conf['experimental_features']:
-            raise_if_exc(WazuhResourceNotFound(code=1122))
+            raise_if_exc(WazuhResourceNotFound(1122))
         else:
             return func(*args, **kwargs)
     return wrapper

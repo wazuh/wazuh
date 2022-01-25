@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -207,6 +207,15 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             free(tmp_ar);
             free(tmp_location);
             return (-1);
+        }
+
+        if (atoi(tmp_ar->agent_id) == 0) {
+            mdebug1("'defined-agent' is 0");
+            mwarn(AR_SERVER_AGENT);
+            fclose(fp);
+            free(tmp_ar);
+            free(tmp_location);
+            return 0;
         }
 
         tmp_ar->location |= SPECIFIC_AGENT;

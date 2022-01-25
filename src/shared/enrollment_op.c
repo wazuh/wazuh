@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -210,7 +210,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     SSL_CTX *ctx = os_ssl_keys(0, NULL, cfg->cert_cfg->ciphers,
         cfg->cert_cfg->agent_cert, cfg->cert_cfg->agent_key, cfg->cert_cfg->ca_cert, cfg->cert_cfg->auto_method);
     if (!ctx) {
-        merror("Could not set up SSL connection! Check ceritification configuration.");
+        merror("Could not set up SSL connection! Check certification configuration.");
         os_free(ip_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
     }
@@ -218,7 +218,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     /* Connect via TCP */
     int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, 0);
     if (sock < 0) {
-        merror("Unable to connect to %s:%d", ip_address, cfg->target_cfg->port);
+        merror(AUTH_CONN_ERROR, ip_address, cfg->target_cfg->port);
         os_free(ip_address);
         SSL_CTX_free(ctx);
         return ENROLLMENT_CONNECTION_FAILURE;
@@ -240,7 +240,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 
-    mdebug1("Connected to %s:%d", ip_address, cfg->target_cfg->port);
+    mdebug1(AUTH_CONNECTED, ip_address, cfg->target_cfg->port);
 
     w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
 
@@ -467,7 +467,7 @@ static int w_enrollment_process_agent_key(char *buffer) {
 /**
  * Verifies the manager's ca certificate. Displays a warning message if it does not match
  * @param ssl SSL connection established with the manager
- * @param ca_cert cerificate to verify
+ * @param ca_cert certificate to verify
  * @param hostname
  * */
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname) {

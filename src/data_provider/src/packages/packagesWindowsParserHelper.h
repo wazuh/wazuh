@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * February 25, 2021.
  *
  * This program is free software; you can redistribute it
@@ -42,11 +42,10 @@ namespace PackageWindowsHelper
         return ret;
     }
 
-    static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    static void getHotFixFromReg(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
     {
         try
         {
-            std::set<std::string> hotfixes;
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             const auto callback
             {
@@ -79,24 +78,16 @@ namespace PackageWindowsHelper
                 }
             };
             root.enumerate(callback);
-
-            for (auto& hotfix : hotfixes)
-            {
-                nlohmann::json hotfixValue;
-                hotfixValue["hotfix"] = std::move(hotfix);
-                data.push_back(std::move(hotfixValue));
-            }
         }
         catch (...)
         {
         }
     }
 
-    static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
     {
         try
         {
-            std::set<std::string> hotfixes;
             const auto callback
             {
                 [&key, &subKey, &hotfixes](const std::string & package)
@@ -112,23 +103,16 @@ namespace PackageWindowsHelper
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             root.enumerate(callback);
 
-            for (auto& hotfix : hotfixes)
-            {
-                nlohmann::json hotfixValue;
-                hotfixValue["hotfix"] = std::move(hotfix);
-                data.push_back(std::move(hotfixValue));
-            }
         }
         catch (...)
         {
         }
     }
 
-    static void getHotFixFromRegWOW(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    static void getHotFixFromRegWOW(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
     {
         try
         {
-            std::set<std::string> hotfixes;
             const auto callback
             {
                 [&key, &subKey, &hotfixes](const std::string & packageKey)
@@ -151,13 +135,6 @@ namespace PackageWindowsHelper
             };
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             root.enumerate(callback);
-
-            for (auto& hotfix : hotfixes)
-            {
-                nlohmann::json hotfixValue;
-                hotfixValue["hotfix"] = std::move(hotfix);
-                data.push_back(std::move(hotfixValue));
-            }
         }
         catch (...)
         {
@@ -165,11 +142,10 @@ namespace PackageWindowsHelper
 
     }
 
-    static void getHotFixFromRegProduct(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    static void getHotFixFromRegProduct(const HKEY key, const std::string& subKey, std::set<std::string>& hotfixes)
     {
         try
         {
-            std::set<std::string> hotfixes;
             const auto callback
             {
                 [&key, &subKey, &hotfixes](const std::string & packageKey)
@@ -229,12 +205,6 @@ namespace PackageWindowsHelper
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             root.enumerate(callback);
 
-            for (auto& hotfix : hotfixes)
-            {
-                nlohmann::json hotfixValue;
-                hotfixValue["hotfix"] = std::move(hotfix);
-                data.push_back(std::move(hotfixValue));
-            }
         }
         catch (...)
         {

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -102,6 +102,25 @@ static std::string getBuild()
     }
 
     return build;
+}
+
+static std::string getBuildRevision()
+{
+    std::string buildRevision;
+
+    if (IsWindows8OrGreater())
+    {
+        DWORD ubr {};
+
+        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+
+        if (currentVersion.dword("UBR", ubr))
+        {
+            buildRevision = std::to_string(ubr);
+        }
+    }
+
+    return buildRevision;
 }
 
 static std::string getRelease(const std::string& build)
@@ -299,6 +318,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
     : m_majorVersion{getVersion()}
     , m_minorVersion{getVersion(true)}
     , m_build{getBuild()}
+    , m_buildRevision{getBuildRevision()}
     , m_version{m_majorVersion + "." + m_minorVersion + "." + m_build}
     , m_release{getRelease(m_build)}
     , m_displayVersion{getDisplayVersion()}
@@ -313,7 +333,7 @@ std::string SysOsInfoProviderWindows::name() const
 }
 std::string SysOsInfoProviderWindows::version() const
 {
-    return m_version;
+    return m_buildRevision.empty() ? m_version : m_version + "." + m_buildRevision;
 }
 std::string SysOsInfoProviderWindows::majorVersion() const
 {
@@ -325,7 +345,7 @@ std::string SysOsInfoProviderWindows::minorVersion() const
 }
 std::string SysOsInfoProviderWindows::build() const
 {
-    return m_build;
+    return m_buildRevision.empty() ? m_build : m_build + "." + m_buildRevision;
 }
 std::string SysOsInfoProviderWindows::release() const
 {

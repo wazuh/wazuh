@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.3.0"
-REVISION="40302"
+VERSION="v4.4.0"
+REVISION="40400"
 TYPE="server"
 
 ###  Do not modify below here ###

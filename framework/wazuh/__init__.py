@@ -1,6 +1,6 @@
 
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -18,7 +18,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '4.3.0'
+__version__ = '4.4.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -69,7 +69,7 @@ class Wazuh:
         try:
             compilation_date = datetime.strptime(self.installation_date, date_format)
         except ValueError:
-            compilation_date = datetime.now()
+            compilation_date = datetime.utcnow()
         return {'path': self.path,
                 'version': self.version,
                 'compilation_date': compilation_date,

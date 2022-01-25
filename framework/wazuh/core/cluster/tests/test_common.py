@@ -19,10 +19,10 @@ with patch('wazuh.common.getgrnam'):
                 from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 
 affected = AffectedItemsWazuhResult(dikt={'data': ['test']}, affected_items=['001', '002'])
-affected.add_failed_item(id_='099', error=WazuhError(code=1750, extra_message='wiiiiiii'))
-affected.add_failed_item(id_='111', error=WazuhError(code=1750, extra_message='weeeeee'))
-affected.add_failed_item(id_='555', error=WazuhError(code=1750, extra_message='wiiiiiii'))
-affected.add_failed_item(id_='333', error=WazuhError(code=1707, extra_message='wiiiiiii'))
+affected.add_failed_item(id_='099', error=WazuhError(1750, extra_message='wiiiiiii'))
+affected.add_failed_item(id_='111', error=WazuhError(1750, extra_message='weeeeee'))
+affected.add_failed_item(id_='555', error=WazuhError(1750, extra_message='wiiiiiii'))
+affected.add_failed_item(id_='333', error=WazuhError(1707, extra_message='wiiiiiii'))
 
 with patch('wazuh.common.wazuh_path', new=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')):
     objects_to_encode = [

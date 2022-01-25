@@ -1,11 +1,11 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
 import datetime
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple, Any, List
 
 import yaml
 from cryptography import x509
@@ -17,9 +17,8 @@ from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
 from api.api_exception import APIError
-from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH
+from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
-from wazuh.core import common
 
 default_security_configuration = {
     "auth_token_exp_timeout": 900,
@@ -37,16 +36,15 @@ default_api_configuration = {
     },
     "https": {
         "enabled": True,
-        "key": "api/configuration/ssl/server.key",
-        "cert": "api/configuration/ssl/server.crt",
+        "key": "server.key",
+        "cert": "server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt",
+        "ca": "ca.crt",
         "ssl_protocol": "TLSv1.2",
         "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
-        "path": "logs/api.log"
     },
     "cors": {
         "enabled": False,
@@ -90,18 +88,24 @@ def dict_to_lowercase(mydict: Dict):
             mydict[k] = val.lower()
 
 
-def append_wazuh_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
-    """Appends wazuh path to all path fields in a dictionary
-
-    :param dictionary: dictionary to append wazuh path
-    :param path_fields: List of tuples containing path fields
-    :return: None (the dictionary's reference is modified)
+def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[str, str]]]) -> None:
+    """Append Wazuh prefix to all path fields in a dictionary.
+    
+    Parameters
+    ----------
+    dictionary : dict
+        Dictionary with the API configuration.
+    path_fields : dict of lists of tuples of string
+        Key: Prefix to append (path)
+        Values: Sections of the configuration to append the prefix to.
     """
-    for section, subsection in path_fields:
-        try:
-            dictionary[section][subsection] = os.path.join(common.wazuh_path, dictionary[section][subsection])
-        except KeyError:
-            pass
+    for prefix, configurations in path_fields.items():
+        for config in configurations:
+            try:
+                section, subsection = config
+                dictionary[section][subsection] = os.path.join(prefix, dictionary[section][subsection])
+            except KeyError:
+                pass
 
 
 def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
@@ -258,8 +262,8 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
         configuration = fill_dict(default_conf, configuration, schema)
 
-    # Append wazuh_path to all paths in configuration
-    append_wazuh_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
+    # Append Wazuh prefixes to all relative paths in configuration
+    append_wazuh_prefixes(configuration, {API_SSL_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})
 
     return configuration
 

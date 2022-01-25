@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -20,6 +20,7 @@
 #include <external/cJSON/cJSON.h>
 
 #ifdef WIN32
+#include <winsock2.h>
 #include <windows.h>
 #endif
 

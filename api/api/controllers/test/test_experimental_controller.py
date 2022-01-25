@@ -485,6 +485,6 @@ def test_check_experimental_feature_value(mock_exc):
         pass
     with patch('api.configuration.api_conf', new={'experimental_features': False}):
         func_()
-        mock_exc.assert_called_once_with(WazuhResourceNotFound(code=1122))
+        mock_exc.assert_called_once_with(WazuhResourceNotFound(1122))
     with patch('api.configuration.api_conf', new={'experimental_features': True}):
         func_()

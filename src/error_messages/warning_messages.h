@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021
+ * Copyright (C) 2015
  * January 17
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,9 @@
 
 #ifndef WARN_MESSAGES_H
 #define WARN_MESSAGES_H
+
+/* Active Response */
+#define AR_SERVER_AGENT "(1306): Invalid agent ID. Use location=server to run AR on the manager."
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"

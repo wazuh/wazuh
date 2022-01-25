@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -17,10 +17,10 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from functools import wraps
 from itertools import groupby, chain
-from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
-from os.path import join, basename, relpath
+from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
+from signal import signal, alarm, SIGALRM
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
 
@@ -44,7 +44,7 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
-def check_pid(daemon):
+def clean_pid_files(daemon):
     """Check the existence of '.pid' files for a specified daemon.
 
     Parameters
@@ -52,14 +52,14 @@ def check_pid(daemon):
     daemon : str
         Daemon's name.
     """
-    regex = rf'{daemon}-(.*).pid'
-    for pidfile in os.listdir(pidfiles_path):
-        if match := re.match(regex, pidfile):
+    regex = rf'{daemon}[\w_]*-(\d+).pid'
+    for pid_file in os.listdir(pidfiles_path):
+        if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), 0)
             except OSError:
                 print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
-                os.remove(f'{pidfiles_path}/{pidfile}')
+                os.remove(path.join(pidfiles_path, pid_file))
 
 
 def find_nth(string, substring, n):
@@ -513,39 +513,49 @@ def tail(filename, n=20):
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
-def chmod_r(filepath, mode):
+def chmod_r(file_path, mode):
     """Recursive chmod.
 
-    :param filepath: Path to the file.
-    :param mode: file mode in octal.
+    Parameters
+    ----------
+    file_path: str
+        Path to the file.
+    mode: int
+        File mode in octal.
     """
-    if path.isdir(filepath):
-        for item in listdir(filepath):
-            itempath = path.join(filepath, item)
-            if path.isfile(itempath):
-                chmod(itempath, mode)
-            elif path.isdir(itempath):
-                chmod_r(itempath, mode)
 
-    chmod(filepath, mode)
+    if path.isdir(file_path):
+        for item in listdir(file_path):
+            item_path = path.join(file_path, item)
+            if path.isfile(item_path):
+                chmod(item_path, mode)
+            elif path.isdir(item_path):
+                chmod_r(item_path, mode)
+
+    chmod(file_path, mode)
 
 
-def chown_r(filepath, uid, gid):
-    """Recursive chmod.
+def chown_r(file_path, uid, gid):
+    """Recursive chown.
 
-    :param filepath: Path to the file.
-    :param uid: user ID.
-    :param gid: group ID.
+    Parameters
+    ----------
+    file_path: str
+        Path to the file.
+    uid: int
+        User ID.
+    gid: int
+        Group ID.
     """
-    chown(filepath, uid, gid)
+    chown(file_path, uid, gid)
 
-    if path.isdir(filepath):
-        for item in listdir(filepath):
-            itempath = path.join(filepath, item)
-            if path.isfile(itempath):
-                chown(itempath, uid, gid)
-            elif path.isdir(itempath):
-                chown_r(itempath, uid, gid)
+    if path.isdir(file_path):
+        for item in listdir(file_path):
+            item_path = path.join(file_path, item)
+            if path.isfile(item_path):
+                chown(item_path, uid, gid)
+            elif path.isdir(item_path):
+                chown_r(item_path, uid, gid)
 
 
 def delete_wazuh_file(full_path):
@@ -935,6 +945,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+
     def check_date_format(element):
         """Check if a given field is a date. If so, transform the date to the standard API format (ISO 8601).
         If not, return the field.
@@ -1449,8 +1460,8 @@ class WazuhDBQuery(object):
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
             self.query += "{0} IS NOT NULL AND {0} {1}" \
                           " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
-                                                                   query_operator,
-                                                                   date_filter['field'])
+                                                                  query_operator,
+                                                                  date_filter['field'])
         elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):
             self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
                 self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
@@ -1531,7 +1542,7 @@ class WazuhDBQuery(object):
             return self.general_run()
 
         rbac_ids = set(self.legacy_filters.get('rbac_ids', set()))
-        return self.general_run() if len(str(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
+        return self.general_run() if len(','.join(rbac_ids)) < common.MAX_QUERY_FILTERS_RESERVED_SIZE else \
             self.oversized_run()
 
     def reset(self):
@@ -1730,12 +1741,22 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         raise WazuhError(1113, str(e))
 
 
-def upload_file(content, path, check_xml_formula_values=True):
-    """
-    Upload files (rules, lists, decoders and ossec.conf)
-    :param content: content of the XML file
-    :param path: Destination of the new XML file
-    :return: Confirmation message
+def upload_file(content, file_path, check_xml_formula_values=True):
+    """Upload files (rules, lists, decoders and ossec.conf).
+
+    Parameters
+    ----------
+    content: str
+        Content of the XML file.
+    file_path: str
+        Destination of the new XML file.
+    check_xml_formula_values: bool
+        Check formula values in the resulting XML if true.
+
+    Returns
+    -------
+    results.WazuhResult
+        Confirmation message.
     """
 
     def escape_formula_values(xml_string):
@@ -1770,7 +1791,7 @@ def upload_file(content, path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = join(common.wazuh_path, path)
+        new_conf_path = path.join(common.wazuh_path, file_path)
         safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
@@ -1799,7 +1820,7 @@ def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: ca
         copyfile(abs_path, backup_file)
     except IOError:
         raise WazuhError(1019)
-    delete_function(filename=basename(abs_path))
+    delete_function(filename=path.basename(abs_path))
 
 
 def replace_in_comments(original_content, to_be_replaced, replacement):
@@ -1825,7 +1846,7 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     str
         Relative path to `full_path` from `prefix`.
     """
-    return relpath(full_path, prefix)
+    return path.relpath(full_path, prefix)
 
 
 def clear_temporary_caches():
@@ -1854,5 +1875,27 @@ def temporary_cache():
                 return f(*args, **kwargs)
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
+
+
+class Timeout:
+    """
+    Raise TimeoutError after n seconds.
+    """
+
+    def __init__(self, seconds, error_message=''):
+        self.seconds = seconds
+        self.error_message = error_message
+
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+
+    def __enter__(self):
+        signal(SIGALRM, self.handle_timeout)
+        alarm(self.seconds)
+
+    def __exit__(self, type, value, traceback):
+        alarm(0)

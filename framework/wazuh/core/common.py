@@ -1,15 +1,17 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import os
 import subprocess
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache
 from functools import wraps
 from grp import getgrnam
+from multiprocessing import Event
 from pwd import getpwnam
 from typing import Dict, Any
 
@@ -218,10 +220,22 @@ rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
-cluster_integrity_mtime: ContextVar[Dict] = ContextVar('cluster_integrity_mtime', default={})
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
+try:
+    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
+        'process_pool': ProcessPoolExecutor(max_workers=1),
+        'authentication_pool': ProcessPoolExecutor(max_workers=1)
+    })
+# Handle exception when the user running Wazuh cannot access /dev/shm
+except (FileNotFoundError, PermissionError):
+    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
+        'thread_pool': ThreadPoolExecutor(max_workers=1)
+    })
 
 _context_cache = dict()
+
+# Clear cache event
+cache_event = Event()
 
 
 def context_cached(key: str = '') -> Any:

@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -1240,17 +1240,9 @@ int wdb_stmt_cache(wdb_t * wdb, int index) {
             merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
-    } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK || sqlite3_clear_bindings(wdb->stmt[index]) != SQLITE_OK) {
-        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
-
-        // Retry to prepare
-
-        sqlite3_finalize(wdb->stmt[index]);
-
-        if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
-            return -1;
-        }
+    } else {
+        sqlite3_reset(wdb->stmt[index]);
+        sqlite3_clear_bindings(wdb->stmt[index]);
     }
 
     return 0;

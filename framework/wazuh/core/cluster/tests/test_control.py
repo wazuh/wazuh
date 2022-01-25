@@ -128,7 +128,6 @@ async def test_get_system_nodes():
                 result = await control.get_system_nodes()
                 assert result == [expected['items'][0]['name']]
 
-        expected_exception = WazuhInternalError(3012)
         with patch('wazuh.core.cluster.control.get_nodes', side_effect=WazuhInternalError(3012)):
             result = await control.get_system_nodes()
             assert result == WazuhError(3013)

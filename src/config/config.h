@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -68,6 +68,13 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for client section with centralized configuration
+ * @param node XML node to analyze
+ * @param d1 Pub/Sub configuration structure
+ */
+int Read_Client_Shared(XML_NODE node, void *d1);
 
 /**
  * @brief Read the configuration for Google Cloud Pub/Sub

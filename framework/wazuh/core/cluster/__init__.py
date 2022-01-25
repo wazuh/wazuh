@@ -1,11 +1,11 @@
 
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-__version__ = '4.3.0'
-__revision__ = '40302'
+__version__ = '4.4.0'
+__revision__ = '40400'
 __author__ = "Wazuh Inc"
 __wazuh_name__ = "Wazuh"
 __licence__ = "\

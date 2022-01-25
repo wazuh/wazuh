@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 
 #####
 # This checks for an error and exits with a custom message

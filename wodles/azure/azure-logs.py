@@ -2,7 +2,7 @@
 
 ###
 # Integration of Wazuh agent with Microsoft Azure
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ from socket import socket, AF_UNIX, SOCK_DGRAM, error as socket_error
 
 from azure.common import AzureException, AzureHttpError
 from azure.storage.blob import BlockBlobService
+from azure.storage.common._error import AzureSigningError
+from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
 from pytz import UTC
 from requests import get, post, HTTPError
@@ -51,10 +53,14 @@ def set_logger():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        logging.getLogger('azure').setLevel(logging.DEBUG)
+
     else:
         log_path = f"{find_wazuh_path()}/logs/azure_logs.log"
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        logging.getLogger('azure').setLevel(logging.ERROR)
+        logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
 def get_script_arguments():
@@ -602,33 +608,57 @@ def start_storage():
         logging.error("Storage: No parameters have been provided for authentication.")
         sys.exit(1)
 
-    try:
-        # Authenticate
-        block_blob_service = BlockBlobService(account_name=name, account_key=key)
-        logging.info("Storage: Authenticated.")
+    block_blob_service = BlockBlobService(account_name=name, account_key=key)
 
-        # Get containers from the storage account or the configuration file
-        logging.info("Storage: Getting containers.")
-        containers = block_blob_service.list_containers() if args.container == '*' else [args.container]
+    # Disable max retry value before attempting to validate the credentials
+    old_retry_value = block_blob_service.retry
+    block_blob_service.retry = no_retry
 
-        # Get the blobs
-        for container in containers:
-            md5_hash = md5(name.encode()).hexdigest()
-            offset = args.storage_time_offset
-            min_str, max_str = get_min_max(service_name="storage", md5_hash=md5_hash, offset=offset)
-            # "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
-            # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
-            min_datetime = parse(min_str, fuzzy=True)
-            max_datetime = parse(max_str, fuzzy=True)
-            desired_datetime = offset_to_datetime(offset) if offset else max_datetime
-            name = container.name if args.container == '*' else args.container
-            get_blobs(container_name=name, blob_service=block_blob_service, md5_hash=md5_hash,
+    # Verify if the credentials grant access to the specified container
+    if args.container != '*':
+        try:
+            if not block_blob_service.exists(args.container):
+                logging.error(f"Storage: The '{args.container}' container does not exists.")
+                sys.exit(1)
+            containers = [args.container]
+        except AzureException:
+            logging.error(f"Storage: Invalid credentials for accessing the '{args.container}' container.")
+            sys.exit(1)
+    else:
+        try:
+            logging.info("Storage: Getting containers.")
+            containers = [container.name for container in block_blob_service.list_containers()]
+        except AzureSigningError:
+            logging.error("Storage: Unable to list the containers. Invalid credentials.")
+            sys.exit(1)
+        except AzureException as e:
+            logging.error(f"Storage: The containers could not be listed: '{e.error_code}'.")
+            sys.exit(1)
+
+    # Restore the default max retry value
+    block_blob_service.retry = old_retry_value
+    logging.info("Storage: Authenticated.")
+
+    # Get the blobs
+    for container in containers:
+        md5_hash = md5(name.encode()).hexdigest()
+        # check if the hash was already present in the last_dates file
+        md5_exists = md5_hash in dates_json["storage"]
+        offset = args.storage_time_offset
+        min_str, max_str = get_min_max(service_name="storage", md5_hash=md5_hash, offset=offset)
+        # "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
+        # It also handles any datetime with more than 6 digits for the microseconds value provided by Azure
+        min_datetime = parse(min_str, fuzzy=True)
+        max_datetime = parse(max_str, fuzzy=True)
+        desired_datetime = offset_to_datetime(offset) if offset else max_datetime
+        try:
+            get_blobs(container_name=container, blob_service=block_blob_service, md5_hash=md5_hash,
                       min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
-        save_dates_json(dates_json)
-    except AzureException as e:
-        logging.error(f"Storage: The containers could not be obtained. '{e}'.")
-        sys.exit(1)
-
+        except AzureException:
+            if not md5_exists:
+                # get_min_max function added the md5 key to the dates_json if not already present, so we must purge it
+                del dates_json["storage"][md5_hash]
+    save_dates_json(dates_json)
     logging.info("Storage: End")
 
 
@@ -652,13 +682,19 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
         md5 value used to search the container in the file containing the dates.
     next_marker : str
         Token used as a marker to continue from previous iteration.
+
+    Raises
+    ------
+    AzureException
+        If it was not possible to list the blobs for the given container.
     """
     try:
         # Get the blob list
         logging.info("Storage: Getting blobs.")
         blobs = blob_service.list_blobs(container_name, marker=next_marker)
     except AzureException as e:
-        logging.error(f"Storage: Error getting blobs: '{e}'.")
+        logging.error(f"Storage: Error getting blobs from '{container_name}': '{e}'.")
+        raise e
     else:
 
         logging.info(f"Storage: The search starts from the date: {desired_datetime} for blobs in "

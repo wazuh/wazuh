@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -52,6 +52,7 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                 result.total_affected_items += 1
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
+        result.affected_items.sort(key=int)
         wq.close()
 
     return result

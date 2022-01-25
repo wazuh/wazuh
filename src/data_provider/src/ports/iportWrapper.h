@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -42,7 +42,7 @@ class IPortWrapper
         virtual int32_t remotePort() const = 0;
         virtual int32_t txQueue() const = 0;
         virtual int32_t rxQueue() const = 0;
-        virtual int32_t inode() const = 0;
+        virtual int64_t inode() const = 0;
         virtual std::string state() const = 0;
         virtual int32_t pid() const = 0;
         virtual std::string processName() const = 0;

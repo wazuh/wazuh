@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -160,7 +160,7 @@ class WindowsPortWrapper final : public IPortWrapper
         {
             return {};
         }
-        int32_t inode() const override
+        int64_t inode() const override
         {
             return {};
         }

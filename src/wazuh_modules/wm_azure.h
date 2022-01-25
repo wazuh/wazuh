@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Azure
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * September, 2018.
  *
  * This program is free software; you can redistribute it
@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifndef CLIENT
 #ifndef WM_AZURE
 #define WM_AZURE
 
@@ -81,5 +80,4 @@ extern const wm_context WM_AZURE_CONTEXT;   // Context
 // Parse XML configuration
 int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
-#endif
 #endif

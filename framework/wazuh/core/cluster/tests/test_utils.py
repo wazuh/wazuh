@@ -151,8 +151,10 @@ def test_get_cluster_items():
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_info_ko_retry': 1,
                                               'keep_alive': 60, 'connection_retry': 10,
                                               'max_failed_keepalive_attempts': 2},
-                                   'master': {'recalculate_integrity': 8, 'check_worker_lastkeepalive': 60,
-                                              'max_allowed_time_without_keepalive': 120},
+                                   'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
+                                              'check_worker_lastkeepalive': 60,
+                                              'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
+                                              'timeout_agent_info': 40, 'max_locked_integrity_time': 1000},
                                    'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
                                                      'timeout_receiving_file': 120}},
                      'distributed_api': {'enabled': True}}

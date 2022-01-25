@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,7 +11,6 @@
 #include "cJSON.h"
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha256/sha256_op.h"
 #include "os_err.h"
 #include "wazuh_db/wdb.h"
 #include <time.h>

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -134,11 +134,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         mwarn("A deprecated Vulnerability Detector configuration block was found. It will be ignored.");
         OS_ClearNode(children);
         return 0;
-    } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
     } else if (!strcmp(node->values[0], KEY_WM_NAME)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
@@ -146,6 +141,12 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
 #endif
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
 #endif
     else {
         if (!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 10, 2020.
  *
  * This program is free software; you can redistribute it
@@ -32,7 +32,7 @@ class SysInfoPortWrapperMock: public IPortWrapper
         MOCK_METHOD(int32_t, remotePort, (), (const override));
         MOCK_METHOD(int32_t, txQueue, (), (const override));
         MOCK_METHOD(int32_t, rxQueue, (), (const override));
-        MOCK_METHOD(int32_t, inode, (), (const override));
+        MOCK_METHOD(int64_t, inode, (), (const override));
         MOCK_METHOD(std::string, state, (), (const override));
         MOCK_METHOD(int32_t, pid, (), (const override));
         MOCK_METHOD(std::string, processName, (), (const override));
@@ -49,7 +49,7 @@ TEST_F(SysInfoPortTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, remotePort()).Times(1).WillOnce(Return(5));
     EXPECT_CALL(*mock, txQueue()).Times(1).WillOnce(Return(6));
     EXPECT_CALL(*mock, rxQueue()).Times(1).WillOnce(Return(7));
-    EXPECT_CALL(*mock, inode()).Times(1).WillOnce(Return(8));
+    EXPECT_CALL(*mock, inode()).Times(1).WillOnce(Return(4274126910));
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("9"));
     EXPECT_CALL(*mock, pid()).Times(1).WillOnce(Return(10));
     EXPECT_CALL(*mock, processName()).Times(1).WillOnce(Return("11"));
@@ -62,7 +62,7 @@ TEST_F(SysInfoPortTest, Test_SPEC_Data)
     EXPECT_EQ(5, port.at("remote_port").get<int32_t>());
     EXPECT_EQ(6, port.at("tx_queue").get<int32_t>());
     EXPECT_EQ(7, port.at("rx_queue").get<int32_t>());
-    EXPECT_EQ(8, port.at("inode").get<int32_t>());
+    EXPECT_EQ(4274126910, port.at("inode").get<int64_t>());
     EXPECT_EQ("9", port.at("state").get_ref<const std::string&>());
     EXPECT_EQ(10, port.at("pid").get<int32_t>());
     EXPECT_EQ("11", port.at("process").get_ref<const std::string&>());

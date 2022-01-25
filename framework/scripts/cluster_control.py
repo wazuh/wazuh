@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -71,6 +71,7 @@ async def print_health(config, more, filter_node):
     filter_node : str, list
         Node to return.
     """
+
     def calculate_seconds(start_time, end_time):
         """Calculate the time difference between two dates.
 
@@ -159,6 +160,8 @@ async def print_health(config, more, filter_node):
                     f"{node_info['status']['last_sync_agentinfo']['date_end_master']}).\n"
             msg2 += f"                Number of synchronized chunks: " \
                     f"{node_info['status']['last_sync_agentinfo']['n_synced_chunks']}.\n"
+            msg2 += f"                Permission to synchronize agent-info: " \
+                    f"{node_info['status']['sync_agent_info_free']}.\n"
 
     print(msg1)
     more and print(msg2)

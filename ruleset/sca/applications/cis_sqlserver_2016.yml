@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Microsoft SQL Server 2016
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -666,18 +666,3 @@ checks:
     condition: none
     rules:
       - "c:sqlcmd -Q \"SELECT name, permission_set_desc FROM sys.assemblies WHERE is_user_defined = 1;\" -> r:EXTERNAL_ACCESS|UNSAFE"
-
-#
-#  - id:
-#    title:
-#    description:
-#    rationale:
-#    remediation:
-#    compliance:
-#      - cis: [""]
-#      - cis_csc: [""]
-#    references:
-#      -
-#    condition:
-#    rules:
-#      -

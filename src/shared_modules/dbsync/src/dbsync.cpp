@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -766,6 +766,7 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const unsigned int    threadNumber,
                      const unsigned int    maxQueueSize,
                      ResultCallbackData    callbackData)
+    : m_shouldBeRemoved {true}
 {
     const auto callbackWrapper
     {
@@ -779,17 +780,21 @@ DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
 
 DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
     : m_txn { handle }
+    , m_shouldBeRemoved {false}
 { }
 
 DBSyncTxn::~DBSyncTxn()
 {
-    try
+    if (m_shouldBeRemoved)
     {
-        PipelineFactory::instance().destroy(m_txn);
-    }
-    catch (const DbSync::dbsync_error& ex)
-    {
-        log_message(ex.what());
+        try
+        {
+            PipelineFactory::instance().destroy(m_txn);
+        }
+        catch (const DbSync::dbsync_error& ex)
+        {
+            log_message(ex.what());
+        }
     }
 }
 

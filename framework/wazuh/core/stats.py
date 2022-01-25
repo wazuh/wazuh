@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
@@ -71,7 +71,7 @@ def weekly_():
     return weekly_results
 
 
-def totals_(date=datetime.now()):
+def totals_(date=datetime.utcnow()):
     """Compute statistical information for the current or specified date.
 
     Parameters

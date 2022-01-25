@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "4.3.0"
-!define REVISION "40302"
+!define VERSION "4.4.0"
+!define REVISION "40400"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -33,13 +33,13 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2015-2021, Wazuh Inc."
+BrandingText "Copyright (C) 2015, Wazuh Inc."
 OutFile "${OutFile}"
 
 VIProductVersion "4.0.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2021 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2022 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"

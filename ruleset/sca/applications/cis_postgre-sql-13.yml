@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for PostgreSQL 13
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -82,7 +82,7 @@ checks:
 # Not Applicable: Not covered
 
 # 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
-  - id: 24002
+  - id: 24001
     title: Ensure the log destinations are set correctly
     description: >
       PostgreSQL supports several methods for logging server messages, including stderr,
@@ -118,7 +118,7 @@ checks:
       - c:sh -c "psql -U $user -h $host $db -c \"SHOW log_destination\" | grep $log_destination$" -> r:\.+
 
 # 3.1.3 Ensure the logging collector is enabled (Automated)
-  - id: 24003
+  - id: 24002
     title: Ensure the logging collector is enabled
     description: >
       The logging collector is a background process that captures log messages sent to stderr
@@ -162,7 +162,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW logging_collector" -> r:\son'
 
 # 3.1.4 Ensure the log file destination directory is set correctly (Automated)
-  - id: 24004
+  - id: 24003
     title: Ensure the log file destination directory is set correctly
     description: >
       The log_directory setting specifies the destination directory for log files when
@@ -212,12 +212,12 @@ checks:
       - cis_csc: ["6.2", "6.3"]
     references:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
-    conditions: all
+    condition: all
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_directory\" | grep $log_directory$" -> r:\.+'
 
 # 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
-  - id: 24005
+  - id: 24004
     title: Ensure the filename pattern for log files is set correctly
     description: >
       The log_filename setting specifies the filename pattern for log files. The value for
@@ -258,7 +258,7 @@ checks:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_filename\" | grep $log_filename" -> r:\.+'
 
 # 3.1.6 Ensure the log file permissions are set correctly (Automated)
-  - id: 24006
+  - id: 24005
     title: Ensure the log file permissions are set correctly
     description: >
       The log_file_mode setting determines the file permissions for log files when
@@ -298,7 +298,7 @@ checks:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_file_mode\" | grep $log_file_mode" -> r:\.+'
 
 # 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
-  - id: 24007
+  - id: 24006
     title: Ensure 'log_truncate_on_rotation' is enabled
     description: >
       "Enabling the log_truncate_on_rotation setting when logging_collector is enabled
@@ -345,7 +345,7 @@ checks:
         - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:\son'
 
 # 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
-  - id: 24008
+  - id: 24007
     title: Ensure the maximum log file lifetime is set correctly
     description: >
       When logging_collector is enabled, the log_rotation_age parameter determines the
@@ -374,7 +374,7 @@ checks:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_age\" | grep $log_rotation_age" -> r:\.+'
 
 # 3.1.9 Ensure the maximum log file size is set correctly (Automated)
-  - id: 24009
+  - id: 24008
     title: Ensure the maximum log file size is set correctly
     description: >
       The log_rotation_size setting determines the maximum size of an individual log file.
@@ -402,7 +402,7 @@ checks:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_size\" | grep $log_rotation_size" -> r:\.+'
 
 # 3.1.10 Ensure the correct syslog facility is selected (Manual)
-  - id: 24010
+  - id: 24009
     title: Ensure the correct syslog facility is selected
     description: >
       The syslog_facility setting specifies the syslog "facility" to be used when logging to
@@ -432,7 +432,7 @@ checks:
       - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_facility\" | grep $syslog_facility" -> r:\.+'
 
 # 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
-  - id: 24011
+  - id: 24010
     title: Ensure the program name for PostgreSQL syslog messages is correct
     description: >
       The syslog_ident setting specifies the program name used to identify PostgreSQL
@@ -460,12 +460,12 @@ checks:
     references:
       - https://tools.ietf.org/html/rfc3164#section-4.1.3
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
-    conditions: all
+    condition: all
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_ident\" | grep $syslog_ident" -> r:\.+'
 
 # 3.1.12 Ensure the correct messages are written to the server log (Automated)
-  - id: 24012
+  - id: 24011
     title: Ensure the correct messages are written to the server log
     description: >
       The log_min_messages setting specifies the message levels that are written to the server
@@ -493,7 +493,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_min_messages" -> r:\serror|\slog$|\sfatal$|\spanic$'
 
 ## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
-  - id: 24013
+  - id: 24012
     title: Ensure the correct SQL statements generating errors are recorded
     description: >
       The log_min_error_statement setting causes all SQL statements generating errors at or
@@ -527,7 +527,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_min_error_statement" -> r:\slog$|\sfatal$|\spanic$'
 
 ## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
-  - id: 24014
+  - id: 24013
     title: Ensure 'debug_print_parse' is disabled
     description: >
       The debug_print_parse setting enables printing the resulting parse tree for each executed
@@ -551,12 +551,12 @@ checks:
       - cis_csc: ["6", "5.1"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
-    conditions: all
+    condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "show debug_print_parse" -> r:\soff'
 
 ## 3.1.15 Ensure 'debug_print_rewritten' is disabled (Automated)
-  - id: 24015
+  - id: 24014
     title: Ensure 'debug_print_rewritten' is disabled
     description: >
       The debug_print_rewritten setting enables printing the query rewriter output for each
@@ -585,7 +585,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "show debug_print_rewritten" -> r:\soff'
 
 ## 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
-  - id: 24016
+  - id: 24015
     title: Ensure 'debug_print_plan' is disabled
     description: >
       The debug_print_plan setting enables printing the execution plan for each executed query.
@@ -613,7 +613,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "show debug_print_plan" -> r:\soff'
 
   ## 3.1.17 Ensure 'debug_pretty_print' is enabled (Automated)
-  - id: 24017
+  - id: 24016
     title: Ensure 'debug_pretty_print' is enabled
     description: >
       Enabling debug_pretty_print indents the messages produced by debug_print_parse,
@@ -640,7 +640,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "show debug_pretty_print" -> r:\son'
 
   ## 3.1.18 Ensure 'log_connections' is enabled (Automated)
-  - id: 24018
+  - id: 24017
     title: Ensure 'log_connections' is enabled
     description: >
       Enabling the log_connections setting causes each attempted connection to the server to
@@ -670,7 +670,8 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_connections" -> r:\son'
 
   ## 3.1.19 Ensure 'log_disconnections' is enabled (Automated)
-  - id: 24019
+  - id: 24018
+    title: Ensure 'log_disconnections' is enabled (Automated)
     description: >
       Enabling the log_disconnections setting logs the end of each session, including session
       duration. This parameter cannot be changed after session start.
@@ -700,7 +701,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_disconnections" -> r:\son'
 
   ## 3.1.20 Ensure 'log_error_verbosity' is set correctly (Automated)
-  - id: 24020
+  - id: 24019
     title: Ensure 'log_error_verbosity' is set correctly
     description: >
       The log_error_verbosity setting specifies the verbosity (amount of detail) of logged
@@ -726,7 +727,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_error_verbosity" -> r:\sverbose'
 
   ## 3.1.21 Ensure 'log_hostname' is set correctly (Automated)
-  - id: 24021
+  - id: 24020
     title: Ensure 'log_hostname' is set correctly
     description: >
       Enabling the log_hostname setting causes the hostname of the connecting host to be logged
@@ -757,7 +758,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_hostname" -> r:\soff'
 
   ## 3.1.22 Ensure 'log_line_prefix' is set correctly (Automated)
-  - id: 24022
+  - id: 24021
     title: Ensure 'log_line_prefix' is set correctly
     description: >
       The log_line_prefix setting specifies a printf-style string that is prefixed to each log line.
@@ -797,7 +798,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_disconnections" -> r:%m\s\[%p\]:\s\[%l-1\]\sdb=%d,user=%u,app=%a,client=%h'
 
   ## 3.1.23 Ensure 'log_statement' is set correctly (Automated)
-  - id: 24023
+  - id: 24022
     title: Ensure 'log_statement' is set correctly
     description: >
       The log_statement setting specifies the types of SQL statements that are logged.
@@ -825,7 +826,7 @@ checks:
       - 'c:psql -U $user -h $host $db -c "SHOW log_statement" -> r:\sdll'
 
   ## 3.1.24 Ensure 'log_timezone' is set correctly (Automated)
-  - id: 24024
+  - id: 24023
     title: Ensure 'log_timezone' is set correctly
     description: >
       The log_timezone setting specifies the time zone to use in timestamps within log messages.
@@ -860,7 +861,7 @@ checks:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_timezone\" | grep $log_timezone" -> r:\.+'
 
   ## 3.2 Ensure the PostgreSQL Audit Extension (pgAudit) is enabled (Automated)
-  - id: 24025
+  - id: 24024
     title: Ensure the PostgreSQL Audit Extension (pgAudit) is enabled
     description: >
       The PostgreSQL Audit Extension (pgAudit) provides detailed session and/or object audit
@@ -958,7 +959,7 @@ checks:
   ## Not Aplicable: subjective
 
   ## 4.5 Use pg_permission extension to audit object permissions (Automated)
-  - id: 24026
+  - id: 24025
     title: Use pg_permission extension to audit object permissions
     description: >
       Using a PostgreSQL extension called pg_permissions it is possible to declare which DB
@@ -984,7 +985,7 @@ checks:
   ## Not Aplicable: subjective
 
   ## 4.7 Ensure the set_user extension is installed (Automated)
-  - id: 24027
+  - id: 24026
     title: Ensure the set_user extension is installed
     description: >
       PostgreSQL access to the superuser database role must be controlled and audited to
@@ -1014,7 +1015,7 @@ checks:
 
   # 6 PostgreSQL Settings
   # 6.7 Ensure FIPS 140-2 OpenSSL Cryptography Is Used (Automated)
-  - id: 24030
+  - id: 24027
     title: Ensure FIPS 140-2 OpenSSL Cryptography Is Used
     description: >
       Install, configure, and use OpenSSL on a platform that has a NIST certified FIPS 140-2

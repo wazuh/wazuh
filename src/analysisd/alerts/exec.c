@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -111,7 +111,11 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                     json_agt_info = wdb_get_agent_info(id_array[i], sock);
                     if (!json_agt_info) {
                         merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
-                        labels_free(agt_labels);
+
+                        if (agt_labels != Config.labels) {
+                            labels_free(agt_labels);
+                        }
+
                         continue;
                     }
 
@@ -121,7 +125,11 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                         agt_version = json_agt_version->valuestring;
                     } else {
                         mdebug2("Failed to get agent '%d' version.", id_array[i]);
-                        labels_free(agt_labels);
+
+                        if (agt_labels != Config.labels) {
+                            labels_free(agt_labels);
+                        }
+
                         cJSON_Delete(json_agt_info);
                         continue;
                     }
@@ -135,7 +143,11 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                 char *patch = strtok_r(NULL, ".", &save_ptr);
                 if (!major || !minor || !patch) {
                     merror("Unable to read agent version.");
-                    labels_free(agt_labels);
+
+                    if (agt_labels != Config.labels) {
+                        labels_free(agt_labels);
+                    }
+
                     cJSON_Delete(json_agt_info);
                     continue;
                 } else {
@@ -147,7 +159,10 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                     }
                 }
 
-                labels_free(agt_labels);
+                if (agt_labels != Config.labels) {
+                    labels_free(agt_labels);
+                }
+
                 cJSON_Delete(json_agt_info);
 
                 get_exec_msg(ar, c_agent_id, msg, exec_msg);
@@ -186,7 +201,11 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                 json_agt_info = wdb_get_agent_info(agt_id, sock);
                 if (!json_agt_info) {
                     merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
-                    labels_free(agt_labels);
+
+                    if (agt_labels != Config.labels) {
+                        labels_free(agt_labels);
+                    }
+
                     goto cleanup;
                 }
 
@@ -196,7 +215,11 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                     agt_version = json_agt_version->valuestring;
                 } else {
                     mdebug2("Failed to get agent '%d' version.", agt_id);
-                    labels_free(agt_labels);
+
+                    if (agt_labels != Config.labels) {
+                        labels_free(agt_labels);
+                    }
+
                     cJSON_Delete(json_agt_info);
                     goto cleanup;
                 }
@@ -210,7 +233,11 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
             char *patch = strtok_r(NULL, ".", &save_ptr);
             if (!major || !minor || !patch) {
                 merror("Unable to read agent version.");
-                labels_free(agt_labels);
+
+                if (agt_labels != Config.labels) {
+                    labels_free(agt_labels);
+                }
+
                 cJSON_Delete(json_agt_info);
                 goto cleanup;
             } else {
@@ -222,7 +249,10 @@ void OS_Exec(int *execq, int *arq, int *sock, const Eventinfo *lf, const active_
                 }
             }
 
-            labels_free(agt_labels);
+            if (agt_labels != Config.labels) {
+                labels_free(agt_labels);
+            }
+
             cJSON_Delete(json_agt_info);
 
             get_exec_msg(ar, c_agent_id, msg, exec_msg);

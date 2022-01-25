@@ -1,7 +1,7 @@
 <!--
   -  Serv-u rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -193,7 +193,7 @@ TypeMessage:
         <match>File deleted</match>
         <description>Serv-U: File deleted</description>
         <mitre>
-            <id>T1107</id>
+            <id>T1070.004</id>
         </mitre>
         <group>pci_dss_11.5,gdpr_II_5.1.f,</group>
     </rule>
@@ -220,7 +220,7 @@ TypeMessage:
         <match>Directory deleted</match>
         <description>Serv-U: Directory deleted</description>
         <mitre>
-            <id>T1107</id>
+            <id>T1070.004</id>
         </mitre>
         <group>pci_dss_11.5,gdpr_II_5.1.f,</group>
     </rule>

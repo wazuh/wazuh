@@ -1,18 +1,18 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import binascii
 import json
 import logging
 import re
+from base64 import b64decode
 
 from aiohttp.abc import AbstractAccessLogger
-from werkzeug.exceptions import Unauthorized
 
-from api.authentication import decode_token
 from wazuh.core.wlogging import WazuhLogger
 
 # compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
-request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
+request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
@@ -34,8 +34,8 @@ class AccessLogger(AbstractAccessLogger):
         user = request.get('user', '')
         if not user:
             try:
-                user = decode_token(request.headers["authorization"][7:])["sub"]
-            except Unauthorized:
+                user = b64decode(request.headers["authorization"].split()[1]).decode().split(':')[0]
+            except (KeyError, IndexError, binascii.Error):
                 user = UNKNOWN_USER_STRING
 
         self.logger.info(f'{user} '

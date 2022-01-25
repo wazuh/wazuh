@@ -1,42 +1,34 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
 import json
 import logging
+import os.path
 import shutil
 import zipfile
+from asyncio import wait_for
 from datetime import datetime
+from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
-from subprocess import check_output
-from time import time
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
-from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.InputValidator import InputValidator
+from wazuh.core.agent import WazuhDBQueryAgents
+from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
+agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
 
 
 #
 # Cluster
 #
-
-
-def get_localhost_ips():
-    """Get all localhost IPs addresses.
-
-    Returns
-    -------
-    set
-        All IP addresses.
-    """
-    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -77,45 +69,12 @@ def check_cluster_config(config):
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-            format(config['nodes'][0]))
+                format(config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
     if len(invalid_elements) != 0:
         raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
-
-
-def get_cluster_items_master_intervals():
-    """Get master's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Master's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['master']
-
-
-def get_cluster_items_communication_intervals():
-    """Get communication's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Communication's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['communication']
-
-
-def get_cluster_items_worker_intervals():
-    """Get worker's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Worker's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['worker']
 
 
 def get_node():
@@ -151,7 +110,8 @@ def check_cluster_status():
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
+             get_md5=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
@@ -169,6 +129,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     get_cluster_item_key : str
         Key inside cluster.json['files'] to which each file belongs. This is useful to know what actions to take
         after sending a file from one node to another, depending on the directory the file belongs to.
+    previous_status : dict
+        Information collected in the previous integration process.
     get_md5 : bool
         Whether to calculate and save the MD5 hash of the found file.
 
@@ -177,10 +139,9 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     walk_files : dict
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
     """
+    if previous_status is None:
+        previous_status = {}
     walk_files = {}
-
-    # Get the information collected in the previous integration process.
-    previous_status = common.cluster_integrity_mtime.get()
 
     full_dirname = path.join(common.wazuh_path, dirname)
     # Get list of all files and directories inside 'full_dirname'.
@@ -228,11 +189,13 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(get_md5=True):
+def get_files_status(previous_status=None, get_md5=True):
     """Get all files and metadata inside the directories listed in cluster.json['files'].
 
     Parameters
     ----------
+    previous_status : dict
+        Information collected in the previous integration process.
     get_md5 : bool
         Whether to calculate and save the MD5 hash of the found file.
 
@@ -241,6 +204,8 @@ def get_files_status(get_md5=True):
     final_items : dict
         Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
     """
+    if previous_status is None:
+        previous_status = {}
 
     cluster_items = get_cluster_items()
 
@@ -251,11 +216,9 @@ def get_files_status(get_md5=True):
         try:
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, get_md5))
+                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_md5))
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
-    # Save the information collected in the current integration process.
-    common.cluster_integrity_mtime.set(final_items)
 
     return final_items
 
@@ -303,7 +266,8 @@ def compress_files(name, list_path, cluster_control_json=None):
         Path where the zip file has been saved.
     """
     failed_files = list()
-    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
+    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
+                              f'{name}-{datetime.utcnow().timestamp()}-{str(random())[2:]}.zip')
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
@@ -327,7 +291,27 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
+async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):
+    """Async wrapper for decompress_files() function.
+
+    Parameters
+    ----------
+    zip_path : str
+        Full path to the zip file.
+    ko_files_name : str
+        Name of the metadata json inside zip file.
+
+    Returns
+    -------
+    ko_files : dict
+        Paths (keys) and metadata (values) of the files listed in cluster.json.
+    zip_dir : str
+        Full path to unzipped directory.
+    """
+    return decompress_files(zip_path, ko_files_name)
+
+
+def decompress_files(zip_path, ko_files_name="files_metadata.json"):
     """Unzip files in a directory and load the files_metadata.json as a dict.
 
     Parameters
@@ -421,6 +405,23 @@ def compare_files(good_files, check_files, node_name):
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     extra_files = {key: check_files[key] for key in extra}
     extra_valid_files = {key: check_files[key] for key in extra_valid}
+    if extra_valid_files:
+        # Check if extra-valid agent-groups files correspond to existing agents.
+        try:
+            agent_groups = [os.path.basename(file) for file in extra_valid_files if file.startswith(agent_groups_path)]
+            db_agents = []
+            # Each query can have at most 7500 agents to prevent it from being larger than the wazuh-db socket.
+            # 7 digits in the worst case per ID + comma -> 8 * 7500 = 60000 (wazuh-db socket is ~64000)
+            for i in range(0, len(agent_groups), chunk_size := 7500):
+                with WazuhDBQueryAgents(select=['id'], limit=None, filters={'rbac_ids': agent_groups[i:i + chunk_size]},
+                                        rbac_negate=False) as db_query:
+                    db_agents.extend(db_query.run()['items'])
+            db_agents = {agent['id'] for agent in db_agents}
+
+            for leftover in set(agent_groups) - db_agents:
+                extra_valid_files.pop(os.path.join(agent_groups_path, leftover), None)
+        except Exception as e:
+            logger.error(f"Error getting agent IDs while verifying which extra-valid files are required: {e}")
 
     # 'all_shared' files are the ones present in both sets but with different MD5 checksum.
     all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
@@ -597,3 +598,34 @@ def unmerge_info(merge_type, path_file, filename):
             bytes_read += st_size
 
             yield path.join(dst_path, name), data, st_mtime
+
+
+async def run_in_pool(loop, pool, f, *args, **kwargs):
+    """Run function in process pool if it exists.
+
+    This function checks if the process pool exists. If it does, the function is run inside it and
+    the result is waited. Otherwise (the pool is None), the function is run in the parent process,
+    as usual.
+
+    Parameters
+    ----------
+    loop : AbstractEventLoop
+        Asyncio loop.
+    pool : ProcessPoolExecutor or None
+        Process pool object in charge of running functions.
+    f : callable
+        Function to be executed.
+    *args
+        Arguments list to be passed to function `f`. Default `None`.
+    **kwargs
+        Keyword arguments to be passed to function `f`. Default `None`.
+
+    Returns
+    -------
+    Result of `f(*args, **kwargs)` function.
+    """
+    if pool is not None:
+        task = loop.run_in_executor(pool, partial(f, *args, **kwargs))
+        return await wait_for(task, timeout=None)
+    else:
+        return f(*args, **kwargs)

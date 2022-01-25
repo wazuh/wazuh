@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -226,9 +226,18 @@ class LinuxPortWrapper final : public IPortWrapper
 
             return retVal;
         }
-        int32_t inode() const override
+        int64_t inode() const override
         {
-            return std::stoi(m_fields.at(INODE));
+            int64_t retVal { -1 };
+
+            try
+            {
+                retVal = static_cast<int64_t>(std::stoll(m_fields.at(INODE)));
+            }
+            catch (...)
+            {}
+
+            return retVal;
         }
         std::string state() const override
         {

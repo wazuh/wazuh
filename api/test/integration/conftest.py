@@ -24,6 +24,7 @@ basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
+env_cluster_nodes = ['master', 'worker1', 'worker2']
 
 
 def pytest_addoption(parser):
@@ -134,7 +135,7 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     """
     time.sleep(interval)
     if node_type == 'manager':
-        for node in ['master', 'worker1', 'worker2']:
+        for node in env_cluster_nodes:
             health = subprocess.check_output(
                 f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
             if not health.startswith(b'"healthy"'):
@@ -257,8 +258,11 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
         rbac_config.writelines(sql_sentences)
 
 
-def save_logs(test_name):
-    """Save api, cluster and ossec log if tests fail.
+def save_logs(test_name: str):
+    """Save API, cluster and Wazuh logs from every node in the cluster if tests fail.
+
+    Example:
+    "test_{test_name}-{node}-{log}" -> "test_decoder-worker1-api.log"
 
     Parameters
     ----------
@@ -267,14 +271,15 @@ def save_logs(test_name):
     """
     logs_path = '/var/ossec/logs'
     logs = ['api.log', 'cluster.log', 'ossec.log']
-    for log in logs:
-        try:
-            subprocess.check_output(
-                f"docker cp env_wazuh-master_1:{os.path.join(logs_path, log)} "
-                f"{os.path.join(test_logs_path, f'{test_name}-{log}')}",
-                shell=True)
-        except:
-            continue
+    for node in env_cluster_nodes:
+        for log in logs:
+            try:
+                subprocess.check_output(
+                    f"docker cp env_wazuh-{node}_1:{os.path.join(logs_path, log)} "
+                    f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
+                    shell=True)
+            except subprocess.CalledProcessError:
+                continue
 
 
 @pytest.fixture(scope='session', autouse=True)

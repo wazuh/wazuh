@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -46,6 +46,23 @@ extern int sock_fail_time;
  *  WIN32 -> 0
  */
 int StartMQ(const char *key, short int type, short int n_attempts) __attribute__((nonnull));
+
+/**
+ * Sends a message string through a message queue
+ * @param queue file descriptor of the queue where the message will be sent (UNIX)
+ * @param message string containing the message
+ * @param locmsg path to the queue file
+ * @param loc  queue location (WIN32)
+ * @param fn_ptr function pointer to the function that will check if the process is shutting down
+ * @return
+ * UNIX -> 0 if file descriptor is still available
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
+ * WIN32 -> 0 on success
+ * WIN32 -> -1 on error
+ * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ */
+
+int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) __attribute__((nonnull));
 
 /**
  * Sends a message string through a message queue

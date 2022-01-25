@@ -1352,6 +1352,9 @@ stages:
 ---
 test_name: PUT /agents/reconnect
 
+marks:
+  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
+
 stages:
 
   - name: Try to reconnect agent 001 (Denied)
@@ -1618,9 +1621,6 @@ stages:
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
-
-marks:
-  - xfail  # https://github.com/wazuh/wazuh/issues/10105
 
 stages:
 
