@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include "../../os_crypto/md5/md5_op.h"
+#include "../../os_crypto/sha256/sha256_op.h"
 #include "../../wrappers/common.h"
 #include "../headers/shared.h"
 
@@ -27,23 +27,32 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-
 // Tests
 
-void test_md5_string(void **state) {
+void test_sha256_string() {
     const char *string = "teststring";
-    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
-    os_md5 buffer;
+    const char *string_sha256 = "3c8727e019a42b444667a587b6001251becadabbb36bfed8087a92c18882d111";
+    os_sha256 buffer;
 
-    OS_MD5_Str(string, -1, buffer);
+    OS_SHA256_String(string, buffer);
 
-    assert_string_equal(buffer, string_md5);
+    assert_string_equal(buffer, string_sha256);
 }
 
-void test_md5_file(void **state) {
+void test_sha256_string_sized() {
     const char *string = "teststring";
-    const char *string_md5 = "d41d8cd98f00b204e9800998ecf8427e";
+    const char *string_sha256_chopped = "3c8727e019";
+    int chopped_size = 10;
+    os_sha256 buffer;
 
+    OS_SHA256_String_sized(string, buffer, chopped_size);
+
+    assert_string_equal(buffer, string_sha256_chopped);
+}
+
+void test_sha256_file() {
+    const char *string = "teststring";
+    const char *string_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     char path[] = "path/to/file";
 
     expect_value(__wrap_fopen, path, path);
@@ -56,29 +65,29 @@ void test_md5_file(void **state) {
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    os_md5 buffer;
-    assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), 0);
+    os_sha256 buffer;
+    assert_int_equal(OS_SHA256_File(path, buffer, OS_TEXT), 0);
 
-    assert_string_equal(buffer, string_md5);
+    assert_string_equal(buffer, string_sha256);
 }
 
-void test_md5_file_fail(void **state) {
+void test_sha256_file_fail() {
     char path[] = "path/to/non-existing/file";
 
     expect_value(__wrap_fopen, path, path);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
-    os_md5 buffer;
-    assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), -1);
+    os_sha256 buffer;
+    assert_int_equal(OS_SHA256_File(path, buffer, OS_TEXT), -1);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_md5_string),
-        cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
-        cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group)
+        cmocka_unit_test(test_sha256_string),
+        cmocka_unit_test(test_sha256_string_sized),
+        cmocka_unit_test_setup_teardown(test_sha256_file, setup_group, teardown_group),
+        cmocka_unit_test_setup_teardown(test_sha256_file_fail, setup_group, teardown_group),
     };
-
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

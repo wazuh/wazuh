@@ -7,17 +7,17 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-list(APPEND md5_tests_names "test_md5_op")
-list(APPEND md5_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
-                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
-                             -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+list(APPEND sha256_tests_names "test_sha256_op")
+list(APPEND sha256_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
+                                -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
 
 # Compiling tests
-list(LENGTH md5_tests_names count)
+list(LENGTH sha256_tests_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
-    list(GET md5_tests_names ${counter} test_name)
-    list(GET md5_tests_flags ${counter} test_flags)
+    list(GET sha256_tests_names ${counter} test_name)
+    list(GET sha256_tests_flags ${counter} test_flags)
     add_executable(${test_name} ${test_name}.c)
     if(${TARGET} STREQUAL "server")
         target_link_libraries(
