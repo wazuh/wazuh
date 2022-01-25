@@ -1,167 +1,207 @@
 @startuml db_class
-package "FIMDB" <<Folder>> #DDDDDD{
-    enum "dbresult" {
-        DB_SUCCESS
-        DB_ERROR
-    }
-    package "item" <<Folder>> {
-        abstract DBItem {
-            # string m_identifier
-            # bool m_scanned
-            # time_t m_lastEvent
-            # string m_checksum
-            # enum m_mode
 
-            + DBItem()
-            + ~DBItem()
-            + {abstract} fim_entry toFimEntry()
-            + {abstract} nlohman::json toJson()
-            + bool state()
-        }
-
-        class FileItem {
-            - unsigned int m_size
-            - string m_perm
-            - string m_attributes
-            - int m_uid
-            - string m_username
-            - int m_gid
-            - string m_groupname
-            - time_t m_time
-            - unsigned long int m_inode
-            - string m_md5
-            - string m_sha1
-            - string m_sha256
-            - unsigned long int m_dev
-            - int m_options
-            - unique_ptr<fim_entry> m_fimEntry
-            - unique_ptr<nlohman::json> m_statementConf
-
-            + FileItem(args)
-            + FileItem(fim_entry)
-            + FileItem(nlohman::json)
-            + ~FileItem()
-            + fim_entry* toFIMEntry()
-            + nlohman::json* toJsonEntry()
-        }
-        class "RegistryValue" {
-            - int m_type
-            - int m_keyUid
-            - int m_registryKey
-            - int m_size
-            - string m_md5
-            - string m_sha1
-            - string m_sha256
-            - unique_ptr<fim_entry> m_fimEntry
-            - unique_ptr<nlohman::json> m_statementConf
-
-            + RegistryValue(args)
-            + RegistryValue(fim_entry)
-            + RegistryValue(nlohman::json)
-            + ~RegistryValue()
-            + fim_entry toFIMEntry()
-            + json toJson()
-        }
-        class "RegistryKey" {
-            - string m_perm
-            - string m_path
-            - int m_uid
-            - string m_username
-            - int m_gid
-            - string m_groupname
-            - time_t m_time
-            - int m_arch
-            - unique_ptr<fim_entry> m_fimEntry
-            - unique_ptr<nlohman::json> m_statementConf
-
-            + RegistryKey(args)
-            + RegistryKey(fim_entry)
-            + RegistryKey(nlohman::json)
-            + ~RegistryKey()
-            + fim_entry toFIMEntry()
-            + json to_Json()
-        }
+package "fimCommonDefs" <<Folder>> #DDDDDD{
+    interface callbacks{
+        void((*fim_sync_callback_t)(const char *, const char*));
+        void((*logging_callback_t)(const modules_log_level_t, const char*));
+        void((*callback_t)(void *, void *));
     }
-    class "FimDB"  <<(S,#FF7700) Singleton>> {
-        - int m_max_rows_file
-        - int m_max_rows_registry
-        - int m_interval_synchronization
-        - bool m_stopping
-        - mutex m_fimSyncMutex
-        - condition_variable m_cv
-        - DBSync m_dbsyncHandler
-        - Rsync m_rsyncHandler
-        - callback m_syncFileMessageFunction
-        - callback m_syncRegistryMessageFunction
-        - callback m_loggingFunction
-
-        - FIMDB()
-        - ~FIMDB()
-        - FIMDB(const FIMDB&)
-        - void setFileLimit()
-        - void setRegistryLimit()
-        - void setValueLimit()
-        - void sync()
-
-        + void init()
-        + void registerRsync()
-        + void fimSyncPushMsg(data)
-        + void fimRunIntegrity()
-        + void stopSync()
-        + void loopRsync(lock)
-        + void insertItem(json)
-        + void removeItem(json)
-        + void updateItem(json, callback)
-        + void executeQuery(json, callback)
-        + FimDB getInstance()
+    enum FIMDBErrorCode {
+        FIMDB_OK = 0,
+        FIMDB_ERR = -1,
+        FIMDB_FULL = -2
     }
-    interface FIMDBHelper {
-        void getDBItem(const json &, const json &)
-        int getCount(const string &)
-        void initDB(const string&, int, int, void(*)(const char *, const char *), void(*)(modules_log_level_t level))
-        bool updateItem(const string &, const json &)
-        void removeFromDB(const string &, const json &)
-        nlohmann::json dbQuery(const std::string& , const nlohmann::json&, const std::string&, const std::string&)
-    }
-    namespace db{
-    interface file {
-        int fim_db_file_pattern_search(const char*, callback_context_t )
-        int fim_db_get_path(const char*, callback_context_t)
-        int fim_db_remove_path(const char*)
-        int fim_db_get_count_file_inode()
-        int fim_db_get_count_file_entry()
-        int fim_db_file_update(const fim_entry*, bool*)
-        void fim_db_file_inode_search(const unsigned long, const unsigned long, callback_context_t)
-    }
-    interface FimDBUtils {
-        static std::vector<std::string> getPathsFromINode(const unsigned long inode, const unsigned long dev)
-        static std::vector<std::string> getPathsFromPattern(const std::string& pattern)
-    }
-    interface registry {
-        int fim_db_get_registry_key_rowid(const char *, unsigned int, unsigned int *)
-        fim_registry_value_data* fim_db_get_registry_data(unsigned int, const char *)
-        int fim_db_insert_registry_key(fim_registry_key *, unsigned int)
-        int fim_db_set_all_registry_key_unscanned()
-        int fim_db_set_all_registry_data_unscanned()
-        int fim_db_set_registry_key_scanned(const char *, unsigned int)
-        int fim_db_set_registry_data_scanned(const char *, unsigned int)
-        int fim_db_get_count_registry_data()
-        int fim_db_get_count_registry_key()
-        int fim_db_remove_registry_key(fim_entry *)
-        int fim_db_remove_registry_value_data(fim_registry_value_data *)
-        fim_registry_key* fim_db_get_registry_key_using_id(unsigned int)
-    }
-    file o-- FimDBUtils
+    interface callback_context_t <<(S,#FF7700) struct>>{
+        callback_t,
+        void*
     }
 }
-circle FIM
+package "item" <<Folder>> {
+    abstract DBItem {
+        # string m_identifier
+        # bool m_scanned
+        # time_t m_lastEvent
+        # string m_checksum
+        # enum m_mode
 
-DBItem <|-- FileItem
-DBItem <|-- RegistryValue
-DBItem <|-- RegistryKey
-FIMDBHelper --o FimDB
-item --o db
-FIMDBHelper --o db
-FimDB -- dbresult
-FIM => FIMDB
+        + DBItem()
+        + ~DBItem()
+        + {abstract} fim_entry toFimEntry()
+        + {abstract} nlohman::json toJson()
+        + bool state()
+    }
+
+    class FileItem {
+        - unsigned int m_size
+        - string m_perm
+        - string m_attributes
+        - int m_uid
+        - string m_username
+        - int m_gid
+        - string m_groupname
+        - time_t m_time
+        - unsigned long int m_inode
+        - string m_md5
+        - string m_sha1
+        - string m_sha256
+        - unsigned long int m_dev
+        - int m_options
+        - unique_ptr<fim_entry> m_fimEntry
+        - unique_ptr<nlohman::json> m_statementConf
+
+        + FileItem(fim_entry)
+        + FileItem(nlohman::json)
+        + ~FileItem()
+        + fim_entry* toFIMEntry()
+        + nlohman::json* toJsonEntry()
+    }
+    class "RegistryValue" {
+        - int m_type
+        - int m_keyUid
+        - int m_size
+        - string m_path
+        - string m_md5
+        - string m_sha1
+        - string m_sha256
+        - unique_ptr<fim_entry> m_fimEntry
+        - unique_ptr<nlohman::json> m_statementConf
+
+        + RegistryValue(fim_entry)
+        + RegistryValue(nlohman::json)
+        + ~RegistryValue()
+        + fim_entry toFIMEntry()
+        + json toJson()
+    }
+    class "RegistryKey" {
+        - string m_perm
+        - int m_uid
+        - string m_username
+        - int m_gid
+        - string m_groupname
+        - time_t m_time
+        - int m_arch
+        - unique_ptr<fim_entry> m_fimEntry
+        - unique_ptr<nlohman::json> m_statementConf
+
+        + RegistryKey(fim_entry)
+        + RegistryKey(nlohman::json)
+        + ~RegistryKey()
+        + fim_entry toFIMEntry()
+        + json to_Json()
+    }
+    DBItem <|-- FileItem
+    DBItem <|-- RegistryValue
+    DBItem <|-- RegistryKey
+}
+class "FimDB"  <<(S,#FF7700) Singleton>> {
+    - int m_fileLimit
+    - int m_registryLimit
+    - int m_syncInterval
+    - bool m_stopping
+    - bool m_isWindows
+    - mutex m_fimSyncMutex
+    - condition_variable m_cv
+    - shared_ptr<DBSync> m_dbsyncHandler
+    - shared_ptr<RSync> m_rsyncHandler
+    - function<void(const std::string&)> m_syncFileMessageFunction
+    - function<void(const std::string&)> m_syncRegistryMessageFunction
+    - function<void(modules_log_level_t, const string&)> m_loggingFunction
+    - bool m_runIntegrity
+    - thread m_integrityThread
+    - void sync()
+
+    # FIMDB()
+    # ~FIMDB()
+    # FIMDB(const FIMDB&)
+    # void setFileLimit()
+    # void setRegistryLimit()
+    # void setValueLimit()
+
+    + void init(unsigned int,
+                function<void(const string&)>,
+                function<void(const string&)>,
+                function<void(modules_log_level_t, const string&)>,
+                shared_ptr<DBSync>,
+                shared_ptr<RemoteSync>,
+                unsigned int,
+                unsigned int,
+                bool)
+    + void registerRsync()
+    + void pushMessage(const string&)
+    + void runIntegrity()
+    + void stopSync()
+    + void stopIntegrity()
+    + void logFunction(const modules_log_level_t, const string&)
+    + DBSYNC_HANDLE DBSyncHandle()
+    + void loopRsync(lock)
+    + void removeItem(json)
+    + void updateItem(json, callback)
+    + void executeQuery(json, callback)
+    + void teardown()
+    + FimDB instance()
+}
+package "db.hpp" <<Folder>> #DDDDDD{
+    class DB <<(S,#FF7700) Singleton>>{
+        - DB()
+        - ~DB()
+        - DB(const DB&)
+        - DB& operation=(const DB&)
+        - string CreateStatement
+
+        + static DB& instance()
+        + void init(const int, const int, std::function<void(const std::string&)>, std::function<void(const std::string&)>, std::function<void(modules_log_level_t, const std::string&)>, int, int, bool)
+        + void runIntegrity()
+        + void pushMessage(const string&)
+        + DBSYNC_HANDLE DBSyncHandle()
+        + void removeFile(const std::string&)
+        + void getFile(const string&, std::function<void(const nlohmann::json&)>)
+        + int countFiles(const COUNT_SELECT_TYPE)
+        + bool updateFile(const nlohmann::json &)
+        + void searchFile(const SearchData&, std::function<void(const std::string &)>)
+        + void teardown()
+    }
+    interface SearchData{
+        tuple<FILE_SEARCH_TYPE, std::string, std::string, std::string>
+    }
+    enum COUNT_SELECT_TYPE {
+        COUNT_ALL,
+        COUNT_INODE
+    }
+    enum FILE_SEARCH_TYPE {
+        SEARCH_TYPE_PATH,
+        SEARCH_TYPE_INODE
+    }
+    DB *-- SearchData
+    DB *-- COUNT_SELECT_TYPE
+    DB *-- FILE_SEARCH_TYPE
+}
+package "db.h" <<Folder>> #DDDDDD{
+    interface db {
+        void fim_db_init(int, int, fim_sync_callback_t, logging_callback_t, int, int,bool)
+        void fim_run_integrity()
+        void fim_sync_push_msg(const char*)
+        TXN_HANDLE fim_db_transaction_start(const char*, result_callback_t, void*)
+        FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*)
+        FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE, result_callback_t, void*)
+        void fim_db_teardown()
+    }
+    interface file {
+        FIMDBErrorCode fim_db_file_pattern_search(const char*, callback_context_t )
+        FIMDBErrorCode fim_db_get_path(const char*, callback_context_t)
+        FIMDBErrorCode fim_db_remove_path(const char*)
+        int fim_db_get_count_file_inode()
+        int fim_db_get_count_file_entry()
+        FIMDBErrorCode fim_db_file_update(const fim_entry*, bool*)
+        FIMDBErrorCode fim_db_file_inode_search(const unsigned long, const unsigned long, callback_context_t)
+    }
+}
+
+circle FIM
+db.h => FIM
+fimCommonDefs => FIM
+db.h *-- db.hpp
+db.h *-- FimDB
+fimCommonDefs --o db.h
+fimCommonDefs --o item
+fimCommonDefs --o FimDB
 @enduml

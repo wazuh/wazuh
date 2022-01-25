@@ -41,7 +41,6 @@ class RegistryValue final : public DBItem
                      , fim->registry_entry.value->checksum
                      , fim->registry_entry.value->mode)
         {
-            m_registryKey = 0;
             m_path = fim->registry_entry.value->path ? fim->registry_entry.value->path : "";
             m_arch = fim->registry_entry.value->arch;
             m_size = fim->registry_entry.value->size;
@@ -56,8 +55,6 @@ class RegistryValue final : public DBItem
         RegistryValue(const nlohmann::json& fim)
             : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
-
-            m_registryKey = 0;
             m_size = fim.at("size");
             m_type = fim.at("type");
             m_md5 = fim.at("hash_md5");
@@ -81,7 +78,6 @@ class RegistryValue final : public DBItem
         };
 
     private:
-        unsigned int                                        m_registryKey;
         unsigned int                                        m_size;
         unsigned int                                        m_type;
         std::string                                         m_path;
