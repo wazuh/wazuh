@@ -1278,6 +1278,8 @@ void wdb_finalize_all_statements(wdb_t * wdb) {
         os_free(node_stmt);
         node_stmt = temp;
     }
+
+    wdb->cache_list = NULL;
 }
 
 void wdb_leave(wdb_t * wdb) {
