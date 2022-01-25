@@ -1970,7 +1970,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
  * @param hash Received group column hash.
  * @return cJSON* Returns a cJSON object with the groups integrity status or NULL on error.
  */
-cJSON* wdb_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
+cJSON* wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
 
 /**
  * @brief Gets the maximum priority of the groups of an agent.

@@ -6,7 +6,7 @@ list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
-                         -Wl,--wrap,time ${DEBUG_OP_WRAPPERS} -Wl,--wrap,wdb_init_stmt_in_cache")
+                         -Wl,--wrap,time -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS}")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -44,12 +44,13 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set \
                              -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info -Wl,--wrap,wdb_global_reset_agents_connection \
                              -Wl,--wrap,wdb_global_get_agents_by_connection_status -Wl,--wrap,wdb_global_get_agents_to_disconnect \
-                             -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \
                             -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
                             -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int \
+                            -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_get_global_group_hash \
                             ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents")
