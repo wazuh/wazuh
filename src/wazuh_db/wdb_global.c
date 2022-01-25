@@ -1107,7 +1107,6 @@ char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id) {
 }
 
 wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status) {
-
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_CTX_SET);
     if (stmt == NULL) {
         return WDBC_ERROR;
