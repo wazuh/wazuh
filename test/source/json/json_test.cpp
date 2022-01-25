@@ -64,7 +64,7 @@ TEST(JsonTest, Initialize) {
     ASSERT_NO_THROW(json::Document copy_event(json_event));
 
     ASSERT_NO_THROW(json::Document value_event(*(json_event.get(""))));
-    
+
 }
 
 TEST(JsonTest, Operates) {
@@ -76,8 +76,6 @@ TEST(JsonTest, Operates) {
 
     ASSERT_EQ(*(e.get(".module.name")), Value("changed"));
 
-    ASSERT_TRUE(e.check(".module.name", Value("changed")));
-
-    ASSERT_TRUE(e.check(".module.name"));
-
+    auto expected = Value("changed");
+    ASSERT_TRUE(e.check(".module.name", &expected));
 }
