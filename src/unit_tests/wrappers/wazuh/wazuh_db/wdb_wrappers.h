@@ -51,8 +51,6 @@ cJSON * __wrap_wdb_exec_stmt_single_column(sqlite3_stmt *stmt);
 
 cJSON * __wrap_wdb_exec_stmt_sized(sqlite3_stmt *stmt, size_t max_size, int* status);
 
-cJSON * __wrap_wdb_exec_stmt_single_column(sqlite3_stmt * stmt);
-
 int __wrap_wdbc_parse_result(char *result, char **payload);
 
 int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int len);
