@@ -265,6 +265,30 @@ int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_st
 int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status,int *sock);
 
 /**
+ * @brief Set the groups of an agent using a comma separated string to represent the groups.
+ *
+ * @param[in] id ID of the agent to set the groups.
+ * @param[in] groups_csv The groups to be set in a comma separated format.
+ * @param[in] mode The mode to request the writting.
+ * @param[in] sync_status The sync_status to ask the addition (optional).
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, int *sock);
+
+/**
+ * @brief Set the groups of an agent using a string array to represent the groups.
+ *
+ * @param[in] id ID of the agent to set the groups.
+ * @param[in] groups_array The groups to be set in a string array format.
+ * @param[in] mode The mode to request the writting.
+ * @param[in] sync_status The sync_status to ask the addition (optional).
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+
+ * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status,int *sock);
+
+/**
  * @brief Reset the connection_status column of every agent (excluding the manager).
  *        If connection_status is pending or connected it will be changed to disconnected.
  *        If connection_status is disconnected or never_connected it will not be changed.

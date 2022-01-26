@@ -956,6 +956,71 @@ int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_sta
     return result;
 }
 
+int wdb_set_agent_groups_csv(int id, char* groups_csv, char* mode, char* sync_status, int *sock) {
+    char** groups_array = w_string_split(groups_csv, ",", 0);
+    int ret = wdb_set_agent_groups(id, groups_array, mode, sync_status, sock);
+    free_strarray(groups_array);
+    return ret;
+}
+
+int wdb_set_agent_groups(int id, char** groups_array, char* mode, char* sync_status, int *sock) {
+    int aux_sock = -1;
+
+    if (!groups_array || !mode) {
+        mdebug1("Invalid params to set the agent groups %02d", id);
+        return OS_INVALID;
+    }
+    cJSON* j_data_in = cJSON_CreateObject();
+    if (!j_data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddStringToObject(j_data_in, "mode", mode);
+    if (sync_status) {
+        cJSON_AddStringToObject(j_data_in, "sync_status", sync_status);
+    }
+    cJSON* j_agents_array = cJSON_AddArrayToObject(j_data_in, "data");
+    cJSON* j_agent_info = cJSON_CreateObject();
+    cJSON_AddItemToArray(j_agents_array, j_agent_info);
+    cJSON_AddNumberToObject(j_agent_info, "id", id);
+    cJSON* groups = cJSON_AddArrayToObject(j_agent_info, "groups");
+    for (int i=0; groups_array[i]; i++) {
+        cJSON_AddItemToArray(groups, cJSON_CreateString(groups_array[i]));
+    }
+
+    char* data_in_str = cJSON_PrintUnformatted(j_data_in);
+    cJSON_Delete(j_data_in);
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_GROUPS], data_in_str);
+    os_free(data_in_str);
+
+    int result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, NULL)) {
+                mdebug1("Global DB Error reported in the result of the query");
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Global DB Error in the response from socket");
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+        default:
+            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            mdebug2("Global DB SQL query: %s", wdbquery);
+            return OS_INVALID;
+    }
+
+    return result;
+}
+
 int wdb_reset_agents_connection(const char *sync_status, int *sock) {
     int result = OS_SUCCESS;
     char *wdbquery = NULL;

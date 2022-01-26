@@ -1187,18 +1187,18 @@ int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
+int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the insert group request.
+ * @brief Function to parse the select group from belongs table request.
  *
  * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
+ * @param [in] input String with the agent id in JSON format.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
+int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
  * @brief Function to parse the select group from belongs table request.
@@ -1227,6 +1227,17 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
+
+/**
+ * @brief Function to parse the set agent groups request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the group name.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse the set agent groups request.
