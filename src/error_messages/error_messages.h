@@ -126,6 +126,7 @@
 #define INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
 
 /* syscheck */
+#define SK_SHUTDOWN     "(1756): Shutdown received. Releasing resources."
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
 #define SK_REG_OPEN     "(1758): Unable to open registry key: '%s'."
 

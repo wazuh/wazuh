@@ -103,6 +103,8 @@ smokeTestsDic = {
             'is_smoke_with_configuration': False,
             'args': []
         }
+    ],
+    'syscheckd': [
     ]
 }
 
@@ -112,7 +114,7 @@ deleteFolderDic = {
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
     'shared_modules/utils':         ['build'],
-    'syscheckd/db':                 ['build']
+    'syscheckd':                    ['build']
 }
 
 currentBuildDir = Path(__file__).parent
@@ -172,7 +174,7 @@ def runTests(moduleName):
     printHeader(moduleName, 'tests')
     tests = []
     reg = re.compile(
-        ".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
+        ".*unit_test|.*unit_test.exe|.*integration_test|.*interface_test|.*integration_test.exe|.*interface_test.exe")
     currentDir = currentDirPathBuild(moduleName)
 
     if not moduleName == 'shared_modules/utils':
@@ -234,7 +236,7 @@ def runValgrind(moduleName):
     printHeader(moduleName, 'valgrind')
     tests = []
     reg = re.compile(
-        ".*unit_test|.*unit_test.exe|.*integration_test|.*integration_test.exe")
+        ".*unit_test|.*unit_test.exe|.*integration_test|.*interface_test|.*integration_test.exe|.*interface_test.exe")
     currentDir = ""
     if str(moduleName) == 'shared_modules/utils':
         currentDir = os.path.join(currentDirPath(moduleName), 'build')
@@ -275,8 +277,8 @@ def runCoverage(moduleName):
         moduleCMakeFiles = os.path.join(currentDir, '*/CMakeFiles/*.dir')
         includeDir = includeDir.parent
         paths = glob.glob(moduleCMakeFiles)
-    elif moduleName == 'syscheckd/db':
-        paths = [root for root, _, _ in  os.walk((os.path.join(currentDir, 'build/tests'))) if re.search("\.dir$",root)]
+    elif moduleName == 'syscheckd':
+        paths = [root for root, _, _ in  os.walk((os.path.join(currentDir, 'build'))) if re.search("\.dir$",root)]
     else:
         moduleCMakeFiles = os.path.join(
             currentDir, 'build/tests/*/CMakeFiles/*.dir')
@@ -505,6 +507,8 @@ def runASAN(moduleName):
     :param moduleName: Lib to be analyzed using ASAN dynamic analysis tool.
     """
     printHeader(moduleName, 'asan')
+    cleanInternals()
+    makeTarget('agent', False, True)
     cleanFolder(str(moduleName), "build")
     configureCMake(str(moduleName), True, False, True)
     makeLib(str(moduleName))
@@ -570,8 +574,8 @@ def _getFoldersToAStyle(moduleName):
     foldersToScan = ""
     if str(moduleName) == 'shared_modules/utils':
         foldersToScan = f'{moduleName}/../*.h {moduleName}/*.cpp'
-    elif str(moduleName) == 'syscheckd/db':
-        foldersToScan = f'{moduleName}/*.hpp {moduleName}/*.cpp'
+    elif str(moduleName) == 'syscheckd':
+        foldersToScan = f'"{moduleName}/src/db/src/*.hpp" "{moduleName}/src/db/src/*.cpp"'
     else:
         foldersToScan = f'{moduleName}/*.h {moduleName}/*.cpp'
     return foldersToScan

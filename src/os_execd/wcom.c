@@ -18,7 +18,6 @@
 #include "external/zlib/zlib.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
-#include "syscheckd/syscheck.h"
 #include "rootcheck/rootcheck.h"
 
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);

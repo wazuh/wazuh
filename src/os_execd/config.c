@@ -12,7 +12,6 @@
 #include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
-#include "syscheckd/syscheck.h"
 #include "rootcheck/rootcheck.h"
 #include "os_net/os_net.h"
 

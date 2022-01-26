@@ -18,6 +18,7 @@
 #include "test_inputs.h"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
+constexpr auto DATABASE_MEMORY {":memory:"};
 
 class CallbackMock
 {
@@ -1854,3 +1855,71 @@ TEST_F(DBSyncTest, teardown)
 {
     EXPECT_NO_THROW(DBSync::teardown());
 }
+
+TEST(QueryBuilder, selectInsertDeleteQuery)
+{
+    CallbackMock wrapper;
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_MEMORY, sql));
+
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table("processes")
+        .columnList({"pid", "name"})
+        .rowFilter("WHERE pid = 4")
+        .orderByOpt("pid")
+        .distinctOpt(false)
+        .countOpt(1)
+        .build()
+    };
+
+    auto insertQuery
+    {
+        InsertQuery::builder()
+        .table("processes")
+        .data({{"pid", 4}, {"name", "System1"}, {"tid", 100}})
+        .data({{"pid", 5}, {"name", "System2"}})
+        .data({{"pid", 6}, {"tid", 103}})
+        .build()
+    };
+
+    auto deleteQuery
+    {
+        DeleteQuery::builder()
+        .table("processes")
+        .data({{"pid", 6}})
+        .rowFilter("")
+        .build()
+    };
+
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1","pid":4})"))).Times(4);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2","pid":5})"))).Times(1);
+
+    ResultCallbackData selectCallbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->insertData(insertQuery.query()));
+    EXPECT_NO_THROW(dbSync->deleteRows(deleteQuery.query()));
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+    selectQuery.rowFilter("");
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+    deleteQuery.reset();
+    deleteQuery.rowFilter("pid=5");
+    EXPECT_NO_THROW(dbSync->deleteRows(deleteQuery.query()));
+    selectQuery.countOpt(2);
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+    insertQuery.reset();
+    insertQuery.data({{"pid", 5}, {"name", "System2"}});
+    EXPECT_NO_THROW(dbSync->insertData(insertQuery.query()));
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+}
+
+
