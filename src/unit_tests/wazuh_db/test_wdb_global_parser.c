@@ -1325,6 +1325,63 @@ void test_wdb_parse_global_insert_agent_group_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_select_group_belong */
+
+void test_wdb_parse_global_select_group_belong_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-group-belong";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-group-belong");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-group-belong.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-group-belong");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-group-belong'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_group_belong_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-group-belong 1";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-group-belong 1");
+    expect_value(__wrap_wdb_global_select_group_belong, id_agent, 1);
+    will_return(__wrap_wdb_global_select_group_belong, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent groups information from global.db.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting agent groups information from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_select_group_belong_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global select-group-belong 1";
+    cJSON *j_response = NULL;
+
+    j_response = cJSON_Parse("[\"default\",\"new_group\"]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-group-belong 1");
+    expect_value(__wrap_wdb_global_select_group_belong, id_agent, 1);
+    will_return(__wrap_wdb_global_select_group_belong, j_response);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [\"default\",\"new_group\"]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_delete_group */
 
 void test_wdb_parse_global_delete_group_syntax_error(void **state)
@@ -2388,6 +2445,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_select_group_belong */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_group_belong_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_group_belong_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_group_belong_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_delete_group */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_group_query_error, test_setup, test_teardown),

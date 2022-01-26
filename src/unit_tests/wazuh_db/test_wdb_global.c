@@ -4265,6 +4265,91 @@ void test_wdb_global_insert_agent_group_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
+/* Tests wdb_global_select_group_belong */
+
+void test_wdb_global_select_group_belong_transaction_fail(void **state)
+{
+    cJSON *j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    j_result = wdb_global_select_group_belong(data->wdb, 1);
+    assert_null(j_result);
+}
+
+void test_wdb_global_select_group_belong_cache_fail(void **state)
+{
+    cJSON *j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    j_result = wdb_global_select_group_belong(data->wdb, 1);
+    assert_null(j_result);
+}
+
+void test_wdb_global_select_group_belong_bind_fail(void **state)
+{
+    cJSON *j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    j_result = wdb_global_select_group_belong(data->wdb, 1);
+    assert_null(j_result);
+}
+
+void test_wdb_global_select_group_belong_exec_fail(void **state)
+{
+    cJSON *j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_wdb_exec_stmt_single_column, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+
+    j_result = wdb_global_select_group_belong(data->wdb, 1);
+    assert_null(j_result);
+}
+
+void test_wdb_global_select_group_belong_success(void **state)
+{
+    cJSON *j_result = NULL;
+    cJSON *j_root = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    j_root = cJSON_Parse("[\"default\",\"new_group\"]");
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_single_column, j_root);
+
+    j_result = wdb_global_select_group_belong(data->wdb, 1);
+
+    char *result = cJSON_PrintUnformatted(j_result);
+    assert_string_equal(result, "[\"default\",\"new_group\"]");
+    __real_cJSON_Delete(j_root);
+    os_free(result);
+}
+
 /* Tests wdb_global_insert_agent_belong */
 
 void test_wdb_global_insert_agent_belong_transaction_fail(void **state)
@@ -6411,6 +6496,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_success, test_setup, test_teardown),
+        /* Tests wdb_global_select_group_belong */
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_success, test_setup, test_teardown),
         /* Tests wdb_global_insert_agent_belong */
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_cache_fail, test_setup, test_teardown),
