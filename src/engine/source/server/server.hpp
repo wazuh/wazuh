@@ -23,7 +23,11 @@ private:
     {
         // Generating new subscriber per endpoint
         auto subscriber = m_subject.get_subscriber();
-        return [=](const std::string & message) { subscriber.on_next(message); };
+        return [=](const std::string & message)
+        {
+            auto event = protocolhandler::parseEvent(message);
+            subscriber.on_next(event);
+        };
     }
 
 public:
@@ -38,7 +42,7 @@ public:
         }
 
         // Build server output observable to emit json events
-        this->m_output(this->m_subject.get_observable().map(protocolhandler::parseEvent));
+        this->m_output = this->m_subject.get_observable();
     }
 
     rxcpp::observable<nlohmann::json> output() const
