@@ -1128,7 +1128,6 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
 
 cJSON* wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
-
     if (stmt == NULL) {
         return NULL;
     }
@@ -1157,7 +1156,6 @@ cJSON* wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
 
 int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
-
     if (stmt == NULL) {
         return OS_INVALID;
     }
