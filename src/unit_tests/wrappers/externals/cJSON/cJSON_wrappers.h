@@ -87,6 +87,8 @@ cJSON *__wrap_cJSON_ParseWithOpts(const char *value, const char **return_parse_e
 
 extern cJSON *__real_cJSON_Parse(const char *value);
 
+extern char *__real_cJSON_PrintUnformatted(cJSON *item);
+
 char *__wrap_cJSON_PrintUnformatted(const cJSON *item);
 
 char *__wrap_cJSON_Print(const cJSON *item);
