@@ -1325,96 +1325,6 @@ void test_wdb_parse_global_insert_agent_group_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_parse_global_insert_agent_belong */
-
-void test_wdb_parse_global_insert_agent_belong_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global insert-agent-belong";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-belong");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for insert-agent-belong.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: insert-agent-belong");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'insert-agent-belong'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_insert_agent_belong_invalid_json(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global insert-agent-belong {INVALID_JSON}";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-belong {INVALID_JSON}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when inserting agent to belongs table.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_insert_agent_belong_invalid_data(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global insert-agent-belong {\"id_group\":1,\"id_agent\":null}";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-belong {\"id_group\":1,\"id_agent\":null}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when inserting agent to belongs table.");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id_group\":1,\"id_agent\":null}'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_insert_agent_belong_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-belong {\"id_group\":1,\"id_agent\":2}");
-    expect_value(__wrap_wdb_global_insert_agent_belong, id_group, 1);
-    expect_value(__wrap_wdb_global_insert_agent_belong, id_agent, 2);
-    will_return(__wrap_wdb_global_insert_agent_belong, OS_INVALID);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_insert_agent_belong_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global insert-agent-belong {\"id_group\":1,\"id_agent\":2}";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: insert-agent-belong {\"id_group\":1,\"id_agent\":2}");
-    expect_value(__wrap_wdb_global_insert_agent_belong, id_group, 1);
-    expect_value(__wrap_wdb_global_insert_agent_belong, id_agent, 2);
-    will_return(__wrap_wdb_global_insert_agent_belong, OS_SUCCESS);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_parse_global_delete_group */
 
 void test_wdb_parse_global_delete_group_syntax_error(void **state)
@@ -2324,12 +2234,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_insert_agent_belong */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_belong_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_belong_invalid_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_belong_invalid_data, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_belong_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_belong_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_delete_group */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_group_query_error, test_setup, test_teardown),

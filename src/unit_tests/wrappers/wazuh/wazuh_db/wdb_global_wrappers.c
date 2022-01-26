@@ -174,12 +174,6 @@ int __wrap_wdb_global_insert_agent_belong(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-int __wrap_wdb_global_delete_group_belong(__attribute__((unused)) wdb_t *wdb,
-                                          char *group_name) {
-    check_expected(group_name);
-    return mock();
-}
-
 int __wrap_wdb_global_delete_group( __attribute__((unused)) wdb_t *wdb,
                                     char *group_name) {
     check_expected(group_name);
