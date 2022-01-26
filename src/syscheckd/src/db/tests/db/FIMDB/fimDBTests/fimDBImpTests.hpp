@@ -66,9 +66,9 @@ class MockFIMDB: public FIMDB
             FIMDB::setValueLimit();
         }
 
-        void stopSync()
+        void stopIntegrity()
         {
-            FIMDB::stopSync();
+            FIMDB::stopIntegrity();
         }
 
         void teardown()
@@ -91,7 +91,7 @@ class MockLoggingCall
 class MockSyncMsg
 {
     public:
-        MOCK_METHOD(void, syncMsg, (const char*, const char*), ());
+        MOCK_METHOD(void, syncMsg, (const std::string&, const std::string&), ());
 };
 
 #endif //_FIMDB_IMP_TEST_H

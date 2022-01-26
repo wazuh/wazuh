@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#include <iostream>
 #include <string.h>
 
 #ifdef WAZUH_UNIT_TESTING

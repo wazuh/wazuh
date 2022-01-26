@@ -37,7 +37,7 @@ typedef enum COUNT_SELECT_TYPE {
 typedef enum FILE_SEARCH_TYPE {
     SEARCH_TYPE_PATH,
     SEARCH_TYPE_INODE
-}FILE_SEARCH_TYPE;
+} FILE_SEARCH_TYPE;
 
 using SearchData = std::tuple<FILE_SEARCH_TYPE, std::string, std::string, std::string>;
 
@@ -128,6 +128,12 @@ public:
     * @param callback Callback return the file data.
     */
     void searchFile(const SearchData& data, std::function<void(const std::string &)> callback);
+
+    /**
+    * @brief teardown Close the fimdb instances.
+    */
+    void teardown();
+
 private:
     DB() = default;
     ~DB() = default;
