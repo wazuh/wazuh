@@ -1,19 +1,26 @@
 #include "tcp_endpoint.hpp"
 
 #include <functional>
+#include <iostream>
+#include <mutex>
 #include <string>
 #include <uvw/tcp.hpp>
+#include "protocol_handler.hpp"
 
 using namespace std;
 
 namespace server::endpoints
 {
-TcpEndpoint::TcpEndpoint(std::function<void(const std::string &)> forward, const std::string& ip, const int& port) : Endpoint{forward}
+TcpEndpoint::TcpEndpoint(const std::string & config)
+    : Endpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::TCPHandle>()}
 {
-    auto loop = uvw::Loop::getDefault();
-    auto tcp = loop->resource<uvw::TCPHandle>();
+    auto pos = config.find(":");
+    auto tmp = config.substr(pos + 1);
+    pos = tmp.find(":");
+    this->m_ip = tmp.substr(0, pos);
+    this->m_port = stoi(tmp.substr(pos + 1));
 
-    tcp->on<uvw::ErrorEvent>(
+    m_handle->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::TCPHandle & tcp)
         {
             std::cerr << "TCP Server (" << tcp.sock().ip.c_str() << ":" << tcp.sock().port
@@ -21,7 +28,7 @@ TcpEndpoint::TcpEndpoint(std::function<void(const std::string &)> forward, const
                       << std::endl;
         });
 
-    tcp->on<uvw::ListenEvent>(
+    m_handle->on<uvw::ListenEvent>(
         [this](const uvw::ListenEvent &, uvw::TCPHandle & srv)
         {
             auto client = srv.loop().resource<uvw::TCPHandle>();
@@ -37,23 +44,14 @@ TcpEndpoint::TcpEndpoint(std::function<void(const std::string &)> forward, const
             client->on<uvw::DataEvent>(
                 [this, &srv](const uvw::DataEvent & event, uvw::TCPHandle & client)
                 {
-                    auto obs = this->getEndpointSubscriber(EndpointType::TCP, client.sock().port, srv.sock().ip);
-                    if (obs)
+                    auto eventObject = server::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
+                    if (!eventObject.contains("error"))
                     {
-                        auto eventObject = parseEvent(std::string(event.data.get(), event.length));
-                        if (!eventObject.contains("error"))
-                        {
-                            obs.value().on_next(eventObject);
-                        }
-                        else
-                        {
-                            // TODO: complete this case
-                        }
+                        this->m_subscriber.on_next(eventObject);
                     }
                     else
                     {
-                        std::cerr << "Endpoint could not be found: " << client.sock().port << ":" << srv.sock().ip
-                                  << std::endl;
+                        // TODO: complete this case
                     }
                 });
 
@@ -63,7 +61,27 @@ TcpEndpoint::TcpEndpoint(std::function<void(const std::string &)> forward, const
             client->read();
         });
 
-    tcp->bind(ip, port);
-    tcp->listen();
+    m_handle->bind(this->m_ip, this->m_port);
+    m_handle->listen();
+}
+
+void TcpEndpoint::run(void)
+{
+    std::thread t(&uvw::Loop::run, this->m_loop.get());
+    t.detach();
+}
+
+void TcpEndpoint::close(void)
+{
+    m_loop->stop();                                                 /// Stops the loop
+    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->run(); /// Runs the loop again, so every handle is able to receive its close callback
+    m_loop->clear();
+    m_loop->close();
+}
+
+TcpEndpoint::~TcpEndpoint()
+{
+    this->close();
 }
 } // namespace server::endpoints
