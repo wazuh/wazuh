@@ -72,6 +72,10 @@ include_directories(
 # include(GoogleTest)
 # gtest_discover_tests(engine_server_test)
 
-add_executable(server_test ${SERVER_TEST_SOURCE_DIR}/server_test.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocol_handler.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcp_endpoint.cpp)
+add_executable(server_test ${SERVER_TEST_SOURCE_DIR}/server_test.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocol_handler.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcp_endpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udp_endpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socket_endpoint.cpp)
 target_link_libraries(server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
 gtest_discover_tests(server_test)
+
+add_executable(tcp_endpoint_test ${SERVER_TEST_SOURCE_DIR}/endpoints/tcp_endpoint_test.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcp_endpoint.cpp)
+target_link_libraries(tcp_endpoint_test gtest_main uv)
+gtest_discover_tests(tcp_endpoint_test)
