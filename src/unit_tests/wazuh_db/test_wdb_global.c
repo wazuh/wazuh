@@ -4352,9 +4352,6 @@ void test_wdb_global_insert_agent_belong_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, priority);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_step, SQLITE_DONE);
-    expect_value(__wrap_sqlite3_bind_int, index, 3);
-    expect_value(__wrap_sqlite3_bind_int, value, priority);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
@@ -5971,10 +5968,10 @@ void test_wdb_global_update_agent_groups_hash_groups_string_null_success(void **
     int agent_id = 1;
     char *groups_string = "group1,group2";
     char *groups_string_hash = "ef48b4cd";
+    data->wdb->transaction = 1;
 
-    // wdb_global_get_agent_group_csv
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    // wdb_global_select_agent_group
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
@@ -5985,7 +5982,6 @@ void test_wdb_global_update_agent_groups_hash_groups_string_null_success(void **
     will_return(__wrap_wdb_exec_stmt, j_result);
     expect_function_call(__wrap_cJSON_Delete);
 
-    data->wdb->transaction = 1;
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, groups_string_hash);
@@ -6004,10 +6000,10 @@ void test_wdb_global_update_agent_groups_hash_groups_string_null_success(void **
 void test_wdb_global_update_agent_groups_hash_empty_group_column_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
+    data->wdb->transaction = 1;
 
-    // wdb_global_get_agent_group_csv
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    // wdb_global_select_agent_group
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
@@ -6017,7 +6013,7 @@ void test_wdb_global_update_agent_groups_hash_empty_group_column_success(void **
     will_return(__wrap_wdb_exec_stmt, j_result);
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Empty group column for agent '1'. The groups_hash column won't be updated");
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to get group column for agent '1'. The groups_hash column won't be updated");
 
     int result = wdb_global_update_agent_groups_hash(data->wdb, agent_id, NULL);
 
@@ -6097,10 +6093,9 @@ void test_wdb_global_update_all_agents_groups_hash_success(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, agent_id);
 
-    // wdb_global_get_agent_group_csv
+    // wdb_global_select_agent_group
     char *groups_string = "group1,group2";
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
@@ -6127,72 +6122,6 @@ void test_wdb_global_update_all_agents_groups_hash_success(void **state) {
     int result = wdb_global_update_all_agents_groups_hash(data->wdb);
 
     assert_int_equal(result, OS_SUCCESS);
-    __real_cJSON_Delete(j_result);
-}
-
-/* Tests wdb_global_get_agent_group_csv */
-
-void test_wdb_global_get_agent_group_csv_bind_failed(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
-
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
-
-    char *group_csv = wdb_global_get_agent_group_csv(data->wdb, agent_id);
-
-    assert_ptr_equal(group_csv, NULL);
-    os_free(group_csv);
-}
-
-void test_wdb_global_get_agent_group_csv_exec_failed(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
-
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
-
-    char *group_csv = wdb_global_get_agent_group_csv(data->wdb, agent_id);
-
-    assert_ptr_equal(group_csv, NULL);
-    os_free(group_csv);
-}
-
-void test_wdb_global_get_agent_group_csv_success(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
-    char *groups_string = "group1,group2";
-
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CSV_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-
-    cJSON *j_result = cJSON_CreateArray();
-    cJSON *j_object = cJSON_CreateObject();
-    cJSON_AddItemToObject(j_object, "group", cJSON_CreateString(groups_string));
-    cJSON_AddItemToArray(j_result, j_object);
-    will_return(__wrap_wdb_exec_stmt, j_result);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    char *group_csv = wdb_global_get_agent_group_csv(data->wdb, agent_id);
-
-    assert_string_equal(group_csv, groups_string);
-    os_free(group_csv);
     __real_cJSON_Delete(j_result);
 }
 
@@ -6504,10 +6433,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_bind_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_step_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_success, test_setup, test_teardown),
-       /* Tests wdb_global_get_agent_group_csv */
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_group_csv_bind_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_group_csv_exec_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_group_csv_success, test_setup, test_teardown),
         /* Tests wdb_global_calculate_agent_group_csv */
         cmocka_unit_test_setup_teardown(test_wdb_global_calculate_agent_group_csv_unable_to_get_group, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_calculate_agent_group_csv_success, test_setup, test_teardown),
