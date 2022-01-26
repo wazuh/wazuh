@@ -60,11 +60,18 @@ set(SOURCES
 )
 
 include_directories(
+    ${ENGINE_SOURCE_DIR}
     ${SERVER_ENGINE_SOURCE_DIR}
     ${SERVER_TEST_SOURCE_DIR}
+    ${uvw_SOURCE_DIR}/src/
+    ${uvw_SOURCE_DIR}/src/uvw/
 )
-add_executable(engine_server_test ${SERVER_TEST_SOURCE_DIR}/engineserver_test.cpp ${SOURCES})
-target_include_directories(engine_server_test PUBLIC ${uvw_SOURCE_DIR}/src/ ${uvw_SOURCE_DIR}/src/uvw/)
-target_link_libraries(engine_server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
-include(GoogleTest)
-gtest_discover_tests(engine_server_test)
+# add_executable(engine_server_test ${SERVER_TEST_SOURCE_DIR}/engineserver_test.cpp ${SOURCES})
+# target_include_directories(engine_server_test PUBLIC ${uvw_SOURCE_DIR}/src/ ${uvw_SOURCE_DIR}/src/uvw/)
+# target_link_libraries(engine_server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
+# include(GoogleTest)
+# gtest_discover_tests(engine_server_test)
+
+add_executable(server_test ${SERVER_TEST_SOURCE_DIR}/server_test.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocol_handler.cpp)
+target_link_libraries(server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
+gtest_discover_tests(server_test)
