@@ -105,6 +105,26 @@ smokeTestsDic = {
         }
     ],
     'syscheckd': [
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'args': [
+                '-c config.json',
+                '-a FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json,FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_2.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json',
+                '-o ./output'
+            ]
+        },
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'args': [
+                '-c config.json',
+                '-a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json',
+                '-o ./output'
+            ]
+        }
     ]
 }
 
@@ -114,7 +134,7 @@ deleteFolderDic = {
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
     'shared_modules/utils':         ['build'],
-    'syscheckd':                    ['build']
+    'syscheckd':                    ['build', 'src/db/smokeTests/output'],
 }
 
 currentBuildDir = Path(__file__).parent
@@ -472,16 +492,22 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
         raise ValueError(errorString)
 
 
-def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
+def runTestTool(moduleName, testToolCommand, element):
     printHeader('TESTTOOL', 'testtool')
     printGreen(testToolCommand)
     cwd = os.getcwd()
-
-    if isSmokeTest:
+    if element['is_smoke_with_configuration']:
         currentmoduleNameDir = currentDirPath(moduleName)
-        output_folder = os.path.join(currentmoduleNameDir, 'smokeTests/output')
-        os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
-        cleanFolder(moduleName, 'smokeTests/output')
+        if element['smoke_tests_path']:
+            smoke_tests_folder = os.path.join(str.rstrip(currentmoduleNameDir, ' '), element['smoke_tests_path'])
+            output_folder = os.path.join(smoke_tests_folder,"output")
+            os.chdir(smoke_tests_folder)
+            cleanFolder(moduleName, os.path.join(element['smoke_tests_path'],"output"))
+
+        else:
+            output_folder = os.path.join(currentmoduleNameDir, 'output')
+            os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
+            cleanFolder(moduleName, 'smokeTests/output')
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
 
@@ -518,8 +544,7 @@ def runASAN(moduleName):
                             'bin', element['test_tool_name'])
         args = ' '.join(element['args'])
         testToolCommand = f'{path} {args}'
-        runTestTool(str(moduleName), testToolCommand,
-                    element['is_smoke_with_configuration'])
+        runTestTool(str(moduleName), testToolCommand, element)
 
     printGreen(f'<{moduleName}>[ASAN: PASSED]<{moduleName}>')
 

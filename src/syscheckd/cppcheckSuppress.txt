@@ -2,3 +2,4 @@
 *:*src/syscheckd/src/db/src/file.cpp:114
 *:*src/syscheckd/src/db/src/file.cpp:188
 *:*src/syscheckd/src/db/src/db.cpp:125
+*:*src/db/testtool/action.h:361
