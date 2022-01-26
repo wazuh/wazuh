@@ -1,11 +1,11 @@
 #include "tcp_endpoint.hpp"
 
+#include "protocol_handler.hpp"
 #include <functional>
 #include <iostream>
 #include <mutex>
 #include <string>
 #include <uvw/tcp.hpp>
-#include "protocol_handler.hpp"
 
 using namespace std;
 
