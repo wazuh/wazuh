@@ -3,6 +3,8 @@
 
 #include <functional>
 #include <memory>
+#include <nlohmann/json.hpp>
+#include <rxcpp/rx.hpp>
 #include <string>
 
 namespace server::endpoints
@@ -11,8 +13,22 @@ namespace server::endpoints
 class Endpoint
 {
 protected:
-    std::function<void(const std::string &)> m_forward;
-    explicit Endpoint(std::function<void(const std::string &)> forward);
+    rxcpp::subjects::subject<nlohmann::json> m_subject;
+    rxcpp::subscriber<nlohmann::json> m_subscriber;
+    std::string m_path;
+
+    explicit Endpoint(const std::string & path);
+
+public:
+    /**
+     * @brief Get the Observable object
+     *
+     * @return auto Observable object
+     */
+    rxcpp::observable<nlohmann::json> output(void) const;
+
+    virtual void run(void) = 0;
+    virtual void close(void) = 0;
 };
 
 enum EndpointType
@@ -24,8 +40,7 @@ enum EndpointType
 
 EndpointType stringToEndpoint(const std::string & endpointName);
 
-std::unique_ptr<Endpoint> create(const std::string & type, const std::string & config,
-                                 std::function<void(const std::string &)> forward);
+std::unique_ptr<Endpoint> create(const std::string & type, const std::string & config);
 
 } // namespace server::endpoints
 #endif // _ENDPOINT_H
