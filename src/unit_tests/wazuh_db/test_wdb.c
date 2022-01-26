@@ -763,6 +763,7 @@ void test_wdb_get_config(){
     cJSON_Delete(ret);
 }
 
+/* wdb_exec_stmt_single_column */
 void test_wdb_exec_single_column(){
     char col_text[4][16] = { 0 };
 
@@ -791,7 +792,7 @@ void test_wdb_exec_single_column(){
 void test_wdb_exec_single_column_invalid_stmt(){
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
 
-    cJSON *ret = wdb_exec_stmt_single_column(0);
+    cJSON *ret = wdb_exec_stmt_single_column(NULL);
 
     assert_null(ret);
 }
@@ -829,9 +830,7 @@ void test_wdb_finalize_all_statements(){
     struct stmt_cache_list** c = &(wdb.cache_list);
     for(int i = 0; i < kMaxStmt; ++i){
         *c = calloc(1, sizeof(struct stmt_cache_list));
-
         (*c)->value.stmt = (sqlite3_stmt*) 0xDEADBEEF;
-
         c = &((*c)->next);
     }
 
@@ -839,7 +838,6 @@ void test_wdb_finalize_all_statements(){
 
     // free the prepared statements
     will_return_count(__wrap_sqlite3_finalize, 1, kMaxStmt);
-
     // free the statement cache
     will_return_count(__wrap_sqlite3_finalize, 1, kMaxStmt);
 
@@ -849,6 +847,7 @@ void test_wdb_finalize_all_statements(){
     assert_null(wdb.cache_list);
 }
 
+/* wdb_close*/
 void test_wdb_close_refcount_error(){
     wdb_t wdb = {0};
     wdb.refcount = 1;
@@ -876,7 +875,7 @@ void test_wdb_close_no_commit_sqlerror(){
     assert_int_equal(-1, wdb_close(&wdb, 0));
 }
 
-void test_wdb_close(){
+void test_wdb_close_success(){
     wdb_t *wdb = calloc(1, sizeof(wdb_t));
     wdb->id = strdup("agent");
 
@@ -954,7 +953,7 @@ int main() {
         // wdb_close
         cmocka_unit_test(test_wdb_close_refcount_error),
         cmocka_unit_test(test_wdb_close_no_commit_sqlerror),
-        cmocka_unit_test(test_wdb_close),
+        cmocka_unit_test(test_wdb_close_success),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
