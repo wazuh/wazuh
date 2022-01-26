@@ -20,6 +20,7 @@ protected:
     explicit Endpoint(const std::string & path);
 
 public:
+    virtual ~Endpoint();
     /**
      * @brief Get the Observable object
      *
