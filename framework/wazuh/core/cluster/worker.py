@@ -175,7 +175,7 @@ class SyncWazuhdb(SyncTask):
     """
 
     def __init__(self, worker, logger, cmd: bytes, get_data_command: str, set_data_command: str,
-                 data_retriever: Callable):
+                 data_retriever: Callable, get_payload: dict = None, set_payload: dict = None, pivot_key: str = ''):
         """Class constructor.
 
         Parameters
@@ -192,11 +192,57 @@ class SyncWazuhdb(SyncTask):
             Logger to use during synchronization process.
         data_retriever : Callable
             Function to be called to obtain chunks of data. It must return a list of chunks.
+        get_payload : dict
+            Payload to request information with "get" command.
+        set_payload : dict
+            Payload to write the information with the "set" command.
+        pivot_key : str
+            Key to request the information from the database in case it is not fully contained in a single request.
         """
         super().__init__(worker=worker, logger=logger, cmd=cmd)
         self.get_data_command = get_data_command
+        if get_payload is None:
+            get_payload = {}
+        self.get_payload = get_payload
         self.set_data_command = set_data_command
+        if set_payload is None:
+            set_payload = {}
+        self.set_payload = set_payload
+        self.pivot_key = pivot_key
         self.data_retriever = data_retriever
+
+    async def retrieve_information(self):
+        """Collect the required information from the local node's database. This function will collect
+        information until the status is 'ok' or 'err', in which case an exception will be raised.
+
+        The function will determine when it is necessary to use a parameter in the request payload
+        to specify the first value to get in the next query to WDB.
+
+        Returns
+        -------
+        list
+            List of results obtained from WDB
+        """
+        pivoting = self.get_payload != {} and self.pivot_key != ''
+        status = ''
+        chunks = []
+        last_pivot_value = 0
+        if pivoting:
+            self.get_payload[self.pivot_key] = last_pivot_value
+
+        while status != 'ok':
+            command = self.get_data_command + json.dumps(self.get_payload)
+            result = self.data_retriever(command=command)
+            status = result[0]
+            chunks.append(result[1])
+            if pivoting:
+                try:
+                    last_pivot_value = json.loads(result[1])[-1]['data'][-1]['id']
+                    self.get_payload[self.pivot_key] = last_pivot_value
+                except IndexError:
+                    pass
+
+        return chunks
 
     async def sync(self, start_time: float):
         """Start sending information to master node.
@@ -214,7 +260,7 @@ class SyncWazuhdb(SyncTask):
         try:
             # Retrieve information from local wazuh-db
             get_chunks_start_time = datetime.utcnow().timestamp()
-            chunks = self.data_retriever(self.get_data_command)
+            chunks = await self.retrieve_information()
             self.logger.debug(
                 f"Obtained {len(chunks)} chunks of data in {(datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.")
         except exception.WazuhException as e:
@@ -269,10 +315,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # [Worker name] [Integrity] Log information
         # this way the same code can be shared among all sync tasks and logs will differentiate.
         self.task_loggers = {'Agent-info sync': self.setup_task_logger('Agent-info sync'),
+                             'Agent-groups sync': self.setup_task_logger('Agent-groups sync'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
 
         self.agent_info_sync_status = {'date_start': 0.0}
+        self.agent_groups_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
         self.integrity_sync_status = {'date_start': 0.0}
 
@@ -515,34 +563,83 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
-    async def sync_agent_info(self):
+    async def sync_agent_info(self, synced=True):
         """Obtain information from agents reporting this worker and send it to the master.
 
         Asynchronous task that is started when the worker connects to the master. It starts an agent-info
-        synchronization process every 'sync_agent_info' seconds.
+        synchronization process every 'sync_agent_info' or 'sync_agent_info_ko_retry' seconds.
 
         A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
         and sent to the master's wazuh-db.
+
+        Parameters
+        ----------
+        synced : bool
+            Flag indicating which timer should be used for the synchronization task.
         """
         logger = self.task_loggers["Agent-info sync"]
+        sleep_interval = self.cluster_items['intervals']['worker']['sync_agent_info' if synced
+        else 'sync_agent_info_ko_retry']
         wdb_conn = WazuhDBConnection()
         agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_a_w_m', data_retriever=wdb_conn.run_wdb_command,
                                  get_data_command='global sync-agent-info-get ',
                                  set_data_command='global sync-agent-info-set')
 
+        await self.general_agent_sync_task(sync_object=agent_info, timer=self.agent_info_sync_status,
+                                           sleep_interval=sleep_interval)
+
+    async def sync_agent_groups(self, synced=True):
+        """Obtain information about groups from agents reporting this worker and send it to the master.
+
+        Asynchronous task that is started when the worker connects to the master. It starts an agent-groups
+        synchronization process every 'sync_agent_groups' or 'sync_agent_groups_ko_retry' seconds.
+
+        A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
+        and sent to the master's wazuh-db.
+
+        Parameters
+        ----------
+        synced : bool
+            Flag indicating which timer should be used for the synchronization task.
+        """
+        logger = self.task_loggers["Agent-groups sync"]
+        sleep_interval = self.cluster_items['intervals']['worker']['sync_agent_groups' if synced
+        else 'sync_agent_groups_ko_retry']
+        wdb_conn = WazuhDBConnection()
+        agent_groups = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_g_w_m',
+                                   data_retriever=wdb_conn.run_wdb_command,
+                                   get_data_command='global sync-agent-groups-get ',
+                                   get_payload={"condition": "sync_status", "last_id": 0}, pivot_key='last_id',
+                                   set_data_command='global set-agent-groups')
+
+        await self.general_agent_sync_task(sync_object=agent_groups, timer=self.agent_groups_sync_status,
+                                           sleep_interval=sleep_interval)
+
+    async def general_agent_sync_task(self, sync_object, timer, sleep_interval):
+        """General body of the database synchronization tasks. Constant loop that performs the task
+        for which it has been configured every X seconds.
+
+        Parameters
+        ----------
+        sync_object : SyncWazuhdb
+            Object in charge of synchronization with the database.
+        timer : dict
+            Dictionary with initial task time.
+        sleep_interval
+            Waiting time set between iterations.
+        """
         while True:
             try:
                 if self.connected:
                     start_time = datetime.utcnow().timestamp()
-                    if await agent_info.request_permission():
-                        logger.info("Starting.")
-                        self.agent_info_sync_status['date_start'] = start_time
-                        await agent_info.sync(start_time=start_time)
+                    if await sync_object.request_permission():
+                        sync_object.logger.info("Starting.")
+                        timer['date_start'] = start_time
+                        await sync_object.sync(start_time=start_time)
             except Exception as e:
-                logger.error(f"Error synchronizing agent info: {e}")
+                sync_object.logger.error(f"Error synchronizing agent information: {e}")
 
-            await asyncio.sleep(
-                self.cluster_items['intervals']['worker']['sync_agent_info'])
+            await asyncio.sleep(sleep_interval)
 
     async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.
@@ -817,7 +914,7 @@ class Worker(client.AbstractClientManager):
             all coroutines don't need arguments.
         """
         return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple()),
-                                      (self.dapi.run, tuple())]
+                                      (self.client.sync_agent_groups, tuple()), (self.dapi.run, tuple())]
 
     def get_node(self) -> Dict:
         """Get basic information about the worker node. Used in the GET/cluster/node API call.
