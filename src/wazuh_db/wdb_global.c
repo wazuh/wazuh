@@ -1709,7 +1709,6 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
 
     // Commiting pending transaction to run VACUUM
     if (wdb_commit2(wdb) == OS_INVALID) {
-        mdebug1("Cannot commit current transaction to create backup");
         snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to create backup");
         return OS_INVALID;
     }
@@ -1720,12 +1719,11 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
     sqlite3_stmt *stmt = NULL;
 
     if (sqlite3_prepare_v2(wdb->db, SQL_VACUUM_INTO, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
     if (sqlite3_bind_text(stmt, 1, path , -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         snprintf(output, OS_MAXSTR + 1, "err DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         sqlite3_finalize(stmt);
         return OS_INVALID;
@@ -1743,10 +1741,10 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
         result = w_compress_gzfile(path, path_compressed);
         unlink(path);
         if(OS_SUCCESS == result) {
-            minfo("Created Global database backup \"%s\"", path);
+            minfo("Created Global database backup \"%s\"", path_compressed);
             wdb_global_remove_old_backups();
             cJSON* j_path = cJSON_CreateArray();
-            cJSON_AddItemToArray(j_path, cJSON_CreateString(path));
+            cJSON_AddItemToArray(j_path, cJSON_CreateString(path_compressed));
             char* output_str = cJSON_PrintUnformatted(j_path);
             snprintf(output, OS_MAXSTR + 1, "ok %s", output_str);
             cJSON_Delete(j_path);
@@ -1923,6 +1921,7 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
     struct dirent *entry = NULL;
     time_t oldest_backup_time = OS_INVALID;
+    time_t aux_time_var = OS_INVALID;
     time_t current_time = time(NULL);
     char *tmp_backup_name = NULL;
 
@@ -1935,8 +1934,9 @@ time_t wdb_global_get_oldest_backup(char **oldest_backup_name) {
 
         snprintf(tmp_path, OS_SIZE_512, "%s/%s", WDB_BACKUP_FOLDER, entry->d_name);
         if(!stat(tmp_path, &backup_info) ) {
-            if((current_time - backup_info.st_mtime) >= oldest_backup_time) {
-                oldest_backup_time = current_time - backup_info.st_mtime;
+            if((current_time - backup_info.st_mtime) >= aux_time_var) {
+                aux_time_var = current_time - backup_info.st_mtime;
+                oldest_backup_time = backup_info.st_mtime;
                 tmp_backup_name = entry->d_name;
             }
         }

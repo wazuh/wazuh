@@ -30,6 +30,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdb_package_save -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_package_update -Wl,--wrap,wdb_package_delete \
                         -Wl,--wrap,wdb_hotfix_delete -Wl,--wrap,time -Wl,--wrap,wdbi_update_attempt  -Wl,--wrap,wdbi_update_completion \
                         -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config \
+                        -Wl,--wrap,wdb_global_create_backup \
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
@@ -44,14 +45,18 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set \
                              -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info -Wl,--wrap,wdb_global_reset_agents_connection \
                              -Wl,--wrap,wdb_global_get_agents_by_connection_status -Wl,--wrap,wdb_global_get_agents_to_disconnect \
-                             -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity -Wl,--wrap,wdb_global_get_backups \
+                             -Wl,--wrap,wdb_global_restore_backup -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \
                             -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
                             -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int \
-                            -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_get_global_group_hash \
-                            ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_get_global_group_hash -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_finalize_all_statements \
+                            -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,w_get_timestamp -Wl,--wrap,wdb_exec_stmt_silent -Wl,--wrap,w_compress_gzfile \
+                            -Wl,--wrap,sqlite3_finalize -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,readdir \
+                            -Wl,--wrap,stat -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_close -Wl,--wrap,rename -Wl,--wrap,time \
+                            ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,wdb_exec_stmt_silent  -Wl,--wrap,sqlite3_step \
