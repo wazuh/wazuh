@@ -2007,8 +2007,10 @@ void test_wdb_select_group_belong_success(void **state) {
 
     j_response = wdb_select_group_belong(id, NULL);
 
-    assert_non_null(j_response);
+    char *response = __real_cJSON_PrintUnformatted(j_response);
+    assert_string_equal(response, "[\"default\",\"new_group\"]");
     __real_cJSON_Delete(j_root);
+    os_free(response);
 }
 
 /* Tests wdb_delete_agent_belongs */
