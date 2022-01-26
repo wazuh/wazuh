@@ -2786,22 +2786,25 @@ class AWSInspector(AWSService):
                                                                 scan_date=initial_date))
             last_scan = initial_date
 
-        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
-        date_scan = datetime_last_scan if not self.only_logs_after or datetime_last_scan > \
-            (date_ol := datetime.strptime(self.only_logs_after, "%Y%m%d")) else date_ol
+        date_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        if not self.only_logs_after or date_last_scan > (date_only_logs :=
+                                                         datetime.strptime(self.only_logs_after, "%Y%m%d")):
+            date_scan = date_last_scan
+        else:
+            date_scan = date_only_logs
         # get current time (UTC)
-        datetime_current = datetime.utcnow()
+        date_current = datetime.utcnow()
         # describe_findings only retrieves 100 results per call
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
                                                                          {'beginDate': date_scan,
-                                                                          'endDate': datetime_current}})
+                                                                          'endDate': date_current}})
         debug(f"+++ Listing findings starting from {date_scan}", 2)
         self.send_describe_findings(response['findingArns'])
         # Iterate if there are more elements
         while 'nextToken' in response:
             response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
                                                  filter={'creationTimeRange': {'beginDate': date_scan,
-                                                                               'endDate': datetime_current}})
+                                                                               'endDate': date_current}})
             self.send_describe_findings(response['findingArns'])
 
         if self.sent_events:        
@@ -2814,7 +2817,7 @@ class AWSInspector(AWSService):
                                                             service_name=self.service_name,
                                                             aws_account_id=self.account_id,
                                                             aws_region=self.inspector_region,
-                                                            scan_date=datetime_current))
+                                                            scan_date=date_current))
         # DB maintenance
         self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
                                                               service_name=self.service_name,
