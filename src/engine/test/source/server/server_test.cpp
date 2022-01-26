@@ -10,5 +10,5 @@ using namespace std;
 TEST(Server, Initializes)
 {
     vector<string> config = {"config"};
-    Server<int> server(config);
+    Server server(config);
 }
