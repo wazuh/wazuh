@@ -68,6 +68,8 @@
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
 #define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted."
+#define AUTH_CONN_ERROR "(1208): Unable to connect to the Auth service at '%s:%d'."
+#define AUTH_CONNECTED  "(1209): Connected to the Auth service at '%s:%d'."
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'"
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up."
 #define PID_ERROR       "(1212): Unable to create PID file."

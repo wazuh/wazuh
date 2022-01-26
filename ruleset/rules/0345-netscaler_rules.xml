@@ -74,7 +74,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <regex>Command "(\.*delete\.*)"</regex>
         <description>Netscaler: UI/API dangerous command</description>
         <mitre>
-            <id>T1107</id>
+            <id>T1070.004</id>
         </mitre>
         <group>netscaler-cmd,gdpr_IV_35.7.d,</group>
     </rule>

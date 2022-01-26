@@ -10,7 +10,7 @@
 
 import argparse
 import logging
-from sys import path, stdout
+from sys import stdout
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pytz import UTC
@@ -70,7 +70,7 @@ def get_script_arguments():
 
     parser.add_argument('-o', '--only_logs_after', dest='only_logs_after',
                         help='Only parse logs after this date - format YYYY-MMM-DD',
-                        default=datetime.strftime(datetime.utcnow(), '%Y-%b-%d'), type=arg_valid_date)
+                        default=None, type=arg_valid_date)
 
     parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
                         help='Number of threads', required=False, default=min_num_threads)

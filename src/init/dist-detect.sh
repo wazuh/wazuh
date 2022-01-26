@@ -126,4 +126,7 @@ if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
         DIST_NAME="Linux"
 
     fi
+    if [ "X$DIST_SUBVER" = "X" ]; then
+        DIST_SUBVER="0"
+    fi
 fi

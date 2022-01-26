@@ -136,7 +136,7 @@ class BSDPortWrapper final : public IPortWrapper
         {
             return 0;
         }
-        int32_t inode() const override
+        int64_t inode() const override
         {
             return 0;
         }

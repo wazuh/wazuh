@@ -287,3 +287,8 @@ class ClusterLogger(WazuhLogger):
             logging.DEBUG if self.debug_level == 1 else logging.INFO
 
         self.logger.setLevel(debug_level)
+
+
+def process_spawn_sleep():
+    """Simple task to force the cluster pool spawn all its children."""
+    return

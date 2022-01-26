@@ -61,7 +61,7 @@ static void wm_sys_send_diff_message(/*const void* data*/) {
 static void wm_sys_send_dbsync_message(const void* data) {
     if(!os_iswait() && !is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_sync_max_eps;
-        if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+        if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
 #ifdef CLIENT
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
@@ -70,10 +70,10 @@ static void wm_sys_send_dbsync_message(const void* data) {
             // Since this method is beign called by multiple threads it's necessary this particular portion of code
             // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.
             w_mutex_lock(&sys_reconnect_mutex);
-            if (!is_shutdown_process_started() && wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+            if (!is_shutdown_process_started() && wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
                 if (queue_fd = MQReconnectPredicated(DEFAULTQUEUE, &is_shutdown_process_started), 0 <= queue_fd) {
                     mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
-                    if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+                    if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
                         mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
                     }
                 }

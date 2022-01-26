@@ -1817,6 +1817,40 @@ TEST_F(DBSyncTest, constructorWithHandle)
 
 }
 
+TEST_F(DBSyncTest, txnDestructorOwnsHandle)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto tables { R"({"table": "processes"})" };
+    auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ResultCallbackData callback { [](ReturnTypeCallback, const nlohmann::json&) {}};
+    TXN_HANDLE txHandle = nullptr;
+    {
+        // Use the overload that creates TXN_HANDLE from within and as such, has ownership of it.
+        DBSyncTxn tx(handle, nlohmann::json::parse(tables), 1, 100, callback);
+        tx = tx.handle();
+    }
+    EXPECT_NE(dbsync_close_txn(txHandle), 0);
+}
+
+TEST_F(DBSyncTest, txnDestructorDoesNotOwnHandle)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto tables { R"({"table": "processes"})" };
+    const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
+    auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(tables) };
+    callback_data_t callbackData { callback, dummyCtx.get() };
+    TXN_HANDLE txHandle = dbsync_create_txn(handle, jsonTables.get(), 1, 100, callbackData);
+    {
+        // Use the overload that only takes a TXN_HANDLE and sets up the destructor to NOT release the handle.
+        DBSyncTxn tx(txHandle);
+        tx = tx.handle();
+    }
+    EXPECT_EQ(dbsync_close_txn(txHandle), 0);
+
+}
+
+
 TEST_F(DBSyncTest, teardown)
 {
     EXPECT_NO_THROW(DBSync::teardown());

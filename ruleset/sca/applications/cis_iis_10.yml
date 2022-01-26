@@ -10,7 +10,6 @@
 # Based on:
 # Center for Internet Security Benchmark v1.1.1 for Microsoft IIS 10 - 03-13-2019
 
-
 policy:
   id: "cis_iis_10"
   file: "cis_iis_10.yml"
@@ -244,7 +243,6 @@ checks:
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd list config /commit:WEBROOT /section:machineKey -> r:validation="HMACSHA256"'
 
-
   - id: 22012
     title: " Ensure global .NET trust level is configured"
     description: "This only applies to .Net 2.0. Future versions have stopped supporting this feature. An application's trust level determines the permissions that are granted by the ASP.NET code access security (CAS) policy. CAS defines two trust categories: full trust and partial trust. An application that has full trust permissions may access all resource types on a server and perform privileged operations, while applications that run with partial trust have varying levels of operating permissions and access to resources. It is recommended that the global .NET Trust Level be set to Medium or lower."
@@ -455,7 +453,6 @@ checks:
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.webServer/security/dynamicIpSecurity -> r:denyByConcurrentRequests enabled="true" && r:denyByRequestRate enabled="true"'
 
-
 #5 IIS Logging Recommendations
   - id: 22026
     title: "Ensure Default IIS web log location is moved"
@@ -476,7 +473,6 @@ checks:
 
   #5.3 - Has to be done manually, requires user interaction
   #    title: "Ensure 'ETW Logging' is enabled"
-
 
 #6 FTP Requests
   - id: 22027

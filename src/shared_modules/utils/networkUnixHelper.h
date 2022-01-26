@@ -50,7 +50,7 @@ namespace Utils
 
                     for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
                     {
-                        if (!(ifa->ifa_flags & IFF_LOOPBACK))
+                        if (!(ifa->ifa_flags & IFF_LOOPBACK) && ifa->ifa_name)
                         {
                             networkInterfaces[substrOnFirstOccurrence(ifa->ifa_name, ":")].push_back(ifa);
                         }

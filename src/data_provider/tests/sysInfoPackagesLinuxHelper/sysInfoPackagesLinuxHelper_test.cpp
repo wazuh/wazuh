@@ -12,6 +12,9 @@
 #include "sysInfoPackagesLinuxHelper_test.h"
 #include "packages/packageLinuxParserHelper.h"
 #include "packages/packageLinuxParserHelperExtra.h"
+#include "packages/packageLinuxRpmParserHelper.h"
+#include "packages/packageLinuxRpmParserHelperLegacy.h"
+#include "packages/rpmPackageManager.h"
 #include <alpm.h>
 #include <package.h>
 #include <handle.h>
@@ -42,6 +45,32 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
 
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationLibRpm)
+{
+    RpmPackageManager::Package input;
+    input.name = "mktemp";
+    input.size = 15432;
+    input.installTime = "1425472738";
+    input.group = "System Environment/Base";
+    input.version = "1.5";
+    input.architecture = "x86_64";
+    input.vendor = "CentOS";
+    input.description = "A small utility for safely making /tmp files.";
+    input.epoch = 3;
+    input.release = "24.el5";
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
 TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPG)
 {
     constexpr auto RPM_PACKAGE_CENTOS
@@ -50,6 +79,15 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPG)
     };
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_TRUE(jsPackageInfo.empty());
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPGLibRPM)
+{
+    RpmPackageManager::Package input;
+    input.name = "gpg-pubkey";
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_TRUE(jsPackageInfo.empty());
 }
 
@@ -73,6 +111,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_EQ("", jsPackageInfo["description"]);
 }
 
+
 TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
 {
     constexpr auto RPM_PACKAGE_CENTOS
@@ -87,6 +126,55 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
     EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
     EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochNoReleaseLibRpm)
+{
+    RpmPackageManager::Package input;
+    input.name = "mktemp";
+    input.size = 15432;
+    input.installTime = "1425472738";
+    input.group = "System Environment/Base";
+    input.version = "4.16";
+    input.architecture = "x86_64";
+    input.vendor = "CentOS";
+    input.description = "A small utility for safely making /tmp files.";
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("4.16", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochLibRpm)
+{
+    RpmPackageManager::Package input;
+    input.name = "mktemp";
+    input.size = 15432;
+    input.installTime = "1425472738";
+    input.group = "System Environment/Base";
+    input.version = "4.16";
+    input.architecture = "x86_64";
+    input.vendor = "CentOS";
+    input.description = "A small utility for safely making /tmp files.";
+    input.epoch = 1;
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1:4.16", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
