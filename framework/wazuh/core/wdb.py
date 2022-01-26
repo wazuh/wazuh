@@ -60,7 +60,7 @@ class WazuhDBConnection:
             ]
         elif query_elements[sql_first_index] == 'rootcheck':
             input_val_errors = [
-                (query_elements[sql_first_index+1] == 'delete' or query_elements[sql_first_index+1] == 'save',
+                (query_elements[sql_first_index + 1] == 'delete' or query_elements[sql_first_index + 1] == 'save',
                  'Only "save" or "delete" requests can be sent to WDB')
             ]
         else:
@@ -205,19 +205,11 @@ class WazuhDBConnection:
         response : list
             List with JSON results
         """
-        response = []
+        status, payload = self._send(command, raw=True)
+        if status == 'err':
+            raise WazuhInternalError(2007, extra_message=payload)
 
-        while True:
-            status, payload = self._send(command, raw=True)
-            if status == 'err':
-                raise WazuhInternalError(2007, extra_message=payload)
-            if payload != '[]':
-                response.append(payload)
-            # Exit if there are no items left to return
-            if status == 'ok':
-                break
-
-        return response
+        return status, payload
 
     def send(self, query, raw=True):
         """Send a message to the wdb socket.
@@ -240,9 +232,11 @@ class WazuhDBConnection:
         """
         Sends a sql query to wdb socket
         """
+
         def send_request_to_wdb(query_lower, step, off, response):
             try:
-                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset', 'offset {}'.format(off))
+                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset',
+                                                                                         'offset {}'.format(off))
                 request_response = self._send(request, raw=True)[1]
                 response.extend(WazuhDBConnection.loads(request_response))
                 if len(request_response)*2 < MAX_SOCKET_BUFFER_SIZE:
@@ -323,7 +317,8 @@ class WazuhDBConnection:
                 while off < limit + offset:
                     step = limit if self.request_slice > limit > 0 else self.request_slice
                     # Min() used to avoid fetching more items than the maximum specified in `limit`.
-                    self.request_slice = send_request_to_wdb(query_lower, min(limit + offset - off, step), off, response)
+                    self.request_slice = send_request_to_wdb(query_lower, min(limit + offset - off, step), off,
+                                                             response)
                     off += step
             except ValueError as e:
                 raise WazuhError(2006, str(e))
