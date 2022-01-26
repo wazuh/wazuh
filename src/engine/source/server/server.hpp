@@ -51,7 +51,7 @@ public:
             it->second->run();
         }
     }
-    void stop(){
+    void close(){
         for (auto it = this->m_endpoints.begin(); it != this->m_endpoints.end(); ++it)
         {
             it->second->close();

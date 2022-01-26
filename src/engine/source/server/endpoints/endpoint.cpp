@@ -19,6 +19,9 @@ Endpoint::Endpoint(const string & path) : m_path{path}, m_subscriber{m_subject.g
 {
 }
 
+Endpoint::~Endpoint(){
+}
+
 observable<nlohmann::json> Endpoint::output(void) const
 {
     return this->m_subject.get_observable();
