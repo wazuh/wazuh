@@ -356,8 +356,9 @@ void EngineServer::stop(void)
 
 void EngineServer::close(void)
 {
-    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Closes all the handles
-    m_loop->stop();
+    m_loop->stop(); /// Stops the loop
+    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->run();  /// Runs the loop again, so every handle is able to receive its close callback
     m_loop->clear();
     m_loop->close();
 }
