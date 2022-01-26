@@ -870,6 +870,82 @@ void test_wdb_global_get_groups_integrity_error(void **state)
     assert_null(j_result);
 }
 
+/* Tests wdb_global_get_agent_max_group_priority */
+
+void test_wdb_global_get_agent_max_group_priority_statement_fail(void **state)
+{
+    int result = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    result = wdb_global_get_agent_max_group_priority(data->wdb, agent_id);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_get_agent_max_group_priority_bind_fail(void **state)
+{
+    int result = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_get_agent_max_group_priority(data->wdb, agent_id);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_get_agent_max_group_priority_step_fail(void **state)
+{
+    int result = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+
+    result = wdb_global_get_agent_max_group_priority(data->wdb, agent_id);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_get_agent_max_group_priority_success(void **state)
+{
+    int result = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    cJSON *j_result = cJSON_Parse("[{\"MAX(priority)\":5}]");
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, j_result);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    result = wdb_global_get_agent_max_group_priority(data->wdb, agent_id);
+
+    assert_int_equal(result, 5);
+    __real_cJSON_Delete(j_result);
+}
+
 /* Tests wdb_global_sync_agent_info_set */
 
 void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
@@ -5410,6 +5486,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_hash_mismatch, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_synced, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_error, test_setup, test_teardown),
+        /* Test _wdb_global_get_agent_max_group_priority */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_statement_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_step_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_success, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_info_set */
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_cache_fail, test_setup, test_teardown),
