@@ -1,5 +1,5 @@
 {
     "action": "GetDeletedRows",
-    "body": {
-    }
+    "body":
+    {}
 }

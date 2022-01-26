@@ -11,7 +11,6 @@
 
 #include <fstream>
 #include <ostream>
-#include <stdio.h>
 #include <memory>
 #include <json.hpp>
 #include "db.hpp"
@@ -48,7 +47,7 @@ int main(int argc, const char* argv[])
             const auto storageType{ jsonConfigFile.at("storage_type").get<const uint32_t>() };
             const auto syncInterval{ jsonConfigFile.at("sync_interval").get<const uint32_t>() };
             const auto fileLimit{ jsonConfigFile.at("file_limit").get<const uint32_t>() };
-            const auto valueLimit{ jsonConfigFile.at("value_limit").get<const uint32_t>() };
+            const auto registryLimit{ jsonConfigFile.at("registry_limit").get<const uint32_t>() };
             const auto isWindows{ jsonConfigFile.at("is_windows").get<const bool>() };
 
             std::function<void(const std::string&)> callbackSyncFileWrapper
@@ -78,13 +77,13 @@ int main(int argc, const char* argv[])
             try
             {
                 DB::instance().init(storageType,
-                    syncInterval,
-                    callbackSyncFileWrapper,
-                    callbackSyncRegistryWrapper,
-                    callbackLogWrapper,
-                    fileLimit,
-                    valueLimit,
-                    isWindows);
+                                    syncInterval,
+                                    callbackSyncFileWrapper,
+                                    callbackSyncRegistryWrapper,
+                                    callbackLogWrapper,
+                                    fileLimit,
+                                    registryLimit,
+                                    isWindows);
 
                 std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
                 testContext->outputPath = cmdLineArgs.outputFolder();
@@ -101,7 +100,7 @@ int main(int argc, const char* argv[])
                     action->execute(testContext, jsonAction.at("body"));
                 }
 
-                //DB::stopIntegrity();
+                DB::instance().teardown();
                 std::cout << "Resulting files are located in the "
                     << cmdLineArgs.outputFolder() << " folder" << std::endl;
             }

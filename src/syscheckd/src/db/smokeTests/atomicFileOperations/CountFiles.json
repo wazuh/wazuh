@@ -1,6 +1,7 @@
 {
     "action": "CountFiles",
-    "body": {
-        "filter_type":0
+    "body":
+    {
+        "filter_type": 0
     }
 }

@@ -11,7 +11,6 @@
 
 #ifndef _FACTORY_ACTION_H
 #define _FACTORY_ACTION_H
-#include <iostream>
 #include <memory>
 #include "action.h"
 

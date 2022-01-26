@@ -1,6 +1,7 @@
 {
-    "action":"GetFile",
-    "body":{
-        "file_path":"/etc/wgetrc"
+    "action": "GetFile",
+    "body":
+    {
+        "file_path": "/etc/wgetrc"
     }
 }
