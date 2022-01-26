@@ -63,8 +63,6 @@ int __wrap_wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
 
 int __wrap_wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
 
-int __wrap_wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
-
 int __wrap_wdb_global_delete_group(wdb_t *wdb, char* group_name);
 
 cJSON* __wrap_wdb_global_select_groups(wdb_t *wdb);
