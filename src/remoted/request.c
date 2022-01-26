@@ -184,6 +184,8 @@ void * req_main(__attribute__((unused)) void * arg) {
     return NULL;
 }
 
+extern size_t global_counter;
+
 // Dispatcher theads entry point
 void * req_dispatch(req_node_t * node) {
     int attempts;
@@ -221,8 +223,24 @@ void * req_dispatch(req_node_t * node) {
             merror("At req_dispatch(): OS_SendSecureTCP(): %s", strerror(errno));
             goto cleanup;
         }
-    }
-    else {
+    } else if (strcmp(node->buffer, "set_counter") == 0) {
+        const char OUT_OK[] = "ok";
+        const char OUT_ERROR[] = "error";
+
+        if (strlen(_payload) == 0) {
+            OS_SendSecureTCP(node->sock, strlen(OUT_ERROR) + 1, OUT_ERROR);
+        } else {
+            char * end;
+            long long new_counter = strtoll(_payload, &end, 10);
+
+            if (*end == '\0') {
+                global_counter = new_counter;
+                OS_SendSecureTCP(node->sock, strlen(OUT_OK) + 1, OUT_OK);
+            } else {
+                OS_SendSecureTCP(node->sock, strlen(OUT_ERROR) + 1, OUT_ERROR);
+            }
+        }
+    } else {
 
         os_strdup(node->buffer, agentid);
         ldata = strlen(CONTROL_HEADER) + strlen(HC_REQUEST) + strlen(node->counter) + 1 + node->length - (_payload - node->buffer);

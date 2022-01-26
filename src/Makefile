@@ -981,7 +981,7 @@ ${DB_LIB}: $(EXTERNAL_LIBDB)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBDB) libdb.a
 
 $(EXTERNAL_LIBDB)Makefile:
-	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
+	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics ac_cv_func_pthread_yield=no
 endif
 
 #### Audit lib ####
