@@ -30,6 +30,7 @@ static int test_setup(void **state) {
     init_data->wdb->id = strdup("000");
     init_data->output = calloc(256, sizeof(char));
     init_data->wdb->peer = 1234;
+    init_data->wdb->enabled = true;
 
     *state = init_data;
 
