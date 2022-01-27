@@ -14,7 +14,6 @@
 #include <iostream>
 #include <mutex>
 #include <string>
-
 #include <uvw/udp.hpp>
 
 #include "baseEndpoint.hpp"
@@ -23,6 +22,10 @@
 namespace engineserver::endpoints
 {
 
+/**
+ * @brief Implements udp server endpoint using uvw library.
+ *
+ */
 class UDPEndpoint : public BaseEndpoint
 {
 
@@ -33,6 +36,11 @@ private:
     int m_port;
 
 public:
+    /**
+     * @brief Construct a new UDPEndpoint object.
+     *
+     * @param config <ip>:<port> string with allowed ip mask and port to listen.
+     */
     explicit UDPEndpoint(const std::string & config);
     ~UDPEndpoint();
 
