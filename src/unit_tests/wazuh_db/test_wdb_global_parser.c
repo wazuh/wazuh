@@ -1873,6 +1873,100 @@ void test_wdb_parse_global_set_agent_groups_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_sync_agent_groups_get */
+
+void test_wdb_parse_global_sync_agent_groups_get_syntax_error(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for sync-agent-groups-get.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: sync-agent-groups-get");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'sync-agent-groups-get'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when parsing sync-agent-groups-get");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_missing_field(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Missing mandatory fields in sync-agent-groups-get command.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_fail(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_SYNC_STATUS);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    expect_string(__wrap_wdb_global_sync_agent_groups_get, str_output, "[{\"data\":[],\"hash\":\"random_hash\"}]");
+    will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_ERROR);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err [{\"data\":[],\"hash\":\"random_hash\"}]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_SYNC_STATUS);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    expect_string(__wrap_wdb_global_sync_agent_groups_get, str_output, "[{\"data\":[],\"hash\":\"random_hash\"}]");
+    will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_OK);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [{\"data\":[],\"hash\":\"random_hash\"}]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_get_groups_integrity */
 
 void test_wdb_parse_global_get_groups_integrity_syntax_error(void **state)
@@ -2569,6 +2663,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_missing_field, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_sync_agent_groups_get */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_missing_field, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_groups_integrity */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_query_error, test_setup, test_teardown),
