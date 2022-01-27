@@ -1847,7 +1847,7 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
  * @param [in] id_agent The agent id.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_remove_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
+int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
 
 /**
  * @brief Function to check if a group is empty.

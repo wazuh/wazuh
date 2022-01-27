@@ -793,7 +793,7 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
     }
 }
 
-int wdb_global_remove_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
+int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
     sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG);
     if (stmt == NULL) {
         return OS_INVALID;
@@ -1192,18 +1192,24 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
             }
 
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
-            cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
-            int group_id = j_group_id->valueint;
-            cJSON_Delete(j_find_response);
-            if (OS_INVALID == wdb_global_insert_agent_belong(wdb, group_id, id, priority)) {
+            if (j_find_response) {
+                cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
+                int group_id = j_group_id->valueint;
+                cJSON_Delete(j_find_response);
+                if (OS_INVALID == wdb_global_insert_agent_belong(wdb, group_id, id, priority)) {
+                    mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
+                    result = WDBC_ERROR;
+                }
+                priority++;
+            }
+            else {
+                mdebug1("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
             }
-            priority++;
         }
         else {
             mdebug1("Invalid groups set information");
             result = WDBC_ERROR;
-            continue;
         }
     }
     return result;
@@ -1216,17 +1222,23 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
-            cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
-            int group_id = j_group_id->valueint;
-            cJSON_Delete(j_find_response);
-            if (OS_INVALID == wdb_global_remove_tuple_belong(wdb, group_id, id)) {
+            if (j_find_response) {
+                cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
+                int group_id = j_group_id->valueint;
+                cJSON_Delete(j_find_response);
+                if (OS_INVALID == wdb_global_delete_tuple_belong(wdb, group_id, id)) {
+                    mdebug1("Unable to delete group '%s' for agent '%d'", group_name, id);
+                    result = WDBC_ERROR;
+                }
+            }
+            else {
+                mdebug1("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
             }
         }
         else {
             mdebug1("Invalid groups remove information");
             result = WDBC_ERROR;
-            continue;
         }
     }
     return result;
