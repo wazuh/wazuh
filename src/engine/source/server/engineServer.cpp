@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "endpoints/baseEndpoint.hpp"
-#include "endpoints/endpoint_factory.hpp"
+#include "endpoints/endpointFactory.hpp"
 
 using namespace std;
 
