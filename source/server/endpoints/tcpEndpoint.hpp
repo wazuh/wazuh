@@ -1,29 +1,43 @@
-#ifndef _TCP_ENDPOINT_H
-#define _TCP_ENDPOINT_H
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "endpoint.hpp"
-#include <uvw/tcp.hpp>
+#ifndef _TCP_ENDPOINT_H_
+#define _TCP_ENDPOINT_H_
 
 #include <functional>
+#include <iostream>
+#include <mutex>
 #include <string>
-namespace server::endpoints
+
+#include <uvw/tcp.hpp>
+
+#include "baseEndpoint.hpp"
+#include "protocolHandler.hpp"
+
+namespace engineserver::endpoints
 {
 
-class TcpEndpoint : public Endpoint
+class TCPEndpoint : public BaseEndpoint
 {
 private:
+    int m_port;
+    std::string m_ip;
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::TCPHandle> m_handle;
-    std::string m_ip;
-    int m_port;
 
 public:
-    explicit TcpEndpoint(const std::string & config);
-    ~TcpEndpoint();
+    explicit TCPEndpoint(const std::string & config);
+    ~TCPEndpoint();
 
-    void run(void) override;
-    void close(void) override;
+    void run(void);
+    void close(void);
 };
-} // namespace server::endpoints
+} // namespace engineserver::endpoints
 
-#endif // _TCP_ENDPOINT_H
+#endif // _TCP_ENDPOINT_H_

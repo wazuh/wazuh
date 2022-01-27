@@ -1,26 +1,37 @@
-#ifndef _ENDPOINT_H
-#define _ENDPOINT_H
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _BASE_ENDPOINT_H_
+#define _BASE_ENDPOINT_H_
 
 #include <functional>
 #include <memory>
-#include <nlohmann/json.hpp>
-#include <rxcpp/rx.hpp>
+#include <stdexcept>
 #include <string>
 
-namespace server::endpoints
+#include <nlohmann/json.hpp>
+#include <rxcpp/rx.hpp>
+
+namespace engineserver::endpoints
 {
 
-class Endpoint
+class BaseEndpoint
 {
 protected:
     rxcpp::subjects::subject<nlohmann::json> m_subject;
     rxcpp::subscriber<nlohmann::json> m_subscriber;
     std::string m_path;
 
-    explicit Endpoint(const std::string & path);
+    explicit BaseEndpoint(const std::string & path);
 
 public:
-    virtual ~Endpoint();
+    virtual ~BaseEndpoint();
     /**
      * @brief Get the Observable object
      *
@@ -41,7 +52,8 @@ enum EndpointType
 
 EndpointType stringToEndpoint(const std::string & endpointName);
 
-std::unique_ptr<Endpoint> create(const std::string & type, const std::string & config);
+std::unique_ptr<BaseEndpoint> create(const std::string & type, const std::string & config);
 
-} // namespace server::endpoints
-#endif // _ENDPOINT_H
+} // namespace engineserver::endpoints
+
+#endif // _BASE_ENDPOINT_H_
