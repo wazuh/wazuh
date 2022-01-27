@@ -150,13 +150,16 @@ void test_wdb_recreate_global_success(void **state)
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
 
     // Initializing and adding to the pool
+    wdb_t *new_wdb = NULL;
+    os_calloc(1, sizeof(wdb_t), new_wdb);
     expect_string(__wrap_wdb_init, id, "global");
-    will_return(__wrap_wdb_init, (wdb_t*)1);
-    expect_value(__wrap_wdb_pool_append, wdb, (wdb_t*)1);
+    will_return(__wrap_wdb_init, new_wdb);
+    expect_value(__wrap_wdb_pool_append, wdb, new_wdb);
 
     ret = wdb_recreate_global(data->wdb);
 
-    assert_non_null(ret);
+    assert_ptr_equal(new_wdb, ret);
+    os_free(new_wdb);
 }
 
 /* Tests wdb_upgrade_global */
@@ -237,13 +240,16 @@ void test_wdb_upgrade_global_success_regenerating_legacy_db(void **state)
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
 
     // Initializing and adding to the pool
+    wdb_t *new_wdb = NULL;
+    os_calloc(1, sizeof(wdb_t), new_wdb);
     expect_string(__wrap_wdb_init, id, "global");
-    will_return(__wrap_wdb_init, (wdb_t*)1);
-    expect_value(__wrap_wdb_pool_append, wdb, (wdb_t*)1);
+    will_return(__wrap_wdb_init, new_wdb);
+    expect_value(__wrap_wdb_pool_append, wdb, new_wdb);
 
     ret = wdb_upgrade_global(data->wdb);
 
-    assert_ptr_equal(ret, (wdb_t*)1);
+    assert_ptr_equal(new_wdb, ret);
+    os_free(new_wdb);
 }
 
 void test_wdb_upgrade_global_error_getting_database_version(void **state)
@@ -255,9 +261,10 @@ void test_wdb_upgrade_global_error_getting_database_version(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Error getting database version
+    char str_db_version[] = "1";
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, -1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, OS_INVALID);
     expect_string(__wrap__mwarn, formatted_msg, "DB(global): Error trying to get DB version");
 
     ret = wdb_upgrade_global(data->wdb);
@@ -275,9 +282,11 @@ void test_wdb_upgrade_global_error_creating_pre_upgrade_backup(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Getting database version
+    char str_db_version[] = "1";
+    int num_db_version = 1;
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, 1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, num_db_version);
 
     // Error creating pre upgrade backup
     will_return(__wrap_wdb_global_create_backup, "global.db");
@@ -300,9 +309,11 @@ void test_wdb_upgrade_global_error_restoring_database_and_getting_backup_name(vo
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Getting database version
+    char str_db_version[] = "1";
+    int num_db_version = 1;
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, 1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, num_db_version);
 
     // Creating pre upgrade backup
     will_return(__wrap_wdb_global_create_backup, "global.db");
@@ -331,9 +342,11 @@ void test_wdb_upgrade_global_error_restoring_database(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Getting database version
+    char str_db_version[] = "1";
+    int num_db_version = 1;
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, 1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, num_db_version);
 
     // Creating pre upgrade backup
     will_return(__wrap_wdb_global_create_backup, "global.db");
@@ -363,18 +376,21 @@ void test_wdb_upgrade_global_database_restored(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Getting database version
+    char str_db_version[] = "1";
+    int num_db_version = 1;
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, 1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, num_db_version);
 
     // Creating pre upgrade backup
     will_return(__wrap_wdb_global_create_backup, "global.db");
     will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
 
-    // Error upgrading database
+    // Error upgrading database from version 1 to 2
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, OS_INVALID);
+    // Restoring database to the most recent backup
     will_return(__wrap_wdb_global_get_most_recent_backup, "test_backup_name");
     will_return(__wrap_wdb_global_get_most_recent_backup, OS_SUCCESS);
     expect_string(__wrap_wdb_global_restore_backup, snapshot, "test_backup_name");
@@ -398,21 +414,25 @@ void test_wdb_upgrade_global_intermediate_upgrade_error(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Getting database version
+    char str_db_version[] = "1";
+    int num_db_version = 1;
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, 1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, num_db_version);
 
     // Creating pre upgrade backup
     will_return(__wrap_wdb_global_create_backup, "global.db");
     will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
 
-    // Error upgrading database
+    // Upgrading database from version 1 to 2
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Error upgrading database from version 2 to 3
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 3");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v3_sql);
     will_return(__wrap_wdb_sql_exec, OS_INVALID);
+    // Restoring database to the most recent backup
     will_return(__wrap_wdb_global_get_most_recent_backup, "test_backup_name");
     will_return(__wrap_wdb_global_get_most_recent_backup, OS_SUCCESS);
     expect_string(__wrap_wdb_global_restore_backup, snapshot, "test_backup_name");
@@ -436,21 +456,25 @@ void test_wdb_upgrade_global_full_upgrade_success(void **state)
     will_return(__wrap_wdb_metadata_table_check, 1);
 
     // Getting database version
+    char str_db_version[] = "1";
+    int num_db_version = 1;
     expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
-    will_return(__wrap_wdb_metadata_get_entry, "1");
-    will_return(__wrap_wdb_metadata_get_entry, 1);
+    will_return(__wrap_wdb_metadata_get_entry, str_db_version);
+    will_return(__wrap_wdb_metadata_get_entry, num_db_version);
 
     // Creating pre upgrade backup
     will_return(__wrap_wdb_global_create_backup, "global.db");
     will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
 
-    // Upgrading database
+    // Upgrading database from version 1 to 2
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 2 to 3
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 3");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v3_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 3 to 4
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
@@ -482,16 +506,19 @@ void test_wdb_upgrade_global_full_upgrade_success_from_unversioned_db(void **sta
     will_return(__wrap_wdb_global_create_backup, "global.db");
     will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
 
-    // Upgrading database
+    // Upgrading unversioned database to version 1
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 1");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v1_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 1 to 2
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 2");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v2_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 2 to 3
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 3");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v3_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 3 to 4
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 4");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
