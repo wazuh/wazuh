@@ -421,18 +421,6 @@
                     <Directory Id="UPGRADE" Name="upgrade" />
                 </Directory>
             </Directory>
-            <Directory Id="ProgramMenuFolder">
-                <Directory Id="ProgramMenuDir" Name="OSSEC">
-                    <Component Id="StartMenuShortcuts" Guid="6C151D64-A90E-48A0-853C-FDEE0BD628C5">
-                        <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Type="string" Value="[Version]" />
-                        <Shortcut Id="EDIT_CONF" Name="Edit conf" Target="[APPLICATIONFOLDER]ossec.conf" WorkingDirectory="APPLICATIONFOLDER" />
-                        <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
-                        <Shortcut Id="RUN_WIN32UI" Name="Manage Agent" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
-                        <util:InternetShortcut Id="WebsiteShortcut" Name="Documentation" Target="https://documentation.wazuh.com" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" />
-                    </Component>
-                </Directory>
-            </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">
             <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
@@ -595,7 +583,6 @@
             <ComponentRef Id="WIN_APPLICATIONS_RCL.TXT" />
             <ComponentRef Id="WIN_AUDIT_RCL.TXT" />
             <ComponentRef Id="WIN_MALWARE_RCL.TXT" />
-            <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="WIN32UI.EXE" />
             <ComponentRef Id="CMP_ACTIVE_RESPONSE" />
             <ComponentRef Id="CMP_TMP" />
