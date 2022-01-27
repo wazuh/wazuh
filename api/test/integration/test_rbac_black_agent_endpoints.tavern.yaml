@@ -1338,6 +1338,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 0
@@ -1351,9 +1355,6 @@ stages:
 
 ---
 test_name: PUT /agents/reconnect
-
-marks:
-  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
 
 stages:
 
@@ -1444,6 +1445,10 @@ stages:
       params:
         agents_list: "000,001,002,005"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 2
@@ -1469,6 +1474,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["003", "005", "007"]
       status_code: 200
       json:
         error: 0
@@ -1551,6 +1560,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 0

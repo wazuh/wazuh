@@ -263,12 +263,14 @@ def test_validate_restart_by_node(response, data):
             affected_items.append(item['id'])
     assert response.json()['data']['affected_items'] == affected_items
     assert not response.json()['data']['failed_items']
+    healthcheck_agent_restart(response, affected_items)
 
 
 def test_validate_restart_by_node_rbac(response, permitted_agents):
     data = response.json().get('data', None)
     if data:
         if data['affected_items']:
+            healthcheck_agent_restart(response, data['affected_items'])
             for agent in data['affected_items']:
                 assert agent in permitted_agents
         else:
