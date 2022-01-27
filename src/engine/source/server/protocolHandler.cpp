@@ -1,9 +1,15 @@
-#include "protocol_handler.hpp"
-#include <iostream>
-#include <nlohmann/json.hpp>
-#include <string>
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-nlohmann::json server::protocolhandler::parseEvent(const std::string& event)
+#include "protocolHandler.hpp"
+
+nlohmann::json engineserver::protocolhandler::parseEvent(const std::string & event)
 {
     nlohmann::json object;
 

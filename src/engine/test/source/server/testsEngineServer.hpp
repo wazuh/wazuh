@@ -7,11 +7,22 @@
  * Foundation.
  */
 
-#ifndef __ENGINESERVER_TEST_H__
-#define __ENGINESERVER_TEST_H__
+#ifndef _TEST_ENGINE_SERVER_H_
+#define _TEST_ENGINE_SERVER_H_
+
+#include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
-#include "engineserver.hpp"
+#include <nlohmann/json.hpp>
 
-#endif // __ENGINESERVER_TEST_H__
+#include <rxcpp/rx.hpp>
+
+#include <uvw/pipe.hpp>
+#include <uvw/tcp.hpp>
+#include <uvw/udp.hpp>
+
+#include "engineServer.hpp"
+
+#endif // _TEST_ENGINE_SERVER_H_

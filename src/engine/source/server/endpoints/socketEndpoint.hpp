@@ -1,16 +1,29 @@
-#ifndef _SOCKET_ENDPOINT_H
-#define _SOCKET_ENDPOINT_H
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "endpoint.hpp"
-#include <uvw/pipe.hpp>
+#ifndef _SOCKET_ENDPOINT_H_
+#define _SOCKET_ENDPOINT_H_
 
 #include <functional>
+#include <iostream>
+#include <mutex>
 #include <string>
 
-namespace server::endpoints
+#include <uvw/pipe.hpp>
+
+#include "baseEndpoint.hpp"
+#include "protocolHandler.hpp"
+
+namespace engineserver::endpoints
 {
 
-class SocketEndpoint : public Endpoint
+class SocketEndpoint : public BaseEndpoint
 {
 private:
     std::shared_ptr<uvw::Loop> m_loop;
@@ -21,9 +34,10 @@ public:
     explicit SocketEndpoint(const std::string & config);
     ~SocketEndpoint();
 
-    void run(void) override;
-    void close(void) override;
+    void run(void);
+    void close(void);
 };
-} // namespace server::endpoints
 
-#endif // _SOCKET_ENDPOINT_H
+} // namespace engineserver::endpoints
+
+#endif // _SOCKET_ENDPOINT_H_

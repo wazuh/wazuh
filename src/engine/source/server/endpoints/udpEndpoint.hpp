@@ -1,16 +1,31 @@
-#ifndef _UDP_ENDPOINT_H
-#define _UDP_ENDPOINT_H
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "endpoint.hpp"
-#include <uvw/udp.hpp>
+#ifndef _UDP_ENDPOINT_H_
+#define _UDP_ENDPOINT_H_
 
 #include <functional>
+#include <iostream>
+#include <mutex>
 #include <string>
-namespace server::endpoints
+
+#include <uvw/udp.hpp>
+
+#include "baseEndpoint.hpp"
+#include "protocolHandler.hpp"
+
+namespace engineserver::endpoints
 {
 
-class UdpEndpoint : public Endpoint
+class UDPEndpoint : public BaseEndpoint
 {
+
 private:
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::UDPHandle> m_handle;
@@ -18,12 +33,13 @@ private:
     int m_port;
 
 public:
-    explicit UdpEndpoint(const std::string & config);
-    ~UdpEndpoint();
+    explicit UDPEndpoint(const std::string & config);
+    ~UDPEndpoint();
 
-    void run(void) override;
-    void close(void) override;
+    void run(void);
+    void close(void);
 };
-} // namespace server::endpoints
 
-#endif // _UDP_ENDPOINT_H
+} // namespace engineserver::endpoints
+
+#endif // _UDP_ENDPOINT_H_
