@@ -1,18 +1,20 @@
-#include "udp_endpoint.hpp"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "protocol_handler.hpp"
-#include <functional>
-#include <iostream>
-#include <mutex>
-#include <string>
-#include <uvw/udp.hpp>
+#include "udpEndpoint.hpp"
 
 using namespace std;
 
-namespace server::endpoints
+namespace engineserver::endpoints
 {
-UdpEndpoint::UdpEndpoint(const std::string & config)
-    : Endpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::UDPHandle>()}
+UDPEndpoint::UDPEndpoint(const std::string & config)
+    : BaseEndpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::UDPHandle>()}
 {
     auto pos = config.find(":");
     auto tmp = config.substr(pos + 1);
@@ -41,7 +43,7 @@ UdpEndpoint::UdpEndpoint(const std::string & config)
                               << "; message=" << event.what() << std::endl;
                 });
 
-            auto eventObject = server::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
+            auto eventObject = engineserver::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
             if (!eventObject.contains("error"))
             {
                 this->m_subscriber.on_next(eventObject);
@@ -56,13 +58,13 @@ UdpEndpoint::UdpEndpoint(const std::string & config)
     this->m_handle->recv();
 }
 
-void UdpEndpoint::run(void)
+void UDPEndpoint::run(void)
 {
     std::thread t(&uvw::Loop::run, this->m_loop.get());
     t.detach();
 }
 
-void UdpEndpoint::close(void)
+void UDPEndpoint::close(void)
 {
     m_loop->stop();                                                 /// Stops the loop
     m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
@@ -71,8 +73,8 @@ void UdpEndpoint::close(void)
     m_loop->close();
 }
 
-UdpEndpoint::~UdpEndpoint()
+UDPEndpoint::~UDPEndpoint()
 {
     this->close();
 }
-} // namespace server::endpoints
+} // namespace engineserver::endpoints

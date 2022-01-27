@@ -1,33 +1,33 @@
-#include "endpoint.hpp"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include <functional>
-#include <memory>
-#include <stdexcept>
-#include <string>
+#include "socketEndpoint.hpp"
+#include "tcpEndpoint.hpp"
+#include "udpEndpoint.hpp"
 
-#include "tcp_endpoint.hpp"
-#include "udp_endpoint.hpp"
-#include "socket_endpoint.hpp"
-
-using namespace std;
-using namespace rxcpp;
-
-namespace server::endpoints
+namespace engineserver::endpoints
 {
 
-Endpoint::Endpoint(const string & path) : m_path{path}, m_subscriber{m_subject.get_subscriber()}
+BaseEndpoint::BaseEndpoint(const std::string & path) : m_path{path}, m_subscriber{m_subject.get_subscriber()}
 {
 }
 
-Endpoint::~Endpoint(){
+BaseEndpoint::~BaseEndpoint()
+{
 }
 
-observable<nlohmann::json> Endpoint::output(void) const
+rxcpp::observable<nlohmann::json> BaseEndpoint::output(void) const
 {
     return this->m_subject.get_observable();
 }
 
-EndpointType stringToEndpoint(const string & endpointName)
+EndpointType stringToEndpoint(const std::string & endpointName)
 {
     if (endpointName == "tcp")
     {
@@ -43,20 +43,20 @@ EndpointType stringToEndpoint(const string & endpointName)
     }
     else
     {
-        throw invalid_argument("Error, endpoint " + endpointName + " not supported");
+        throw std::invalid_argument("Error, endpoint " + endpointName + " not supported");
     }
 }
 
-std::unique_ptr<Endpoint> create(const std::string & type, const std::string & config)
+std::unique_ptr<BaseEndpoint> create(const std::string & type, const std::string & config)
 {
     auto endpointType = stringToEndpoint(type);
     switch (endpointType)
     {
         case TCP:
-            return std::make_unique<TcpEndpoint>(config);
+            return std::make_unique<TCPEndpoint>(config);
             break;
         case UDP:
-            return std::make_unique<UdpEndpoint>(config);
+            return std::make_unique<UDPEndpoint>(config);
             break;
         case SOCKET:
             return std::make_unique<SocketEndpoint>(config);
@@ -67,4 +67,5 @@ std::unique_ptr<Endpoint> create(const std::string & type, const std::string & c
             break;
     }
 }
-} // namespace server::endpoints
+
+} // namespace engineserver::endpoints
