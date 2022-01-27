@@ -68,3 +68,13 @@ TEST(ServerTest, RunStopSocket)
     this_thread::sleep_for(chrono::milliseconds(5));
     ASSERT_NO_THROW(server.close());
 }
+
+TEST(ServerTest, RunStopTcpUdpSocket)
+{
+    vector<string> config = {"socket:/tmp/testsocket", "udp:localhost:5054", "tcp:localhost:5054"};
+    EngineServer server(config);
+    ASSERT_NO_THROW(server.run());
+    // Give time to initialize before closing
+    this_thread::sleep_for(chrono::milliseconds(5));
+    ASSERT_NO_THROW(server.close());
+}
