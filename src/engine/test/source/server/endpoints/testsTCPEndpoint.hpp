@@ -5,15 +5,13 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
-*/
+ */
 
-#ifndef __ENGINESERVER_TEST_H__
-#define __ENGINESERVER_TEST_H__
-
+#ifndef __TEST_TCP_ENDPOINT_H_
+#define __TEST_TCP_ENDPOINT_H_
 
 #include <gtest/gtest.h>
 
-#include "engineserver.hpp"
+#include "endpoints/tcpEndpoint.hpp"
 
-
-#endif // __ENGINESERVER_TEST_H__
+#endif // __TEST_TCP_ENDPOINT_H_
