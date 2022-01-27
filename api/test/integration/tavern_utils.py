@@ -1,5 +1,9 @@
 import json
+import re
+import subprocess
+import time
 from base64 import b64decode
+from datetime import datetime
 from json import loads
 
 from box import Box
@@ -328,3 +332,58 @@ def test_validate_search(response, search_param):
 
 def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
+
+
+def healthcheck_agent_restart(response, agents_list):
+    """Wait until all the agents had their agentd process terminated correctly. This will avoid race conditions caused
+    by agents reconnections before restarting.
+
+    Parameters
+    ----------
+    response : Request response
+    agents_list : list
+        List of expected agents to be restarted.
+    """
+
+    def get_timestamp(log):
+        """Get timestamp from log.
+
+        Parameters
+        ----------
+        log : str
+            String representing the log to get the timestamp from.
+
+        Returns
+        -------
+        datetime
+            Datetime object representing the timestamp got.
+        """
+        timestamp = re.search(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d', log).group(0)
+        return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
+
+    # Save the time when the restart command was sent
+    restart_request_time = datetime.utcnow().replace(microsecond=0) - response.elapsed
+
+    for agent_id in agents_list:
+        tries = 0
+        while tries < 80:
+            try:
+                # Save agentd logs in a list
+                command = f"docker exec env_wazuh-agent{int(agent_id)}_1 grep agentd /var/ossec/logs/ossec.log"
+                output = subprocess.check_output(command.split()).decode().strip().split('\n')
+            except subprocess.CalledProcessError:
+                assert False, f"Error while trying to get logs from agent {agent_id}"
+
+            # Ignore agentd logs before restart_request_time
+            logs_after_restart = [agentd_log for agentd_log in output if
+                                  get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
+
+            # Check the log indicating agentd was terminated is in the agent's ossec.log (after the restart request)
+            if any(re.search(pattern='agentd.*Terminated.*Received', string=agentd_log) for agentd_log in
+                   logs_after_restart):
+                break
+
+            tries += 1
+            time.sleep(1)
+        else:
+            assert False, "The wazuh-agentd daemon was not terminated after requesting the restart"
