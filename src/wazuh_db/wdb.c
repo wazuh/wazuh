@@ -1244,15 +1244,15 @@ int wdb_close(wdb_t * wdb, bool commit) {
         if (result == SQLITE_OK) {
             wdb_pool_remove(wdb);
             wdb_destroy(wdb);
-            return 0;
+            return OS_SUCCESS;
         } else {
             merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            return -1;
+            return OS_INVALID;
         }
     } else {
         w_mutex_unlock(&wdb->mutex);
         mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
-        return -1;
+        return OS_INVALID;
     }
 }
 

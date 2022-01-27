@@ -106,8 +106,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_metadata_table_check \
                              -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgets \
                              -Wl,--wrap,wdb_init -Wl,--wrap,wdb_close -Wl,--wrap,wdb_create_global -Wl,--wrap,wdb_pool_append -Wl,--wrap,chmod -Wl,--wrap,stat \
                              -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,time -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_close_v2 \
-                             -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int \
-                             -Wl,--wrap,sqlite3_finalize -Wl,--wrap,fgetpos -Wl,--wrap=fgetc ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_finalize -Wl,--wrap,fgetpos \
+                             -Wl,--wrap,fgetc -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_global_get_most_recent_backup -Wl,--wrap,wdb_global_restore_backup \
+                             -Wl,--wrap,wdb_global_update_all_agents_groups_hash ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_metadata")
 list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_errmsg \
