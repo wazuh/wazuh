@@ -72,16 +72,14 @@ include_directories(
 add_executable(
   server_test
   ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp
-  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsBaseEndpoint.cpp
-  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsUDPEndpoint.cpp
-  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp
-  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint_factory.cpp
 )
+
 target_link_libraries(server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
 gtest_discover_tests(server_test)

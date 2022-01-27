@@ -10,17 +10,21 @@
 #ifndef _BASE_ENDPOINT_H_
 #define _BASE_ENDPOINT_H_
 
-#include <functional>
-#include <memory>
-#include <stdexcept>
-#include <string>
-
 #include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
+#include <string>
 
+/**
+ * @brief Contains all endpoint related functionality
+ *
+ */
 namespace engineserver::endpoints
 {
 
+/**
+ * @brief Endpoint base interfaz that exposes functionality required by EngineServer
+ *
+ */
 class BaseEndpoint
 {
 protected:
@@ -31,7 +35,12 @@ protected:
     explicit BaseEndpoint(const std::string & path);
 
 public:
+    /**
+     * @brief Destroy the Base Endpoint object, made virtual to destroy children classes.
+     *
+     */
     virtual ~BaseEndpoint();
+
     /**
      * @brief Get the Observable object
      *
@@ -39,20 +48,18 @@ public:
      */
     rxcpp::observable<nlohmann::json> output(void) const;
 
+    /**
+     * @brief Start endpoint.
+     *
+     */
     virtual void run(void) = 0;
+
+    /**
+     * @brief Close and liberate all resources used by endpoint.
+     *
+     */
     virtual void close(void) = 0;
 };
-
-enum EndpointType
-{
-    TCP,
-    UDP,
-    SOCKET
-};
-
-EndpointType stringToEndpoint(const std::string & endpointName);
-
-std::unique_ptr<BaseEndpoint> create(const std::string & type, const std::string & config);
 
 } // namespace engineserver::endpoints
 
