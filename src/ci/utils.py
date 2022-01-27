@@ -40,6 +40,7 @@ headerDic = {
     'rtr':              '=================== Running RTR checks  ===================',
     'coverage':         '=================== Running Coverage    ===================',
     'AStyle':           '=================== Running AStyle      ===================',
+    'deletelogs':         '=================== Clean result Folders==================',
 }
 
 smokeTestsDic = {
@@ -134,7 +135,7 @@ deleteFolderDic = {
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
     'shared_modules/utils':         ['build'],
-    'syscheckd':                    ['build', 'src/db/smokeTests/output'],
+    'syscheckd':                    ['build', 'src/db/smokeTests/output', 'coverage_report'],
 }
 
 currentBuildDir = Path(__file__).parent
@@ -205,8 +206,12 @@ def runTests(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     for test in tests:
-        out = subprocess.run(os.path.join(currentDir, test), stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, shell=True)
+        if ".exe" in test:
+            out = subprocess.run("wine " + os.path.join(currentDir, test), stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, shell=True)
+        else:
+            out = subprocess.run(os.path.join(currentDir, test), stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, shell=True)
         if out.returncode == 0:
             printGreen(f'[{test}: PASSED]')
         else:
@@ -370,7 +375,7 @@ def cleanLib(moduleName):
     os.system('make clean -C' + currentDir)
 
 
-def cleanFolder(moduleName, additionalFolder):
+def cleanFolder(moduleName, additionalFolder, folderName=""):
 
     currentDir = currentDirPath(moduleName)
     cleanFolderCommand = f'rm -rf {os.path.join(currentDir, additionalFolder)}'
@@ -379,15 +384,15 @@ def cleanFolder(moduleName, additionalFolder):
         out = subprocess.run(
             cleanFolderCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         if out.returncode == 0 and not out.stderr:
-            printGreen('[Cleanfolder: PASSED]')
+            printGreen('[Cleanfolder {}: PASSED]'.format(folderName))
         else:
             print(cleanFolderCommand)
             print(out.stderr)
-            printFail('[Cleanfolder: FAILED]')
+            printFail('[Cleanfolder {}: FAILED]'.format(folderName))
             errorString = 'Error Running Cleanfolder: ' + str(out.returncode)
             raise ValueError(errorString)
     else:
-        printFail('[Cleanfolder: FAILED]')
+        printFail('[Cleanfolder {}: FAILED]'.format(folderName))
         errorString = 'Error Running Cleanfolder: additional folder not exist in delete folder dictionary.'
         raise ValueError(errorString)
 
@@ -658,7 +663,7 @@ def runAStyleFormat(moduleName):
         raise ValueError(errorString)
 
 
-def runReadyToReview(moduleName):
+def runReadyToReview(moduleName, clean=False):
     """
     Executes all needed checks under the 'moduleName' lib.
 
@@ -679,3 +684,10 @@ def runReadyToReview(moduleName):
         runASAN(moduleName)
 
     printGreen(f'<{moduleName}>[RTR: PASSED]<{moduleName}>')
+    if clean:
+        deleteLogs(moduleName)
+
+def deleteLogs(moduleName):
+    printHeader(moduleName, 'deletelogs')
+    for folder in deleteFolderDic[moduleName]:
+        cleanFolder(str(moduleName), folder, folder)

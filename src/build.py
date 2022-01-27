@@ -43,10 +43,14 @@ class CommandLineParser:
         """
         Process the command line arguments and executes the corresponding argument's utility.
         """
-        action = False
         parser = argparse.ArgumentParser()
         parser.add_argument("-r", "--readytoreview",
                             help=f'Run all the quality checks needed to create a PR. Example: python3 build.py -r <{module_list_str}>')
+        parser.add_argument("-d", "--deleteLogs",
+                            help=f'Clean log results. Example: python3 build.py -d <{module_list_str}>')
+        parser.add_argument("-rc", "--readytoreviewandclean",
+                            help=f'Run all the quality checks needed to create a PR and clean results. Example: python3 build.py '
+                                  '-rc <{module_list_str}>')
         parser.add_argument(
             "-m", "--make", help=f'Compile the lib. Example: python3 build.py -m <{module_list_str}>')
         parser.add_argument(
@@ -71,40 +75,32 @@ class CommandLineParser:
         args = parser.parse_args()
         if self._argIsValid(args.readytoreview):
             utils.runReadyToReview(args.readytoreview)
-            action = True
+        elif self._argIsValid(args.clean):
+            utils.cleanLib(args.clean)
+        elif self._argIsValid(args.make):
+            utils.makeLib(args.make)
+        elif self._argIsValid(args.tests):
+            utils.runTests(args.tests)
+        elif self._argIsValid(args.coverage):
+            utils.runCoverage(args.coverage)
+        elif self._argIsValid(args.valgrind):
+            utils.runValgrind(args.valgrind)
+        elif self._argIsValid(args.cppcheck):
+            utils.runCppCheck(args.cppcheck)
+        elif self._argIsValid(args.asan):
+            utils.runASAN(args.asan)
+        elif self._argIsValid(args.scheck):
+            utils.runAStyleCheck(args.scheck)
+        elif self._argIsValid(args.sformat):
+            utils.runAStyleFormat(args.sformat)
+        elif self._targetIsValid(args.scanbuild):
+            utils.runScanBuild(args.scanbuild)
+        elif self._argIsValid(args.deleteLogs):
+            utils.deleteLogs(args.deleteLogs)
+        elif self._argIsValid(args.readytoreviewandclean):
+            utils.runReadyToReview(args.readytoreviewandclean, True)
         else:
-            if self._argIsValid(args.clean):
-                utils.cleanLib(args.clean)
-                action = True
-            if self._argIsValid(args.make):
-                utils.makeLib(args.make)
-                action = True
-            if self._argIsValid(args.tests):
-                utils.runTests(args.tests)
-                action = True
-            if self._argIsValid(args.coverage):
-                utils.runCoverage(args.coverage)
-                action = True
-            if self._argIsValid(args.valgrind):
-                utils.runValgrind(args.valgrind)
-                action = True
-            if self._argIsValid(args.cppcheck):
-                utils.runCppCheck(args.cppcheck)
-                action = True
-            if self._argIsValid(args.asan):
-                utils.runASAN(args.asan)
-                action = True
-            if self._argIsValid(args.scheck):
-                utils.runAStyleCheck(args.scheck)
-                action = True
-            if self._argIsValid(args.sformat):
-                utils.runAStyleFormat(args.sformat)
-                action = True
-            if self._targetIsValid(args.scanbuild):
-                utils.runScanBuild(args.scanbuild)
-                action = True
-            if not action:
-                parser.print_help()
+            parser.print_help()
 
 
 if __name__ == "__main__":
