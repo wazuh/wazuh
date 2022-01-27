@@ -19,6 +19,8 @@ CPMAddPackage(
 file(GLOB SOURCE_FILES ${TEST_SOURCE_DIR}/*.cpp)
 
 include(GoogleTest)
+
+add_subdirectory(${TEST_SOURCE_DIR}/server)
 add_subdirectory(${TEST_SOURCE_DIR}/router)
 add_subdirectory(${TEST_SOURCE_DIR}/json)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)

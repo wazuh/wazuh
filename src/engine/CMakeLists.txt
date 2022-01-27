@@ -112,6 +112,9 @@ set(SOURCE_FILES "${ENGINE_SOURCE_DIR}/main.cpp")
 
 add_executable(main ${SOURCE_FILES})
 
+# Build server
+add_subdirectory(${ENGINE_SOURCE_DIR}/server)
+
 # Build catalog
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 
