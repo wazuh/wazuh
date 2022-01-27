@@ -9,7 +9,27 @@
 
 #include "testsTCPEndpoint.hpp"
 
-TEST(ServerTest, testTCP)
+#define GTEST_COUT cerr << "[          ] [ INFO ]"
+
+
+using namespace engineserver;
+using namespace engineserver::endpoints;
+using namespace std;
+using namespace rxcpp;
+
+
+TEST(TCPTest, Initializes)
 {
-    ASSERT_TRUE(true);
+    const string config = "localhost:5054";
+    ASSERT_NO_THROW(TCPEndpoint tcp (config));
+}
+
+TEST(TCPTest, RunStop)
+{
+    const string config = "localhost:5054";
+    TCPEndpoint tcp (config);
+    ASSERT_NO_THROW(tcp.run());
+    // Give time to initialize before closing
+    this_thread::sleep_for(chrono::milliseconds(5));
+    ASSERT_NO_THROW(tcp.close());
 }

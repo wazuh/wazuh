@@ -9,7 +9,27 @@
 
 #include "testsSocketEndpoint.hpp"
 
-TEST(ServerTest, testSocket)
+#define GTEST_COUT cerr << "[          ] [ INFO ]"
+
+
+using namespace engineserver;
+using namespace engineserver::endpoints;
+using namespace std;
+using namespace rxcpp;
+
+
+TEST(SocketTest, Initializes)
 {
-    ASSERT_TRUE(true);
+    const string config = "/tmp/testsocket";
+    ASSERT_NO_THROW(SocketEndpoint socket (config));
+}
+
+TEST(SocketTest, RunStop)
+{
+    const string config = "/tmp/testsocket";
+    SocketEndpoint socket (config);
+    ASSERT_NO_THROW(socket.run());
+    // Give time to initialize before closing
+    this_thread::sleep_for(chrono::milliseconds(5));
+    ASSERT_NO_THROW(socket.close());
 }
