@@ -21,10 +21,6 @@ static int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step);
 // - The attributes field of the fim_entry table is decoded
 static int wdb_adjust_v4(wdb_t *wdb);
 
-// Migrating to the fourth version of the database:
-// The groups_hash column is calculated with the hash of the group column
-static int wdb_global_adjust_v4(wdb_t *wdb);
-
 /* SQL statements used for the global.db upgrade */
 typedef enum wdb_stmt_global {
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
@@ -102,7 +98,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         merror("DB(%s) Error trying to find metadata table", wdb->id);
         wdb->enabled = false;
         return wdb;
-    case 0:
+    case OS_SUCCESS:
         /**
          * The table doesn't exist. Checking if version is 3.10 to upgrade. In case of
          * having a version lower than 3.10, we recreate the global.db database as we
@@ -143,7 +139,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         else {
             for (int i = version; i < updates_length; i++) {
                 mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
-                if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_global_upgrade(wdb, i)) {
+                if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID || wdb_adjust_global_upgrade(wdb, i)) {
                     char *bkp_name = NULL;
                     if (OS_INVALID != wdb_global_get_most_recent_backup(&bkp_name) &&
                         OS_INVALID != wdb_global_restore_backup(&wdb, bkp_name, false, output)) {
@@ -215,7 +211,7 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-    if (wdb_close(wdb, TRUE) != -1) {
+    if (wdb_close(wdb, TRUE) != OS_INVALID) {
         unlink(path);
 
         if (OS_SUCCESS != wdb_create_global(path)) {
@@ -300,14 +296,12 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
 int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step) {
     switch (upgrade_step) {
         case 3:
-            return wdb_global_adjust_v4(wdb);
+            // Migrating to the fourth version of the database: The groups_hash
+            // column is calculated with the hash of the group column
+            return wdb_global_update_all_agents_groups_hash(wdb);
         default:
             return 0;
     }
-}
-
-int wdb_global_adjust_v4(wdb_t *wdb) {
-    return wdb_global_update_all_agents_groups_hash(wdb);
 }
 
 int wdb_adjust_v4(wdb_t *wdb) {
