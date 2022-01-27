@@ -9,11 +9,22 @@
 
 #include "engineServer.hpp"
 
-using namespace engineserver;
+#include <map>
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <rxcpp/rx.hpp>
+#include <vector>
 
-EngineServer::EngineServer(const std::vector<std::string> & config)
+#include "endpoints/baseEndpoint.hpp"
+#include "endpoints/endpoint_factory.hpp"
+
+using namespace std;
+
+namespace engineserver
 {
-    std::vector<rxcpp::observable<nlohmann::json>> tmpObs;
+EngineServer::EngineServer(const vector<string> & config)
+{
+    vector<rxcpp::observable<nlohmann::json>> tmpObs;
 
     // <EnpointType>:<config_string> tcp:localhost:5054 socke:path/to/socket
     for (auto endpointConf : config)
@@ -54,3 +65,4 @@ void EngineServer::close(void)
         it->second->close();
     }
 }
+} // namespace engineserver

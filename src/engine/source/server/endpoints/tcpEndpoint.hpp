@@ -14,7 +14,6 @@
 #include <iostream>
 #include <mutex>
 #include <string>
-
 #include <uvw/tcp.hpp>
 
 #include "baseEndpoint.hpp"
@@ -22,7 +21,10 @@
 
 namespace engineserver::endpoints
 {
-
+/**
+ * @brief Implements tcp server endpoint using uvw library.
+ *
+ */
 class TCPEndpoint : public BaseEndpoint
 {
 private:
@@ -32,6 +34,11 @@ private:
     std::shared_ptr<uvw::TCPHandle> m_handle;
 
 public:
+    /**
+     * @brief Construct a new TCPEndpoint object.
+     *
+     * @param config <ip>:<port> string with allowed ip mask and port to listen.
+     */
     explicit TCPEndpoint(const std::string & config);
     ~TCPEndpoint();
 

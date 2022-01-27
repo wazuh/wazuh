@@ -7,9 +7,13 @@
  * Foundation.
  */
 
-#include "socketEndpoint.hpp"
-#include "tcpEndpoint.hpp"
-#include "udpEndpoint.hpp"
+#include "baseEndpoint.hpp"
+
+#include <nlohmann/json.hpp>
+#include <rxcpp/rx.hpp>
+#include <string>
+
+using namespace std;
 
 namespace engineserver::endpoints
 {
@@ -25,47 +29,6 @@ BaseEndpoint::~BaseEndpoint()
 rxcpp::observable<nlohmann::json> BaseEndpoint::output(void) const
 {
     return this->m_subject.get_observable();
-}
-
-EndpointType stringToEndpoint(const std::string & endpointName)
-{
-    if (endpointName == "tcp")
-    {
-        return TCP;
-    }
-    else if (endpointName == "udp")
-    {
-        return UDP;
-    }
-    else if (endpointName == "socket")
-    {
-        return SOCKET;
-    }
-    else
-    {
-        throw std::invalid_argument("Error, endpoint " + endpointName + " not supported");
-    }
-}
-
-std::unique_ptr<BaseEndpoint> create(const std::string & type, const std::string & config)
-{
-    auto endpointType = stringToEndpoint(type);
-    switch (endpointType)
-    {
-        case TCP:
-            return std::make_unique<TCPEndpoint>(config);
-            break;
-        case UDP:
-            return std::make_unique<UDPEndpoint>(config);
-            break;
-        case SOCKET:
-            return std::make_unique<SocketEndpoint>(config);
-            break;
-        default:
-            throw std::runtime_error("Error, endpoint type " + std::to_string(endpointType) +
-                                     " not implemented by factory Endpoint builder");
-            break;
-    }
 }
 
 } // namespace engineserver::endpoints
