@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "endpoint_factory.hpp"
+#include "endpointFactory.hpp"
 
 #include <memory>
 #include <stdexcept>
