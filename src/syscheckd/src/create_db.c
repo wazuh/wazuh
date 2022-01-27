@@ -46,6 +46,7 @@ static const char *FIM_EVENT_MODE[] = {
 
 typedef struct fim_txn_context_s {
     event_data_t *evt_data;
+    volatile bool db_full;
 } fim_txn_context_t;
 
 
@@ -147,10 +148,12 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
                 fim_diff_process_delete_file(path);
             }
             event_data->evt_data->type = FIM_DELETE;
+            event_data->db_full = false;
 
             break;
 
         case MAX_ROWS:
+            event_data->db_full = true;
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
@@ -221,7 +224,7 @@ time_t fim_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_txn_context_t txn_ctx = { .evt_data = &evt_data };
+    fim_txn_context_t txn_ctx = { .evt_data = &evt_data, .db_full = false };
 
     static fim_state_db _files_db_state = FIM_STATE_DB_EMPTY;
 #ifdef WIN32
@@ -268,16 +271,12 @@ time_t fim_scan() {
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
-
-    fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
-    db_transaction_handle = NULL;
-
-#ifdef WIN32
-    fim_registry_scan();
-#endif
     if (syscheck.db_entry_limit_enabled) {
         nodes_count = fim_db_get_count_file_entry();
     }
+
+    fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+    db_transaction_handle = NULL;
 
     if (syscheck.db_entry_limit_enabled && (nodes_count >= syscheck.db_entry_file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
@@ -286,6 +285,10 @@ time_t fim_scan() {
 
         w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
+            if (txn_ctx.db_full == true) {
+                break;
+            }
+
             dir_it = node_it->data;
             char *path;
             event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
@@ -308,22 +311,23 @@ time_t fim_scan() {
 
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
-#ifdef WIN32
-        fim_registry_scan();
-#endif
         fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
         db_transaction_handle = NULL;
     }
+
+#ifdef WIN32
+    fim_registry_scan();
+#endif
 
     gettime(&end);
     end_of_scan = time(NULL);
 
     if (syscheck.db_entry_limit_enabled) {
         int files_count = fim_db_get_count_file_entry();
-        fim_check_db_state(syscheck.db_entry_file_limit, files_count, _files_db_state, FIMDB_FILE_TABLE_NAME);
+        fim_check_db_state(syscheck.db_entry_file_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 #ifdef WIN32
         int registries_count = fim_db_get_count_registry_data();
-        fim_check_db_state(syscheck.db_entry_registry_limit, registries_count, _registries_db_state, FIMDB_REGISTRY_VALUE_TABLENAME);
+        fim_check_db_state(syscheck.db_entry_registry_limit, registries_count, &_registries_db_state, FIMDB_REGISTRY_VALUE_TABLENAME);
 #endif
     }
 
@@ -730,7 +734,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 }
 
 // Checks the DB state, sends a message alert if necessary
-void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db db_state, const char* table_name) {
+void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state, const char* table_name) {
     cJSON *json_event = NULL;
     char *json_plain = NULL;
     char alert_msg[OS_SIZE_256] = {'\0'};
@@ -740,7 +744,7 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db db_state,
         return;
     }
 
-    switch (db_state) {
+    switch (*db_state) {
     case FIM_STATE_DB_FULL:
         if (nodes_count >= nodes_limit) {
             return;
@@ -758,7 +762,7 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db db_state,
         break;
     case FIM_STATE_DB_NORMAL:
         if (nodes_count == 0) {
-            db_state = FIM_STATE_DB_EMPTY;
+            *db_state = FIM_STATE_DB_EMPTY;
             return;
         }
         else if (nodes_count < nodes_limit * 0.8) {
@@ -770,7 +774,7 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db db_state,
             return;
         }
         else if (nodes_count < nodes_limit * 0.8) {
-            db_state = FIM_STATE_DB_NORMAL;
+            *db_state = FIM_STATE_DB_NORMAL;
             return;
         }
         break;
@@ -784,27 +788,27 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db db_state,
     cJSON_AddStringToObject(json_event, "fim_db_table", table_name);
 
     if (nodes_count >= nodes_limit) {
-        db_state = FIM_STATE_DB_FULL;
+        *db_state = FIM_STATE_DB_FULL;
         mwarn(FIM_DB_FULL_ALERT, table_name);
         cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
     else if (nodes_count >= nodes_limit * 0.9) {
-        db_state = FIM_STATE_DB_90_PERCENTAGE;
+        *db_state = FIM_STATE_DB_90_PERCENTAGE;
         minfo(FIM_DB_90_PERCENTAGE_ALERT, table_name);
         cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
     }
     else if (nodes_count >= nodes_limit * 0.8) {
-        db_state = FIM_STATE_DB_80_PERCENTAGE;
+        *db_state = FIM_STATE_DB_80_PERCENTAGE;
         minfo(FIM_DB_80_PERCENTAGE_ALERT, table_name);
         cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
     }
     else if (nodes_count > 0) {
-        db_state = FIM_STATE_DB_NORMAL;
+        *db_state = FIM_STATE_DB_NORMAL;
         minfo(FIM_DB_NORMAL_ALERT, table_name);
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
     else {
-        db_state = FIM_STATE_DB_EMPTY;
+        *db_state = FIM_STATE_DB_EMPTY;
         minfo(FIM_DB_NORMAL_ALERT, table_name);
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
@@ -1505,10 +1509,9 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
 
 #ifdef WIN32
-    /*
-    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
-    mdebug1(FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database));
-    */
+    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry());
+    mdebug1(FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key());
+    mdebug1(FIM_REGISTRY_VALUES_ENTRIES_INFO, fim_db_get_count_registry_data());
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
