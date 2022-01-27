@@ -56,7 +56,13 @@ CPMAddPackage(
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 set(SOURCES
-    ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint_factory.cpp
 )
 
 include_directories(
@@ -69,17 +75,18 @@ include_directories(
     ${uvw_SOURCE_DIR}/src/uvw/
 )
 
-add_executable(
-  server_test
-  ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint_factory.cpp
-)
-
+add_executable(server_test ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
 target_link_libraries(server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
 gtest_discover_tests(server_test)
+
+add_executable(tcptest ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp)
+target_link_libraries(tcptest gtest_main uv rxcpp nlohmann_json::nlohmann_json)
+gtest_discover_tests(tcptest)
+
+add_executable(udptest ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/endpoints/testsUDPEndpoint.cpp)
+target_link_libraries(udptest gtest_main uv rxcpp nlohmann_json::nlohmann_json)
+gtest_discover_tests(udptest)
+
+add_executable(sockettest ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp)
+target_link_libraries(sockettest gtest_main uv rxcpp nlohmann_json::nlohmann_json)
+gtest_discover_tests(sockettest)
