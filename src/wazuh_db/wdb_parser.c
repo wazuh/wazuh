@@ -872,7 +872,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "set-agent-groups") == 0) {
             if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for agent.");
+                mdebug1("Global DB Invalid DB query syntax for set-agent-groups.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
@@ -5232,7 +5232,7 @@ int wdb_parse_global_select_groups(wdb_t * wdb, char * output) {
 }
 
 int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
-
+    int ret = OS_SUCCESS;
     const char *error = NULL;
     cJSON *args = cJSON_ParseWithOpts(input, &error, TRUE);
     if (args) {
@@ -5246,14 +5246,11 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
             char* sync_status = "synced";
             if (0 == strcmp(j_mode->valuestring, "override")) {
                 mode = WDB_GROUP_OVERRIDE;
-            }
-            else if (0 == strcmp(j_mode->valuestring, "append")) {
+            } else if (0 == strcmp(j_mode->valuestring, "append")) {
                 mode = WDB_GROUP_APPEND;
-            }
-            else if (0 == strcmp(j_mode->valuestring, "empty_only")) {
+            } else if (0 == strcmp(j_mode->valuestring, "empty_only")) {
                 mode = WDB_GROUP_EMPTY_ONLY;
-            }
-            else if (0 == strcmp(j_mode->valuestring, "remove")) {
+            } else if (0 == strcmp(j_mode->valuestring, "remove")) {
                 mode = WDB_GROUP_REMOVE;
             }
 
@@ -5264,24 +5261,24 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
             wdbc_result status = wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
             if (status == WDBC_OK) {
                 snprintf(output, OS_MAXSTR + 1, "%s",  WDBC_RESULT[status]);
-            }
-            else {
+            } else {
                 snprintf(output, OS_MAXSTR + 1, "%s An error occurred during the set of the groups",  WDBC_RESULT[status]);
+                ret = OS_INVALID;
             }
-        }
-        else {
+        } else {
             mdebug1("Missing mandatory fields in set_agent_groups command.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
+            ret = OS_INVALID;
         }
         cJSON_Delete(args);
-    }
-    else {
+    } else {
         mdebug1("Global DB Invalid JSON syntax when parsing set_agent_groups");
         mdebug2("Global DB JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        ret = OS_INVALID;
     }
 
-    return OS_SUCCESS;
+    return ret;
 }
 
 int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output) {
