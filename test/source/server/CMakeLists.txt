@@ -62,7 +62,7 @@ set(SOURCES
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpoint_factory.cpp
+  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpointFactory.cpp
 )
 
 include_directories(
