@@ -186,6 +186,18 @@ int __wrap_wdb_global_delete_group( __attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+wdbc_result __wrap_wdb_global_set_agent_groups(__attribute__((unused)) wdb_t *wdb,
+                                               wdb_groups_set_mode_t mode,
+                                               char* sync_status,
+                                               cJSON* j_agents_group_info) {
+    check_expected(mode);
+    check_expected(sync_status);
+    char *agents_group_info = cJSON_PrintUnformatted(j_agents_group_info);
+    check_expected(agents_group_info);
+    os_free(agents_group_info);
+    return mock();
+}
+
 cJSON* __wrap_wdb_global_select_groups(__attribute__((unused)) wdb_t *wdb) {
     return mock_ptr_type(cJSON*);
 }

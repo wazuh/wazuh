@@ -1259,15 +1259,13 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     ret = WDBC_ERROR;
                     merror("There was an error un-assigning the groups to agent '%03d'", agent_id);
                 }
-            }
-            else {
+            } else {
                 if (mode == WDB_GROUP_OVERRIDE ) {
                     if (OS_INVALID == wdb_global_delete_agent_belong(wdb, agent_id)) {
                         ret = WDBC_ERROR;
                         merror("There was an error cleaning the previous agent groups");
                     }
-                }
-                else {
+                } else {
                     int last_group_priority = wdb_global_get_agent_max_group_priority(wdb, agent_id);
                     if (last_group_priority >= 0) {
                         if (mode == WDB_GROUP_EMPTY_ONLY) {
@@ -1294,13 +1292,11 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                 }
                 os_free(agent_groups_csv);
                 wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
-            }
-            else {
+            } else {
                 ret = WDBC_ERROR;
                 mdebug1("The agent groups where empty right after the set");
             }
-        }
-        else {
+        } else {
             ret = WDBC_ERROR;
             mdebug1("Invalid groups set information");
             continue;
