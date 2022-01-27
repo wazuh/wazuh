@@ -1802,7 +1802,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
  * @param [in] wdb The Global struct database.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_all_agents_groups_hash(wdb_t* wdb);
+int wdb_global_adjust_v4(wdb_t* wdb);
 
 /**
  * @brief Function to get a group id using the group name.
