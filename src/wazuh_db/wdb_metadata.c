@@ -146,7 +146,7 @@ int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value) 
     }
 }
 
-int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
+int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
     sqlite3_stmt *stmt = NULL;
 
     if (sqlite3_prepare_v2(wdb->db,

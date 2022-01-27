@@ -89,7 +89,11 @@ cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id,
 
 int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id);
 
+int __wrap_wdb_global_update_all_agents_groups_hash(wdb_t* wdb);
+
 cJSON* __wrap_wdb_global_get_backups();
+
+time_t __wrap_wdb_global_get_most_recent_backup(char **most_recent_backup_name);
 
 int __wrap_wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
 

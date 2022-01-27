@@ -268,8 +268,20 @@ int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     return mock();
 }
 
+int __wrap_wdb_global_update_all_agents_groups_hash(__attribute__((unused)) wdb_t* wdb) {
+    return mock();
+}
+
 cJSON* __wrap_wdb_global_get_backups() {
     return mock_ptr_type(cJSON*);
+}
+
+time_t __wrap_wdb_global_get_most_recent_backup(char **most_recent_backup_name) {
+    char *name = NULL;
+    if (name = mock_ptr_type(char*), name) {
+        os_strdup(name, *most_recent_backup_name);
+    }
+    return mock();
 }
 
 int __wrap_wdb_global_create_backup(__attribute__((unused)) wdb_t* wdb,
