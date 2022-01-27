@@ -89,9 +89,7 @@ void test_wdb_create_agent_db_error_already_exist(void **state)
 {
     int ret = 0;
     int agent_id = 1;
-    char* agent_name = NULL;
-
-    os_strdup("agent1",agent_name);
+    char agent_name[] = "agent1";
 
     // Agent database doesn't exists
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
@@ -103,7 +101,6 @@ void test_wdb_create_agent_db_error_already_exist(void **state)
     ret = wdb_create_agent_db(agent_id, agent_name);
 
     assert_int_equal(OS_SUCCESS, ret);
-    os_free(agent_name);
 }
 
 void test_wdb_create_agent_db_error_creating_source_profile(void **state)
@@ -3628,26 +3625,21 @@ void test_wdb_parse_chunk_to_int_err(void **state) {
 
 void test_wdb_set_agent_groups_csv_success(void **state) {
     char** groups_array = NULL;
-    char* groups_csv = NULL;
-    char* mode = NULL;
-    char* sync_status = NULL;
-    char* query_str = NULL;
+    char groups_csv[] = "default,Group1,Group2,";
+    char mode[] = "override";
+    char sync_status[] = "synced";
+    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
     char* data_in_str = NULL;
-    char* response = NULL;
+    char response[] = "ok";
     int id = 1;
     int socket = -1;
     int res;
     cJSON* j_data_in = __real_cJSON_CreateObject();
     cJSON* j_agent_info = __real_cJSON_CreateObject();
 
-    os_strdup("default,Group1,Group2,",groups_csv);
-    os_strdup("override", mode);
-    os_strdup("synced", sync_status);
     os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",data_in_str);
-    os_strdup("global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",query_str);
-    os_strdup("ok",response);
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
 
     // spliting string
     groups_array = w_string_split(groups_csv, ",", 0);
@@ -3656,27 +3648,27 @@ void test_wdb_set_agent_groups_csv_success(void **state) {
     will_return(__wrap_cJSON_CreateObject, j_data_in);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "override");
+    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
     will_return(__wrap_cJSON_CreateObject, j_agent_info);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, "default");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group1");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group2");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
@@ -3701,11 +3693,6 @@ void test_wdb_set_agent_groups_csv_success(void **state) {
     assert_int_equal(OS_SUCCESS,res);
 
     free_strarray(groups_array);
-    os_free(groups_csv);
-    os_free(mode);
-    os_free(sync_status);
-    os_free(query_str);
-    os_free(response);
     __real_cJSON_Delete(j_data_in);
     __real_cJSON_Delete(j_agent_info);
 }
@@ -3718,75 +3705,61 @@ void test_wdb_set_agent_groups_error_no_mode(void **state) {
     int socket = -1;
     int res;
 
-    os_calloc(4, sizeof(char *), groups_array);
-    os_strdup("default", groups_array[0]);
-    os_strdup("Group1", groups_array[1]);
-    os_strdup("Group2", groups_array[2]);
-    groups_array[3] = NULL;
-    os_strdup("synced", sync_status);
-
     // Debug message
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid params to set the agent groups 01");
 
     res = wdb_set_agent_groups(id, groups_array, mode, sync_status, &socket);
 
     assert_int_equal(OS_INVALID,res);
-
-    free_strarray(groups_array);
-    os_free(sync_status);
 }
 
 void test_wdb_set_agent_groups_socket_error(void **state) {
     char** groups_array = NULL;
-    char* mode = NULL;
-    char* sync_status = NULL;
-    char* query_str = NULL;
+    char mode[] = "override";
+    char sync_status[] = "synced";
+    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
     char* data_in_str = NULL;
-    char* response = NULL;
+    char response[] = "ok";
     int id = 1;
     int socket = -1;
     int res;
     cJSON* j_data_in = __real_cJSON_CreateObject();
     cJSON* j_agent_info = __real_cJSON_CreateObject();
 
+    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
+
     os_calloc(4, sizeof(char *), groups_array);
     os_strdup("default", groups_array[0]);
     os_strdup("Group1", groups_array[1]);
     os_strdup("Group2", groups_array[2]);
-    groups_array[3] = NULL;
-    os_strdup("override", mode);
-    os_strdup("synced", sync_status);
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",data_in_str);
-    os_strdup("global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",query_str);
-    os_strdup("ok",response);
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, j_data_in);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "override");
+    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
     will_return(__wrap_cJSON_CreateObject, j_agent_info);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, "default");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group1");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group2");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
@@ -3812,65 +3785,57 @@ void test_wdb_set_agent_groups_socket_error(void **state) {
     assert_int_equal(OS_INVALID,res);
 
     free_strarray(groups_array);
-    os_free(mode);
-    os_free(sync_status);
-    os_free(query_str);
-    os_free(response);
     __real_cJSON_Delete(j_data_in);
     __real_cJSON_Delete(j_agent_info);
 }
 
 void test_wdb_set_agent_groups_query_error(void **state) {
     char** groups_array = NULL;
-    char* mode = NULL;
-    char* sync_status = NULL;
-    char* query_str = NULL;
+    char mode[] = "override";
+    char sync_status[] = "synced";
+    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
     char* data_in_str = NULL;
-    char* response = NULL;
+    char response[] = "ok";
     int id = 1;
     int socket = -1;
     int res;
     cJSON* j_data_in = __real_cJSON_CreateObject();
     cJSON* j_agent_info = __real_cJSON_CreateObject();
 
+    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
+
     os_calloc(4, sizeof(char *), groups_array);
     os_strdup("default", groups_array[0]);
     os_strdup("Group1", groups_array[1]);
     os_strdup("Group2", groups_array[2]);
-    groups_array[3] = NULL;
-    os_strdup("override", mode);
-    os_strdup("synced", sync_status);
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",data_in_str);
-    os_strdup("global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",query_str);
-    os_strdup("ok",response);
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, j_data_in);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "override");
+    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
     will_return(__wrap_cJSON_CreateObject, j_agent_info);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, "default");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group1");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group2");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
@@ -3898,65 +3863,57 @@ void test_wdb_set_agent_groups_query_error(void **state) {
     assert_int_equal(OS_INVALID,res);
 
     free_strarray(groups_array);
-    os_free(mode);
-    os_free(sync_status);
-    os_free(query_str);
-    os_free(response);
     __real_cJSON_Delete(j_data_in);
     __real_cJSON_Delete(j_agent_info);
 }
 
 void test_wdb_set_agent_groups_success(void **state) {
     char** groups_array = NULL;
-    char* mode = NULL;
-    char* sync_status = NULL;
-    char* query_str = NULL;
+    char mode[] = "override";
+    char sync_status[] = "synced";
+    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
     char* data_in_str = NULL;
-    char* response = NULL;
+    char response[] = "ok";
     int id = 1;
     int socket = -1;
     int res;
     cJSON* j_data_in = __real_cJSON_CreateObject();
     cJSON* j_agent_info = __real_cJSON_CreateObject();
 
+    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
+
     os_calloc(4, sizeof(char *), groups_array);
     os_strdup("default", groups_array[0]);
     os_strdup("Group1", groups_array[1]);
     os_strdup("Group2", groups_array[2]);
-    groups_array[3] = NULL;
-    os_strdup("override", mode);
-    os_strdup("synced", sync_status);
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",data_in_str);
-    os_strdup("global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}",query_str);
-    os_strdup("ok",response);
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, j_data_in);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "override");
+    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "synced");
+    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
     will_return(__wrap_cJSON_CreateObject, j_agent_info);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, "default");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group1");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, "Group2");
+    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
@@ -3981,10 +3938,6 @@ void test_wdb_set_agent_groups_success(void **state) {
     assert_int_equal(OS_SUCCESS,res);
 
     free_strarray(groups_array);
-    os_free(mode);
-    os_free(sync_status);
-    os_free(query_str);
-    os_free(response);
     __real_cJSON_Delete(j_data_in);
     __real_cJSON_Delete(j_agent_info);
 }
