@@ -220,8 +220,8 @@ class SyncWazuhdb(SyncTask):
 
         Returns
         -------
-        list
-            List of results obtained from WDB
+        chunks : list
+            List of results obtained from WDB.
         """
         pivoting = self.get_payload != {} and self.pivot_key != ''
         status = ''
@@ -563,48 +563,34 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
-    async def sync_agent_info(self, synced=True):
+    async def sync_agent_info(self):
         """Obtain information from agents reporting this worker and send it to the master.
 
         Asynchronous task that is started when the worker connects to the master. It starts an agent-info
-        synchronization process every 'sync_agent_info' or 'sync_agent_info_ko_retry' seconds.
+        synchronization process every 'sync_agent_info' seconds.
 
         A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
         and sent to the master's wazuh-db.
-
-        Parameters
-        ----------
-        synced : bool
-            Flag indicating which timer should be used for the synchronization task.
         """
         logger = self.task_loggers["Agent-info sync"]
-        sleep_interval = self.cluster_items['intervals']['worker']['sync_agent_info' if synced
-        else 'sync_agent_info_ko_retry']
         wdb_conn = WazuhDBConnection()
         agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_a_w_m', data_retriever=wdb_conn.run_wdb_command,
                                  get_data_command='global sync-agent-info-get ',
                                  set_data_command='global sync-agent-info-set')
 
         await self.general_agent_sync_task(sync_object=agent_info, timer=self.agent_info_sync_status,
-                                           sleep_interval=sleep_interval)
+                                           sleep_interval=self.cluster_items['intervals']['worker']['sync_agent_info'])
 
-    async def sync_agent_groups(self, synced=True):
+    async def sync_agent_groups(self):
         """Obtain information about groups from agents reporting this worker and send it to the master.
 
         Asynchronous task that is started when the worker connects to the master. It starts an agent-groups
-        synchronization process every 'sync_agent_groups' or 'sync_agent_groups_ko_retry' seconds.
+        synchronization process every 'sync_agent_groups' seconds.
 
         A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
         and sent to the master's wazuh-db.
-
-        Parameters
-        ----------
-        synced : bool
-            Flag indicating which timer should be used for the synchronization task.
         """
         logger = self.task_loggers["Agent-groups sync"]
-        sleep_interval = self.cluster_items['intervals']['worker']['sync_agent_groups' if synced
-        else 'sync_agent_groups_ko_retry']
         wdb_conn = WazuhDBConnection()
         agent_groups = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_g_w_m',
                                    data_retriever=wdb_conn.run_wdb_command,
@@ -613,7 +599,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                    set_data_command='global set-agent-groups')
 
         await self.general_agent_sync_task(sync_object=agent_groups, timer=self.agent_groups_sync_status,
-                                           sleep_interval=sleep_interval)
+                                           sleep_interval=self.cluster_items['intervals']['worker']['sync_agent_groups'])
 
     async def general_agent_sync_task(self, sync_object, timer, sleep_interval):
         """General body of the database synchronization tasks. Constant loop that performs the task
