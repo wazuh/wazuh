@@ -31,8 +31,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
-                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2,
-                                          "sync_agent_info": 5, "sync_agent_groups": 5,},
+                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "sync_agent_info": 5,
+                                          "sync_agent_info_ko_retry": 1, "sync_agent_groups": 5,
+                                          "sync_agent_groups_ko_retry": 1},
                                "communication": {"timeout_receiving_file": 1}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name": "wazuh", "node_type": "master"}
@@ -283,15 +284,6 @@ def test_sync_wazuh_db_init():
 async def test_sync_wazuh_db_retrieve_information(socket_mock):
     """Check the proper functionality of the function in charge of
     obtaining the information from the database of the workers nodes."""
-    counter = 0
-    def data_generator(command):
-        nonlocal counter
-        counter += 1
-        if counter < 3:
-            return 'due', {'id': counter}
-        else:
-            return 'ok', {'id': counter}
-
     wdb_conn = WazuhDBConnection()
     w_handler = get_worker_handler()
     sync_object = worker.SyncWazuhdb(worker=w_handler, logger=logger, cmd=b'syn_a_w_m',
@@ -299,8 +291,8 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
                                      get_data_command='global sync-agent-info-get ',
                                      set_data_command='global sync-agent-info-set')
 
-    with patch.object(sync_object, 'data_retriever', side_effect=data_generator):
-        assert await sync_object.retrieve_information() == [{'id': 1}, {'id': 2}, {'id': 3}]
+    with patch.object(sync_object, 'data_retriever', return_value=('ok', [{'id': 0}])):
+        assert await sync_object.retrieve_information() == [[{'id': 0}]]
 
     sync_object = worker.SyncWazuhdb(worker=w_handler, logger=logger, cmd=b'syn_a_w_m',
                                      data_retriever=wdb_conn.run_wdb_command,
@@ -680,6 +672,11 @@ async def test_worker_handler_sync_agent_info(general_agent_sync_mock, socket_mo
             sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
             sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_info'])
 
+        await worker_handler.sync_agent_info(synced=False)
+        general_agent_sync_mock.assert_called_with(
+            sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
+            sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_info_ko_retry'])
+
 
 @pytest.mark.asyncio
 @patch("wazuh.core.wdb.socket.socket")
@@ -698,6 +695,11 @@ async def test_worker_handler_sync_agent_groups(general_agent_sync_mock, socket_
         general_agent_sync_mock.assert_called_with(
             sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
             sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_groups'])
+
+        await worker_handler.sync_agent_groups(synced=False)
+        general_agent_sync_mock.assert_called_with(
+            sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
+            sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_groups_ko_retry'])
 
 
 @pytest.mark.asyncio

@@ -239,7 +239,7 @@ class SyncWazuhdb(SyncTask):
                 try:
                     last_pivot_value = json.loads(result[1])[-1]['data'][-1]['id']
                     self.get_payload[self.pivot_key] = last_pivot_value
-                except IndexError:
+                except (IndexError, KeyError):
                     pass
 
         return chunks
