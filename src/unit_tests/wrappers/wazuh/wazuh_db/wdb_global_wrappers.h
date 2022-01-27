@@ -67,6 +67,8 @@ int __wrap_wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent
 
 int __wrap_wdb_global_delete_group(wdb_t *wdb, char* group_name);
 
+wdbc_result __wrap_wdb_global_set_agent_groups(__attribute__((unused)) wdb_t *wdb, wdb_groups_set_mode_t mode, char *sync_status, cJSON *j_agents_group_info);
+
 cJSON* __wrap_wdb_global_select_groups(wdb_t *wdb);
 
 cJSON* __wrap_wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);

@@ -1783,7 +1783,97 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wbb_parse_global_get_groups_integrity */
+/* Tests wdb_parse_global_set_agent_groups */
+
+void test_wdb_parse_global_set_agent_groups_syntax_error(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-groups";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for set-agent-groups.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: set-agent-groups");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'set-agent-groups'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_groups_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-groups {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when parsing set_agent_groups");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_groups_missing_field(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-groups {\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Missing mandatory fields in set_agent_groups command.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_groups_fail(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-groups {\"mode\":\"override\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {\"mode\":\"override\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}");
+    expect_value(__wrap_wdb_global_set_agent_groups, mode, WDB_GROUP_OVERRIDE);
+    expect_string(__wrap_wdb_global_set_agent_groups, sync_status, "synced");
+    expect_string(__wrap_wdb_global_set_agent_groups, agents_group_info, "[{\"id\":1,\"groups\":[\"default\"]}]");
+    will_return(__wrap_wdb_global_set_agent_groups, WDBC_ERROR);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err An error occurred during the set of the groups");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_set_agent_groups_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {\"mode\":\"append\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}");
+    expect_value(__wrap_wdb_global_set_agent_groups, mode, WDB_GROUP_APPEND);
+    expect_string(__wrap_wdb_global_set_agent_groups, sync_status, "synced");
+    expect_string(__wrap_wdb_global_set_agent_groups, agents_group_info, "[{\"id\":1,\"groups\":[\"default\"]}]");
+    will_return(__wrap_wdb_global_set_agent_groups, WDBC_OK);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+/* Tests wdb_parse_global_get_groups_integrity */
 
 void test_wdb_parse_global_get_groups_integrity_syntax_error(void **state)
 {
@@ -2473,6 +2563,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_del_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
+        /* Test wdb_parse_global_set_agent_groups */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_missing_field, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_groups_integrity */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_query_error, test_setup, test_teardown),

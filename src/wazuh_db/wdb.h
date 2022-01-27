@@ -1939,6 +1939,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
                                              bool set_synced,
                                              bool get_hash,
                                              cJSON** output);
+
 /**
  * @brief Function to update group_sync_status of a particular agent.
  *
