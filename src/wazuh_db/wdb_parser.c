@@ -5287,8 +5287,7 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
 
             if (0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
                 condition = WDB_GROUP_SYNC_STATUS;
-            }
-            else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
+            } else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
                 condition = WDB_GROUP_ALL;
             }
             if (cJSON_IsNumber(j_last_id)){
@@ -5308,26 +5307,22 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
                 cJSON_Delete(agent_group_sync);
                 if (strlen(response) <= WDB_MAX_RESPONSE_SIZE) {
                     snprintf(output, OS_MAXSTR + 1, "%s %s", WDBC_RESULT[status], response);
-                }
-                else {
-                    snprintf(output, OS_MAXSTR + 1, "err %s", "Invalid response from wdb_global_ync_agent_groups_get");
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "err %s", "Invalid response from wdb_global_sync_agent_groups_get");
                     ret = OS_INVALID;
                 }
                 os_free(response);
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "err %s", "Could not obtain a response from wdb_global_sync_agent_groups_get");
             }
-            else {
-                snprintf(output, OS_MAXSTR + 1, "err %s", "Could not obtain a response from wdb_global_ync_agent_groups_get");
-            }
-        }
-        else {
-            mdebug1("Missing mandatory fields in agent_groups_get_sync command.");
+        } else {
+            mdebug1("Missing mandatory fields in sync-agent-groups-get command.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
             ret = OS_INVALID;
         }
         cJSON_Delete(args);
-    }
-    else {
-        mdebug1("Global DB Invalid JSON syntax when parsing agent_groups_get_sync");
+    } else {
+        mdebug1("Global DB Invalid JSON syntax when parsing sync-agent-groups-get");
         mdebug2("Global DB JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
         ret = OS_INVALID;
