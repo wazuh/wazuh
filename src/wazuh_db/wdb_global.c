@@ -621,7 +621,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
     return result;
 }
 
-int wdb_global_update_all_agents_groups_hash(wdb_t* wdb) {
+int wdb_global_adjust_v4(wdb_t* wdb) {
     int step_result = -1;
     int update_result = OS_SUCCESS;
     int result = OS_INVALID;

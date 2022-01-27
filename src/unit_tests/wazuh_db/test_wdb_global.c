@@ -6246,33 +6246,33 @@ void test_wdb_global_update_agent_groups_hash_empty_group_column_success(void **
     __real_cJSON_Delete(j_result);
 }
 
-/* Tests wdb_global_update_all_agents_groups_hash */
+/* Tests wdb_global_adjust_v4 */
 
-void test_wdb_global_update_all_agents_groups_hash_begin_failed(void **state) {
+void test_wdb_global_adjust_v4_begin_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     data->wdb->transaction = 0;
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
     will_return(__wrap_wdb_begin2, OS_INVALID);
 
-    int result = wdb_global_update_all_agents_groups_hash(data->wdb);
+    int result = wdb_global_adjust_v4(data->wdb);
 
     assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_update_all_agents_groups_hash_cache_failed(void **state) {
+void test_wdb_global_adjust_v4_cache_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     data->wdb->transaction = 1;
     will_return(__wrap_wdb_stmt_cache, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
-    int result = wdb_global_update_all_agents_groups_hash(data->wdb);
+    int result = wdb_global_adjust_v4(data->wdb);
 
     assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_update_all_agents_groups_hash_bind_failed(void **state) {
+void test_wdb_global_adjust_v4_bind_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     data->wdb->transaction = 1;
@@ -6283,12 +6283,12 @@ void test_wdb_global_update_all_agents_groups_hash_bind_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
 
-    int result = wdb_global_update_all_agents_groups_hash(data->wdb);
+    int result = wdb_global_adjust_v4(data->wdb);
 
     assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_update_all_agents_groups_hash_step_failed(void **state) {
+void test_wdb_global_adjust_v4_step_failed(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     data->wdb->transaction = 1;
@@ -6300,12 +6300,12 @@ void test_wdb_global_update_all_agents_groups_hash_step_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
-    int result = wdb_global_update_all_agents_groups_hash(data->wdb);
+    int result = wdb_global_adjust_v4(data->wdb);
 
     assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_update_all_agents_groups_hash_success(void **state) {
+void test_wdb_global_adjust_v4_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
 
@@ -6344,7 +6344,7 @@ void test_wdb_global_update_all_agents_groups_hash_success(void **state) {
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    int result = wdb_global_update_all_agents_groups_hash(data->wdb);
+    int result = wdb_global_adjust_v4(data->wdb);
 
     assert_int_equal(result, OS_SUCCESS);
     __real_cJSON_Delete(j_result);
@@ -7009,12 +7009,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_groups_hash_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_groups_hash_groups_string_null_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_groups_hash_empty_group_column_success, test_setup, test_teardown),
-        /* Tests wdb_global_update_all_agents_groups_hash */
-        cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_begin_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_cache_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_bind_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_step_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_update_all_agents_groups_hash_success, test_setup, test_teardown),
+        /* Tests wdb_global_adjust_v4 */
+        cmocka_unit_test_setup_teardown(test_wdb_global_adjust_v4_begin_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_adjust_v4_cache_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_adjust_v4_bind_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_adjust_v4_step_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_adjust_v4_success, test_setup, test_teardown),
         /* Tests wdb_global_calculate_agent_group_csv */
         cmocka_unit_test_setup_teardown(test_wdb_global_calculate_agent_group_csv_unable_to_get_group, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_calculate_agent_group_csv_success, test_setup, test_teardown),
