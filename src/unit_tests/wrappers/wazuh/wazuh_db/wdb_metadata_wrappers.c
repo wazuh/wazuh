@@ -19,11 +19,10 @@ int __wrap_wdb_metadata_table_check(__attribute__((unused)) wdb_t * wdb,
     return mock();
 }
 
-int __wrap_wdb_metadata_get_entry (__attribute__((unused)) wdb_t * wdb,
-                                   const char *key,
-                                   char *output) {
+int __wrap_wdb_metadata_get_entry(__attribute__((unused)) wdb_t * wdb,
+                                  const char *key,
+                                  char *output) {
     check_expected(key);
     snprintf(output, OS_SIZE_256 + 1, "%s", mock_ptr_type(char*));
     return mock();
 }
-
