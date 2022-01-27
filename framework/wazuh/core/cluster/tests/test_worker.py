@@ -31,9 +31,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
-                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "sync_agent_info": 5,
-                                          "sync_agent_info_ko_retry": 1, "sync_agent_groups": 5,
-                                          "sync_agent_groups_ko_retry": 1},
+                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2,
+                                          "sync_agent_info": 5, "sync_agent_groups": 5,},
                                "communication": {"timeout_receiving_file": 1}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name": "wazuh", "node_type": "master"}
@@ -681,11 +680,6 @@ async def test_worker_handler_sync_agent_info(general_agent_sync_mock, socket_mo
             sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
             sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_info'])
 
-        await worker_handler.sync_agent_info(synced=False)
-        general_agent_sync_mock.assert_called_with(
-            sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
-            sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_info_ko_retry'])
-
 
 @pytest.mark.asyncio
 @patch("wazuh.core.wdb.socket.socket")
@@ -704,11 +698,6 @@ async def test_worker_handler_sync_agent_groups(general_agent_sync_mock, socket_
         general_agent_sync_mock.assert_called_with(
             sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
             sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_groups'])
-
-        await worker_handler.sync_agent_groups(synced=False)
-        general_agent_sync_mock.assert_called_with(
-            sync_object=sync_object, timer=w_handler.agent_groups_sync_status,
-            sleep_interval=w_handler.cluster_items['intervals']['worker']['sync_agent_groups_ko_retry'])
 
 
 @pytest.mark.asyncio
