@@ -56,25 +56,26 @@ CPMAddPackage(
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 set(SOURCES
-    ${SERVER_ENGINE_SOURCE_DIR}/engineserver.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
 )
 
 include_directories(
     ${ENGINE_SOURCE_DIR}
     ${SERVER_ENGINE_SOURCE_DIR}
+    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/
     ${SERVER_TEST_SOURCE_DIR}
+    ${SERVER_TEST_SOURCE_DIR}/endpoints/
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
 )
-# add_executable(engine_server_test ${SERVER_TEST_SOURCE_DIR}/engineserver_test.cpp ${SOURCES})
-# target_include_directories(engine_server_test PUBLIC ${uvw_SOURCE_DIR}/src/ ${uvw_SOURCE_DIR}/src/uvw/)
-# target_link_libraries(engine_server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
-# include(GoogleTest)
-# gtest_discover_tests(engine_server_test)
 
 add_executable(
   server_test
   ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp
+  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsBaseEndpoint.cpp
+  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsUDPEndpoint.cpp
+  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp
+  ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
