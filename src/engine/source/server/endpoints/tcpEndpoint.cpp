@@ -16,10 +16,8 @@ TCPEndpoint::TCPEndpoint(const std::string & config)
     : BaseEndpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::TCPHandle>()}
 {
     auto pos = config.find(":");
-    auto tmp = config.substr(pos + 1);
-    pos = tmp.find(":");
-    this->m_ip = tmp.substr(0, pos);
-    this->m_port = stoi(tmp.substr(pos + 1));
+    this->m_ip = config.substr(0, pos);
+    this->m_port = stoi(config.substr(pos + 1));
 
     m_handle->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::TCPHandle & tcp)
