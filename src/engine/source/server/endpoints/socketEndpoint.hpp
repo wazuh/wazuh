@@ -14,7 +14,6 @@
 #include <iostream>
 #include <mutex>
 #include <string>
-
 #include <uvw/pipe.hpp>
 
 #include "baseEndpoint.hpp"
@@ -23,6 +22,10 @@
 namespace engineserver::endpoints
 {
 
+/**
+ * @brief Implements socket endopoint using uvw library.
+ *
+ */
 class SocketEndpoint : public BaseEndpoint
 {
 private:
@@ -31,6 +34,11 @@ private:
     std::string m_path;
 
 public:
+    /**
+     * @brief Construct a new Socket Endpoint object.
+     *
+     * @param config string with path to socket.
+     */
     explicit SocketEndpoint(const std::string & config);
     ~SocketEndpoint();
 

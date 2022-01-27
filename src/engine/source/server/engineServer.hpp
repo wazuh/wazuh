@@ -12,16 +12,22 @@
 
 #include <map>
 #include <memory>
-
 #include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
 
 #include "endpoints/baseEndpoint.hpp"
-#include "protocolHandler.hpp"
 
+/**
+ * @brief Defines all related server functionality.
+ *
+ */
 namespace engineserver
 {
 
+/**
+ * @brief Class that handles all endpoints and exposes Server functionality.
+ *
+ */
 class EngineServer
 {
 private:
@@ -29,12 +35,30 @@ private:
     rxcpp::observable<nlohmann::json> m_output;
 
 public:
+    /**
+     * @brief Construct a new Engine Server object
+     *
+     * @param config <type>:<config> string describing endpoint type with it associated configuration.
+     */
     explicit EngineServer(const std::vector<std::string> & config);
 
+    /**
+     * @brief Server rxcpp endpoint, all events ingested come through here.
+     *
+     * @return rxcpp::observable<nlohmann::json>
+     */
     rxcpp::observable<nlohmann::json> output() const;
 
+    /**
+     * @brief Start server.
+     *
+     */
     void run(void);
 
+    /**
+     * @brief Close and liberate resources used by server.
+     *
+     */
     void close(void);
 };
 
