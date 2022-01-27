@@ -284,6 +284,15 @@ def test_sync_wazuh_db_init():
 async def test_sync_wazuh_db_retrieve_information(socket_mock):
     """Check the proper functionality of the function in charge of
     obtaining the information from the database of the workers nodes."""
+    counter = 0
+    def data_generator(command):
+        nonlocal counter
+        counter += 1
+        if counter < 3:
+            return 'due', {'id': counter}
+        else:
+            return 'ok', {'id': counter}
+
     wdb_conn = WazuhDBConnection()
     w_handler = get_worker_handler()
     sync_object = worker.SyncWazuhdb(worker=w_handler, logger=logger, cmd=b'syn_a_w_m',
@@ -291,8 +300,8 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
                                      get_data_command='global sync-agent-info-get ',
                                      set_data_command='global sync-agent-info-set')
 
-    with patch.object(sync_object, 'data_retriever', return_value=('ok', [{'id': 0}])):
-        assert await sync_object.retrieve_information() == [[{'id': 0}]]
+    with patch.object(sync_object, 'data_retriever', side_effect=data_generator):
+        assert await sync_object.retrieve_information() == [{'id': 1}, {'id': 2}, {'id': 3}]
 
     sync_object = worker.SyncWazuhdb(worker=w_handler, logger=logger, cmd=b'syn_a_w_m',
                                      data_retriever=wdb_conn.run_wdb_command,
