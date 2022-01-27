@@ -1,18 +1,19 @@
-#include "tcp_endpoint.hpp"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "protocol_handler.hpp"
-#include <functional>
-#include <iostream>
-#include <mutex>
-#include <string>
-#include <uvw/tcp.hpp>
+#include "tcpEndpoint.hpp"
 
-using namespace std;
-
-namespace server::endpoints
+namespace engineserver::endpoints
 {
-TcpEndpoint::TcpEndpoint(const std::string & config)
-    : Endpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::TCPHandle>()}
+
+TCPEndpoint::TCPEndpoint(const std::string & config)
+    : BaseEndpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::TCPHandle>()}
 {
     auto pos = config.find(":");
     auto tmp = config.substr(pos + 1);
@@ -44,7 +45,8 @@ TcpEndpoint::TcpEndpoint(const std::string & config)
             client->on<uvw::DataEvent>(
                 [this, &srv](const uvw::DataEvent & event, uvw::TCPHandle & client)
                 {
-                    auto eventObject = server::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
+                    auto eventObject =
+                        engineserver::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
                     if (!eventObject.contains("error"))
                     {
                         this->m_subscriber.on_next(eventObject);
@@ -65,13 +67,13 @@ TcpEndpoint::TcpEndpoint(const std::string & config)
     m_handle->listen();
 }
 
-void TcpEndpoint::run(void)
+void TCPEndpoint::run(void)
 {
     std::thread t(&uvw::Loop::run, this->m_loop.get());
     t.detach();
 }
 
-void TcpEndpoint::close(void)
+void TCPEndpoint::close(void)
 {
     m_loop->stop();                                                 /// Stops the loop
     m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
@@ -80,8 +82,9 @@ void TcpEndpoint::close(void)
     m_loop->close();
 }
 
-TcpEndpoint::~TcpEndpoint()
+TCPEndpoint::~TCPEndpoint()
 {
     this->close();
 }
-} // namespace server::endpoints
+
+} // namespace engineserver::endpoints

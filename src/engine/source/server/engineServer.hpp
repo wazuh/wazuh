@@ -1,63 +1,43 @@
-#ifndef _SERVER_H
-#define _SERVER_H
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _ENGINE_SERVER_H_
+#define _ENGINE_SERVER_H_
 
 #include <map>
 #include <memory>
+
 #include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
 
-#include "endpoints/endpoint.hpp"
-#include "protocol_handler.hpp"
+#include "endpoints/baseEndpoint.hpp"
+#include "protocolHandler.hpp"
 
-namespace server
+namespace engineserver
 {
 
-class Server
+class EngineServer
 {
 private:
-    std::map<std::string, std::unique_ptr<endpoints::Endpoint>> m_endpoints;
+    std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
     rxcpp::observable<nlohmann::json> m_output;
 
 public:
-    explicit Server(const std::vector<std::string> & config)
-    {
-        std::vector<rxcpp::observable<nlohmann::json>> tmpObs;
-        // <EnpointType>:<config_string> tcp:localhost:5054 socke:path/to/socket
-        for (auto endpointConf : config)
-        {
-            auto pos = endpointConf.find(":");
-            this->m_endpoints[endpointConf] =
-                endpoints::create(endpointConf.substr(0, pos), endpointConf.substr(pos + 1));
-            tmpObs.push_back(this->m_endpoints[endpointConf]->output());
-        }
+    explicit EngineServer(const std::vector<std::string> & config);
 
-        // Build server output observable to emit json events
-        auto output = tmpObs[0];
-        for (auto it = ++tmpObs.begin(); it != tmpObs.end(); ++it){
-            output = output.merge(*it);
-        }
-        this->m_output = output;
-    }
+    rxcpp::observable<nlohmann::json> output() const;
 
-    rxcpp::observable<nlohmann::json> output() const
-    {
-        return this->m_output;
-    }
+    void run(void);
 
-    void run()
-    {
-        for (auto it = this->m_endpoints.begin(); it != this->m_endpoints.end(); ++it)
-        {
-            it->second->run();
-        }
-    }
-    void close(){
-        for (auto it = this->m_endpoints.begin(); it != this->m_endpoints.end(); ++it)
-        {
-            it->second->close();
-        }
-    }
+    void close(void);
 };
-} // namespace server
 
-#endif //_SERVER_H
+} // namespace engineserver
+
+#endif // _ENGINE_SERVER_H_

@@ -1,71 +1,71 @@
-#include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
-#include <rxcpp/rx.hpp>
-#include <string>
-#include <uvw/pipe.hpp>
-#include <uvw/tcp.hpp>
-#include <uvw/udp.hpp>
-#include <vector>
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "server.hpp"
+#include "testsEngineServer.hpp"
 
-using namespace server;
+using namespace engineserver;
 using namespace std;
 using namespace rxcpp;
 
-#define GTEST_COUT std::cerr << "[          ] [ INFO ]"
+#define GTEST_COUT cerr << "[          ] [ INFO ]"
 
 TEST(ServerTest, InitializesTcp)
 {
     vector<string> config = {"tcp:localhost:5054"};
-    ASSERT_NO_THROW(Server server(config));
+    ASSERT_NO_THROW(EngineServer server(config));
 }
 
 TEST(ServerTest, InitializesUdp)
 {
     vector<string> config = {"udp:localhost:5054"};
-    ASSERT_NO_THROW(Server server(config));
+    ASSERT_NO_THROW(EngineServer server(config));
 }
 
 TEST(ServerTest, InitializesSocket)
 {
     vector<string> config = {"socket:/tmp/testsocket"};
-    ASSERT_NO_THROW(Server server(config));
+    ASSERT_NO_THROW(EngineServer server(config));
 }
 
 TEST(ServerTest, InitializesErrorEndpointType)
 {
     vector<string> config = {"error:localhost:5054"};
-    ASSERT_THROW(Server server(config), invalid_argument);
+    ASSERT_THROW(EngineServer server(config), invalid_argument);
 }
 
 TEST(ServerTest, RunStopTcp)
 {
     vector<string> config = {"tcp:localhost:5054"};
-    Server server(config);
+    EngineServer server(config);
     ASSERT_NO_THROW(server.run());
     // Give time to initialize before closing
-    this_thread::sleep_for(std::chrono::milliseconds(5));
+    this_thread::sleep_for(chrono::milliseconds(5));
     ASSERT_NO_THROW(server.close());
 }
 
 TEST(ServerTest, RunStopUdp)
 {
     vector<string> config = {"udp:localhost:5054"};
-    Server server(config);
+    EngineServer server(config);
     ASSERT_NO_THROW(server.run());
     // Give time to initialize before closing
-    this_thread::sleep_for(std::chrono::milliseconds(5));
+    this_thread::sleep_for(chrono::milliseconds(5));
     ASSERT_NO_THROW(server.close());
 }
 
 TEST(ServerTest, RunStopSocket)
 {
     vector<string> config = {"socket:/tmp/testsocket"};
-    Server server(config);
+    EngineServer server(config);
     ASSERT_NO_THROW(server.run());
     // Give time to initialize before closing
-    this_thread::sleep_for(std::chrono::milliseconds(5));
+    this_thread::sleep_for(chrono::milliseconds(5));
     ASSERT_NO_THROW(server.close());
 }
 
@@ -73,7 +73,7 @@ TEST(ServerTest, EndToEndTcp)
 {
     // Start server
     vector<string> config = {"tcp:localhost:5054"};
-    Server server(config);
+    EngineServer server(config);
 
     // Subscribe to server output
     vector<nlohmann::json> got;
@@ -102,7 +102,7 @@ TEST(ServerTest, EndToEndTcp)
     client->connect(uvw::Addr{address, port});
     thread t(&uvw::Loop::run, loop.get());
 
-    this_thread::sleep_for(std::chrono::milliseconds(500));
+    this_thread::sleep_for(chrono::milliseconds(500));
     loop->stop();                                                 /// Stops the loop
     loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
     loop->run(); /// Runs the loop again, so every handle is able to receive its close callback
