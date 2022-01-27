@@ -268,7 +268,7 @@ int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     return mock();
 }
 
-int __wrap_wdb_global_update_all_agents_groups_hash(__attribute__((unused)) wdb_t* wdb) {
+int __wrap_wdb_global_adjust_v4(__attribute__((unused)) wdb_t* wdb) {
     return mock();
 }
 

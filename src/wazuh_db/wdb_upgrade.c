@@ -296,9 +296,7 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
 int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step) {
     switch (upgrade_step) {
         case 3:
-            // Migrating to the fourth version of the database: The groups_hash
-            // column is calculated with the hash of the group column
-            return wdb_global_update_all_agents_groups_hash(wdb);
+            return wdb_global_adjust_v4(wdb);
         default:
             return 0;
     }
