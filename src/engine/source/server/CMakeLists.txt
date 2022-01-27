@@ -44,11 +44,24 @@ CPMAddPackage(
         # "RAPIDJSON_BUILD_CXX17 ON"
 )
 
+# ReactiveX/RxCpp
+CPMAddPackage(
+  NAME RxCpp
+  GITHUB_REPOSITORY ReactiveX/RxCpp
+  GIT_TAG v4.1.1
+  VERSION 4.1.1
+)
+
 # Parent scope scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 set(SERVER_SOURCES
-    ${SERVER_ENGINE_SOURCE_DIR}/engineserver.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
+    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
 )
 
 include_directories(
@@ -56,7 +69,7 @@ include_directories(
 )
 
 add_executable(engine_server ${SERVER_SOURCES})
-target_include_directories(engine_server PUBLIC 
+target_include_directories(engine_server PUBLIC
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
     ${RapidJSON_SOURCE_DIR}/include/

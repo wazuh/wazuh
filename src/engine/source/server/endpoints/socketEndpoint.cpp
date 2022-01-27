@@ -1,18 +1,19 @@
-#include "socket_endpoint.hpp"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "protocol_handler.hpp"
-#include <functional>
-#include <iostream>
-#include <mutex>
-#include <string>
-#include <uvw/pipe.hpp>
+#include "socketEndpoint.hpp"
 
-using namespace std;
-
-namespace server::endpoints
+namespace engineserver::endpoints
 {
+
 SocketEndpoint::SocketEndpoint(const std::string & config)
-    : Endpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::PipeHandle>()}
+    : BaseEndpoint{config}, m_loop{uvw::Loop::getDefault()}, m_handle{m_loop->resource<uvw::PipeHandle>()}
 {
     this->m_path = config;
 
@@ -38,7 +39,8 @@ SocketEndpoint::SocketEndpoint(const std::string & config)
             client->on<uvw::DataEvent>(
                 [this](const uvw::DataEvent & event, uvw::PipeHandle & client)
                 {
-                    auto eventObject = server::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
+                    auto eventObject =
+                        engineserver::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
                     if (!eventObject.contains("error"))
                     {
                         this->m_subscriber.on_next(eventObject);
@@ -86,4 +88,5 @@ SocketEndpoint::~SocketEndpoint()
 {
     this->close();
 }
-} // namespace server::endpoints
+
+} // namespace engineserver::endpoints
