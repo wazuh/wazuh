@@ -85,6 +85,7 @@ int  wazuh_db_config_teardown() {
 
     return OS_SUCCESS;
 }
+
 /* Tests wdb_open_global */
 
 void test_wdb_open_tasks_pool_success(void **state)
@@ -737,6 +738,8 @@ void test_wdb_get_internal_config() {
     cJSON_Delete(ret);
 }
 
+/* Tests wdb_get_config */
+
 void test_wdb_get_config(){
     cJSON *ret = wdb_get_config();
 
@@ -763,7 +766,28 @@ void test_wdb_get_config(){
     cJSON_Delete(ret);
 }
 
-/* wdb_exec_stmt_single_column */
+/* Tests wdb_check_backup_enabled */
+
+void test_wdb_check_backup_enabled_enabled(void **state)
+{
+    bool ret = false;
+    wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled = true;
+
+    ret = wdb_check_backup_enabled();
+    assert_true(ret);
+}
+
+void test_wdb_check_backup_enabled_disabled(void **state)
+{
+    bool ret = false;
+    wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled = false;
+
+    ret = wdb_check_backup_enabled();
+    assert_false(ret);
+}
+
+/* Tests wdb_exec_stmt_single_column */
+
 void test_wdb_exec_single_column(){
     char col_text[4][16] = { 0 };
 
@@ -847,7 +871,8 @@ void test_wdb_finalize_all_statements(){
     assert_null(wdb.cache_list);
 }
 
-/* wdb_close*/
+/* Tests wdb_close*/
+
 void test_wdb_close_refcount_error(){
     wdb_t wdb = {0};
     wdb.refcount = 1;
@@ -940,6 +965,9 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_statement, setup_wdb, teardown_wdb),
         // wdb_get_config
         cmocka_unit_test_setup_teardown(test_wdb_get_config, wazuh_db_config_setup, wazuh_db_config_teardown),
+        // wdb_check_backup_enabled
+        cmocka_unit_test_setup_teardown(test_wdb_check_backup_enabled_enabled, wazuh_db_config_setup, wazuh_db_config_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_check_backup_enabled_disabled, wazuh_db_config_setup, wazuh_db_config_teardown),
         // wdb_get_internal_config
         cmocka_unit_test(test_wdb_get_internal_config),
         // wdb_exec_single_conlumn

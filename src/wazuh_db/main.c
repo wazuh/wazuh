@@ -418,19 +418,6 @@ void * run_gc(__attribute__((unused)) void * args) {
     return NULL;
 }
 
-bool wdb_check_backup_enabled() {
-    bool result = false;
-
-    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        if(wconfig.wdb_backup_settings[i]->enabled) {
-            result = true;
-            break;
-        }
-    }
-
-    return result;
-}
-
 void * run_backup(__attribute__((unused)) void * args) {
     time_t last_global_backup_time = wdb_global_get_most_recent_backup(NULL);
     char output[OS_MAXSTR + 1] = {0};
