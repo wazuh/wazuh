@@ -6812,6 +6812,10 @@ void test_wdb_global_set_agent_group_context_exec_stmt_error(void **state)
 
 /* wdb_global_set_agent_groups */
 
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_delete_agent_belong() method
+ * @param agent_id The id of the agent whose groups are being deleted
+ */
 void create_wdb_global_delete_agent_belong_success_call(int agent_id) {
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -6821,6 +6825,13 @@ void create_wdb_global_delete_agent_belong_success_call(int agent_id) {
     will_return(__wrap_wdb_step, SQLITE_DONE);
 }
 
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_assign_agent_group() method
+ * @param agent_id The id of the agent being assigned in the belongs table
+ * @param group_id The id of the group being assigned in the belongs table
+ * @param group_name The name of the group being inserted in the group table
+ * @param find_group_resp The response of the find group query
+ */
 void create_wdb_global_assign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
     int actual_priority = 0;
     // wdb_global_insert_agent_group
@@ -6853,6 +6864,13 @@ void create_wdb_global_assign_agent_group_success_call(int agent_id, int group_i
     will_return(__wrap_wdb_step, SQLITE_DONE);
 }
 
+/**
+ * @brief Configure all the wrappers to simulate a successful call to _wdb_global_unassign_agent_group() method
+ * @param agent_id The id of the agent being removed from the belongs table
+ * @param group_id The id of the group being removed from the the belongs table
+ * @param group_name The name of the group being searched for remove
+ * @param find_group_resp The response of the find group query
+ */
 void create_wdb_global_unassign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
     // wdb_global_find_group
     will_return(__wrap_wdb_begin2, 1);
@@ -6874,6 +6892,11 @@ void create_wdb_global_unassign_agent_group_success_call(int agent_id, int group
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 }
 
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_calculate_agent_group_csv() method
+ * @param agent_id The id of the agent to calculate its groups csv
+ * @param find_group_resp The response of the find select group query
+ */
 void create_wdb_global_calculate_agent_group_csv_success_call(int agent_id, cJSON* j_group_resp) {
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -6884,6 +6907,13 @@ void create_wdb_global_calculate_agent_group_csv_success_call(int agent_id, cJSO
     expect_function_call(__wrap_cJSON_Delete);
 }
 
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_set_agent_group_context() method
+ * @param agent_id The id of the agent to set its group context
+ * @param csv The groups csv to be written in the groups column
+ * @param hash The hash to be written in the group_hash column
+ * @param sync_status The sync status to be written in the group_sync_status column
+ */
 void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* csv, char* hash, char* sync_status) {
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
@@ -6902,6 +6932,11 @@ void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 }
 
+/**
+ * @brief Configure all the wrappers to simulate a successful call to wdb_global_get_agent_max_group_priority() method
+ * @param agent_id The id of the agent to get the max priority of its groups
+ * @param j_priority_resp The response of the priority query
+ */
 void create_wdb_global_get_agent_max_group_priority_success_call(int agent_id, cJSON* j_priority_resp) {
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
