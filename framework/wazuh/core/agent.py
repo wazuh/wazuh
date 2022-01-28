@@ -743,7 +743,7 @@ class Agent:
             multigroup_name = f'{multigroup_name}{"," if multigroup_name else ""}{group_id}'
 
         # Check multigroup limit
-        if len(agent_groups) > common.max_groups_per_multigroup:
+        if len(agent_groups) >= common.max_groups_per_multigroup:
             raise WazuhError(1737)
 
         # Update group file
