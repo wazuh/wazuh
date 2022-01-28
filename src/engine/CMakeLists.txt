@@ -89,6 +89,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
+add_subdirectory(${ENGINE_SOURCE_DIR}/argumentParser)
 
 
 target_link_libraries(main "-static" ${EXTERNAL_DEPS})
