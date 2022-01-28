@@ -411,7 +411,7 @@ def check_agent_active_status(agents_list):
             command.append(python_code)
             output = subprocess.check_output(command).decode().strip()
         except subprocess.CalledProcessError:
-            assert False, f"Error while trying to get agents"
+            assert False, "Error while trying to get agents"
 
         # Transform string representation of list to list and save agents id
         id_active_agents = [agent['id'] for agent in eval(output)]
