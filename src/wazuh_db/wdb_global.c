@@ -1372,7 +1372,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
         cJSON* j_agent_stmt = wdb_exec_stmt(sync_stmt);
         if (j_agent_stmt && j_agent_stmt->child) {
             cJSON* j_agent = j_agent_stmt->child;
-            cJSON* j_id = cJSON_GetObjectItem(j_agent,"id");
+            cJSON* j_id = cJSON_GetObjectItem(j_agent, "id");
             if (cJSON_IsNumber(j_id)) {
                 //Get agent ID
                 last_agent_id = j_id->valueint;

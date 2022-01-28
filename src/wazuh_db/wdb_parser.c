@@ -5326,6 +5326,7 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
                 os_free(response);
             } else {
                 snprintf(output, OS_MAXSTR + 1, "err %s", "Could not obtain a response from wdb_global_sync_agent_groups_get");
+                ret = OS_INVALID;
             }
         } else {
             mdebug1("Missing mandatory fields in sync-agent-groups-get command.");
