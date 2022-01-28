@@ -20,6 +20,17 @@ typedef struct test_struct {
     char *output;
 } test_struct_t;
 
+char* group_name_generator(int length) {
+    char *group_name;
+    os_calloc(MAX_GROUP_NAME+1, sizeof(char), group_name);
+    const char characters [] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
+    srand(time(NULL));
+    for (int i = 0; i < length; ++i) {
+        group_name[i] = characters[rand() % (int)sizeof(characters-1)];
+    }
+    return group_name;
+}
+
 static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
@@ -1925,7 +1936,7 @@ void test_wdb_parse_global_sync_agent_groups_get_missing_field(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_sync_agent_groups_get_fail(void **state)
+void test_wdb_parse_global_sync_agent_groups_get_null_response(void **state)
 {
     int ret = 0;
     test_struct_t *data = (test_struct_t *)*state;
@@ -1937,34 +1948,86 @@ void test_wdb_parse_global_sync_agent_groups_get_fail(void **state)
     expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
-    expect_string(__wrap_wdb_global_sync_agent_groups_get, str_output, "[{\"data\":[],\"hash\":\"random_hash\"}]");
+    will_return(__wrap_wdb_global_sync_agent_groups_get, NULL);
     will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_ERROR);
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err [{\"data\":[],\"hash\":\"random_hash\"}]");
-    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(data->output, "err Could not obtain a response from wdb_global_sync_agent_groups_get");
+    assert_int_equal(ret, OS_INVALID);
 }
 
 void test_wdb_parse_global_sync_agent_groups_get_success(void **state)
 {
     int ret = 0;
     test_struct_t *data = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+    cJSON *output = cJSON_CreateArray();
+    cJSON *j_response = cJSON_CreateObject();
+    cJSON *j_data = cJSON_CreateArray();
+    cJSON_AddItemToArray(output, j_response);
+    cJSON_AddItemToObject(j_response, "data", j_data);
+    cJSON_AddStringToObject(j_response, "hash", "random_hash");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
-    expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_SYNC_STATUS);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_ALL);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
-    expect_string(__wrap_wdb_global_sync_agent_groups_get, str_output, "[{\"data\":[],\"hash\":\"random_hash\"}]");
+    will_return(__wrap_wdb_global_sync_agent_groups_get, output);
     will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_OK);
 
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"data\":[],\"hash\":\"random_hash\"}]");
     assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_invalid_response(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+
+    cJSON *output = cJSON_CreateArray();
+    cJSON *j_response = cJSON_CreateObject();
+    cJSON *j_data = cJSON_CreateArray();
+    cJSON_AddItemToArray(output, j_response);
+    cJSON_AddItemToObject(j_response, "data", j_data);
+    cJSON_AddStringToObject(j_response, "hash", "random_hash");
+
+    cJSON *j_data_object_1 = cJSON_CreateObject();
+    cJSON *j_groups = cJSON_CreateArray();
+    cJSON_AddNumberToObject(j_data_object_1, "id", 1);
+    cJSON_AddItemToObject(j_data_object_1, "groups", j_groups);
+
+    for (int i = 0; i < MAX_GROUPS_PER_MULTIGROUP; ++i) {
+        char *group_name = group_name_generator(MAX_GROUP_NAME);
+        cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name));
+        os_free(group_name);
+    }
+
+    cJSON_AddItemToArray(j_data, j_data_object_1);
+
+    cJSON *j_data_object_2 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(j_data_object_2, "id", 2);
+    cJSON_AddItemToObject(j_data_object_2, "groups", cJSON_Duplicate(j_groups, true));
+    cJSON_AddItemToArray(j_data, j_data_object_2);
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_ALL);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    will_return(__wrap_wdb_global_sync_agent_groups_get, output);
+    will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_OK);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid response from wdb_global_sync_agent_groups_get");
+    assert_int_equal(ret, OS_INVALID);
 }
 
 /* Tests wdb_parse_global_get_groups_integrity */
@@ -2667,8 +2730,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_missing_field, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_null_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_response, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_groups_integrity */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_query_error, test_setup, test_teardown),
