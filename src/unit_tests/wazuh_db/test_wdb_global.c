@@ -7576,7 +7576,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_due, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_by_connection_status_err, test_setup, test_teardown),
-        #if 0
         /* Tests wdb_global_create_backup */
         cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_commit_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_prepare_failed, test_setup, test_teardown),
@@ -7584,7 +7583,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_exec_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_compress_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_create_backup_success, test_setup, test_teardown),
-        #endif
         /* Tests wdb_global_remove_old_backups */
         cmocka_unit_test_setup_teardown(test_wdb_global_remove_old_backups_opendir_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_remove_old_backups_success_without_removing, test_setup, test_teardown),
@@ -7627,18 +7625,15 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_insert_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_assign_agent_group_invalid_json, test_setup, test_teardown),
-
         /* wdb_global_unassign_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_delete_tuple_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_invalid_json, test_setup, test_teardown),
-
         /* wdb_global_set_agent_group_context */
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_init_stmt_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_exec_stmt_error, test_setup, test_teardown),
-
         /* wdb_global_set_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_delete_error, test_setup, test_teardown),
