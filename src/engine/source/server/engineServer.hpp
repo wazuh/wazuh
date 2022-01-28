@@ -36,11 +36,24 @@ private:
 
 public:
     /**
+     * @brief Construct a new Engine Server object.
+     *
+     */
+
+    EngineServer() = default;
+    /**
      * @brief Construct a new Engine Server object
      *
      * @param config <type>:<config> string describing endpoint type with it associated configuration.
      */
     explicit EngineServer(const std::vector<std::string> & config);
+
+    /**
+     * @brief Set up endpoints and internal structures.
+     *
+     * @param config <type>:<config> string describing endpoint type with it associated configuration.
+     */
+    void configure(const std::vector<std::string> & config);
 
     /**
      * @brief Server rxcpp endpoint, all events ingested come through here.

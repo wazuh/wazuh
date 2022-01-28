@@ -22,7 +22,7 @@ using namespace std;
 
 namespace engineserver
 {
-EngineServer::EngineServer(const vector<string> & config)
+void EngineServer::configure(const vector<string> & config)
 {
     vector<rxcpp::observable<nlohmann::json>> tmpObs;
 
@@ -43,6 +43,11 @@ EngineServer::EngineServer(const vector<string> & config)
         output = output.merge(*it);
     }
     this->m_output = output;
+}
+
+EngineServer::EngineServer(const vector<string> & config)
+{
+    this->configure(config);
 }
 
 rxcpp::observable<nlohmann::json> EngineServer::output(void) const
