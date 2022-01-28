@@ -1101,7 +1101,7 @@ char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id) {
         cJSON_Delete(j_agent_groups);
     }
     else {
-        mdebug1("Unable to get groups of agent '%d'", id);
+        mdebug1("Unable to get groups of agent '%03d'", id);
     }
     return result;
 }
@@ -1168,7 +1168,7 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     int group_priority = OS_INVALID;
     cJSON* j_result = wdb_exec_stmt(stmt);
     if (j_result) {
-        if (j_result->child->child) {
+        if (j_result->child && j_result->child->child) {
             cJSON* j_priority = j_result->child->child;
             group_priority = j_priority->valueint;
         }
@@ -1269,7 +1269,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     int last_group_priority = wdb_global_get_agent_max_group_priority(wdb, agent_id);
                     if (last_group_priority >= 0) {
                         if (mode == WDB_GROUP_EMPTY_ONLY) {
-                            mdebug2("Agent group set in empty_only mode ignored because the agent already contains groups");
+                            mdebug1("Agent group set in empty_only mode ignored because the agent already contains groups");
                             continue;
                         }
                         group_priority = last_group_priority+1;
