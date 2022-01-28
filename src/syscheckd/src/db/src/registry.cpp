@@ -33,13 +33,14 @@ int fim_db_get_count_registry_key()
 
     try
     {
-        count = DB::instance().countEntries(FIMDB_REGISTRY_KEY_TABLENAME, COUNT_SELECT_TYPE::COUNT_INODE);
+        count = DB::instance().countEntries(FIMDB_REGISTRY_KEY_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
     // LCOV_EXCL_STOP
 
     return count;
@@ -51,13 +52,14 @@ int fim_db_get_count_registry_data()
 
     try
     {
-        count = DB::instance().countEntries(FIMDB_REGISTRY_VALUE_TABLENAME, COUNT_SELECT_TYPE::COUNT_INODE);
+        count = DB::instance().countEntries(FIMDB_REGISTRY_VALUE_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
     // LCOV_EXCL_STOP
 
     return count;
