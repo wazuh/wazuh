@@ -40,7 +40,7 @@ headerDic = {
     'rtr':              '=================== Running RTR checks  ===================',
     'coverage':         '=================== Running Coverage    ===================',
     'AStyle':           '=================== Running AStyle      ===================',
-    'deletelogs':         '=================== Clean result Folders==================',
+    'deletelogs':       '=================== Clean result folders===================',
 }
 
 smokeTestsDic = {
@@ -110,20 +110,44 @@ smokeTestsDic = {
             'test_tool_name': 'fimdb_test_tool',
             'smoke_tests_path': 'src/db/smokeTests',
             'is_smoke_with_configuration': True,
+            'output_folder': './output/fileTransaction',
             'args': [
                 '-c config.json',
                 '-a FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json,FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_2.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json',
-                '-o ./output'
+                '-o ./output/fileTransaction'
             ]
         },
         {
             'test_tool_name': 'fimdb_test_tool',
             'smoke_tests_path': 'src/db/smokeTests',
             'is_smoke_with_configuration': True,
+            'output_folder': './output/AtomicOperations',
             'args': [
                 '-c config.json',
                 '-a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json',
-                '-o ./output'
+                '-o ./output/AtomicOperations'
+            ]
+        },
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'output_folder': './output/registryKeyTransaction',
+            'args': [
+                '-c configWindows.json',
+                '-a FimDBTransaction/StartTransactionRegistryKey.json,FimDBTransaction/SyncTxnRowsRegistryKey_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryKey.json,FimDBTransaction/SyncTxnRowsRegistryKey_2.json,FimDBTransaction/GetDeletedRows.json',
+                '-o ./output/registryKeyTransaction'
+            ]
+        },
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'output_folder': './output/registryDataTransaction',
+            'args': [
+                '-c configWindows.json',
+                '-a FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_2.json,FimDBTransaction/GetDeletedRows.json',
+                '-o ./output/registryDataTransaction'
             ]
         }
     ]
@@ -501,20 +525,19 @@ def runTestTool(moduleName, testToolCommand, element):
     printHeader('TESTTOOL', 'testtool')
     printGreen(testToolCommand)
     cwd = os.getcwd()
+    output = element['output_folder'] or "output"
     if element['is_smoke_with_configuration']:
         currentmoduleNameDir = currentDirPath(moduleName)
         if element['smoke_tests_path']:
             smoke_tests_folder = os.path.join(str.rstrip(currentmoduleNameDir, ' '), element['smoke_tests_path'])
-            output_folder = os.path.join(smoke_tests_folder,"output")
+            output_folder = os.path.join(smoke_tests_folder, output)
             os.chdir(smoke_tests_folder)
-            cleanFolder(moduleName, os.path.join(element['smoke_tests_path'],"output"))
 
         else:
-            output_folder = os.path.join(currentmoduleNameDir, 'output')
+            output_folder = os.path.join(currentmoduleNameDir, output)
             os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
             cleanFolder(moduleName, 'smokeTests/output')
-        if not os.path.exists(output_folder):
-            os.mkdir(output_folder)
+        os.makedirs(output_folder)
 
     out = subprocess.run(testToolCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
@@ -543,8 +566,10 @@ def runASAN(moduleName):
     cleanFolder(str(moduleName), "build")
     configureCMake(str(moduleName), True, False, True)
     makeLib(str(moduleName))
+    module = smokeTestsDic[moduleName]
+    cleanFolder(moduleName, os.path.join(module[0]['smoke_tests_path'],"output"))
 
-    for element in smokeTestsDic[moduleName]:
+    for element in module:
         path = os.path.join(currentDirPathBuild(moduleName),
                             'bin', element['test_tool_name'])
         args = ' '.join(element['args'])

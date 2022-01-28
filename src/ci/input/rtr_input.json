@@ -37,7 +37,7 @@
         },
         {
             "name": "syscheckd/db",
-            "flags": "-t"
+            "flags": "-r"
         }
     ]
 }

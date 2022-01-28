@@ -278,7 +278,7 @@ struct StartTransactionAction final : public IAction
                 }
 
                 jsonResult["data"].push_back( {
-                        { "result", type },
+                        { "Operation type", ctx->typeOperation(type) },
                         { "value", json },
                         { "action", "SyncTxnRows" }
                     } );
@@ -364,7 +364,7 @@ struct GetDeletedRowsAction final : public IAction
                 }
 
                 jsonResult["data"].push_back( {
-                    {"result", type },
+                    {"Operation type", ctx->typeOperation(type) },
                     {"value", json },
                     {"action", "GetDeletedRows" }
                     } );

@@ -1,0 +1,7 @@
+{
+    "storage_type": 1,
+    "sync_interval": 60,
+    "file_limit": 20,
+    "registry_limit": 20,
+    "is_windows": true
+}

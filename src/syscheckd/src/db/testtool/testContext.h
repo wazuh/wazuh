@@ -21,6 +21,37 @@ struct TestContext
     std::mutex txn_callback_mutex;
     size_t currentId;
     std::string outputPath;
+
+    static std::string typeOperation(const ReturnTypeCallback result)
+    {
+        std::string opResult;
+        switch(result)
+        {
+            case MODIFIED:
+                opResult = "MODIFIED";
+                break;
+            case DELETED:
+                opResult = "DELETED";
+                break;
+            case INSERTED:
+                opResult = "INSERTED";
+                break;
+            case MAX_ROWS:
+                opResult = "MAX_ROWS";
+                break;
+            case DB_ERROR:
+                opResult = "DB_ERROR";
+                break;
+            case SELECTED:
+                opResult = "SELECTED";
+                break;
+            case GENERIC:
+                opResult = "GENERIC";
+                break;
+        }
+
+        return opResult;
+    }
 };
 
 #endif //_TEST_CONTEXT_H
