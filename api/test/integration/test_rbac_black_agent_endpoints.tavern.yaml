@@ -693,10 +693,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
-        message: "Agent '005' removed from 'group1'."
-    delay_after: !float "{global_db_delay}"
+        message: !anystr
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -1244,6 +1247,10 @@ stages:
         agents_list: '001,002,005'
         group_id: group1
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 2
@@ -1295,6 +1302,10 @@ stages:
       data:
         "{file_xml:s}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
 
   - name: Try to update group3 configuration (Denied)
@@ -1647,7 +1658,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-    delay_after: !float "{global_db_delay}"
 
   - name: Restart all agents belonging to worker1 (Allow node_id - Could deny agent_id)
     request:
@@ -1664,7 +1674,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-    delay_after: !float "{global_db_delay}"
 
   - name: Restart all agents belonging to worker2 (Allow node_id - Could deny agent_id)
     request:

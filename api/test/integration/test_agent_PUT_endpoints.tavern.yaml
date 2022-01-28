@@ -658,6 +658,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001"]
       status_code: 200
       json:
         error: 0
@@ -712,6 +716,10 @@ stages:
       params:
         force_single_group: true
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["002"]
       status_code: 200
       json:
         error: 0
