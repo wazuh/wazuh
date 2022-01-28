@@ -172,10 +172,11 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             except KeyError:
                                 pass
                             # Create dict with metadata for the current file.
+                            # The TYPE string is a placeholder to define the type of merge performed.
                             file_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
                             if '.merged' in file_:
                                 file_metadata['merged'] = True
-                                file_metadata['merge_type'] = 'agent-groups'
+                                file_metadata['merge_type'] = 'TYPE'
                                 file_metadata['merge_name'] = abs_file_path
                             else:
                                 file_metadata['merged'] = False
@@ -439,9 +440,10 @@ def compare_files(good_files, check_files, node_name):
     shared_e_v = list(shared_e_v)
     if shared_e_v:
         # Merge all shared extra valid files into a single one. Create a tuple (merged_filepath, {metadata_dict}).
-        shared_merged = [(merge_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
+        # The TYPE and ITEM_KEY strings are placeholders for the merge type and the cluster item key.
+        shared_merged = [(merge_info(merge_type='TYPE', files=shared_e_v, file_type='-shared',
                                      node_name=node_name)[1],
-                          {'cluster_item_key': 'queue/agent-groups/', 'merged': True, 'merge-type': 'agent-groups'})]
+                          {'cluster_item_key': 'ITEM_KEY', 'merged': True, 'merge-type': 'TYPE'})]
 
         # Dict merging all 'shared' filepaths (keys) and the merged_filepath (key) created above.
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))

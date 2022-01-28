@@ -66,17 +66,6 @@
             "description": "user CDB lists"
         },
 
-        "queue/agent-groups/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": false,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": true,
-            "description": "agents group configuration"
-        },
-
         "excluded_files": [
             "ar.conf",
             "ossec.conf"
