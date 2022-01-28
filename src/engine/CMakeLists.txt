@@ -63,35 +63,6 @@ endif(ENGINE_FORMAT_SOURCES)
 ####################################################################################################
 include(cmake/CPM.cmake)
 
-# # boost
-# CPMAddPackage(
-#   NAME Boost
-#   VERSION 1.78.0
-#   GITHUB_REPOSITORY "boostorg/boost"
-#   GIT_TAG "boost-1.78.0"
-# )
-# find_package(Boost
-#     1.78.0
-#     COMPONENTS asio coroutine regex system)
-# if(Boost_FOUND)
-#     include_directories(${Boost_INCLUDE_DIRS})
-#     list(APPEND EXTERNAL_DEPS "pthread" "Boost::asio" "Boost::coroutine" "Boost::regex" "Boost::system" "Boost:boost")
-#     set(CMAKE_CXX_FLAGS -fcoroutines)
-#     # set(CMAKE_EXE_LINKER_FLAGS -lboost_coroutine -lboost_system)
-# endif(Boost_FOUND)
-
-# nlohmann json
-CPMAddPackage(
-  NAME json
-  GITHUB_REPOSITORY nlohmann/json
-  GIT_TAG v3.10.4
-  VERSION 3.10.4
-  OPTIONS
-      "JSON_BuildTests OFF"
-      "JSON_Install OFF"
-)
-list(APPEND EXTERNAL_DEPS "nlohmann_json::nlohmann_json")
-
 # google logging
 CPMAddPackage(
   NAME glog
@@ -105,15 +76,20 @@ CPMAddPackage(
       "WITH_UNWIND OFF"
 )
 list(APPEND EXTERNAL_DEPS "glog::glog")
+
 ####################################################################################################
-
+# Targets
+####################################################################################################
 # Build main
-set(SOURCE_FILES "${ENGINE_SOURCE_DIR}/main.cpp")
-
-add_executable(main ${SOURCE_FILES})
-
-# Build catalog
+add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
+add_subdirectory(${ENGINE_SOURCE_DIR}/server)
+add_subdirectory(${ENGINE_SOURCE_DIR}/router)
+# TODO dependent
+add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
+add_subdirectory(${ENGINE_SOURCE_DIR}/json)
+add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
+
 
 target_link_libraries(main "-static" ${EXTERNAL_DEPS})
 

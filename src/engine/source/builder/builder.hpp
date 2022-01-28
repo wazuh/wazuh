@@ -1,8 +1,8 @@
 #ifndef _BUILDER_H
 #define _BUILDER_H
 
-#include "graph/graph.hpp"
-#include "json/json.hpp"
+#include "graph.hpp"
+#include "json.hpp"
 #include <algorithm>
 
 #include "connectable.hpp"
