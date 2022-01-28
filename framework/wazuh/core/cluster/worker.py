@@ -782,7 +782,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if data['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<wazuh_path>/filename).
-                for name, content, _ in cluster.unmerge_info('agent-groups', zip_path, filename):
+                # The TYPE string used in the 'unmerge_info' function is a placeholder. It corresponds to the
+                # directory inside '{wazuh_path}/queue/' path.
+                for name, content, _ in cluster.unmerge_info('TYPE', zip_path, filename):
                     full_unmerged_name = os.path.join(common.wazuh_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:

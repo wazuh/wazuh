@@ -15,7 +15,6 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh import WazuhError, WazuhException, WazuhInternalError
                 from wazuh.core.results import WazuhResult
 
-
 default_cluster_config = {
     'disabled': True,
     'node_type': 'master',
@@ -77,6 +76,20 @@ def test_read_cluster_config():
 def test_get_manager_status():
     """Check that get_manager function returns the manager status,
     for this test, the status can be stopped or failed."""
+    called = 0
+
+    def exist_mock(path):
+        if '.failed' in path and called == 0:
+            return True
+        elif '.restart' in path and called == 1:
+            return True
+        elif '.start' in path and called == 2:
+            return True
+        elif '/proc' in path and called == 3:
+            return True
+        else:
+            return False
+
     status = utils.get_manager_status()
     for value in status.values():
         assert value == 'stopped'
@@ -87,6 +100,26 @@ def test_get_manager_status():
             for value in status.values():
                 assert value == 'failed'
 
+        # with patch('wazuh.core.cluster.utils.join', return_value='failed') as join_mock:
+        with patch('wazuh.core.cluster.utils.exists', side_effect=exist_mock):
+            status = utils.get_manager_status()
+            for value in status.values():
+                assert value == 'failed'
+
+            called += 1
+            status = utils.get_manager_status()
+            for value in status.values():
+                assert value == 'restarting'
+
+            called += 1
+            status = utils.get_manager_status()
+            for value in status.values():
+                assert value == 'starting'
+
+            called += 1
+            status = utils.get_manager_status()
+            for value in status.values():
+                assert value == 'running'
 
 def test_get_cluster_status():
     """Check if cluster is enabled and if is running."""
@@ -124,28 +157,24 @@ def test_get_cluster_items():
 
     items = utils.get_cluster_items()
     assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
-                                         'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
-                                         'extra_valid': False, 'description': 'client keys file database'},
+                                        'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
+                                        'extra_valid': False, 'description': 'client keys file database'},
                                'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
-                                                'extra_valid': False, 'description': 'shared configuration files'},
+                                               'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
+                                               'extra_valid': False, 'description': 'shared configuration files'},
                                'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
-                                                     'recursive': True, 'restart': False,
-                                                     'remove_subdirs_if_empty': True, 'extra_valid': False,
-                                                     'description': 'shared configuration files'},
+                                                    'recursive': True, 'restart': False,
+                                                    'remove_subdirs_if_empty': True, 'extra_valid': False,
+                                                    'description': 'shared configuration files'},
                                'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                               'extra_valid': False, 'description': 'user rules'},
+                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                              'extra_valid': False, 'description': 'user rules'},
                                'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                  'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                                  'extra_valid': False, 'description': 'user decoders'},
+                                                 'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                                 'extra_valid': False, 'description': 'user decoders'},
                                'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                               'extra_valid': False, 'description': 'user CDB lists'},
-                               'queue/agent-groups/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                        'recursive': True, 'restart': False,
-                                                        'remove_subdirs_if_empty': False, 'extra_valid': True,
-                                                        'description': 'agents group configuration'},
+                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                              'extra_valid': False, 'description': 'user CDB lists'},
                                'excluded_files': ['ar.conf', 'ossec.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_groups': 10,
@@ -180,3 +209,14 @@ def test_ClusterLogger():
     assert cluster_logger.logger.level == logging.DEBUG
 
     os.path.exists(current_logger_path) and os.remove(current_logger_path)
+
+
+@patch('os.getpid', return_value=0000)
+@patch('wazuh.core.cluster.utils.pyDaemonModule.create_pid')
+def test_process_spawm_sleep(pyDaemon_create_pid_mock, get_pid_mock):
+    """Check if the cluster pool is properly spawned."""
+
+    child = 1
+    utils.process_spawn_sleep(child)
+
+    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-clusterd_child_{child}', get_pid_mock.return_value)
