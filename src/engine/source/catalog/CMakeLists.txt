@@ -1,10 +1,17 @@
 # Minimum 3.14 required by googletest discover tests
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
-# Project settings
+
+# Project Settings
 project(wazuh-engine)
 
+set(ENGINE_CATALOG_SOURCE_DIR ${ENGINE_SOURCE_DIR}/catalog)
+
+####################################################################################################
+# Dependencies
+####################################################################################################
 # yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
 CPMAddPackage(
   NAME yaml-cpp
@@ -29,19 +36,20 @@ CPMAddPackage(
         # "RAPIDJSON_BUILD_CXX17 ON"
 )
 
-# Parent scope scope
+# Add this dependencies to parent CMakeLists scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
-set(CATALOG_SOURCES
-    catalogSharedDef.hpp
-    Catalog.hpp
-    Catalog.cpp
-    yml_to_json.hpp
-    storageDriver/StorageDriverInterface.hpp
-    storageDriver/disk/DiskStorage.hpp
-    storageDriver/disk/DiskStorage.cpp
+####################################################################################################
+# Sources - Includes
+####################################################################################################
+target_sources(main PRIVATE
+    ${ENGINE_CATALOG_SOURCE_DIR}/Catalog.cpp
+    ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/DiskStorage.cpp
 )
 
-target_include_directories(main PUBLIC "${RapidJSON_SOURCE_DIR}/include/")
-target_sources(main PRIVATE ${CATALOG_SOURCES})
-# target_sources(main PUBLIC ${CATALOG_SOURCES})
+target_include_directories(main PUBLIC
+    ${RapidJSON_SOURCE_DIR}/include/
+    ${ENGINE_CATALOG_SOURCE_DIR}
+    ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/
+    ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/
+)
