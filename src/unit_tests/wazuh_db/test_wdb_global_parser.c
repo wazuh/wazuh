@@ -20,8 +20,14 @@ typedef struct test_struct {
     char *output;
 } test_struct_t;
 
+/**
+ * @brief Function that generates a random string of 'length' characters long.
+ *
+ * @param [in] length Length of the string to be generated.
+ * @return Response with the generated group name string.
+ */
 char* group_name_generator(int length) {
-    char *group_name;
+    char *group_name = NULL;
     os_calloc(MAX_GROUP_NAME+1, sizeof(char), group_name);
     const char characters [] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
     srand(time(NULL));
@@ -43,7 +49,7 @@ static int test_setup(void **state) {
     return 0;
 }
 
-static int test_teardown(void **state){
+static int test_teardown(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     os_free(data->output);
     os_free(data->wdb->id);
