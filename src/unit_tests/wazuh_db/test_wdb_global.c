@@ -6361,7 +6361,7 @@ void test_wdb_global_calculate_agent_group_csv_unable_to_get_group(void **state)
     will_return(__wrap_wdb_begin2, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '1'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '001'");
 
     char *result = wdb_global_calculate_agent_group_csv(data->wdb, agent_id);
 
@@ -6732,6 +6732,609 @@ void test_wdb_global_unassign_agent_group_invalid_json(void **state) {
     __real_cJSON_Delete(find_group_resp);
 }
 
+/* wdb_global_set_agent_group_context */
+
+void test_wdb_global_set_agent_group_context_success(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char* csv = "GROUP1,GROUP2,GROUP3";
+    char* hash = "DUMMYHASH";
+    char* sync_status = "synced";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    wdbc_result result = wdb_global_set_agent_group_context(data->wdb, agent_id, csv, hash, sync_status);
+
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_set_agent_group_context_init_stmt_error(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char* csv = "GROUP1,GROUP2,GROUP3";
+    char* hash = "DUMMYHASH";
+    char* sync_status = "synced";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    wdbc_result result = wdb_global_set_agent_group_context(data->wdb, agent_id, csv, hash, sync_status);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_set_agent_group_context_exec_stmt_error(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char* csv = "GROUP1,GROUP2,GROUP3";
+    char* hash = "DUMMYHASH";
+    char* sync_status = "synced";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "Error executing setting the agent group context: ERROR MESSAGE");
+
+    wdbc_result result = wdb_global_set_agent_group_context(data->wdb, agent_id, csv, hash, sync_status);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+/* wdb_global_set_agent_groups */
+
+void create_wdb_global_delete_agent_belong_success_call(int agent_id) {
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+}
+
+void create_wdb_global_assign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
+    int actual_priority = 0;
+    // wdb_global_insert_agent_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, find_group_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+    // wdb_global_insert_agent_belong
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, group_id);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, actual_priority);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+}
+
+void create_wdb_global_unassign_agent_group_success_call(int agent_id, int group_id, char* group_name, cJSON* find_group_resp) {
+    // wdb_global_find_group
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, find_group_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+    // wdb_global_delete_tuple_belong
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, group_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+}
+
+void create_wdb_global_calculate_agent_group_csv_success_call(int agent_id, cJSON* j_group_resp) {
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_single_column, j_group_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+}
+
+void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* csv, char* hash, char* sync_status) {
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, sync_status);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 4);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+}
+
+void create_wdb_global_get_agent_max_group_priority_success_call(int agent_id, cJSON* j_priority_resp) {
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_PRIORITY_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, j_priority_resp);
+    expect_function_call(__wrap_cJSON_Delete);
+}
+
+void test_wdb_global_set_agent_groups_override_success(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_delete_agent_belong */
+        create_wdb_global_delete_agent_belong_success_call(agent_id);
+
+        /* wdb_global_assign_agent_group */
+        create_wdb_global_assign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_delete_agent_belong */
+        will_return(__wrap_wdb_begin2, -1);
+        expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+        expect_string(__wrap__merror, formatted_msg, "There was an error cleaning the previous agent groups");
+
+        /* wdb_global_assign_agent_group */
+        create_wdb_global_assign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_group_array_invalid = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array_invalid, cJSON_CreateNumber(-1)); //Invalid group information
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array_invalid, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_delete_agent_belong */
+        create_wdb_global_delete_agent_belong_success_call(agent_id);
+
+        /* wdb_global_assign_agent_group */
+        expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups set information");
+        expect_string(__wrap__merror, formatted_msg, "There was an error assigning the groups to agent '001'");
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+    __real_cJSON_Delete(j_group_array_invalid);
+}
+
+void test_wdb_global_set_agent_groups_append_success(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_APPEND;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_priority_resp = cJSON_Parse("[]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_get_agent_max_group_priority */
+        create_wdb_global_get_agent_max_group_priority_success_call(agent_id, j_priority_resp);
+
+        /* wdb_global_assign_agent_group */
+        create_wdb_global_assign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_priority_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_empty_only_success(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_EMPTY_ONLY;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_priority_resp = cJSON_Parse("[]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_get_agent_max_group_priority */
+        create_wdb_global_get_agent_max_group_priority_success_call(agent_id, j_priority_resp);
+
+        /* wdb_global_assign_agent_group */
+        create_wdb_global_assign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_priority_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_empty_only_not_empty_error(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char group_name[] = "GROUP";
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_EMPTY_ONLY;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_priority_resp = cJSON_Parse("[{\"MAX(priority)\":0}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_get_agent_max_group_priority */
+        create_wdb_global_get_agent_max_group_priority_success_call(agent_id, j_priority_resp);
+        expect_string(__wrap__mdebug1, formatted_msg, "Agent group set in empty_only mode ignored because the agent already contains groups");
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_priority_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_remove_success(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_unassign_agent_group */
+        create_wdb_global_unassign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_OK);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_remove_unassign_error(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    //int group_id = 1;
+    char group_name[] = "GROUP";
+    char hash[] = "19dcd0dd"; //"GROUP" hash
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_group_array_invalid = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array_invalid, cJSON_CreateNumber(-1)); //Invalid group information
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array_invalid, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_unassign_agent_group */
+        expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups remove information");
+        expect_string(__wrap__merror, formatted_msg, "There was an error un-assigning the groups to agent '001'");
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        create_wdb_global_set_agent_group_context_success_call(agent_id, group_name, hash, sync_status);
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+    __real_cJSON_Delete(j_group_array_invalid);
+}
+
+void test_wdb_global_set_agent_groups_invalid_json(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateString("not_int_id"));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_CreateString("not_array_groups"));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups set information");
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
+}
+
+void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_unassign_agent_group */
+        create_wdb_global_unassign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        will_return(__wrap_wdb_begin2, -1);
+        expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+        expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '001'");
+        expect_string(__wrap__mdebug1, formatted_msg, "The agent groups where empty right after the set");
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
+void test_wdb_global_set_agent_groups_set_group_ctx_error(void **state) {
+    #define AGENTS_SIZE 10
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    int group_id = 1;
+    char group_name[] = "GROUP";
+    char sync_status[] = "synced";
+    wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
+    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
+    cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
+    cJSON* j_agents_group_info = cJSON_CreateArray();
+
+    for (int i=0; i<AGENTS_SIZE; i++) {
+        cJSON* j_agent_group = cJSON_CreateObject();
+        cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
+        cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
+
+        /* wdb_global_unassign_agent_group */
+        create_wdb_global_unassign_agent_group_success_call(agent_id, group_id, group_name, j_find_group_resp);
+
+        /* wdb_global_calculate_agent_group_csv */
+        create_wdb_global_calculate_agent_group_csv_success_call(agent_id, j_group_array);
+
+        /* wdb_global_set_agent_group_context */
+        expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+        will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+        expect_string(__wrap__merror, formatted_msg, "There was an error assigning the groups context to agent '001'");
+    }
+
+    wdbc_result result = wdb_global_set_agent_groups(data->wdb, mode, sync_status, j_agents_group_info);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(j_agents_group_info);
+    __real_cJSON_Delete(j_find_group_resp);
+    __real_cJSON_Delete(j_group_array);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -7030,6 +7633,24 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_delete_tuple_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_find_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_unassign_agent_group_invalid_json, test_setup, test_teardown),
+
+        /* wdb_global_set_agent_group_context */
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_init_stmt_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_exec_stmt_error, test_setup, test_teardown),
+
+        /* wdb_global_set_agent_group */
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_override_delete_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_add_modes_assign_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_append_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_empty_only_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_empty_only_not_empty_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_remove_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_remove_unassign_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_set_group_ctx_error, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
