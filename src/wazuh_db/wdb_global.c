@@ -1372,7 +1372,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
         cJSON* j_agent_stmt = wdb_exec_stmt(sync_stmt);
         if (j_agent_stmt && j_agent_stmt->child) {
             cJSON* j_agent = j_agent_stmt->child;
-            cJSON* j_id = cJSON_GetObjectItem(j_agent,"id");
+            cJSON* j_id = cJSON_GetObjectItem(j_agent, "id");
             if (cJSON_IsNumber(j_id)) {
                 //Get agent ID
                 last_agent_id = j_id->valueint;
@@ -1391,14 +1391,12 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
                             cJSON_AddItemToArray(j_data, cJSON_Duplicate(j_agent, true));
                             //Save size
                             response_size += agent_len+1;
-                        }
-                        else {
+                        } else {
                             //Pending agents but buffer is full
                             status = WDBC_DUE;
                         }
                         os_free(agent_str);
-                    }
-                    else {
+                    } else {
                         cJSON_Delete(j_groups);
                     }
                 }
@@ -1409,13 +1407,11 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
                         status = WDBC_ERROR;
                     }
                 }
-            }
-            else {
+            } else {
                 //Continue with the next agent
                 last_agent_id++;
             }
-        }
-        else {
+        } else {
             //All agents have been obtained
             if (get_hash) {
                 size_t hash_len = strlen("hash:\"\"")+sizeof(os_sha1);
@@ -1424,17 +1420,14 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
                     if (OS_SUCCESS == wdb_get_global_group_hash(wdb, hash)) {
                         cJSON_AddStringToObject(j_response, "hash", hash);
                         status = WDBC_OK;
-                    }
-                    else {
+                    } else {
                         merror("Cannot obtain the global group hash");
                         status = WDBC_ERROR;
                     }
-                }
-                else {
+                } else {
                     status = WDBC_DUE;
                 }
-            }
-            else {
+            } else {
                 status = WDBC_OK;
             }
         }

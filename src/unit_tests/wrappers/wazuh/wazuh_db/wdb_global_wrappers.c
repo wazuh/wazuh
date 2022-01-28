@@ -255,6 +255,20 @@ cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)
     return mock_ptr_type(cJSON*);
 }
 
+wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_t *wdb,
+                                                    wdb_groups_sync_condition_t condition,
+                                                    int last_agent_id,
+                                                    bool set_synced,
+                                                    bool get_hash,
+                                                    cJSON **output) {
+    check_expected(condition);
+    check_expected(last_agent_id);
+    check_expected(set_synced);
+    check_expected(get_hash);
+    *output = mock_ptr_type(cJSON*);
+    return mock();
+}
+
 cJSON* __wrap_wdb_global_get_groups_integrity(__attribute__((unused)) wdb_t *wdb,
                                               os_sha1 hash) {
 
