@@ -1116,10 +1116,10 @@ DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl) {
     DWORD dwErrorCode = 0;
     DWORD lpcbSecurityDescriptor = 0;
 
-    if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) !=
-        ERROR_INSUFFICIENT_BUFFER) {
-        dwErrorCode = GetLastError();
-        return dwErrorCode;
+    dwRtnCode = RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor);
+
+    if (dwRtnCode != ERROR_INSUFFICIENT_BUFFER) {
+        return dwRtnCode;
     }
 
     os_calloc(lpcbSecurityDescriptor, 1, pSecurityDescriptor);
