@@ -4,7 +4,8 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version, agent_name_len_limit
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version, agent_name_len_limit, \
+    max_groups_per_multigroup
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
@@ -285,7 +286,7 @@ class WazuhException(Exception):
                'remediation': 'Please update the agent, in case the problem persists contact us at: https://github.com'
                               '/wazuh/wazuh/issues'
                },
-        1737: {'message': 'Maximum number of groups per multigroup is 256',
+        1737: {'message': f"Maximum number of groups per multigroup is {max_groups_per_multigroup}",
                'remediation': 'Please choose another group or remove an agent from the target group'
                },
         1738: {'message': 'Agent name is too long',
