@@ -957,6 +957,85 @@ void test_wdb_global_get_agent_max_group_priority_success(void **state)
     __real_cJSON_Delete(j_result);
 }
 
+/* Tests wdb_global_sync_agent_groups_get */
+
+void test_wdb_global_sync_agent_groups_get_invalid_condition(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdb_groups_sync_condition_t condition = 3;
+    int last_agent_id = 0;
+    bool set_synced = true;
+    bool get_hash = true;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid groups sync condition");
+
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, NULL);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_sync_agent_groups_get_transaction_fail(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdb_groups_sync_condition_t condition = 0;
+    int last_agent_id = 0;
+    bool set_synced = true;
+    bool get_hash = true;
+
+    will_return(__wrap_wdb_begin2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, NULL);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_sync_agent_groups_get_cache_fail(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdb_groups_sync_condition_t condition = 0;
+    int last_agent_id = 0;
+    bool set_synced = true;
+    bool get_hash = true;
+    cJSON *output = NULL;
+
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, &output);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(output);
+}
+
+void test_wdb_global_sync_agent_groups_get_bind_fail(void **state)
+{
+    wdbc_result result = WDBC_OK;
+    test_struct_t *data  = (test_struct_t *)*state;
+    wdb_groups_sync_condition_t condition = 0;
+    int last_agent_id = 0;
+    bool set_synced = true;
+    bool get_hash = true;
+    cJSON *output = NULL;
+
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, &output);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(output);
+}
+
 /* Tests wdb_global_sync_agent_info_set */
 
 void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
@@ -7491,18 +7570,15 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_synced, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_groups_integrity_error, test_setup, test_teardown),
         /* Test _wdb_global_get_agent_max_group_priority */
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_statement_fail,
-                                        test_setup,
-                                        test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_bind_fail,
-                                        test_setup,
-                                        test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_step_fail,
-                                        test_setup,
-                                        test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_success,
-                                        test_setup,
-                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_statement_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_step_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_max_group_priority_success, test_setup, test_teardown),
+        /* Tests wdb_global_sync_agent_groups_get */
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_invalid_condition, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_groups_get_bind_fail, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_info_set */
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_transaction_fail,
                                         test_setup,
