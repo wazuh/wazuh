@@ -391,13 +391,12 @@ def check_agentd_started(response, agents_list):
             assert False, "The wazuh-agentd daemon was not started after requesting the restart"
 
 
-def check_agent_active_status(response, agents_list):
+def check_agent_active_status(agents_list):
     """Wait until all the agents have active status in the global.db. This will avoid race conditions caused by
     non-active agents in following test cases.
 
     Parameters
     ----------
-    response : Request response
     agents_list : list
         List of expected agents to be restarted.
     """
@@ -441,4 +440,4 @@ def healthcheck_agent_restart(response, agents_list):
     # Wait for cluster synchronization process (20 seconds)
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
-    check_agent_active_status(response, agents_list)
+    check_agent_active_status(agents_list)
