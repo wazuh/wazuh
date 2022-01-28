@@ -41,16 +41,7 @@ CPMAddPackage(
   VERSION 4.1.1
 )
 
-# nlohmann/json
-CPMAddPackage(
-  NAME json
-  GITHUB_REPOSITORY nlohmann/json
-  GIT_TAG v3.10.4
-  VERSION 3.10.4
-  OPTIONS
-      "JSON_BuildTests OFF"
-      "JSON_Install OFF"
-)
+
 
 # Parent scope scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)

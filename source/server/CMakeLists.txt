@@ -7,8 +7,11 @@ set(CMAKE_CXX_STANDARD 17)
 # Project settings
 project(wazuh-engine)
 
-set(SERVER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/server)
+set(ENGINE_SERVER_SOURCE_DIR ${ENGINE_SOURCE_DIR}/server)
 
+####################################################################################################
+# Dependencies
+####################################################################################################
 CPMAddPackage(
   NAME libuv
   GITHUB_REPOSITORY libuv/libuv
@@ -19,7 +22,8 @@ CPMAddPackage(
       "BUILD_TESTS OFF"
       "BUILD_EXAMPLES OFF"
 )
-list(APPEND EXTERNAL_DEPS "libuv")
+# wazuh/src/engine/build/_deps/libuv-src/src/unix/core.c:1211: warning: Using 'getpwuid_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
+list(APPEND EXTERNAL_DEPS "uv_a")
 
 CPMAddPackage(
   NAME uvw
@@ -33,16 +37,15 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-    NAME RapidJSON
-    GITHUB_REPOSITORY Tencent/rapidjson
-    GIT_TAG v1.1.0
-    VERSION 1.1.0
-    OPTIONS
-        "RAPIDJSON_BUILD_DOC OFF"
-        "RAPIDJSON_BUILD_EXAMPLES OFF"
-        "RAPIDJSON_BUILD_TESTS OFF"
-        # "RAPIDJSON_BUILD_CXX17 ON"
+  NAME json
+  GITHUB_REPOSITORY nlohmann/json
+  GIT_TAG v3.10.4
+  VERSION 3.10.4
+  OPTIONS
+      "JSON_BuildTests OFF"
+      "JSON_Install OFF"
 )
+list(APPEND EXTERNAL_DEPS "nlohmann_json::nlohmann_json")
 
 # ReactiveX/RxCpp
 CPMAddPackage(
@@ -51,29 +54,26 @@ CPMAddPackage(
   GIT_TAG v4.1.1
   VERSION 4.1.1
 )
+list(APPEND EXTERNAL_DEPS "rxcpp")
 
-# Parent scope scope
+# Add this dependencies to parent CMakeLists scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
-set(SERVER_SOURCES
-    ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
-    ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
-    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
-    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
-    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
-    ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
+####################################################################################################
+# Sources - Includes
+####################################################################################################
+target_sources(main PRIVATE
+    ${ENGINE_SERVER_SOURCE_DIR}/engineServer.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/protocolHandler.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/baseEndpoint.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/udpEndpoint.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/socketEndpoint.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/endpointFactory.cpp
 )
 
-include_directories(
-    ${SERVER_ENGINE_SOURCE_DIR}
-)
-
-add_executable(engine_server ${SERVER_SOURCES})
-target_include_directories(engine_server PUBLIC
+target_include_directories(main PUBLIC
+    ${ENGINE_SERVER_SOURCE_DIR}
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
-    ${RapidJSON_SOURCE_DIR}/include/
 )
-target_link_libraries(engine_server uv)
-target_sources(main PUBLIC ${SERVER_SOURCES})
-
