@@ -1535,3 +1535,16 @@ cJSON* wdb_get_config() {
 
     return root;
 }
+
+bool wdb_check_backup_enabled() {
+    bool result = false;
+
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        if(wconfig.wdb_backup_settings[i]->enabled) {
+            result = true;
+            break;
+        }
+    }
+
+    return result;
+}

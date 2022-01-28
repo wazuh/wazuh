@@ -200,7 +200,7 @@ int main(int argc, char ** argv)
         goto failure;
     }
 
-    os_malloc(sizeof(pthread_t) * wconfig.worker_pool_size, worker_pool);
+    os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
@@ -416,19 +416,6 @@ void * run_gc(__attribute__((unused)) void * args) {
     }
 
     return NULL;
-}
-
-bool wdb_check_backup_enabled() {
-    bool result = false;
-
-    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        if(wconfig.wdb_backup_settings[i]->enabled) {
-            result = true;
-            break;
-        }
-    }
-
-    return result;
 }
 
 void * run_backup(__attribute__((unused)) void * args) {
