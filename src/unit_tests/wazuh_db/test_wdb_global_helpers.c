@@ -58,10 +58,60 @@ gid_t __wrap_Privsep_GetGroup(const char *name) {
     return mock_type(gid_t);
 }
 
+/* test struc definition*/
+typedef struct test_struct {
+    char** groups_array;
+    char* data_in_str;
+    char groups_csv[256];
+    char mode[256];
+    char sync_status[256];
+    char query_str[256];
+    char response[256];
+    int id;
+    int socket;
+} test_struct_t;
+
 /* setup/teardown */
 
 int setup_wdb_global_helpers(void **state) {
     test_mode = 1;
+
+    return 0;
+}
+
+int setup_wdb_global_helpers_add_agent(void **state) {
+    test_mode = 1;
+
+    test_struct_t *init_data = NULL;
+    os_calloc(1,sizeof(test_struct_t),init_data);
+
+    init_data->groups_array = NULL;
+    init_data->data_in_str = NULL;
+    strcpy(init_data->groups_csv,"default,Group1,Group2");
+    strcpy(init_data->mode,"override");
+    strcpy(init_data->sync_status,"synced");
+    strcpy(init_data->response,"ok");
+    init_data->id = 1;
+    init_data->socket = -1;
+
+    strcpy(init_data->query_str,"global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
+    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", init_data->data_in_str);
+
+    // spliting string
+    init_data->groups_array = w_string_split(init_data->groups_csv, ",", 0);
+
+    *state = init_data;
+    return 0;
+}
+
+int teardown_wdb_global_helpers_add_agent(void **state) {
+    test_mode = 0;
+
+    test_struct_t *data  = (test_struct_t *)*state;
+    free_strarray(data->groups_array);
+    os_free(data);
 
     return 0;
 }
@@ -3624,77 +3674,61 @@ void test_wdb_parse_chunk_to_int_err(void **state) {
 }
 
 void test_wdb_set_agent_groups_csv_success(void **state) {
-    char** groups_array = NULL;
-    char groups_csv[] = "default,Group1,Group2,";
-    char mode[] = "override";
-    char sync_status[] = "synced";
-    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
-    char* data_in_str = NULL;
-    char response[] = "ok";
-    int id = 1;
-    int socket = -1;
     int res;
 
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
-
-    // spliting string
-    groups_array = w_string_split(groups_csv, ",", 0);
+    test_struct_t *data = (test_struct_t*)* state;
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->sync_status);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "data");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
     will_return(__wrap_cJSON_CreateObject, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, data->id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "groups");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
 
     // Printing JSON
-    will_return(__wrap_cJSON_PrintUnformatted, data_in_str);
+    will_return(__wrap_cJSON_PrintUnformatted, data->data_in_str);
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, socket);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->socket);
+    expect_string(__wrap_wdbc_query_ex, query, data->query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, data->response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    res = wdb_set_agent_groups_csv(id, groups_csv, mode, sync_status, &socket);
+    res = wdb_set_agent_groups_csv(data->id, data->groups_csv, data->mode, data->sync_status, &(data->socket));
 
     assert_int_equal(OS_SUCCESS,res);
-
-    free_strarray(groups_array);
 }
 
 void test_wdb_set_agent_groups_error_no_mode(void **state) {
@@ -3714,67 +3748,52 @@ void test_wdb_set_agent_groups_error_no_mode(void **state) {
 }
 
 void test_wdb_set_agent_groups_socket_error(void **state) {
-    char** groups_array = NULL;
-    char mode[] = "override";
-    char sync_status[] = "synced";
-    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
-    char* data_in_str = NULL;
-    char response[] = "ok";
-    int id = 1;
-    int socket = -1;
     int res;
 
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
-
-    os_calloc(4, sizeof(char *), groups_array);
-    os_strdup("default", groups_array[0]);
-    os_strdup("Group1", groups_array[1]);
-    os_strdup("Group2", groups_array[2]);
+    test_struct_t *data = (test_struct_t*)* state;
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->sync_status);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "data");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
     will_return(__wrap_cJSON_CreateObject, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, data->id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "groups");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
 
     // Printing JSON
-    will_return(__wrap_cJSON_PrintUnformatted, data_in_str);
+    will_return(__wrap_cJSON_PrintUnformatted, data->data_in_str);
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, socket);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->socket);
+    expect_string(__wrap_wdbc_query_ex, query, data->query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, data->response);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
     // Debug messages
@@ -3782,75 +3801,58 @@ void test_wdb_set_agent_groups_socket_error(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
     \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
 
-    res = wdb_set_agent_groups(id, groups_array, mode, sync_status, &socket);
+    res = wdb_set_agent_groups(data->id, data->groups_array, data->mode, data->sync_status, &(data->socket));
 
     assert_int_equal(OS_INVALID,res);
-
-    free_strarray(groups_array);
 }
 
 void test_wdb_set_agent_groups_query_error(void **state) {
-    char** groups_array = NULL;
-    char mode[] = "override";
-    char sync_status[] = "synced";
-    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
-    char* data_in_str = NULL;
-    char response[] = "ok";
-    int id = 1;
-    int socket = -1;
     int res;
 
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
-
-    os_calloc(4, sizeof(char *), groups_array);
-    os_strdup("default", groups_array[0]);
-    os_strdup("Group1", groups_array[1]);
-    os_strdup("Group2", groups_array[2]);
+    test_struct_t *data = (test_struct_t*)* state;
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->sync_status);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "data");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
     will_return(__wrap_cJSON_CreateObject, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, data->id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "groups");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
 
     // Printing JSON
-    will_return(__wrap_cJSON_PrintUnformatted, data_in_str);
+    will_return(__wrap_cJSON_PrintUnformatted, data->data_in_str);
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, socket);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->socket);
+    expect_string(__wrap_wdbc_query_ex, query, data->query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, data->response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
@@ -3860,86 +3862,67 @@ void test_wdb_set_agent_groups_query_error(void **state) {
     // Debug message
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    res = wdb_set_agent_groups(id, groups_array, mode, sync_status, &socket);
+    res = wdb_set_agent_groups(data->id, data->groups_array, data->mode, data->sync_status, &(data->socket));
 
     assert_int_equal(OS_INVALID,res);
-
-    free_strarray(groups_array);
 }
 
 void test_wdb_set_agent_groups_success(void **state) {
-    char** groups_array = NULL;
-    char mode[] = "override";
-    char sync_status[] = "synced";
-    char query_str[] = "global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}";
-    char* data_in_str = NULL;
-    char response[] = "ok";
-    int id = 1;
-    int socket = -1;
     int res;
 
-    os_strdup("{\"mode\":\"mode_value\",\"sync_status\":\
-    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}", data_in_str);
-
-    os_calloc(4, sizeof(char *), groups_array);
-    os_strdup("default", groups_array[0]);
-    os_strdup("Group1", groups_array[1]);
-    os_strdup("Group2", groups_array[2]);
+    test_struct_t *data = (test_struct_t*)* state;
 
     // filling Json Object
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
-    expect_string(__wrap_cJSON_AddStringToObject, string, mode);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->mode);
     will_return(__wrap_cJSON_AddStringToObject, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
-    expect_string(__wrap_cJSON_AddStringToObject, string, sync_status);
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->sync_status);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "data");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
     will_return(__wrap_cJSON_CreateObject, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
     expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
-    expect_value(__wrap_cJSON_AddNumberToObject, number, id);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, data->id);
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     expect_string(__wrap_cJSON_AddArrayToObject, name, "groups");
     will_return(__wrap_cJSON_AddArrayToObject, 1);
 
     // Json array items loop
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[0]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[0]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[1]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[1]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-    expect_string(__wrap_cJSON_CreateString, string, groups_array[2]);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[2]);
     will_return(__wrap_cJSON_CreateString, 1);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
 
     // Printing JSON
-    will_return(__wrap_cJSON_PrintUnformatted, data_in_str);
+    will_return(__wrap_cJSON_PrintUnformatted, data->data_in_str);
     expect_function_call(__wrap_cJSON_Delete);
 
     // Calling Wazuh DB
-    expect_value(__wrap_wdbc_query_ex, *sock, socket);
-    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, *sock, data->socket);
+    expect_string(__wrap_wdbc_query_ex, query, data->query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
-    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, data->response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
     // Parsing Wazuh DB result
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    res = wdb_set_agent_groups(id, groups_array, mode, sync_status, &socket);
+    res = wdb_set_agent_groups(data->id, data->groups_array, data->mode, data->sync_status, &(data->socket));
 
     assert_int_equal(OS_SUCCESS,res);
-
-    free_strarray(groups_array);
 }
 
 
@@ -4085,11 +4068,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_set_agent_groups */
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_csv_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_csv_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_error_no_mode, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_query_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
