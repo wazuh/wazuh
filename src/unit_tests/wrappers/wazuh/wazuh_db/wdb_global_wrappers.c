@@ -256,25 +256,16 @@ cJSON* __wrap_wdb_global_get_agents_by_connection_status (__attribute__((unused)
 }
 
 wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_t *wdb,
-                                               wdb_groups_sync_condition_t condition,
-                                               int last_agent_id,
-                                               bool set_synced,
-                                               bool get_hash,
-                                               cJSON **output) {
+                                                    wdb_groups_sync_condition_t condition,
+                                                    int last_agent_id,
+                                                    bool set_synced,
+                                                    bool get_hash,
+                                                    cJSON **output) {
     check_expected(condition);
     check_expected(last_agent_id);
     check_expected(set_synced);
     check_expected(get_hash);
-    *output = cJSON_CreateArray();
-    cJSON* j_response = cJSON_CreateObject();
-    cJSON* j_data = cJSON_CreateArray();
-    cJSON_AddItemToArray(*output, j_response);
-    cJSON_AddItemToObject(j_response, "data", j_data);
-    cJSON_AddStringToObject(j_response, "hash", "random_hash");
-    char *str_output = cJSON_PrintUnformatted(*output);
-    check_expected(str_output);
-    os_free(str_output);
-
+    *output = mock_ptr_type(cJSON*);
     return mock();
 }
 
