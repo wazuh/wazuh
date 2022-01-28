@@ -336,9 +336,9 @@ def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
 
 
-def healthcheck_agent_restart(response, agents_list):
-    """Wait until all the agents had their agentd process terminated correctly. This will avoid race conditions caused
-    by agents reconnections before restarting.
+def check_agentd_started(response, agents_list):
+    """Wait until all the agents had their agentd process started correctly. This will avoid race conditions caused by
+    agents reconnections before restarting.
 
     Parameters
     ----------
@@ -380,12 +380,65 @@ def healthcheck_agent_restart(response, agents_list):
             logs_after_restart = [agentd_log for agentd_log in output if
                                   get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
 
-            # Check the log indicating agentd was terminated is in the agent's ossec.log (after the restart request)
-            if any(re.search(pattern='agentd.*Terminated.*Received', string=agentd_log) for agentd_log in
+            # Check the log indicating agentd started is in the agent's ossec.log (after the restart request)
+            if any(re.search(pattern='agentd.*Started', string=agentd_log) for agentd_log in
                    logs_after_restart):
                 break
 
             tries += 1
             time.sleep(1)
         else:
-            assert False, "The wazuh-agentd daemon was not terminated after requesting the restart"
+            assert False, "The wazuh-agentd daemon was not started after requesting the restart"
+
+
+def check_agent_active_status(response, agents_list):
+    """Wait until all the agents have active status in the global.db. This will avoid race conditions caused by
+    non-active agents in following test cases.
+
+    Parameters
+    ----------
+    response : Request response
+    agents_list : list
+        List of expected agents to be restarted.
+    """
+    id_active_agents = []
+    tries = 0
+    while tries < 25:
+        try:
+            # Get active agents
+            python_code = "from wazuh import agent; print(agent.get_agents(select=['status'], " \
+                          "filters={'status': 'active'})._affected_items)"
+            command = "docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 -c ".split()
+            command.append(python_code)
+            output = subprocess.check_output(command).decode().strip()
+        except subprocess.CalledProcessError:
+            assert False, f"Error while trying to get agents"
+
+        # Transform string representation of list to list and save agents id
+        id_active_agents = [agent['id'] for agent in eval(output)]
+
+        if all(a in id_active_agents for a in agents_list):
+            break
+
+        tries += 1
+        time.sleep(1)
+    else:
+        non_active_agents = [a for a in agents_list if a not in id_active_agents]
+        assert False, f"Agents {non_active_agents} have a status different to active after restarting"
+
+
+def healthcheck_agent_restart(response, agents_list):
+    """Wait until the agent restart process of every agent in an agents list given is finished.
+
+    Parameters
+    ----------
+    response : Request response
+    agents_list : list
+        List of expected agents to be restarted.
+    """
+    # Wait for agentd daemon start (up to 80 seconds)
+    check_agentd_started(response, agents_list)
+    # Wait for cluster synchronization process (20 seconds)
+    time.sleep(20)
+    # Wait for active agent status (up to 25 seconds)
+    check_agent_active_status(response, agents_list)
