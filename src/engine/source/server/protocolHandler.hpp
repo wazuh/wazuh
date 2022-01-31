@@ -13,7 +13,7 @@
 #include <iostream>
 #include <string>
 
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 namespace engineserver::protocolhandler
 {
@@ -43,7 +43,7 @@ enum MessageQueue
  * @param event String to be parsed
  * @return nlohmann::json Object containing the event in JSON format
  */
-nlohmann::json parseEvent(const std::string & event);
+json::Document parseEvent(const std::string & event);
 } // namespace engineserver::protocolhandler
 
 #endif // _PROTOCOL_HANDLER_H_

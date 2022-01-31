@@ -12,10 +12,10 @@
 
 #include <map>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
 
 #include "endpoints/baseEndpoint.hpp"
+#include "json.hpp"
 
 /**
  * @brief Defines all related server functionality.
@@ -32,7 +32,7 @@ class EngineServer
 {
 private:
     std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
-    rxcpp::observable<nlohmann::json> m_output;
+    rxcpp::observable<json::Document> m_output;
 
 public:
     /**
@@ -58,9 +58,9 @@ public:
     /**
      * @brief Server rxcpp endpoint, all events ingested come through here.
      *
-     * @return rxcpp::observable<nlohmann::json>
+     * @return rxcpp::observable<json::Document>
      */
-    rxcpp::observable<nlohmann::json> output() const;
+    rxcpp::observable<json::Document> output() const;
 
     /**
      * @brief Start server.
