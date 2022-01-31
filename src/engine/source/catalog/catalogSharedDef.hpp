@@ -1,6 +1,8 @@
 #ifndef _CATALOG_SHARED_DEF_H
 #define _CATALOG_SHARED_DEF_H
 
+#include <string>
+
 /*
  * The catalog shared defines.
  */
@@ -12,8 +14,10 @@ enum class AssetType
     Rule,
     Output,
     Filter,
-    Schemas,
-    Environments
+    Schema,
+    Environment
 };
+
+AssetType stringToAssetType(const std::string & name);
 
 #endif // _CATALOGSHAREDDEF_H
