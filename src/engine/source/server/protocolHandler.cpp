@@ -9,9 +9,11 @@
 
 #include "protocolHandler.hpp"
 
-nlohmann::json engineserver::protocolhandler::parseEvent(const std::string & event)
+#include "json.hpp"
+
+json::Document engineserver::protocolhandler::parseEvent(const std::string & event)
 {
-    nlohmann::json object;
+    json::Document object;
 
     auto separator_pos = event.find(":");
     auto event_slice = event.substr(separator_pos + 1);
@@ -24,7 +26,9 @@ nlohmann::json engineserver::protocolhandler::parseEvent(const std::string & eve
     catch (const std::exception & e)
     {
         std::cerr << "ERROR (" << e.what() << "): Can not extract queue from the event: \"" << event << "\"\n";
-        object["error"] = e.what();
+        std::string errStr = e.what();
+        json::Value errVal(errStr.c_str(), errStr.length());
+        object.set("/error",  errVal);
         return object;
     }
 
@@ -33,9 +37,12 @@ nlohmann::json engineserver::protocolhandler::parseEvent(const std::string & eve
 
     auto message = event_slice.substr(separator_pos + 1);
 
-    object["queue"] = MessageQueue(queue);
-    object["location"] = location;
-    object["message"] = message;
+    json::Value queueVal(queue);
+    object.set("/queue", queueVal);
+    json::Value locationVal(location.c_str(), location.length());
+    object.set("/location", locationVal);
+    json::Value messageVal(message.c_str(), message.length());
+    object.set("/message", messageVal);
 
     return object;
 }
