@@ -39,6 +39,19 @@ TEST(ServerTest, InitializesErrorEndpointType)
     ASSERT_THROW(EngineServer server(config), invalid_argument);
 }
 
+TEST(ServerTest, test)
+{
+    vector<string> config = {"tcp:localhost:5054"};
+    EngineServer server(config);
+    server.output().subscribe([](auto j){
+        GTEST_COUT << j.str() << endl;
+    });
+    ASSERT_NO_THROW(server.run());
+    // Give time to initialize before closing
+    this_thread::sleep_for(chrono::milliseconds(5));
+    ASSERT_NO_THROW(server.close());
+}
+
 TEST(ServerTest, RunStopTcp)
 {
     vector<string> config = {"tcp:localhost:5054"};

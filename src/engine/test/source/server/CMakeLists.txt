@@ -33,6 +33,18 @@ CPMAddPackage(
       "BUILD_TESTING OFF"
 )
 
+CPMAddPackage(
+    NAME RapidJSON
+    GITHUB_REPOSITORY Tencent/rapidjson
+    GIT_TAG v1.1.0
+    VERSION 1.1.0
+    OPTIONS
+        "RAPIDJSON_BUILD_DOC OFF"
+        "RAPIDJSON_BUILD_EXAMPLES OFF"
+        "RAPIDJSON_BUILD_TESTS OFF"
+        # "RAPIDJSON_BUILD_CXX17 ON"
+)
+
 # ReactiveX/RxCpp
 CPMAddPackage(
   NAME RxCpp
@@ -57,6 +69,7 @@ set(SOURCES
 )
 
 include_directories(
+    ${RapidJSON_SOURCE_DIR}/include/
     ${ENGINE_SOURCE_DIR}
     ${SERVER_ENGINE_SOURCE_DIR}
     ${SERVER_ENGINE_SOURCE_DIR}/endpoints/
@@ -64,6 +77,7 @@ include_directories(
     ${SERVER_TEST_SOURCE_DIR}/endpoints/
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
+    ${ENGINE_SOURCE_DIR}/json
 )
 
 add_executable(server_test ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
