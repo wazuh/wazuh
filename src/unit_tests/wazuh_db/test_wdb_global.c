@@ -556,7 +556,7 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     cJSON *json_label = NULL;
     int agent_id = 10;
 
-    root = cJSON_CreateArray();
+    root = __real_cJSON_CreateArray();
     json_agent = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_agent, "id", agent_id);
     cJSON_AddStringToObject(json_agent,"test_field", "test_value");
@@ -591,7 +591,7 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     expect_function_call_any(__wrap_cJSON_Delete);
 
     // Required for wdb_get_agent_labels()
-    json_labels = cJSON_CreateArray();
+    json_labels = __real_cJSON_CreateArray();
     json_label = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_label, "id", agent_id);
     cJSON_AddStringToObject(json_label,"key", "test_key");
@@ -625,7 +625,7 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     cJSON *json_labels = NULL;
     int agent_id = 10;
 
-    root = cJSON_CreateArray();
+    root = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(root, json_agent = cJSON_CreateObject());
     cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(agent_id));
 
@@ -654,7 +654,7 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     expect_function_call_any(__wrap_cJSON_Delete);
 
     // Required for wdb_get_agent_labels()
-    json_labels = cJSON_CreateArray();
+    json_labels = __real_cJSON_CreateArray();
     will_return(__wrap_wdb_exec_stmt, json_labels);
 
     // Required for wdb_global_set_sync_status()
@@ -684,7 +684,7 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
     cJSON *json_label = NULL;
     int agent_id = 10;
 
-    root = cJSON_CreateArray();
+    root = __real_cJSON_CreateArray();
     json_agent = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_agent, "id", agent_id);
     // Creating a cJSON array bigger than WDB_MAX_RESPONSE_SIZE
@@ -710,7 +710,7 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
     expect_function_call_any(__wrap_cJSON_Delete);
 
     // Required for wdb_get_agent_labels()
-    json_labels = cJSON_CreateArray();
+    json_labels = __real_cJSON_CreateArray();
     json_label = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_label, "id", 1);
     cJSON_AddStringToObject(json_label,"key", "test_key");
@@ -737,7 +737,7 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     cJSON *json_agent = NULL;
     int agent_id = 10000;
 
-    root = cJSON_CreateArray();
+    root = __real_cJSON_CreateArray();
     json_agent = cJSON_CreateObject();
     cJSON_AddNumberToObject(json_agent, "id", agent_id);
     // Creating a cJSON array of WDB_MAX_RESPONSE_SIZE
@@ -816,6 +816,7 @@ void test_wdb_global_get_groups_integrity_syncreq(void **state)
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     will_return(__wrap_wdb_step, SQLITE_ROW);
 
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     j_result = wdb_global_get_groups_integrity(data->wdb, NULL);
 
     char *result = cJSON_PrintUnformatted(j_result);
@@ -835,6 +836,7 @@ void test_wdb_global_get_groups_integrity_hash_mismatch(void **state)
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
     will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
 
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     j_result = wdb_global_get_groups_integrity(data->wdb, "");
 
     char *result = cJSON_PrintUnformatted(j_result);
@@ -854,6 +856,7 @@ void test_wdb_global_get_groups_integrity_synced(void **state)
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
     will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     j_result = wdb_global_get_groups_integrity(data->wdb, "");
 
     char *result = cJSON_PrintUnformatted(j_result);
@@ -5062,7 +5065,7 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
     int last_id = 0;
     int keepalive = 0;
     const char *sync_status = "synced";
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
@@ -5118,7 +5121,7 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
     int last_id = 0;
     int keepalive = 100;
     const char *sync_status = "synced";
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
@@ -5201,7 +5204,7 @@ void test_wdb_global_get_agents_to_disconnect_invalid_elements(void **state)
     int last_id = 0;
     int keepalive = 100;
     const char *sync_status = "synced";
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
     cJSON_AddItemToArray(root, json_agent);
 
@@ -5236,7 +5239,7 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     int last_id = 0;
     int keepalive = 100;
     const char *sync_status = "synced";
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     cJSON* json_agent = cJSON_CreateObject();
     cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
     cJSON_AddItemToArray(root, json_agent);
@@ -5327,7 +5330,7 @@ void test_wdb_global_get_all_agents_ok(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     const int agents_amount = 10;
     int last_id = 0;
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
@@ -5359,7 +5362,7 @@ void test_wdb_global_get_all_agents_due(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     const int agents_amount = 10;
     int last_id = 0;
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
@@ -5582,7 +5585,7 @@ void test_wdb_global_get_agents_by_connection_status_ok(void **state)
     const int agents_amount = 10;
     int last_id = 0;
     const char connection_status[] = "active";
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
@@ -5618,7 +5621,7 @@ void test_wdb_global_get_agents_by_connection_status_due(void **state)
     const int agents_amount = 10;
     int last_id = 0;
     const char connection_status[] = "active";
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = __real_cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
@@ -5815,6 +5818,8 @@ void test_wdb_global_create_backup_success(void **state) {
     expect_string(__wrap_unlink, file, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
     will_return(__wrap_unlink, OS_SUCCESS);
     expect_string(__wrap__minfo, formatted_msg, "Created Global database backup \"backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz\"");
+    cJSON* j_path = __real_cJSON_CreateArray();
+    will_return(__wrap_cJSON_CreateArray, j_path);
     expect_function_call(__wrap_cJSON_Delete);
 
     // wdb_global_remove_old_backups
@@ -5825,6 +5830,7 @@ void test_wdb_global_create_backup_success(void **state) {
 
     assert_string_equal(data->output, "ok [\"backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz\"]");
     assert_int_equal(result, OS_SUCCESS);
+    __real_cJSON_Delete(j_path);
 }
 
 /* Tests wdb_global_remove_old_backups */
@@ -5910,6 +5916,7 @@ void test_wdb_global_get_backups_success(void **state) {
     will_return_count(__wrap_readdir, entry, 2);
     will_return(__wrap_readdir, NULL);
 
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     j_result = wdb_global_get_backups();
 
     char* str_result = cJSON_PrintUnformatted(j_result);
@@ -6200,7 +6207,7 @@ void test_wdb_global_update_agent_groups_hash_groups_string_null_success(void **
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    cJSON *j_result = cJSON_CreateArray();
+    cJSON *j_result = __real_cJSON_CreateArray();
     cJSON *j_object = cJSON_CreateObject();
     cJSON_AddItemToObject(j_object, "group", cJSON_CreateString(groups_string));
     cJSON_AddItemToArray(j_result, j_object);
@@ -6232,7 +6239,7 @@ void test_wdb_global_update_agent_groups_hash_empty_group_column_success(void **
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    cJSON *j_result = cJSON_CreateArray();
+    cJSON *j_result = __real_cJSON_CreateArray();
     cJSON *j_object = cJSON_CreateObject();
     cJSON_AddItemToArray(j_result, j_object);
     will_return(__wrap_wdb_exec_stmt, j_result);
@@ -6324,7 +6331,7 @@ void test_wdb_global_adjust_v4_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    cJSON *j_result = cJSON_CreateArray();
+    cJSON *j_result = __real_cJSON_CreateArray();
     cJSON *j_object = cJSON_CreateObject();
     cJSON_AddItemToObject(j_object, "group", cJSON_CreateString(groups_string));
     cJSON_AddItemToArray(j_result, j_object);
@@ -6378,7 +6385,7 @@ void test_wdb_global_calculate_agent_group_csv_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    cJSON *j_groups = cJSON_CreateArray();
+    cJSON *j_groups = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_groups, cJSON_CreateString("group1"));
     cJSON_AddItemToArray(j_groups, cJSON_CreateString("group2"));
     will_return(__wrap_wdb_exec_stmt_single_column, j_groups);
@@ -6403,7 +6410,7 @@ void test_wdb_global_assign_agent_group_success(void **state) {
     int actual_priority = initial_priority;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6458,7 +6465,7 @@ void test_wdb_global_assign_agent_group_insert_belong_error(void **state) {
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6504,7 +6511,7 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6541,7 +6548,7 @@ void test_wdb_global_assign_agent_group_insert_error(void **state) {
     int current_priority = initial_priority;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6590,7 +6597,7 @@ void test_wdb_global_assign_agent_group_invalid_json(void **state) {
     int agent_id = 1;
     int initial_priority = 0;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         cJSON_AddItemToArray(j_groups, cJSON_CreateNumber(1));
@@ -6613,7 +6620,7 @@ void test_wdb_global_unassign_agent_group_success(void **state) {
     int group_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6655,7 +6662,7 @@ void test_wdb_global_unassign_agent_group_delete_tuple_error(void **state) {
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6693,7 +6700,7 @@ void test_wdb_global_unassign_agent_group_find_error(void **state) {
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
     char debug_message[GROUPS_SIZE][OS_MAXSTR] = {0};
     char group_name[GROUPS_SIZE][OS_SIZE_128] = {0};
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         snprintf(group_name[i], OS_SIZE_128, "GROUP%d", i);
@@ -6718,7 +6725,7 @@ void test_wdb_global_unassign_agent_group_invalid_json(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_groups = cJSON_CreateArray();
+    cJSON* j_groups = __real_cJSON_CreateArray();
 
     for (int i=0; i<GROUPS_SIZE; i++) {
         cJSON_AddItemToArray(j_groups, cJSON_CreateNumber(1));
@@ -6956,10 +6963,10 @@ void test_wdb_global_set_agent_groups_override_success(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -6997,10 +7004,10 @@ void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7039,12 +7046,12 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_OVERRIDE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
-    cJSON* j_group_array_invalid = cJSON_CreateArray();
+    cJSON* j_group_array_invalid = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array_invalid, cJSON_CreateNumber(-1)); //Invalid group information
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7084,11 +7091,11 @@ void test_wdb_global_set_agent_groups_append_success(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_APPEND;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
     cJSON* j_priority_resp = cJSON_Parse("[]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7127,11 +7134,11 @@ void test_wdb_global_set_agent_groups_empty_only_success(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_EMPTY_ONLY;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
     cJSON* j_priority_resp = cJSON_Parse("[]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7168,10 +7175,10 @@ void test_wdb_global_set_agent_groups_empty_only_not_empty_error(void **state) {
     char group_name[] = "GROUP";
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_EMPTY_ONLY;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_priority_resp = cJSON_Parse("[{\"MAX(priority)\":0}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7201,10 +7208,10 @@ void test_wdb_global_set_agent_groups_remove_success(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7239,12 +7246,12 @@ void test_wdb_global_set_agent_groups_remove_unassign_error(void **state) {
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
-    cJSON* j_group_array_invalid = cJSON_CreateArray();
+    cJSON* j_group_array_invalid = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array_invalid, cJSON_CreateNumber(-1)); //Invalid group information
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7277,7 +7284,7 @@ void test_wdb_global_set_agent_groups_invalid_json(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7302,10 +7309,10 @@ void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
     char group_name[] = "GROUP";
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
@@ -7339,10 +7346,10 @@ void test_wdb_global_set_agent_groups_set_group_ctx_error(void **state) {
     char group_name[] = "GROUP";
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
-    cJSON* j_group_array = cJSON_CreateArray();
+    cJSON* j_group_array = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_group_array, cJSON_CreateString(group_name));
     cJSON* j_find_group_resp = cJSON_Parse("[{\"id\":1}]");
-    cJSON* j_agents_group_info = cJSON_CreateArray();
+    cJSON* j_agents_group_info = __real_cJSON_CreateArray();
 
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
