@@ -45,6 +45,7 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 target_sources(main PRIVATE
     ${ENGINE_CATALOG_SOURCE_DIR}/Catalog.cpp
     ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/DiskStorage.cpp
+    ${ENGINE_CATALOG_SOURCE_DIR}/catalogSharedDef.cpp
 )
 
 target_include_directories(main PUBLIC

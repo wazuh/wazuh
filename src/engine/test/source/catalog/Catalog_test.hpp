@@ -88,7 +88,7 @@ class fakeStorage : public StorageDriverInterface
                     ;;//raw_asset = filter_asset;
                     break;
 
-                case AssetType::Schemas:
+                case AssetType::Schema:
                     if (this->malformed_schemas)
                     {
                         asset.append(schema_malformed);
@@ -105,7 +105,7 @@ class fakeStorage : public StorageDriverInterface
 
                     break;
 
-                case AssetType::Environments:
+                case AssetType::Environment:
                 default:
                     // #TODO Error
                     break;

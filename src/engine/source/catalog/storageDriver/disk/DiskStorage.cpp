@@ -27,7 +27,7 @@ std::vector<std::string> DiskStorage::getAssetList(const AssetType type)
             const auto extension = entry.path().extension().string();
 
             if (extension == EXT_OTHER_ASSET ||
-                    (extension == EXT_JSON_SCHEMA && type == AssetType::Schemas))
+                    (extension == EXT_JSON_SCHEMA && type == AssetType::Schema))
             {
                 assetList.push_back(string {entry.path().stem().string()});
             }
@@ -51,7 +51,7 @@ std::string DiskStorage::getAsset(const AssetType type, std::string assetName)
     /* Get the path to the asset directory */
     base_dir /= assetTypeToPath.at(type);
 
-    if (type == AssetType::Schemas)
+    if (type == AssetType::Schema)
     {
         assetName.append(EXT_JSON_SCHEMA);
     }
