@@ -783,33 +783,64 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state
     }
 
     json_event = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json_event, "entries_limit", nodes_limit);
-    cJSON_AddNumberToObject(json_event, "entries_count", nodes_count);
+
     cJSON_AddStringToObject(json_event, "fim_db_table", table_name);
+
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        cJSON_AddNumberToObject(json_event, "file_limit", nodes_limit);
+        cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
+    }
+#ifdef WIN32
+    else {
+        cJSON_AddNumberToObject(json_event, "values_limit", nodes_limit);
+        cJSON_AddNumberToObject(json_event, "values_count", nodes_count);
+        cJSON_AddNumberToObject(json_event, "keys_count", fim_db_get_count_registry_key());
+    }
+#endif
 
     if (nodes_count >= nodes_limit) {
         *db_state = FIM_STATE_DB_FULL;
-        mwarn(FIM_DB_FULL_ALERT, table_name);
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            mwarn(FIM_DB_FULL_ALERT_FILE);
+        } else {
+            mwarn(FIM_DB_FULL_ALERT_REG);
+        }
         cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
     else if (nodes_count >= nodes_limit * 0.9) {
         *db_state = FIM_STATE_DB_90_PERCENTAGE;
-        minfo(FIM_DB_90_PERCENTAGE_ALERT, table_name);
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            mwarn(FIM_DB_90_PERCENTAGE_ALERT_FILE);
+        } else {
+            mwarn(FIM_DB_90_PERCENTAGE_ALERT_REG);
+        }
         cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
     }
     else if (nodes_count >= nodes_limit * 0.8) {
         *db_state = FIM_STATE_DB_80_PERCENTAGE;
-        minfo(FIM_DB_80_PERCENTAGE_ALERT, table_name);
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            mwarn(FIM_DB_80_PERCENTAGE_ALERT_FILE);
+        } else {
+            mwarn(FIM_DB_80_PERCENTAGE_ALERT_REG);
+        }
         cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
     }
     else if (nodes_count > 0) {
         *db_state = FIM_STATE_DB_NORMAL;
-        minfo(FIM_DB_NORMAL_ALERT, table_name);
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            mwarn(FIM_DB_NORMAL_ALERT_FILE);
+        } else {
+            mwarn(FIM_DB_NORMAL_ALERT_REG);
+        }
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
     else {
         *db_state = FIM_STATE_DB_EMPTY;
-        minfo(FIM_DB_NORMAL_ALERT, table_name);
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            mwarn(FIM_DB_NORMAL_ALERT_FILE);
+        } else {
+            mwarn(FIM_DB_NORMAL_ALERT_REG);
+        }
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
 
