@@ -52,13 +52,14 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE   handle,
 static bool shouldReturnOldData(const nlohmann::json& data)
 {
     auto it { data.find("return_old_data") };
+    bool result {false};
 
     if (it != data.end())
     {
-        return *it;
+        result = *it;
     }
 
-    return false;
+    return result;
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
