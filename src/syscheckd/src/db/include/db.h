@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-#include "syscheck.h"
+#include "../../../include/syscheck.h"
 #include <openssl/evp.h>
 
 #define FIM_DB_MEMORY_PATH  ":memory:"

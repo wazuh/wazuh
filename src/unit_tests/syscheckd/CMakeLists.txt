@@ -1,6 +1,6 @@
 # Generate syscheck library
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o ${SRC_FOLDER}/syscheckd/*/*.o)
-list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
+file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
+list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 
