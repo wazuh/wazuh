@@ -231,6 +231,10 @@ public:
     {
         return this->m_doc.GetObject();
     }
+    auto& getAllocator()
+    {
+        return this->m_doc.GetAllocator();
+    }
 };
 
 }; // namespace json
