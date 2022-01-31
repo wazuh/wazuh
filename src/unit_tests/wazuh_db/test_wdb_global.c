@@ -7384,33 +7384,29 @@ void test_wdb_global_set_agent_groups_sync_status_invalid_stmt(){
     assert_int_equal(OS_INVALID, wdb_global_set_agent_groups_sync_status((wdb_t *)0xDEADBEEF, 1, "test"));
 }
 
-void test_wdb_global_set_agent_groups_sync_status_bad_bind_sync(){
-    wdb_t wdb = {0};
-    wdb.id = "agent001";
-
+void test_wdb_global_set_agent_groups_sync_status_bad_bind_sync(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
     char sync[] = "test";
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNC_SET);
-    will_return(__wrap_wdb_init_stmt_in_cache, 1);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt *)1);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync);
     will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "test_error");
-    expect_string(__wrap__merror, formatted_msg, "DB(agent001) sqlite3_bind_text(): test_error");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): test_error");
 
-    assert_int_equal(OS_INVALID, wdb_global_set_agent_groups_sync_status(&wdb, 1, sync));
+    assert_int_equal(OS_INVALID, wdb_global_set_agent_groups_sync_status(data->wdb, 1, sync));
 }
 
-void test_wdb_global_set_agent_groups_sync_status_bad_bind_id(){
-    wdb_t wdb = {0};
-    wdb.id = "agent001";
-    wdb.db = 0xDEADC0DE;
+void test_wdb_global_set_agent_groups_sync_status_bad_bind_id(void** state){
+    test_struct_t *data  = (test_struct_t *)*state;
     char sync[] = "test";
     int id = 001;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNC_SET);
-    will_return(__wrap_wdb_init_stmt_in_cache, 1);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt *)1);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync);
@@ -7421,20 +7417,18 @@ void test_wdb_global_set_agent_groups_sync_status_bad_bind_id(){
     will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "test_error");
-    expect_string(__wrap__merror, formatted_msg, "DB(agent001) sqlite3_bind_int(): test_error");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): test_error");
 
-    assert_int_equal(OS_INVALID, wdb_global_set_agent_groups_sync_status(&wdb, id, sync));
+    assert_int_equal(OS_INVALID, wdb_global_set_agent_groups_sync_status(data->wdb, id, sync));
 }
 
-void test_wdb_global_set_agent_groups_sync_status_success(){
-    wdb_t wdb = {0};
-    wdb.id = "agent001";
-    wdb.db = 0xDEADC0DE;
+void test_wdb_global_set_agent_groups_sync_status_success(void** state){
+    test_struct_t *data  = (test_struct_t *)*state;
     char sync[] = "test";
     int id = 001;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNC_SET);
-    will_return(__wrap_wdb_init_stmt_in_cache, 1);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt *)1);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, sync);
@@ -7446,7 +7440,7 @@ void test_wdb_global_set_agent_groups_sync_status_success(){
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    assert_int_equal(OS_SUCCESS, wdb_global_set_agent_groups_sync_status(&wdb, id, sync));
+    assert_int_equal(OS_SUCCESS, wdb_global_set_agent_groups_sync_status(data->wdb, id, sync));
 }
 
 int main()
@@ -7841,10 +7835,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_calculate_csv_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_set_group_ctx_error, test_setup, test_teardown),
         /* wdb_global_set_agent_groups_sync_status*/
-        cmocka_unit_test(test_wdb_global_set_agent_groups_sync_status_invalid_stmt),
-        cmocka_unit_test(test_wdb_global_set_agent_groups_sync_status_bad_bind_sync),
-        cmocka_unit_test(test_wdb_global_set_agent_groups_sync_status_bad_bind_id),
-        cmocka_unit_test(test_wdb_global_set_agent_groups_sync_status_success),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_invalid_stmt, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_bad_bind_sync, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_bad_bind_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_groups_sync_status_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
