@@ -72,6 +72,12 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
+                    # Invalidate in-memory database
+                    conn = orm._engine.connect()
+                    orm._Session().close()
+                    conn.invalidate()
+                    orm._engine.dispose()
+
                     reload(orm)
                     orm.create_rbac_db()
                     import wazuh.rbac.decorators as decorators
