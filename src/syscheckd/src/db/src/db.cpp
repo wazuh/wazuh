@@ -135,6 +135,7 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     };
 
     FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
     return count;
 }
 

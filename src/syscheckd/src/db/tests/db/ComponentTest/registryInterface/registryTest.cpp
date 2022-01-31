@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "registryTest.h"
+#include "dbTest.h"
 #include "db.h"
 #include "db.hpp"
 
@@ -48,7 +48,7 @@ const auto insertRegistryValueStatement2 = R"({
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data){}
 
-TEST_F(RegistryTestWinFixture, TestFimDBGetCountRegistryEntry)
+TEST_F(DBTestWinFixture, TestFimDBGetCountRegistryEntry)
 {
     EXPECT_NO_THROW(
     {
@@ -100,7 +100,7 @@ TEST_F(RegistryTestWinFixture, TestFimDBGetCountRegistryEntry)
     });
 }
 
-TEST_F(RegistryTestWinFixture, TestFimDBGetCountRegistryValueEntry)
+TEST_F(DBTestWinFixture, TestFimDBGetCountRegistryValueEntry)
 {
     EXPECT_NO_THROW(
     {

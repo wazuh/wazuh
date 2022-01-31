@@ -11,6 +11,7 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/FIMDB)
+include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/ComponentTest/dbInterface)
 
 file(GLOB REGISTRY_SRC
          "${SRC_FOLDER}/syscheckd/src/db/src/registry.cpp"
