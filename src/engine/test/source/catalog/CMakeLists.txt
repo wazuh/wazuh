@@ -23,6 +23,7 @@ CPMAddPackage(
 # Configuration Catalog tests
 add_executable(catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.cpp
   ${ENGINE_SOURCE_DIR}/catalog/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.cpp
@@ -40,6 +41,7 @@ gtest_discover_tests(catalog_test)
 # Configuration Storage Drivers tests: DiskStorage
 add_executable(DiskStorage_driver_catalog_test
   ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.hpp
+  ${ENGINE_SOURCE_DIR}/catalog/catalogSharedDef.cpp
   ${ENGINE_SOURCE_DIR}/catalog/yml_to_json.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.hpp
   ${ENGINE_SOURCE_DIR}/catalog/Catalog.cpp
