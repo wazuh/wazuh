@@ -22,7 +22,7 @@ static rem_fdlist_t connections;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 
-void rem_initList(size_t initial_size) {
+void rem_initList(int initial_size) {
     os_calloc(initial_size, sizeof(size_t), connections.list);
     connections.size = initial_size;
 }
