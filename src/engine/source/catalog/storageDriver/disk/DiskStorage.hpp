@@ -49,8 +49,8 @@ class DiskStorage : public StorageDriverInterface
             {AssetType::Rule, "rules"},
             {AssetType::Output, "outputs"},
             {AssetType::Filter, "filters"},
-            {AssetType::Schemas, "schemas"},
-            {AssetType::Environments, "environments"}
+            {AssetType::Schema, "schemas"},
+            {AssetType::Environment, "environments"}
         };
 
     public:
