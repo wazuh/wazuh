@@ -9,9 +9,10 @@
 
 #include "baseEndpoint.hpp"
 
-#include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
 #include <string>
+
+#include "json.hpp"
 
 using namespace std;
 
@@ -26,7 +27,7 @@ BaseEndpoint::~BaseEndpoint()
 {
 }
 
-rxcpp::observable<nlohmann::json> BaseEndpoint::output(void) const
+rxcpp::observable<json::Document> BaseEndpoint::output(void) const
 {
     return this->m_subject.get_observable();
 }

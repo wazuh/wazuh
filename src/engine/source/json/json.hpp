@@ -167,6 +167,22 @@ public:
         return false;
     }
 
+    bool contains(const std::string & field) const
+    {
+        std::string path = field;
+        std::replace(std::begin(path), std::end(path), '.', '/');
+        auto ptr = rapidjson::Pointer(path.c_str());
+        if (ptr.IsValid())
+        {
+            auto got = ptr.Get(this->m_doc);
+            if (got)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * @brief Method to check if the value stored on the given path exists.
      *

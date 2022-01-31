@@ -10,9 +10,10 @@
 #ifndef _BASE_ENDPOINT_H_
 #define _BASE_ENDPOINT_H_
 
-#include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
 #include <string>
+
+#include "json.hpp"
 
 /**
  * @brief Contains all endpoint related functionality
@@ -28,8 +29,8 @@ namespace engineserver::endpoints
 class BaseEndpoint
 {
 protected:
-    rxcpp::subjects::subject<nlohmann::json> m_subject;
-    rxcpp::subscriber<nlohmann::json> m_subscriber;
+    rxcpp::subjects::subject<json::Document> m_subject;
+    rxcpp::subscriber<json::Document> m_subscriber;
     std::string m_path;
 
     explicit BaseEndpoint(const std::string & path);
@@ -46,7 +47,7 @@ public:
      *
      * @return auto Observable object
      */
-    rxcpp::observable<nlohmann::json> output(void) const;
+    rxcpp::observable<json::Document> output(void) const;
 
     /**
      * @brief Start endpoint.
