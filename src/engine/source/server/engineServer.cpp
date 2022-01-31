@@ -11,12 +11,12 @@
 
 #include <map>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <rxcpp/rx.hpp>
 #include <vector>
 
 #include "endpoints/baseEndpoint.hpp"
 #include "endpoints/endpointFactory.hpp"
+#include "json.hpp"
 
 using namespace std;
 
@@ -24,7 +24,7 @@ namespace engineserver
 {
 void EngineServer::configure(const vector<string> & config)
 {
-    vector<rxcpp::observable<nlohmann::json>> tmpObs;
+    vector<rxcpp::observable<json::Document>> tmpObs;
 
     // <EnpointType>:<config_string> tcp:localhost:5054 socke:path/to/socket
     for (auto endpointConf : config)
@@ -50,7 +50,7 @@ EngineServer::EngineServer(const vector<string> & config)
     this->configure(config);
 }
 
-rxcpp::observable<nlohmann::json> EngineServer::output(void) const
+rxcpp::observable<json::Document> EngineServer::output(void) const
 {
     return this->m_output;
 }
