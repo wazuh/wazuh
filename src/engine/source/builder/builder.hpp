@@ -27,7 +27,7 @@ template <class C> class Builder
     using NodeMap_t = std::map<std::string, pNode_t>;
 
 private:
-    C m_catalog;
+    const C * m_catalog;
 
     pNode_t newNode(std::string name)
     {
@@ -81,7 +81,7 @@ private:
         {
             for (auto & m : v->GetArray())
             {
-                auto asset = m_catalog.getAsset(atype, m.GetString());
+                auto asset = m_catalog->getAsset(atype, m.GetString());
                 auto conPtr = std::make_shared<Con_t>(make(asset));
                 auto pNode = std::make_shared<Node_t>(conPtr);
                 nodes.insert(std::pair<std::string, pNode_t>(pNode->name(), pNode));
@@ -98,7 +98,7 @@ private:
         {
             for (auto & m : v->GetArray())
             {
-                auto asset = m_catalog.getAsset(atype, m.GetString());
+                auto asset = m_catalog->getAsset(atype, m.GetString());
                 auto conPtr = std::make_shared<Con_t>(make(asset));
                 auto pNode = std::make_shared<Node_t>(conPtr);
                 auto parents = conPtr->parents();
@@ -111,7 +111,7 @@ private:
     }
 
 public:
-    Builder(C catalog) : m_catalog(catalog){};
+    Builder(const C * catalog) : m_catalog(catalog){};
 
     /**
      * @brief An environment might have decoders, rules, filters and outputs,
@@ -131,7 +131,7 @@ public:
      */
     pNode_t build(std::string name)
     {
-        json::Document environment = this->m_catalog.getAsset("environment", name);
+        json::Document environment = this->m_catalog->getAsset("environment", name);
 
         auto filterNodes = this->filterNodesBuild("filter", environment.get("/filters"), filterBuilder);
         auto decNodes = this->assetsBuilder("decoder", environment.get("/decoders"), decoderBuilder);

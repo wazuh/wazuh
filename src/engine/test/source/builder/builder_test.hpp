@@ -120,7 +120,7 @@ class FakeCatalog
 {
 private:
 public:
-    json::Document getAsset(const std::string atype, const std::string assetName)
+    json::Document getAsset(const std::string atype, const std::string assetName) const
     {
 
         if (atype == "environment")
