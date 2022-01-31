@@ -28,7 +28,7 @@ namespace catalog
  *  - Output schema: "wazuh-outputs" (i.e. in diskDriver /schemas/wazuh-outputs.json)
  *  - Filter schema: "wazuh-filters" (i.e. in diskDriver /schemas/wazuh-filters.json)
  *  - Environment schema: "wazuh-environments" (i.e. in diskDriver /schemas/wazuh-environments.json)
- */ //6822
+ */
 class Catalog
 {
 
