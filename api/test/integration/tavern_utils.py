@@ -375,8 +375,8 @@ def check_agentd_started(response, agents_list):
                 # Save agentd logs in a list
                 command = f"docker exec env_wazuh-agent{int(agent_id)}_1 grep agentd /var/ossec/logs/ossec.log"
                 output = subprocess.check_output(command.split()).decode().strip().split('\n')
-            except subprocess.CalledProcessError:
-                assert False, f"Error while trying to get logs from agent {agent_id}"
+            except subprocess.SubprocessError as exc:
+                raise subprocess.SubprocessError(f"Error while trying to get logs from agent {agent_id}") from exc
 
             # Ignore agentd logs before restart_request_time
             logs_after_restart = [agentd_log for agentd_log in output if
@@ -389,7 +389,7 @@ def check_agentd_started(response, agents_list):
             tries += 1
             time.sleep(1)
         else:
-            assert False, "The wazuh-agentd daemon was not started after requesting the restart"
+            raise ProcessLookupError("The wazuh-agentd daemon was not started after requesting the restart")
 
 
 def check_agent_active_status(agents_list):
@@ -408,8 +408,8 @@ def check_agent_active_status(agents_list):
             # Get active agents
             output = subprocess.check_output("docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
                                              "/tools/print_active_agents.py".split()).decode().strip()
-        except subprocess.CalledProcessError:
-            assert False, "Error while trying to get agents"
+        except subprocess.SubprocessError as exc:
+            raise subprocess.SubprocessError("Error while trying to get agents") from exc
 
         # Transform string representation of list to list and save agents id
         id_active_agents = [agent['id'] for agent in eval(output)]
@@ -421,7 +421,7 @@ def check_agent_active_status(agents_list):
         time.sleep(1)
     else:
         non_active_agents = [a for a in agents_list if a not in id_active_agents]
-        assert False, f"Agents {non_active_agents} have a status different to active after restarting"
+        raise SystemError(f"Agents {non_active_agents} have a status different to active after restarting")
 
 
 def healthcheck_agent_restart(response, agents_list):
