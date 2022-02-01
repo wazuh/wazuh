@@ -121,9 +121,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task
                              -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries -Wl,--wrap,wdb_open_tasks \
                              ${DEBUG_OP_WRAPPERS}")
 
-# Add extra compiling flags
-add_compile_options(-Wall)
-
 list(APPEND wdb_tests_names "test_wdb_rootcheck")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
                              -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_step \
@@ -149,6 +146,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,wdb_step -
 
 list(APPEND wdb_tests_names "test_wazuh_db-config")
 list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")
+
+# Add extra compiling flags
+add_compile_options(-Wall)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
