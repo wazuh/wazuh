@@ -362,7 +362,7 @@ void test_w_enrollment_concat_src_ip_small_buff(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 
-    ret = w_enrollment_concat_src_ip(buf, 29 - strlen(buf), sender_ip, 0);
+    ret = w_enrollment_concat_src_ip(buf, 30 - strlen(buf), sender_ip, 0);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, " IP:'192.168.1.1'");
 
@@ -370,7 +370,7 @@ void test_w_enrollment_concat_src_ip_small_buff(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 
-    ret = w_enrollment_concat_src_ip(buf, 29 - strlen(buf), sender_ip, 0);
+    ret = w_enrollment_concat_src_ip(buf, 30 - strlen(buf), sender_ip, 0);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, " IP:'192.168.1.1' IP:'192.168");
 }

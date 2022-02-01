@@ -516,8 +516,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             merror("Accessing file '%s'", merged);
         }
         else{
-            strncpy(f_sum[0]->sum, md5sum, 33);
-            f_sum[0]->sum[32] = '\0';
+            strncpy(f_sum[0]->sum, md5sum, sizeof(f_sum[0]->sum));
+            f_sum[0]->sum[sizeof(f_sum[0]->sum) - 1] = '\0';
             os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
         }
 
@@ -534,8 +534,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
             *_f_sum = f_sum;
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-            strncpy(f_sum[f_size]->sum, md5sum, 33);
-            f_sum[f_size]->sum[32] = '\0';
+            strncpy(f_sum[f_size]->sum, md5sum, sizeof(f_sum[f_size]->sum));
+            f_sum[f_size]->sum[sizeof(f_sum[f_size]->sum) - 1] = '\0';
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
             f_sum[f_size + 1] = NULL;
 
@@ -610,8 +610,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
                 os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
                 *_f_sum = f_sum;
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-                strncpy(f_sum[f_size]->sum, md5sum, 33);
-                f_sum[f_size]->sum[32] = '\0';
+                strncpy(f_sum[f_size]->sum, md5sum, sizeof(f_sum[f_size]->sum));
+                f_sum[f_size]->sum[sizeof(f_sum[f_size]->sum) - 1] = '\0';
                 os_strdup(files[i], f_sum[f_size]->name);
 
                 if (create_merged) {
@@ -636,8 +636,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             f_sum[0]->sum[0] = '\0';
         }
 
-        strncpy(f_sum[0]->sum, md5sum, 33);
-        f_sum[0]->sum[32] = '\0';
+        strncpy(f_sum[0]->sum, md5sum,sizeof(f_sum[0]->sum));
+        f_sum[0]->sum[sizeof(f_sum[0]->sum) - 1] = '\0';
         os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
     }
 }

@@ -46,7 +46,7 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     char buffer[KEYSIZE] = { '\0' };
 
     if (!id) {
-        snprintf(_id, 12, "%03d", ++keys->id_counter);
+        snprintf(_id,sizeof(_id), "%03d", ++keys->id_counter);
         id = _id;
     }
     else {

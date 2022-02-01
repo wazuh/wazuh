@@ -2033,8 +2033,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
             return (NULL);
         }
 
-        strncat(at, str, strsize + 1);
-        at[finalsize - 1] = '\0';
+        strcat(at, str);
 
         return (at);
     }

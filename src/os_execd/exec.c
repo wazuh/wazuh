@@ -69,14 +69,11 @@ int ReadExecConfig()
         tmp_str += 3;
 
         /* Set the name */
-        if (strlen(str_pt) <= OS_FLSIZE) {
-            strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
-        }
-        else {
-            memcpy(exec_names[exec_size], str_pt, OS_FLSIZE);
-        }
+        int bytes_written = snprintf(exec_names[exec_size], sizeof(exec_names[exec_size]), "%s", str_pt);
 
-        exec_names[exec_size][OS_FLSIZE] = '\0';
+        if ((size_t)bytes_written + 1 > sizeof(exec_names[exec_size])) {
+            merror(EXEC_BAD_NAME, exec_names[exec_size]);
+        }
 
         str_pt = tmp_str;
 

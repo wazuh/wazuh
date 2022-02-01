@@ -428,8 +428,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
                 if (!(csv_output || json_output)) {
                     printf("\nChanges for %s:\n", read_day);
                 }
-                strncpy(saved_read_day, read_day, 24);
-                saved_read_day[24] = '\0';
+                snprintf(saved_read_day, sizeof(saved_read_day), "%s", read_day);
             }
             strftime(read_day, 23, "%Y %h %d %T", &tm_result);
 

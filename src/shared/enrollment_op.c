@@ -543,7 +543,7 @@ static int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const 
         if (OS_IsValidIP(sender_ip, NULL)) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
-            strncat(buff,opt_buf, size_buff);
+            strncat(buff,opt_buf, size_buff - 1);
         } else {
             merror("Invalid IP address provided for sender IP.");
             return -1;

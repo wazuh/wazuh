@@ -109,9 +109,7 @@ char *os_LoadString(char *at, const char *str)
         }
         at = newat;
 
-        strncat(at, str, strsize + 1);
-        at[finalsize - 1] = '\0';
-
+        strcat(at, str);
         return (at);
     }
 

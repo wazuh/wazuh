@@ -330,9 +330,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
                  al_data->rule,
                  al_data->comment);
 
-
-        strncpy(msg_sms_tmp->body, logs, BODY_SIZE - 1);
-        msg_sms_tmp->body[127] = '\0';
+        snprintf(msg_sms_tmp->body, BODY_SIZE, "%.128s", logs);
         *msg_sms = msg_sms_tmp;
     }
 

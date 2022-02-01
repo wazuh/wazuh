@@ -99,7 +99,7 @@ int main (int argc, char **argv) {
         if (access(fw_cmd_tmp, F_OK) < 0) {
             char fw_cmd_path[COMMANDSIZE_4096];
             memset(fw_cmd_path, '\0', COMMANDSIZE_4096);
-            snprintf(fw_cmd_path, COMMANDSIZE_4096 - 1, "/usr%s", fw_cmd_tmp);
+            snprintf(fw_cmd_path, sizeof(fw_cmd_path), "/usr%s", fw_cmd_tmp);
             if (access(fw_cmd_path, F_OK) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "The firewall-cmd file '%s' is not accessible: %s (%d)", fw_cmd_path, strerror(errno), errno);
@@ -107,8 +107,7 @@ int main (int argc, char **argv) {
                 cJSON_Delete(input_json);
                 return OS_INVALID;
             }
-            strncpy(fw_cmd, fw_cmd_path, COMMANDSIZE_4096);
-            fw_cmd[COMMANDSIZE_4096 - 1] = '\0';
+            strncpy(fw_cmd, fw_cmd_path, sizeof(fw_cmd));
         } else {
             strncpy(fw_cmd, fw_cmd_tmp, COMMANDSIZE_4096 - 1);
         }
