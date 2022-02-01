@@ -63,4 +63,20 @@ void sync_agents_artifacts_with_wdb();
  */
 void wm_clean_agent_artifacts(int agent_id, const char* agent_name);
 
+/**
+ * @brief This method will read the legacy GROUPS_DIR folder to insert in the global.db the groups information it founds.
+ *        After every successful insertion, the legacy file is deleted. If we are in a worker, the files are deleted without inserting.
+ *        If the folder is empty, it will be removed.
+ */
+void wm_sync_legacy_groups_files();
+
+/**
+ * @brief Method to insert a single group file in the global.db. The group insertion overrides any existent group assignment.
+ *
+ * @param group_file The name of the group file.
+ * @param group_file_path The full path of the group file.
+ * @return int OS_SUCCESS if successful, OS_INVALID otherwise.
+ */
+int wm_sync_group_file (const char* group_file, const char* group_file_path);
+
 #endif /* WM_DATABASE */

@@ -98,22 +98,6 @@ static void wm_clean_dangling_wdb_dbs();
 
 static void wm_sync_multi_groups(const char *dirname);
 
-/**
- * @brief This method will read the legacy GROUPS_DIR folder to insert in the global.db the groups information it founds.
- *        After every successful insertion, the legacy file is deleted. If we are in a worker, the files are deleted without inserting.
- *        If the folder is empty, it will be removed.
- */
-void wm_sync_legacy_groups_files();
-
-/**
- * @brief Method to insert a single group file in the global.db. The group insertion overrides any existent group assignment.
- *
- * @param group_file The name of the group file.
- * @param group_file_path The full path of the group file.
- * @return int OS_SUCCESS if successful, OS_INVALID otherwise.
- */
-int wm_sync_group_file (const char* group_file, const char* group_file_path);
-
 #endif // LOCAL
 
 static int wm_sync_shared_group(const char *fname);
@@ -139,7 +123,7 @@ void* wm_database_main(wm_database *data) {
     char path_template[PATH_MAX + 1];
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB_DIR, WDB_PROF_NAME);
     unlink(path_template);
-    mdebug1("Template db file removed: %s", path_template);
+    mtdebug1(WM_DATABASE_LOGTAG, "Template db file removed: %s", path_template);
 
     // Check if it is a worker node
     is_worker = w_is_worker();
@@ -559,7 +543,7 @@ void wm_sync_legacy_groups_files() {
     DIR *dir = opendir(GROUPS_DIR);
 
     if (!dir) {
-        mdebug1("Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
+        mtdebug1(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
         return;
     }
 
@@ -575,13 +559,13 @@ void wm_sync_legacy_groups_files() {
             snprintf(group_file_path, OS_SIZE_512, "%s/%s", GROUPS_DIR, dir_entry->d_name);
 
             if (is_worker) {
-                mdebug1("Group file '%s' won't be synced in a worker node, removing.", group_file_path);
+                mtdebug1(WM_DATABASE_LOGTAG, "Group file '%s' won't be synced in a worker node, removing.", group_file_path);
                 unlink(group_file_path);
             } else {
                 sync_result = wm_sync_group_file(dir_entry->d_name, group_file_path);
 
                 if (OS_SUCCESS == sync_result) {
-                    mdebug1("Group file '%s' successfully synced, removing.", group_file_path);
+                    mtdebug1(WM_DATABASE_LOGTAG, "Group file '%s' successfully synced, removing.", group_file_path);
                     unlink(group_file_path);
                 } else {
                     merror("Failed during the groups file '%s' syncronization.", group_file_path);
@@ -593,24 +577,24 @@ void wm_sync_legacy_groups_files() {
     closedir(dir);
 
     if (is_dir_empty) {
-        if (rmdir(GROUPS_DIR)) {
-            mdebug1("Unable to remove directory '%s': '%s' (%d) ", GROUPS_DIR, strerror(errno), errno);
+        if (rmdir_ex(GROUPS_DIR)) {
+            mtdebug1(WM_DATABASE_LOGTAG, "Unable to remove directory '%s': '%s' (%d)", GROUPS_DIR, strerror(errno), errno);
         }
     }
 }
 
-int wm_sync_group_file (const char* group_file, const char* group_file_path) {
+int wm_sync_group_file(const char* group_file, const char* group_file_path) {
     int id_agent = atoi(group_file);
 
     if (id_agent <= 0) {
-        mdebug1("Couldn't extract agent ID from file '%s'.", group_file_path);
+        mtdebug1(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file '%s'.", group_file_path);
         return OS_INVALID;
     }
 
     FILE *fp = fopen(group_file_path, "r");
 
     if (!fp) {
-        mdebug1("Groups file '%s' could not be opened for syncronization.", group_file_path);
+        mtdebug1(WM_DATABASE_LOGTAG, "Groups file '%s' could not be opened for syncronization.", group_file_path);
         return OS_INVALID;
     }
 
@@ -636,7 +620,7 @@ int wm_sync_group_file (const char* group_file, const char* group_file_path) {
         result = wdb_set_agent_groups(id_agent, truncated_groups_array, "override", "synced", &wdb_wmdb_sock);
         free_strarray(groups_array);
     } else {
-        mdebug1("Empty group file '%s'.", group_file_path);
+        mtdebug1(WM_DATABASE_LOGTAG, "Empty group file '%s'.", group_file_path);
         result = OS_SUCCESS;
     }
 

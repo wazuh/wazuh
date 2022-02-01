@@ -55,6 +55,17 @@ int __wrap_wdb_set_agent_groups_csv(int id,
     return mock();
 }
 
+int __wrap_wdb_set_agent_groups(int id,
+                                __attribute__((unused)) char** groups_array,
+                                char* mode,
+                                char* sync_status,
+                                __attribute__((unused)) int *sock) {
+    check_expected(id);
+    check_expected(mode);
+    check_expected(sync_status);
+    return mock();
+}
+
 char* __wrap_wdb_get_agent_group(int id,
                                  __attribute__((unused)) int *wdb_sock) {
     check_expected(id);
