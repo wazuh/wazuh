@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) 2022, Wazuh Inc.
  * March, 2022.
  *
  * This program is free software; you can redistribute it
@@ -59,10 +59,13 @@ char *generate_groups_csv_string(unsigned int ngroups)
     char *groups = NULL;
     os_calloc(OS_BUFFER_SIZE, sizeof(char), groups);
 
-    for (int i = 0, position = 0; i < ngroups + 1; ++i) {
-        snprintf(groups+position, OS_BUFFER_SIZE - position, (ngroups-1 == i) ? "group%d\n" : "group%d,", i);
+    int i = 0, position = 0;
+    for (i = 0; i < ngroups-1; ++i) {
+        snprintf(groups+position, OS_BUFFER_SIZE - position, "group%d,", i);
         position = strlen(groups);
     }
+    snprintf(groups+position, OS_BUFFER_SIZE - position, "group%d\n", i);
+
     return groups;
 }
 
