@@ -1,8 +1,106 @@
 #ifndef _ROUTER_H
 #define _ROUTER_H
 
+#include <algorithm>
+#include <map>
+#include <rxcpp/rx.hpp>
+#include <string>
+#include <type_traits>
+
+#include "json.hpp"
+
+namespace router
+{
+
 /**
- * @section Router
+ * @brief Represents a route and manages subscription
+ *
+ */
+struct Route
+{
+    std::string m_name;
+    std::string m_to;
+    std::function<bool(json::Document)> m_from;
+    rxcpp::composite_subscription m_subscription;
+
+    Route() = default;
+    Route(const Route & other) = delete;
+    Route & operator=(const Route & other) = delete;
+
+    /**
+     * @brief Construct a new Route object
+     *
+     * @param name Name of the route
+     * @param filter_function Filter events to send to environment
+     * @param environment Environment name wich receives filtered events
+     * @param subscription Subscription to handle status
+     */
+    Route(const std::string & name, std::function<bool(json::Document)> filter_function,
+          const std::string & environment, rxcpp::composite_subscription subscription) noexcept
+        : m_name(name), m_from(filter_function), m_to(environment), m_subscription(subscription)
+    {
+    }
+
+    /**
+     * @brief Construct a new Route object
+     *
+     * @param other
+     */
+    Route(Route && other) noexcept
+        : m_name{std::move(other.m_name)}, m_from{std::move(other.m_from)}, m_to{std::move(other.m_to)},
+          m_subscription{std::move(other.m_subscription)}
+    {
+    }
+
+    /**
+     * @brief Move assignation new Route object
+     *
+     * @param other
+     * @return Route&
+     */
+    Route & operator=(Route && other) noexcept
+    {
+        this->m_name = std::move(other.m_name);
+        this->m_from = std::move(other.m_from);
+        this->m_to = std::move(other.m_to);
+        this->m_subscription = std::move(other.m_subscription);
+        return *this;
+    }
+
+    ~Route()
+    {
+        if (!this->m_subscription.get_weak().expired() && this->m_subscription.is_subscribed())
+        {
+            this->m_subscription.unsubscribe();
+        }
+    }
+};
+
+/**
+ * @brief Defines environment as subject
+ *
+ */
+struct Environment
+{
+    std::string m_name;
+    rxcpp::subjects::subject<json::Document> m_subject;
+
+    Environment() = default;
+
+    /**
+     * @brief Construct a new Environment object
+     *
+     * @param name Name of the environment
+     * @param subject Subject of the built environment
+     */
+    Environment(const std::string & name, const rxcpp::subjects::subject<json::Document> & subject) noexcept
+        : m_name(name), m_subject(subject)
+    {
+    }
+};
+
+/**
+ * @brief Router
  *
  * The Router manages the environments which are ready to be enabled, ie.
  * receive events from the server. Particularily, it can:
@@ -17,184 +115,109 @@
  * An environment is a set of decoders, rules, filters and outputs which are set
  * up to work together and a filter to decide which events to accept.
  *
- *
+ * @tparam Builder injected builder type to build environments
  */
-#include <rxcpp/rx.hpp>
-#include <string>
-#include <vector>
-
-namespace Router
+template <class Builder> class Router
 {
+    // Check Builder class is as expected
+    static_assert(std::is_invocable_r_v<rxcpp::subjects::subject<json::Document>, Builder, std::string>,
+                  "Error, Router object expects a Builder callabe object with signature "
+                  "rxcpp::subjects::subject<json::Document>(std::string)");
 
-/**
- * @brief a route has an environment_name, a filter
- * and a subject of the built environment
- *
- * @tparam F
- */
-template <class F> struct route
-{
-    route(std::string n, std::function<bool(F)> f, std::string e, rxcpp::composite_subscription s)
-        : m_name(n), m_from(f), m_to(e), m_subscription(s)
-    {
-    }
-    std::string m_name;
-    std::string m_to;
-    std::function<bool(F)> m_from;
-    rxcpp::composite_subscription m_subscription;
-};
-
-/**
- * @brief an environment has a name and an observable
- * of class F events.
- *
- * @tparam F
- */
-template <class F> struct environment
-{
-    environment(std::string n, rxcpp::subjects::subject<F> s) : m_name(n), m_subject(s)
-    {
-    }
-    std::string m_name;
-    rxcpp::subjects::subject<F> m_subject;
-};
-
-/**
- * @brief a router forwards events as stated by each one of its routes. It
- * allows adding and deleting routes.
- *
- * @tparam F
- */
-template <class F> class Router
-{
 private:
-    /**
-     * @brief environments available for routing. This collection
-     * is used as a cache, because the lifecycle of an environment
-     * is tied to the routes.
-     *
-     */
-    std::vector<environment<F>> m_environments;
-
-    /**
-     * @brief a route maps an environment name, a filter function and
-     * and environment implementation as operations.
-     */
-    std::vector<route<F>> m_routes;
-
-    /**
-     * @brief a router send all events published through all the
-     * enabled routes. It is implmented by a rxcpp::observable.
-     *
-     */
-    rxcpp::observable<F> m_router;
-
-    /**
-     * @brief a builder function to get the environment
-     * observable. This entry point must be initialized on
-     * construction.
-     *
-     */
-    std::function<rxcpp::subjects::subject<F>(std::string)> m_build;
+    std::map<std::string, Environment> m_environments;
+    std::map<std::string, Route> m_routes;
+    rxcpp::observable<json::Document> m_observable;
+    Builder m_builder;
 
 public:
     /**
-     * @brief Construct a new Router<F> object
+     * @brief Construct a new Router object
      *
-     * @param h handler function
-     * @param b builder function
+     * @param serverOutput Observable that emits items received by server
+     * @param builder Injected Builder object
      */
-    Router<F>(const std::function<void(rxcpp::subscriber<F>)> h,
-              std::function<rxcpp::subjects::subject<F>(std::string)> b)
-        : m_build(b)
+    Router(const rxcpp::observable<json::Document> & serverOutput, const Builder & builder) noexcept
+        : m_observable{serverOutput}, m_builder{builder}
     {
-        auto threads = rxcpp::observe_on_event_loop();
-        m_router = rxcpp::observable<>::create<F>(h).publish().ref_count().subscribe_on(threads);
-    };
-
-    /**
-     * @brief Adds a new route to an environment. If the environment does not
-     * exists, it will call Builder to create it before creating the route.
-     *
-     * We can create more than one route per environment.
-     *
-     * @throws std::invalid_argument when the route name is already registered
-     * @param name of the route
-     * @param from filter to get events from
-     * @param to environment name
-     */
-    void add(std::string name, std::function<bool(F)> from, std::string to)
-    {
-        rxcpp::subjects::subject<F> envSub;
-
-        if (std::any_of(std::begin(this->m_routes), std::end(this->m_routes),
-                        [name](const auto & r) { return r.m_name == name; }))
-            throw std::invalid_argument("Tried to add a route, but it's name is already in use by another route");
-
-        auto res = std::find_if(std::begin(this->m_environments), std::end(this->m_environments),
-                                [to](const auto & e) { return e.m_name == to; });
-
-        if (res == std::end(this->m_environments))
-        {
-            envSub = this->m_build(name);
-            this->m_environments.push_back(environment(to, envSub));
-        }
-        else
-        {
-            envSub = (*res).m_subject;
-        }
-
-        auto r = this->m_router.filter(from);
-
-        auto sub = r.subscribe(envSub.get_subscriber());
-
-        this->m_routes.push_back(route(name, from, to, sub));
     }
 
     /**
-     * @brief removes the route named name
+     * @brief Add a route
      *
-     * @throws std::invalid_argument when the route name is not found
-     * @param name
+     * @param route Name of the route
+     * @param filterFunction Filter function to select forwarded envents
+     * @param environment Where events are forwarded
      */
-    void remove(std::string name)
+    void add(const std::string & route, std::function<bool(json::Document)> filterFunction,
+             const std::string & environment)
     {
-        auto it = std::find_if(std::begin(this->m_routes), std::end(this->m_routes),
-                               [name](const auto & r) { return r.m_name == name; });
-
-        if (it == std::end(this->m_routes))
+        // Assert route with same name not exists
+        if (this->m_routes.count(route) > 0)
         {
-            throw std::invalid_argument("Tried to delete a route, but it's name is not in the route table.");
+            throw std::invalid_argument("Error, route " + route + " is already in use");
         }
 
-        (*it).m_subscription.unsubscribe();
-
-        auto to = (*it).m_to;
-        this->m_routes.erase(it);
-
-        auto s =
-            std::any_of(std::begin(this->m_routes), std::end(this->m_routes), [to](const auto & r) { return r.m_to == to; });
-
-        if (!s)
+        // Build environment if neccesary
+        if (this->m_environments.count(environment) == 0)
         {
-            auto it = std::remove_if(std::begin(this->m_environments), std::end(this->m_environments),
-                                     [to](const auto & e) { return e.m_name == to; });
-            // remove_if does not re
-            this->m_environments.erase(it);
+            auto environmentSubj = this->m_builder(environment);
+            this->m_environments[environment] = Environment(environment, environmentSubj);
+        }
+
+        // Connect server output to environment through route filter
+        auto subscription = this->m_observable.filter(filterFunction)
+                                .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
+
+        // Add route to list
+        this->m_routes[route] = Route(route, filterFunction, environment, subscription);
+    }
+
+    /**
+     * @brief Delete route
+     *
+     * @param route Name of the route to be deleted
+     */
+    void remove(const std::string & route)
+    {
+        // Assert route exists
+        if (this->m_routes.count(route) == 0)
+        {
+            throw std::invalid_argument("Error, route " + route + " can not be deleted because is not registered");
+        }
+
+        // Delete route and delete environment if not referenced by any other route
+        std::string environment{this->m_routes[route].m_to};
+        this->m_routes.erase(route);
+
+        if (find_if(this->m_routes.cbegin(), this->m_routes.cend(),
+                    [environment](auto r) { return r.second.m_to == environment; }) == this->m_routes.cend())
+        {
+            this->m_environments.erase(environment);
         }
     }
 
     /**
-     * @brief list all routes in the router
+     * @brief Get const reference of environments registered
      *
-     * @return std::vector<route>
+     * @return const std::map<std::string, Environment>&
      */
-    std::vector<route<F>> list()
+    const std::map<std::string, Environment> & environments() const noexcept
+    {
+        return this->m_environments;
+    }
+
+    /**
+     * @brief Get const reference of routes registered
+     *
+     * @return const std::map<std::string, Route>
+     */
+    const std::map<std::string, Route> routes() const noexcept
     {
         return this->m_routes;
     }
 };
 
-} // namespace Router
+} // namespace router
 
 #endif // _ROUTER_H
