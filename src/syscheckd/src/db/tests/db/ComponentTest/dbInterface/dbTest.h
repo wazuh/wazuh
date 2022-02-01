@@ -20,7 +20,7 @@
 #include "fimDBTests/fimDBImpTests.hpp"
 
 
-typedef struct fim_txn_context_s {
+typedef struct txn_context_test_s {
     event_data_t *evt_data;
 } txn_context_test;
 MockLoggingCall* mockLog;
