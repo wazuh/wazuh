@@ -1339,7 +1339,6 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             return WDBC_ERROR;
     }
 
-
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return WDBC_ERROR;
