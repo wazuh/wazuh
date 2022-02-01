@@ -346,6 +346,8 @@ def check_agentd_started(response, agents_list):
     agents_list : list
         List of expected agents to be restarted.
     """
+    timestamp_regex = re.compile(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d')
+    agentd_started_regex = re.compile(r'agentd.*Started')
 
     def get_timestamp(log):
         """Get timestamp from log.
@@ -360,7 +362,7 @@ def check_agentd_started(response, agents_list):
         datetime
             Datetime object representing the timestamp got.
         """
-        timestamp = re.search(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d', log).group(0)
+        timestamp = timestamp_regex.search(string=log).group(0)
         return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
 
     # Save the time when the restart command was sent
@@ -381,8 +383,7 @@ def check_agentd_started(response, agents_list):
                                   get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
 
             # Check the log indicating agentd started is in the agent's ossec.log (after the restart request)
-            if any(re.search(pattern='agentd.*Started', string=agentd_log) for agentd_log in
-                   logs_after_restart):
+            if any(agentd_started_regex.search(string=agentd_log) for agentd_log in logs_after_restart):
                 break
 
             tries += 1
