@@ -1857,9 +1857,15 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
             *wdb = NULL;
 
             unlink(global_path);
-            rename(global_tmp_path, global_path);
-            snprintf(output, OS_MAXSTR + 1, "ok");
-            result = OS_SUCCESS;
+
+            if (rename(global_tmp_path, global_path) != OS_SUCCESS) {
+                merror("Renaming %s to %s: %s", global_tmp_path, global_path, strerror(errno));
+                result = OS_INVALID;
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+                result = OS_SUCCESS;
+            }
         } else {
             mdebug1("Failed during backup decompression");
             snprintf(output, OS_MAXSTR + 1, "err Failed during backup decompression");

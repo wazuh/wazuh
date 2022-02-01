@@ -5470,22 +5470,34 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
 }
 
 int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
-    os_sha1 hash = {0};
-    strncpy(hash, input, strlen(input));
-    int ret = OS_SUCCESS;
-    cJSON *j_result = wdb_global_get_groups_integrity(wdb, hash);
-    if (j_result) {
-        char* out = cJSON_PrintUnformatted(j_result);
-        snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-        os_free(out);
-        cJSON_Delete(j_result);
-    } else {
-        mdebug1("Error getting groups integrity information from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
-        ret = OS_INVALID;
+    int input_len = strlen(input);
+    if (input_len < OS_SHA1_HEXDIGEST_SIZE) {
+        mdebug1("Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
+                OS_SHA1_HEXDIGEST_SIZE,
+                input_len);
+        snprintf(output,
+                 OS_MAXSTR + 1,
+                 "err Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
+                 OS_SHA1_HEXDIGEST_SIZE,
+                 input_len);
+        return OS_INVALID;
     }
 
-    return ret;
+    os_sha1 hash = {0};
+    strncpy(hash, input, OS_SHA1_HEXDIGEST_SIZE);
+
+    cJSON *j_result = wdb_global_get_groups_integrity(wdb, hash);
+    if (j_result == NULL) {
+        mdebug1("Error getting groups integrity information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
+        return OS_INVALID;
+    }
+
+    char* out = cJSON_PrintUnformatted(j_result);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(j_result);
+    return OS_SUCCESS;
 }
 
 int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
