@@ -193,8 +193,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     return old_attributes;
 }
 
-static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
-{
+static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data) {
     char *path = NULL;
     char *diff = NULL;
     cJSON* json_event = NULL;
@@ -222,11 +221,17 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         dbsync_event = result_json;
     }
 
+    // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
     if (txn_context->latest_entry == NULL) {
-        goto end;
+        cJSON *path_cjson = cJSON_GetObjectItem(dbsync_event, "path");
+        if (path_cjson == NULL) {
+            goto end;
+        }
+        path = cJSON_GetStringValue(path_cjson);
+    } else {
+        path = txn_context->latest_entry->file_entry.path;
     }
 
-    path = txn_context->latest_entry->file_entry.path;
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
         goto end;
@@ -280,7 +285,10 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddNumberToObject(data, "timestamp", time(NULL));
 
     if (resultType == DELETED) {
-        cJSON_AddItemToObject(data, "attributes", dbsync_event);
+        // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
+        cJSON *attributes = cJSON_Duplicate(dbsync_event, 1);
+        cJSON_AddStringToObject(attributes, "type", "file");
+        cJSON_AddItemToObject(data, "attributes", attributes);
     } else {
         cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data));
         old_data = cJSON_GetObjectItem(dbsync_event, "old");
@@ -290,14 +298,14 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             changed_attributes = cJSON_CreateArray();
             cJSON_AddItemToObject(data, "old_attributes", old_attributes);
             cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-            fim_calculate_dbsync_difference(txn_context->latest_entry->file_entry.data, old_data, old_attributes, changed_attributes);
+            fim_calculate_dbsync_difference(txn_context->latest_entry->file_entry.data,
+                                            old_data,
+                                            old_attributes,
+                                            changed_attributes);
         }
     }
 
     char* tags = NULL;
-    if (txn_context->evt_data->w_evt) {
-        cJSON_AddItemToObject(data, "audit", fim_audit_json(txn_context->evt_data->w_evt));
-    }
 
     tags = configuration->tag;
 
