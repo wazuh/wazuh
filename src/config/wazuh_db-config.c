@@ -27,34 +27,36 @@ static short eval_bool(const char *str) {
     }
 }
 
-int Read_WazuhDB(const OS_XML *xml, XML_NODE chld_node) {
-    const char* xml_backup = "backup";
-    const char* xml_database = "database";
-    const char* xml_database_global = "global";
+int Read_WazuhDB(const OS_XML *xml, XML_NODE child_node) {
+    const char *xml_backup = "backup";
+    const char *xml_database = "database";
+    const char *xml_database_global = "global";
 
-    for(int i = 0; chld_node[i]; i++) {
-        if (!chld_node[i]->element) {
-            merror(XML_ELEMNULL);
-            return OS_INVALID;
-        } else if (!strcmp(chld_node[i]->element, xml_backup)) {
-            if(chld_node[i]->attributes && chld_node[i]->attributes[0] && !strcmp(chld_node[i]->attributes[0], xml_database)) {
-                if(chld_node[i]->values && chld_node[i]->values[0] && !strcmp(chld_node[i]->values[0], xml_database_global)) {
-                    return Read_WazuhDB_Backup(xml, chld_node[i], WDB_GLOBAL_BACKUP);
-                } else {
-                    merror(XML_VALUEERR, chld_node[i]->attributes[0], chld_node[i]->values && chld_node[i]->values[0] ? chld_node[i]->values[0] : "");
-                    return OS_INVALID;
-                }
-            } else {
-                merror(XML_INVATTR, chld_node[i]->attributes && chld_node[i]->attributes[0] ? chld_node[i]->attributes[0] : "", chld_node[i]->element);
-                return OS_INVALID;
-            }
-        } else {
-            merror(XML_INVELEM, chld_node[i]->element);
-            return OS_INVALID;
-        }
+    xml_node *node = *child_node;
+
+    if (node->element == NULL) {
+        merror(XML_ELEMNULL);
+        return OS_INVALID;
     }
 
-    return OS_SUCCESS;
+    if (strcmp(node->element, xml_backup) != 0) {
+        merror(XML_INVELEM, node->element);
+        return OS_INVALID;
+    }
+
+    char **attr = node->attributes;
+    if (attr == NULL || attr[0] == NULL || strcmp(attr[0], xml_database) != 0) {
+        merror(XML_INVATTR, attr && attr[0] ? attr[0] : "", node->element);
+        return OS_INVALID;
+    }
+
+    char **val = node->values;
+    if (val == NULL || val[0] == NULL || strcmp(val[0], xml_database_global) != 0) {
+        merror(XML_VALUEERR, node->attributes[0], val && val[0] ? val[0] : "");
+        return OS_INVALID;
+    }
+
+    return Read_WazuhDB_Backup(xml, node, WDB_GLOBAL_BACKUP);
 }
 
 int Read_WazuhDB_Backup(const OS_XML *xml, xml_node * node, int const BACKUP_NODE) {
