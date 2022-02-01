@@ -406,11 +406,8 @@ def check_agent_active_status(agents_list):
     while tries < 25:
         try:
             # Get active agents
-            python_code = "from wazuh import agent; print(agent.get_agents(select=['status'], " \
-                          "filters={'status': 'active'})._affected_items)"
-            command = "docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 -c ".split()
-            command.append(python_code)
-            output = subprocess.check_output(command).decode().strip()
+            output = subprocess.check_output("docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
+                                             "/tools/print_active_agents.py".split()).decode().strip()
         except subprocess.CalledProcessError:
             assert False, "Error while trying to get agents"
 
