@@ -1122,17 +1122,23 @@ int wdb_create_agent_db(int id, const char *name) {
     }
 
     snprintf(src_path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
-    if (OS_SUCCESS != stat(src_path, &st_buffer)) {
+    if (!(source = fopen(src_path, "r"))) {
+        if (errno != EACCES) // If we get any other error other than 'file does not exits'
+        {
+            merror("Error accessing file (%s): (%s)", src_path, strerror(errno));
+            return OS_INVALID;
+        }
+
         mdebug1("Profile database not found, creating.");
 
         if (wdb_create_profile(src_path) < 0) {
             return OS_INVALID;
         }
-    }
 
-    if (!(source = fopen(src_path, "r"))) {
-        merror("Couldn't open profile '%s'.", src_path);
-        return OS_INVALID;
+        if (!(source = fopen(src_path, "r"))) {
+            merror("Couldn't open profile '%s'.", src_path);
+            return OS_INVALID;
+        }
     }
 
     if (!(dest = fopen(dst_path, "w"))) {
