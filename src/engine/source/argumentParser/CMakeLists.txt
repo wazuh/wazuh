@@ -23,15 +23,16 @@ FetchContent_GetProperties(
   SOURCE_DIR argparse_headers
 )
 
-message(${argparse_headers})
-
-
 # Add this dependencies to parent CMakeLists scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
+target_sources(main PRIVATE
+    ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}/argumentParser.cpp
+)
+
 target_include_directories(main PUBLIC
     ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}
     ${argparse_headers}
