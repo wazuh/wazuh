@@ -1003,6 +1003,8 @@ void test_wdb_global_sync_agent_groups_get_cache_fail(void **state)
     cJSON *j_output = NULL;
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
@@ -1026,6 +1028,8 @@ void test_wdb_global_sync_agent_groups_get_bind_fail(void **state)
     cJSON *j_output = NULL;
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
@@ -1051,12 +1055,14 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     bool set_synced = false;
     bool get_hash = false;
     cJSON *j_output = NULL;
-    cJSON *j_exec_response = cJSON_CreateArray();
+    cJSON *j_exec_response = __real_cJSON_CreateArray();
     cJSON *j_object = cJSON_CreateObject();
     cJSON_AddNumberToObject(j_object, "id", 1);
     cJSON_AddItemToArray(j_exec_response, j_object);
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
@@ -1065,7 +1071,7 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     expect_function_call(__wrap_cJSON_Delete);
 
     /* wdb_global_select_group_belong */
-    cJSON *j_groups = cJSON_CreateArray();
+    cJSON *j_groups = __real_cJSON_CreateArray();
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
@@ -1104,6 +1110,8 @@ void test_wdb_global_sync_agent_groups_get_exec_fail_get_hash_true_success(void 
     cJSON *j_output = NULL;
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
@@ -1133,6 +1141,8 @@ void test_wdb_global_sync_agent_groups_get_exec_fail_get_hash_true_fail(void **s
     cJSON *j_output = NULL;
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
@@ -1161,12 +1171,14 @@ void test_wdb_global_sync_agent_groups_get_set_synced_error(void **state)
     bool set_synced = true;
     bool get_hash = true;
     cJSON *j_output = NULL;
-    cJSON *j_exec_response = cJSON_CreateArray();
+    cJSON *j_exec_response = __real_cJSON_CreateArray();
     cJSON *j_object = cJSON_CreateObject();
     cJSON_AddNumberToObject(j_object, "id", 1);
     cJSON_AddItemToArray(j_exec_response, j_object);
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
@@ -1207,12 +1219,14 @@ void test_wdb_global_sync_agent_groups_get_due_buffer_full(void **state)
     bool set_synced = false;
     bool get_hash = true;
     cJSON *j_output = NULL;
-    cJSON *j_exec_response = cJSON_CreateArray();
+    cJSON *j_exec_response = __real_cJSON_CreateArray();
     cJSON *j_object = cJSON_CreateObject();
     cJSON_AddNumberToObject(j_object, "id", 1);
     cJSON_AddItemToArray(j_exec_response, j_object);
 
     will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
@@ -1221,7 +1235,7 @@ void test_wdb_global_sync_agent_groups_get_due_buffer_full(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     /* wdb_global_select_group_belong */
-    cJSON *j_groups = cJSON_CreateArray();
+    cJSON *j_groups = __real_cJSON_CreateArray();
     for (int i = 0; i < 5000; ++i) {
         cJSON_AddItemToArray(j_groups, cJSON_CreateString("test_group"));
     }
