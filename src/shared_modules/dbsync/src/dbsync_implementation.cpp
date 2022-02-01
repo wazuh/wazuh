@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include "dbsync_implementation.h"
+#include "dbsync.hpp"
 
 using namespace DbSync;
 
@@ -55,6 +56,7 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
 {
     const auto ctx{ dbEngineContext(handle) };
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
+                                      SyncRowQuery::getIgnoredColumns(json),
                                       json.at("data"),
                                       callback);
 }
@@ -73,6 +75,7 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
     }
 
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
+                                      SyncRowQuery::getIgnoredColumns(json),
                                       json.at("data"),
                                       callback,
                                       true);

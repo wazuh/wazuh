@@ -654,6 +654,37 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
     EXPECT_NE(0, dbsync_sync_row(handle, jsInsert2.get(), callbackEmpty));
 }
 
+TEST_F(DBSyncTest, syncRowIgnoreFields)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    auto insertionQuery = InsertQuery::builder().table("processes")
+                          .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100})"))
+                          .data(nlohmann::json::parse(R"({"pid":5,"name":"System", "tid":101})"))
+                          .data(nlohmann::json::parse(R"({"pid":6,"name":"System", "tid":102})"));
+    auto updateQuery1 = SyncRowQuery::builder().table("processes")
+                        .ignoreColumn("tid")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":101})"));
+    auto updateQuery2 = SyncRowQuery::builder().table("processes")
+                        .ignoreColumn("tid")
+                        .ignoreColumn("name")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"Systemmm", "tid":105})"));
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
+
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Expect a modified event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Expect a modified event
+}
+
+
 TEST_F(DBSyncTest, syncRowInvalidData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};

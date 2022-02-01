@@ -139,6 +139,7 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 
 
 void SQLiteDBEngine::syncTableRowData(const std::string& table,
+                                      const std::set<std::string> ignoredColumns,
                                       const nlohmann::json& data,
                                       const DbSync::ResultCallback callback,
                                       const bool inTransaction)
@@ -195,7 +196,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
             for (const auto& entry : data)
             {
                 nlohmann::json jsResult;
-                const bool diffExist { getRowDiff(primaryKeyList, table, entry, jsResult) };
+                const bool diffExist { getRowDiff(primaryKeyList, ignoredColumns, table, entry, jsResult) };
 
                 if (diffExist)
                 {
@@ -1192,6 +1193,7 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
 }
 
 bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
+                                const std::set<std::string>& ignoredColumns,
                                 const std::string& table,
                                 const nlohmann::json& data,
                                 nlohmann::json& jsResult)
@@ -1254,7 +1256,8 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
                 if (data.end() != it)
                 {
-                    if (*it != object[value.first])
+                    // Only compare if not in ignore set
+                    if (*it != object[value.first] && ignoredColumns.count(value.first) == 0)
                     {
                         // Diff found
                         isModified = true;
