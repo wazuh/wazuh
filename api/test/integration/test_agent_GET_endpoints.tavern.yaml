@@ -4448,7 +4448,6 @@ stages:
             - error: # No task in DB
                 code: 1813
                 message: !anystr
-                remediation: !anything
               id:
                 - '008'
         message: !anystr
