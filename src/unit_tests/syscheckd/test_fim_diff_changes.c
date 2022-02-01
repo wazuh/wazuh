@@ -15,7 +15,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 #include "../config/syscheck-config.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"

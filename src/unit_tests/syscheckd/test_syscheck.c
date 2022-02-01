@@ -20,7 +20,7 @@
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 
 syscheck_config syscheck;
 
@@ -51,11 +51,11 @@ static int teardown_group(void **state) {
 static int setup_syscheck_config(void **state) {
     syscheck_config *syscheck_conf = calloc(1, sizeof(syscheck_config));
 
-    syscheck_conf->database_store   = FIM_DB_DISK;
-    syscheck_conf->sync_interval    = 300;
-    syscheck_conf->file_limit       = 100000;
+    syscheck_conf->database_store            = FIM_DB_DISK;
+    syscheck_conf->sync_interval             = 300;
+    syscheck_conf->db_entry_file_limit       = 100000;
 #ifdef WIN32
-    syscheck_conf->reg_entry_limit  = 100000;
+    syscheck_conf->db_entry_registry_limit   = 100000;
 #endif
     *state = syscheck_conf;
     return 0;
@@ -104,12 +104,12 @@ void test_fim_initialize(void **state)
     expect_wrapper_fim_db_init(syscheck_conf->database_store,
                                syscheck_conf->sync_interval,
                                syscheck_conf->file_limit,
-                               syscheck_conf->reg_entry_limit,
+                               syscheck_conf->db_entry_registry_limit,
                                true);
 #else
     expect_wrapper_fim_db_init(syscheck_conf->database_store,
                                syscheck_conf->sync_interval,
-                               syscheck_conf->file_limit,
+                               syscheck_conf->db_entry_file_limit,
                                0,
                                false);
 #endif

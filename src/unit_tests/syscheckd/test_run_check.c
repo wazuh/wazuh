@@ -28,6 +28,7 @@
 
 #include "../syscheckd/include/syscheck.h"
 #include "../syscheckd/src/db/include/db.h"
+#include "../syscheckd/src/run_check.c"
 #include "../config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
@@ -49,12 +50,12 @@ void * fim_run_realtime(__attribute__((unused)) void * args);
 #endif
 
 #ifndef TEST_WINAGENT
-void fim_link_update(const char *new_path, directory_t *configuration);
-void fim_link_check_delete(directory_t *configuration);
-void fim_link_delete_range(const directory_t *configuration);
-void fim_link_silent_scan(char *path, directory_t *configuration);
-void fim_link_reload_broken_link(char *path, directory_t *configuration);
-void fim_realtime_delete_watches(const directory_t *configuration);
+// void fim_link_update(const char *new_path, directory_t *configuration);
+// void fim_link_check_delete(directory_t *configuration);
+// void fim_link_delete_range(const directory_t *configuration);
+// void fim_link_silent_scan(char *path, directory_t *configuration);
+// void fim_link_reload_broken_link(char *path, directory_t *configuration);
+// void fim_realtime_delete_watches(const directory_t *configuration);
 #endif
 
 extern time_t last_time;

@@ -12,7 +12,7 @@
 #define SYSCHECK_AUDIT_H
 
 #include "shared.h"
-#include "syscheck.h"
+#include "../../include/syscheck.h"
 #include "audit_op.h"
 
 #define WHODATA_PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)

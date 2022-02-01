@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 #include "../config/syscheck-config.h"
 
 #include "../wrappers/common.h"

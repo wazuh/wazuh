@@ -32,13 +32,13 @@
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 #include "../config/syscheck-config.h"
-#include "db/include/db.h"
+#include "../syscheckd/src/db/include/db.h"
 
 #include "test_fim.h"
 
-fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
+fim_state_db _db_state;
 
 void update_wildcards_config();
 void fim_process_wildcard_removed(directory_t *configuration);
@@ -395,15 +395,6 @@ static int setup_fim_entry(void **state) {
     return 0;
 }
 
-static int teardown_fim_entry(void **state) {
-    fim_data_t *fim_data = *state;
-    if (fim_data != NULL) {
-        free(fim_data->fentry);
-        free(fim_data->local_data);
-    }
-    return 0;
-}
-
 static int teardown_local_data(void **state) {
     fim_data_t *fim_data = *state;
 
@@ -520,22 +511,6 @@ static int teardown_fim_scan_realtime(void **state) {
 }
 
 #endif
-
-static int setup_fim_tmp_file(void **state) {
-    fim_tmp_file *file = malloc(sizeof(fim_tmp_file));
-    if (file == NULL) {
-        return 1;
-    }
-    file->elements = 1;
-    *state = file;
-    return 0;
-}
-
-static int teardown_fim_tmp_file(void **state){
-    fim_tmp_file *file = *state;
-    free(file);
-    return 0;
-}
 
 /* Auxiliar functions */
 void expect_get_data (char *user, char *group, char *file_path, int calculate_checksums) {
@@ -1646,7 +1621,7 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
+    will_return(__wrap_fim_db_transaction_start, txn_handle);
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
@@ -1680,7 +1655,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
                             .st_gid = 0,
                             .st_mtime = 1433395216,
                             .st_size = 1500 };
-    TXN_HANDLE txn_handle;
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1851,7 +1826,7 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/test.file";
-    TXN_HANDLE txn_handle;
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1869,7 +1844,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/test.file";
-    TXN_HANDLE txn_handle;
+    TXN_HANDLE txn_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
