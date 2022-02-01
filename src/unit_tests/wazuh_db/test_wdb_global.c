@@ -1236,6 +1236,11 @@ void test_wdb_global_sync_agent_groups_get_due_buffer_full(void **state)
 
     /* wdb_global_select_group_belong */
     cJSON *j_groups = __real_cJSON_CreateArray();
+    /* Creating a JSON object with 5000 groups of name "test_group"
+    to exceed the WDB_MAX_RESPONSE_SIZE just for testing purposes.
+    In a real scenario an agent won't belong to more than MAX_GROUPS_PER_MULTIGROUP (128),
+    the group names will be unique and not longer than MAX_GROUP_NAME (255).
+    */
     for (int i = 0; i < 5000; ++i) {
         cJSON_AddItemToArray(j_groups, cJSON_CreateString("test_group"));
     }
