@@ -58,5 +58,5 @@ link_libraries(
 )
 
 # Builder test
-add_executable(argument_parser_test ${ARGUMENT_PARSER_TEST_SOURCE_DIR}/argument_parser_test.cpp)
+add_executable(argument_parser_test ${ARGUMENT_PARSER_TEST_SOURCE_DIR}/argument_parser_test.cpp ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}/argumentParser.cpp)
 gtest_discover_tests(argument_parser_test)

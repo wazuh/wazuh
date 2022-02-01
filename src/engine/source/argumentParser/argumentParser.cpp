@@ -6,10 +6,43 @@
 
 #include "argumentParser.hpp"
 
-namespace argumentParser
+using namespace std;
+
+namespace parser
 {
+    
+Parser::Parser(int argc, char *argv[]){
+    parse(argc,argv);
+}
 
+void Parser::parse(int argc, char *argv[]){
+    argparse::ArgumentParser serverParser("server");
+    serverParser.add_argument("--endpoint")
+        .help("Endpoint configuration string")
+        .required();
 
+    serverParser.add_argument("--file_storage")
+        .help("Path to storage folder")
+        .required();
 
+    try{
+        serverParser.parse_args(argc, argv);
+    }
+    catch (const std::runtime_error& err) {
+        std::cerr << err.what() << std::endl;
+        cerr << serverParser;
+    }
+
+    m_endpoint_config = serverParser.get("--endpoint");
+    m_storage_path = serverParser.get("--file_storage");
+}
+
+string Parser::getEndpointConfig(){
+    return m_endpoint_config;
+}
+
+string Parser::getStoragePath(){
+    return m_storage_path;
+}
 
 }
