@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_syscollector_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
