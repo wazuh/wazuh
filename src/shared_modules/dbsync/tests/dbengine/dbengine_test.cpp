@@ -569,7 +569,7 @@ TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)
     initNoMetaDataMocks(spEngine);
 
     // Due to the no metadata this should throw
-    EXPECT_THROW(spEngine->syncTableRowData("dummy", {}, nullptr, false), dbengine_error);
+    EXPECT_THROW(spEngine->syncTableRowData("dummy", {}, {}, nullptr, false), dbengine_error);
 }
 
 TEST_F(DBEngineTest, deleteTableRowsDataWithoutMetadataShouldThrow)
