@@ -478,9 +478,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             int id = OS_IsAllowedID(&keys, buffer + 1);
 
             if (id < 0) {
-                strncpy(agname, "unknown", sizeof(agname));
+                strncpy(agname, "unknown", sizeof(agname) - 1);
             } else {
-                strncpy(agname, keys.keyentries[id]->name, sizeof(agname));
+                strncpy(agname, keys.keyentries[id]->name, sizeof(agname) - 1);
             }
 
             key_unlock();

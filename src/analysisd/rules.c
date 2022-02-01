@@ -2009,7 +2009,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
                 merror(MEM_ERROR, errno, strerror(errno));
                 return (NULL);
             }
-            strncpy(at, str, strsize);
+            memcpy(at, str, strsize);
             return (at);
         } else {
             smerror(log_msg, SIZE_ERROR, str);
@@ -2033,7 +2033,7 @@ STATIC char *loadmemory(char *at, const char *str, OSList* log_msg)
             return (NULL);
         }
 
-        strncat(at, str, strsize);
+        strncat(at, str, strsize + 1);
         at[finalsize - 1] = '\0';
 
         return (at);

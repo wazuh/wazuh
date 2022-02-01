@@ -451,7 +451,7 @@ int is_file(char *file_name)
     DIR     *dp = NULL;
 
     if (!file_name) {
-        mterror(ARGV0, "RK: Invalid file name: %s!", file_name);
+        mterror(ARGV0, "RK: Invalid file name: NULL!");
         return ret;
     }
 

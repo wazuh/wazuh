@@ -877,7 +877,8 @@ char *_loadmemory(char *at, char *str, OSList* log_msg)
         size_t strsize = 0;
         if ((strsize = strlen(str)) < OS_SIZE_1024) {
             os_calloc(strsize + 1, sizeof(char), at);
-            strncpy(at, str, strsize);
+            memcpy(at, str, strsize);
+            at[strsize] = '\0';
             return (at);
         } else {
             smerror(log_msg, SIZE_ERROR, str);
@@ -898,7 +899,7 @@ char *_loadmemory(char *at, char *str, OSList* log_msg)
             merror(MEM_ERROR, errno, strerror(errno));
             return (NULL);
         }
-        strncat(at, str, strsize);
+        strncat(at, str, strsize + 1);
         at[finalsize - 1] = '\0';
 
         return (at);

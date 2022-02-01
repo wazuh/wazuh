@@ -514,8 +514,10 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
             f_sum[0]->sum[0] = '\0';
             merror("Accessing file '%s'", merged);
-        } else {
-            strncpy(f_sum[0]->sum, md5sum, 32);
+        }
+        else{
+            strncpy(f_sum[0]->sum, md5sum, 33);
+            f_sum[0]->sum[32] = '\0';
             os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
         }
 
@@ -532,7 +534,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
             *_f_sum = f_sum;
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-            strncpy(f_sum[f_size]->sum, md5sum, 32);
+            strncpy(f_sum[f_size]->sum, md5sum, 33);
+            f_sum[f_size]->sum[32] = '\0';
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
             f_sum[f_size + 1] = NULL;
 
@@ -607,7 +610,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
                 os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
                 *_f_sum = f_sum;
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-                strncpy(f_sum[f_size]->sum, md5sum, 32);
+                strncpy(f_sum[f_size]->sum, md5sum, 33);
+                f_sum[f_size]->sum[32] = '\0';
                 os_strdup(files[i], f_sum[f_size]->name);
 
                 if (create_merged) {
@@ -632,7 +636,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             f_sum[0]->sum[0] = '\0';
         }
 
-        strncpy(f_sum[0]->sum, md5sum, 32);
+        strncpy(f_sum[0]->sum, md5sum, 33);
+        f_sum[0]->sum[32] = '\0';
         os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
     }
 }
@@ -1115,7 +1120,8 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
         if (f_sum) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    strncpy(group, groups[i]->name, OS_SIZE_65536);
+                    strncpy(group, groups[i]->name, OS_SIZE_65536 - 1);
+                    group[OS_SIZE_65536 - 1] = '\0';
                     return groups[i];
                 }
             }
@@ -1134,7 +1140,7 @@ STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, 
         if (f_sum) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    strncpy(multigroup, multi_groups[i]->name, OS_SIZE_65536);
+                    snprintf(multigroup, OS_SIZE_65536, "%s", multi_groups[i]->name);
                     return multi_groups[i];
                 }
             }

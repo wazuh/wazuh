@@ -57,10 +57,9 @@ void check_rc_if()
 {
     int _fd, _errors = 0, _total = 0;
     struct ifreq tmp_str[16];
-
+    const int max_if = sizeof(tmp_str)/sizeof(struct ifreq);
+    int index = 0;
     struct ifconf _if;
-    struct ifreq *_ir;
-    struct ifreq *_ifend;
     struct ifreq _ifr;
 
     _fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -79,12 +78,9 @@ void check_rc_if()
         return;
     }
 
-    _ifend = (struct ifreq *) (void *) ((char *)tmp_str + _if.ifc_len);
-    _ir = tmp_str;
-
     /* Loop over all interfaces */
-    for (; _ir < _ifend; _ir++) {
-        strncpy(_ifr.ifr_name, _ir->ifr_name, sizeof(_ifr.ifr_name));
+    for (index = 0; index < max_if; index++) {
+        memcpy(_ifr.ifr_name, tmp_str[index].ifr_name, sizeof(_ifr.ifr_name));
 
         /* Get information from each interface */
         if (ioctl(_fd, SIOCGIFFLAGS, (char *)&_ifr) == -1) {
@@ -108,6 +104,7 @@ void check_rc_if()
             _errors++;
         }
     }
+
     close(_fd);
 
     if (_errors == 0) {

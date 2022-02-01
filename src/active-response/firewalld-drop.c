@@ -107,7 +107,8 @@ int main (int argc, char **argv) {
                 cJSON_Delete(input_json);
                 return OS_INVALID;
             }
-            strncpy(fw_cmd, fw_cmd_path, COMMANDSIZE_4096 - 1);
+            strncpy(fw_cmd, fw_cmd_path, COMMANDSIZE_4096);
+            fw_cmd[COMMANDSIZE_4096 - 1] = '\0';
         } else {
             strncpy(fw_cmd, fw_cmd_tmp, COMMANDSIZE_4096 - 1);
         }

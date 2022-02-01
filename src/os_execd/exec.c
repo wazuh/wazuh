@@ -69,7 +69,13 @@ int ReadExecConfig()
         tmp_str += 3;
 
         /* Set the name */
-        strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
+        if (strlen(str_pt) <= OS_FLSIZE) {
+            strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
+        }
+        else {
+            memcpy(exec_names[exec_size], str_pt, OS_FLSIZE);
+        }
+
         exec_names[exec_size][OS_FLSIZE] = '\0';
 
         str_pt = tmp_str;

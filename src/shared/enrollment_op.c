@@ -39,7 +39,7 @@ static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
+static int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const char* sender_ip, const int use_src_ip);
 static void w_enrollment_concat_key(char *buff, keyentry* key);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
@@ -281,7 +281,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
 
-    if (w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
+    if (w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
@@ -535,7 +535,7 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
  * @retval 0 on success
  * @retval -1 if ip is invalid
  */
-static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip) {
+static int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const char* sender_ip, const int use_src_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
     if(sender_ip && !use_src_ip) { // Force an IP
@@ -543,7 +543,7 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const i
         if (OS_IsValidIP(sender_ip, NULL)) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
-            strncat(buff,opt_buf,254);
+            strncat(buff,opt_buf, size_buff);
         } else {
             merror("Invalid IP address provided for sender IP.");
             return -1;

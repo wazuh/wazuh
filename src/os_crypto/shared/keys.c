@@ -249,7 +249,8 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 
             *tmp_str = '\0';
             tmp_str++;
-            strncpy(id, valid_str, KEYSIZE - 1);
+            strncpy(id, valid_str, KEYSIZE);
+            id[KEYSIZE] = '\0';
 
             /* Update counter */
 

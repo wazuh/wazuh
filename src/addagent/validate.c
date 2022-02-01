@@ -42,11 +42,11 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     os_md5 md2;
     char str1[STR_SIZE + 1];
     char str2[STR_SIZE + 1];
-    char _id[9] = { '\0' };
+    char _id[12] = { '\0' };
     char buffer[KEYSIZE] = { '\0' };
 
     if (!id) {
-        snprintf(_id, 9, "%03d", ++keys->id_counter);
+        snprintf(_id, 12, "%03d", ++keys->id_counter);
         id = _id;
     }
     else {

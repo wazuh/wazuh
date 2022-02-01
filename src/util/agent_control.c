@@ -648,7 +648,7 @@ int main(int argc, char **argv)
             } else if (agent_id) {
                 printf("\n** Unable to run active response on all agents.\n");
             } else {
-                printf("\n** Unable to run active response on agent: %s\n", agent_id);
+                printf("\n** Unable to run active response on agent: NULL\n");
             }
 
             exit(1);

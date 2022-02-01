@@ -99,7 +99,8 @@ int main (int argc, char **argv) {
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;
             }
-            strncpy(iptables, iptables_path, COMMANDSIZE_4096 - 1);
+            strncpy(iptables, iptables_path, COMMANDSIZE_4096);
+            iptables[COMMANDSIZE_4096 - 1] = '\0';
         } else {
             strncpy(iptables, iptables_tmp, COMMANDSIZE_4096 - 1);
         }

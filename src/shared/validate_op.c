@@ -29,7 +29,7 @@
 
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
-static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
+static const char *__gethour(const char *str, char *ossec_hour, const int size_ossec_hour) __attribute__((nonnull));
 
 /**
  * @brief Convert the netmask from an integer value, valid from 0 to 128.
@@ -681,8 +681,9 @@ int OS_IsonTime(const char *time_str, const char *ossec_time)
  */
 #define RM_WHITE(x)while(*x == ' ')x++;
 
-static const char *__gethour(const char *str, char *ossec_hour)
+static const char *__gethour(const char *str, char *ossec_hour, const int size_ossec_hour)
 {
+    int bytes_written = 0;
     int _size = 0;
     int chour = 0;
     int cmin = 0;
@@ -733,7 +734,12 @@ static const char *__gethour(const char *str, char *ossec_hour)
         str++;
         if ((*str == 'm') || (*str == 'M')) {
             if (chour == 12) chour = 0;
-            snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
+            bytes_written = snprintf(ossec_hour, size_ossec_hour, "%02d:%02d", chour, cmin);
+
+            if (bytes_written + 1 > size_ossec_hour) {
+                return (NULL);
+            }
+
             str++;
             return (str);
         }
@@ -749,13 +755,23 @@ static const char *__gethour(const char *str, char *ossec_hour)
                 return (NULL);
             }
 
-            snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
+            bytes_written = snprintf(ossec_hour, size_ossec_hour, "%02d:%02d", chour, cmin);
+
+            if (bytes_written + 1 > size_ossec_hour) {
+                return (NULL);
+            }
+
             str++;
             return (str);
         }
 
     } else {
-        snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
+        bytes_written = snprintf(ossec_hour, size_ossec_hour, "%02d:%02d", chour, cmin);
+
+        if (bytes_written + 1 > size_ossec_hour) {
+            return (NULL);
+        }
+
         return (str);
     }
 
@@ -793,7 +809,7 @@ char *OS_IsValidTime(const char *time_str)
     }
 
     /* Get first hour */
-    time_str = __gethour(time_str, first_hour);
+    time_str = __gethour(time_str, first_hour, 7);
 
     if (!time_str) {
         return (NULL);
@@ -812,7 +828,7 @@ char *OS_IsValidTime(const char *time_str)
     RM_WHITE(time_str);
 
     /* Get second hour */
-    time_str = __gethour(time_str, second_hour);
+    time_str = __gethour(time_str, second_hour, 7);
     if (!time_str) {
         return (NULL);
     }

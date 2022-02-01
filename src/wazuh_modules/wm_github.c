@@ -305,7 +305,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                                 scan_finished = 1;
                             } else {
                                 memset(url, '\0', OS_SIZE_8192);
-                                strncpy(url, next_page, strlen(next_page));
+                                strncpy(url, next_page, OS_SIZE_8192 - 1);
                                 os_free(next_page);
                             }
                         } else {
