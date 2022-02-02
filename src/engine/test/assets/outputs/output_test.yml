@@ -1,0 +1,12 @@
+name: output_test
+check:
+  - decoded.queue: +exists
+  - decoded.location: +exists
+  - decoded.message: +exists
+  - alerted.queue: +exists
+  - alerted.location: +exists
+  - alerted.message: +exists
+
+outputs:
+  - file:
+      path: /tmp/filepath.txt
