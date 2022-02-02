@@ -190,8 +190,9 @@ public:
         std::string environment{this->m_routes[route].m_to};
         this->m_routes.erase(route);
 
-        if (find_if(this->m_routes.cbegin(), this->m_routes.cend(),
-                    [environment](auto r) { return r.second.m_to == environment; }) == this->m_routes.cend())
+        if (none_of(this->m_routes.cbegin(), this->m_routes.cend(),
+                   [environment](const auto& r)
+                   { return r.second.m_to == environment; }))
         {
             this->m_environments.erase(environment);
         }
@@ -212,7 +213,7 @@ public:
      *
      * @return const std::map<std::string, Route>
      */
-    const std::map<std::string, Route> routes() const noexcept
+    const std::map<std::string, Route> & routes() const noexcept
     {
         return this->m_routes;
     }

@@ -66,20 +66,9 @@ struct FakeBuilder
 
 using router_t = Router<FakeBuilder>;
 
-TEST(RouterTest, DefaultConstructor)
+TEST(RouterTest, Initializes)
 {
-    ASSERT_NO_THROW(router_t router);
-}
-
-TEST(RouterTest, Configures)
-{
-    router_t router;
-    ASSERT_NO_THROW(router.configure(FakeServer{documents_t{}}.m_output, FakeBuilder{}));
-}
-
-TEST(RouterTest, ConfiguresConstructor)
-{
-    ASSERT_NO_THROW(router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{}));
+    router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{});
 }
 
 TEST(RouterTest, AddRoute)
@@ -88,12 +77,10 @@ TEST(RouterTest, AddRoute)
     ASSERT_NO_THROW(router.add(
         "test", [](document_t d) { return true; }, "test_env"));
 
-    auto routes{router.routes()};
-    auto environments{router.environments()};
-    ASSERT_EQ(routes.size(), 1);
-    ASSERT_EQ(environments.size(), 1);
-    ASSERT_NO_THROW(routes.at("test"));
-    ASSERT_NO_THROW(environments.at("test_env"));
+    ASSERT_EQ(router.routes().size(), 1);
+    ASSERT_EQ(router.environments().size(), 1);
+    ASSERT_EQ(router.routes().count("test"), 1);
+    ASSERT_EQ(router.environments().count("test_env"), 1);
 }
 
 TEST(RouterTest, AddDuplicateRoute)
@@ -118,7 +105,7 @@ TEST(RouterTest, RemoveRoute)
 
 TEST(RouterTest, RemoveNonExistentRoute)
 {
-    router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{});
+    router_t router{FakeServer{documents_t{}}.m_output, FakeBuilder{}};
     ASSERT_THROW(router.remove("test"), invalid_argument);
 }
 
@@ -135,12 +122,12 @@ TEST(RouterTest, PassThroughSingleRoute)
         "event": 3
     })"),
     };
-    FakeBuilder builder(true);
+    FakeBuilder builder{true};
 
     documents_t expected;
     builder.m_subj.get_observable().subscribe([&expected](auto j) { expected.push_back(j); });
 
-    router_t router(FakeServer{input, true}.m_output, builder);
+    router_t router{FakeServer{input, true}.m_output, builder};
     router.add(
         "test", [](document_t j) { return true; }, "test");
 
