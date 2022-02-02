@@ -1,3 +1,5 @@
+# ----------------------------- Analysisd section -----------------------------
+
 # Script useful variables
 
 CONFIG_SRC_DIR=./analysisd/config
@@ -36,6 +38,8 @@ cp $DECODERS_SRC_DIR/* $DECODERS_DST_DIR
 # Start Wazuh
 
 systemctl start wazuh-manager.service
+
+sleep 5
 
 # Stop Wazuh manager
 

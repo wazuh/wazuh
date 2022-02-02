@@ -287,9 +287,6 @@ def check_processes(time, binary_list, host_name, csv_log_file):
                    StateData(state_file_type="remoted_state", path="/var/ossec/var/run/wazuh-remoted.state")]
 
     bin_data = {w_bin: dict(base_dict) for w_bin in binary_list}
-    print("Bind data: ")
-    print(bin_data)
-    print("")
 
     first_iteration = True
 
@@ -306,18 +303,9 @@ def check_processes(time, binary_list, host_name, csv_log_file):
 
             running_processes = [psutil.Process(x.pid) for x in
                                  filter(lambda x: x.name() in binary_list, psutil.process_iter())]
-            print("Running procs: ")
-            print(running_processes)
-            print("")
 
             for process in running_processes:
                 if process.is_running():
-                    print("Proc: ")
-                    print(process)
-                    print("")
-                    print("Dead Procs: ")
-                    print(dead_processes)
-                    print("")
                     if process.name() in dead_processes:
                         dead_processes.remove(process.name())
 
