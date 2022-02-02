@@ -63,6 +63,7 @@ _deps
 .history
 .ionide
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 # Support for Project snippet scope
 !.vscode/*.code-snippets
@@ -71,3 +72,9 @@ _deps
 _*.*pp
 =======
 >>>>>>> Fix gitignore
+=======
+
+# Test output files
+.log
+.csv
+>>>>>>> Stats monitoring script called on main acceptance test script and gitignore updated
