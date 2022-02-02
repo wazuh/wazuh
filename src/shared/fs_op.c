@@ -28,6 +28,7 @@
 #define OVERLAYFS   0x794c7630
 #define BTRFS       0x9123683E
 #define CIFS        0xFF534D42
+#define V9FS        0x01021997
 #define ST_NODEV    4
 #elif defined(__FreeBSD__)
 #define NFS         0x3a
@@ -54,6 +55,8 @@ const struct file_system_type skip_file_systems[] = {
     {.name="BTRFS", .f_type=BTRFS, .flag=1},
     {.name="AUFS", .f_type=AUFS, .flag=1},
     {.name="OVERLAYFS", .f_type=OVERLAYFS, .flag=1},
+    {.name="V9FS", .f_type=V9FS, .flag=1},
+
 #endif
     /*  The last entry must be name=NULL */
     {.name=NULL, .f_type=0, .flag=0}
