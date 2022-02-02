@@ -1,6 +1,10 @@
 # ----------------------------- Analysisd section -----------------------------
 
-# Script useful variables
+# Useful variables
+
+TEST_NAME=test
+
+STATS_MONITOR_POLL_TIME_SECS=0.1
 
 CONFIG_SRC_DIR=./analysisd/config
 CONFIG_DST_DIR=/var/ossec/etc
@@ -40,6 +44,17 @@ cp $DECODERS_SRC_DIR/* $DECODERS_DST_DIR
 systemctl start wazuh-manager.service
 
 sleep 5
+
+# Run stats collector script
+
+python3 ./utils/monitor.py -t $STATS_MONITOR_POLL_TIME_SECS -b wazuh-analysisd -n $TEST_NAME&;
+MONITOR_PID=$!
+
+# Test script
+
+# Stop stats collector script
+
+kill -INT $MONITOR_PID
 
 # Stop Wazuh manager
 
