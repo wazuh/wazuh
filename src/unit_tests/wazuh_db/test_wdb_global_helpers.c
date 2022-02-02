@@ -118,7 +118,7 @@ int teardown_wdb_global_helpers_add_agent(void **state) {
 
 int teardown_wdb_global_helpers(void **state) {
     test_mode = 0;
-
+    errno = 0;
     return 0;
 }
 
@@ -218,8 +218,6 @@ void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // reseting error number after last use
-    errno = 0;
     // profile database not found
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
