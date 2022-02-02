@@ -4,18 +4,18 @@
 #include <string>
 #include <thread>
 
-#include "argumentParser.hpp"
+#include "cliParser.hpp"
 
 using namespace std;
 
-namespace parser
+namespace cliparser
 {
     
-Parser::Parser(int argc, char *argv[]){
+CliParser::CliParser(int argc, char *argv[]){
     parse(argc,argv);
 }
 
-void Parser::parse(int argc, char *argv[]){
+void CliParser::parse(int argc, char *argv[]){
     argparse::ArgumentParser serverParser("server");
     serverParser.add_argument("--endpoint")
         .help("Endpoint configuration string")
@@ -37,11 +37,11 @@ void Parser::parse(int argc, char *argv[]){
     m_storage_path = serverParser.get("--file_storage");
 }
 
-string Parser::getEndpointConfig(){
+string CliParser::getEndpointConfig(){
     return m_endpoint_config;
 }
 
-string Parser::getStoragePath(){
+string CliParser::getStoragePath(){
     return m_storage_path;
 }
 
