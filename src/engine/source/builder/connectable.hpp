@@ -112,6 +112,16 @@ public:
     {
         return this->m_name;
     }
+
+    /**
+     * @brief Return internal subject
+     *
+     * @return rxcpp::subjects::subject<json::Document>
+     */
+    rxcpp::subjects::subject<json::Document> subject() const
+    {
+        return this->m_subj;
+    }
 };
 
 } // namespace builder::internals

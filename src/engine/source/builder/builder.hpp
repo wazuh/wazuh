@@ -111,6 +111,7 @@ private:
     }
 
 public:
+    Builder() = default;
     Builder(const C * catalog) : m_catalog(catalog){};
 
     /**
@@ -152,6 +153,12 @@ public:
         graph::visitLeaves<Con_t>(gRules, [&](auto leaf) { leaf->connect(gOutputs); });
 
         return gDecoders;
+    }
+
+    rxcpp::subjects::subject<Event_t> operator()(const std::string & environment)
+    {
+        pNode_t root = this->build(environment);
+        return root->m_value->subject();
     }
 };
 
