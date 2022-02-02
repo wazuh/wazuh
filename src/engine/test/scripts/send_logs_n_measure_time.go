@@ -20,17 +20,18 @@ func main() {
 	var conn net.Conn
 	var logFile string
 	var logMessage string
-	var loops uint
+	var loops int
 	var s_num int
 	var d_num int
 	var t_i time.Time
+	var t_g time.Time
 	var t_o time.Time
 	var acc int = 0
 	var err error
 
 	flag.StringVar(&logFile, "f", srcLogsFilePath, "Path to dataset of logs")
 	flag.StringVar(&logMessage, "m", "", "Only log")
-	flag.UintVar(&loops, "l", 1, "Number of times we send all the logs of the file")
+	flag.IntVar(&loops, "l", 1, "Number of times we send all the logs of the file")
 	flag.Parse()
 
 	conn = connectSockunix(sockPath)
@@ -46,6 +47,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("as.Open: %s", err)
 		}
+		s_num *= loops
 	}
 
 	if logMessage == "" {
@@ -56,13 +58,16 @@ func main() {
 		}
 		t_i = time.Now()
 
-		for i := uint(0); i < loops; i++ {
+		for i := int(0); i < loops; i++ {
 			j := 1000 * int(i+1)
 			for _, line := range lines {
 				sockQuery(conn, line, j)
 				j++
 			}
 		}
+
+		t_g = time.Now()
+
 	} else {
 		sockQuery(conn, logMessage, 000)
 	}
@@ -72,6 +77,7 @@ func main() {
 		log.Fatalf("as.Open: %s", err)
 	}
 
+	t_lc := time.Now()
 	acc = 0
 	for acc != s_num {
 		d_num, err = lineCounter(r)
@@ -83,8 +89,14 @@ func main() {
 	t_o = time.Now()
 
 	t_diff := t_o.Sub(t_i)
+	t_inge := t_g.Sub(t_i)
+	t_read := t_o.Sub(t_lc)
+	t_per_log := t_diff.Microseconds() / int64(acc)
 
-	fmt.Printf("Send-to-output elapsed time: %dns\n", t_diff.Nanoseconds())
+	fmt.Printf("Processing time per log: %dus\n", t_per_log)
+	fmt.Printf("Send ingestion elapsed time: %dus\n", t_inge.Microseconds())
+	fmt.Printf("Read output elapsed time: %dus\n", t_read.Microseconds())
+	fmt.Printf("Send-to-output elapsed time: %dus\n", t_diff.Microseconds())
 
 }
 
