@@ -1,0 +1,10 @@
+name: rule_test
+check:
+  - decoded.queue: +exists
+  - decoded.location: +exists
+  - decoded.message: +exists
+
+normalize:
+  - alerted.queue: alerted_queue
+  - alerted.location: alerted_location
+  - alerted.message: alerted_message

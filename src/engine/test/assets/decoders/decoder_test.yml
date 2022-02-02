@@ -1,0 +1,10 @@
+name: decoder_test
+check:
+  - queue: +exists
+  - location: +exists
+  - message: +exists
+
+normalize:
+  - decoded.queue: decoded_queue
+  - decoded.location: decoded_location
+  - decoded.message: decoded_message
