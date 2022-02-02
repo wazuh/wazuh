@@ -2706,12 +2706,26 @@ class AWSService(WazuhIntegration):
 class AWSInspector(AWSService):
     """
     Class for getting AWS Inspector logs
-    :param access_key: AWS access key id
-    :param secret_key: AWS secret access key
-    :param aws_profile: AWS profile
-    :param iam_role_arn: IAM Role
-    :param only_logs_after: Date after which obtain logs.
-    :param region: Region of service
+
+    Parameters
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role that will be assumed to use the service.
+    only_logs_after : str
+        Date after which obtain logs.
+    region : str
+        AWS region that will be used to fetch the events.
+
+    Attributes
+    ----------
+    sent_events : int
+        The number of events collected and sent to analysisd.
     """
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
@@ -2732,13 +2746,21 @@ class AWSInspector(AWSService):
         # max DB records for region
         self.retain_db_records = 5
         self.reparse = reparse
+        self.sent_events = 0
 
     def send_describe_findings(self, arn_list):
-        if len(arn_list) == 0:
-            debug('+++ There are not new events from {region} region'.format(region=self.inspector_region), 1)
-        else:
-            debug('+++ Processing new events from {region} region'.format(region=self.inspector_region), 1)
+        """
+        Collect and send to analysisd the requested findings.
+
+        Parameters
+        ----------
+        arn_list : list[str]
+            The ARN of the findings that should be requested to AWS and sent to analysisd.
+        """
+        if len(arn_list) != 0:
             response = self.client.describe_findings(findingArns=arn_list)['findings']
+            self.sent_events += len(response)
+            debug(f"+++ Processing {len(response)} events", 3)
             for elem in response:
                 self.send_msg(self.format_message(elem))
 
@@ -2764,26 +2786,38 @@ class AWSInspector(AWSService):
                                                                 scan_date=initial_date))
             last_scan = initial_date
 
-        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        date_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        if not self.only_logs_after or date_last_scan > (date_only_logs :=
+                                                         datetime.strptime(self.only_logs_after, "%Y%m%d")):
+            date_scan = date_last_scan
+        else:
+            date_scan = date_only_logs
         # get current time (UTC)
-        datetime_current = datetime.utcnow()
+        date_current = datetime.utcnow()
         # describe_findings only retrieves 100 results per call
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
-                                                                         {'beginDate': datetime_last_scan,
-                                                                          'endDate': datetime_current}})
+                                                                         {'beginDate': date_scan,
+                                                                          'endDate': date_current}})
+        debug(f"+++ Listing findings starting from {date_scan}", 2)
         self.send_describe_findings(response['findingArns'])
         # Iterate if there are more elements
         while 'nextToken' in response:
             response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
-                                                 filter={'creationTimeRange': {'beginDate': datetime_last_scan,
-                                                                               'endDate': datetime_current}})
+                                                 filter={'creationTimeRange': {'beginDate': date_scan,
+                                                                               'endDate': date_current}})
             self.send_describe_findings(response['findingArns'])
+
+        if self.sent_events:        
+            debug(f"+++ {self.sent_events} events collected and processed in {self.inspector_region}", 1)
+        else:
+            debug(f'+++ There are no new events in the "{self.inspector_region}" region', 1)
+
         # insert last scan in DB
         self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
                                                             service_name=self.service_name,
                                                             aws_account_id=self.account_id,
                                                             aws_region=self.inspector_region,
-                                                            scan_date=datetime_current))
+                                                            scan_date=date_current))
         # DB maintenance
         self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
                                                               service_name=self.service_name,
