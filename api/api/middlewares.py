@@ -64,7 +64,8 @@ async def unlock_ip(request, block_time):
 async def prevent_bruteforce_attack(request, attempts=5):
     """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
     global ip_stats, ip_block
-    if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
+    if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
+            request.method in {'GET', 'POST'}:
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
@@ -152,7 +153,8 @@ async def response_postprocessing(request, handler):
                                     type=ex.reason if ex.reason else '',
                                     detail=ex.text if ex.text else '')
     except (OAuthProblem, Unauthorized):
-        if request.path == '/security/user/authenticate' and request.method in ['GET', 'POST']:
+        if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
+                request.method in {'GET', 'POST'}:
             await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
             problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
         else:
