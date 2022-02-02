@@ -62,3 +62,7 @@ _deps
 # Ignore all local history of files
 .history
 .ionide
+
+# Test output files
+.log
+.csv
