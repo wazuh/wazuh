@@ -47,15 +47,15 @@ def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
         id_=agent['id'],
         error=WazuhError(1707)) for agent in non_eligible_agents]
 
-    wq = WazuhQueue(common.ARQUEUE)
-    eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
-    for agent_id in eligible_agents:
-        try:
-            wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
-            result.affected_items.append(agent_id)
-        except WazuhError as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    wq.close()
+    with WazuhQueue(common.ARQUEUE) as wq:
+        eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
+        for agent_id in eligible_agents:
+            try:
+                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhError as e:
+                result.add_failed_item(id_=agent_id, error=e)
+
     result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
