@@ -1,0 +1,8 @@
+decoders:
+  - decoder_test
+rules:
+  - rule_test
+filters:
+  - default_router_filter
+outputs:
+  - output_test
