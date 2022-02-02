@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Project settings
 project(wazuh-engine)
 
-set(ARGUMENT_PARSER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/argumentParser)
+set(CLI_PARSER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/cliParser)
 
 ####################################################################################################
 # Dependencies
@@ -30,10 +30,10 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 # Sources - Includes
 ####################################################################################################
 target_sources(main PRIVATE
-    ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}/argumentParser.cpp
+    ${CLI_PARSER_ENGINE_SOURCE_DIR}/cliParser.cpp
 )
 
 target_include_directories(main PUBLIC
-    ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}
-    ${argparse_headers}
+    ${CLI_PARSER_ENGINE_SOURCE_DIR}
+    ${argparse_headers}/include
 )
