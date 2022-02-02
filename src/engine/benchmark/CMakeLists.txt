@@ -14,11 +14,4 @@ CPMAddPackage(
    "BENCHMARK_ENABLE_TESTING Off"
 )
 
-# Add unit benchmarks here
-file(GLOB SOURCE_FILES ${BENCHMARK_SOURCE_DIR}/*.cpp)
-
-# Build benchmarks
-add_executable(unit_benchmarks ${SOURCE_FILES})
-target_link_libraries(unit_benchmarks benchmark::benchmark_main)
-
-add_subdirectory(${BENCHMARK_SOURCE_DIR}/router)
+add_subdirectory(${BENCHMARK_SOURCE_DIR}/rxcpp)
