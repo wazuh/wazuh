@@ -35,7 +35,7 @@ def exit_handler(signum, frame):
     main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Exit...')
 
     # Terminate cluster's child processes
-    pyDaemonModule.delete_child_pids('wazuh-clusterd', cluster_pid)
+    pyDaemonModule.delete_child_pids('wazuh-clusterd', cluster_pid, main_logger)
 
     # Remove cluster's pidfile
     pyDaemonModule.delete_pid('wazuh-clusterd', cluster_pid)
@@ -209,5 +209,5 @@ if __name__ == '__main__':
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
-        pyDaemonModule.delete_child_pids('wazuh-clusterd', pid)
+        pyDaemonModule.delete_child_pids('wazuh-clusterd', pid, main_logger)
         pyDaemonModule.delete_pid('wazuh-clusterd', pid)
