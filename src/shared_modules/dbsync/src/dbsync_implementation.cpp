@@ -75,8 +75,8 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
     }
 
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
-                                      json.at("data"),
                                       SyncRowQuery::getIgnoredColumns(json),
+                                      json.at("data"),
                                       callback,
                                       true);
 }
