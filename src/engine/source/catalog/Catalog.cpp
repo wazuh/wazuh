@@ -3,6 +3,15 @@
 
 using namespace catalog;
 
+void Catalog::setStorageDriver(std::unique_ptr<StorageDriverInterface> spStorageDriver)
+{
+    this->spStorageDriver = std::move(spStorageDriver);
+}
+
+Catalog::Catalog(Catalog && other) : Catalog{std::move(other.spStorageDriver)}
+{
+}
+
 std::optional<std::string> Catalog::validateJSON(rapidjson::Document & json, rapidjson::Document & schema) const
 {
 
