@@ -60,6 +60,7 @@ include_directories(
   ${BUILDER_OPERATIONS_ENGINE_SOURCE_DIR}
   ${BUILDER_TEST_SOURCE_DIR}
   ${ENGINE_SOURCE_DIR}/json
+  ${ENGINE_SOURCE_DIR}/graph
   ${rapidjson_headers}/include
   ${BUILDER_ENGINE_SOURCE_DIR}/json
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}
