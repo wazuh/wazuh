@@ -67,8 +67,7 @@ TCPEndpoint::TCPEndpoint(const std::string & config)
 
 void TCPEndpoint::run(void)
 {
-    std::thread t(&uvw::Loop::run, this->m_loop.get());
-    t.detach();
+    this->m_loop->run();
 }
 
 void TCPEndpoint::close(void)

@@ -9,6 +9,7 @@
 
 #include "Catalog.hpp"
 #include "builder.hpp"
+#include "catalog/storageDriver/disk/DiskStorage.hpp"
 #include "engineServer.hpp"
 #include "graph.hpp"
 #include "json.hpp"
@@ -19,10 +20,9 @@ using namespace std;
 int main(int argc, char * argv[])
 {
     // Build server first
-    // Fake server args
     // TODO: use argumentparser module
     vector<string> serverArgs{"tcp:localhost:5054"};
-
+    string test = "test string";
     engineserver::EngineServer server;
     try
     {
@@ -31,37 +31,54 @@ int main(int argc, char * argv[])
     catch (const exception & e)
     {
         // TODO: implement log with GLOG
-        cerr << "Engine error, got exception while building server: " << e.what() << endl;
+        cerr << "Engine error, got exception while configuring server: " << e.what() << endl;
         // TODO: handle if errors on close can happen
         // server.close();
         return 1;
     }
 
-    // TODO
-    // Get Catalog, needed to be injected on Builder
-    // Refactor catalog, storage drivers should not be exposed outside catalog
-    // Add default constructor to safe handle exceptions on initialization
-    // catalog::Catalog catalog{};
+    // hardcoded catalog storage driver
+    // TODO: use argparse module
+    string storagePath = "/home/bee/Projects/wazuh/repos/wazuh/src/engine/test/assets";
+    catalog::Catalog _catalog;
+    try
+    {
+        _catalog.setStorageDriver(make_unique<DiskStorage>(storagePath));
+    }
+    catch (const std::exception & e)
+    {
+        cerr << "Engine error, got exception while configuring catalog: " << e.what() << endl;
+        return 1;
+    }
 
-    // Get Builder, needed to be injected on Router
-    // TODO: Add default constructor to safe handle exceptions on initialization
-    // builder::Builder<catalog::Catalog> builder{catalog};
+    // Builder
+    const catalog::Catalog * catalogPtr = &_catalog;
+    builder::Builder<catalog::Catalog> _builder(catalogPtr);
 
     // Build router
-    // TODO: implement default constructor to handle exceptions and safe abort
-    // TODO: change handleRouter so instead of a function it receives an observable from server output
-    auto handlerRouter = [](rxcpp::subscriber<json::Document> s) {};
-    auto builderRouter = [](string s) { return rxcpp::subjects::subject<json::Document>{}; };
-    Router::Router<json::Document> router{handlerRouter, builderRouter};
+    // TODO: Integrate filter creation with builder and default route with catalog
+    router::Router<builder::Builder<catalog::Catalog>> router{server.output(), _builder};
 
-    // TODO: get router configuration (should have one by default?)
-    // TODO: safe handle exceptions
-    // router.add(defaultRoute);
+    try
+    {
+        // Default route
+        router.add(
+            "test_route",
+            [](auto j)
+            {
+                // TODO: check basic fields are present
+                return true;
+            },
+            "test_environment");
+    }
+    catch (const std::exception & e)
+    {
+        cerr << "Engine error, got exception while building default route: " << e.what() << endl;
+        return 1;
+    }
 
-    // At this points all submodules are built and linked (Router building links)
-    // Start server
-
-    // Currently launches detached thread
+    // main loop is the server run
+    // TODO: implemented multiple endpoints listening, only implemented tcp
     server.run();
 
     return 0;
