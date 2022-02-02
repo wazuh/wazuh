@@ -875,4 +875,25 @@ InsertQuery& InsertQuery::reset()
     return *this;
 }
 
+std::set<std::string> SyncRowQuery::getIgnoredColumns(const nlohmann::json &js)
+{
+    std::set<std::string> result;
+    auto it { js.find("options") };
+    if (it != js.end())
+    {
+        auto ignored { it->find("ignored") };
+        if (ignored != it->end())
+        {
+            if (ignored->is_array())
+            {
+                for (const auto &column : *ignored)
+                {
+                    result.insert(std::string(column));
+                }
+            }
+        }
+    }
+    return result;
+}
+
 
