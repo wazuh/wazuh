@@ -14,6 +14,7 @@
 #include "graph.hpp"
 #include "json.hpp"
 #include "router.hpp"
+#include "cliParser.hpp"
 
 using namespace std;
 
@@ -21,7 +22,8 @@ int main(int argc, char * argv[])
 {
     // Build server first
     // TODO: use argumentparser module
-    vector<string> serverArgs{"tcp:localhost:5054"};
+    cliparser::CliParser cliInput(argc, argv);
+    vector<string> serverArgs{cliInput.getEndpointConfig()};
     string test = "test string";
     engineserver::EngineServer server;
     try
@@ -39,7 +41,7 @@ int main(int argc, char * argv[])
 
     // hardcoded catalog storage driver
     // TODO: use argparse module
-    string storagePath = "/home/bee/Projects/wazuh/repos/wazuh/src/engine/test/assets";
+    string storagePath = cliInput.getStoragePath();
     catalog::Catalog _catalog;
     try
     {
