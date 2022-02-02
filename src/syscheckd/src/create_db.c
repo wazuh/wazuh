@@ -75,7 +75,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 #ifndef WIN32
             cJSON_AddStringToObject(old_attributes, "perm", data->perm);
 #else
-            cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
 #endif
         }
     }
@@ -305,12 +305,8 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         }
     }
 
-    char* tags = NULL;
-
-    tags = configuration->tag;
-
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
     }
 
     if (json_event != NULL) {
