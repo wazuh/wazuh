@@ -63,10 +63,7 @@ public:
      *
      * @param spStorageDriver
      */
-    void configure(std::unique_ptr<StorageDriverInterface> spStorageDriver)
-    {
-        this->spStorageDriver = std::move(spStorageDriver);
-    }
+    void setStorageDriver(std::unique_ptr<StorageDriverInterface> spStorageDriver);
 
     /**
      * @brief Create the catalog manager from the given driver to connect.
@@ -79,8 +76,10 @@ public:
      */
     Catalog(std::unique_ptr<StorageDriverInterface> spStorageDriver)
     {
-        this->configure(std::move(spStorageDriver));
+        this->setStorageDriver(std::move(spStorageDriver));
     }
+
+    Catalog(Catalog && other);
 
     /**
      * @brief Dump pending changes and freed driver storage.
