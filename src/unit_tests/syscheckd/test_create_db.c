@@ -610,10 +610,6 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
         // fim_json_event;
     }
 
-    expect_any_always(__wrap_fim_db_is_full, fim_sql);
-    will_return(__wrap_fim_db_is_full, false);
-    will_return_count(__wrap_fim_db_is_full, true, 2);
-
     will_return(__wrap_readdir, NULL);
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
@@ -1967,8 +1963,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     // Second scan
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, false);
 
     expect_string(__wrap_lstat, filename, "/boot");
     will_return(__wrap_lstat, &directory_buf);
@@ -2003,9 +1997,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         will_return(__wrap_fim_db_file_update, NULL);
         will_return(__wrap_fim_db_file_update, FIMDB_FULL);
     }
-
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, true);
 
     will_return(__wrap_readdir, NULL);
 
@@ -2078,9 +2069,6 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, true);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2152,9 +2140,6 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
     expect_function_call(__wrap_realtime_sanitize_watch_map);
-
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, true);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
@@ -2907,9 +2892,6 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
-
-    expect_value_count(__wrap_fim_db_is_full, fim_sql, syscheck.database, 2);
-    will_return_count(__wrap_fim_db_is_full, true, 2);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 

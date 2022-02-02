@@ -11,9 +11,9 @@
 
 #ifndef FIMDB_H
 #define FIMDB_H
+
 #include "fimCommonDefs.h"
 #include "commonDefs.h"
-
 
 #ifdef __cplusplus
 extern "C" {

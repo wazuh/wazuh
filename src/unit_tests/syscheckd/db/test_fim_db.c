@@ -2415,32 +2415,6 @@ void test_fim_db_get_entry_from_sync_msg_two_dots_subkey(void **state) {
 
 #endif
 
-/**********************************************************************************************************************\
- * fim_db_is_full()
-\**********************************************************************************************************************/
-static void test_fim_db_is_full_db_full(void **state) {
-    fdb_t fim_sql = { .full = true };
-    int res;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    res = fim_db_is_full(&fim_sql);
-
-    assert_int_equal(res, true);
-}
-
-static void test_fim_db_is_full_db_not_full(void **state) {
-    fdb_t fim_sql = { .full = false };
-    int res;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    res = fim_db_is_full(&fim_sql);
-
-    assert_int_equal(res, false);
-}
 
 /**********************************************************************************************************************\
  * main()
@@ -2589,9 +2563,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_two_dots_subkey, teardown_fim_entry),
 
 #endif
-        // fim_db_is_full
-        cmocka_unit_test(test_fim_db_is_full_db_full),
-        cmocka_unit_test(test_fim_db_is_full_db_not_full),
     };
     return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
 }

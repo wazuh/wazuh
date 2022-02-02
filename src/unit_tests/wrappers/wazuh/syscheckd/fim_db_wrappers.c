@@ -368,9 +368,3 @@ int __wrap_fim_db_file_update(fdb_t *fim_sql,
 
     return mock();
 }
-
-int __wrap_fim_db_is_full(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
