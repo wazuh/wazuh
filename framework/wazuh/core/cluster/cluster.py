@@ -258,7 +258,7 @@ def update_cluster_control_with_failed(failed_files, ko_files):
             ko_files['shared'].pop(f, None)
 
 
-def compress_files(name, list_path, cluster_control_json=None):
+def compress_files(name, list_path, cluster_control_json):
     """Create a compress file with cluster_control.json and the files listed in list_path.
 
     Iterate the list of files and groups them in a compressed file. If a file does not
@@ -287,8 +287,11 @@ def compress_files(name, list_path, cluster_control_json=None):
         file_to_remove : str
             Relative file path, used as the key in the cluster_control_json dict.
         """
-        if not cluster_control_json['missing'].pop(file_to_remove, None):
-            cluster_control_json['shared'].pop(file_to_remove, None)
+        try:
+            if not cluster_control_json['missing'].pop(file_to_remove, None):
+                cluster_control_json['shared'].pop(file_to_remove, None)
+        except (KeyError, TypeError):
+            pass
 
     zip_size = 0
     failed_files = []
@@ -321,8 +324,8 @@ def compress_files(name, list_path, cluster_control_json=None):
                         # Otherwise, remove it from cluster_control_json.
                         logger.warning('Maximum allowed zip size was exceeded so not all files will be compressed '
                                        'during this sync.')
-                        remove_from_cluster_control(file)
                         exceeded_size = True
+                        remove_from_cluster_control(file)
                 except zlib.error as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:

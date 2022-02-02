@@ -114,7 +114,7 @@
             "timeout_cluster_request": 20,
             "timeout_dapi_request": 200,
             "timeout_receiving_file": 120,
-            "max_zip_size": 524288000
+            "max_zip_size": 1073741824
         }
     },
 
