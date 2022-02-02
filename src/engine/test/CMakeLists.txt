@@ -29,4 +29,4 @@ gtest_discover_tests(unit_tests)
 
 
 add_subdirectory(${TEST_SOURCE_DIR}/catalog)
-add_subdirectory(${TEST_SOURCE_DIR}/argumentParser)
+add_subdirectory(${TEST_SOURCE_DIR}/cliParser)
