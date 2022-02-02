@@ -347,7 +347,7 @@ def check_agentd_started(response, agents_list):
         List of expected agents to be restarted.
     """
     timestamp_regex = re.compile(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d')
-    agentd_started_regex = re.compile(r'agentd.*Started')
+    agentd_started_regex = re.compile(r'agentd.+Started')
 
     def get_timestamp(log):
         """Get timestamp from log.
@@ -401,13 +401,14 @@ def check_agent_active_status(agents_list):
     agents_list : list
         List of expected agents to be restarted.
     """
+    active_agents_script_path = "/tools/print_active_agents.py"
     id_active_agents = []
     tries = 0
     while tries < 25:
         try:
             # Get active agents
-            output = subprocess.check_output("docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
-                                             "/tools/print_active_agents.py".split()).decode().strip()
+            output = subprocess.check_output(f"docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
+                                             f"{active_agents_script_path}".split()).decode().strip()
         except subprocess.SubprocessError as exc:
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
 
