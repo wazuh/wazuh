@@ -4,10 +4,10 @@
 #include <sstream>
 #include <string>
 
-#include "argumentParser.hpp"
+#include "cliParser.hpp"
 
 using namespace std;
-using namespace parser;
+using namespace cliparser;
 using namespace argparse;
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
@@ -106,7 +106,26 @@ TEST(ArgumentParserTests, ClassParser)
     argv[4] = "/var/ossec";
     int argc = 5;
 
-    Parser aux(argc, argv);
+    CliParser aux(argc, argv);
+
+    string endpoint_result = "tcp";
+    string path_result = "/var/ossec";
+
+    ASSERT_TRUE((endpoint_result.compare(aux.getEndpointConfig()) == 0) && (path_result.compare(aux.getStoragePath())== 0));
+}
+
+TEST(ArgumentParserTests, ClassParserReverse)
+{
+
+    char * argv[5];
+    argv[0] = "./server";
+    argv[1] = "--file_storage";
+    argv[2] = "/var/ossec";
+    argv[3] = "--endpoint";
+    argv[4] = "tcp";
+    int argc = 5;
+
+    CliParser aux(argc, argv);
 
     string endpoint_result = "tcp";
     string path_result = "/var/ossec";
@@ -122,7 +141,7 @@ TEST(ArgumentParserTests, ClassParserHelp)
     argv[1] = "--help";
     int argc = 2;
 
-    Parser aux(argc, argv);
+    CliParser aux(argc, argv);
 
     //ASSERT_THROW(Parser aux(argc, argv),std::exception);
     ASSERT_TRUE(true);
@@ -138,5 +157,5 @@ TEST(ArgumentParserTests, ClassParserFail)
     argv[3] = "--file_storage";
     int argc = 4;
 
-    ASSERT_THROW(Parser aux(argc, argv),std::exception);
+    ASSERT_THROW(CliParser aux(argc, argv),std::exception);
 }
