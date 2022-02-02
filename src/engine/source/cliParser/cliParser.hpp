@@ -1,5 +1,5 @@
-#ifndef _PARSER_H
-#define _PARSER_H
+#ifndef _CLI_PARSER_H
+#define _CLI_PARSER_H
 
 #include <algorithm>
 #include <chrono>
@@ -13,14 +13,14 @@
  * @brief Defines all parser functionality.
  *
  */
-namespace parser
+namespace cliparser
 {
 
 /**
  * @brief Parser is a class made to parse the command line input.
  *
  */
-class Parser
+class CliParser
 {
 
 private:
@@ -34,7 +34,7 @@ public:
      * @param argc Number of arguments passed.
      * @param argv List the arguments passed via console.
      */
-    Parser(int argc, char *argv[]);
+    CliParser(int argc, char *argv[]);
 
     /**
      * @brief Extracts the arguments saving them into the class variables.
@@ -62,4 +62,4 @@ public:
 
 } // namespace parser
 
-#endif // _PARSER_H
+#endif // _CLI_PARSER_H

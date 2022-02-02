@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 ####################################################################################################
 project(wazuh-engine)
 
-set(ARGUMENT_PARSER_TEST_SOURCE_DIR ${TEST_SOURCE_DIR}/argumentParser)
-set(ARGUMENT_PARSER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/argumentParser)
+set(CLI_PARSER_TEST_SOURCE_DIR ${TEST_SOURCE_DIR}/cliParser)
+set(CLI_PARSER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/cliParser)
 
 ####################################################################################################
 # Dependencies -- assuming cpm is available
@@ -46,9 +46,9 @@ FetchContent_GetProperties(
 ####################################################################################################
 include_directories(
   ${ENGINE_SOURCE_DIR}
-  ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}
-  ${ARGUMENT_PARSER_TEST_SOURCE_DIR}
-  ${ENGINE_SOURCE_DIR}/argumentParser
+  ${CLI_PARSER_ENGINE_SOURCE_DIR}
+  ${CLI_PARSER_TEST_SOURCE_DIR}
+  ${ENGINE_SOURCE_DIR}/cliParser
   ${argparse_headers}/include
 )
 
@@ -57,6 +57,6 @@ link_libraries(
   rxcpp
 )
 
-# Builder test
-add_executable(argument_parser_test ${ARGUMENT_PARSER_TEST_SOURCE_DIR}/argument_parser_test.cpp ${ARGUMENT_PARSER_ENGINE_SOURCE_DIR}/argumentParser.cpp)
-gtest_discover_tests(argument_parser_test)
+# CLI Parser test
+add_executable(cli_parser_test ${CLI_PARSER_TEST_SOURCE_DIR}/cli_parser_test.cpp ${CLI_PARSER_ENGINE_SOURCE_DIR}/cliParser.cpp)
+gtest_discover_tests(cli_parser_test)
