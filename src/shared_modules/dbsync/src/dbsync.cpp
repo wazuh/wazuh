@@ -881,7 +881,7 @@ std::set<std::string> SyncRowQuery::getIgnoredColumns(const nlohmann::json &js)
     auto it { js.find("options") };
     if (it != js.end())
     {
-        auto ignored { it->find("ignored") };
+        auto ignored { it->find("ignore") };
         if (ignored != it->end())
         {
             if (ignored->is_array())

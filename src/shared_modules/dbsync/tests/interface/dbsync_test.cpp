@@ -654,6 +654,36 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
     EXPECT_NE(0, dbsync_sync_row(handle, jsInsert2.get(), callbackEmpty));
 }
 
+TEST_F(DBSyncTest, syncRowIgnoreFields)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED,
+                                      nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
+                                          {"pid":5,"name":"System", "tid":101},
+                                          {"pid":6,"name":"System", "tid":102}])"))).Times(1);
+
+    const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
+                                                                  {"pid":5,"name":"System", "tid":101},
+                                                                  {"pid":6,"name":"System", "tid":102}]})"}; // Insert
+    const auto updateSqlStmt1{ R"({"table":"processes","options":{"ignore":["tid"]},"data":[{"pid":4,"name":"System", "tid":101}]})"};    // Update but ignore tid
+    const auto updateSqlStmt2{ R"({"table":"processes","options":{"ignore":["tid","name"]},"data":[{"pid":4,"name":"Systemmm", "tid":105}]})"};  // Update everything but also ignore everything
+
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateSqlStmt1) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };
+
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Expect a modified event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Expect a modified event
+}
+
+
 TEST_F(DBSyncTest, syncRowInvalidData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
