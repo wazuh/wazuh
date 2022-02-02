@@ -655,11 +655,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
 
         except exception.WazuhException as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
+            logger.error(f"Error synchronizing files: {e}")
             await self.send_request(command=b'syn_i_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
+            logger.error(f"Error synchronizing files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
