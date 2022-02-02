@@ -47,7 +47,7 @@ void FileItem::createFimEntry()
     m_fimEntry = std::unique_ptr<fim_entry, FimFileDataDeleter>(fim);
 }
 
-void FileItem::createJSON(bool old_data)
+void FileItem::createJSON()
 {
     nlohmann::json conf;
     nlohmann::json data;
@@ -73,7 +73,7 @@ void FileItem::createJSON(bool old_data)
     data["hash_sha256"] = m_sha256;
     data["mtime"] = m_time;
     conf["data"] = nlohmann::json::array({data});
-    if (old_data)
+    if (m_oldData)
     {
         conf["return_old_data"] = true;
     }

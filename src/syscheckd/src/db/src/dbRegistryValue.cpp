@@ -52,6 +52,11 @@ void RegistryValue::createJSON()
     data["type"] = m_type;
 
     conf["data"] = nlohmann::json::array({data});
+    if (m_oldData)
+    {
+        conf["return_old_data"] = true;
+    }
+
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 
 }

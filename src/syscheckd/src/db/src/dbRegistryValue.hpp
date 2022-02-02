@@ -34,13 +34,14 @@ struct FimRegistryValueDeleter
 class RegistryValue final : public DBItem
 {
     public:
-        RegistryValue(const fim_entry* const fim)
+        RegistryValue(const fim_entry* const fim, bool oldData=false)
             : DBItem(fim->registry_entry.value->name ? fim->registry_entry.value->name : ""
                      , fim->registry_entry.value->scanned
                      , fim->registry_entry.value->last_event
                      , fim->registry_entry.value->checksum
                      , fim->registry_entry.value->mode)
         {
+            m_oldData = oldData;
             m_path = fim->registry_entry.value->path ? fim->registry_entry.value->path : "";
             m_arch = fim->registry_entry.value->arch;
             m_size = fim->registry_entry.value->size;
@@ -78,6 +79,7 @@ class RegistryValue final : public DBItem
         };
 
     private:
+        bool                                                m_oldData;
         unsigned int                                        m_size;
         unsigned int                                        m_type;
         std::string                                         m_path;

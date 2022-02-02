@@ -44,13 +44,14 @@ struct FimFileDataDeleter
 class FileItem final : public DBItem
 {
     public:
-        FileItem(const fim_entry* const fim, bool old_data=false)
+        FileItem(const fim_entry* const fim, bool oldData=false)
             : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path
                      , fim->file_entry.data->scanned
                      , fim->file_entry.data->last_event
                      , fim->file_entry.data->checksum[0] == '\0' ? "" : fim->file_entry.data->checksum
                      , fim->file_entry.data->mode)
         {
+            m_oldData = oldData;
             m_options = fim->file_entry.data->options;
             m_time = fim->file_entry.data->mtime;
             m_size = fim->file_entry.data->size;
@@ -65,7 +66,7 @@ class FileItem final : public DBItem
             m_sha256 = fim->file_entry.data->hash_sha256[0] == '\0' ? "" : fim->file_entry.data->hash_sha256;
             m_uid = fim->file_entry.data->uid == NULL ? 0 : std::atoi(fim->file_entry.data->uid);
             m_username = fim->file_entry.data->user_name == NULL ? "" : fim->file_entry.data->user_name;
-            createJSON(old_data);
+            createJSON();
             createFimEntry();
         };
 
@@ -109,6 +110,7 @@ class FileItem final : public DBItem
         unsigned int                                    m_size;
         unsigned long int                               m_dev;
         unsigned long int                               m_inode;
+        bool                                            m_oldData;
         time_t                                          m_time;
         std::string                                     m_attributes;
         std::string                                     m_groupname;
@@ -121,6 +123,6 @@ class FileItem final : public DBItem
         std::unique_ptr<nlohmann::json>                 m_statementConf;
 
         void createFimEntry();
-        void createJSON(bool old_data=false);
+        void createJSON();
 };
 #endif //_FILEITEM_HPP

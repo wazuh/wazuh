@@ -43,13 +43,14 @@ struct FimRegistryKeyDeleter
 class RegistryKey final : public DBItem
 {
     public:
-        RegistryKey(const fim_entry* const fim)
+        RegistryKey(const fim_entry* const fim, bool old_data=false)
             : DBItem(std::string(fim->registry_entry.key->path)
                      , fim->registry_entry.key->scanned
                      , fim->registry_entry.key->last_event
                      , fim->registry_entry.key->checksum
                      , FIM_SCHEDULED)
         {
+            m_oldData = old_data;
             m_arch = fim->registry_entry.key->arch;
             m_gid = std::atoi(fim->registry_entry.key->gid);
             m_uid = std::atoi(fim->registry_entry.key->uid);
@@ -87,6 +88,7 @@ class RegistryKey final : public DBItem
         };
 
     private:
+        bool                                                m_oldData;
         int                                                 m_arch;
         int                                                 m_gid;
         int                                                 m_uid;

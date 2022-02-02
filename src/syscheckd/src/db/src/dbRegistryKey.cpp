@@ -57,6 +57,11 @@ void RegistryKey::createJSON()
     data["group_name"] = m_groupname;
     data["mtime"] = m_time;
     conf["data"] = nlohmann::json::array({data});
+    if (m_oldData)
+    {
+        conf["return_old_data"] = true;
+    }
+
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 
 }
