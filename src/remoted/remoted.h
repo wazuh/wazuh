@@ -215,7 +215,6 @@ extern int response_timeout;
 extern int INTERVAL;
 extern rlim_t nofile;
 extern int guess_agent_group;
-extern int group_data_flush;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;
