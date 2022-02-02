@@ -661,20 +661,21 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
     ASSERT_NE(nullptr, handle);
 
     CallbackMock wrapper;
-    EXPECT_CALL(wrapper, callbackMock(INSERTED,
-                                      nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
-                                          {"pid":5,"name":"System", "tid":101},
-                                          {"pid":6,"name":"System", "tid":102}])"))).Times(1);
+    auto insertionQuery = InsertQuery::builder().table("processes")
+                                                .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100})"))
+                                                .data(nlohmann::json::parse(R"({"pid":5,"name":"System", "tid":101})"))
+                                                .data(nlohmann::json::parse(R"({"pid":6,"name":"System", "tid":102})"));
+    auto updateQuery1 = SyncRowQuery::builder().table("processes")
+                                                .ignoreColumn("tid")
+                                                .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":101})"));
+    auto updateQuery2 = SyncRowQuery::builder().table("processes")
+                                                .ignoreColumn("tid")
+                                                .ignoreColumn("name")
+                                                .data(nlohmann::json::parse(R"({"pid":4,"name":"Systemmm", "tid":105})"));
 
-    const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
-                                                                  {"pid":5,"name":"System", "tid":101},
-                                                                  {"pid":6,"name":"System", "tid":102}]})"}; // Insert
-    const auto updateSqlStmt1{ R"({"table":"processes","options":{"ignore":["tid"]},"data":[{"pid":4,"name":"System", "tid":101}]})"};    // Update but ignore tid
-    const auto updateSqlStmt2{ R"({"table":"processes","options":{"ignore":["tid","name"]},"data":[{"pid":4,"name":"Systemmm", "tid":105}]})"};  // Update everything but also ignore everything
-
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateSqlStmt1) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
 
     callback_data_t callbackData { callback, &wrapper };
 

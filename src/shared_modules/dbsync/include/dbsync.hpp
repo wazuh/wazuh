@@ -366,9 +366,9 @@ class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
         // LCOV_EXCL_STOP
 
         /**
-         * @brief Set data to be inserted.
+         * @brief Set data to be updated.
          *
-         * @param data Data to be inserted.
+         * @param data Data to be updated.
          */
         SyncRowQuery & data(const nlohmann::json& data);
 
@@ -377,7 +377,7 @@ class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
          *
          * @param column Name of the column to be ignored.
          */
-        SyncRowQuery & ignoreColumn(const std::string column);
+        SyncRowQuery & ignoreColumn(const std::string &column);
 
         /**
          * @brief Reset all data to be inserted.
