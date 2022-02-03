@@ -64,5 +64,5 @@ _deps
 .ionide
 
 # Test output files
-.log
-.csv
+*.log
+*.csv
