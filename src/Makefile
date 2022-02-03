@@ -2352,7 +2352,7 @@ endif
 clean-deps:
 	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR)
 
-clean-internals: clean-unit-tests clean-windows
+clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
 	rm -f $(BUILD_AGENT)
 	rm -f $(BUILD_LIBS)
