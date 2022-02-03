@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import binascii
+import hashlib
 import json
 import logging
 import re
@@ -9,15 +10,17 @@ from base64 import b64decode
 
 from aiohttp.abc import AbstractAccessLogger
 from pythonjsonlogger import jsonlogger
+
 from wazuh.core.wlogging import WazuhLogger
 
-from api.configuration import api_conf
-
-# compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
+# Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
+
+# Run_as login endpoint path
+RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
 
 
 class AccessLogger(AbstractAccessLogger):
@@ -25,7 +28,7 @@ class AccessLogger(AbstractAccessLogger):
     Define the log writter used by aiohttp.
     """
 
-    def custom_logging(self, user, remote, method, path, query, body, time, status):
+    def custom_logging(self, user, remote, method, path, query, body, time, status, hash_auth_context=''):
         """Provide the log entry structure depending on the logging format.
 
         Parameters
@@ -46,15 +49,17 @@ class AccessLogger(AbstractAccessLogger):
             Required time to compute the request.
         status : int
             Status code of the request.
+        hash_auth_context : str, optional
+            Hash representing the authorization context. Default: ''
         """
 
         self.logger.info(f'{user} '
+                         f'{f"({hash_auth_context}) " if hash_auth_context else ""}'
                          f'{remote} '
                          f'"{method} {path}" '
                          f'with parameters {json.dumps(query)} and body {json.dumps(body)} '
                          f'done in {time:.3f}s: {status}',
-                         extra={'log_type': 'log'}
-                         )
+                         extra={'log_type': 'log'})
 
         self.logger.info({'user': user,
                           'ip': remote,
@@ -64,9 +69,17 @@ class AccessLogger(AbstractAccessLogger):
                           'body': body,
                           'time': f'{time:.3f}s',
                           'status_code': status
-                          },
-                         extra={'log_type': 'json'}
-                         )
+                          } if not hash_auth_context else
+                         {'user': user,
+                          'hash_auth_context': hash_auth_context,
+                          'ip': remote,
+                          'http_method': method,
+                          'uri': f'{method} {path}',
+                          'parameters': query,
+                          'body': body,
+                          'time': f'{time:.3f}s',
+                          'status_code': status},
+                         extra={'log_type': 'json'})
 
     def log(self, request, response, time):
         query = dict(request.query)
@@ -77,6 +90,7 @@ class AccessLogger(AbstractAccessLogger):
             body['password'] = '****'
         if 'key' in body and '/agents' in request.path:
             body['key'] = '****'
+
         # With permanent redirect, not found responses or any response with no token information,
         # decode the JWT token to get the username
         user = request.get('user', '')
@@ -86,15 +100,17 @@ class AccessLogger(AbstractAccessLogger):
             except (KeyError, IndexError, binascii.Error):
                 user = UNKNOWN_USER_STRING
 
-        self.custom_logging(user,
-                            request.remote,
-                            request.method,
-                            request.path,
-                            query,
-                            body,
-                            time,
-                            response.status
-                            )
+        # Get or create authorization context hash
+        hash_auth_context = ''
+        # Get hash from token information
+        if 'token_info' in request:
+            hash_auth_context = request['token_info'].get('hash_auth_context', '')
+        # Create hash if run_as login
+        if not hash_auth_context and request.path == RUN_AS_LOGIN_ENDPOINT:
+            hash_auth_context = hashlib.blake2b(json.dumps(body).encode(), digest_size=16).hexdigest()
+
+        self.custom_logging(user, request.remote, request.method, request.path, query, body, time, response.status,
+                            hash_auth_context=hash_auth_context)
 
 
 class APILogger(WazuhLogger):
@@ -137,6 +153,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     """
     Define the custom JSON log formatter used by wlogging.
     """
+
     def add_fields(self, log_record, record, message_dict):
         """Implement custom logic for adding fields in a log entry.
 
@@ -154,7 +171,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
             record.message = {
                 'type': 'request',
                 'payload': message_dict
-                }
+            }
         else:
             # Traceback handling
             traceback = message_dict.get('exc_info')
@@ -162,13 +179,13 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
                 record.message = {
                     'type': 'error',
                     'payload': f'{record.message}. {traceback}'
-                    }
+                }
             else:
                 # Plain text messages
                 record.message = {
                     'type': 'informative',
                     'payload': record.message
-                    }
+                }
         log_record['timestamp'] = self.formatTime(record, self.datefmt)
         log_record['levelname'] = record.levelname
         log_record['data'] = record.message
