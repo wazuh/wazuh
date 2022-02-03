@@ -112,7 +112,7 @@ private:
 
 public:
     Builder() = default;
-    Builder(const C * catalog) : m_catalog(catalog){};
+    Builder(const C & catalog) : m_catalog(& catalog){};
 
     /**
      * @brief An environment might have decoders, rules, filters and outputs,

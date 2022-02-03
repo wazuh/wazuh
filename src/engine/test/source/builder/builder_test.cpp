@@ -11,32 +11,28 @@
 TEST(Builder, EnvironmentSingleDecoder)
 {
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_1");
 }
 
 TEST(Builder, EnvironmentSingleDecoderSingleRule)
 {
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_2");
 }
 
 TEST(Builder, EnvironmentSingleDecoderSingleRuleSingleFilter)
 {
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_3");
 }
 
 TEST(Builder, EnvironmentOneofEachAsset)
 {
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_4");
 }
 
@@ -76,8 +72,7 @@ TEST(Builder, EnvSingleDecoderProcess)
 
     // Build graph
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_1");
     graph::visitLeaves<Con_t>(root, [&](auto leaf) { leaf->connect(pDestNode); });
 
@@ -157,8 +152,7 @@ TEST(Builder, EnvironmentOneofEachAssetProcess)
 
     // Build graph
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_4");
     graph::visitLeaves<Con_t>(root, [&](auto leaf) { leaf->connect(pDestNode); });
 
@@ -223,8 +217,7 @@ TEST(Builder, Environment5)
 
     // Build graph
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_5");
     graph::visitLeaves<Con_t>(root, [&](auto leaf) { leaf->connect(pDestNode); });
 
@@ -288,8 +281,7 @@ TEST(Builder, Environment6)
 
     // Build graph
     FakeCatalog fCatalog;
-    const FakeCatalog *fCatalogPtr = &fCatalog;
-    auto builder = builder::Builder<FakeCatalog>(fCatalogPtr);
+    auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_6");
     graph::visitLeaves<Con_t>(root, [&](auto leaf) { leaf->connect(pDestNode); });
 

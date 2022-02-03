@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "glog/logging.h"
 
 #include "Catalog.hpp"
 #include "builder.hpp"
@@ -20,6 +21,7 @@ using namespace std;
 
 int main(int argc, char * argv[])
 {
+    google::InitGoogleLogging(argv[0]);
     vector<string> serverArgs;
     string storagePath;
     try
@@ -30,7 +32,8 @@ int main(int argc, char * argv[])
     }
     catch (const std::exception & e)
     {
-        cerr << "Error while parsing arguments: " << e.what() << endl;
+        LOG(ERROR) << "Error while parsing arguments: " << e.what() << endl;
+        //cerr << 
         return 1;
     }
 
@@ -42,7 +45,7 @@ int main(int argc, char * argv[])
     catch (const exception & e)
     {
         // TODO: implement log with GLOG
-        cerr << "Engine error, got exception while configuring server: " << e.what() << endl;
+        LOG(ERROR) << "Engine error, got exception while configuring server: " << e.what() << endl;
         // TODO: handle if errors on close can happen
         // server.close();
         return 1;
@@ -57,13 +60,12 @@ int main(int argc, char * argv[])
     }
     catch (const std::exception & e)
     {
-        cerr << "Engine error, got exception while configuring catalog: " << e.what() << endl;
+        LOG(ERROR) << "Engine error, got exception while configuring catalog: " << e.what() << endl;
         return 1;
     }
 
     // Builder
-    const catalog::Catalog * catalogPtr = &_catalog;
-    builder::Builder<catalog::Catalog> _builder(catalogPtr);
+    builder::Builder<catalog::Catalog> _builder(_catalog);
 
     // Build router
     // TODO: Integrate filter creation with builder and default route with catalog
@@ -83,7 +85,7 @@ int main(int argc, char * argv[])
     }
     catch (const std::exception & e)
     {
-        cerr << "Engine error, got exception while building default route: " << e.what() << endl;
+        LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
         return 1;
     }
 
