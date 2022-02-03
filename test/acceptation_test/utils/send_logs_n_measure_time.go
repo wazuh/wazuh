@@ -45,7 +45,7 @@ func main() {
 		r, _ := os.Open(srcLogsFilePath)
 		s_num, err = lineCounter(r)
 		if err != nil {
-			log.Fatalf("as.Open: %s", err)
+			log.Fatalf("os.Open(%s): %s", srcLogsFilePath, err)
 		}
 		s_num *= loops
 	}
@@ -74,7 +74,7 @@ func main() {
 
 	r, err := os.Open(archivesFilePath)
 	if err != nil {
-		log.Fatalf("as.Open: %s", err)
+		log.Fatalf("os.Open(%s): %s", archivesFilePath, err)
 	}
 
 	t_lc := time.Now()
