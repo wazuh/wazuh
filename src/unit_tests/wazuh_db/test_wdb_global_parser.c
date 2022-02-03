@@ -2059,15 +2059,16 @@ void test_wdb_parse_global_get_groups_integrity_hash_length_expected_fail(void *
 {
     int ret = OS_SUCCESS;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity small_hash";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
-    expect_string(__wrap__mdebug1, formatted_msg, "Hash hex-digest does not have the expected length. Expected (40) got (11)");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity small_hash");
+    // Expected hash should be OS_SHA1_HEXDIGEST_SIZE (40) characters long, and the received hash, "small_hash", is 10 characters long.
+    expect_string(__wrap__mdebug1, formatted_msg, "Hash hex-digest does not have the expected length. Expected (40) got (10)");
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Hash hex-digest does not have the expected length. Expected (40) got (11)");
+    assert_string_equal(data->output, "err Hash hex-digest does not have the expected length. Expected (40) got (10)");
     assert_int_equal(ret, OS_INVALID);
 }
 
