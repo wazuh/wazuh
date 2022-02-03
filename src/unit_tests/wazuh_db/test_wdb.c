@@ -746,14 +746,14 @@ void test_wdb_get_config(){
     cJSON *root = cJSON_GetObjectItem(ret, "wdb");
     assert_true(cJSON_IsObject(root));
 
-    cJSON *cfg_array = cJSON_GetObjectItem(root, "backup_settings_nodes");
+    cJSON *cfg_array = cJSON_GetObjectItem(root, "backup");
     assert_true(cJSON_IsArray(cfg_array));
 
     cJSON *cfg = 0;
     cJSON_ArrayForEach(cfg, cfg_array){
         assert_true(cJSON_IsObject(cfg));
 
-        cJSON *c0 = cJSON_GetObjectItem(cfg, "node_name");
+        cJSON *c0 = cJSON_GetObjectItem(cfg, "database");
         assert_true(cJSON_IsString(c0));
         cJSON *c1 = cJSON_GetObjectItem(cfg, "enabled");
         assert_true(cJSON_IsBool(c1));
