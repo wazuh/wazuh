@@ -82,3 +82,7 @@ long long __wrap_get_UTC_modification_time(const char *file_path);
 int64_t __wrap_w_ftell (FILE *x);
 
 int __wrap_w_fseek(FILE *x, int64_t pos, int mode);
+
+int __wrap_MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset);
+
+int __wrap_OS_MoveFile(const char *src, const char *dst);
