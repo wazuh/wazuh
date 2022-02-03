@@ -37,7 +37,7 @@ typedef struct _file_sum {
 } file_sum;
 
 typedef struct group_t {
-    char *group;
+    char *name;
     file_sum **f_sum;
     bool has_changed;
     bool exists;
@@ -47,38 +47,53 @@ static OSHash *invalid_files;
 
 /* Internal functions prototypes */
 
-/**
- * @brief Get agent group
- * @param agent_id. Agent id to assign a group
- * @param msg. Message from agent to process and validate current configuration files
- * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
- * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
- */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
 static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
-static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
-static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
-static void c_files(void);
+STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
+STATIC void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
+STATIC void c_files(void);
 
 /**
- * @brief Analize and generate groups
+ * @brief Analize and generate new groups, update existing groups
  */
-static void process_groups();
+STATIC void process_groups();
 
 /**
- * @brief Analize and generate multigroups
+ * @brief Analize and generate new multigroups, update existing multigroups
  */
-static void process_multi_groups();
+STATIC void process_multi_groups();
 
-/*
- *  Read queue/agent-groups and delete this group for all the agents.
- *  Returns 0 on success or -1 on error
+/**
+ * @brief Find a group structure from its name
+ * @param group Group name
+ * @return Group structure if exists, NULL otherwise
  */
-static int purge_group(char *group);
+STATIC group_t* find_group(const char *group);
 
-static group_t* find_group(const char *group);
-static group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]);
+/**
+ * @brief Find a multigroup structure from its name
+ * @param multigroup Multigroup name
+ * @return Multigroup structure if exists, NULL otherwise
+ */
+STATIC group_t* find_multi_group(const char *multigroup);
+
+/**
+ * @brief Find a group structure from a file name and md5
+ * @param file File name
+ * @param md5 MD5 of the file
+ * @param group Array to store the group name if exists
+ * @return Group structure if exists, NULL otherwise
+ */
+STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]);
+
+/**
+ * @brief Find a multigroup structure from a file name and md5
+ * @param file File name
+ * @param md5 MD5 of the file
+ * @param multigroup Array to store the multigroup name if exists
+ * @return Multigroup structure if exists, NULL otherwise
+ */
+STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]);
 
 /**
  * @brief Check if the file sum has changed
@@ -87,7 +102,22 @@ static group_t* find_group_from_file(const char * file, const char * md5, char g
  * @return true Changed
  * @return false Didn't change
  */
-static bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
+STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
+
+/**
+ * @brief Get agent group
+ * @param agent_id. Agent id to assign a group
+ * @param msg. Message from agent to process and validate current configuration files
+ * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
+ * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
+ */
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
+
+/*
+ *  Read queue/agent-groups and delete this group for all the agents.
+ *  Returns 0 on success or -1 on error
+ */
+static int purge_group(char *group);
 
 /* Groups structures and sizes */
 static group_t **groups;
@@ -333,7 +363,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     os_free(clean);
 }
 
-void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir) {
+/* Generate merged file for groups */
+STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
@@ -558,7 +589,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum, char * shared
 }
 
 /* Generate merged file for multigroups */
-void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
+STATIC void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     DIR *dp;
     char *group;
     char *save_ptr = NULL;
@@ -674,8 +705,8 @@ next:
     closedir(dp);
 }
 
-/* Create the structure with the files and checksums */
-static void c_files()
+/* Create/update the structure with the files and checksums */
+STATIC void c_files()
 {
     mdebug2("Updating shared files sums.");
 
@@ -694,7 +725,7 @@ static void c_files()
     mdebug2("End updating shared files sums.");
 }
 
-static void process_groups() {
+STATIC void process_groups() {
     DIR *dp;
     char ** subdir;
     struct dirent *entry = NULL;
@@ -714,14 +745,14 @@ static void process_groups() {
         }
 
         if (snprintf(path, PATH_MAX + 1, SHAREDCFG_DIR "/%s", entry->d_name) > PATH_MAX) {
-            merror("At c_files(): path too long.");
+            merror("At process_groups(): path too long.");
             break;
         }
 
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                mdebug1("At c_files() 1: Could not open directory '%s'", path);
+                mdebug1("At process_groups(): Could not open directory '%s'", path);
             }
             continue;
         }
@@ -731,29 +762,25 @@ static void process_groups() {
             // New group
             os_realloc(groups, (groups_size + 2) * sizeof(group_t *), groups);
             os_calloc(1, sizeof(group_t), groups[groups_size]);
-            groups[groups_size]->group = strdup(entry->d_name);
+            groups[groups_size]->name = strdup(entry->d_name);
             c_group(entry->d_name, subdir, &groups[groups_size]->f_sum, SHAREDCFG_DIR);
-            groups[groups_size]->has_changed = true;
+            groups[groups_size]->has_changed = false;
             groups[groups_size]->exists = true;
             groups[groups_size + 1] = NULL;
             groups_size++;
 
-        } else if (!group->f_sum) {
-            // Group without fsum
-            c_group(entry->d_name, subdir, &group->f_sum, SHAREDCFG_DIR);
-            group->has_changed = true;
-            group->exists = true;
-
         } else {
             file_sum **f_sum = NULL;
             if (c_group(entry->d_name, subdir, &f_sum, SHAREDCFG_DIR), f_sum) {
-                if (fsum_changed(group->f_sum, f_sum)) {
+                if (!group->f_sum || fsum_changed(group->f_sum, f_sum)) {
                     // Group has changed
-                    for (int i = 0; group->f_sum[i]; i++) {
-                        os_free(group->f_sum[i]->name);
-                        os_free(group->f_sum[i]);
+                    if (group->f_sum) {
+                        for (int i = 0; group->f_sum[i]; i++) {
+                            os_free(group->f_sum[i]->name);
+                            os_free(group->f_sum[i]);
+                        }
+                        os_free(group->f_sum);
                     }
-                    os_free(group->f_sum);
                     group->f_sum = f_sum;
                     group->has_changed = true;
                 } else {
@@ -778,15 +805,11 @@ static void process_groups() {
     return;
 }
 
-static void process_multi_groups() {
+STATIC void process_multi_groups() {
     DIR *dp;
     char ** subdir;
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
-    FILE *fp = NULL;
-    char groups_info[OS_SIZE_65536 + 1] = {0};
-    os_sha256 multi_group_hash;
-    char * _hash = NULL;
 
     dp = opendir(GROUPS_DIR);
 
@@ -796,20 +819,25 @@ static void process_multi_groups() {
     }
 
     while (entry = readdir(dp), entry) {
+        FILE *fp = NULL;
+        char groups_info[OS_SIZE_65536 + 1] = {0};
+        os_sha256 multi_group_hash;
+        char * _hash = NULL;
+
         // Skip "." and ".."
         if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
             continue;
         }
 
         if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
-            merror("At c_files(): path too long.");
+            merror("At process_multi_groups(): path too long.");
             break;
         }
 
         fp = fopen(path,"r");
 
         if (!fp) {
-            mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+            mdebug1("At process_multi_groups(): Could not open file '%s'",entry->d_name);
             continue;
         } else if (fgets(groups_info, OS_SIZE_65536, fp) != NULL) {
             // If it's not a multigroup, skip it
@@ -837,9 +865,6 @@ static void process_multi_groups() {
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
-
-        fclose(fp);
-        fp = NULL;
     }
 
     OSHashNode *my_node;
@@ -860,7 +885,7 @@ static void process_multi_groups() {
         }
 
         if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", data) > PATH_MAX) {
-            merror("At c_files(): path '%s' too long.",path);
+            merror("At process_multi_groups(): path too long.");
             os_free(key);
             os_free(data);
             break;
@@ -893,14 +918,24 @@ static void process_multi_groups() {
             }
         }
 
-        os_realloc(multi_groups, (multi_groups_size + 2) * sizeof(group_t *), multi_groups);
-        os_calloc(1, sizeof(group_t), multi_groups[multi_groups_size]);
-        multi_groups[multi_groups_size]->group = strdup(my_node->key);
-        multi_groups[multi_groups_size + 1] = NULL;
-        c_multi_group(key, &multi_groups[multi_groups_size]->f_sum, data);
-        free_strarray(subdir);
-        multi_groups_size++;
+        group_t *multigroup = NULL;
+        if (multigroup = find_multi_group(entry->d_name), !multigroup) {
+            // New multigroup
+            os_realloc(multi_groups, (multi_groups_size + 2) * sizeof(group_t *), multi_groups);
+            os_calloc(1, sizeof(group_t), multi_groups[multi_groups_size]);
+            multi_groups[multi_groups_size]->name = strdup(my_node->key);
+            c_multi_group(key, &multi_groups[multi_groups_size]->f_sum, data);
+            multi_groups[multi_groups_size]->has_changed = false;
+            multi_groups[multi_groups_size]->exists = true;
+            multi_groups[multi_groups_size + 1] = NULL;
+            multi_groups_size++;
 
+        } else {
+            // TODO
+
+        }
+
+        free_strarray(subdir);
         os_free(key);
         os_free(data);
     }
@@ -909,22 +944,30 @@ static void process_multi_groups() {
     return;
 }
 
-group_t* find_group(const char *group) {
+STATIC group_t* find_group(const char *group) {
     int i;
 
     for (i = 0; groups[i]; i++) {
-        if (!strcmp(groups[i]->group, group)) {
+        if (!strcmp(groups[i]->name, group)) {
             return groups[i];
         }
     }
-
-    // Group not found
     return NULL;
 }
 
-group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]) {
+STATIC group_t* find_multi_group(const char *multigroup) {
     int i;
-    int j;
+
+    for (i = 0; multi_groups[i]; i++) {
+        if (!strcmp(multi_groups[i]->name, multigroup)) {
+            return multi_groups[i];
+        }
+    }
+    return NULL;
+}
+
+STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]) {
+    int i, j;
     file_sum ** f_sum;
 
     for (i = 0; groups[i]; i++) {
@@ -933,18 +976,35 @@ group_t* find_group_from_file(const char * file, const char * md5, char group[OS
         if (f_sum) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    strncpy(group, groups[i]->group, OS_SIZE_65536);
+                    strncpy(group, groups[i]->name, OS_SIZE_65536);
                     return groups[i];
                 }
             }
         }
     }
-
-    // Group not found
     return NULL;
 }
 
-static bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
+STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]) {
+    int i, j;
+    file_sum ** f_sum;
+
+    for (i = 0; multi_groups[i]; i++) {
+        f_sum = multi_groups[i]->f_sum;
+
+        if (f_sum) {
+            for (j = 0; f_sum[j]; j++) {
+                if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
+                    strncpy(multigroup, multi_groups[i]->name, OS_SIZE_65536);
+                    return multi_groups[i];
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
     int size_old, size_new = 0;
 
     for (size_old = 0; old_sum[size_old]; size_old++);
@@ -973,10 +1033,108 @@ static bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
     return false;
 }
 
+/* look for agent group */
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
+{
+    char group[OS_SIZE_65536];
+    char *end;
+    agent_group *agt_group;
+    int ret = OS_INVALID;
+    char *message;
+    char *fmsg;
+
+    // Get agent group
+    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+        strncpy(group, agt_group->group, OS_SIZE_65536);
+        group[OS_SIZE_65536 - 1] = '\0';
+        set_agent_group(agent_id, group);
+    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
+        group[0] = '\0';
+    }
+    mdebug2("Agent '%s' group is '%s'", agent_id, group);
+
+    if (group[0]) {
+        os_strdup(group, *r_group);
+        return OS_SUCCESS;
+    }
+
+    // make a copy to keep original msg for read_controlmsg
+    os_strdup(msg, message);
+    fmsg = message;
+
+    // Skip agent-info and label data
+    if (message = strchr(message, '\n'), !message) {
+        merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
+        os_free(fmsg);
+        return OS_INVALID;
+    }
+
+    for (message++; (*message == '\"' || *message == '!' || *message == '#') && (end = strchr(message, '\n')); message = end + 1);
+
+    /* Parse message */
+    while (*message != '\0') {
+        char *md5;
+        char *file;
+
+        md5 = message;
+        file = message;
+
+        message = strchr(message, '\n');
+        if (!message) {
+            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
+            break;
+        }
+
+        *message = '\0';
+        message++;
+
+        // Skip labeled data
+        if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
+            continue;
+        }
+
+        file = strchr(file, ' ');
+        if (!file) {
+            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
+            break;
+        }
+
+        *file = '\0';
+        file++;
+
+        // If group was not got, guess it by matching sum
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
+
+        /* Lock mutex */
+        w_mutex_lock(&files_mutex);
+
+        if (!guess_agent_group || groups == NULL ||
+            !find_group_from_file(file, md5, group) ||
+            !find_multi_group_from_file(file, md5, group)) {
+            // If the group could not be guessed, set to "default"
+            // or if the user requested not to guess the group, through the internal
+            // option 'guess_agent_group', set to "default"
+            strncpy(group, "default", OS_SIZE_65536);
+        }
+
+        /* Unlock mutex */
+        w_mutex_unlock(&files_mutex);
+
+        set_agent_group(agent_id, group);
+        os_strdup(group, *r_group);
+        ret = OS_SUCCESS;
+        mdebug2("Group assigned: '%s'", group);
+        break;
+    }
+
+    os_free(fmsg);
+    return ret;
+}
+
 /* Send a file to the agent
  * Returns -1 on error
  */
-int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir)
+static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir)
 {
     int i = 0;
     size_t n = 0;
@@ -1063,102 +1221,6 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     return (0);
 }
 
-/* look for agent group */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
-{
-    char group[OS_SIZE_65536];
-    char *end;
-    agent_group *agt_group;
-    int ret = OS_INVALID;
-    char *message;
-    char *fmsg;
-
-    // Get agent group
-    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-        strncpy(group, agt_group->group, OS_SIZE_65536);
-        group[OS_SIZE_65536 - 1] = '\0';
-        set_agent_group(agent_id, group);
-    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
-        group[0] = '\0';
-    }
-    mdebug2("Agent '%s' group is '%s'", agent_id, group);
-
-    if (group[0]) {
-        os_strdup(group, *r_group);
-        return OS_SUCCESS;
-    }
-
-    // make a copy to keep original msg for read_controlmsg
-    os_strdup(msg, message);
-    fmsg = message;
-
-    // Skip agent-info and label data
-    if (message = strchr(message, '\n'), !message) {
-        merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-        os_free(fmsg);
-        return OS_INVALID;
-    }
-
-    for (message++; (*message == '\"' || *message == '!' || *message == '#') && (end = strchr(message, '\n')); message = end + 1);
-
-    /* Parse message */
-    while (*message != '\0') {
-        char *md5;
-        char *file;
-
-        md5 = message;
-        file = message;
-
-        message = strchr(message, '\n');
-        if (!message) {
-            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-            break;
-        }
-
-        *message = '\0';
-        message++;
-
-        // Skip labeled data
-        if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
-            continue;
-        }
-
-        file = strchr(file, ' ');
-        if (!file) {
-            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
-            break;
-        }
-
-        *file = '\0';
-        file++;
-
-        // If group was not got, guess it by matching sum
-        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
-
-        /* Lock mutex */
-        w_mutex_lock(&files_mutex);
-
-        if (!guess_agent_group || groups == NULL || !find_group_from_file(file, md5, group)) {
-            // If the group could not be guessed, set to "default"
-            // or if the user requested not to guess the group, through the internal
-            // option 'guess_agent_group', set to "default"
-            strncpy(group, "default", OS_SIZE_65536);
-        }
-
-        /* Unlock mutex */
-        w_mutex_unlock(&files_mutex);
-
-        set_agent_group(agent_id, group);
-        os_strdup(group, *r_group);
-        ret = OS_SUCCESS;
-        mdebug2("Group assigned: '%s'", group);
-        break;
-    }
-
-    os_free(fmsg);
-    return ret;
-}
-
 /* Read the available control message from the agent */
 static void read_controlmsg(const char *agent_id, char *msg, char *group)
 {
@@ -1182,15 +1244,18 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
-    group_t *aux = NULL;
-    if (aux = find_group(group), !aux || !aux->f_sum) {
-        /* Unlock mutex */
-        w_mutex_unlock(&files_mutex);
-        merror("No such group '%s' for agent '%s'", group, agent_id);
-        return;
-    } else {
-        f_sum = aux->f_sum;
+    group_t *aux = find_group(group);
+    if (!aux || !aux->f_sum) {
+        aux = find_multi_group(group);
+        if (!aux || !aux->f_sum) {
+            /* Unlock mutex */
+            w_mutex_unlock(&files_mutex);
+            merror("No such group '%s' for agent '%s'", group, agent_id);
+            return;
+        }
     }
+
+    f_sum = aux->f_sum;
 
     /* Parse message */
     while (*msg != '\0') {
@@ -1397,7 +1462,7 @@ void free_pending_data(pending_data_t *data) {
  *  Read queue/agent-groups and delete this group for all the agents.
  *  Returns 0 on success or -1 on error
  */
-int purge_group(char *group) {
+static int purge_group(char *group) {
 
     DIR *dp;
     char path[PATH_MAX + 1];
