@@ -139,7 +139,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                         merror("Failed to update global.db to version %d. The global.db was "
                                "restored to the original state.",
                                i + 1);
-                        wdb->enabled = true;
                     }
                     else {
                         merror("Failed to update global.db to version %d.", i + 1);
@@ -201,6 +200,7 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
+    wdb_leave(wdb);
     if (wdb_close(wdb, TRUE) != OS_INVALID) {
         unlink(path);
 
@@ -217,6 +217,8 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
 
         new_wdb = wdb_init(db, WDB_GLOB_NAME);
         wdb_pool_append(new_wdb);
+        w_mutex_lock(&new_wdb->mutex);
+        new_wdb->refcount++;
     }
 
     return new_wdb;
