@@ -17,10 +17,16 @@ int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
     return mock();
 }
 
-FIMDBErrorCode __wrap_fim_db_get_path(const char *file_path) {
+FIMDBErrorCode __wrap_fim_db_get_path(const char* file_path,
+                                     __attribute__((unused))callback_context_t callback) {
     check_expected(file_path);
 
     return mock();
+}
+
+void expect_fim_db_get_path(const char* path, int ret_val) {
+    expect_value(__wrap_fim_db_get_path, file_path, path);
+    will_return(__wrap_fim_db_get_path, ret_val);
 }
 
 void __wrap_fim_db_init(int storage,
@@ -62,8 +68,9 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
     return mock();
 }
 
-int __wrap_fim_db_remove_path(char *path) {
+int __wrap_fim_db_remove_path(const char *path) {
     check_expected(path);
+
     return mock_type(int);
 }
 
@@ -73,11 +80,6 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   __attribute__((unused)) int storage) {
     check_expected_ptr(fim_sql);
 
-    return mock();
-}
-
-int __wrap_fim_db_get_count_entries(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
     return mock();
 }
 
@@ -121,7 +123,7 @@ void expect_wrapper_fim_db_get_count_entries(const fdb_t *db, int ret) {
     will_return(__wrap_fim_db_get_count_entries, ret);
 }
 
-void expect_fim_db_remove_path(char *path, int ret_val) {
+void expect_fim_db_remove_path(const char *path, int ret_val) {
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
@@ -148,12 +150,15 @@ int __wrap_fim_db_file_inode_search(const unsigned long inode,
                                     __attribute__((unused)) callback_context_t callback) {
     check_expected(inode);
     check_expected(dev);
+    return mock_type(int);
 }
 
 void expect_fim_db_file_inode_search(const unsigned long inode,
-                                     const unsigned long dev) {
+                                     const unsigned long dev,
+                                     int retval) {
     expect_value(__wrap_fim_db_file_inode_search, inode, inode);
     expect_value(__wrap_fim_db_file_inode_search, dev, dev);
+    will_return(__wrap_fim_db_file_inode_search, retval);
 }
 
 int __wrap_fim_db_get_count_file_inode() {
