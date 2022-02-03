@@ -55,6 +55,7 @@ static int teardown_OSHash(void **state);
 /* setup/teardown */
 static int setup_group(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mwarn, formatted_msg);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
