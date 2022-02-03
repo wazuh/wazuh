@@ -146,12 +146,6 @@ def write_csv(data, target, log_file):
 
     if target == "binaries":
         csv_header = binaries_header
-    elif target == "analysisd_state":
-        csv_header = analysisd_header
-    elif target == "remoted_state":
-        csv_header = remoted_header
-    else:
-        csv_header = agentd_header
 
     if not isfile(log_file):
         header = True
@@ -180,38 +174,6 @@ def write_csv(data, target, log_file):
                         formatted_values.fd, formatted_values.read_ops, formatted_values.write_ops,
                         formatted_values.bytes_read, formatted_values.bytes_written, formatted_values.disk_usage,
                         formatted_values.uss))
-
-        elif target == "analysisd_state":
-            logger.info("Writing analysisd.state info to {}.".format(log_file))
-            log.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},".format(
-                get_timestamp(), data['total_events_decoded'], data['syscheck_events_decoded'],
-                data['syscheck_edps'], data['syscollector_events_decoded'], data['syscollector_edps'],
-                data['rootcheck_events_decoded'], data['rootcheck_edps'], data['sca_events_decoded'],
-                data['sca_edps'], data['hostinfo_events_decoded'], data['hostinfo_edps'],
-                data['winevt_events_decoded'], data['winevt_edps'], data['other_events_decoded'],
-                data['other_events_edps']))
-            log.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18}\n".format(
-                data['events_processed'], data['events_edps'], data['events_received'], data['events_dropped'],
-                100 * float(data['syscheck_queue_usage']), 100 * float(data['syscollector_queue_usage']),
-                100 * float(data['rootcheck_queue_usage']),
-                100 * float(data['sca_queue_usage']), 100 * float(data['hostinfo_queue_usage']),
-                100 * float(data['winevt_queue_usage']),
-                100 * float(data['event_queue_usage']), 100 * float(data['rule_matching_queue_usage']),
-                100 * float(data['alerts_queue_usage']),
-                100 * float(data['firewall_queue_usage']), 100 * float(data['statistical_queue_usage']),
-                100 * float(data['archives_queue_usage']),
-                data['alerts_written'], data['firewall_written'], data['fts_written'], ))
-        elif target == "remoted_state":
-            logger.info("Writing remoted.state info to {}.".format(log_file))
-            log.write("{0},{1},{2},{3},{4},{5},{6},{7},{8}\n".format(
-                get_timestamp(), data['queue_size'], data['total_queue_size'],
-                data['tcp_sessions'], data['evt_count'], data['ctrl_msg_count'],
-                data['discarded_count'], data['msg_sent'], data['recv_bytes']))
-        elif target == "agentd_state":
-            logger.info("Writing agentd.state info to {}.".format(log_file))
-            log.write("{0},{1},{2},{3},{4},{5},{6},\n".format(
-                get_timestamp(), data['status'], data['last_keepalive'],
-                data['last_ack'], data['msg_count'], data['msg_sent'], data['msg_buffer']))
 
 
 def compute_diff(check_results, process):
@@ -283,9 +245,6 @@ def check_processes(time, binary_list, host_name, csv_log_file):
 
     StateData = namedtuple('StateData', ['state_file_type', 'path'])
 
-    state_files = [StateData(state_file_type="analysisd_state", path="/var/ossec/var/run/wazuh-analysisd.state"),
-                   StateData(state_file_type="remoted_state", path="/var/ossec/var/run/wazuh-remoted.state")]
-
     bin_data = {w_bin: dict(base_dict) for w_bin in binary_list}
 
     first_iteration = True
@@ -310,12 +269,6 @@ def check_processes(time, binary_list, host_name, csv_log_file):
                         dead_processes.remove(process.name())
 
                 thread = Thread(target=compute_diff, args=(bin_data, process))
-                threads.append(thread)
-                thread.start()
-
-            for s_file in state_files:
-                data = parse_state_file(s_file.path)
-                thread = Thread(target=write_csv, args=(data, s_file.state_file_type, "{0}_{1}.csv".format(host_name, s_file.state_file_type)))
                 threads.append(thread)
                 thread.start()
 
