@@ -10,21 +10,30 @@
 #include "Catalog.hpp"
 #include "builder.hpp"
 #include "catalog/storageDriver/disk/DiskStorage.hpp"
+#include "cliParser.hpp"
 #include "engineServer.hpp"
 #include "graph.hpp"
 #include "json.hpp"
 #include "router.hpp"
-#include "cliParser.hpp"
 
 using namespace std;
 
 int main(int argc, char * argv[])
 {
-    // Build server first
-    // TODO: use argumentparser module
-    cliparser::CliParser cliInput(argc, argv);
-    vector<string> serverArgs{cliInput.getEndpointConfig()};
-    string test = "test string";
+    vector<string> serverArgs;
+    string storagePath;
+    try
+    {
+        cliparser::CliParser cliInput(argc, argv);
+        serverArgs.push_back(cliInput.getEndpointConfig());
+        storagePath = cliInput.getStoragePath();
+    }
+    catch (const std::exception & e)
+    {
+        cerr << "Error while parsing arguments: " << e.what() << endl;
+        return 1;
+    }
+
     engineserver::EngineServer server;
     try
     {
@@ -41,7 +50,6 @@ int main(int argc, char * argv[])
 
     // hardcoded catalog storage driver
     // TODO: use argparse module
-    string storagePath = cliInput.getStoragePath();
     catalog::Catalog _catalog;
     try
     {
