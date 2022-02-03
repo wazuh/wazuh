@@ -120,7 +120,8 @@ async def run_as_login(request, user: str, raw: bool = False) -> web.Response:
     web.Response
         Raw or JSON response with the generated access token.
     """
-    f_kwargs = {'user_id': user, 'auth_context': await request.json()}
+    auth_context = await request.json()
+    f_kwargs = {'user_id': user, 'auth_context': auth_context}
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -132,7 +133,7 @@ async def run_as_login(request, user: str, raw: bool = False) -> web.Response:
 
     token = None
     try:
-        token = generate_token(user_id=user, data=data.dikt, run_as=True)
+        token = generate_token(user_id=user, data=data.dikt, auth_context=auth_context)
     except WazuhException as e:
         raise_if_exc(e)
 

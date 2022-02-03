@@ -3,6 +3,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import hashlib
+import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -135,17 +137,17 @@ def get_security_conf():
     return conf.security_conf
 
 
-def generate_token(user_id=None, data=None, run_as=False):
-    """Generate an encoded jwt token. This method should be called once a user is properly logged on.
+def generate_token(user_id=None, data=None, auth_context=None):
+    """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
     user_id : str
-        Unique username
+        Unique username.
     data : dict
-        Roles permissions for the user
-    run_as : bool
-        Indicate if the user has logged in with run_as or not
+        Roles permissions for the user.
+    auth_context : dict
+        Authorization context used in the run as login request.
 
     Returns
     -------
@@ -161,15 +163,16 @@ def generate_token(user_id=None, data=None, run_as=False):
     timestamp = int(core_utils.get_utc_now().timestamp())
 
     payload = {
-        "iss": JWT_ISSUER,
-        "aud": "Wazuh API REST",
-        "nbf": timestamp,
-        "exp": timestamp + result['auth_token_exp_timeout'],
-        "sub": str(user_id),
-        "run_as": run_as,
-        "rbac_roles": data['roles'],
-        "rbac_mode": result['rbac_mode']
-    }
+                  "iss": JWT_ISSUER,
+                  "aud": "Wazuh API REST",
+                  "nbf": timestamp,
+                  "exp": timestamp + result['auth_token_exp_timeout'],
+                  "sub": str(user_id),
+                  "run_as": auth_context is not None,
+                  "rbac_roles": data['roles'],
+                  "rbac_mode": result['rbac_mode']
+              } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()}
+                   if auth_context is not None else {})
 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
