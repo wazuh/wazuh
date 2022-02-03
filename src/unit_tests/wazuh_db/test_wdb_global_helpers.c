@@ -118,7 +118,7 @@ int teardown_wdb_global_helpers_add_agent(void **state) {
 
 int teardown_wdb_global_helpers(void **state) {
     test_mode = 0;
-
+    errno = 0;
     return 0;
 }
 
@@ -141,7 +141,7 @@ void test_wdb_create_agent_db_error_already_exist(void **state)
     int agent_id = 1;
     char agent_name[] = "agent1";
 
-    // Agent database doesn't exists
+    // Agent database does exists
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_SUCCESS);
@@ -151,6 +151,30 @@ void test_wdb_create_agent_db_error_already_exist(void **state)
     ret = wdb_create_agent_db(agent_id, agent_name);
 
     assert_int_equal(OS_SUCCESS, ret);
+}
+
+void test_wdb_create_agent_db_error_accesing_file(void **state)
+{
+    int ret = 0;
+    int agent_id = 1;
+    char agent_name[] = "agent1";
+
+    // Agent database doesn't exists
+    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, OS_INVALID);
+    // Opening source database file
+    errno = ETXTBSY;
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    will_return(__wrap_strerror, "Device or resource busy");
+    expect_string(__wrap__merror, formatted_msg, "Error accessing file (var/db/.template.db): (Device or resource busy)");
+
+    ret = wdb_create_agent_db(agent_id, agent_name);
+
+    assert_int_equal(OS_INVALID, ret);
 }
 
 void test_wdb_create_agent_db_error_creating_source_profile(void **state)
@@ -163,10 +187,11 @@ void test_wdb_create_agent_db_error_creating_source_profile(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
+    // Opening source database file
+    errno = EACCES;
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
     // Creating profile
     expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
     expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
@@ -187,10 +212,11 @@ void test_wdb_create_agent_db_error_reopening_source_profile(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
+    // Opening source database file
+    errno = EACCES;
+    expect_string(__wrap_fopen, path, "var/db/.template.db");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
     // Creating profile
     expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
     expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
@@ -216,10 +242,6 @@ void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -247,10 +269,6 @@ void test_wdb_create_agent_db_error_writing_profile(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -284,10 +302,6 @@ void test_wdb_create_agent_db_error_getting_ids(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -329,10 +343,6 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -379,10 +389,6 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -432,10 +438,6 @@ void test_wdb_create_agent_db_success(void **state)
     expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
-    // profile database not found
-    expect_string(__wrap_stat, __file, "var/db/.template.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
     // Opening source database file
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
@@ -3932,6 +3934,7 @@ int main()
     {
         /* Tests wdb_create_agent_db */
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_no_name, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_accesing_file, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_already_exist, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_creating_source_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_reopening_source_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),

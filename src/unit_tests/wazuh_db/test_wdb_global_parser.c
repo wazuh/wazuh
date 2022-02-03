@@ -2055,15 +2055,32 @@ void test_wdb_parse_global_get_groups_integrity_syntax_error(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_wdb_parse_global_get_groups_integrity_hash_length_expected_fail(void **state)
+{
+    int ret = OS_SUCCESS;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity small_hash";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity small_hash");
+    // Expected hash should be OS_SHA1_HEXDIGEST_SIZE (40) characters long, and the received hash, "small_hash", is 10 characters long.
+    expect_string(__wrap__mdebug1, formatted_msg, "Hash hex-digest does not have the expected length. Expected (40) got (10)");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Hash hex-digest does not have the expected length. Expected (40) got (10)");
+    assert_int_equal(ret, OS_INVALID);
+}
+
 void test_wdb_parse_global_get_groups_integrity_query_error(void **state)
 {
     int ret = OS_SUCCESS;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     will_return(__wrap_wdb_global_get_groups_integrity, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting groups integrity information from global.db.");
 
@@ -2077,12 +2094,12 @@ void test_wdb_parse_global_get_groups_integrity_success_syncreq(void **state)
 {
     int ret = OS_SUCCESS;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     cJSON* j_response = cJSON_Parse("[\"syncreq\"]");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     will_return(__wrap_wdb_global_get_groups_integrity, j_response);
 
     ret = wdb_parse(query, data->output, 0);
@@ -2095,12 +2112,12 @@ void test_wdb_parse_global_get_groups_integrity_success_synced(void **state)
 {
     int ret = OS_SUCCESS;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     cJSON* j_response = cJSON_Parse("[\"synced\"]");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     will_return(__wrap_wdb_global_get_groups_integrity, j_response);
 
     ret = wdb_parse(query, data->output, 0);
@@ -2113,12 +2130,12 @@ void test_wdb_parse_global_get_groups_integrity_success_hash_mismatch(void **sta
 {
     int ret = OS_SUCCESS;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-groups-integrity random_hash";
+    char query[OS_BUFFER_SIZE] = "global get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     cJSON* j_response = cJSON_Parse("[\"hash_mismatch\"]");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity random_hash");
-    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "random_hash");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-groups-integrity xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    expect_string(__wrap_wdb_global_get_groups_integrity, hash, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     will_return(__wrap_wdb_global_get_groups_integrity, j_response);
 
     ret = wdb_parse(query, data->output, 0);
@@ -2741,6 +2758,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_response, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_groups_integrity */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_hash_length_expected_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_syncreq, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_groups_integrity_success_synced, test_setup, test_teardown),
