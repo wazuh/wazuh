@@ -1564,14 +1564,14 @@ cJSON* wdb_get_internal_config() {
 cJSON* wdb_get_config() {
     cJSON *root = cJSON_CreateObject();
     cJSON* wdb_config = cJSON_CreateObject();
-    cJSON* j_wdb_backup_settings_nodes = cJSON_CreateArray();
+    cJSON* j_wdb_backup = cJSON_CreateArray();
 
     for (int i = 0; i < WDB_LAST_BACKUP; i++) {
         cJSON* j_wdb_backup_settings_node = cJSON_CreateObject();
 
         switch (i) {
             case WDB_GLOBAL_BACKUP:
-                cJSON_AddStringToObject(j_wdb_backup_settings_node, "node_name", "global");
+                cJSON_AddStringToObject(j_wdb_backup_settings_node, "database", "global");
                 break;
             default:
                 break;
@@ -1581,10 +1581,10 @@ cJSON* wdb_get_config() {
         cJSON_AddNumberToObject(j_wdb_backup_settings_node, "interval", wconfig.wdb_backup_settings[i]->interval);
         cJSON_AddNumberToObject(j_wdb_backup_settings_node, "max_files", wconfig.wdb_backup_settings[i]->max_files);
 
-        cJSON_AddItemToArray(j_wdb_backup_settings_nodes, j_wdb_backup_settings_node);
+        cJSON_AddItemToArray(j_wdb_backup, j_wdb_backup_settings_node);
     }
 
-    cJSON_AddItemToObject(wdb_config, "backup_settings_nodes", j_wdb_backup_settings_nodes);
+    cJSON_AddItemToObject(wdb_config, "backup", j_wdb_backup);
     cJSON_AddItemToObject(root, "wdb", wdb_config);
 
     return root;
