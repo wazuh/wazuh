@@ -24,9 +24,9 @@ namespace engineserver
 {
 void EngineServer::configure(const vector<string> & config)
 {
-    vector<rxcpp::observable<json::Document>> tmpObs;
+    vector<endpoints::BaseEndpoint::out_t> tmpObs;
 
-    // <EnpointType>:<config_string> tcp:localhost:5054 socke:path/to/socket
+    // <EnpointType>:<config_string> tcp:localhost:5054 socket:path/to/socket udp:localhost:5054
     for (auto endpointConf : config)
     {
         auto pos = endpointConf.find(":");
@@ -42,7 +42,7 @@ void EngineServer::configure(const vector<string> & config)
     {
         output = output.merge(*it);
     }
-    this->m_output = output;
+    this->m_output = output.flat_map([](auto o) { return o; });
 }
 
 EngineServer::EngineServer(const vector<string> & config)

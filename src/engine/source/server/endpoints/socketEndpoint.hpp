@@ -29,8 +29,6 @@ namespace engineserver::endpoints
 class SocketEndpoint : public BaseEndpoint
 {
 private:
-    std::shared_ptr<uvw::Loop> m_loop;
-    std::shared_ptr<uvw::PipeHandle> m_handle;
     std::string m_path;
 
 public:

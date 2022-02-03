@@ -84,14 +84,14 @@ add_executable(server_test ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/testsEngineServe
 target_link_libraries(server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
 gtest_discover_tests(server_test)
 
-add_executable(tcptest ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp)
-target_link_libraries(tcptest gtest_main uv rxcpp nlohmann_json::nlohmann_json)
-gtest_discover_tests(tcptest)
+add_executable(tcp_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
+target_link_libraries(tcp_test gtest_main uv rxcpp)
+gtest_discover_tests(tcp_test)
 
-add_executable(udptest ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/endpoints/testsUDPEndpoint.cpp)
-target_link_libraries(udptest gtest_main uv rxcpp nlohmann_json::nlohmann_json)
-gtest_discover_tests(udptest)
+add_executable(udp_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsUDPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
+target_link_libraries(udp_test gtest_main uv rxcpp)
+gtest_discover_tests(udp_test)
 
-add_executable(sockettest ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp)
-target_link_libraries(sockettest gtest_main uv rxcpp nlohmann_json::nlohmann_json)
-gtest_discover_tests(sockettest)
+add_executable(socket_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
+target_link_libraries(socket_test gtest_main uv rxcpp)
+gtest_discover_tests(socket_test)
