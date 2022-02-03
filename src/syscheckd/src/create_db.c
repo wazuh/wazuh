@@ -284,7 +284,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
     cJSON_AddNumberToObject(data, "timestamp", time(NULL));
 
-    if (resultType == DELETED) {
+    if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
         cJSON *attributes = cJSON_Duplicate(dbsync_event, 1);
         cJSON_AddStringToObject(attributes, "type", "file");
