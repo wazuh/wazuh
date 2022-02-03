@@ -25,7 +25,8 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
-                            -Wl,--wrap,get_agent_group -Wl,--wrap,set_agent_group -Wl,--wrap,_merror")
+                            -Wl,--wrap,get_agent_group -Wl,--wrap,set_agent_group -Wl,--wrap,_merror \
+                            -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
