@@ -13,7 +13,7 @@ import os
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import patch, MagicMock, mock_open, call, ANY
 
 import cryptography
 import pytest
@@ -364,6 +364,7 @@ def test_handler_init():
         assert handler.tag == "Handler"
         assert handler.cluster_items == cluster_items
         assert handler.transport is None
+        assert handler.interrupted_tasks == set()
         assert cv.get() == handler.tag
 
     # Check other logger and my_fernet behaviors
@@ -505,8 +506,8 @@ async def test_handler_send_request_ko():
 
 @pytest.mark.asyncio
 @patch('os.path.exists', return_value=True)
-@patch('builtins.open', mock_open(read_data=b"chunks"))
-@patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data")
+@patch('builtins.open', mock_open(read_data=b'chunks'))
+@patch('wazuh.core.cluster.common.Handler.send_request', return_value=b'some data')
 async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
     """Test if a file is being correctly sent to peer."""
 
@@ -523,10 +524,12 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
             return b""
 
     handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler.request_chunk = 17
+    handler.interrupted_tasks.add(b'abcd')
 
     with patch('hashlib.sha256', return_value=MockHash()):
-        assert (await handler.send_file("some_file.txt") == b'File sent')
-        send_request_mock.assert_has_calls([call(command=b'file_upd', data=b'some_file.txt chunks'),
+        assert (await handler.send_file('some_file.txt', task_id=b'abcd') == b'File sent')
+        send_request_mock.assert_has_calls([call(command=b'file_upd', data=b'some_file.txt chu'),
                                             call(command=b'file_end', data=b'some_file.txt ')])
         assert send_request_mock.call_count == 3
         os_path_exists_mock.assert_called_once_with('some_file.txt')
@@ -809,6 +812,9 @@ def test_handler_process_request():
     with patch('wazuh.core.cluster.common.Handler.end_file') as end_file_mock:
         handler.process_request(b"file_end", b"data")
         end_file_mock.assert_called_once_with(b"data")
+    with patch('wazuh.core.cluster.common.Handler.cancel_task') as cancel_task_mock:
+        handler.process_request(b"cancel_task", b"data")
+        cancel_task_mock.assert_called_once_with(b"data")
     with patch('wazuh.core.cluster.common.Handler.process_unknown_cmd') as process_unknown_cmd_mock:
         handler.process_request(b"something random", b"data")
         process_unknown_cmd_mock.assert_called_once_with(b"something random")
@@ -877,6 +883,22 @@ def test_handler_end_file():
             # Test the second condition
             assert handler.end_file(b"name checksum") == (b"err",
                                                           b"File wasn't correctly received. Checksums aren't equal.")
+
+
+@pytest.mark.parametrize('task_name', [
+    'abcd', 'None'
+])
+@patch('json.loads')
+def test_handler_cancel_task(json_loads_mock, task_name):
+    """Test if task_id is added to handler.interrupted_tasks when cancel_task() is executed."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    assert handler.cancel_task(f'{task_name} error_details'.encode()) == (b'ok', b'Request received correctly')
+    json_loads_mock.assert_called_once_with(b'error_details', object_hook=ANY)
+    if task_name != 'None':
+        assert b'abcd' in handler.interrupted_tasks
+    else:
+        assert b'abcd' not in handler.interrupted_tasks
 
 
 def test_handler_receive_str():
