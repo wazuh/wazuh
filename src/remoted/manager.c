@@ -39,8 +39,8 @@ typedef struct _file_sum {
 typedef struct group_t {
     char *group;
     file_sum **f_sum;
-    bool exists;
     bool has_changed;
+    bool exists;
 } group_t;
 
 static OSHash *invalid_files;
@@ -79,6 +79,15 @@ static int purge_group(char *group);
 
 static group_t* find_group(const char *group);
 static group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]);
+
+/**
+ * @brief Check if the file sum has changed
+ * @param old_sum File sum of previous scan
+ * @param new_sum File sum of new scan
+ * @return true Changed
+ * @return false Didn't change
+ */
+static bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
 
 /* Groups structures and sizes */
 static group_t **groups;
@@ -723,23 +732,22 @@ static void process_groups() {
             os_realloc(groups, (groups_size + 2) * sizeof(group_t *), groups);
             os_calloc(1, sizeof(group_t), groups[groups_size]);
             groups[groups_size]->group = strdup(entry->d_name);
-            groups[groups_size + 1] = NULL;
             c_group(entry->d_name, subdir, &groups[groups_size]->f_sum, SHAREDCFG_DIR);
-            groups[groups_size]->exists = true;
             groups[groups_size]->has_changed = true;
+            groups[groups_size]->exists = true;
+            groups[groups_size + 1] = NULL;
             groups_size++;
 
         } else if (!group->f_sum) {
             // Group without fsum
             c_group(entry->d_name, subdir, &group->f_sum, SHAREDCFG_DIR);
-            group->exists = true;
             group->has_changed = true;
+            group->exists = true;
 
         } else {
             file_sum **f_sum = NULL;
             if (c_group(entry->d_name, subdir, &f_sum, SHAREDCFG_DIR), f_sum) {
-                // Compare merged.mg hashes
-                if (group->f_sum[0] && f_sum[0] && (strcmp(group->f_sum[0]->sum, f_sum[0]->sum) != 0)) {
+                if (fsum_changed(group->f_sum, f_sum)) {
                     // Group has changed
                     for (int i = 0; group->f_sum[i]; i++) {
                         os_free(group->f_sum[i]->name);
@@ -757,6 +765,8 @@ static void process_groups() {
                     os_free(f_sum);
                     group->has_changed = false;
                 }
+            } else {
+                group->has_changed = false;
             }
             group->exists = true;
         }
@@ -932,6 +942,35 @@ group_t* find_group_from_file(const char * file, const char * md5, char group[OS
 
     // Group not found
     return NULL;
+}
+
+static bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
+    int size_old, size_new = 0;
+
+    for (size_old = 0; old_sum[size_old]; size_old++);
+    for (size_new = 0; new_sum[size_new]; size_new++);
+
+    if (size_old == size_new) {
+        for (int i = 0; old_sum[i]; i++) {
+            bool found = false;
+            for (int j = 0; new_sum[j]; j++) {
+                if (!strcmp(old_sum[i]->name, new_sum[j]->name)) {
+                    found = true;
+                    if (strcmp(old_sum[i]->sum, new_sum[j]->sum)) {
+                        return true;
+                    }
+                    break;
+                }
+            }
+            if (!found) {
+                return true;
+            }
+        }
+    } else {
+        return true;
+    }
+
+    return false;
 }
 
 /* Send a file to the agent
