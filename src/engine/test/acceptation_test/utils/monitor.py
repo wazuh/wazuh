@@ -137,12 +137,12 @@ def write_csv(data, target, log_file):
     agentd_header = ["Timestamp", "Status", "Last Keepalive",
                      "Last ACK", "Number of generated events", "Number of messages", "Number of events buffered"]
 
-    binaries_header = ['Timestamp', 'Daemon', 'CPU(%)', 'RSS(KB)',
-                       'VMS(KB)', 'FD', 'Read_Ops', 'Write_Ops', 'Disk_Read(B)',
-                       'Disk_Written(B)', 'Disk(%)', 'USS(KB)']
+    binaries_header = ['TIMESTAMP', 'PROCESS', 'CPU_PCT', 'RSS_KB',
+                       'VMS_KB', 'FD', 'READ_OPS', 'WRITE_OPS', 'DISK_READ_B',
+                       'DISK_WRITTEN_B', 'DISK_PCT', 'USS_KB']
 
     if platform == 'linux':
-        binaries_header += ['PSS(KB)', 'SWAP(KB)']
+        binaries_header += ['PSS_KB', 'SWAP_KB']
 
     if target == "binaries":
         csv_header = binaries_header
@@ -163,19 +163,19 @@ def write_csv(data, target, log_file):
 
         if target == "binaries":
             logger.info("Writing binary info to {}.".format(log_file))
-            for daemon, values in zip(data.keys(), data.values()):
+            for process, values in zip(data.keys(), data.values()):
                 formatted_values = value_extractor(values)
 
                 if platform == 'linux':
                     log.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-                        get_timestamp(), daemon,
+                        get_timestamp(), process,
                         formatted_values.cpu, formatted_values.mem, formatted_values.virtual_mem,
                         formatted_values.fd, formatted_values.read_ops, formatted_values.write_ops,
                         formatted_values.bytes_read, formatted_values.bytes_written, formatted_values.disk_usage,
                         formatted_values.uss, formatted_values.pss, formatted_values.swap))
                 else:
                     log.write("{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-                        get_timestamp(), daemon,
+                        get_timestamp(), process,
                         formatted_values.cpu, formatted_values.mem, formatted_values.virtual_mem,
                         formatted_values.fd, formatted_values.read_ops, formatted_values.write_ops,
                         formatted_values.bytes_read, formatted_values.bytes_written, formatted_values.disk_usage,
