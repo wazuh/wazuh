@@ -75,6 +75,11 @@ _*.*pp
 =======
 
 # Test output files
+<<<<<<< HEAD
 .log
 .csv
 >>>>>>> Stats monitoring script called on main acceptance test script and gitignore updated
+=======
+*.log
+*.csv
+>>>>>>> Scripts fixed and python script to process stats added
