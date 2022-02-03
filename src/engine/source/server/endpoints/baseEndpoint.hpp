@@ -28,10 +28,15 @@ namespace engineserver::endpoints
  */
 class BaseEndpoint
 {
+public:
+    using event_t = json::Document;
+    using observable_t = rxcpp::observable<event_t>;
+    using subscriber_t = rxcpp::subscriber<observable_t>;
+    using out_t = rxcpp::observable<observable_t>;
+
 protected:
-    rxcpp::subjects::subject<json::Document> m_subject;
-    rxcpp::subscriber<json::Document> m_subscriber;
     std::string m_path;
+    out_t m_out;
 
     explicit BaseEndpoint(const std::string & path);
 
@@ -47,7 +52,7 @@ public:
      *
      * @return auto Observable object
      */
-    rxcpp::observable<json::Document> output(void) const;
+    out_t output(void) const;
 
     /**
      * @brief Start endpoint.
