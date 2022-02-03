@@ -14,12 +14,10 @@
 
 #include "json.hpp"
 
-using namespace std;
-
 namespace engineserver::endpoints
 {
 
-BaseEndpoint::BaseEndpoint(const std::string & path) : m_path{path}, m_subscriber{m_subject.get_subscriber()}
+BaseEndpoint::BaseEndpoint(const std::string & path) : m_path{path}
 {
 }
 
@@ -27,9 +25,9 @@ BaseEndpoint::~BaseEndpoint()
 {
 }
 
-rxcpp::observable<json::Document> BaseEndpoint::output(void) const
+BaseEndpoint::out_t BaseEndpoint::output(void) const
 {
-    return this->m_subject.get_observable();
+    return this->m_out;
 }
 
 } // namespace engineserver::endpoints

@@ -21,6 +21,7 @@
 
 namespace engineserver::endpoints
 {
+
 /**
  * @brief Implements tcp server endpoint using uvw library.
  *
@@ -30,8 +31,6 @@ class TCPEndpoint : public BaseEndpoint
 private:
     int m_port;
     std::string m_ip;
-    std::shared_ptr<uvw::Loop> m_loop;
-    std::shared_ptr<uvw::TCPHandle> m_handle;
 
 public:
     /**

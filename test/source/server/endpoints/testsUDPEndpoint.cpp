@@ -28,8 +28,5 @@ TEST(UDPTest, RunStop)
 {
     const string config = "localhost:5054";
     UDPEndpoint udp (config);
-    ASSERT_NO_THROW(udp.run());
-    // Give time to initialize before closing
-    this_thread::sleep_for(chrono::milliseconds(5));
-    ASSERT_NO_THROW(udp.close());
+    udp.output().flat_map([](auto o) { return o; }).subscribe([](auto j) { GTEST_COUT << j.str() << endl; });
 }
