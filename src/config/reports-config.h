@@ -24,13 +24,20 @@ typedef struct _report_config {
     report_filter r_filter;
 } report_config;
 
+typedef struct _delete_agents{
+    time_t older_than; /*in seconds*/
+    time_t interval; /*in seconds*/
+    int enabled;
+    char** status_list;
+    char** os_name_list;
+}delete_agents_t;
+
 typedef struct _monitor_config {
     short int day_wait;
     unsigned int compress:1;
     unsigned int sign:1;
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
-    unsigned int delete_old_agents;
     int a_queue;
     int keep_log_days;
     unsigned long size_rotate;
@@ -42,6 +49,7 @@ typedef struct _monitor_config {
 
     char **agents;
     report_config **reports;
+    delete_agents_t delete_agents;
 
     _Config global;
 } monitor_config;

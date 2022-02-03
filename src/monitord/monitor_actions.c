@@ -117,46 +117,89 @@ void monitor_agents_alert(){
 }
 
 void monitor_agents_deletion(){
-    int *agents_array;
-    cJSON *j_agent_info = NULL;
-    cJSON *j_agent_lastkeepalive = NULL;
-    cJSON *j_agent_name = NULL;
-    cJSON *j_agent_ip = NULL;
-    char str_agent_id[12];
+    int *agents_array[5] = {0};
 
-    agents_array = wdb_get_agents_by_connection_status("disconnected", &sock);
-    if (agents_array) {
-        for (int i = 0; agents_array[i] != -1; i++) {
-            j_agent_info = wdb_get_agent_info(agents_array[i], &sock);
-            if (j_agent_info) {
-                j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
-                j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
-                j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
-
-                if (cJSON_IsString(j_agent_name) && j_agent_name->valuestring != NULL &&
-                    cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring != NULL &&
-                    cJSON_IsNumber(j_agent_lastkeepalive)) {
-
-                    if (j_agent_lastkeepalive->valueint < (time(0) -
-                        (mond.global.agents_disconnection_time + mond.delete_old_agents * 60) )) {
-
-                        char *agent_name_ip = NULL;
-                        os_strdup(j_agent_name->valuestring, agent_name_ip);
-                        wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
-                        if(!delete_old_agent(agent_name_ip)){
-                            monitor_send_deletion_msg(agent_name_ip);
-                        }
-                        os_free(agent_name_ip);
-                    }
-                    cJSON_Delete(j_agent_info);
-                }
-            } else {
-                mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agents_array[i]);
-                snprintf(str_agent_id, 12, "%d", agents_array[i]);
-                OSHash_Delete(agents_to_alert_hash, str_agent_id);
-            }
+    if(mond.delete_agents.status_list){
+        for(int i = 0; mond.delete_agents.status_list[i] != 0; ++i) {
+            agents_array[i] = wdb_get_agents_by_connection_status(mond.delete_agents.status_list[i], &sock);
         }
-        os_free(agents_array);
+    }
+
+    for(int i = 0; agents_array[i] != 0; ++i){
+        if (agents_array[i]) {
+            for (int j = 0; agents_array[i][j] != -1; i++) {
+                const int agent_id = agents_array[i][j];
+
+                cJSON *j_agent_info = wdb_get_agent_info(agent_id, &sock);
+
+                if (j_agent_info) {
+                    cJSON *j_agent_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+
+                    if(cJSON_IsString(j_agent_status) && j_agent_status->valuestring != NULL){
+                        int should_delete_agent = 0;
+
+                        if(strcmp(j_agent_status->valuestring, "never_connected") == 0){
+                            cJSON *j_agent_reg_time = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+
+                            if(cJSON_IsNumber(j_agent_reg_time)){
+                                should_delete_agent = difftime(time(0), j_agent_reg_time->valueint) < mond.delete_agents.older_than;
+                            }
+                        }
+                        else{
+                            cJSON *j_agent_lastkeepalive = cJSON_GetObjectItem(j_agent_info->child, "last_keepalive");
+
+                            if(cJSON_IsNumber(j_agent_lastkeepalive)){
+                                should_delete_agent = difftime(time(0), j_agent_lastkeepalive->valueint) < mond.delete_agents.older_than;
+                            }
+                        }
+
+                        if(should_delete_agent) {
+                            int os_matches = 1;
+
+                            if(mond.delete_agents.os_name_list) {
+                                os_matches = 0;
+                                cJSON *j_agent_os_name = cJSON_GetObjectItem(j_agent_info->child, "os_name");
+
+                                if(cJSON_IsString(j_agent_os_name) && j_agent_os_name != 0){
+                                    for(int os_indx = 0;
+                                            mond.delete_agents.os_name_list[os_indx] != 0;
+                                            ++os_indx) {
+                                        if(strcmp(mond.delete_agents.os_name_list[os_indx], j_agent_os_name->valuestring)){
+                                            os_matches = 1;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if(os_matches && !delete_old_agent(agent_id)){
+                                cJSON *j_agent_name = cJSON_GetObjectItem(j_agent_info->child, "name");
+                                cJSON *j_agent_ip = cJSON_GetObjectItem(j_agent_info->child, "register_ip");
+
+                                if(cJSON_IsString(j_agent_name) && j_agent_name->valuestring !=0 &&
+                                        cJSON_IsString(j_agent_ip) && j_agent_ip->valuestring !=0){
+                                    char *agent_name_ip = NULL;
+
+                                    os_strdup(j_agent_name->valuestring, agent_name_ip);
+                                    wm_strcat(&agent_name_ip, j_agent_ip->valuestring, '-');
+                                    monitor_send_deletion_msg(agent_name_ip);
+                                    os_free(agent_name_ip);
+                                }
+                            }
+                        }
+                        cJSON_Delete(j_agent_info);
+                    }
+                }
+                else {
+                    char str_agent_id[12];
+                    mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agent_id);
+                    snprintf(str_agent_id, 12, "%d", agent_id);
+                    OSHash_Delete(agents_to_alert_hash, str_agent_id);
+                }
+            }
+            os_free(agents_array[i]);
+            agents_array[i] = 0;
+        }
     }
 }
 
@@ -188,31 +231,20 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
     }
 }
 
-int delete_old_agent(const char *agent) {
-    int sock;
-    int json_output = 1;
-    int val = 0;
-    char agent_name[128] = {0};
-    char *a_name_end = strrchr(agent,'-');
-    strncpy(agent_name,agent,a_name_end - agent);
-
-    char *agent_id = get_agent_id_from_name(agent_name);
-    if(agent_id) {
+int delete_old_agent(int agent_id) {
+    int val = -1;
+    char agent_id_str[16] = {0};
+    if(snprintf(agent_id_str, 16, "%d", agent_id)) {
+        int sock;
         if (sock = auth_connect(), sock < 0) {
             mdebug1("Monitord could not connect to to Authd socket. Is Authd running?");
-            val = -1;
-            free(agent_id);
-            return val;
         }
-        val = auth_remove_agent(sock, agent_id, json_output);
-
-        auth_close(sock);
-        os_free(agent_id);
-    } else {
-        val = -1;
-        return val;
+        else {
+            int json_output = 1;
+            val = auth_remove_agent(sock, agent_id_str, json_output);
+            auth_close(sock);
+        }
     }
-
     return val;
 }
 

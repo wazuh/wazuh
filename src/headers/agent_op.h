@@ -146,9 +146,6 @@ cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 
 #endif
 
-// Get the agent id
-char * get_agent_id_from_name(const char *agent_name);
-
 /**
 * @brief Returns an authd force options structure translated into a cJSON object
 * @param force_options The structure to be converted
