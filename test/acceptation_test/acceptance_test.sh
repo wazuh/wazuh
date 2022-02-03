@@ -26,7 +26,7 @@ mkdir -p $CONFIG_BACKUP_DIR
 mkdir -p $LOGS_BACKUP_DIR
 mv $CONFIG_DST_DIR/ossec.conf $CONFIG_BACKUP_DIR
 mv $CONFIG_DST_DIR/local_internal_options.conf $CONFIG_BACKUP_DIR
-mv $LOGS_DIR/* $LOGS_BACKUP_DIR
+cp -rp $LOGS_DIR/* $LOGS_BACKUP_DIR
 
 # Copy test files
 
@@ -45,18 +45,26 @@ chown -R root:wazuh $DECODERS_DST_DIR
 
 systemctl start wazuh-manager.service
 
+# Sleep to wait for wazuh-analysisd to start up
 sleep 5
 
 # Run stats collector script
 
-python3 ./utils/monitor.py -t $STATS_MONITOR_POLL_TIME_SECS -b wazuh-analysisd -n $TEST_NAME&;
+python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b wazuh-analysisd -n $TEST_NAME&
+
 MONITOR_PID=$!
 
 # Test script
 
+go run ./utils/send_logs_n_measure_time.go -l 500
+
 # Stop stats collector script
 
 kill -INT $MONITOR_PID
+
+sleep 1
+
+python3 ./utils/process_stats.py
 
 # Stop Wazuh manager
 
@@ -65,7 +73,7 @@ systemctl stop wazuh-manager.service
 # Restore Wazuh files
 
 mv $CONFIG_BACKUP_DIR/* $CONFIG_DST_DIR
-mv $LOGS_BACKUP_DIR/* $LOGS_DIR
+cp -rp $LOGS_BACKUP_DIR/* $LOGS_DIR
 
 # Remove test ruleset
 
