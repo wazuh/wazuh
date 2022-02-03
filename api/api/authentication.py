@@ -3,6 +3,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import hashlib
+import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -136,7 +138,7 @@ def get_security_conf():
 
 
 def generate_token(user_id=None, data=None, auth_context=None):
-    """Generate an encoded jwt token. This method should be called once a user is properly logged on.
+    """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
@@ -144,7 +146,7 @@ def generate_token(user_id=None, data=None, auth_context=None):
         Unique username
     data : dict
         Roles permissions for the user
-    run_as : bool
+    auth_context : dict
         Indicate if the user has logged in with run_as or not
 
     Returns
@@ -167,10 +169,11 @@ def generate_token(user_id=None, data=None, auth_context=None):
         "exp": timestamp + result['auth_token_exp_timeout'],
         "sub": str(user_id),
         "run_as": True if auth_context else False,
-        "hash_auth_context": auth_context,
         "rbac_roles": data['roles'],
         "rbac_mode": result['rbac_mode']
     }
+    if auth_context:
+        payload['hash_auth_context'] = hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()
 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 

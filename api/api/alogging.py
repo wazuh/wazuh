@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import binascii
+import hashlib
 import json
 import logging
 import re
@@ -11,11 +12,14 @@ from aiohttp.abc import AbstractAccessLogger
 
 from wazuh.core.wlogging import WazuhLogger
 
-# compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
+# Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
+
+# Run_as login endpoint path
+RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
 
 
 class AccessLogger(AbstractAccessLogger):
@@ -23,13 +27,13 @@ class AccessLogger(AbstractAccessLogger):
     def log(self, request, response, time):
         query = dict(request.query)
         body = request.get("body", dict())
-        hash_auth_context = request.get('hash_auth_context', '-')
         if 'password' in query:
             query['password'] = '****'
         if 'password' in body:
             body['password'] = '****'
         if 'key' in body and '/agents' in request.path:
             body['key'] = '****'
+
         # With permanent redirect, not found responses or any response with no token information,
         # decode the JWT token to get the username
         user = request.get('user', '')
@@ -39,9 +43,18 @@ class AccessLogger(AbstractAccessLogger):
             except (KeyError, IndexError, binascii.Error):
                 user = UNKNOWN_USER_STRING
 
-        self.logger.info(f'{user} {hash_auth_context} {request.remote} "{request.method} {request.path}" with '
-                         f'parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: '
-                         f'{response.status}')
+        # Get or create authorization context hash
+        hash_auth_context = ''
+        # Get hash from token information
+        if 'token_info' in request:
+            hash_auth_context = request['token_info'].get('hash_auth_context', '')
+        # Create hash if run_as login
+        if not hash_auth_context and request.path == RUN_AS_LOGIN_ENDPOINT:
+            hash_auth_context = hashlib.blake2b(json.dumps(body).encode(), digest_size=16).hexdigest()
+
+        self.logger.info(f'{user}{f" {hash_auth_context} " if hash_auth_context else " "}{request.remote} '
+                         f'"{request.method} {request.path}" with parameters {json.dumps(query)} and body '
+                         f'{json.dumps(body)} done in {time:.3f}s: {response.status}')
 
 
 class APILogger(WazuhLogger):
