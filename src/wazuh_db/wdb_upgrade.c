@@ -141,10 +141,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                 mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
                 if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID || wdb_adjust_global_upgrade(wdb, i)) {
                     char *bkp_name = NULL;
-                    if (OS_INVALID != wdb_global_get_most_recent_backup(&bkp_name) &&
-                        OS_INVALID != wdb_global_restore_backup(&wdb, bkp_name, false, output)) {
+                    if (OS_INVALID != wdb_global_restore_backup(&wdb, bkp_name, false, output)) {
                         merror("Failed to update global.db to version %d. The global.db was restored to the original state.", i + 1);
-                        wdb->enabled = true;
                     }
                     else if (bkp_name) {
                         merror("Failed to update global.db to version %d. The global.db should be restored from %s.", i + 1, bkp_name);
@@ -211,6 +209,7 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
+    wdb_leave(wdb);
     if (wdb_close(wdb, TRUE) != OS_INVALID) {
         unlink(path);
 
@@ -227,6 +226,8 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
 
         new_wdb = wdb_init(db, WDB_GLOB_NAME);
         wdb_pool_append(new_wdb);
+        w_mutex_lock(&new_wdb->mutex);
+        new_wdb->refcount++;
     }
 
     return new_wdb;
