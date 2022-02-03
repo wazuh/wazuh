@@ -106,7 +106,7 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
 
 #endif // TEST_WINAGENT
-
+expect_any_always(__wrap__mwarn, formatted_msg);
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 #endif
@@ -356,7 +356,7 @@ void test_log_realtime_status(void **state)
     log_realtime_status(1);
 }
 
-void test_fim_send_msg(void **state) {
+/*void test_fim_send_msg(void **state) {
     (void) state;
 
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, 0);
@@ -388,7 +388,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
 
     expect_assert_failure(fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test"));
-}
+}DEPRECATED_CODE*/
 
 #ifndef TEST_WINAGENT
 
@@ -840,7 +840,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif
 
 
-void test_send_syscheck_msg_10_eps(void ** state) {
+/*void test_send_syscheck_msg_10_eps(void ** state) {
     syscheck.max_eps = 10;
     cJSON *event = cJSON_CreateObject();
 
@@ -886,7 +886,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
     expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
     send_syscheck_msg(event);
     cJSON_Delete(event);
-}
+}DEPRECATED_CODE*/
 
 void test_fim_send_scan_info(void **state) {
     (void) state;
@@ -1122,7 +1122,7 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
-void test_send_sync_control(void **state) {
+/*void test_send_sync_control(void **state) {
     char debug_msg[OS_SIZE_256] = {0};
     char *ret_msg = dbsync_check_msg("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
     *state = ret_msg;
@@ -1145,7 +1145,7 @@ void test_send_sync_state(void **state) {
     expect_SendMSG_call(event, "fim_file", DBSYNC_MQ, 0);
 
     fim_send_sync_state("fim_file", event);
-}
+}DEPRECATED_CODE*/
 
 int main(void) {
 #ifndef WIN_WHODATA
@@ -1161,11 +1161,11 @@ int main(void) {
 #endif
 
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test(test_fim_send_msg),
+         /*cmocka_unit_test(test_fim_send_msg),
         cmocka_unit_test(test_fim_send_msg_retry),
         cmocka_unit_test(test_fim_send_msg_retry_error),
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
-        cmocka_unit_test(test_send_syscheck_msg_0_eps),
+        cmocka_unit_test(test_send_syscheck_msg_0_eps),DEPRECATED_CODE*/
         cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
@@ -1190,8 +1190,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
-        cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
-        cmocka_unit_test(test_send_sync_state),
+        /*cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
+        cmocka_unit_test(test_send_sync_state),DEPRECATED_CODE*/
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

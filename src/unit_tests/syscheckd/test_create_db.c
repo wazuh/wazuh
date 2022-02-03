@@ -569,9 +569,6 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
  * @param file Dirent structure for the file.
  */
 void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file, struct stat *directory_stat, struct stat *file_stat) {
-
-    //expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-
     expect_string(__wrap_stat, __file, dir_file_path);
     will_return(__wrap_stat, directory_stat);
     will_return(__wrap_stat, 0);
@@ -1160,7 +1157,6 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    // Pos 4 = "/usr/bin"
     ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, -1);
@@ -3456,9 +3452,6 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    /*expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test");
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);*/
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
@@ -3476,8 +3469,7 @@ static void test_fim_process_wildcard_removed_no_data(void **state) {
     expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
 
-    /*expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    */expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
     will_return(__wrap_fim_db_get_path, NULL);
 
 
@@ -3500,11 +3492,8 @@ static void test_fim_process_wildcard_removed_failure(void **state) {
     snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
     expect_string(__wrap_fim_db_file_pattern_search, pattern, buff);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-    //expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
     will_return(__wrap_fim_db_get_path, NULL);
-
-    //expect_string(__wrap__merror, formatted_msg, error_msg);
 
     fim_process_wildcard_removed(directory0);
 
@@ -3515,8 +3504,6 @@ static void test_fim_process_wildcard_removed_data_exists(void **state) {
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    //expect_function_call_any(__wrap_pthread_mutex_lock);
-    //expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     fim_data_t *fim_data = *state;
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
@@ -3546,11 +3533,8 @@ static void test_fim_process_wildcard_removed_data_exists(void **state) {
     snprintf(pattern, PATH_MAX, "%s%c%%", directory0->path, PATH_SEP);
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
-    //expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-    //expect_fim_db_remove_path(fim_data->fentry->file_entry.path, FIMDB_ERR);
 
     fim_process_wildcard_removed(directory0);
 }
@@ -3667,11 +3651,9 @@ static void test_update_wildcards_config_remove_config() {
 #endif
 
     // Remove configuration loop
-    //expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
     will_return(__wrap_fim_db_get_path, NULL);
 
-    //expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
     will_return(__wrap_fim_db_get_path, NULL);
 
