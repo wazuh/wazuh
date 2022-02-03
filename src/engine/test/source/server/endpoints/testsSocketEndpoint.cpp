@@ -11,25 +11,20 @@
 
 #define GTEST_COUT cerr << "[          ] [ INFO ]"
 
-
 using namespace engineserver;
 using namespace engineserver::endpoints;
 using namespace std;
 using namespace rxcpp;
 
-
 TEST(SocketTest, Initializes)
 {
     const string config = "/tmp/testsocket";
-    ASSERT_NO_THROW(SocketEndpoint socket (config));
+    ASSERT_NO_THROW(SocketEndpoint socket(config));
 }
 
-TEST(SocketTest, RunStop)
+TEST(SocketTest, Subscribe)
 {
     const string config = "/tmp/testsocket";
-    SocketEndpoint socket (config);
-    ASSERT_NO_THROW(socket.run());
-    // Give time to initialize before closing
-    this_thread::sleep_for(chrono::milliseconds(5));
-    ASSERT_NO_THROW(socket.close());
+    SocketEndpoint socket(config);
+    socket.output().flat_map([](auto o) { return o; }).subscribe([](auto j) { GTEST_COUT << j.str() << endl; });
 }

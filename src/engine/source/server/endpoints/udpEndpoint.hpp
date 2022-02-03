@@ -30,8 +30,6 @@ class UDPEndpoint : public BaseEndpoint
 {
 
 private:
-    std::shared_ptr<uvw::Loop> m_loop;
-    std::shared_ptr<uvw::UDPHandle> m_handle;
     std::string m_ip;
     int m_port;
 
