@@ -298,10 +298,14 @@ wdb_t * wdb_open_global() {
 
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
+            w_mutex_lock(&wdb->mutex);
+            wdb->refcount++;
         }
         else {
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
+            w_mutex_lock(&wdb->mutex);
+            wdb->refcount++;
             if (wdb = wdb_upgrade_global(wdb), !wdb) {
                 w_mutex_unlock(&pool_mutex);
                 return wdb;
@@ -310,10 +314,6 @@ wdb_t * wdb_open_global() {
 
         wdb_enable_foreign_keys(wdb->db);
     }
-
-    // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-    w_mutex_lock(&wdb->mutex);
-    wdb->refcount++;
 
     w_mutex_unlock(&pool_mutex);
     return wdb;
