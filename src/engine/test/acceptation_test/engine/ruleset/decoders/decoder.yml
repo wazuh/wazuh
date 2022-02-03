@@ -1,0 +1,29 @@
+# {
+#    "event": {
+#       "original": "::1 - -  Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test\n"
+#    },
+#    "wazuh": {
+#        "test": {
+#            "format": "text",
+#            "id": "000",
+#            "ingested": "2021-10-26T16:50:34.348945Z",
+#            "kind": "event"
+#        }
+#    }
+# }
+
+---
+name: test
+
+metadata:
+  description: Test decoder for acceptation tests
+
+check:
+  - wazuh.test.format: text
+  - wazuh.event.original: +exists
+  - wazuh.test.ingested: +exists
+  - wazuh.test.kind: event
+
+normalize:
+  - wazuh.test.kind: event
+
