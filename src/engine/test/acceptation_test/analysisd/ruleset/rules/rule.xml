@@ -1,0 +1,7 @@
+<group name="test,">
+  <rule id="1" level="10">
+    <decoded_as>test_decoder_example</decoded_as>
+    <description>Test alert (Always)</description>
+  </rule>
+</group>
+
