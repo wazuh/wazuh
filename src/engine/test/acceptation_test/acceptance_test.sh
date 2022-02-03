@@ -31,13 +31,15 @@ mv $LOGS_DIR/* $LOGS_BACKUP_DIR
 # Copy test files
 
 cp $CONFIG_SRC_DIR/* $CONFIG_DST_DIR
-chgrp ossec $CONFIG_DST_DIR/ossec.conf
-chgrp ossec $CONFIG_DST_DIR/local_internal_options.conf
+chgrp wazuh $CONFIG_DST_DIR/ossec.conf
+chgrp wazuh $CONFIG_DST_DIR/local_internal_options.conf
 
 mkdir -p $RULES_DST_DIR
 mkdir -p $DECODERS_DST_DIR
 cp $RULES_SRC_DIR/* $RULES_DST_DIR
 cp $DECODERS_SRC_DIR/* $DECODERS_DST_DIR
+chown -R root:wazuh $RULES_DST_DIR
+chown -R root:wazuh $DECODERS_DST_DIR
 
 # Start Wazuh
 
