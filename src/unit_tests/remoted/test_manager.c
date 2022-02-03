@@ -20,8 +20,44 @@
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
 #include "../../remoted/manager.c"
-
+#include "../../headers/hash_op.h"
 /* tests */
+
+static int test_c_groups_setup(void ** state) {
+
+    return 0;
+}
+
+static int test_c_groups_teardown(void ** state) {
+    int i;
+    int j;
+    file_sum **f_sum;
+
+    if (groups) {
+        for (i = 0; groups[i]; i++) {
+            f_sum = groups[i]->f_sum;
+
+            if (f_sum) {
+                for (j = 0; f_sum[j]; j++) {
+                    free(f_sum[j]->name);
+                    free(f_sum[j]);
+                    f_sum[j] = NULL;
+                }
+
+                free(f_sum);
+                f_sum = NULL;
+            }
+
+            free(groups[i]->group);
+            free(groups[i]);
+        }
+
+        free(groups);
+        groups = NULL;
+    }
+
+    return 0;
+}
 
 /* Tests lookfor_agent_group */
 
@@ -206,6 +242,82 @@ void test_lookfor_agent_group_message_without_second_enter(void **state)
     assert_null(r_group);
 }
 
+#if 0
+void test_c_files_free_groups_fail_opendir(void **state)
+{
+    groups = NULL;
+    should_clean = 1;
+
+    OSHash * m_hash = OSHash_Create();
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files sums.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+
+    c_files();
+}
+
+void test_c_files_scan_directory_fail_opendir(void **state)
+{
+    groups = NULL;
+    should_clean = 0;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files sums.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+
+    c_files();
+}
+#endif
+
+void test_c_group_fail(void **state)
+{
+
+    const char *group = "test_default";
+    char ** files = NULL;
+
+    // static group_t *test_groups = NULL;
+    // // groups is a manager.c global variable
+    // groups = &test_groups;
+
+    // Initialize main groups structure
+    os_calloc(1, sizeof(group_t *), groups);
+
+    int p_size = 0;
+    os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
+    os_calloc(1, sizeof(group_t), groups[p_size]);
+
+    groups[p_size]->group = strdup("test_default");
+    groups[p_size + 1] = NULL;
+
+
+    os_malloc(sizeof(char *), files);
+    os_realloc(files, (p_size + 2) * sizeof(char *), files);
+
+    files[p_size] = strdup("files");
+    files[p_size + 1] = NULL;
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_MergeAppendFile, tag, "test_default");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/files'");
+
+    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
+
+    //c_group(entry->d_name, subdir, &groups[p_size]->f_sum, SHAREDCFG_DIR);
+    c_group(group, files, &groups[p_size]->f_sum, SHAREDCFG_DIR);
+
+    os_free(files[p_size]);
+    os_free(files[p_size+1]);
+    os_free(files);
+}
+
+//void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir)
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -216,6 +328,11 @@ int main(void)
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
         cmocka_unit_test(test_lookfor_agent_group_bad_message),
         cmocka_unit_test(test_lookfor_agent_group_message_without_second_enter),
+        // Tests c_files
+        //cmocka_unit_test(test_c_files_free_groups_fail_opendir),
+        //cmocka_unit_test(test_c_files_scan_directory_fail_opendir),
+        cmocka_unit_test_setup_teardown(test_c_group_fail, test_c_groups_setup, test_c_groups_teardown),
+
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
