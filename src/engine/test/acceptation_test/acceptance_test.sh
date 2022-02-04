@@ -23,10 +23,10 @@ systemctl stop wazuh-manager.service
 # Backup Wazuh files
 
 mkdir -p $CONFIG_BACKUP_DIR
-mkdir -p $LOGS_BACKUP_DIR
+# mkdir -p $LOGS_BACKUP_DIR
 mv $CONFIG_DST_DIR/ossec.conf $CONFIG_BACKUP_DIR
 mv $CONFIG_DST_DIR/local_internal_options.conf $CONFIG_BACKUP_DIR
-cp -rp $LOGS_DIR/* $LOGS_BACKUP_DIR
+# cp -rp $LOGS_DIR/* $LOGS_BACKUP_DIR
 
 # Copy test files
 
@@ -56,7 +56,7 @@ MONITOR_PID=$!
 
 # Test script
 
-go run ./utils/send_logs_n_measure_time.go -l 500
+go run ./utils/benchmark_analysisd.go -t 5 -r 100 -f ./utils/test_logs.txt
 
 # Stop stats collector script
 
@@ -73,7 +73,7 @@ systemctl stop wazuh-manager.service
 # Restore Wazuh files
 
 mv $CONFIG_BACKUP_DIR/* $CONFIG_DST_DIR
-cp -rp $LOGS_BACKUP_DIR/* $LOGS_DIR
+# cp -rp $LOGS_BACKUP_DIR/* $LOGS_DIR
 
 # Remove test ruleset
 
