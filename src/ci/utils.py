@@ -230,12 +230,8 @@ def runTests(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     for test in tests:
-        if ".exe" in test:
-            out = subprocess.run("wine " + os.path.join(currentDir, test), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, shell=True)
-        else:
-            out = subprocess.run(os.path.join(currentDir, test), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, shell=True)
+        out = subprocess.run(os.path.join(currentDir, test), stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, shell=True)
         if out.returncode == 0:
             printGreen(f'[{test}: PASSED]')
         else:
@@ -525,19 +521,18 @@ def runTestTool(moduleName, testToolCommand, element):
     printHeader('TESTTOOL', 'testtool')
     printGreen(testToolCommand)
     cwd = os.getcwd()
-    output = element['output_folder'] or "output"
-    if element['is_smoke_with_configuration']:
-        currentmoduleNameDir = currentDirPath(moduleName)
-        if element['smoke_tests_path']:
-            smoke_tests_folder = os.path.join(str.rstrip(currentmoduleNameDir, ' '), element['smoke_tests_path'])
-            output_folder = os.path.join(smoke_tests_folder, output)
-            os.chdir(smoke_tests_folder)
+    currentmoduleNameDir = currentDirPath(moduleName)
+    if moduleName == "syscheckd":
+        smoke_tests_folder = os.path.join(str.rstrip(currentmoduleNameDir, ' '), element['smoke_tests_path'])
+        output_folder = os.path.join(smoke_tests_folder, element['output_folder'])
+    else:
+        smoke_tests_folder = os.path.join(currentmoduleNameDir, 'smokeTests')
+        output_folder = os.path.join(currentmoduleNameDir, "output")
 
-        else:
-            output_folder = os.path.join(currentmoduleNameDir, output)
-            os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
-            cleanFolder(moduleName, 'smokeTests/output')
-        os.makedirs(output_folder)
+    if element['is_smoke_with_configuration']:
+        os.chdir(smoke_tests_folder)
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
 
     out = subprocess.run(testToolCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
@@ -567,7 +562,11 @@ def runASAN(moduleName):
     configureCMake(str(moduleName), True, False, True)
     makeLib(str(moduleName))
     module = smokeTestsDic[moduleName]
-    cleanFolder(moduleName, os.path.join(module[0]['smoke_tests_path'],"output"))
+    if moduleName == "syscheckd":
+        path = module[0]['smoke_tests_path']
+    else:
+        path = "smokeTests"
+    cleanFolder(moduleName, os.path.join(path, "output"))
 
     for element in module:
         path = os.path.join(currentDirPathBuild(moduleName),
