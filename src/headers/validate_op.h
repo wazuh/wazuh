@@ -62,11 +62,10 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size);
  * @brief Expand IPv6 to its full representation.
  *
  * @param ip_address IPv6 address to be expanded, it will be modified with its full representation.
- * @param cidr Integer value of the netmask.
  * @param size Size of the address buffer.
  * @return Returns 0 on success or -1 on failure.
  */
-int OS_ExpandIPv6(char *ip_address, int cidr, size_t size);
+int OS_ExpandIPv6(char *ip_address, size_t size);
 
 
 /**

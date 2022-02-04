@@ -139,7 +139,7 @@ int main(int argc, char **argv)
                 server_address = strdup(optarg);
                 if (strchr(server_address, ':') != NULL) {
                     os_realloc(server_address, IPSIZE + 1, server_address);
-                    OS_ExpandIPv6(server_address, 0, IPSIZE);
+                    OS_ExpandIPv6(server_address, IPSIZE);
                 }
                 break;
             case 'A':
@@ -203,7 +203,7 @@ int main(int argc, char **argv)
                 target_cfg->sender_ip = strdup(optarg);
                 if (strchr(target_cfg->sender_ip, ':') != NULL) {
                     os_realloc(target_cfg->sender_ip, IPSIZE + 1, target_cfg->sender_ip);
-                    OS_ExpandIPv6(target_cfg->sender_ip, 0, IPSIZE);
+                    OS_ExpandIPv6(target_cfg->sender_ip, IPSIZE);
                 }
                 break;
             case 'i':

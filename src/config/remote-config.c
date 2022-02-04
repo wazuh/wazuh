@@ -176,7 +176,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             } else if (strchr(logr->lip[pl], ':') != NULL) {
                 os_realloc(logr->lip[pl], IPSIZE + 1, logr->lip[pl]);
-                OS_ExpandIPv6(logr->lip[pl], 0, IPSIZE);
+                OS_ExpandIPv6(logr->lip[pl], IPSIZE);
             }
         } else if (strcmp(node[i]->element, xml_allowips) == 0) {
             allow_size++;

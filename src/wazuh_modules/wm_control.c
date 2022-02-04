@@ -99,7 +99,7 @@ char* getPrimaryIP(){
 
     if (agent_ip && (strchr(agent_ip, ':') != NULL)) {
         os_realloc(agent_ip, IPSIZE + 1, agent_ip);
-        OS_ExpandIPv6(agent_ip, 0, IPSIZE);
+        OS_ExpandIPv6(agent_ip, IPSIZE);
     }
 
     return agent_ip;

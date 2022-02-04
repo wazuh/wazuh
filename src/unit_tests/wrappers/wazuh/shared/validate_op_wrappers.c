@@ -53,9 +53,8 @@ int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size) {
     return mock();
 }
 
-int __wrap_OS_ExpandIPv6(char *ip_address, int cidr, size_t size) {
+int __wrap_OS_ExpandIPv6(char *ip_address, size_t size) {
     check_expected(ip_address);
-    check_expected(cidr);
     check_expected(size);
     return mock();
 }

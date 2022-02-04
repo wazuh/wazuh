@@ -1014,7 +1014,7 @@ int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
 #endif
 
     if ((ret == OS_SUCCESS) && !OS_GetIPv4FromIPv6(address, IPSIZE)) {
-        OS_ExpandIPv6(address, 0, IPSIZE);
+        OS_ExpandIPv6(address, IPSIZE);
     }
 
     return ret;

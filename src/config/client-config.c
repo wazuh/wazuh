@@ -70,7 +70,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             } else if (strchr(logr->lip, ':') != NULL) {
                 os_realloc(logr->lip, IPSIZE + 1, logr->lip);
-                OS_ExpandIPv6(logr->lip, 0, IPSIZE);
+                OS_ExpandIPv6(logr->lip, IPSIZE);
             }
         }
         /* Get server IP */
@@ -365,7 +365,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     os_strdup(rip, logr->server[logr->server_count].rip);
     if (strchr(logr->server[logr->server_count].rip, ':') != NULL) {
         os_realloc(logr->server[logr->server_count].rip, IPSIZE + 1, logr->server[logr->server_count].rip);
-        OS_ExpandIPv6(logr->server[logr->server_count].rip, 0, IPSIZE);
+        OS_ExpandIPv6(logr->server[logr->server_count].rip, IPSIZE);
     }
     logr->server[logr->server_count].port = port;
     logr->server[logr->server_count].protocol = protocol;
@@ -441,7 +441,7 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             os_strdup(remote_ip, target_cfg->manager_name);
             if (strchr(target_cfg->manager_name, ':') != NULL) {
                 os_realloc(target_cfg->manager_name, IPSIZE + 1, target_cfg->manager_name);
-                OS_ExpandIPv6(target_cfg->manager_name, 0, IPSIZE);
+                OS_ExpandIPv6(target_cfg->manager_name, IPSIZE);
             }
         } else if (strcmp(node[j]->element, xml_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
@@ -464,12 +464,12 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             os_free(target_cfg->centralized_group);
             os_strdup(node[j]->content, target_cfg->centralized_group);
         } else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
-            if (OS_IsValidIP(node[j]->content, NULL) == 1) {
+            if (OS_IsValidIP(node[j]->content, NULL) != 0) {
                 os_free(target_cfg->sender_ip);
                 os_strdup(node[j]->content, target_cfg->sender_ip);
                 if (strchr(target_cfg->sender_ip, ':') != NULL) {
                     os_realloc(target_cfg->sender_ip, IPSIZE + 1, target_cfg->sender_ip);
-                    OS_ExpandIPv6(target_cfg->sender_ip, 0, IPSIZE);
+                    OS_ExpandIPv6(target_cfg->sender_ip, IPSIZE);
                 }
             } else {
                 merror(AG_INV_HOST, node[j]->content);

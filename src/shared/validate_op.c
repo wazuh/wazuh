@@ -443,7 +443,6 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                         /* IPv6 */
                         os_calloc(1, sizeof(os_ipv6), final_ip->ipv6);
                         final_ip->is_ipv6 = TRUE;
-                        int cidr = 0;
 
                         /* At this point regex can capture 1 or 2 strings, first is the ip and second the prefix */
                         if (sub_strings_num > 0) {
@@ -460,7 +459,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
                             if (sub_strings_num == 2) {
                                 /* prefix */
-                                cidr = atoi(regex_match->sub_strings[1]);
+                                int cidr = atoi(regex_match->sub_strings[1]);
                                 if ((strlen(regex_match->sub_strings[1]) > 3) ||
                                       convertNetmask(cidr, &nmask6)) {
                                     ret = 0;
@@ -481,10 +480,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
                             }
                             memcpy(final_ip->ipv6->netmask, nmask6.u.Byte, sizeof(final_ip->ipv6->netmask));
 #endif
-                            char aux_ip[IPSIZE + 1] = {0};
-                            strncpy(aux_ip, regex_match->sub_strings[0], IPSIZE);
-                            OS_ExpandIPv6(aux_ip, cidr, IPSIZE);
-                            strncpy(final_ip->ip, aux_ip, IPSIZE);
+                            OS_ExpandIPv6(final_ip->ip, IPSIZE);
 
                         } else {
                             ret = 0;
@@ -603,12 +599,12 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
 }
 
 /* Expand IPv6 address */
-int OS_ExpandIPv6(char *ip_address, int cidr, size_t size)
+int OS_ExpandIPv6(char *ip_address, size_t size)
 {
     struct in6_addr net6;
     memset(&net6, 0, sizeof(net6));
 
-    if (OS_INVALID == get_ipv6_numeric(ip_address, &net6)) {
+    if (OS_INVALID == get_ipv6_numeric(strtok(ip_address, "/"), &net6)) {
         return OS_INVALID;
     }
 
@@ -619,6 +615,13 @@ int OS_ExpandIPv6(char *ip_address, int cidr, size_t size)
 #else
         aux[i] = net6.u.Byte[i];
 #endif
+    }
+
+    /* In case of ip_address has CIDR */
+    int cidr = 0;
+    char *cidr_str = strtok(NULL, "/");
+    if (cidr_str) {
+        cidr = atoi(cidr_str);
     }
 
     if (cidr) {

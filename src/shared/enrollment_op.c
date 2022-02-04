@@ -540,7 +540,7 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const i
 
     if(sender_ip && !use_src_ip) { // Force an IP
         /* Check if this is strictly an IP address using a regex */
-        if (OS_IsValidIP(sender_ip, NULL) == 1) {
+        if (OS_IsValidIP(sender_ip, NULL)) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
             strncat(buff,opt_buf,254);
