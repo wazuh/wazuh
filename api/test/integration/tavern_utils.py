@@ -1,5 +1,9 @@
 import json
+import re
+import subprocess
+import time
 from base64 import b64decode
+from datetime import datetime
 from json import loads
 
 from box import Box
@@ -259,12 +263,14 @@ def test_validate_restart_by_node(response, data):
             affected_items.append(item['id'])
     assert response.json()['data']['affected_items'] == affected_items
     assert not response.json()['data']['failed_items']
+    healthcheck_agent_restart(response, affected_items)
 
 
 def test_validate_restart_by_node_rbac(response, permitted_agents):
     data = response.json().get('data', None)
     if data:
         if data['affected_items']:
+            healthcheck_agent_restart(response, data['affected_items'])
             for agent in data['affected_items']:
                 assert agent in permitted_agents
         else:
@@ -328,3 +334,109 @@ def test_validate_search(response, search_param):
 
 def test_validate_key_not_in_response(response, key):
     assert all(key not in item for item in response.json()["data"]["affected_items"])
+
+
+def check_agentd_started(response, agents_list):
+    """Wait until all the agents have their agentd process started correctly. This will avoid race conditions caused by
+    agents reconnections before restarting.
+
+    Parameters
+    ----------
+    response : Request response
+    agents_list : list
+        List of expected agents to be restarted.
+    """
+    timestamp_regex = re.compile(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d')
+    agentd_started_regex = re.compile(r'agentd.+Started')
+
+    def get_timestamp(log):
+        """Get timestamp from log.
+
+        Parameters
+        ----------
+        log : str
+            String representing the log to get the timestamp from.
+
+        Returns
+        -------
+        datetime
+            Datetime object representing the timestamp got.
+        """
+        timestamp = timestamp_regex.search(string=log).group(0)
+        return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
+
+    # Save the time when the restart command was sent
+    restart_request_time = datetime.utcnow().replace(microsecond=0) - response.elapsed
+
+    for agent_id in agents_list:
+        tries = 0
+        while tries < 80:
+            try:
+                # Save agentd logs in a list
+                command = f"docker exec env_wazuh-agent{int(agent_id)}_1 grep agentd /var/ossec/logs/ossec.log"
+                output = subprocess.check_output(command.split()).decode().strip().split('\n')
+            except subprocess.SubprocessError as exc:
+                raise subprocess.SubprocessError(f"Error while trying to get logs from agent {agent_id}") from exc
+
+            # Ignore agentd logs before restart_request_time
+            logs_after_restart = [agentd_log for agentd_log in output if
+                                  get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
+
+            # Check the log indicating agentd started is in the agent's ossec.log (after the restart request)
+            if any(agentd_started_regex.search(string=agentd_log) for agentd_log in logs_after_restart):
+                break
+
+            tries += 1
+            time.sleep(1)
+        else:
+            raise ProcessLookupError("The wazuh-agentd daemon was not started after requesting the restart")
+
+
+def check_agent_active_status(agents_list):
+    """Wait until all the agents have active status in the global.db. This will avoid race conditions caused by
+    non-active agents in following test cases.
+
+    Parameters
+    ----------
+    agents_list : list
+        List of expected agents to be restarted.
+    """
+    active_agents_script_path = "/tools/print_active_agents.py"
+    id_active_agents = []
+    tries = 0
+    while tries < 25:
+        try:
+            # Get active agents
+            output = subprocess.check_output(f"docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
+                                             f"{active_agents_script_path}".split()).decode().strip()
+        except subprocess.SubprocessError as exc:
+            raise subprocess.SubprocessError("Error while trying to get agents") from exc
+
+        # Transform string representation of list to list and save agents id
+        id_active_agents = [agent['id'] for agent in eval(output)]
+
+        if all(a in id_active_agents for a in agents_list):
+            break
+
+        tries += 1
+        time.sleep(1)
+    else:
+        non_active_agents = [a for a in agents_list if a not in id_active_agents]
+        raise SystemError(f"Agents {non_active_agents} have a status different to active after restarting")
+
+
+def healthcheck_agent_restart(response, agents_list):
+    """Wait until the restart process is finished for every agent in the given list.
+
+    Parameters
+    ----------
+    response : Request response
+    agents_list : list
+        List of expected agents to be restarted.
+    """
+    # Wait for agentd daemon start (up to 80 seconds)
+    check_agentd_started(response, agents_list)
+    # Wait for cluster synchronization process (20 seconds)
+    time.sleep(20)
+    # Wait for active agent status (up to 25 seconds)
+    check_agent_active_status(agents_list)
