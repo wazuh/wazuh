@@ -44,8 +44,8 @@ decoded_payload = {
 }
 
 original_payload = {
-    "iss": 'wazuh',
-    "aud": 'Wazuh API REST',
+    "iss": "wazuh",
+    "aud": "Wazuh API REST",
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": "001",
