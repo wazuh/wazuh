@@ -7,80 +7,76 @@
 
 #include "connectable.hpp"
 #include "json.hpp"
-
-#include "builders/check_stage.hpp"
-#include "builders/file_output.hpp"
+#include "builders/buildCheck.hpp"
+#include "builders/buildOutput.hpp"
+#include "builders/stage.hpp"
 
 namespace builder::internals::builders
 {
+    // The type of the event which will flow through the stream
+    using Event_t = json::Document;
+    // The type of the observable which will compose the processing graph
+    using Obs_t = rxcpp::observable<Event_t>;
+    // The type of the connectables whisch will help us connect the assets ina graph
+    using Con_t = builder::internals::Connectable<Obs_t>;
+    // The type of a connectable operation
+    using Op_t = std::function<Obs_t(const Obs_t &)>;
+    // The signature of a maker function which will build an asset into a`
+    // connectable.
 
+    using Graph_t = graph::Graph<Con_t>;
 /**
  * @brief Builds output connectable
  *
  * @param inputJson
  * @return Connectable
  */
-Connectable outputBuilder(const json::Document & inputJson)
+Con_t buildOutput(const json::Document & def)
 {
     std::vector<std::string> parents;
-    if (inputJson.exists(".parents"))
+    const json::Value * name;
+    const json::Value * checkVal;
+    const json::Value * outputs;
+
+    if (def.exists(".parents"))
     {
-        for (rapidjson::Value::ConstValueIterator it = inputJson.get(".parents")->GetArray().Begin();
-             it != inputJson.get(".parents")->GetArray().End(); it++)
+        for (auto & i : def.get(".parents")->GetArray())
         {
-            parents.push_back(it->GetString());
+            parents.push_back(i.GetString());
         }
     }
 
-    auto name = inputJson.get(".name");
-    if (!name)
+    try
     {
-        throw std::invalid_argument("Output builder must have a name entry.");
+        name = def.get(".name");
     }
-    Connectable connectable(name->GetString(), parents);
-
-    // Check stage is mandatory in output
-    auto checkVal = inputJson.get(".check");
-    if (!checkVal)
+    catch (std::invalid_argument & e)
     {
-        throw std::invalid_argument("Output builder expects output definition to have a check section. ");
-    }
-    auto outputObs = checkStageBuilder(connectable.output(), checkVal);
-
-    // Outputs stage is mandatory
-    checkVal = inputJson.get(".outputs");
-    if (!checkVal)
-    {
-        throw std::invalid_argument("Output builder expects to have outputs section. ");
-    }
-    else if (!checkVal->IsArray())
-    {
-        throw std::invalid_argument("Output builder expects outputs section to be an array, but got " +
-                                    checkVal->GetType());
+        std::throw_with_nested(std::invalid_argument("Output builder expects definition to have a .name entry."));
     }
 
-    // Iterate and build every output type
-    // TODO: once more outputs are added may be better to define a common class for them
-    // Only file output supported
-    for (auto out = checkVal->Begin(); out != checkVal->End(); ++out)
+    try
     {
-        // TODO: Check that every item is an object
-        // This check must be delegated to its builder once registry is implemented
-        std::string outputName = out->MemberBegin()->name.GetString();
-        if (outputName == "file")
-        {
-            fileOutputBuilder(outputObs, &out->MemberBegin()->value);
-        }
-        else
-        {
-            throw std::invalid_argument("Output " + outputName + " not supported");
-        }
+        checkVal = def.get(".check");
+    }
+    catch (std::invalid_argument & e)
+    {
+        std::throw_with_nested(std::invalid_argument("Output builder expects definition to have a .allow section."));
     }
 
-    // Update connectable and return
-    connectable.set(outputObs);
+    Op_t checkStage = buildStageChain(checkVal, buildCheck);
 
-    return connectable;
+    try
+    {
+        outputs = def.get(".outputs");
+    }
+    catch (std::invalid_argument & e)
+    {
+        std::throw_with_nested(std::invalid_argument("Output builder expects definition to have a .outputs section."));
+    }
+    Op_t outputsStage = buildOutputStage(outputs);
+    
+    return Con_t(name->GetString(), parents,[=](const Obs_t & input) -> Obs_t { return outputsStage(checkStage(input)); });
 }
 
 } // namespace builder::internals::builders

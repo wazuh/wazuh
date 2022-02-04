@@ -48,6 +48,9 @@ struct FakeServer
 // as a router expects it.
 struct FakeBuilder
 {
+    using Obs_t = rxcpp::observable<document_t>;
+    using Op_t = std::function<Obs_t(Obs_t)>;
+
     subjects::subject<document_t> m_subj;
     FakeBuilder(bool verbose = false)
     {
@@ -58,9 +61,12 @@ struct FakeBuilder
         }
     }
 
-    rxcpp::subjects::subject<document_t> operator()(const std::string & environment)
+    Op_t operator()(const std::string & environment)
     {
-        return this->m_subj;
+        return [&](Obs_t p) -> Obs_t {
+            p.subscribe(m_subj.get_subscriber());
+            return p;
+        }; 
     }
 };
 

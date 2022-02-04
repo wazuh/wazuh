@@ -3,7 +3,7 @@
 #include <rxcpp/rx.hpp>
 #include <vector>
 
-#include "map_value.hpp"
+#include "buildMap.hpp"
 #include "test_utils.hpp"
 
 using namespace builder::internals::builders;
@@ -24,7 +24,7 @@ TEST(MapValueTest, Builds)
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto _observable = mapValueBuilder(entry_point, fake_j.get(".check"));
+    auto _observable = buildMapVal(fake_j.get(".check"));
 }
 
 TEST(MapValueTest, Operates)
@@ -61,7 +61,7 @@ TEST(MapValueTest, Operates)
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto _observable = mapValueBuilder(entry_point, fake_j.get(".check"));
+    auto _op = buildMapVal(fake_j.get(".check"));
 
     // Fake subscriber
     vector<event_t> observed;
@@ -70,7 +70,7 @@ TEST(MapValueTest, Operates)
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
     // Operate
-    ASSERT_NO_THROW(_observable.subscribe(subscriber));
+    ASSERT_NO_THROW(_op(entry_point).subscribe(subscriber));
     ASSERT_EQ(observed.size(), 3);
     for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped_field")->GetInt(), 1); });
 }

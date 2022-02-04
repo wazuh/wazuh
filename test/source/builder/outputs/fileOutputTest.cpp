@@ -8,7 +8,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "outputs/file_output.hpp"
+#include "outputs/file.hpp"
 #include "rxcpp/rx.hpp"
 #include "gtest/gtest.h"
 #include "json/json.hpp"

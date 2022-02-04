@@ -47,20 +47,26 @@ SocketEndpoint::SocketEndpoint(const std::string & config) : BaseEndpoint{config
                             client->on<uvw::DataEvent>(
                                 [sInner](const uvw::DataEvent & event, uvw::PipeHandle & client)
                                 {
-                                    auto eventObject = engineserver::protocolhandler::parseEvent(
-                                        std::string(event.data.get(), event.length));
-                                    if (!eventObject.contains("error"))
+                                    json::Document evt;
+                                    try
                                     {
-                                        sInner.on_next(eventObject);
+                                        evt = engineserver::protocolhandler::parseEvent(
+                                            std::string(event.data.get(), event.length));
                                     }
-                                    else
+                                    catch (std::_Nested_exception<std::invalid_argument> & e)
                                     {
-                                        // TODO: complete this case
+                                        client.close();
+                                        sInner.on_error(std::make_exception_ptr(e));
                                     }
+                                    sInner.on_next(evt);
                                 });
 
-                            client->on<uvw::CloseEvent>([&handle](const uvw::CloseEvent &, uvw::PipeHandle &)
-                                                        { handle.close(); });
+                            client->on<uvw::CloseEvent>(
+                                [sInner, &handle](const uvw::CloseEvent &, uvw::PipeHandle &)
+                                {
+                                    sInner.on_completed();
+                                    handle.close();
+                                });
 
                             handle.accept(*client);
                             client->read();
