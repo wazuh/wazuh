@@ -58,7 +58,8 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
             Synchronization process result.
         """
         super().done_callback(future)
-        # Integrity task is only freed if master is not waiting for Extra valid files.
+        # Integrity task is only freed if master is not waiting for Extra valid files. This condition should always take
+        # place
         if not self.wazuh_common.extra_valid_requested:
             self.wazuh_common.sync_integrity_free[0] = True
 
@@ -726,7 +727,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         The information inside the unzipped files_metadata.json file (integrity metadata) is compared with the
         local one (updated every self.cluster_items['intervals']['master']['recalculate_integrity'] seconds).
         All files that are different (new, deleted, with a different MD5, etc) are classified into four groups:
-        shared, missing, extra and extra_valid.
+        shared, missing, and extra.
 
         Finally, a zip containing this classification (files_metadata.json) and the files that are missing
         or that must be updated are sent to the worker.
@@ -771,7 +772,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                            files_metadata, self.name)
 
         total_time = (datetime.utcnow() - date_start_master).total_seconds()
-        self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
+        self.extra_valid_requested = bool(worker_files_ko['TYPE'] if 'TYPE' in worker_files_ko else False)
         self.integrity_check_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
                                             'date_end_master': datetime.utcnow().strftime(decimals_date_format)})
 
@@ -788,11 +789,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Starting.")
             self.integrity_sync_status.update({'tmp_date_start_master': datetime.utcnow(), 'total_files': counts,
                                                'total_extra_valid': 0})
-            logger.info("Files to create in worker: {} | Files to update in worker: {} | Files to delete in worker: {} "
-                        "| Files to receive: {}".format(len(worker_files_ko['missing']), len(worker_files_ko['shared']),
-                                                        len(worker_files_ko['extra']),
-                                                        len(worker_files_ko['extra_valid']))
-                        )
+            logger.info(f"Files to create in worker: {len(worker_files_ko['missing'])} | Files to update in worker: "
+                        f"{len(worker_files_ko['shared'])} | Files to delete in worker: "
+                        f"{len(worker_files_ko['extra'])}")
 
             # Compress data: master files (only KO shared and missing).
             logger.debug("Compressing files to be synced in worker.")

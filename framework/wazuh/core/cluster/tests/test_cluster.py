@@ -346,6 +346,7 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zipfile_mock, os_path_e
         rmtree_mock.assert_called_once()
 
 
+# @patch('builtins.len', return_value=75000)
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.WazuhDBQueryAgents')
 def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
@@ -362,23 +363,20 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
         files, count = cluster.compare_files(seq, condition, 'worker1')
         assert count["missing"] == 1
         assert count["extra"] == 0
-        assert count["extra_valid"] == 1
         assert count["shared"] == 1
 
     # Second condition
     condition = {'some/path5/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
                  'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
-                 os.path.relpath(common.groups_path, common.wazuh_path): {'cluster_item_key': "key",
-                                                                          'md5': 'md5 value'}}
+                 'PATH': {'cluster_item_key': "key", 'md5': 'md5 value'}}
 
     files, count = cluster.compare_files(seq, condition, 'worker1')
     assert count["missing"] == 2
     assert count["extra"] == 0
-    assert count["extra_valid"] == 3
     assert count["shared"] == 0
-    wazuh_db_query_mock.assert_called_once_with(select=['id'], limit=None,
-                                                filters={'rbac_ids': ['agent-groups']},
-                                                rbac_negate=False)
+    # wazuh_db_query_mock.assert_called_once_with(select=['id'], limit=None,
+    #                                             filters={'rbac_ids': ['PATH']},
+    #                                             rbac_negate=False)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
@@ -392,8 +390,7 @@ def test_compare_files_ko(wazuh_db_query_mock, logger_mock, mock_get_cluster_ite
            'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
     condition = {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
                  'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
-                 os.path.relpath(common.groups_path, common.wazuh_path): {'cluster_item_key': "key",
-                                                                          'md5': 'md5 value'}}
+                 'PATH': {'cluster_item_key': "key", 'md5': 'md5 value'}}
 
     # Test the exception
     with pytest.raises(Exception):

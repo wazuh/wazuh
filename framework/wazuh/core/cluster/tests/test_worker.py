@@ -279,7 +279,7 @@ async def test_sync_files_sync_ko(send_request_mock):
     fernet_key = "00000000000000000000000000000000"
 
     sync_files = worker.SyncFiles(b"cmd", logging.getLogger("wazuh"),
-                                          cluster_common.Handler(fernet_key, cluster_items))
+                                  cluster_common.Handler(fernet_key, cluster_items))
 
     # Test first condition
     with pytest.raises(Exception):
@@ -851,23 +851,23 @@ async def test_worker_handler_general_agent_sync_task(socket_mock, perf_counter_
 @patch.object(logging.getLogger("wazuh.Integrity sync"), "debug")
 @patch("wazuh.core.cluster.worker.SyncFiles.sync", return_value=True)
 @patch("wazuh.core.cluster.cluster.merge_info", return_value=("n_files", "merged_file"))
-async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger_debug_mock):
+async def test_worker_handler_sync_extra_valid(merge_info_mock, sync_mock, logger_debug_mock):
     """Test the 'sync_extra_valid' method."""
 
     extra_valid = {"/missing/path": 0, "missing/path2": 1}
     # Test the try
     with patch.object(logging.getLogger("wazuh.Integrity sync"), "info") as logger_info_mock:
         await worker_handler.sync_extra_valid(extra_valid)
-        logger_debug_mock.assert_has_calls([call("Starting sending extra valid files to master."),
-                                            call("Finished sending extra valid files in 0.000s.")])
+        logger_debug_mock.assert_has_calls([call("Starting sending TYPE files to master."),
+                                            call("Finished sending TYPE files in 0.000s.")])
         logger_info_mock.assert_called_once_with("Finished in 0.000s.")
-        merge_info_mock.assert_called_once_with(merge_type='agent-groups', node_name="Testing",
+        merge_info_mock.assert_called_once_with(merge_type='TYPE', node_name="Testing",
                                                 files=extra_valid.keys())
         sync_mock.assert_called_once_with(files_to_sync={
-            "merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
-                            'cluster_item_key': 'queue/agent-groups/'}}, files_metadata={
-            "merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
-                            'cluster_item_key': 'queue/agent-groups/'}})
+            "merged_file": {'merged': True, 'merge_type': 'TYPE', 'merge_name': "merged_file",
+                            'cluster_item_key': 'RELATIVE_PATH'}}, files_metadata={
+            "merged_file": {'merged': True, 'merge_type': 'TYPE', 'merge_name': "merged_file",
+                            'cluster_item_key': 'RELATIVE_PATH'}})
 
     # Test the first exception
     with patch("wazuh.core.cluster.worker.WorkerHandler.send_request") as send_request_mock:
@@ -875,9 +875,9 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger
             merge_info_mock.side_effect = exception.WazuhException(1001)
             cls = cluster_common.WazuhJSONEncoder
             await worker_handler.sync_extra_valid(extra_valid)
-            logger_debug_mock.assert_called_with("Starting sending extra valid files to master.")
+            logger_debug_mock.assert_called_with("Starting sending TYPE files to master.")
             logger_error_mock.assert_called_once_with(
-                f"Error synchronizing extra valid files: {exception.WazuhException(1001)}")
+                f"Error synchronizing TYPE files: {exception.WazuhException(1001)}")
             send_request_mock.assert_called_once_with(command=b'syn_i_w_m_r',
                                                       data=b'None ' + json.dumps(exception.WazuhException(1001),
                                                                                  cls=cls).encode())
@@ -885,8 +885,8 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger
             with patch("json.dumps", return_value="data_to_encode"):
                 merge_info_mock.side_effect = Exception()
                 await worker_handler.sync_extra_valid(extra_valid)
-                logger_debug_mock.assert_called_with("Starting sending extra valid files to master.")
-                logger_error_mock.assert_called_with("Error synchronizing extra valid files: ")
+                logger_debug_mock.assert_called_with("Starting sending TYPE files to master.")
+                logger_error_mock.assert_called_with("Error synchronizing TYPE files: ")
                 send_request_mock.assert_called_with(command=b'syn_i_w_m_r',
                                                      data=b'None ' + "data_to_encode".encode())
 
@@ -946,7 +946,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
          call("Updating local files: End."), call("Master requires some worker files.")])
     logger_info_mock.assert_has_calls(
         [call("Starting."),
-         call("Files to create: 13 | Files to update: 12 | Files to delete: 11 | Files to send: 17")])
+         call("Files to create: 13 | Files to update: 12 | Files to delete: 11")])
     decompress_files_mock.assert_called_once_with("path of the zip")
     json_dumps_mock.assert_not_called()
     create_task_mock.assert_called_once()
@@ -969,7 +969,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
          call("Updating local files: End.")])
     logger_info_mock.assert_has_calls([
-        call("Starting."), call("Files to create: 13 | Files to update: 12 | Files to delete: 11 | Files to send: 0"),
+        call("Starting."), call("Files to create: 13 | Files to update: 12 | Files to delete: 11"),
         call("Finished in 0.000s.")])
     decompress_files_mock.assert_called_once_with("path of the zip")
     json_dumps_mock.assert_not_called()

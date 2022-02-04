@@ -23,7 +23,6 @@ from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
-agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
 
 
 #
@@ -360,7 +359,7 @@ def compare_files(good_files, check_files, node_name):
 
     Compare the integrity information of each file of the master node against those in the worker node (listed in
     cluster.json), calculated in get_files_status(). The files are classified in four groups depending on the
-    information of cluster.json: missing, extra, extra_valid and shared.
+    information of cluster.json: missing, extra, and shared.
 
     Parameters
     ----------
@@ -406,28 +405,32 @@ def compare_files(good_files, check_files, node_name):
     # Missing files will be the ones that are present in good files (master) but not in the check files (worker).
     missing_files = {key: good_files[key] for key in good_files.keys() - check_files.keys()}
 
-    # Extra files are the ones present in check files (worker) but not in good files (master) and aren't extra valid.
-    extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),
-                                            lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    # Extra files are the ones present in check files (worker) but not in good files (master). The underscore is used
+    # to not change the function, as previously it returned an iterator for the 'extra_valid' files as well, but these
+    # are no longer in use.
+    _, extra = split_on_condition(check_files.keys() - good_files.keys(),
+                                  lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     extra_files = {key: check_files[key] for key in extra}
-    extra_valid_files = {key: check_files[key] for key in extra_valid}
-    if extra_valid_files:
+    _files = {key: check_files[key] for key in _}
+    # This condition should never take place. The 'PATH' string is a placeholder to indicate the type of variable that
+    # we should place.
+    if _files:
         # Check if extra-valid agent-groups files correspond to existing agents.
         try:
-            agent_groups = [os.path.basename(file) for file in extra_valid_files if file.startswith(agent_groups_path)]
+            _paths = [os.path.basename(file) for file in _files if file.startswith('PATH')]
             db_agents = []
             # Each query can have at most 7500 agents to prevent it from being larger than the wazuh-db socket.
             # 7 digits in the worst case per ID + comma -> 8 * 7500 = 60000 (wazuh-db socket is ~64000)
-            for i in range(0, len(agent_groups), chunk_size := 7500):
-                with WazuhDBQueryAgents(select=['id'], limit=None, filters={'rbac_ids': agent_groups[i:i + chunk_size]},
+            for i in range(0, len(_paths), chunk_size := 7500):
+                with WazuhDBQueryAgents(select=['id'], limit=None, filters={'rbac_ids': _paths[i:i + chunk_size]},
                                         rbac_negate=False) as db_query:
                     db_agents.extend(db_query.run()['items'])
             db_agents = {agent['id'] for agent in db_agents}
 
-            for leftover in set(agent_groups) - db_agents:
-                extra_valid_files.pop(os.path.join(agent_groups_path, leftover), None)
+            for leftover in set(_paths) - db_agents:
+                _files.pop(os.path.join('PATH', leftover), None)
         except Exception as e:
-            logger.error(f"Error getting agent IDs while verifying which extra-valid files are required: {e}")
+            logger.error(f"Error getting agent IDs while verifying which TYPE files are required: {e}")
 
     # 'all_shared' files are the ones present in both sets but with different MD5 checksum.
     all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
@@ -450,9 +453,8 @@ def compare_files(good_files, check_files, node_name):
     else:
         shared_files = {key: good_files[key] for key in shared}
 
-    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files, 'extra_valid': extra_valid_files}
-    count = {'missing': len(missing_files), 'extra': len(extra_files), 'extra_valid': len(extra_valid_files),
-             'shared': len(all_shared)}
+    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files, 'TYPE': _files}
+    count = {'missing': len(missing_files), 'extra': len(extra_files), 'shared': len(all_shared), 'TYPE': len(_files)}
 
     return files, count
 

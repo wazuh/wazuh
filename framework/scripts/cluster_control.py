@@ -146,12 +146,8 @@ async def print_health(config, more, filter_node):
             n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
             n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
-            n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
             msg2 += f"                Synchronized files: Shared: {n_shared} | Missing: {n_missing} | " \
-                    f"Extra: {n_extra} | Extra valid: {n_extra_valid}.\n"
-
-            msg2 += f"                Extra valid files correctly updated in master: " \
-                    f"{node_info['status']['last_sync_integrity']['total_extra_valid']}.\n"
+                    f"Extra: {n_extra}..\n"
 
             # Agent info
             total = calculate_seconds(node_info['status']['last_sync_agentinfo']['date_start_master'],

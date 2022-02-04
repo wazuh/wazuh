@@ -597,7 +597,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             await asyncio.sleep(sleep_interval)
 
-    async def sync_extra_valid(self, extra_valid: Dict):
+    async def sync_extra_valid(self, _: Dict):
         """Merge and send files of the worker node that are missing in the master node.
 
         Asynchronous task that is started when the master requests any extra valid files to be synchronized.
@@ -605,35 +605,36 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         Parameters
         ----------
-        extra_valid : dict
+        _ : dict
             Keys are paths of files missing in the master node.
         """
         logger = self.task_loggers["Integrity sync"]
 
         try:
             before = datetime.utcnow().timestamp()
-            logger.debug("Starting sending extra valid files to master.")
-            extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
+            logger.debug("Starting sending TYPE files to master.")
+            TYPE_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
 
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
-            n_files, merged_file = cluster.merge_info(merge_type='agent-groups', node_name=self.name,
-                                                      files=extra_valid.keys())
-            files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
-                                           'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
+            # The 'TYPE' and 'RELATIVE_PATH' strings are placeholders to specify the type of merge we want to perform.
+            n_files, merged_file = cluster.merge_info(merge_type='TYPE', node_name=self.name,
+                                                      files=_.keys())
+            files_to_sync = {merged_file: {'merged': True, 'merge_type': 'TYPE', 'merge_name': merged_file,
+                                           'cluster_item_key': 'RELATIVE_PATH'}} if n_files else {}
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
-            await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
+            await TYPE_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
             after = datetime.utcnow().timestamp()
-            logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
+            logger.debug(f"Finished sending TYPE files in {(after - before):.3f}s.")
             logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
 
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
+            logger.error(f"Error synchronizing TYPE files: {e}")
             await self.send_request(command=b'syn_i_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
+            logger.error(f"Error synchronizing TYPE files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
@@ -685,9 +686,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             """
             ko_files, zip_path = await cluster.run_in_pool(self.loop, self.server.task_pool, cluster.decompress_files,
                                                            received_filename)
-            logger.info("Files to create: {} | Files to update: {} | Files to delete: {} | Files to send: {}".format(
-                len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid']))
-            )
+            logger.info(f"Files to create: {len(ko_files['missing'])} | Files to update: {len(ko_files['shared'])} "
+                        f"| Files to delete: {len(ko_files['extra'])}")
 
             if ko_files['shared'] or ko_files['missing'] or ko_files['extra']:
                 # Update or remove files in this worker node according to their status (missing, extra or shared).
@@ -698,7 +698,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: End.")
 
             # Send extra valid files to the master.
-            if ko_files['extra_valid']:
+            if 'extra_valid' in ko_files and ko_files['extra_valid']:
                 logger.debug("Master requires some worker files.")
                 asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
             else:

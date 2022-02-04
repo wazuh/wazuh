@@ -924,6 +924,48 @@ async def test_master_handler_setup_sync_wazuh_db_information(sync_wazuh_db_info
 
 
 @pytest.mark.asyncio
+@freeze_time('1970-01-01')
+@patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value="response")
+@patch('wazuh.core.cluster.master.c_common.Handler.sync_wazuh_db_information', return_value='response')
+async def test_master_handler_sync_wazuh_db_information_ok(sync_wazuh_db_information_mock, send_request_mock):
+    """Check if the chunks of data are updated and iterated."""
+
+    class TaskMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.payload = b"payload"
+
+    class ServerMock:
+        def __init__(self):
+            self.task_pool = None
+
+    master_handler = get_master_handler()
+    master_handler.in_str[b"task_id"] = TaskMock()
+    master_handler.server = ServerMock()
+
+    # Basic example where everything works correctly and the send_request output is returned (agent-info)
+    with patch('wazuh.core.cluster.master.cluster.run_in_pool',
+               return_value={'error_messages': {'others': 'ERROR', 'chunks': ''},
+                             'updated_chunks': 1, 'time_spent': 1}):
+        assert await master_handler.sync_wazuh_db_information(
+            b"task_id", info_type='agent-info') == send_request_mock.return_value
+
+    # Basic example where everything works correctly and the send_request output is returned (agent-groups)
+    with patch('wazuh.core.cluster.master.cluster.run_in_pool',
+               return_value={'error_messages': {'others': [], 'chunks': ''},
+                             'updated_chunks': 1, 'time_spent': 1}):
+        assert await master_handler.sync_wazuh_db_information(
+            b"task_id", info_type='agent-groups') == send_request_mock.return_value
+
+    assert await master_handler.sync_wazuh_db_information(
+        b"task_id", info_type='agent-info') == send_request_mock.return_value
+
+    assert await master_handler.sync_wazuh_db_information(
+        b"task_id", info_type='agent-info') == send_request_mock.return_value
+
+
+@pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.WazuhDBConnection")
 async def test_manager_handler_send_entire_agent_groups_information(WazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
@@ -1248,7 +1290,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                      call('Finished in 0.000s. Received metadata of 14 files. Sync required.'),
                      call('Starting.'),
                      call('Files to create in worker: 1 | Files to update in worker: 1 | Files to delete in worker: '
-                          '1 | Files to receive: 0'), call('Finished in 0.000s.')])
+                          '1'), call('Finished in 0.000s.')])
                 debug_mock.assert_has_calls(
                     [call("Waiting to receive zip file from worker."), call("Received file from worker: 'filename'"),
                      call("Compressing files to be synced in worker."),
@@ -1286,7 +1328,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                              call("Finished in 0.000s. Received metadata of 14 files. Sync required."),
                              call("Starting."), call(
                                 "Files to create in worker: 1 | Files to update in worker: 1 | Files to delete in "
-                                "worker: 1 | Files to receive: 1")])
+                                "worker: 1")])
                         debug_mock.assert_has_calls(
                             [call("Waiting to receive zip file from worker."),
                              call("Received file from worker: 'filename'"),
@@ -1325,7 +1367,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                              call("Finished in 0.000s. Received metadata of 14 files. Sync required."),
                              call("Starting."), call(
                                 "Files to create in worker: 1 | Files to update in worker: 1 | Files to delete in "
-                                "worker: 1 | Files to receive: 1")])
+                                "worker: 1")])
                         debug_mock.assert_has_calls(
                             [call("Waiting to receive zip file from worker."),
                              call("Received file from worker: 'filename'"),
@@ -1360,7 +1402,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                              call("Finished in 0.000s. Received metadata of 14 files. Sync required."),
                              call("Starting."), call(
                                 "Files to create in worker: 1 | Files to update in worker: 1 | Files to delete in "
-                                "worker: 1 | Files to receive: 1")])
+                                "worker: 1")])
                         debug_mock.assert_has_calls(
                             [call("Waiting to receive zip file from worker."),
                              call("Received file from worker: 'filename'"),
@@ -1396,7 +1438,7 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                              call("Finished in 0.000s. Received metadata of 14 files. Sync required."),
                              call("Starting."), call(
                                 "Files to create in worker: 1 | Files to update in worker: 1 | Files to delete in "
-                                "worker: 1 | Files to receive: 1")])
+                                "worker: 1")])
                         debug_mock.assert_has_calls(
                             [call("Waiting to receive zip file from worker."),
                              call("Received file from worker: 'filename'"),
