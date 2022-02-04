@@ -337,7 +337,7 @@ def test_validate_key_not_in_response(response, key):
 
 
 def check_agentd_started(response, agents_list):
-    """Wait until all the agents had their agentd process started correctly. This will avoid race conditions caused by
+    """Wait until all the agents have their agentd process started correctly. This will avoid race conditions caused by
     agents reconnections before restarting.
 
     Parameters
