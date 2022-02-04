@@ -1,118 +1,148 @@
 #ifndef _BUILDER_H
 #define _BUILDER_H
 
-#include "graph.hpp"
-#include "json.hpp"
 #include <algorithm>
+#include <functional>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
+#include "rxcpp/rx.hpp"
 
 #include "connectable.hpp"
+#include "graph.hpp"
 #include "include_builders.hpp"
+#include "json.hpp"
 
 namespace builder
 {
-using namespace builder::internals::builders;
-template <class C> class Builder
+
+/**
+ * @brief The builder class is the responsible to transform and environment
+ * definition into a graph of RXCPP operations.
+ *
+ * @tparam Catalog type of the catalog for dependency injection.
+ */
+template <class Catalog> class Builder
 {
+    // The type of the event which will flow through the stream
     using Event_t = json::Document;
-    using Asset_t = json::Document;
-
-    using Con_t = builder::internals::Connectable;
-    using pCon_t = std::shared_ptr<Con_t>;
-
-    using AssetBuilder_t = std::function<Con_t(Asset_t)>;
-
-    using Node_t = graph::Node<Con_t>;
-    using pNode_t = std::shared_ptr<Node_t>;
-
-    using NodeMap_t = std::map<std::string, pNode_t>;
+    // The type of the observable which will compose the processing graph
+    using Obs_t = rxcpp::observable<Event_t>;
+    // The type of the connectables whisch will help us connect the assets ina graph
+    using Con_t = builder::internals::Connectable<Obs_t>;
+    // The type of a connectable operation
+    using Op_t = std::function<Obs_t(const Obs_t &)>;
+    // The signature of a maker function which will build an asset into a`
+    // connectable.
+    using Maker_t = std::function<Con_t(const json::Document &)>;
+    // The signature of a builder function which will build an operation from
+    // a piece of an asset description.
+    using Builder_t = std::function<Op_t(const json::Value &)>;
+    // The type of the graph which will connect all the connectables into a
+    // graph
+    using Graph_t = graph::Graph<Con_t>;
 
 private:
-    const C * m_catalog;
+    const Catalog & m_catalog;
 
-    pNode_t newNode(std::string name)
+    /**
+     * @brief Connects the provided graph single nodes into a connected
+     * graph defined by its parents. Nodes with no parent will be connected to
+     * the input node, and nodes with no childs will be connected to the output
+     * node
+     *
+     * @param g graph
+     * @param in input node
+     * @param out output node
+     */
+    void connectGraph(Graph_t & g, Con_t in, Con_t out)
     {
-        auto pCon = std::make_shared<Con_t>(name);
-        return std::make_shared<Node_t>(pCon);
+
+        g.addNode(in);
+
+        g.visit(
+            [&](auto edges)
+            {
+                Con_t node = edges.first;
+
+                // TODO: do not relay on special names with input and output in the name
+                if (node == in || node == out || node.m_name.find("INPUT") != std::string::npos ||
+                    node.m_name.find("OUTPUT") != std::string::npos)
+                    return;
+
+                if (node.m_parents.size() == 0 && edges.second.size() == 0)
+                {
+                    g.addEdge(in, node);
+                }
+
+                for (auto p : node.m_parents)
+                {
+                    g.addEdge(Con_t(p), node);
+                }
+            });
+
+        g.addNode(out);
+
+        g.leaves(
+            [&](Con_t leaf)
+            {
+                if (leaf != out)
+                {
+                    g.addEdge(leaf, out);
+                }
+            });
     }
 
-    pNode_t connectGraph(std::string atype, NodeMap_t & nodes, NodeMap_t & filters)
-    {
-        auto input = newNode(atype + "_input");
-        auto output = newNode(atype + "_output");
-
-        std::for_each(nodes.begin(), nodes.end(),
-                      [&](const auto & pair)
-                      {
-                          auto node = pair.second;
-
-                          auto f = filters.find(node->name());
-                          if (f != filters.end())
-                          {
-                              node->connect(f->second);
-                              // If a node is filtered, other nodes will be connected to
-                              // the filter instead of the node itself
-                              nodes.at(node->name()) = f->second;
-                          }
-
-                          auto parents = node->m_value->parents();
-                          if (parents.size() == 0)
-                          {
-                              input->connect(node);
-                          }
-                          for (auto & p : parents)
-                          {
-                              auto parentNode = nodes.find(p);
-                              if (parentNode != nodes.end())
-                              {
-                                  parentNode->second->connect(node);
-                              }
-                          }
-                      });
-
-        graph::visitLeaves<Con_t>(input, [&](auto leaf) { leaf->connect(output); });
-        return input;
-    }
-
-    NodeMap_t assetsBuilder(std::string atype, const json::Value * v, AssetBuilder_t make)
+    /**
+     * @brief Build a a list of asset and add them as connectable value into
+     * the given graph. It will ask the catalog the definition of each asset
+     * in the list to build them.
+     *
+     * @param g the graph to which the value must be added
+     * @param atype the type of the asset
+     * @param v the asset list into a json::Value array
+     * @param make the maker function which will convert a single asset into
+     * a connectable.
+     */
+    void assetBuilder(Graph_t & g, std::string atype, const json::Value * v, Maker_t make)
     {
 
-        NodeMap_t nodes;
         if (v && v->IsArray())
         {
             for (auto & m : v->GetArray())
             {
-                auto asset = m_catalog->getAsset(atype, m.GetString());
-                auto conPtr = std::make_shared<Con_t>(make(asset));
-                auto pNode = std::make_shared<Node_t>(conPtr);
-                nodes.insert(std::pair<std::string, pNode_t>(pNode->name(), pNode));
+                json::Document asset = m_catalog.getAsset(atype, m.GetString());
+                g.addNode(make(asset));
             }
         }
-        return nodes;
-    };
+    }
 
-    NodeMap_t filterNodesBuild(std::string atype, const json::Value * v, AssetBuilder_t make)
+    /**
+     * @brief Inject filters into its positions in the graph.
+     *
+     * @param g graph to filter
+     * @param filters graph of filters
+     */
+    void filterGraph(Graph_t & g, Graph_t & filters)
     {
-
-        NodeMap_t nodes;
-        if (v && v->IsArray())
-        {
-            for (auto & m : v->GetArray())
+        filters.visit(
+            [&](auto edges)
             {
-                auto asset = m_catalog->getAsset(atype, m.GetString());
-                auto conPtr = std::make_shared<Con_t>(make(asset));
-                auto pNode = std::make_shared<Node_t>(conPtr);
-                auto parents = conPtr->parents();
-                std::for_each(parents.begin(), parents.end(),
-                              [&](auto parentName)
-                              { nodes.insert(std::pair<std::string, pNode_t>(parentName, pNode)); });
-            }
-        };
-        return nodes;
+                Con_t filter = edges.first;
+                for (auto & p : filter.m_parents)
+                {
+                    g.addNode(filter);
+                    g.injectEdge(Con_t(p), filter);
+                }
+            });
     }
 
 public:
-    Builder() = default;
-    Builder(const C & catalog) : m_catalog(& catalog){};
+    Builder(const Catalog & c) : m_catalog(c){};
 
     /**
      * @brief An environment might have decoders, rules, filters and outputs,
@@ -127,38 +157,86 @@ public:
      * Filters can be connected to decoders and rules leaves, to discard some
      * events. They cannot attach themselves between two decoders or two rules.
      *
-     * @param name
-     * @return node_ptr execution graph of an environment
+     * @param name name of the environment
+     * @return Graph_t execution graph
      */
-    pNode_t build(std::string name)
+    Graph_t build(const std::string & name)
     {
-        json::Document environment = this->m_catalog->getAsset("environment", name);
+        Graph_t g;
+        Graph_t filters;
+        json::Document asset = m_catalog.getAsset("environment", name);
 
-        auto filterNodes = this->filterNodesBuild("filter", environment.get("/filters"), filterBuilder);
-        auto decNodes = this->assetsBuilder("decoder", environment.get("/decoders"), decoderBuilder);
-        auto ruleNodes = this->assetsBuilder("rule", environment.get("/rules"), ruleBuilder);
-        auto outputNodes = this->assetsBuilder("output", environment.get("/outputs"), outputBuilder);
+        this->assetBuilder(g, "decoder", asset.get(".decoders"), internals::builders::buildDecoder);
+        this->connectGraph(g, Con_t("DECODERS_INPUT"), Con_t("DECODERS_OUTPUT"));
 
-        auto gDecoders = this->connectGraph("decoder", decNodes, filterNodes);
-        auto gRules = this->connectGraph("rule", ruleNodes, filterNodes);
-        auto gOutputs = this->connectGraph("output", outputNodes, filterNodes);
+        g.addNode(Con_t("RULES_INPUT"));
+        g.addEdge(Con_t("DECODERS_OUTPUT"), Con_t("RULES_INPUT"));
 
-        graph::visitLeaves<Con_t>(gDecoders,
-                                  [&](auto leaf)
-                                  {
-                                      leaf->connect(gOutputs);
-                                      leaf->connect(gRules);
-                                  });
+        this->assetBuilder(g, "rule", asset.get(".rules"), internals::builders::buildRule);
+        this->connectGraph(g, Con_t("RULES_INPUT"), Con_t("RULES_OUTPUT"));
 
-        graph::visitLeaves<Con_t>(gRules, [&](auto leaf) { leaf->connect(gOutputs); });
+        g.addNode(Con_t("OUTPUTS_INPUT"));
+        g.addEdge(Con_t("DECODERS_OUTPUT"), Con_t("OUTPUTS_INPUT"));
+        g.addEdge(Con_t("RULES_OUTPUT"), Con_t("OUTPUTS_INPUT"));
 
-        return gDecoders;
+        this->assetBuilder(g, "output", asset.get(".outputs"), internals::builders::buildOutput);
+        this->connectGraph(g, Con_t("OUTPUTS_INPUT"), Con_t("OUTPUTS_OUTPUT"));
+
+        this->assetBuilder(filters, "filter", asset.get(".filters"), internals::builders::buildFilter);
+        this->filterGraph(g, filters);
+
+        return g;
     }
 
-    rxcpp::subjects::subject<Event_t> operator()(const std::string & environment)
+    Op_t operator()(const std::string & name)
     {
-        pNode_t root = this->build(environment);
-        return root->m_value->subject();
+
+        auto g = this->build(name);
+        auto edges = g.get();
+        return [=](Obs_t o) -> Obs_t
+        {
+            Obs_t last;
+            // This algorithm builds the RXCPP based graph of operations 
+            // every time the closure is called. The whole graph is captured
+            // by value by the parent closure.
+            auto visit = [&](Obs_t source, Con_t root, auto & visit_ref) -> void
+            {
+  
+                auto itr = edges.find(root);
+                if (itr == edges.end())
+                {
+                    throw std::invalid_argument("Value root is not in the graph");
+                }
+
+                // Visit node
+                Con_t node = itr->first;
+                if (node.m_inputs.size() == 0)
+                {
+                    node.addInput(source);
+                }
+                Obs_t obs = node.connect();
+
+                // Add obs as an input to the childs
+                for (Con_t n : itr->second)
+                {
+                    n.addInput(obs);
+                }
+
+                // Visit childs
+                for (auto & n : itr->second)
+                {
+                    visit_ref(obs, n, visit_ref);
+                }
+
+                if (itr->second.size() == 0)
+                {
+                    last = obs;
+                }
+            };
+
+            visit(o, Con_t("DECODERS_INPUT"), visit);
+            return last;
+        };
     }
 };
 

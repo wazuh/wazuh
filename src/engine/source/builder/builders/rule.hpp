@@ -8,56 +8,78 @@
 #include "connectable.hpp"
 #include "json.hpp"
 
-#include "builders/check_stage.hpp"
-#include "builders/normalize_stage.hpp"
+#include "builders/buildCheck.hpp"
+#include "builders/buildMap.hpp"
+#include "builders/stage.hpp"
 
 namespace builder::internals::builders
 {
+// The type of the event which will flow through the stream
+using Event_t = json::Document;
+// The type of the observable which will compose the processing graph
+using Obs_t = rxcpp::observable<Event_t>;
+// The type of the connectables whisch will help us connect the assets ina graph
+using Con_t = builder::internals::Connectable<Obs_t>;
+// The type of a connectable operation
+using Op_t = std::function<Obs_t(const Obs_t &)>;
+// The signature of a maker function which will build an asset into a`
+// connectable.
 
 /**
  * @brief Builds rule connectable
  *
- * @param inputJson
- * @return Connectable
+ * @param def rule definition
+ * @return Con_t
  */
-Connectable ruleBuilder(const json::Document & inputJson)
+Con_t buildRule(const json::Document & def)
 {
+    const json::Value * name;
+    const json::Value * checkVal;
     std::vector<std::string> parents;
-    if (inputJson.exists(".parents"))
+
+    if (def.exists(".parents"))
     {
-        for (rapidjson::Value::ConstValueIterator it = inputJson.get(".parents")->GetArray().Begin();
-             it != inputJson.get(".parents")->GetArray().End(); it++)
+        for (auto & i : def.get(".parents")->GetArray())
         {
-            parents.push_back(it->GetString());
+            parents.push_back(i.GetString());
         }
     }
-    auto name = inputJson.get(".name");
-    if (!name)
-    {
-        throw std::invalid_argument("Rule builder expects decoder to have a name entry.");
-    }
-    Connectable connectable(name->GetString(), parents);
 
-    // Check stage is mandatory in a rule
-    auto checkVal = inputJson.get(".check");
-    if (!checkVal)
+    try
     {
-        throw std::invalid_argument("Rule builder expects rule definition to have a check section. ");
+        name = def.get(".name");
     }
-    auto outputObs = checkStageBuilder(connectable.output(), checkVal);
+    catch (std::invalid_argument & e)
+    {
+        std::throw_with_nested(std::invalid_argument("Decoder builder expects definition to have a .name entry."));
+    }
+
+    try
+    {
+        checkVal = def.get(".check");
+    }
+    catch (std::invalid_argument & e)
+    {
+        std::throw_with_nested(std::invalid_argument("Decoder builder expects definition to have a .allow section."));
+    }
+
+    Op_t checkStage = buildStageChain(checkVal, buildCheck);
 
     // Normalize stage is optional
-    auto normalizeVal = inputJson.get(".normalize");
-    if (normalizeVal)
+    Op_t mapStage = unit_op;
+    try
     {
-        outputObs = normalizeStageBuilder(outputObs, normalizeVal);
+        auto mapVal = def.get(".normalize");
+        mapStage = buildStageChain(mapVal, buildMap);
+    }
+    catch (std::invalid_argument & a)
+    {
+        // normalize stage is optional, in case of an error do nothign
+        // we must ensure nothing else could happen here
     }
 
-    // Update connectable and return
-    connectable.set(outputObs);
-
-    return connectable;
-}
+    return Con_t(name->GetString(), parents, [=](const Obs_t & input) -> Obs_t { return mapStage(checkStage(input)); });
+};
 
 } // namespace builder::internals::builders
 #endif // _BUILDERS_RULE_H

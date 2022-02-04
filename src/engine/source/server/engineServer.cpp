@@ -43,6 +43,7 @@ void EngineServer::configure(const vector<string> & config)
         output = output.merge(*it);
     }
     this->m_output = output.flat_map([](auto o) { return o; });
+
 }
 
 EngineServer::EngineServer(const vector<string> & config)

@@ -7,8 +7,8 @@ CPMAddPackage(
 )
 # Configuration router test
 add_executable(file_output_test
-  ${ENGINE_SOURCE_DIR}/builder/outputs/file_output.hpp
-  ${TEST_SOURCE_DIR}/builder/outputs/file_output_test.cpp
+  ${ENGINE_SOURCE_DIR}/builder/outputs/file.hpp
+  ${TEST_SOURCE_DIR}/builder/outputs/fileOutputTest.cpp
 )
 
 target_include_directories(file_output_test PUBLIC

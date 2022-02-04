@@ -6,16 +6,13 @@
 #include <rxcpp/rx.hpp>
 #include <vector>
 
-#include "builders/file_output.hpp"
+#include "builders/buildOutput.hpp"
 #include "test_utils.hpp"
 
 using namespace builder::internals::builders;
 
 TEST(FileOutputBuilderTest, Builds)
 {
-    // Fake input
-    auto entry_point = observable<>::empty<event_t>();
-
     // Fake input json
     auto fake_jstring = R"(
     {
@@ -27,15 +24,12 @@ TEST(FileOutputBuilderTest, Builds)
     json::Document fake_j{fake_jstring};
 
     // Builds
-    ASSERT_NO_THROW(fileOutputBuilder(entry_point, fake_j.get(".file")));
+    ASSERT_NO_THROW(buildFileOutput(fake_j.get(".file")));
     std::filesystem::remove("/tmp/file");
 }
 
 TEST(FileOutputBuilderTest, BuildsErrorNotObject)
 {
-    // Fake input
-    auto entry_point = observable<>::empty<event_t>();
-
     // Fake input json
     auto fake_jstring = R"(
     {
@@ -47,14 +41,11 @@ TEST(FileOutputBuilderTest, BuildsErrorNotObject)
     json::Document fake_j{fake_jstring};
 
     // Builds
-    ASSERT_THROW(fileOutputBuilder(entry_point, fake_j.get(".file")), invalid_argument);
+    ASSERT_THROW(buildFileOutput(fake_j.get(".file")), invalid_argument);
 }
 
 TEST(FileOutputBuilderTest, BuildsErrorMemberCount)
 {
-    // Fake input
-    auto entry_point = observable<>::empty<event_t>();
-
     // Fake input json
     auto fake_jstring = R"(
     {
@@ -67,14 +58,11 @@ TEST(FileOutputBuilderTest, BuildsErrorMemberCount)
     json::Document fake_j{fake_jstring};
 
     // Builds
-    ASSERT_THROW(fileOutputBuilder(entry_point, fake_j.get(".file")), invalid_argument);
+    ASSERT_THROW(buildFileOutput(fake_j.get(".file")), invalid_argument);
 }
 
 TEST(FileOutputBuilderTest, BuildsErrorNoPath)
 {
-    // Fake input
-    auto entry_point = observable<>::empty<event_t>();
-
     // Fake input json
     auto fake_jstring = R"(
     {
@@ -86,14 +74,11 @@ TEST(FileOutputBuilderTest, BuildsErrorNoPath)
     json::Document fake_j{fake_jstring};
 
     // Builds
-    ASSERT_THROW(fileOutputBuilder(entry_point, fake_j.get(".file")), invalid_argument);
+    ASSERT_THROW(buildFileOutput(fake_j.get(".file")), invalid_argument);
 }
 
 TEST(FileOutputBuilderTest, BuildsErrorIncorrectPath)
 {
-    // Fake input
-    auto entry_point = observable<>::empty<event_t>();
-
     // Fake input json
     auto fake_jstring = R"(
     {
@@ -105,7 +90,7 @@ TEST(FileOutputBuilderTest, BuildsErrorIncorrectPath)
     json::Document fake_j{fake_jstring};
 
     // Builds
-    ASSERT_THROW(fileOutputBuilder(entry_point, fake_j.get(".file")), invalid_argument);
+    ASSERT_THROW(buildFileOutput(fake_j.get(".file")), invalid_argument);
 }
 
 TEST(FileOutputBuilderTest, Operates)
@@ -144,7 +129,7 @@ TEST(FileOutputBuilderTest, Operates)
     json::Document fake_j{fake_jstring};
 
     // Builds
-    fileOutputBuilder(entry_point, fake_j.get(".file"));
+    auto op = buildFileOutput(fake_j.get(".file"));
 
     // Fake subscriber
     vector<event_t> observed;
@@ -152,7 +137,8 @@ TEST(FileOutputBuilderTest, Operates)
     auto on_completed = []() {};
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
-    entry_point.subscribe(subscriber);
+    op(entry_point).subscribe(subscriber);
+    
     std::ifstream ifs("/tmp/file");
     std::stringstream buffer;
     ASSERT_EQ(observed.size(), 3);
