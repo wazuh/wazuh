@@ -44,7 +44,7 @@ else()
 endif(FSANITIZE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
+  add_definitions(-DWIN32=1 -DWIN_EXPORT)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
@@ -68,6 +68,8 @@ file(GLOB SYSCHECKD_SRC
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC})
+    add_definitions(-D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
+    add_library(wazuh-syscheckd-event OBJECT ${SYSCHECKD_SRC})
 else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
