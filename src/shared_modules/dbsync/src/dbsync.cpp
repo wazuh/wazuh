@@ -914,7 +914,7 @@ std::set<std::string> SyncRowQuery::getIgnoredColumns(const nlohmann::json& js)
             {
                 for (const auto& column : *ignored)
                 {
-                    result.insert(std::string(column));
+                    result.insert(column.get_ref<const std::string&>());
                 }
             }
         }
