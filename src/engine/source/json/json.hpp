@@ -231,9 +231,21 @@ public:
     {
         return this->m_doc.GetObject();
     }
-    auto& getAllocator()
+    auto & getAllocator()
     {
         return this->m_doc.GetAllocator();
+    }
+
+    Document operator=(const Document & other)
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        this->m_doc.CopyFrom(other.m_doc, this->m_doc.GetAllocator());
+
+        return *this;
     }
 };
 

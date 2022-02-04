@@ -25,11 +25,7 @@ json::Document engineserver::protocolhandler::parseEvent(const std::string & eve
     }
     catch (const std::exception & e)
     {
-        std::cerr << "ERROR (" << e.what() << "): Can not extract queue from the event: \"" << event << "\"\n";
-        std::string errStr = e.what();
-        json::Value errVal(errStr.c_str(), errStr.length());
-        object.set("/error",  errVal);
-        return object;
+        std::throw_with_nested(std::invalid_argument("Error parsing queue id"));
     }
 
     separator_pos = event_slice.find(":");
