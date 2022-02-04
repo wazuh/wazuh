@@ -2,7 +2,7 @@
 #define _CON_T_H
 
 #include "rxcpp/rx.hpp"
-#include "json.hpp"
+#include "json/json.hpp"
 
 namespace builder::internals
 {
@@ -40,7 +40,7 @@ template <class Observable> struct Connectable
      * must merge their parents' output as a single input for this connectable
      * operation.
      */
-    std::vector<Observable> m_inputs {};
+    std::vector<Observable> m_inputs;
 
     
     /**
@@ -71,7 +71,7 @@ template <class Observable> struct Connectable
      */
     void addInput(Observable obs)
     {
-        m_inputs.push_back(obs);
+        inputs.push_back(obs);
     }
     /**
      * @brief Connects an input stream with the operation of this
@@ -94,11 +94,11 @@ template <class Observable> struct Connectable
      */
     Observable connect()
     {
-        if (m_inputs.size() > 1)
+        if (inputs.size() > 1)
         {
-            return m_op(rxcpp::observable<>::iterate(m_inputs).flat_map([](Observable o) { return o; }));
+            return op(rxcpp::observable<>::iterate(inputs).flat_map([](Observable o) { return o; }));
         }
-        return m_op(m_inputs[0]);
+        return op(inputs[0]);
     }
 
     /**
@@ -108,23 +108,23 @@ template <class Observable> struct Connectable
 
     friend inline bool operator<(const Connectable & lhs, const Connectable & rhs)
     {
-        return lhs.m_name < rhs.m_name;
+        return lhs.name < rhs.name;
     }
 
     friend inline std::ostream & operator<<(std::ostream & os, const Connectable & rhs)
     {
-        os << rhs.m_name;
+        os << rhs.name;
         return os;
     }
 
     friend inline bool operator!=(const Connectable & l, const Connectable & r)
     {
-        return l.m_name != r.m_name;
+        return l.name != r.name;
     }
 
     friend inline bool operator==(const Connectable & l, const Connectable & r)
     {
-        return l.m_name == r.m_name;
+        return l.name == r.name;
     }
 
 

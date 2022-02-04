@@ -12,9 +12,8 @@
 namespace builder::internals::syntax
 {
 
-const std::string REFERENCE_ANCHOR("$");
-const std::string HELPER_ANCHOR("+");
-const std::string HELPER_ARG_ANCHOR("/");
+const int REFERENCE_ANCHOR('$');
+const int FUNCTION_HELPER_ANCHOR('+');
 
 } // namespace builder::internals::syntax
 

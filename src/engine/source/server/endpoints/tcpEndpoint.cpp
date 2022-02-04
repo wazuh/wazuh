@@ -40,30 +40,39 @@ TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
                             auto client = srv.loop().resource<uvw::TCPHandle>();
 
                             client->on<uvw::ErrorEvent>(
-                                [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
+                                [sInner](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
                                 {
                                     std::cerr << "TCP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
                                               << ") error: code=" << event.code() << "; name=" << event.name()
                                               << "; message=" << event.what() << std::endl;
+                                    auto e = std::runtime_error("Connection error from " + client.peer().ip +
+                                                                " due to " + event.what());
+                                    sInner.on_error(std::make_exception_ptr(e));
                                 });
 
                             client->on<uvw::DataEvent>(
                                 [sInner, &srv](const uvw::DataEvent & event, uvw::TCPHandle & client)
                                 {
-                                    auto eventObject = engineserver::protocolhandler::parseEvent(
-                                        std::string(event.data.get(), event.length));
-                                    if (!eventObject.contains("error"))
+                                    json::Document evt;
+                                    try
                                     {
-                                        sInner.on_next(eventObject);
+                                        evt = engineserver::protocolhandler::parseEvent(
+                                            std::string(event.data.get(), event.length));
                                     }
-                                    else
+                                    catch (std::_Nested_exception<std::invalid_argument> & e)
                                     {
-                                        // TODO: complete this case
+                                        client.close();
+                                        sInner.on_error(std::make_exception_ptr(e));
                                     }
+                                    sInner.on_next(evt);
                                 });
 
-                            client->on<uvw::EndEvent>([](const uvw::EndEvent &, uvw::TCPHandle & client)
-                                                      { client.close(); });
+                            client->on<uvw::EndEvent>(
+                                [sInner](const uvw::EndEvent &, uvw::TCPHandle & client)
+                                {
+                                    sInner.on_completed();
+                                    client.close();
+                                });
 
                             srv.accept(*client);
                             client->read();

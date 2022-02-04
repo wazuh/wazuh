@@ -3,12 +3,12 @@
 #include <rxcpp/rx.hpp>
 #include <vector>
 
-#include "builders/rule.hpp"
+#include "builders/filter.hpp"
 #include "test_utils.hpp"
 
 using namespace builder::internals::builders;
 
-TEST(RuleBuilderTest, Builds)
+TEST(FilterBuilderTest, Builds)
 {
     // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
@@ -16,22 +16,19 @@ TEST(RuleBuilderTest, Builds)
     // Fake input json
     auto fake_jstring = R"(
     {
-      "name": "test_rule",
-      "parents": [],
-      "check": [
+      "name": "test_filter",
+      "after": [],
+      "allow": [
         {"field": 1}
-      ],
-      "normalize": [
-        {"mapped_field": 1}
       ]
     }
-  )";
+    )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_NO_THROW(auto obs = ruleBuilder(fake_j));
+    ASSERT_NO_THROW(auto op = buildFilter(fake_j));
 }
 
-TEST(RuleBuilderTest, BuildsErrorNoName)
+TEST(FilterBuilderTest, BuildsErrorNoName)
 {
     // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
@@ -39,21 +36,18 @@ TEST(RuleBuilderTest, BuildsErrorNoName)
     // Fake input json
     auto fake_jstring = R"(
     {
-      "parents": [],
-      "check": [
+      "after": [],
+      "allow": [
         {"field": 1}
-      ],
-      "normalize": [
-        {"mapped_field": 1}
       ]
     }
-  )";
+    )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = ruleBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto op = buildFilter(fake_j), invalid_argument);
 }
 
-TEST(RuleBuilderTest, BuildsErrorNoCheck)
+TEST(FilterBuilderTest, BuildsErrorNoAllow)
 {
     // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
@@ -61,19 +55,16 @@ TEST(RuleBuilderTest, BuildsErrorNoCheck)
     // Fake input json
     auto fake_jstring = R"(
     {
-      "name": "name",
-      "parents": [],
-      "normalize": [
-        {"mapped_field": 1}
-      ]
+      "name": "test_filter",
+      "after": []
     }
-  )";
+    )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = ruleBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto op = buildFilter(fake_j), invalid_argument);
 }
 
-TEST(RuleBuilderTest, OperatesAndConnects)
+TEST(FilterBuilderTest, OperatesAndConnects)
 {
     // Fake entry point
     observable<event_t> entry_point = observable<>::create<event_t>(
@@ -99,20 +90,17 @@ TEST(RuleBuilderTest, OperatesAndConnects)
     // Fake input json
     auto fake_jstring = R"(
     {
-      "name": "test_decoder",
-      "parents": [],
-      "check": [
+      "name": "test_filter",
+      "after": [],
+      "allow": [
         {"field": 1}
-      ],
-      "normalize": [
-        {"mapped_field": 1}
       ]
     }
-  )";
+    )";
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto connectable = ruleBuilder(fake_j);
+    auto connectable = buildFilter(fake_j);
 
     // Fake subscriber
     vector<event_t> observed;
@@ -121,8 +109,8 @@ TEST(RuleBuilderTest, OperatesAndConnects)
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
     // Operate
-    ASSERT_NO_THROW(connectable.output().subscribe(subscriber));
-    ASSERT_NO_THROW(entry_point.subscribe(connectable.input()));
+    ASSERT_NO_THROW(connectable.op(entry_point).subscribe(subscriber));
+    // ASSERT_NO_THROW(entry_point.subscribe(connectable.input()));
     ASSERT_EQ(observed.size(), 2);
-    for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped_field")->GetInt(), 1); });
+    for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".field")->GetInt(), 1); });
 }

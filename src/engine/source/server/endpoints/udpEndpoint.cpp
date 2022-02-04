@@ -47,16 +47,17 @@ UDPEndpoint::UDPEndpoint(const std::string & config) : BaseEndpoint{config}
                                               << "; message=" << event.what() << std::endl;
                                 });
 
-                            auto eventObject =
-                                engineserver::protocolhandler::parseEvent(std::string(event.data.get(), event.length));
-                            if (!eventObject.contains("error"))
+                            json::Document evt;
+                            try
                             {
-                                sInner.on_next(eventObject);
+                                evt = engineserver::protocolhandler::parseEvent(
+                                    std::string(event.data.get(), event.length));
                             }
-                            else
+                            catch (std::_Nested_exception<std::invalid_argument> & e)
                             {
-                                // TODO: complete this case
+                                sInner.on_error(std::make_exception_ptr(e));
                             }
+                            sInner.on_next(evt);
                         });
 
                     handle->bind(ip, port);

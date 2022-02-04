@@ -37,14 +37,14 @@ FetchContent_GetProperties(
 ####################################################################################################
 # Sources -- Headers -- Libraries
 ####################################################################################################
-add_executable(router_test
-  ${TEST_SOURCE_DIR}/router/router_test.cpp
+add_executable(routerTest
+  ${TEST_SOURCE_DIR}/router/routerTest.cpp
 )
 
-target_include_directories(router_test PUBLIC
+target_include_directories(routerTest PUBLIC
   ${ENGINE_SOURCE_DIR}/json
   ${rapidjson_headers}/include
   ${ENGINE_SOURCE_DIR}/router
 )
-target_link_libraries(router_test gtest_main rxcpp)
-gtest_discover_tests(router_test)
+target_link_libraries(routerTest gtest_main rxcpp)
+gtest_discover_tests(routerTest)

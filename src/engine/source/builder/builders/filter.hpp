@@ -8,10 +8,22 @@
 #include "connectable.hpp"
 #include "json.hpp"
 
-#include "builders/check_stage.hpp"
-
+#include "builders/buildCheck.hpp"
+#include "builders/stage.hpp"
 namespace builder::internals::builders
 {
+// The type of the event which will flow through the stream
+using Event_t = json::Document;
+// The type of the observable which will compose the processing graph
+using Obs_t = rxcpp::observable<Event_t>;
+// The type of the connectables whisch will help us connect the assets ina graph
+using Con_t = builder::internals::Connectable<Obs_t>;
+// The type of a connectable operation
+using Op_t = std::function<Obs_t(const Obs_t &)>;
+// The signature of a maker function which will build an asset into a`
+// connectable.
+
+using Graph_t = graph::Graph<Con_t>;
 
 /**
  * @brief Builds rule connectable
@@ -19,37 +31,46 @@ namespace builder::internals::builders
  * @param inputJson
  * @return Connectable
  */
-Connectable filterBuilder(const json::Document & inputJson)
+Con_t buildFilter(const json::Document & def)
 {
+
     std::vector<std::string> parents;
-    if (inputJson.exists("/after"))
-    {
-        for (rapidjson::Value::ConstValueIterator it = inputJson.get(".after")->GetArray().Begin();
-             it != inputJson.get(".after")->GetArray().End(); it++)
-        {
-            parents.push_back(it->GetString());
-        }
-    }
-    auto name = inputJson.get(".name");
-    if (!name)
-    {
-        throw std::invalid_argument("Filter builder must have a name entry.");
-    }
-    Connectable connectable(name->GetString(), parents);
+    const json::Value * name;
+    const json::Value * allow;
 
-    // Check stage is mandatory in a rule
-    auto checkVal = inputJson.get(".allow");
-    if (!checkVal)
+    auto after = def.get(".after");
+    if (!after || !after->IsArray())
     {
-        throw std::invalid_argument("Filter builder expects filter definition to have allow section. ");
+        throw std::invalid_argument("Filter builder expects a filter to have an .after array with the names of the assets this filter will be connected to.");
     }
-    auto outputObs = checkStageBuilder(connectable.output(), checkVal);
 
-    // Update connectable and return
-    connectable.set(outputObs);
+    for (auto & i : after->GetArray())
+    {
+        parents.push_back(i.GetString());
+    }
 
-    return connectable;
-}
+    try
+    {
+        name = def.get(".name");
+    }
+    catch (std::invalid_argument & e)
+    {
+        std::throw_with_nested(std::invalid_argument("Filter builder expects definition to have a .name entry."));
+    }
+
+    try
+    {
+        allow = def.get(".allow");
+    }
+    catch (std::invalid_argument & e)
+    {
+        std::throw_with_nested(std::invalid_argument("Filter builder expects definition to have a .allow section."));
+    }
+
+    Op_t checkStage = buildStageChain(allow, buildCheck);
+
+    return Con_t(name->GetString(), parents, [=](const Obs_t & input) -> Obs_t { return checkStage(input); });
+};
 
 } // namespace builder::internals::builders
 #endif // _BUILDERS_FILTER_H
