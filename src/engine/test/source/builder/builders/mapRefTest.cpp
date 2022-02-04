@@ -3,12 +3,12 @@
 #include <rxcpp/rx.hpp>
 #include <vector>
 
-#include "condition_value.hpp"
+#include "buildMap.hpp"
 #include "test_utils.hpp"
 
 using namespace builder::internals::builders;
 
-TEST(ConditionValueTest, Builds)
+TEST(MapReferenceTest, Builds)
 {
     // Fake entry point
     auto entry_point = observable<>::empty<event_t>();
@@ -17,35 +17,30 @@ TEST(ConditionValueTest, Builds)
     auto fake_jstring = R"(
       {
           "check": {
-              "field": 1
+              "mapped_field": "field"
           }
       }
   )";
     json::Document fake_j{fake_jstring};
 
     // Build
-    ASSERT_NO_THROW(auto _observable = conditionValueBuilder(entry_point, fake_j.get(".check")));
+    auto _op = buildMapRef("mapped_field", "field"); //fake_j.get(".check"));
 }
 
-TEST(ConditionValueTest, Operates)
+TEST(MapReferenceTest, Operates)
 {
     // Fake entry point
     observable<event_t> entry_point = observable<>::create<event_t>(
         [](subscriber<event_t> o)
         {
-            o.on_next(event_t{R"(
+            o.on_next(json::Document{R"(
       {
               "field": 1
       }
   )"});
-            o.on_next(event_t{R"(
+            o.on_next(json::Document{R"(
       {
-              "field": "1"
-      }
-  )"});
-            o.on_next(event_t{R"(
-      {
-              "otherfield": 1
+              "field": 1
       }
   )"});
         });
@@ -54,14 +49,14 @@ TEST(ConditionValueTest, Operates)
     auto fake_jstring = R"(
       {
           "check": {
-              "field": 1
+              "mapped_field": "field"
           }
       }
   )";
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto _observable = conditionValueBuilder(entry_point, fake_j.get(".check"));
+    auto _op = buildMapRef("mapped_field","field");
 
     // Fake subscriber
     vector<event_t> observed;
@@ -70,7 +65,7 @@ TEST(ConditionValueTest, Operates)
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
     // Operate
-    ASSERT_NO_THROW(_observable.subscribe(subscriber));
-    ASSERT_EQ(observed.size(), 1);
-    for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".field")->GetInt(), 1); });
+    ASSERT_NO_THROW(_op(entry_point).subscribe(subscriber));
+    ASSERT_EQ(observed.size(), 2);
+    for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped_field")->GetInt(), 1); });
 }

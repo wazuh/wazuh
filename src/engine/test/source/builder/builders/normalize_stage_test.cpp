@@ -3,7 +3,8 @@
 #include <rxcpp/rx.hpp>
 #include <vector>
 
-#include "builders/normalize_stage.hpp"
+#include "stage.hpp"
+#include "buildMap.hpp"
 #include "test_utils.hpp"
 
 using namespace builder::internals::builders;
@@ -25,7 +26,7 @@ TEST(NormalizeStageTest, Builds)
     json::Document fake_j{fake_jstring};
 
     // Build
-    ASSERT_NO_THROW(auto _observable = normalizeStageBuilder(entry_point, fake_j.get(".map")));
+    ASSERT_NO_THROW(auto _op = buildStageChain(fake_j.get(".map"), buildMap));
 }
 
 TEST(NormalizeStageTest, BuildsErrorExpectsArray)
@@ -44,7 +45,7 @@ TEST(NormalizeStageTest, BuildsErrorExpectsArray)
     json::Document fake_j{fake_jstring};
 
     // Build
-    ASSERT_THROW(auto _observable = normalizeStageBuilder(entry_point, fake_j.get(".map")), std::invalid_argument);
+    ASSERT_THROW(auto _op = buildStageChain(fake_j.get(".map"), buildMap), std::invalid_argument);
 }
 
 TEST(NormalizeStageTest, Operates)
@@ -82,7 +83,7 @@ TEST(NormalizeStageTest, Operates)
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto _observable = normalizeStageBuilder(entry_point, fake_j.get(".map"));
+    auto _op =  buildStageChain(fake_j.get(".map"), buildMap);
 
     // Fake subscriber
     vector<event_t> observed;
@@ -91,7 +92,7 @@ TEST(NormalizeStageTest, Operates)
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
     // Operate
-    ASSERT_NO_THROW(_observable.subscribe(subscriber));
+    ASSERT_NO_THROW(_op(entry_point).subscribe(subscriber));
     ASSERT_EQ(observed.size(), 3);
     for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped")->GetInt(), 1); });
 }

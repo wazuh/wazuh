@@ -1,16 +1,22 @@
+#include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <thread>
 
-#ifndef _BUILDER_TEST_H
-#define _BUILDER_TEST_H
-
-#include "connectable.hpp"
-#include "rxcpp/rx.hpp"
 #include "json/json.hpp"
+
+#include "rxcpp/rx-test.hpp"
+#include "rxcpp/rx.hpp"
+#include "gtest/gtest.h"
+
+#define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
 std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                 {
                     "name": "decoder_0",
                     "check": [
-                        {"field": "value" }
+                        {"type": "int"}
                     ],
                     "normalize": [
                         { "new_dec_field0": "new_dec_value0" }
@@ -24,7 +30,7 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         "decoder_0"
                     ],
                     "check": [
-                        {"field": "value" }
+                        {"type": "int"}
                     ],
                     "normalize": [
                         { "new_dec_field1": "new_dec_value1" }
@@ -38,7 +44,7 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         "decoder_0"
                     ],
                     "check": [
-                        {"field": "value" }
+                        {"type": "int"}
                     ],
                     "normalize": [
                         { "new_dec_field2": "new_dec_value2" }
@@ -53,7 +59,7 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         "decoder_2"
                     ],
                     "check": [
-                        {"field": "value" }
+                        {"type": "int"}
                     ],
                     "normalize": [
                         { "new_dec_field3": "new_dec_value3" }
@@ -65,7 +71,7 @@ std::map<std::string, std::string> rules = {{"rule_0", R"(
                     {
                     "name": "rule_0",
                     "check": [
-                        {"field": "value"}
+                        {"type": "int"}
                     ],
                     "normalize": [
                         { "new_rule_field": "new_rule_value" }
@@ -77,19 +83,19 @@ std::map<std::string, std::string> filters = {{"filter_0", R"(
                 {
                     "name": "filter_0",
                     "after": [
-                        "decoder_0"
+                        "rule_0"
                     ],
                     "allow": [
-                        {"field": "value"}
+                        {"type": "int"}
                     ]
                 }
     )"}};
 
 std::map<std::string, std::string> outputs = {{"output_0", R"(
                 {
-                    "name": "output_0",
+                    "name": "fileOutput",
                     "check": [
-                        {"field": "value"}
+                        {"type": "int"}
                     ],
                     "outputs": [
                         {"file": { "path": "/tmp/filepath.txt" }}
@@ -103,24 +109,24 @@ std::map<std::string, std::string> environments = {
     {"environment_3", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
     {"environment_4",
      R"({  "decoders": [ "decoder_0" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
-    {"environment_5", R"({
-     "decoders": [ "decoder_0" , "decoder_1" ],
-     "rules": [ "rule_0" ],
-     "filters": [  ],
-     "outputs": [ "output_0" ]
+    {"environment_5", R"({  
+     "decoders": [ "decoder_0" , "decoder_1" ], 
+     "rules": [ "rule_0" ], 
+     "filters": [  ], 
+     "outputs": [ "output_0" ] 
      })"},
-    {"environment_6", R"({
-     "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ],
-     "rules": [ "rule_0" ],
-     "filters": [ "filter_0" ],
-     "outputs": [ "output_0" ]
+    {"environment_6", R"({  
+     "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ], 
+     "rules": [ "rule_0" ], 
+     "filters": [ "filter_0" ], 
+     "outputs": [ "output_0" ] 
      })"}};
 
 class FakeCatalog
 {
 private:
 public:
-    json::Document getAsset(const std::string atype, const std::string assetName) const
+    json::Document getAsset(const std::string atype, const std::string assetName)
     {
 
         if (atype == "environment")
@@ -157,5 +163,3 @@ public:
         return {"not", "implemented"};
     }
 };
-
-#endif // _BUILDER_TEST_H

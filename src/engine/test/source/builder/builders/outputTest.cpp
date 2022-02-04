@@ -33,7 +33,7 @@ TEST(OutputBuilderTest, Builds)
     )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_NO_THROW(auto obs = outputBuilder(fake_j));
+    ASSERT_NO_THROW(auto con = buildOutput(fake_j));
     std::filesystem::remove("/tmp/file");
 }
 
@@ -58,7 +58,7 @@ TEST(OutputBuilderTest, BuildsErrorNoName)
     )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = outputBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto con = buildOutput(fake_j), invalid_argument);
 }
 
 TEST(OutputBuilderTest, BuildsErrorNoCheck)
@@ -80,7 +80,7 @@ TEST(OutputBuilderTest, BuildsErrorNoCheck)
     )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = outputBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto con = buildOutput(fake_j), invalid_argument);
 }
 
 TEST(OutputBuilderTest, BuildsErrorNoOutputs)
@@ -100,7 +100,7 @@ TEST(OutputBuilderTest, BuildsErrorNoOutputs)
     )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = outputBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto con = buildOutput(fake_j), invalid_argument);
 }
 
 TEST(OutputBuilderTest, BuildsErrorOutputsNotArray)
@@ -124,7 +124,7 @@ TEST(OutputBuilderTest, BuildsErrorOutputsNotArray)
     )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = outputBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto con = buildOutput(fake_j), invalid_argument);
 }
 
 TEST(OutputBuilderTest, OperatesAndConnects)
@@ -165,7 +165,7 @@ TEST(OutputBuilderTest, OperatesAndConnects)
     )";
     json::Document fake_j{fake_jstring};
 
-    auto connectable = outputBuilder(fake_j);
+    auto con = buildOutput(fake_j);
 
     // Fake subscriber
     vector<event_t> observed;
@@ -173,8 +173,8 @@ TEST(OutputBuilderTest, OperatesAndConnects)
     auto on_completed = []() {};
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
-    connectable.output().subscribe(subscriber);
-    entry_point.subscribe(connectable.input());
+    auto out = con.op(entry_point).subscribe(subscriber);
+    // entry_point.subscribe(connectable.input());
 
     std::ifstream ifs("/tmp/file");
     std::stringstream buffer;

@@ -1,21 +1,17 @@
 #ifndef _GRAPH_H
 #define _GRAPH_H
 
-#include <map>
-#include <set>
-#include <utility>
 #include <vector>
-#include <functional>
-#include <sstream>
 
-namespace graph
+namespace _graph
 {
+
 /**
  * @brief Implements the graph and its algorithms. Used as a helper to build
- * the RXCPP observable graph based on our assets definitions.
- *
+ * the RXCPP observable graph based on our assets definitions. 
+ * 
  * It can contain almost any value. We use it with Connectables.
- *
+ * 
  * @tparam Value type of the value it will contain.
  */
 template <class Value> class Graph
@@ -28,11 +24,12 @@ private:
     std::map<Value, std::set<Value>> m_edges;
 
 public:
+
     /**
      * @brief Adds a value to the graph, and initializes its child set
      * as empty.
-     *
-     * @param a Value
+     * 
+     * @param a Value 
      */
     void addNode(Value a)
     {
@@ -40,7 +37,7 @@ public:
         m_edges.insert(std::make_pair(a, v));
     }
 
-    auto get() const
+    auto get()
     {
         return m_edges;
     }
@@ -48,9 +45,9 @@ public:
     /**
      * @brief Injects value b between a and its childs, so b becomes the parent
      * of a's childs and the only child of a.
-     *
-     * @param a parent to inject into
-     * @param b node to become the only child of a
+     * 
+     * @param a 
+     * @param b 
      */
     void injectEdge(Value a, Value b)
     {
@@ -65,14 +62,14 @@ public:
             throw std::invalid_argument("Value b is not in the graph");
         }
 
-        std::for_each(ita->second.begin(), ita->second.end(), [&](auto c) { this->addEdge(itb->first, c); });
+        std::for_each(ita->second.begin(), ita->second.end(), [&](auto c) { add_edge(itb->first, c); });
         ita->second = std::set<Value>();
-        this->addEdge(ita->first, itb->first);
+        add_edge(ita->first, itb->first);
     }
 
     /**
      * @brief Removes b from the child set of a.
-     *
+     * 
      * @param a Value
      * @param b Value
      */
@@ -93,9 +90,9 @@ public:
 
     /**
      * @brief Add b to the child set of b.
-     *
-     * @param a
-     * @param b
+     * 
+     * @param a 
+     * @param b 
      */
     void addEdge(Value a, Value b)
     {
@@ -116,8 +113,8 @@ public:
     /**
      * @brief visit all nodes of the graph only once. The visitor function
      * will receive a pair with the value and a set of its childs.
-     *
-     * @param fn
+     * 
+     * @param fn 
      */
     void visit(std::function<void(std::pair<Value, std::set<Value>>)> fn) const
     {
@@ -127,36 +124,9 @@ public:
         }
     }
 
-    // void BFS(Value root, std::function<void()> fn)
-    // {
-    //     std::deque<std::pair<Value, std::set<Value>> queue;
-    //     std::map<Value, bool> visited;
-
-    //     auto itr = m_edges.find(root);
-    //     if (itr == m_edges.end()) {
-    //         throw std::invalid_argument("Root node not in the graph");
-    //     }
-    //     visited.insert(std::pair(itr->first, true));
-    //     queue.push_back(*itr);
-
-    //     while(!queue.empty())
-    //     {
-    //         auto n = queue.front();
-    //         // visit here
-    //         fn(n);
-    //         queue.pop_front();
-    //         for(auto c: n->second) {
-    //             if( visited.find(c) == visited.end())
-    //             {
-    //                 visited.insert(std::pair(c,true));
-    //                 queue.push_back(c);
-    //             }
-    //         }
-    //     }
-    // }
     /**
      * @brief Visit all graph leaves, which are the nodes with empty child sets.
-     *
+     * 
      * @param fn visitor function will receive only a Value
      */
     void leaves(std::function<void(Value)> fn) const
@@ -169,10 +139,10 @@ public:
     }
 
     /**
-     * @brief Returnss a stringstream with a graphviz representation of this
+     * @brief Returnss a stringstream with a graphviz representation of this 
      * graph.
-     *
-     * @return std::stringstream
+     * 
+     * @return std::stringstream 
      */
     std::stringstream print() const
     {
@@ -190,6 +160,7 @@ public:
         return diagraph;
     }
 };
-} // namespace graph
 
-#endif // _GRAPH_H
+} // namespace _graph
+
+#endif

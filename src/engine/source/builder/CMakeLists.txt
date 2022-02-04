@@ -43,6 +43,6 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 ####################################################################################################
 target_include_directories(main PUBLIC
     ${BUILDER_ENGINE_SOURCE_DIR}
-    ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}
+    ${BUILDER_ENGINE_SOURCE_DIR}/builders
     ${rapidjson_headers}
 )

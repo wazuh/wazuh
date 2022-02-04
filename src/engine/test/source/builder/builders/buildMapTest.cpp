@@ -2,8 +2,7 @@
 #include <rxcpp/rx.hpp>
 #include <vector>
 
-#include "map.hpp"
-#include "map_value.hpp"
+#include "buildMap.hpp"
 #include "test_utils.hpp"
 
 using namespace builder::internals::builders;
@@ -43,8 +42,8 @@ TEST(MapBuilderTest, BuildsMapValue)
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto conditionObs = mapBuilder(entry_point, fake_j.get(".check"));
-    auto expectedObs = mapValueBuilder(entry_point, fake_j.get(".check"));
+    auto sop = buildMap(*fake_j.get(".check"));
+    auto vop = buildMapVal(*fake_j.get(".check"));
 
     // Fake subscribers
     vector<event_t> observed;
@@ -55,8 +54,8 @@ TEST(MapBuilderTest, BuildsMapValue)
         make_subscriber<event_t>([&observedExpected](event_t j) { observedExpected.push_back(j); }, []() {});
 
     // Operate
-    ASSERT_NO_THROW(conditionObs.subscribe(subscriber));
-    ASSERT_NO_THROW(expectedObs.subscribe(subscriberExpected));
+    ASSERT_NO_THROW(sop(entry_point).subscribe(subscriber));
+    ASSERT_NO_THROW(vop(entry_point).subscribe(subscriberExpected));
     ASSERT_EQ(observed.size(), observedExpected.size());
     for (auto i = 0; i < observed.size(); i++)
     {
