@@ -781,6 +781,10 @@ stages:
       params:
         groups_list: 'group1,group3,group2'
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["007"]
       status_code: 200
       json:
         error: 2
@@ -798,7 +802,6 @@ stages:
                 - 'group1'
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents/group?group_id={group_id}
@@ -899,6 +902,10 @@ stages:
         agents_list: '001,008'
         group_id: 'default'
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "008"]
       status_code: 200
       json:
         error: 0
@@ -909,7 +916,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /groups?groups_list={group_id}
@@ -1296,6 +1302,10 @@ stages:
         agents_list: '001,002,005'
         group_id: 'group2'
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["002"]
       status_code: 200
       json:
         error: 2
@@ -1310,7 +1320,6 @@ stages:
                 - '005'
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: !float "{global_db_delay}"
 
   - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
     request:
@@ -1322,6 +1331,10 @@ stages:
       params:
         group_id: 'group2'
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["006", "008"]
       status_code: 200
       json:
         error: 0
@@ -1332,7 +1345,6 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -1350,6 +1362,10 @@ stages:
       data:
         "{file_xml:s}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["002", "006", "008"]
       status_code: 200
 
   - name: Try to update group1 configuration (Denied)
@@ -1379,6 +1395,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
       status_code: 200
       json:
         error: 2
@@ -1395,13 +1415,9 @@ stages:
                 - "010"
           total_failed_items: 3
         message: !anystr
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/reconnect
-
-marks:
-  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
 
 stages:
 
@@ -1544,6 +1560,10 @@ stages:
         agents_list: "000,001,002,004"
         wait_for_complete: true  # Prevent error code 500
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
       status_code: 200
       json:
         error: 2
@@ -1565,7 +1585,6 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 3
-    delay_after: !float "{restart_delay}"
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1575,6 +1594,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
       status_code: 200
       json:
         error: 0
@@ -1584,7 +1607,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -1650,6 +1672,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["008"]
       status_code: 200
       json:
         error: 0
@@ -1704,6 +1730,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
       status_code: 200
       json:
         error: 0
@@ -1713,7 +1743,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/upgrade

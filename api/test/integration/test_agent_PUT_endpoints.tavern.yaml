@@ -143,6 +143,10 @@ stages:
         agents_list: "003,004,005"
         group_id: group1
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["003", "004"]
       status_code: 200
       json:
         error: 2
@@ -157,7 +161,6 @@ stages:
                 - "005"
           total_affected_items: 2
           total_failed_items: 1
-    delay_after: !float "{restart_delay}"
 
     # PUT /agents/group?group_id=group2
   - name: Assign all agents to group2
@@ -170,6 +173,10 @@ stages:
       params:
         group_id: group2
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "003", "004", "007"]  # 009 is not restarted as it is disconnected
       status_code: 200
       json:
         error: 0
@@ -181,7 +188,6 @@ stages:
             - "007"
             - "009"
           total_affected_items: 5
-    delay_after: !float "{restart_delay}"
 
     # PUT /agents/group?group_id=group2&force_single_group=true
   - name: Assign all agents to group2 with force_single_group
@@ -195,6 +201,11 @@ stages:
         force_single_group: True
         group_id: group2
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
+                                                                                 # they are disconnected
       status_code: 200
       json:
         error: 0
@@ -211,7 +222,6 @@ stages:
             - "009"
             - "010"
           total_affected_items: 10
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -230,8 +240,12 @@ stages:
       data:
         "{file_xml:s}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
+                                                                                 # they are disconnected
       status_code: 200
-    delay_after: !float "{restart_delay}"
 
     # PUT /groups/wrong_group/configuration
   - name: Try to update configuration of a non existing group
@@ -293,7 +307,7 @@ stages:
       json:
         error: 1114
 
-  - name: Try to update configuration using a complex configuration file
+  - name: Try to update configuration using a complex configuration file (no agents in group1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
@@ -305,7 +319,6 @@ stages:
         '{query_list_xml:s}'
     response:
       status_code: 200
-    delay_after: !float "{restart_delay}"
 
   - name: Ensure the config now has the expected value
     request:
@@ -361,6 +374,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
       status_code: 200
       json:
         error: 0
@@ -375,7 +392,6 @@ stages:
             - "007"
             - "008"
           total_affected_items: 8
-    delay_after: !float "{restart_delay}"
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -390,9 +406,6 @@ stages:
 
 ---
 test_name: PUT /agents/reconnect
-
-marks:
-  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
 
 stages:
 
@@ -582,6 +595,10 @@ stages:
       params:
         agents_list: "001,002,999"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002"]
       status_code: 200
       json:
         error: 2
@@ -596,7 +613,6 @@ stages:
                 - "999"
           total_affected_items: 2
           total_failed_items: 1
-    delay_after: !float "{restart_delay}"
 
     # PUT /agents/restart
   - name: Try to restart all agents
@@ -607,6 +623,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
       status_code: 200
       json:
         error: 0
@@ -623,7 +643,6 @@ stages:
           failed_items: !anything
           total_affected_items: 8
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -639,6 +658,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001"]
       status_code: 200
       json:
         error: 0
@@ -693,6 +716,10 @@ stages:
       params:
         force_single_group: true
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["002"]
       status_code: 200
       json:
         error: 0
@@ -772,6 +799,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["003"]
       status_code: 200
       json:
         error: 0
@@ -779,7 +810,6 @@ stages:
           affected_items:
             - "003"
           total_affected_items: 1
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
@@ -818,7 +848,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
             data: "{response_data}"
-    delay_after: !float "{restart_delay}"
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
