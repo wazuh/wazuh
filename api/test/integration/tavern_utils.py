@@ -426,7 +426,7 @@ def check_agent_active_status(agents_list):
 
 
 def healthcheck_agent_restart(response, agents_list):
-    """Wait until the agent restart process of every agent in an agents list given is finished.
+    """Wait until the restart process is finished for every agent in the given list.
 
     Parameters
     ----------
