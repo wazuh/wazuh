@@ -602,9 +602,12 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size)
 int OS_ExpandIPv6(char *ip_address, size_t size)
 {
     struct in6_addr net6;
-    memset(&net6, 0, sizeof(net6));
+    char aux_ip[IPSIZE + 1] = {0};
 
-    if (OS_INVALID == get_ipv6_numeric(strtok(ip_address, "/"), &net6)) {
+    memset(&net6, 0, sizeof(net6));
+    strncpy(aux_ip, ip_address, IPSIZE);
+
+    if (OS_INVALID == get_ipv6_numeric(strtok(aux_ip, "/"), &net6)) {
         return OS_INVALID;
     }
 
@@ -622,6 +625,9 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     char *cidr_str = strtok(NULL, "/");
     if (cidr_str) {
         cidr = atoi(cidr_str);
+        if (cidr < 0 || cidr > DEFAULT_IPV6_PREFIX) {
+            return OS_INVALID;
+        }
     }
 
     if (cidr) {

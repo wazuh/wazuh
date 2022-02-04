@@ -767,7 +767,6 @@ void OS_IPFound_valid_ipv4(void **state)
 
 void OS_IPFound_valid_ipv4_negated(void **state)
 {
-    //char ip_to_test[] = {"2001:db8:abcd:0012:0000:0000:0000:0000/64"};
     char ip_to_test[] = {"16.16.16.16"};
 
     int ret = 0;
