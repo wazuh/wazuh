@@ -44,7 +44,7 @@ struct FimFileDataDeleter
 class FileItem final : public DBItem
 {
     public:
-        FileItem(const fim_entry* const fim, bool oldData=false)
+        FileItem(const fim_entry* const fim, bool oldData = false)
             : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path
                      , fim->file_entry.data->scanned
                      , fim->file_entry.data->last_event
@@ -110,7 +110,6 @@ class FileItem final : public DBItem
         unsigned int                                    m_size;
         unsigned long int                               m_dev;
         unsigned long int                               m_inode;
-        bool                                            m_oldData;
         time_t                                          m_time;
         std::string                                     m_attributes;
         std::string                                     m_groupname;

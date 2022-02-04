@@ -73,6 +73,7 @@ void FileItem::createJSON()
     data["hash_sha256"] = m_sha256;
     data["mtime"] = m_time;
     conf["data"] = nlohmann::json::array({data});
+
     if (m_oldData)
     {
         conf["return_old_data"] = true;

@@ -46,5 +46,6 @@ class DBItem
         time_t                  m_lastEvent;
         std::string             m_checksum;
         fim_event_mode          m_mode;
+        bool                    m_oldData;
 };
 #endif //_DBITEM_HPP

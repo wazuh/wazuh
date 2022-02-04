@@ -201,7 +201,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* old_attributes = NULL;
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
-    cJSON *dbsync_event = NULL;
+    const cJSON *dbsync_event = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
@@ -254,13 +254,14 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             if (configuration->options & CHECK_SEECHANGES) {
                 fim_diff_process_delete_file(path);
             }
-            event_data->evt_data->type = FIM_DELETE;
-            event_data->db_full = false;
+
+            txn_context->evt_data->type = FIM_DELETE;
+            txn_context->db_full = false;
 
             break;
 
         case MAX_ROWS:
-            event_data->db_full = true;
+            txn_context->db_full = true;
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
@@ -282,7 +283,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
-    cJSON_AddNumberToObject(data, "timestamp", time(NULL));
+    //cJSON_AddNumberToObject(data, "timestamp", time(NULL)); This should be the last_event field
 
     if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
@@ -697,29 +698,29 @@ static void _fim_file(const char *path,
 
     bool saved;
     char *diff = NULL;
-    fim_entry new;
+    fim_entry new_entry;
 
-    new.type = FIM_FILE ;
-    new.file_entry.path = (char *)path;
-    new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
+    new_entry.type = FIM_TYPE_FILE;
+    new_entry.file_entry.path = (char *)path;
+    new_entry.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
 
-    if (new.file_entry.data == NULL) {
+    if (new_entry.file_entry.data == NULL) {
         mdebug1(FIM_GET_ATTRIBUTES, path);
         return;
     }
 
     if (txn_handle != NULL) {
-        txn_context->latest_entry = &new;
+        txn_context->latest_entry = &new_entry;
 
-        fim_db_transaction_sync_row(txn_handle, &new);
-        free_file_data(new.file_entry.data);
+        fim_db_transaction_sync_row(txn_handle, &new_entry);
+        free_file_data(new_entry.file_entry.data);
 
         txn_context->latest_entry = NULL;
         return;
     }
 
-    if (fim_db_file_update(&new, &saved) != FIMDB_OK) {
-        free_file_data(new.file_entry.data);
+    if (fim_db_file_update(&new_entry, &saved) != FIMDB_OK) {
+        free_file_data(new_entry.file_entry.data);
         return;
     }
 
@@ -734,7 +735,7 @@ static void _fim_file(const char *path,
     }
 
     os_free(diff);
-    free_file_data(new.file_entry.data);
+    free_file_data(new_entry.file_entry.data);
 }
 
 void fim_file(const char *path,
