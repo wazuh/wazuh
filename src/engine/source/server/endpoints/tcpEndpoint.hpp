@@ -14,6 +14,7 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <stdexcept>
 #include <uvw/tcp.hpp>
 
 #include "baseEndpoint.hpp"

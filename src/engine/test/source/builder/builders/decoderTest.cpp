@@ -10,9 +10,6 @@ using namespace builder::internals::builders;
 
 TEST(DecoderBuilderTest, Builds)
 {
-    // Fake entry point
-    auto entry_point = observable<>::empty<event_t>();
-
     // Fake input json
     auto fake_jstring = R"(
     {
@@ -28,7 +25,7 @@ TEST(DecoderBuilderTest, Builds)
   )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_NO_THROW(auto obs = decoderBuilder(fake_j));
+    ASSERT_NO_THROW(auto con = buildDecoder(fake_j));
 }
 
 TEST(DecoderBuilderTest, BuildsErrorNoName)
@@ -50,13 +47,11 @@ TEST(DecoderBuilderTest, BuildsErrorNoName)
   )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = decoderBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto con = buildDecoder(fake_j), invalid_argument);
 }
 
 TEST(DecoderBuilderTest, BuildsErrorNoCheck)
 {
-    // Fake entry point
-    auto entry_point = observable<>::empty<event_t>();
 
     // Fake input json
     auto fake_jstring = R"(
@@ -70,7 +65,7 @@ TEST(DecoderBuilderTest, BuildsErrorNoCheck)
   )";
     json::Document fake_j{fake_jstring};
 
-    ASSERT_THROW(auto obs = decoderBuilder(fake_j), invalid_argument);
+    ASSERT_THROW(auto con = buildDecoder(fake_j), invalid_argument);
 }
 
 TEST(DecoderBuilderTest, OperatesAndConnects)
@@ -112,7 +107,7 @@ TEST(DecoderBuilderTest, OperatesAndConnects)
     json::Document fake_j{fake_jstring};
 
     // Build
-    auto connectable = decoderBuilder(fake_j);
+    auto connectable = buildDecoder(fake_j);
 
     // Fake subscriber
     vector<event_t> observed;
@@ -121,8 +116,8 @@ TEST(DecoderBuilderTest, OperatesAndConnects)
     auto subscriber = make_subscriber<event_t>(on_next, on_completed);
 
     // Operate
-    ASSERT_NO_THROW(connectable.output().subscribe(subscriber));
-    ASSERT_NO_THROW(entry_point.subscribe(connectable.input()));
+    ASSERT_NO_THROW(connectable.op(entry_point).subscribe(subscriber));
+    // ASSERT_NO_THROW(entry_point.subscribe(connectable.input()));
     ASSERT_EQ(observed.size(), 2);
     for_each(begin(observed), end(observed), [](event_t j) { ASSERT_EQ(j.get(".mapped_field")->GetInt(), 1); });
 }
