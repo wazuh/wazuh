@@ -14,6 +14,17 @@
 #include "dbsync.h"
 #include "dbsync.hpp"
 
+static const std::map<ReturnTypeCallback, std::string> RETURN_TYPE_OPERATION =
+{
+    { MODIFIED, "MODIFIED" },
+    { DELETED, "DELETED" },
+    { INSERTED, "INSERTED" },
+    { MAX_ROWS, "MAX_ROWS" },
+    { DB_ERROR, "DB_ERROR" },
+    { SELECTED, "SELECTED" },
+    { GENERIC, "GENERIC" }
+};
+
 struct TestContext
 {
     DBSYNC_HANDLE handle;
@@ -22,36 +33,6 @@ struct TestContext
     size_t currentId;
     std::string outputPath;
 
-    static std::string typeOperation(const ReturnTypeCallback result)
-    {
-        std::string opResult;
-        switch(result)
-        {
-            case MODIFIED:
-                opResult = "MODIFIED";
-                break;
-            case DELETED:
-                opResult = "DELETED";
-                break;
-            case INSERTED:
-                opResult = "INSERTED";
-                break;
-            case MAX_ROWS:
-                opResult = "MAX_ROWS";
-                break;
-            case DB_ERROR:
-                opResult = "DB_ERROR";
-                break;
-            case SELECTED:
-                opResult = "SELECTED";
-                break;
-            case GENERIC:
-                opResult = "GENERIC";
-                break;
-        }
-
-        return opResult;
-    }
 };
 
 #endif //_TEST_CONTEXT_H
