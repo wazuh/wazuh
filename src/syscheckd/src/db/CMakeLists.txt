@@ -40,18 +40,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(UNIX AND NOT APPLE)
   set_target_properties(fimdb PROPERTIES LINK_FLAGS
                                          "-static-libgcc -static-libstdc++")
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
+                 "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
+    string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
+                 "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,+b,${INSTALL_PREFIX}/lib")
+  else()
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+
+
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(fimdb dbsync rsync wazuhext)
 else()
-  string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
-                 "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
-  string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
-                 "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
   target_link_libraries(
     fimdb
     dbsync
