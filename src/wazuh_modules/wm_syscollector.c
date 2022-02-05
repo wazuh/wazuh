@@ -58,7 +58,7 @@ static void wm_sys_send_diff_message(/*const void* data*/) {
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
-    if(!os_iswait() && !is_shutdown_process_started()) {
+    if(!is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_sync_max_eps;
         if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
 #ifdef CLIENT
