@@ -4,7 +4,6 @@
 
 import json
 import os
-import subprocess
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
