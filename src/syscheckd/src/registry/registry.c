@@ -13,7 +13,7 @@
 #include <cJSON.h>
 #include "registry.h"
 #include "shared.h"
-#include "syscheck.h"
+#include "../../../include/syscheck.h"
 #include "../../config/syscheck-config.h"
 #include "db.h"
 #include "os_crypto/md5/md5_op.h"

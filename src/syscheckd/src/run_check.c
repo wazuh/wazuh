@@ -98,23 +98,6 @@ void fim_send_sync_state(const char *location, const char* msg) {
     fim_sync_check_eps();
 }
 
-// Send a data synchronization control message
-void fim_send_sync_control(const char *component,
-                           dbsync_msg msg,
-                           long id,
-                           const char *start,
-                           const char *top,
-                           const char *tail,
-                           const char *checksum) {
-    /*char *plain = dbsync_check_msg(component, msg, id, start, top, tail, checksum);
-    mdebug2(FIM_DBSYNC_SEND, plain);
-    fim_send_msg(DBSYNC_MQ, component, plain);
-
-    os_free(plain);
-
-    fim_sync_check_eps();*/
-}
-
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
