@@ -50,7 +50,7 @@ template <class Observable> struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_name(n), m_parents(p), m_op(o){};
+    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p) {};
 
     /**
      * @brief Construct a new Connectable object just from its name. It will use

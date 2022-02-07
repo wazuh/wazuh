@@ -8,37 +8,152 @@
  */
 
 #include "protocolHandler.hpp"
+#include "glog/logging.h"
 
-#include "json.hpp"
-
-json::Document engineserver::protocolhandler::parseEvent(const std::string & event)
+namespace engineserver
 {
-    json::Document object(R"({})");
 
-    auto separator_pos = event.find(":");
-    auto event_slice = event.substr(separator_pos + 1);
+/**
+ * @brief Update pending value and return true if we have enough data
+ * to calculate the message size.
+ *
+ * @return true
+ * @return false
+ */
+bool ProtocolHandler::hasHeader()
+{
+    if (m_buff.size() == sizeof(int))
+    {
+        // TODO: make this safe
+        std::memcpy(&m_pending, m_buff.data(), sizeof(int));
+        // TODO: Max message size config option
+        if (m_pending > 1 << 20)
+        {
+            throw std::runtime_error("Invalid message. Size probably wrong");
+        }
+        return true;
+    }
+    return false;
+}
 
-    int queue;
+/**
+ * @brief Process a message, parsing it and sending it to s
+ *
+ * @param s a subscriber of this connection.
+ */
+void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
+{
+    json::Document evt;
     try
     {
-        queue = std::stoi(event.substr(0, separator_pos));
+        evt = parse();
+        m_buff.clear();
     }
-    catch (const std::exception & e)
+    catch (std::exception & e)
+    {
+        LOG(ERROR) << e.what() << std::endl;
+        s.on_error(std::current_exception());
+    }
+
+    s.on_next(evt);
+}
+
+/**
+ * @brief generate a json::Document from internal state
+ * 
+ * @return json::Document 
+ */
+json::Document ProtocolHandler::parse()
+{
+    json::Document doc;
+    doc.m_doc.SetObject();
+    rapidjson::Document::AllocatorType & allocator = doc.getAllocator();
+
+    auto event = std::string(m_buff.begin() + sizeof(int), m_buff.end());
+
+    auto queuePos = event.find(":");
+    try
+    {
+        int queue = std::stoi(event.substr(0, queuePos));
+        doc.m_doc.AddMember("queue", queue, allocator);
+    }
+    // std::out_of_range and std::invalid_argument
+    catch (...)
     {
         std::throw_with_nested(std::invalid_argument("Error parsing queue id"));
     }
 
-    separator_pos = event_slice.find(":");
-    std::string location = event_slice.substr(0, separator_pos);
-    std::string message = event_slice.substr(separator_pos + 1);
+    auto locPos = event.find(":", queuePos + 1);
+    try
+    {
+        rapidjson::Value loc;
+        std::string location = event.substr(queuePos, locPos);
+        loc.SetString(location.c_str(), location.length(), allocator);
+        doc.m_doc.AddMember("location", loc, allocator);
+    }
+    catch (std::out_of_range & e)
+    {
+        std::throw_with_nested(("Error parsing location using token sep :" + event));
+    }
 
-    json::Value queueVal(queue);
-    object.set("/queue", queueVal);
-    json::Value locationVal;
-    locationVal.SetString(location.c_str(), location.size(), object.getAllocator());
-    object.set("/location", locationVal);
-    json::Value messageVal(message.c_str(), message.size(), object.getAllocator());
-    object.set("/message", messageVal);
+    try
+    {
+        rapidjson::Value msg;
+        std::string message = event.substr(locPos + 1, std::string::npos);
+        msg.SetString(message.c_str(), message.length(), allocator);
+        doc.m_doc.AddMember("message", msg, allocator);
+    }
+    catch (std::out_of_range & e)
+    {
+        std::throw_with_nested(("Error parsing location using token sep :" + event));
+    }
 
-    return object;
+    return doc;
 }
+
+/**
+ * @brief Process the data chunk and send all complete
+ * messages to the subscriber s
+ * 
+ * @param data data to process
+ * @param length length of data
+ * @param s subscriber
+ */
+bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> s)
+{
+    for (std::size_t i = 0; i < length; i++)
+    {
+
+        switch (m_stage)
+        {
+            // header
+            case 0:
+                m_buff.push_back(data[i]);
+                try
+                {
+                    if (hasHeader())
+                    {
+                        m_stage = 1;
+                    }
+                }
+                catch (...)
+                {
+                    s.on_error(std::current_exception());
+                    return false;
+                }
+                break;
+            // payload
+            case 1:
+                m_buff.push_back(data[i]);
+                m_pending--;
+                if (m_pending == 0)
+                {
+                    send(s);
+                    m_stage = 0;
+                }
+                break;
+        }
+    }
+    return true;
+}
+} // namespace engineserver

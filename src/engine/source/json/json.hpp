@@ -5,7 +5,6 @@
 #include <chrono>
 #include <iostream>
 #include <string>
-#include <thread>
 
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
@@ -25,9 +24,9 @@ using Value = rapidjson::Value;
 class Document
 {
 private:
+public:
     rapidjson::Document m_doc;
 
-public:
     Document(){};
     explicit Document(const char * json)
     {

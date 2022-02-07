@@ -13,9 +13,10 @@
 #include <functional>
 #include <iostream>
 #include <mutex>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <uvw/tcp.hpp>
+#include <uvw/timer.hpp>
 
 #include "baseEndpoint.hpp"
 #include "protocolHandler.hpp"
@@ -33,6 +34,11 @@ private:
     int m_port;
     std::string m_ip;
 
+    std::shared_ptr<uvw::Loop> m_loop;
+    std::shared_ptr<uvw::TCPHandle> m_server;
+
+    rxcpp::observable<BaseEndpoint::event_t> connectionHandler(const uvw::ListenEvent & event, uvw::TCPHandle & srv);
+
 public:
     /**
      * @brief Construct a new TCPEndpoint object.
@@ -42,8 +48,9 @@ public:
     explicit TCPEndpoint(const std::string & config);
     ~TCPEndpoint();
 
-    void run(void);
-    void close(void);
+    void run() override;
+
+    void close() override;
 };
 } // namespace engineserver::endpoints
 

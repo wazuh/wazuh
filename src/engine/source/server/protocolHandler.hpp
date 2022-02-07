@@ -15,35 +15,42 @@
 
 #include <json.hpp>
 
-namespace engineserver::protocolhandler
+namespace engineserver
 {
-/**
- * @brief Used to differenciate the Wazuh events source
- */
-enum MessageQueue
-{
-    UNKNOWN = 0,
-    SYSLOG,
-    IDS,
-    FIREWALL,
-    RSV1,
-    RSV2,
-    RSV3,
-    APACHE,
-    SQUID,
-    WINDOWS,
-    HOST_INFO,
-    WAZUH_RULES,
-    WAZUH_ALERTS
-};
 
 /**
- * @brief Extracts the Queue; Location and Message from the Wazuh event and creates a JSON object with them
- *
- * @param event String to be parsed
- * @return nlohmann::json Object containing the event in JSON format
+ * @brief A handler which knows how to parse messages from the network
+ * data chunks and send them to a subscriber.
+ * 
  */
-json::Document parseEvent(const std::string & event);
+class ProtocolHandler
+{
+private:
+    json::Document parse();
+    std::vector<char> m_buff;
+    int m_pending{0};
+    int m_stage{0};
+
+    bool hasHeader();
+
+    std::string payload();
+
+    void send(const rxcpp::subscriber<json::Document> s);
+public:
+    /**
+     * @brief process the chunk of data and send messages to dst when. Return 
+     * true if all data was processed correctly, or false in case of error.
+     * The error will be send to the dst.
+     * 
+     * @param data 
+     * @param length 
+     * @param dst destination subscriber
+     * @return true no errors
+     * @return false errors in processing
+     */
+    bool process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> dst);
+};
+
 } // namespace engineserver::protocolhandler
 
 #endif // _PROTOCOL_HANDLER_H_

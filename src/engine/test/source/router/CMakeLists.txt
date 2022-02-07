@@ -21,7 +21,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME rapidjson
   GITHUB_REPOSITORY Tencent/rapidjson
-  GIT_TAG v1.1.0
+  GIT_TAG master
   VERSION 1.1.0
   OPTIONS
       "RAPIDJSON_BUILD_DOC OFF"
