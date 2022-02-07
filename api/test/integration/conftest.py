@@ -70,8 +70,9 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
     dict
         Dict with healthchecks parameters.
     """
-    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    os.chdir(pwd)
+    current_abspath = os.path.abspath(os.path.dirname(__file__))
+    env_dir_abspath = os.path.join(current_abspath, 'env')
+    os.chdir(env_dir_abspath)
     values = {
         'interval': interval,
         'max_retries': 60,
@@ -102,18 +103,21 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
             else:
                 time.sleep(values_build_env['interval'])
                 values_build_env['retries'] += 1
+    os.chdir(current_abspath)
 
     return values
 
 
 def down_env():
     """Stop all Docker environments for the current test."""
-    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    os.chdir(pwd)
+    current_abspath = os.path.abspath(os.path.dirname(__file__))
+    env_dir_abspath = os.path.join(current_abspath, 'env')
+    os.chdir(env_dir_abspath)
     with open(docker_log_path, mode='a') as fdocker:
         current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"],
                                            stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
+    os.chdir(current_abspath)
 
 
 def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
