@@ -16,6 +16,11 @@ DECODERS_SRC_DIR=./analysisd/ruleset/decoders
 RULES_DST_DIR=/var/ossec/etc/test/rules
 DECODERS_DST_DIR=/var/ossec/etc/test/decoders
 
+# Save the working directory and change to the directory where the script is
+OLD_PWD=`pwd`
+cd $(dirname $(readlink -f $0))
+# echo "change working directory to... `pwd`"
+
 # Stop Wazuh manager
 
 systemctl stop wazuh-manager.service
@@ -56,7 +61,7 @@ MONITOR_PID=$!
 
 # Test script
 
-go run ./utils/benchmark_analysisd.go -t 5 -r 50000 -f ./utils/test_logs.txt
+go run ./utils/benchmark_analysisd.go -t 5 -r 50000 -i ./utils/test_logs.txt
 
 # Stop stats collector script
 
@@ -79,3 +84,5 @@ mv $CONFIG_BACKUP_DIR/* $CONFIG_DST_DIR
 
 rm -rf $RULES_DST_DIR
 rm -rf $DECODER_DST_DIR
+
+cd "${OLD_PWD}"
