@@ -234,14 +234,14 @@
 #define FIM_WARN_REALTIME_UNSUPPORTED       "(6332): Realtime monitoring request on unsupported system."
 #define FIM_WARN_WHODATA_UNSUPPORTED        "(6333): Whodata monitoring request on unsupported system."
 #define FIM_AUDIT_INVALID_AUID              "(6334): Audit: Invalid 'auid' value read. Check Audit configuration (PAM)."
-#define FIM_ENTRIES_INFO                    "(6335): Fim entries: %d"
-#define FIM_INODES_INFO                     "(6336): Fim inode entries: %d, path count: %d"
+#define FIM_ENTRIES_INFO                    "(6335): Fim file entries count: '%d'"
+#define FIM_INODES_INFO                     "(6336): Fim inode entries: '%d', path count: '%d'"
 #define FIM_WHODATA_INVALID_UNKNOWN_UID     "(6337): The user ID could not be extracted from the event."
 #define FIM_EMPTY_DIRECTORIES_CONFIG        "(6338): Empty directories tag found in the configuration."
 
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
-#define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of entries to be monitored: '%u'"
+#define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of files to be monitored: '%u'"
 #define FIM_FILE_LIMIT_UNLIMITED            "(6343): No limit set to maximum number of entries to be monitored"
 #define FIM_INOTIFY_WATCH_DELETED           "(6344): Inotify watch deleted for '%s'"
 #define FIM_NUM_WATCHES                     "(6345): Folders monitored with real-time engine: %u"
@@ -253,7 +253,7 @@
 #define FIM_DIFF_IDENTICAL_MD5_FILES        "(6351): The files are identical, don't compute differences"
 #define FIM_DIFF_COMMAND_OUTPUT_EQUAL       "(6352): Command diff/fc output 0, files are the same"
 #define FIM_EMPTY_REGISTRY_CONFIG           "(6353): Empty windows_registry tag found in the configuration."
-#define FIM_REGISTRY_ENTRIES_INFO           "(6354): Fim registry entries: %d"
+#define FIM_REGISTRY_ENTRIES_INFO           "(6354): Fim registry entries count: '%d'"
 #define FIM_DIFF_FOLDER_NOT_EXIST           "(6355): Can't remove folder '%s', it does not exist."
 #define FIM_DIFF_FILE_SIZE_LIMIT            "(6356): Maximum file size limit to generate diff information configured to '%d KB' for '%s'."
 #define FIM_DISK_QUOTA_LIMIT                "(6357): Maximum disk quota size limit configured to '%d KB'."
@@ -265,6 +265,8 @@
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
+#define FIM_REGISTRY_LIMIT_VALUE            "(6366): Maximum number of registry values to be monitored: '%u'"
+#define FIM_REGISTRY_VALUES_ENTRIES_INFO    "(6367): Fim registry values entries count: '%d'"
 
 
 /* Modules messages */

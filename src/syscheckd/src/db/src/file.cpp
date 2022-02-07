@@ -94,44 +94,6 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     }
 }
 
-
-const std::map<COUNT_SELECT_TYPE, std::vector<std::string>> COUNT_SELECT_TYPE_MAP
-{
-    { COUNT_SELECT_TYPE::COUNT_ALL, {"count(*) AS count"} },
-    { COUNT_SELECT_TYPE::COUNT_INODE, {"count(DISTINCT (inode || ',' || dev)) AS count"} },
-};
-
-
-
-int DB::countFiles(const COUNT_SELECT_TYPE selectType)
-{
-    auto count { 0 };
-    auto callback
-    {
-        [&count](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-        {
-            if (ReturnTypeCallback::SELECTED == type)
-            {
-                count = jsonResult.at("count");
-            }
-        }
-    };
-
-    auto selectQuery
-    {
-        SelectQuery::builder()
-        .table(FIMDB_FILE_TABLE_NAME)
-        .columnList(COUNT_SELECT_TYPE_MAP.at(selectType))
-        .rowFilter("")
-        .orderByOpt("")
-        .distinctOpt(false)
-        .build()
-    };
-
-    FIMDB::instance().executeQuery(selectQuery.query(), callback);
-    return count;
-}
-
 bool DB::updateFile(const nlohmann::json& file)
 {
     auto updated { false };
@@ -260,7 +222,7 @@ int fim_db_get_count_file_inode()
 
     try
     {
-        count = DB::instance().countFiles(COUNT_SELECT_TYPE::COUNT_INODE);
+        count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_INODE);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -279,7 +241,7 @@ int fim_db_get_count_file_entry()
 
     try
     {
-        count = DB::instance().countFiles(COUNT_SELECT_TYPE::COUNT_ALL);
+        count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_ALL);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -309,7 +271,11 @@ FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated)
             retVal = FIMDB_OK;
         }
         // LCOV_EXCL_START
-        catch (const std::exception& err)
+        catch (DbSync::max_rows_error& max_row)
+        {
+            FIMDB::instance().logFunction(LOG_WARNING, "Reached maximun files limit monitored, due to db_entry_limit configuration for files.");
+        }
+        catch (std::exception& err)
         {
             FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }

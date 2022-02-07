@@ -24,7 +24,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_library(fimdb STATIC ${DB_SRC}
-                           # ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
+                           ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
                            )
 else()
   add_library(fimdb SHARED ${DB_SRC})

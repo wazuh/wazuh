@@ -106,12 +106,13 @@ public:
     void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
 
     /**
-    * @brief countFiles Count files in the database.
+    * @brief countEntries Count files in the database.
     *
+    * @param tableName Table name.
     * @param selectType Type of count.
     * @return Number of files.
     */
-    int countFiles(const COUNT_SELECT_TYPE selectType);
+    int countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType);
 
     /**
     * @brief updateFile Update/insert a file in the database.
