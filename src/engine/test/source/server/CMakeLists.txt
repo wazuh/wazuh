@@ -36,7 +36,7 @@ CPMAddPackage(
 CPMAddPackage(
     NAME RapidJSON
     GITHUB_REPOSITORY Tencent/rapidjson
-    GIT_TAG v1.1.0
+    GIT_TAG master
     VERSION 1.1.0
     OPTIONS
         "RAPIDJSON_BUILD_DOC OFF"
@@ -63,7 +63,6 @@ set(SOURCES
   ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
   ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpointFactory.cpp
 )
@@ -87,10 +86,6 @@ gtest_discover_tests(server_test)
 add_executable(tcp_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
 target_link_libraries(tcp_test gtest_main uv rxcpp)
 gtest_discover_tests(tcp_test)
-
-add_executable(udp_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsUDPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/udpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(udp_test gtest_main uv rxcpp)
-gtest_discover_tests(udp_test)
 
 add_executable(socket_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
 target_link_libraries(socket_test gtest_main uv rxcpp)

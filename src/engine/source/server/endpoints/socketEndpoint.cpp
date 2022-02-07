@@ -8,95 +8,110 @@
  */
 
 #include "socketEndpoint.hpp"
+#include "glog/logging.h"
 
 namespace engineserver::endpoints
 {
 
+rxcpp::observable<BaseEndpoint::event_t> SocketEndpoint::connection(const uvw::ListenEvent & event,
+                                                                    uvw::PipeHandle & srv)
+{
+    auto client = srv.loop().resource<uvw::PipeHandle>();
+    auto timer = client->loop().resource<uvw::TimerHandle>();
+
+    auto obs = rxcpp::observable<>::create<BaseEndpoint::event_t>(
+        [client, timer, &srv](rxcpp::subscriber<BaseEndpoint::event_t> s)
+        {
+            auto ph = std::make_shared<ProtocolHandler>();
+
+            client->on<uvw::ErrorEvent>(
+                [&s](const uvw::ErrorEvent & event, uvw::PipeHandle & client)
+                {
+                    auto e = std::runtime_error("Connection error from " + client.peer() + " due to " + event.what());
+                    s.on_error(std::make_exception_ptr(e));
+                });
+
+            timer->on<uvw::TimerEvent>(
+                [client, s](const auto &, auto & handler)
+                {
+                    LOG(INFO) << "Timeout for connection" << std::endl;
+                    client->close();
+                    s.on_completed();
+                    handler.close();
+                });
+
+            client->on<uvw::DataEvent>(
+                [s, timer, ph](const uvw::DataEvent & event, uvw::PipeHandle & client)
+                {
+                    if (!ph->process(event.data.get(), event.length, s))
+                    {
+                        timer->close();
+                        client.close();
+                    }
+                });
+
+            client->on<uvw::EndEvent>(
+                [s](const uvw::EndEvent &, uvw::PipeHandle & client)
+                {
+                    std::cerr << "Client closed connection" << std::endl;
+                    client.close();
+                    s.on_completed();
+                });
+
+            LOG(INFO) << "Accepting client!" << std::endl;
+            // TODO: configure timeout for a tcp connection
+            timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{1000});
+            srv.accept(*client);
+            client->read();
+        });
+
+    return obs;
+}
+
 SocketEndpoint::SocketEndpoint(const std::string & config) : BaseEndpoint{config}
 {
     std::string path = config;
+
+    auto loop = uvw::Loop::getDefault();
+    m_server = loop->resource<uvw::PipeHandle>();
+    
+
     this->m_out = rxcpp::observable<>::create<BaseEndpoint::observable_t>(
-        [=](BaseEndpoint::subscriber_t s)
+        [this, loop](BaseEndpoint::subscriber_t s)
         {
-            s.on_next(rxcpp::observable<>::create<BaseEndpoint::event_t>(
-                [path](rxcpp::subscriber<BaseEndpoint::event_t> sInner)
+            this->m_server->on<uvw::ErrorEvent>(
+                [s](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)
                 {
-                    auto loop = uvw::Loop::getDefault();
-                    auto handle = loop->resource<uvw::PipeHandle>();
+                    auto e = std::runtime_error("Server error due to " + std::string(event.what()));
+                    s.on_error(std::make_exception_ptr(e));
+                });
 
-                    handle->on<uvw::ErrorEvent>(
-                        [](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)
-                        {
-                            std::cerr << "FIFO Server (" << socket.sock().c_str() << ") error: code=" << event.code()
-                                      << "; name=" << event.name() << "; message=" << event.what() << std::endl;
-                        });
+            this->m_server->on<uvw::ListenEvent>([s, this](const uvw::ListenEvent & e, uvw::PipeHandle & client)
+                                         { s.on_next(this->connection(e, client)); });
 
-                    handle->on<uvw::ListenEvent>(
-                        [sInner](const uvw::ListenEvent &, uvw::PipeHandle & handle)
-                        {
-                            auto client = handle.loop().resource<uvw::PipeHandle>();
-
-                            client->on<uvw::ErrorEvent>(
-                                [](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)
-                                {
-                                    std::cerr << "FIFO Client (" << socket.peer().c_str()
-                                              << ") error: code=" << event.code() << "; name=" << event.name()
-                                              << "; message=" << event.what() << std::endl;
-                                });
-
-                            client->on<uvw::DataEvent>(
-                                [sInner](const uvw::DataEvent & event, uvw::PipeHandle & client)
-                                {
-                                    json::Document evt;
-                                    try
-                                    {
-                                        evt = engineserver::protocolhandler::parseEvent(
-                                            std::string(event.data.get(), event.length));
-                                    }
-                                    catch (std::_Nested_exception<std::invalid_argument> & e)
-                                    {
-                                        client.close();
-                                        sInner.on_error(std::make_exception_ptr(e));
-                                    }
-                                    sInner.on_next(evt);
-                                });
-
-                            client->on<uvw::CloseEvent>(
-                                [sInner, &handle](const uvw::CloseEvent &, uvw::PipeHandle &)
-                                {
-                                    sInner.on_completed();
-                                    handle.close();
-                                });
-
-                            handle.accept(*client);
-                            client->read();
-                        });
-
-                    {
-                        struct stat buffer;
-                        if (stat(path.c_str(), &buffer) == 0)
-                        {
-                            remove(path.c_str());
-                        }
-                    }
-
-                    handle->bind(path);
-                    handle->listen();
-                    loop->run();
-                }));
         });
 }
 
 void SocketEndpoint::run(void)
 {
+    LOG(INFO) << "Server started in TCP Endpoint." << std::endl;
+    m_server->bind(m_path);
+    m_server->listen();
+    m_loop->run();
 }
 
 void SocketEndpoint::close(void)
 {
+    m_loop->stop();                                                 /// Stops the loop
+    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->run(); /// Runs the loop again, so every handle is able to receive its close callback
+    m_loop->clear();
+    m_loop->close();
 }
 
 SocketEndpoint::~SocketEndpoint()
 {
+    this->close();
 }
 
 } // namespace engineserver::endpoints
