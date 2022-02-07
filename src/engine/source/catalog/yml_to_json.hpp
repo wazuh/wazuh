@@ -101,11 +101,11 @@ namespace yml2json
     {
         // YAML::Node root = YAML::LoadAllFromFile(filepath)[x];
         YAML::Node root = YAML::LoadFile(filepath);
-        rapidjson::Document doc, tmpAllocator;
-        rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
+        rapidjson::Document doc; //, tmpAllocator;
+        // rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
 
-        rapidjson::Value val = internal::yaml2json(root, allocator);
-        doc.CopyFrom(val, doc.GetAllocator());
+        rapidjson::Value val = internal::yaml2json(root, doc.GetAllocator());
+        // doc.CopyFrom(val, doc.GetAllocator());
 
         return doc;
     }
