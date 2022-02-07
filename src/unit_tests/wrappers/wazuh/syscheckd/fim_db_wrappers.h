@@ -50,30 +50,7 @@ void expect_wrapper_fim_db_init(int storage,
                                 bool is_windows
                                 );
 
-/*int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
-                                        fim_tmp_file *file,
-                                        pthread_mutex_t *mutex,
-                                        int storage,
-                                        event_data_t *evt_data);DEPRECATED_CODE*/
-
 int __wrap_fim_db_remove_path(const char *path);
-
-/*int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
-                                  pthread_mutex_t *mutex,
-                                  fim_tmp_file *file,
-                                  int storage);
-
-int __wrap_fim_db_get_count_entries();
-
-
-#ifndef WIN32
-fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
-                                                 __attribute__((unused)) fim_type type,
-                                                 const char *path);
-
-#else
-fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
-#endif DEPRECATED_CODE*/
 
 int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
@@ -84,22 +61,10 @@ void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage);
  */
 void expect_wrapper_fim_db_get_count_file_entry(int ret);
 
-/*void expect_wrapper_fim_db_get_count_entries(int ret);DEPRECATED_CODE*/
-
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_remove_path
  */
 void expect_fim_db_remove_path(const char *path, int ret_val);
-
-/*int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path);
-
-int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
-
-int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
-                                          unsigned long int inode,
-                                          unsigned long int dev,
-                                          OSList *list,
-                                          rb_tree *tree);DEPRECATED_CODE*/
 
 int __wrap_fim_db_file_update(fim_entry* new, bool *saved);
 

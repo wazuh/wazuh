@@ -15,7 +15,6 @@
 #include "../../wrappers/common.h"
 #include "../syscheckd/include/syscheck.h"
 #include "../syscheckd/src/whodata/syscheck_audit.h"
-#include "../syscheckd/src/whodata/audit_parse.c"
 
 #include "wrappers/externals/audit/libaudit_wrappers.h"
 #include "wrappers/externals/procpc/readproc_wrappers.h"
@@ -31,7 +30,7 @@
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
 extern unsigned int count_reload_retries;
-//audit_key_type filterkey_audit_events(char *buffer);
+audit_key_type filterkey_audit_events(char *buffer);
 
 /* setup/teardown */
 static int setup_group(void **state) {

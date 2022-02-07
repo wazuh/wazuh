@@ -56,10 +56,11 @@ set_target_properties(
 target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Add fim_tools library to compilation
-include_directories((${SRC_FOLDER}/syscheckd))
-include_directories((${SRC_FOLDER}/unit_tests))
-include_directories((${SRC_FOLDER}/unit_tests/syscheckd))
-include_directories((${SRC_FOLDER}/config))
+include_directories(${SRC_FOLDER}/syscheckd/include)
+include_directories(${SRC_FOLDER}/syscheckd/src)
+include_directories(${SRC_FOLDER}/unit_tests)
+include_directories(${SRC_FOLDER}/unit_tests/syscheckd)
+include_directories(${SRC_FOLDER}/config)
 
 add_library(fim_shared STATIC expect_run_check.c
                               expect_fim_diff_changes.c
@@ -96,7 +97,6 @@ if(${TARGET} STREQUAL "winagent")
   add_subdirectory(registry)
 endif()
 
-#add_subdirectory(db)
 add_subdirectory(whodata)
 
 # Generate Syscheckd tests

@@ -28,7 +28,6 @@
 
 #include "../syscheckd/include/syscheck.h"
 #include "../syscheckd/src/db/include/db.h"
-#include "../syscheckd/src/run_check.c"
 #include "../config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
@@ -50,12 +49,12 @@ void * fim_run_realtime(__attribute__((unused)) void * args);
 #endif
 
 #ifndef TEST_WINAGENT
-// void fim_link_update(const char *new_path, directory_t *configuration);
-// void fim_link_check_delete(directory_t *configuration);
-// void fim_link_delete_range(const directory_t *configuration);
-// void fim_link_silent_scan(char *path, directory_t *configuration);
-// void fim_link_reload_broken_link(char *path, directory_t *configuration);
-// void fim_realtime_delete_watches(const directory_t *configuration);
+void fim_link_update(const char *new_path, directory_t *configuration);
+void fim_link_check_delete(directory_t *configuration);
+void fim_link_delete_range(const directory_t *configuration);
+void fim_link_silent_scan(char *path, directory_t *configuration);
+void fim_link_reload_broken_link(char *path, directory_t *configuration);
+void fim_realtime_delete_watches(const directory_t *configuration);
 #endif
 
 extern time_t last_time;
@@ -886,7 +885,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
     expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
     send_syscheck_msg(event);
     cJSON_Delete(event);
-}DEPRECATED_CODE*/
+}*/
 
 void test_fim_send_scan_info(void **state) {
     (void) state;
@@ -1122,19 +1121,6 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
-/*void test_send_sync_control(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *ret_msg = dbsync_check_msg("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
-    *state = ret_msg;
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
-
-    fim_send_sync_control("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
-}
-
 void test_send_sync_state(void **state) {
     char debug_msg[OS_SIZE_256] = {0};
     char *event = "{\"data\":\"random_string\"}";
@@ -1145,7 +1131,7 @@ void test_send_sync_state(void **state) {
     expect_SendMSG_call(event, "fim_file", DBSYNC_MQ, 0);
 
     fim_send_sync_state("fim_file", event);
-}DEPRECATED_CODE*/
+}
 
 int main(void) {
 #ifndef WIN_WHODATA
@@ -1165,7 +1151,7 @@ int main(void) {
         cmocka_unit_test(test_fim_send_msg_retry),
         cmocka_unit_test(test_fim_send_msg_retry_error),
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
-        cmocka_unit_test(test_send_syscheck_msg_0_eps),DEPRECATED_CODE*/
+        cmocka_unit_test(test_send_syscheck_msg_0_eps),*/
         cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
@@ -1190,8 +1176,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
-        /*cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
-        cmocka_unit_test(test_send_sync_state),DEPRECATED_CODE*/
+        cmocka_unit_test(test_send_sync_state),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

@@ -79,15 +79,12 @@ void __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                             result_callback_t callback,
                                             void* txn_ctx) {
     function_called();
-    return mock();
 }
 
 int __wrap_fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry){
-    function_called();
-    return mock();
+    return mock_type(int);
 }
 
 TXN_HANDLE __wrap_fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data){
-    function_called();
-    return mock();
+    return mock_type(TXN_HANDLE);
 }

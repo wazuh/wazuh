@@ -199,7 +199,6 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
     expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
@@ -226,8 +225,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     will_return(__wrap_rootcheck_init, 0);
 
     expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
-
-    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
@@ -260,15 +257,13 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-   expect_function_call(__wrap_os_wait);
+    expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -333,8 +328,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
 
-    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
@@ -385,8 +378,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'realtime'.");
 
     expect_wrapper_fim_db_init(0, 300, 100000, 100000, true);
-
-    //expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 

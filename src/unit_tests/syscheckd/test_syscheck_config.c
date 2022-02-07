@@ -156,13 +156,6 @@ void test_Read_Syscheck_Config_invalid(void **state)
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
 
- /* expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-*/
-
     ret = Read_Syscheck_Config("invalid.conf");
 
     assert_int_equal(ret, OS_INVALID);
@@ -306,11 +299,11 @@ void test_getSyscheckConfig(void **state)
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
-    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
-    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
-    assert_int_equal(file_limit_entries->valueint, 50000);
+    cJSON *db_entry_limit = cJSON_GetObjectItem(sys_items, "db_entry_limit");
+    cJSON *db_entry_limit_enabled = cJSON_GetObjectItem(db_entry_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(db_entry_limit_enabled), "yes");
+    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_entry_limit, "files");
+    assert_int_equal(db_entry_limit_file_limit->valueint, 50000);
 
     cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
 
@@ -450,11 +443,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
-    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
-    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
-    assert_int_equal(file_limit_entries->valueint, 50000);
+    cJSON *db_entry_limit = cJSON_GetObjectItem(sys_items, "db_entry_limit");
+    cJSON *db_entry_limit_enabled = cJSON_GetObjectItem(db_entry_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(db_entry_limit_enabled), "yes");
+    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_entry_limit, "files");
+    assert_int_equal(db_entry_limit_file_limit->valueint, 50000);
 
     cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
 
@@ -862,8 +855,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
-        /*cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck), 
-        cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck), Check after changes by Jose*/ 
+        cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
+        cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
         cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
