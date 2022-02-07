@@ -12,12 +12,6 @@ import (
 	"time"
 )
 
-// Path to the output file
-const AlertsFilePath string = "/var/ossec/logs/alerts/alerts.json"
-
-// Path to the sockets
-const SockPath string = "/var/ossec/queue/sockets/queue"
-
 // Struct config for rate benchmark
 type rateConfig struct {
 	rate     int    // Rate (Events/sec) of the benchmark
@@ -28,10 +22,10 @@ type rateConfig struct {
 
 // Report of rate benchmark
 type rateReport struct {
-	startTime   time.Time // Starting time
-	endTime     time.Time // Ending time
-	totalEvents int       // Total events send
-	proccessEvents int    // Total events proccessed
+	startTime      time.Time // Starting time
+	endTime        time.Time // Ending time
+	totalEvents    int       // Total events send
+	proccessEvents int       // Total events proccessed
 	// Burst info
 	repeat int // How many times the batch is sent per burst
 	rest   int // How many events are partially sent (to reach the rate) per burst
@@ -42,16 +36,31 @@ func main() {
 
 	/*   Arguments	*/
 	// Path to dataset of logs
-	var logFile string
+	var datasetFile string
 	// Time duration of the benchmark
 	var timeTest int
 	// Rate (Events/sec) of the benchmark
 	var rate int
+	// Path to the output file
+	var watchedFile string
+	// Path/Adress to the sockets
+	var sockPath string
+	// Path/Adress to the sockets
+	var sockProto string
 
 	// Parcer arguments
-	flag.StringVar(&logFile, "f", "./test_logs.txt", "Path to dataset of logs")
+	// Bench
 	flag.IntVar(&timeTest, "t", 10, "Time of the benchmark")
 	flag.IntVar(&rate, "r", 35, "Rate (Events/sec) of the benchmark")
+	// IO Files
+	flag.StringVar(&datasetFile, "i", "./test_logs.txt", "Path to dataset of logs. The input File")
+	flag.StringVar(&watchedFile, "o", "/var/ossec/logs/alerts/alerts.json", "Watched file. The Output file")
+	// Protocol
+	flag.StringVar(&sockPath, "s", "/var/ossec/queue/sockets/queue", "Path/Adress to the sockets")
+	flag.StringVar(&sockProto, "p", "unixgram", `Known networks are "tcp", "tcp4" (IPv4-only), ` +
+												`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), ` +
+												`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),` +
+												`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
 	flag.Parse()
 
 	// Validate parameters
@@ -60,11 +69,11 @@ func main() {
 	}
 
 	// Connect to the socket
-	conn := connectToSock(SockPath)
+	conn := connectToSock(sockProto, sockPath)
 	defer conn.Close()
 
 	// if benchmark is a rate benchmark
-	rateConfig := rateConfig{rate, timeTest, logFile, AlertsFilePath}
+	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile}
 	tReport := rateTest(rateConfig, conn)
 	printReport(tReport, rateConfig)
 
@@ -76,7 +85,7 @@ func main() {
 // Rate test fuctions
 
 // Rate test
-func rateTest(config rateConfig, conn net.Conn) rateReport{
+func rateTest(config rateConfig, conn net.Conn) rateReport {
 
 	report := rateReport{}
 	//  Clean output before start
@@ -117,7 +126,7 @@ func rateTest(config rateConfig, conn net.Conn) rateReport{
 
 	// Wait a grace period to process the last events and flush the queue
 	time.Sleep(time.Millisecond * 500)
-	report.proccessEvents = fileLineCounter(AlertsFilePath)
+	report.proccessEvents = fileLineCounter(config.dstFile)
 	report.totalEvents = (report.repeat*lenBatchEvents + report.rest) * config.timeTest
 
 	return report
@@ -140,7 +149,7 @@ func printReport(report rateReport, config rateConfig) {
 	fmt.Printf("Duration:         %10f seconds\n", report.endTime.Sub(report.startTime).Seconds())
 	fmt.Printf("Sent events:      %10v\n", report.totalEvents)
 	fmt.Printf("Processed events: %10v\n", report.proccessEvents)
-	fmt.Printf("Lost events:      %10v\n", report.totalEvents - report.proccessEvents)
+	fmt.Printf("Lost events:      %10v\n", report.totalEvents-report.proccessEvents)
 	fmt.Printf("\n")
 
 }
@@ -150,9 +159,9 @@ func printReport(report rateReport, config rateConfig) {
 // -----------------------------------------------------------------------------
 
 // Exit on fail
-func connectToSock(socket string) net.Conn {
+func connectToSock(protocol string, address string) net.Conn {
 
-	conn, err := net.Dial("unixgram", socket)
+	conn, err := net.Dial(protocol, address)
 	if err != nil {
 		fmt.Printf("Failed to dial: %v\n", err)
 		os.Exit(1)
