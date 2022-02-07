@@ -75,9 +75,9 @@ void __wrap_free_entry(__attribute__((unused)) fim_entry *entry) {
     return;
 }
 
-int __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
-                                                result_callback_t callback,
-                                                void* txn_ctx) {
+void __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+                                            result_callback_t callback,
+                                            void* txn_ctx) {
     function_called();
     return mock();
 }

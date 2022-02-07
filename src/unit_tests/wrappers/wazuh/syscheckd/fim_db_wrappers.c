@@ -56,7 +56,7 @@ void expect_wrapper_fim_db_init(int storage,
     expect_value(__wrap_fim_db_init, is_windows, is_windows);
 }
 
-int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
+/*int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         __attribute__((unused)) pthread_mutex_t *mutex,
                                         int storage,
@@ -66,7 +66,7 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
     check_expected_ptr(storage);
 
     return mock();
-}
+}DEPRECATED_CODE*/
 
 int __wrap_fim_db_remove_path(const char *path) {
     check_expected(path);
@@ -74,16 +74,16 @@ int __wrap_fim_db_remove_path(const char *path) {
     return mock_type(int);
 }
 
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
+/*int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   __attribute__((unused)) pthread_mutex_t *mutex,
                                   __attribute__((unused)) fim_tmp_file *file,
                                   __attribute__((unused)) int storage) {
     check_expected_ptr(fim_sql);
 
     return mock();
-}
+}DEPRECATED_CODE*/
 
-#ifndef WIN32
+/*#ifndef WIN32
 fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
                                                  __attribute__((unused)) fim_type type,
                                                  const char *path) {
@@ -101,7 +101,7 @@ fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, 
 
     return mock_type(fim_entry *);
 }
-#endif
+#endif*/
 
 int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
     check_expected_ptr(file);
@@ -118,13 +118,13 @@ void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
     check_expected(storage);
 }
 
-int __wrap_fim_db_get_count_entries() {
+/*int __wrap_fim_db_get_count_entries() {
     return mock();
 }
 
 void expect_wrapper_fim_db_get_count_entries(int ret) {
     will_return(__wrap_fim_db_get_count_entries, ret);
-}
+}DEPRECATED_CODE*/
 
 void expect_wrapper_fim_db_get_count_file_entry(int ret) {
     will_return(__wrap_fim_db_get_count_file_entry, ret);
