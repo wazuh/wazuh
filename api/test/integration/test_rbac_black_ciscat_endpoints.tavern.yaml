@@ -1,9 +1,6 @@
 ---
 test_name: GET /ciscat/agent_id/results
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get ciscat result for agent 001 (allowed)

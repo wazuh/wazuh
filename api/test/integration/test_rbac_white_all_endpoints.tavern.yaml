@@ -11,9 +11,6 @@
 ---
 test_name: PUT /active-response
 
-marks:
-  - rbac_tests
-
 stages:
   - name: Try to run an Active Response command (generic)
     request:

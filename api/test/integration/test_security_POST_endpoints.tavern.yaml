@@ -1,9 +1,6 @@
 ---
 test_name: POST /security/roles
 
-marks:
-  - base_tests
-
 stages:
 
   # POST /security/roles

@@ -1,9 +1,6 @@
 ---
 test_name: GET /ciscat/{agent_id}/results
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /ciscat/001/results
