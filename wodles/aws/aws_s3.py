@@ -320,11 +320,6 @@ class WazuhIntegration:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
 
-        except json.JSONDecodeError as e:
-            print(f"ERROR: The message couldn't be decoded: {e}")
-            if not self.skip_on_error:
-                sys.exit(9)
-
         except Exception as e:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
@@ -868,7 +863,7 @@ class AWSBucket(WazuhIntegration):
         elif log_key[-7:] == '.snappy':
             print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
             if not self.skip_on_error:
-                raise NotImplementedError()
+                sys.exit(8)
         else:
             return io.TextIOWrapper(raw_object)
 
