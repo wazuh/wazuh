@@ -425,10 +425,6 @@ void * run_backup(__attribute__((unused)) void * args) {
     int global_interval = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->interval;
     bool global_enabled = wconfig.wdb_backup_settings[WDB_GLOBAL_BACKUP]->enabled;
 
-    if(OS_INVALID == last_global_backup_time) {
-        last_global_backup_time = time(NULL);
-    }
-
     mdebug2("Database backup thread started.");
 
     while(running) {
