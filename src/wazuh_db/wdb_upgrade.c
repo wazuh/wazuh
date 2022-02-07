@@ -32,42 +32,31 @@ static const char *SQL_GLOBAL_STMT[] = {
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
-    const char * UPDATES[] = {
-        schema_upgrade_v1_sql,
-        schema_upgrade_v2_sql,
-        schema_upgrade_v3_sql,
-        schema_upgrade_v4_sql,
-        schema_upgrade_v5_sql,
-        schema_upgrade_v6_sql,
-        schema_upgrade_v7_sql,
-        schema_upgrade_v8_sql
-    };
+    const char *UPDATES[] = { schema_upgrade_v1_sql, schema_upgrade_v2_sql,
+                              schema_upgrade_v3_sql, schema_upgrade_v4_sql,
+                              schema_upgrade_v5_sql, schema_upgrade_v6_sql,
+                              schema_upgrade_v7_sql, schema_upgrade_v8_sql };
 
-    char db_version[OS_SIZE_256 + 2];
+    char db_version[OS_SIZE_256];
     int version = 0;
 
-    switch (wdb_metadata_get_entry(wdb, "db_version", db_version)) {
-    case -1:
-        return wdb;
-
-    case 0:
-        break;
-
-    default:
+    int ret = wdb_metadata_get_entry(wdb, "db_version", db_version);
+    if (ret == OS_SUCCESS || ret == OS_NOTFOUND) {
         version = atoi(db_version);
 
         if (version < 0) {
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
             return wdb;
         }
-    }
 
-    for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
-        mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+        for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
+            mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
 
-        if (wdb_sql_exec(wdb, UPDATES[i]) == -1 || wdb_adjust_upgrade(wdb, i)) {
-            wdb = wdb_backup(wdb, version);
-            break;
+            if (wdb_sql_exec(wdb, UPDATES[i]) == -1 ||
+                wdb_adjust_upgrade(wdb, i)) {
+                wdb = wdb_backup(wdb, version);
+                break;
+            }
         }
     }
 
@@ -75,60 +64,65 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 }
 
 wdb_t * wdb_upgrade_global(wdb_t *wdb) {
-    const char * UPDATES[] = {
-        schema_global_upgrade_v1_sql,
-        schema_global_upgrade_v2_sql,
-        schema_global_upgrade_v3_sql,
-        schema_global_upgrade_v4_sql
-    };
+    const char *UPDATES[] = { schema_global_upgrade_v1_sql,
+                              schema_global_upgrade_v2_sql,
+                              schema_global_upgrade_v3_sql,
+                              schema_global_upgrade_v4_sql };
 
-    char output[OS_MAXSTR + 1] = {0};
+    char output[OS_MAXSTR + 1] = { 0 };
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
-    int updates_length = (int)(sizeof(UPDATES)/sizeof(char*));
+    int updates_length = (int)(sizeof(UPDATES) / sizeof(char *));
 
-    switch (wdb_metadata_table_check(wdb,"metadata")) {
-    case OS_INVALID:
-        /**
-         * We can't determine if the database should be upgraded. If we allow the database
-         * usage, we could have many errors because of an operation over an old database version.
-         * If we recreate the database, we have the risk of loosing data of the newer database
-         * versions. We should block the usage until determine whether we should upgrade or not.
+    int count = 0;
+    if (wdb_count_tables_with_name(wdb, "metadata", &count) == OS_SUCCESS) {
+        if (0 < count) {
+            if (wdb_metadata_get_entry(wdb, "db_version", db_version) == OS_SUCCESS) {
+                version = atoi(db_version);
+            }
+            else {
+                /**
+                 * We can't determine if the database should be upgraded. If we
+                 * allow the usage, we could have many errors because of an
+                 * operation over an old database version. We should block the
+                 * usage until determine whether we should upgrade or not.
+                 */
+                mwarn("DB(%s): Error trying to get DB version", wdb->id);
+                wdb->enabled = false;
+                return wdb;
+            }
+        }
+        else {
+            /*
+             * The table does not exist which could mean that we have and old
+             * version of the db. If we have an older version than 3.10 we can
+             * recreate the global.db database and not lose critical data.
+             */
+            if (wdb_is_older_than_v310(wdb)) {
+                if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
+                    merror("Creating pre-upgrade Global DB snapshot failed: %s", output);
+                    wdb->enabled = false;
+                }
+                else {
+                    wdb = wdb_recreate_global(wdb);
+                }
+                return wdb;
+            }
+        }
+    }
+    else {
+        /*
+         * An error occurred trying to get the table count and so we can't
+         * determine if the database should be upgraded. If we allow the
+         * database usage, we could have many errors because of an operation
+         * over an old or corrupted database. If we recreate the database, we
+         * have the risk of loosing data of the newer database versions. Instead
+         * we block the usage until we can determine whether we should upgrade
+         * or not.
          */
         merror("DB(%s) Error trying to find metadata table", wdb->id);
         wdb->enabled = false;
         return wdb;
-    case OS_SUCCESS:
-        /**
-         * The table doesn't exist. Checking if version is 3.10 to upgrade. In case of
-         * having a version lower than 3.10, we recreate the global.db database as we
-         * can't upgrade and we will not lose critical data.
-         */
-        if (wdb_upgrade_check_manager_keepalive(wdb) != 1) {
-            if (OS_SUCCESS != wdb_global_create_backup(wdb, output, "-pre_upgrade")) {
-                merror("Creating pre-upgrade Global DB snapshot failed: %s", output);
-                wdb->enabled = false;
-            }
-            else {
-                wdb = wdb_recreate_global(wdb);
-            }
-            return wdb;
-        }
-        break;
-    default:
-        if (wdb_metadata_get_entry(wdb, "db_version", db_version) == 1) {
-            version = atoi(db_version);
-        }
-        else {
-            /**
-             * We can't determine if the database should be upgraded. If we allow the usage,
-             * we could have many errors because of an operation over an old database version.
-             * We should block the usage until determine whether we should upgrade or not.
-             */
-            mwarn("DB(%s): Error trying to get DB version", wdb->id);
-            wdb->enabled = false;
-            return wdb;
-        }
     }
 
     if (version < updates_length) {
@@ -139,22 +133,18 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         else {
             for (int i = version; i < updates_length; i++) {
                 mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
-                if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID || wdb_adjust_global_upgrade(wdb, i)) {
-                    char *bkp_name = NULL;
-                    if (OS_INVALID != wdb_global_get_most_recent_backup(&bkp_name) &&
-                        OS_INVALID != wdb_global_restore_backup(&wdb, bkp_name, false, output)) {
-                        merror("Failed to update global.db to version %d. The global.db was restored to the original state.", i + 1);
+                if (wdb_sql_exec(wdb, UPDATES[i]) == OS_INVALID ||
+                    wdb_adjust_global_upgrade(wdb, i)) {
+                    if (OS_INVALID != wdb_global_restore_backup(&wdb, NULL, false, output)) {
+                        merror("Failed to update global.db to version %d. The global.db was "
+                               "restored to the original state.",
+                               i + 1);
                         wdb->enabled = true;
-                    }
-                    else if (bkp_name) {
-                        merror("Failed to update global.db to version %d. The global.db should be restored from %s.", i + 1, bkp_name);
-                        wdb->enabled = false;
                     }
                     else {
                         merror("Failed to update global.db to version %d.", i + 1);
                         wdb->enabled = false;
                     }
-                    os_free(bkp_name);
                     break;
                 }
             }
@@ -350,31 +340,31 @@ int wdb_adjust_v4(wdb_t *wdb) {
     return 0;
 }
 
-// Check the presence of manager's keepalive in the global database
-int wdb_upgrade_check_manager_keepalive(wdb_t *wdb) {
+bool wdb_is_older_than_v310(wdb_t *wdb) {
     sqlite3_stmt *stmt = NULL;
-    int result = -1;
+    int result = OS_INVALID;
 
-    if (sqlite3_prepare_v2(wdb->db,
-                           SQL_GLOBAL_STMT[WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE],
-                           -1,
-                           &stmt,
-                           NULL) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(wdb->db, SQL_GLOBAL_STMT[WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE], -1, &stmt, NULL) !=
+        SQLITE_OK) {
         merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+    }
+    else {
+        switch (sqlite3_step(stmt)) {
+            case SQLITE_ROW: {
+                result = sqlite3_column_int(stmt, 0);
+                break;
+            }
+            case SQLITE_DONE: {
+                result = OS_SUCCESS;
+                break;
+            }
+            default: {
+                result = OS_INVALID;
+                break;
+            }
+        }
+        sqlite3_finalize(stmt);
     }
 
-    switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        result = sqlite3_column_int(stmt, 0);
-        break;
-    case SQLITE_DONE:
-        result = OS_SUCCESS;
-        break;
-    default:
-        result = OS_INVALID;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    return (result != 1);
 }

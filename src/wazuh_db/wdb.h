@@ -657,13 +657,14 @@ int wdb_metadata_fill_version(sqlite3 *db);
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
 /**
- * @brief Checks if the table exists in the database.
+ * @brief Gets the count of the tables that match the provided name
  *
  * @param[in] wdb Database to query for the table existence.
  * @param[in] key Name of the table to find.
- * @return 1 if the table exists, 0 if the table doesn't exist or OS_INVALID on failure.
+ * @param[in] returns the count
+ * @return function success.
  */
- int wdb_metadata_table_check(wdb_t * wdb, const char * key);
+ int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count);
 
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
@@ -1525,17 +1526,18 @@ int wdb_create_backup(const char * agent_id, int version);
 wdb_t * wdb_recreate_global(wdb_t *wdb);
 
 /**
- * @brief Check the agent 0 status in the global database
+ * @brief Check if the db version is older than 3.10
  *
- * The table "agent" must have a tuple with id=0 and last_keepalive=9999/12/31 23:59:59 UTC.
- * Otherwise, the database is either corrupt or old.
+ * This is a hacky way to check if the database version is older than 3.10
+ * For newer versions of the db the table "agent" must have a tuple with id=0(manager) and last_keepalive=9999/12/31 23:59:59 UTC.
+ * If this value is missing it means that the db is older than 3.10 or is corrupt
  *
- * @return Number of tuples matching that condition.
- * @retval 1 The agent 0 status is OK.
- * @retval 0 No tuple matching conditions exists.
- * @retval -1 The table "agent" is missing or an error occurred.
+ * @return Db version is older than 3.10.
+ * @retval 1 the db is older than 3.10
+ * @retval 0 the db is newer than 3.10.
+ * @retval 0 The table "agent" is missing or an error occurred.
  */
-int wdb_upgrade_check_manager_keepalive(wdb_t *wdb);
+bool wdb_is_older_than_v310(wdb_t *wdb);
 
 /**
  * @brief Query the checksum of a data range
