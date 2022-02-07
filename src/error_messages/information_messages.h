@@ -52,8 +52,8 @@
 
 #define FIM_DB_NORMAL_ALERT_FILE            "(6036): The file database status returns to normal."
 #define FIM_DB_NORMAL_ALERT_REG             "(6037): The registry database status returns to normal."
-#define FIM_DB_80_PERCENTAGE_ALERT_FILE     "(6038): File database is 90%% full."
-#define FIM_DB_80_PERCENTAGE_ALERT_REG      "(6039): Registry database is 90%% full."
+#define FIM_DB_80_PERCENTAGE_ALERT_FILE     "(6038): File database is 80%% full."
+#define FIM_DB_80_PERCENTAGE_ALERT_REG      "(6039): Registry database is 80%% full."
 #define FIM_DB_90_PERCENTAGE_ALERT_FILE     "(6040): File database is 90%% full."
 #define FIM_DB_90_PERCENTAGE_ALERT_REG      "(6041): Registry database is 90%% full."
 
