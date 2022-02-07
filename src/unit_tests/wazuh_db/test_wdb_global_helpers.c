@@ -188,7 +188,7 @@ void test_wdb_create_agent_db_error_creating_source_profile(void **state)
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
-    errno = EACCES;
+    errno = ENOENT;
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
@@ -213,7 +213,7 @@ void test_wdb_create_agent_db_error_reopening_source_profile(void **state)
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, OS_INVALID);
     // Opening source database file
-    errno = EACCES;
+    errno = ENOENT;
     expect_string(__wrap_fopen, path, "var/db/.template.db");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
