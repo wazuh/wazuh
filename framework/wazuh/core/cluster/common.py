@@ -1319,9 +1319,12 @@ def error_receiving_agent_information(logger, response, info_type):
 
     Parameters
     ----------
+    logger : Logger object
+        Logger to use.
     response : str
         Message with extra information of the error.
-    TODO
+    info_type : str
+        Information type handled.
 
     Returns
     -------
@@ -1344,6 +1347,8 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
         Dict containing command and list of chunks to be sent to wazuh-db.
     timeout : int
         Seconds to wait before stopping the task.
+    info_type : str
+        Information type handled.
 
     Returns
     -------
