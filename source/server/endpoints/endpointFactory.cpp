@@ -16,7 +16,6 @@
 #include "baseEndpoint.hpp"
 #include "socketEndpoint.hpp"
 #include "tcpEndpoint.hpp"
-#include "udpEndpoint.hpp"
 
 using namespace std;
 
@@ -28,10 +27,6 @@ EndpointType stringToEndpoint(const string & endpointName)
     if (endpointName == "tcp")
     {
         return TCP;
-    }
-    else if (endpointName == "udp")
-    {
-        return UDP;
     }
     else if (endpointName == "socket")
     {
@@ -50,9 +45,6 @@ unique_ptr<BaseEndpoint> create(const string & type, const string & config)
     {
         case TCP:
             return make_unique<TCPEndpoint>(config);
-            break;
-        case UDP:
-            return make_unique<UDPEndpoint>(config);
             break;
         case SOCKET:
             return make_unique<SocketEndpoint>(config);

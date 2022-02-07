@@ -35,9 +35,9 @@ struct Route
      * @param environment Environment name wich receives filtered events
      * @param subscription Subscription to handle status
      */
-    Route(const std::string & name, std::function<bool(json::Document)> filter_function,
-          const std::string & environment, rxcpp::composite_subscription subscription) noexcept
-        : m_name(name), m_from(filter_function), m_to(environment), m_subscription(subscription)
+    Route(const std::string & name, const std::string & environment,
+          std::function<bool(json::Document)> filter_function, rxcpp::composite_subscription subscription) noexcept
+        : m_name(name), m_to(environment), m_from(filter_function), m_subscription(subscription)
     {
     }
 
@@ -47,7 +47,7 @@ struct Route
      * @param other
      */
     Route(Route && other) noexcept
-        : m_name{std::move(other.m_name)}, m_from{std::move(other.m_from)}, m_to{std::move(other.m_to)},
+        : m_name{std::move(other.m_name)}, m_to{std::move(other.m_to)}, m_from{std::move(other.m_from)},
           m_subscription{std::move(other.m_subscription)}
     {
     }
@@ -129,6 +129,7 @@ template <class Builder> class Router
     static_assert(std::is_invocable_r_v<Op_t, Builder, std::string>,
                   "Error, Router object expects a Builder callabe object with signature "
                   "rxcpp::subjects::subject<json::Document>(std::string)");
+
 private:
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
@@ -173,13 +174,17 @@ public:
         }
 
         // Connect server output to environment through route filter
-        auto subscription = this->m_observable.filter(filterFunction).on_error_resume_next([&](std::exception_ptr e){
-                std::cerr << rxcpp::util::what(e).c_str() << std::endl;
-                return this->m_observable.filter(filterFunction);
-            }).subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
-
+        auto subscription = this->m_observable.filter(filterFunction)
+                                .on_error_resume_next(
+                                    [=](std::exception_ptr e)
+                                    {
+                                        std::cerr << "on_error_resume_next" << rxcpp::util::what(e).c_str()
+                                                  << std::endl;
+                                        return this->m_observable.filter(filterFunction);
+                                    })
+                                .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
         // Add route to list
-        this->m_routes[route] = Route(route, filterFunction, environment, subscription);
+        this->m_routes[route] = Route(route, environment, filterFunction, subscription);
     }
 
     /**
