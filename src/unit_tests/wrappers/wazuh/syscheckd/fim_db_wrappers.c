@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
+int __wrap_fim_db_get_count_file_entry(){
     return mock();
 }
 
@@ -118,9 +118,16 @@ void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
     check_expected(storage);
 }
 
-void expect_wrapper_fim_db_get_count_entries(const fdb_t *db, int ret) {
-    expect_value(__wrap_fim_db_get_count_entries, fim_sql, db);
+int __wrap_fim_db_get_count_entries() {
+    return mock();
+}
+
+void expect_wrapper_fim_db_get_count_entries(int ret) {
     will_return(__wrap_fim_db_get_count_entries, ret);
+}
+
+void expect_wrapper_fim_db_get_count_file_entry(int ret) {
+    will_return(__wrap_fim_db_get_count_file_entry, ret);
 }
 
 void expect_fim_db_remove_path(const char *path, int ret_val) {

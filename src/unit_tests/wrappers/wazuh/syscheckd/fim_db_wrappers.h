@@ -24,12 +24,7 @@ int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      char **str_pathlh,
                                      char **str_pathuh);
 
-int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql,
-                                     fim_tmp_file *file,
-                                     pthread_mutex_t *mutex,
-                                     int storage);
-
-int __wrap_fim_db_get_count_file_entry(fdb_t * fim_sql);
+int __wrap_fim_db_get_count_file_entry();
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
                                   fim_type type,
@@ -68,7 +63,7 @@ int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
                                   fim_tmp_file *file,
                                   int storage);
 
-int __wrap_fim_db_get_count_entries(fdb_t *fim_sql);
+int __wrap_fim_db_get_count_entries();
 
 
 #ifndef WIN32
@@ -87,7 +82,9 @@ void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage);
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_count_entries
  */
-void expect_wrapper_fim_db_get_count_entries(const fdb_t *fim_sql, int ret);
+void expect_wrapper_fim_db_get_count_entries(int ret);
+
+void expect_wrapper_fim_db_get_count_file_entry(int ret);
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_remove_path
