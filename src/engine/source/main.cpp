@@ -33,7 +33,6 @@ int main(int argc, char * argv[])
     catch (const std::exception & e)
     {
         LOG(ERROR) << "Error while parsing arguments: " << e.what() << endl;
-        //cerr << 
         return 1;
     }
 
@@ -89,8 +88,6 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    // main loop is the server run
-    // TODO: implemented multiple endpoints listening, only implemented tcp
     server.run();
 
     return 0;
