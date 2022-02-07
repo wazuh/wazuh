@@ -1123,7 +1123,7 @@ int wdb_create_agent_db(int id, const char *name) {
 
     snprintf(src_path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
     if (!(source = fopen(src_path, "r"))) {
-        if (errno != EACCES) // If we get any other error other than 'file does not exits'
+        if (errno != ENOENT) // If we get any other error other than 'file does not exits'
         {
             merror("Error accessing file (%s): (%s)", src_path, strerror(errno));
             return OS_INVALID;
