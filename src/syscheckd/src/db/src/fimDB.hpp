@@ -307,7 +307,7 @@ class FIMDB
         /**
          * @brief Create the loop with the configured interval to do the periodical synchronization
          */
-        void loopRSync(std::unique_lock<std::mutex>& lock);
+        void loopRSync();
 
         /**
          * @brief Its the function in charge of starting the flow of synchronization

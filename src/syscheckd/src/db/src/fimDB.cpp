@@ -61,8 +61,9 @@ void FIMDB::sync()
     m_loggingFunction(LOG_INFO, "Finished FIM sync.");
 }
 
-void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
+void FIMDB::loopRSync()
 {
+    std::unique_lock<std::mutex> lock{m_fimSyncMutex};
     m_loggingFunction(LOG_INFO, "FIM sync module started.");
     sync();
 
@@ -128,16 +129,16 @@ void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callback
 
 void FIMDB::runIntegrity()
 {
-    std::unique_lock<std::mutex> lock{m_fimSyncMutex};
+    std::lock_guard<std::mutex> lock{m_fimSyncMutex};
 
     if (!m_runIntegrity)
     {
         m_runIntegrity = true;
         registerRSync();
 
-        m_integrityThread = std::thread([&]()
+        m_integrityThread = std::thread([this]()
         {
-            loopRSync(lock);
+            loopRSync();
         });
     }
     else
@@ -148,7 +149,7 @@ void FIMDB::runIntegrity()
 
 void FIMDB::pushMessage(const std::string& data)
 {
-    std::unique_lock<std::mutex> lock{m_fimSyncMutex};
+    std::lock_guard<std::mutex> lock{m_fimSyncMutex};
 
     if (!m_stopping)
     {
