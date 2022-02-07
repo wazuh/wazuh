@@ -514,7 +514,7 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
     Parameters
     ----------
     merge_type : str
-        Directory inside {wazuh_path}/queue where the files to merge can be found.
+        Directory inside {wazuh_path}/PATH where the files to merge can be found.
     node_name : str
         Name of the node to which the files will be sent.
     files : list
@@ -568,7 +568,7 @@ def unmerge_info(merge_type, path_file, filename):
     Parameters
     ----------
     merge_type : str
-        Name of the destination directory inside queue. I.e: {wazuh_path}/queue/{merge_type}/<unmerge_files>.
+        Name of the destination directory inside queue. I.e: {wazuh_path}/PATH/{merge_type}/<unmerge_files>.
     path_file : str
         Path to the unzipped merged file.
     filename
