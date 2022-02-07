@@ -174,7 +174,7 @@ def test_rst_init(setup_coro_mock, logger_mock, create_task_mock):
 def test_rst_str_method(wazuh_common_mock, create_task_mock, logger_mock, setup_coro_mock):
     """Test the proper output of the '__str__' method."""
 
-    string_task = cluster_common.ReceiveStringTask(wazuh_common_mock, logger_mock, b"task")
+    string_task = cluster_common.ReceiveStringTask(wazuh_common_mock, b"task", logger_mock)
     assert isinstance(string_task.__str__(), str)
     assert string_task.__str__() == "task"
 
@@ -977,13 +977,11 @@ def test_wazuh_common_setup_receive_file():
     my_task = MyTaskMock()
     mock_object = MagicMock(return_value=my_task)
 
-    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger') as logger_mock:
-        first_output, second_output = wazuh_common.setup_receive_file(mock_object)
-        logger_mock.assert_called_once()
-        assert first_output == b'ok'
-        assert isinstance(second_output, bytes)
-        assert MyTaskMock().task_id in wazuh_common.sync_tasks
-        assert isinstance(wazuh_common.sync_tasks[MyTaskMock().task_id], MyTaskMock)
+    first_output, second_output = wazuh_common.setup_receive_file(mock_object)
+    assert first_output == b'ok'
+    assert isinstance(second_output, bytes)
+    assert MyTaskMock().task_id in wazuh_common.sync_tasks
+    assert isinstance(wazuh_common.sync_tasks[MyTaskMock().task_id], MyTaskMock)
 
 
 @patch('wazuh.core.cluster.common.WazuhCommon')
