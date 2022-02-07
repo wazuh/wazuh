@@ -15,6 +15,7 @@
 #include <mutex>
 #include <string>
 #include <uvw/pipe.hpp>
+#include <uvw/timer.hpp>
 
 #include "baseEndpoint.hpp"
 #include "protocolHandler.hpp"
@@ -30,6 +31,9 @@ class SocketEndpoint : public BaseEndpoint
 {
 private:
     std::string m_path;
+    std::shared_ptr<uvw::Loop> m_loop;
+    std::shared_ptr<uvw::PipeHandle> m_server;
+    rxcpp::observable<BaseEndpoint::event_t> connection(const uvw::ListenEvent & event, uvw::PipeHandle & srv);
 
 public:
     /**

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_CXX_FLAGS "-Wall -ggdb3 -O3")
 
 # Project settings
 project(wazuh-engine
@@ -93,7 +93,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
 
 
-target_link_libraries(main "-static" ${EXTERNAL_DEPS})
+target_link_libraries(main  ${EXTERNAL_DEPS})
 
 # Build test
 if(ENGINE_BUILD_TEST)

@@ -26,7 +26,7 @@ void EngineServer::configure(const vector<string> & config)
 {
     vector<endpoints::BaseEndpoint::out_t> tmpObs;
 
-    // <EnpointType>:<config_string> tcp:localhost:5054 socket:path/to/socket udp:localhost:5054
+    // <EnpointType>:<config_string> tcp:localhost:5054 socket:path/to/socket
     for (auto endpointConf : config)
     {
         auto pos = endpointConf.find(":");
@@ -36,13 +36,8 @@ void EngineServer::configure(const vector<string> & config)
         tmpObs.push_back(this->m_endpoints[endpointConf]->output());
     }
 
-    // Build server output observable to emit json events
-    auto output = tmpObs[0];
-    for (auto it = ++tmpObs.begin(); it != tmpObs.end(); ++it)
-    {
-        output = output.merge(*it);
-    }
-    this->m_output = output.flat_map([](auto o) { return o; });
+    auto obs = rxcpp::observable<>::iterate(tmpObs).flat_map([](auto o) { return o; });
+    this->m_output = obs.flat_map([](auto o) { return o; });
 
 }
 
