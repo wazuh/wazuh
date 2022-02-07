@@ -102,7 +102,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
-list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_metadata_table_check \
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \
                              -Wl,--wrap,wdb_sql_exec -Wl,--wrap,wdb_metadata_get_entry -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose \
                              -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgets \
                              -Wl,--wrap,wdb_init -Wl,--wrap,wdb_close -Wl,--wrap,wdb_create_global -Wl,--wrap,wdb_pool_append -Wl,--wrap,chmod -Wl,--wrap,stat \
