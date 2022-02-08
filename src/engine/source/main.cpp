@@ -3,10 +3,10 @@
 // TODO: rename files as wazuh style
 // TODO: delete dummy test/benchmarks examples, no longer needed
 // TODO: QoL CMakeLists
+#include "glog/logging.h"
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "glog/logging.h"
 
 #include "Catalog.hpp"
 #include "builder.hpp"

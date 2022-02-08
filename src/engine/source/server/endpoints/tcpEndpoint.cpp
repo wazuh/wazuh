@@ -86,8 +86,6 @@ TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
     this->m_loop = uvw::Loop::getDefault();
     this->m_server = m_loop->resource<uvw::TCPHandle>();
 
-    
-
     this->m_out = rxcpp::observable<>::create<BaseEndpoint::observable_t>(
         [this, config](BaseEndpoint::subscriber_t s)
         {

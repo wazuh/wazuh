@@ -1,12 +1,12 @@
 #ifndef _GRAPH_H
 #define _GRAPH_H
 
+#include <functional>
 #include <map>
 #include <set>
+#include <sstream>
 #include <utility>
 #include <vector>
-#include <functional>
-#include <sstream>
 
 namespace graph
 {
