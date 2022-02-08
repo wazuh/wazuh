@@ -13,13 +13,6 @@
 namespace engineserver
 {
 
-/**
- * @brief Update pending value and return true if we have enough data
- * to calculate the message size.
- *
- * @return true
- * @return false
- */
 bool ProtocolHandler::hasHeader()
 {
     if (m_buff.size() == sizeof(int))
@@ -36,11 +29,6 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-/**
- * @brief Process a message, parsing it and sending it to s
- *
- * @param s a subscriber of this connection.
- */
 void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
 {
     json::Document evt;
@@ -58,11 +46,6 @@ void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
     s.on_next(evt);
 }
 
-/**
- * @brief generate a json::Document from internal state
- * 
- * @return json::Document 
- */
 json::Document ProtocolHandler::parse()
 {
     json::Document doc;
@@ -111,14 +94,6 @@ json::Document ProtocolHandler::parse()
     return doc;
 }
 
-/**
- * @brief Process the data chunk and send all complete
- * messages to the subscriber s
- * 
- * @param data data to process
- * @param length length of data
- * @param s subscriber
- */
 bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> s)
 {
     for (std::size_t i = 0; i < length; i++)

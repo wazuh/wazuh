@@ -56,4 +56,4 @@ unique_ptr<BaseEndpoint> create(const string & type, const string & config)
     }
 }
 
-} // namespace server::endpoints
+} // namespace engineserver::endpoints
