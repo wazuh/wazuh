@@ -1050,6 +1050,7 @@ STATIC void process_deleted_multi_groups() {
                 multi_groups[multi_groups_size + 1] = NULL;
                 multi_groups_size++;
             } else {
+                cleaner(OSHash_Delete_ex(m_hash, old_multi_groups[i]->name));
                 if (old_multi_groups[i]->f_sum) {
                     for (j = 0; old_multi_groups[i]->f_sum[j]; j++) {
                         os_free(old_multi_groups[i]->f_sum[j]->name);
