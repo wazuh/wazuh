@@ -1229,7 +1229,7 @@ class SyncWazuhdb(SyncTask):
 
         try:
             # Retrieve information from local wazuh-db
-            get_chunks_start_time = datetime.datetime.utcnow().timestamp()
+            get_chunks_start_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
                 result = self.data_retriever(command=command)
@@ -1245,8 +1245,8 @@ class SyncWazuhdb(SyncTask):
             self.logger.error(f"Error obtaining data from wazuh-db: {e}")
             return []
 
-        self.logger.debug(f"Obtained {len(chunks)} chunks of data in "
-                          f"{(datetime.datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.")
+        after = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
+        self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(after - get_chunks_start_time):.3f}s.")
         return chunks
 
     async def sync(self, start_time: float, chunks: List):
@@ -1277,8 +1277,8 @@ class SyncWazuhdb(SyncTask):
             await self.manager.send_request(command=self.cmd, data=task_id)
             self.logger.debug(f"All chunks sent.")
         else:
-            self.logger.info(
-                f"Finished in {(datetime.datetime.utcnow().timestamp() - start_time):.3f}s (0 chunks sent).")
+            after = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
+            self.logger.info( f"Finished in {(after - start_time):.3f}s (0 chunks sent).")
         return True
 
 
@@ -1305,7 +1305,8 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    msg = f"Finished in {(datetime.datetime.utcnow().timestamp() - start_time):.3f}s ({data['updated_chunks']} " \
+    after = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
+    msg = f"Finished in {(after - start_time):.3f}s ({data['updated_chunks']} " \
           f"chunks updated)."
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
@@ -1357,7 +1358,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     wdb_conn = WazuhDBConnection()
-    before = datetime.datetime.utcnow().timestamp()
+    before = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
 
     try:
         with utils.Timeout(timeout):
@@ -1378,7 +1379,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     except Exception as e:
         result['error_messages']['others'].append(f'Error while processing {info_type} chunks: {e}')
 
-    result['time_spent'] = datetime.datetime.utcnow().timestamp() - before
+    result['time_spent'] = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp() - before
     wdb_conn.close()
     return result
 
