@@ -1129,7 +1129,7 @@ def test_agent_get_agents_group_file(group_exists):
 @patch('wazuh.core.agent.chmod')
 def test_agent_set_agent_group_file(mock_chmod, mock_chown, mock_gid, mock_uid, mock_open):
     """Test if set_agent_group_file() set the group_id in the agent"""
-    Agent.set_agent_group_file('002', 'test_group')
+    Agent.set_agent_group_relationship('002', 'test_group')
 
     # Assert methods are called with expected params
     mock_open.assert_called_once_with(os.path.join(common.groups_path, '002'), 'w')
@@ -1140,7 +1140,7 @@ def test_agent_set_agent_group_file(mock_chmod, mock_chown, mock_gid, mock_uid, 
 def test_agent_set_agent_group_file_ko():
     """Test if set_agent_group_file() raises expected exception"""
     with pytest.raises(WazuhInternalError, match='.* 1005 .*'):
-        Agent.set_agent_group_file('002', 'test_group')
+        Agent.set_agent_group_relationship('002', 'test_group')
 
 
 @pytest.mark.parametrize('agent_id, group_id, force, previous_groups, set_default', [

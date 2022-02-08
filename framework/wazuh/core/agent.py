@@ -3,15 +3,15 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import ipaddress
+import json
 import re
 import threading
 from base64 import b64encode
 from datetime import datetime
 from functools import lru_cache
 from json import dumps, loads
-from os import chown, chmod
 from os import listdir, path
-from time import time
+from shutil import rmtree
 
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
@@ -19,7 +19,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, date_format
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
@@ -643,9 +643,8 @@ class Agent:
         """
         # Delete group directory (move it to a backup)
         group_path = path.join(common.shared_path, group_id)
-        group_backup = path.join(common.backup_path, 'groups', "{0}_{1}".format(group_id, int(time())))
         if path.exists(group_path):
-            safe_move(group_path, group_backup, permissions=0o660)
+            rmtree(group_path)
 
         msg = "Group '{0}' deleted.".format(group_id)
 
@@ -696,58 +695,49 @@ class Agent:
         return data
 
     @staticmethod
-    def add_group_to_agent(group_id, agent_id, force=False, replace=False, replace_list=None):
-        """Adds an existing group to an agent
+    def add_group_to_agent(group_id, agent_id, replace=False, replace_list=None):
+        """Add an existing group to an agent.
+        
+        Parameters
+        ----------
+        group_id: str
+            Name of the group.
+        agent_id: str
+            ID of the agent.
+        replace: bool
+            Whether to append new group to current agent's group or replace it.
+        replace_list: bool
+            List of group names that can be replaced.
 
-        :param group_id: name of the group.
-        :param agent_id: ID of the agent.
-        :param force: Do not check if agent exists
-        :param replace: Whether to append new group to current agent's group or replace it.
-        :param replace_list: List of Group names that can be replaced
-        :return: Agent ID.
+        Returns
+        -------
+        str
+            Confirmation message with agent and group IDs.
         """
-        agent = Agent(agent_id)
         if replace_list is None:
             replace_list = []
-        if not force:
-            # Check if agent exists, it is not 000 and the group exists
-            if agent_id == "000":
-                raise WazuhError(1703)
-
-            if not Agent.group_exists(group_id):
-                raise WazuhResourceNotFound(1710)
 
         # Get agent's group
-        group_path = path.join(common.groups_path, agent_id)
         try:
-            with open(group_path) as f:
-                multigroup_name = f.read().strip()
+            agent_multigroups = Agent.get_agent_groups(agent_id)
         except Exception as e:
-            # Check if agent is never_connected.
-            agent.load_info_from_db()
-            if agent.status == 'never_connected':
-                raise WazuhError(1753)
             raise WazuhInternalError(1005, extra_message=str(e))
-        agent_groups = set(multigroup_name.split(','))
+        agent_groups = set(agent_multigroups)
 
         if replace:
-            if agent_groups.issubset(set(replace_list)):
-                multigroup_name = group_id
-            else:
+            if not agent_groups.issubset(set(replace_list)):
                 raise WazuhError(1752)
         else:
             # Check if the group already belongs to the agent
             if group_id in agent_groups:
                 raise WazuhError(1751)
 
-            multigroup_name = f'{multigroup_name}{"," if multigroup_name else ""}{group_id}'
-
         # Check multigroup limit
         if len(agent_groups) >= common.max_groups_per_multigroup:
             raise WazuhError(1737)
 
         # Update group file
-        Agent.set_agent_group_file(agent_id, multigroup_name)
+        Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
 
         return f"Agent {agent_id} assigned to {group_id}"
 
@@ -797,38 +787,61 @@ class Agent:
             return False
 
     @staticmethod
-    def get_agents_group_file(agent_id):
-        group_path = path.join(common.groups_path, agent_id)
-        if path.exists(group_path):
-            with open(group_path) as f:
-                group_name = f.read().strip()
-            return group_name
-        else:
-            return ''
+    def get_agent_groups(agent_id):
+        """Return all agent's groups.
+
+        Parameters
+        ----------
+        agent_id: str
+            Agent ID.
+
+        Returns
+        -------
+        list
+            List of group IDs.
+        """
+        wdb = WazuhDBConnection()
+        try:
+            _, payload = wdb.run_wdb_command(f'global select-group-belong {agent_id}')
+            return json.loads(payload)
+        finally:
+            wdb.close()
 
     @staticmethod
-    def set_agent_group_file(agent_id, group_id):
+    def set_agent_group_relationship(agent_id, group_id, remove=False, override=False):
+        if remove:
+            mode = 'remove'
+        else:
+            mode = 'append' if not override else 'override'
+
+        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq","data":[{{"id":{agent_id},' \
+                  f'"groups": ["{group_id}"]}}]}}'
+
+        wdb = WazuhDBConnection()
         try:
-            agent_group_path = path.join(common.groups_path, agent_id)
-            new_file = not path.exists(agent_group_path)
-
-            with open(agent_group_path, 'w') as f_group:
-                f_group.write(group_id)
-
-            if new_file:
-                chown(agent_group_path, common.wazuh_uid(), common.wazuh_gid())
-                chmod(agent_group_path, 0o660)
+            wdb.run_wdb_command(command)
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
+        finally:
+            wdb.close()
 
     @staticmethod
     def unset_single_group_agent(agent_id, group_id, force=False):
         """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
+        
+        Parameters
+        ----------
+        agent_id: str
+            Agent ID.
+        group_id: str
+            Group ID.
+        force: bool
+            Do not check if agent or group exists.
 
-        :param agent_id: Agent ID.
-        :param group_id: Group ID.
-        :param force: Do not check if agent or group exists
-        :return: Confirmation message.
+        Returns
+        -------
+        str
+            Confirmation message.
         """
         if not force:
             # Check if agent exists, it is not 000 and the group exists
@@ -841,25 +854,22 @@ class Agent:
                 raise WazuhResourceNotFound(1710)
 
         # Get agent's group
-        group_name = Agent.get_agents_group_file(agent_id)
-        group_list = group_name.split(',')
+        group_list = set(Agent.get_agent_groups(agent_id))
+        set_default = False
+
         # Check agent belongs to group group_id
         if group_id not in group_list:
             raise WazuhError(1734)
-        elif group_id == 'default' and len(group_list) == 1:
-            raise WazuhError(1745)
-        # Remove group from group_list
-        group_list.remove(group_id)
-        set_default = False
-        if len(group_list) > 1:
-            multigroup_name = ','.join(group_list)
-        elif not group_list:
-            set_default = True
-            multigroup_name = 'default'
-        else:
-            multigroup_name = group_list[0]
+        elif len(group_list) == 1:
+            if group_id == 'default':
+                raise WazuhError(1745)
+            else:
+                set_default = True
+
         # Update group file
-        Agent.set_agent_group_file(agent_id, multigroup_name)
+        # TODO core team is implementing a fix to make this whole process atomic. Default addition is failing too
+        Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
+        set_default and Agent.set_agent_group_relationship(agent_id, 'default')
 
         return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
                                                                    if set_default else "")
@@ -981,21 +991,45 @@ def get_groups():
 
 @common.context_cached('system_expanded_groups')
 def expand_group(group_name):
-    """Expand a certain group or all (*) of them
+    """Expand a certain group or all (*) of them.
+    
+    Parameters
+    ----------
+    group_name: str
+        Name of the group to be expanded.
 
-    :param group_name: Name of the group to be expanded
-    :return: List of agents ids
+    Returns
+    -------
+    set
+        Set of agent IDs.
     """
     agents_ids = set()
     if group_name == '*':
-        for file in listdir(common.groups_path):
-            try:
-                if path.getsize(path.join(common.groups_path, file)) > 0:
-                    agents_ids.add(file)
-            except FileNotFoundError:
-                # Agent group removed while running through listed dir
-                pass
+        # for file in listdir(common.groups_path):
+        #     try:
+        #         if path.getsize(path.join(common.groups_path, file)) > 0:
+        #             agents_ids.add(file)
+        #     except FileNotFoundError:
+        #         # Agent group removed while running through listed dir
+        #         pass
+        last_id = 0
+        wdb_conn = WazuhDBConnection()
+        try:
+            while True:
+                command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
+                status, payload = wdb_conn.run_wdb_command(command)
+                for agent in json.loads(payload)[0]['data']:
+                    agents_ids.add(str(agent['id']).zfill(3))
+
+                if status == 'ok':
+                    break
+                else:
+                    last_id += 1
+        finally:
+            wdb_conn.close()
+
     else:
+        # TODO new wdb command to expand single groups
         for file in listdir(common.groups_path):
             try:
                 with open(path.join(common.groups_path, file), 'r') as f:
