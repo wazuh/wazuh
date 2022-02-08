@@ -99,10 +99,10 @@ class WazuhDBConnection:
         if data_size >= MAX_SOCKET_BUFFER_SIZE:
             raise WazuhInternalError(2009)
 
-        if data[0] == "err":
-            raise WazuhError(2003, data[1])
-        elif raw:
+        if raw:
             return data
+        elif data[0] == "err":
+            raise WazuhError(2003, data[1])
         else:
             return WazuhDBConnection.loads(data[1])
 
@@ -189,7 +189,7 @@ class WazuhDBConnection:
     def run_wdb_command(self, command):
         """Run command in wdb and return list of retrieved information.
 
-        The response of wdb socket contains 2 elements, a STATUS and a PAYLOAD.
+        The response of wdb socket can contain 2 elements, a STATUS and a PAYLOAD.
         State value can be:
             ok {payload}    -> Successful query with no pending data
             due {payload}   -> Successful query with pending data
@@ -205,11 +205,19 @@ class WazuhDBConnection:
         response : list
             List with JSON results
         """
-        status, payload = self._send(command, raw=True)
-        if status == 'err':
-            raise WazuhInternalError(2007, extra_message=payload)
+        result = self._send(command, raw=True)
 
-        return status, payload
+        # result[0] -> status
+        # result[1] -> payload
+        if len(result) > 1:
+            if result[0] == 'err':
+                raise WazuhInternalError(2007, extra_message=result[1])
+
+        else:
+            if result[0] != 'ok':
+                raise WazuhInternalError(2007)
+
+        return result
 
     def send(self, query, raw=True):
         """Send a message to the wdb socket.
