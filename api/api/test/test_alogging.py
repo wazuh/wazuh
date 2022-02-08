@@ -50,7 +50,8 @@ def test_accesslogger_log_credentials(json_format):
 @pytest.mark.parametrize('side_effect, user, json_format', [
     ('unknown', '', True),
     (None, '', False),
-    (None, 'wazuh', True)
+    (None, 'wazuh', True),
+    (None, 'wazuh', False)
 ])
 @patch('api.alogging.json.dumps')
 def test_accesslogger_log(mock_dumps, side_effect, user, json_format):
@@ -83,13 +84,16 @@ def test_accesslogger_log(mock_dumps, side_effect, user, json_format):
             # if we have token_info or UNKNOWN_USER if not
             if not user:
                 expected_user = 'wazuh' if side_effect is None else alogging.UNKNOWN_USER_STRING
-                assert mock_logger_info.call_args.args[0].split(" ")[0] == expected_user
-
+                if json_format:
+                    assert mock_logger_info.call_args.args[0]['user'] == expected_user
+                else:
+                    assert mock_logger_info.call_args.args[0].split(" ")[0] == expected_user
             # If user, logger.info must be called with the user
-            if json_format:
-                assert mock_logger_info.call_args.args[0]['user'] == user
             else:
-                assert mock_logger_info.call_args.args[0].split(" ")[0] == user
+                if json_format:
+                    assert mock_logger_info.call_args.args[0]['user'] == user
+                else:
+                    assert mock_logger_info.call_args.args[0].split(" ")[0] == user
 
 
 @pytest.mark.parametrize('json_format', [
