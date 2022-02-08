@@ -707,15 +707,26 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
                         .ignoreColumn("tid")
                         .ignoreColumn("name")
                         .data(nlohmann::json::parse(R"({"pid":4,"name":"Systemmm", "tid":105})"));
+    auto updateQuery3 = SyncRowQuery::builder().table("processes")
+                        .ignoreColumn("tid")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"SystemIsDown", "tid":106})"));
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate3{ cJSON_Parse(updateQuery3.query().dump().c_str()) };
 
 
     CallbackMock wrapper;
     callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":100},{"pid":5,"name":"System","tid":101}, {"pid":6,"name":"System","tid":102}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4, "name":"SystemIsDown", "tid":106}])"))).Times(1);
+
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Expect an update event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Expect an update event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate3.get(), callbackData));  // Expect an update event
 }
 
 

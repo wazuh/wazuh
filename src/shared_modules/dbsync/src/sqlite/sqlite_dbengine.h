@@ -122,12 +122,9 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void refreshTableData(const nlohmann::json& data,
                               const DbSync::ResultCallback callback) override;
 
-        void syncTableRowData(const std::string& table,
-                              const std::set<std::string> ignoredColumns,
-                              const nlohmann::json& data,
+        void syncTableRowData(const nlohmann::json& jsInput,
                               const DbSync::ResultCallback callback,
-                              const bool inTransaction = false,
-                              const bool returnOldData = false) override;
+                              const bool inTransaction = false) override;
 
         void setMaxRows(const std::string& table,
                         const unsigned long long maxRows) override;
@@ -187,7 +184,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                  const DbSync::ResultCallback callback);
 
         bool getRowDiff(const std::vector<std::string>& primaryKeyList,
-                        const std::set<std::string>& ignoredColumns,
+                        const nlohmann::json& ignoredColumns,
                         const std::string& table,
                         const nlohmann::json& data,
                         nlohmann::json& updatedData,

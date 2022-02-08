@@ -389,15 +389,6 @@ class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
          *
          */
         SyncRowQuery & reset();
-
-        /**
-         * @brief Returns the set of columns to be ignored. The set may be empty.
-         *
-         * @param js A SyncRowQuery in JSON format.
-         * @return A set of all ignored columns.
-         */
-        static std::set<std::string> getIgnoredColumns(const nlohmann::json &js);
-        static bool shouldReturnOldData(const nlohmann::json& js);
 };
 
 #endif // _DBSYNC_HPP_

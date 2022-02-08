@@ -138,13 +138,34 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 }
 
 
-void SQLiteDBEngine::syncTableRowData(const std::string& table,
-                                      const std::set<std::string> ignoredColumns,
-                                      const nlohmann::json& data,
+void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                                       const DbSync::ResultCallback callback,
-                                      const bool inTransaction,
-                                      const bool returnOldData)
+                                      const bool inTransaction)
 {
+    const auto& table { jsInput.at("table") };
+    const auto& data { jsInput.at("data") };
+
+    auto it { jsInput.find("options") };
+    auto returnOldData { false };
+    nlohmann::json ignoredColumns { };
+
+    if (jsInput.end() != it)
+    {
+        auto itOldData { it->find("return_old_data") };
+
+        if (it->end() != itOldData)
+        {
+            returnOldData = itOldData->is_boolean() ? itOldData.value().get<bool>() : returnOldData;
+        }
+
+        auto itIgnoredFields { it->find("ignore") };
+
+        if (it->end() != itIgnoredFields)
+        {
+            ignoredColumns = itIgnoredFields->is_array() ? itIgnoredFields.value() : ignoredColumns;
+        }
+    }
+
     static const auto getDataToUpdate
     {
         [](const std::vector<std::string>& primaryKeyList,
@@ -1205,7 +1226,7 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
 }
 
 bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
-                                const std::set<std::string>& ignoredColumns,
+                                const nlohmann::json& ignoredColumns,
                                 const std::string& table,
                                 const nlohmann::json& data,
                                 nlohmann::json& updatedData,
@@ -1272,7 +1293,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                 if (data.end() != it)
                 {
                     // Only compare if not in ignore set
-                    if (*it != object[value.first] && ignoredColumns.count(value.first) == 0)
+                    if (*it != object.at(value.first) && ignoredColumns.count(value.first) == 0)
                     {
                         // Diff found
                         isModified = true;
@@ -1288,6 +1309,41 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
     {
         updatedData.clear();
         oldData.clear();
+    }
+    else
+    {
+        if (!ignoredColumns.empty())
+        {
+            auto haveDiffOnNonIgnored
+            {
+                [&ignoredColumns, primaryKeyList](const nlohmann::json & rowToBeUpdated) -> bool
+                {
+                    bool haveDiff { false };
+
+                    for (const auto& fieldToBeUpdated : rowToBeUpdated.items())
+                    {
+                        if (std::find(ignoredColumns.begin(), ignoredColumns.end(),
+                                      fieldToBeUpdated.key()) == ignoredColumns.end())
+                        {
+                            if (std::find(primaryKeyList.begin(), primaryKeyList.end(),
+                                          fieldToBeUpdated.key()) == primaryKeyList.end())
+                            {
+                                haveDiff = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    return haveDiff;
+                }
+            };
+
+            if (!haveDiffOnNonIgnored(updatedData))
+            {
+                updatedData.clear();
+                oldData.clear();
+            }
+        }
     }
 
     return diffExist;
