@@ -12,6 +12,7 @@
 #ifndef _DBENGINE_H
 #define _DBENGINE_H
 
+#include <set>
 #include <string>
 #include <vector>
 #include <functional>
@@ -35,8 +36,7 @@ namespace DbSync
             virtual void refreshTableData(const nlohmann::json& data,
                                           const ResultCallback callback) = 0;
 
-            virtual void syncTableRowData(const std::string& table,
-                                          const nlohmann::json& data,
+            virtual void syncTableRowData(const nlohmann::json& jsInput,
                                           const ResultCallback callback,
                                           const bool inTransaction = false) = 0;
 

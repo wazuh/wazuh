@@ -875,4 +875,27 @@ InsertQuery& InsertQuery::reset()
     return *this;
 }
 
+SyncRowQuery& SyncRowQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["data"].push_back(data);
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::ignoreColumn(const std::string& column)
+{
+    m_jsQuery["options"]["ignore"].push_back(column);
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::returnOldData()
+{
+    m_jsQuery["options"]["return_old_data"] = true;
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::reset()
+{
+    m_jsQuery["data"].clear();
+    return *this;
+}
 

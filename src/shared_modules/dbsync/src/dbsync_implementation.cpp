@@ -54,9 +54,9 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
                                        const ResultCallback     callback)
 {
     const auto ctx{ dbEngineContext(handle) };
-    ctx->m_dbEngine->syncTableRowData(json.at("table"),
-                                      json.at("data"),
-                                      callback);
+    ctx->m_dbEngine->syncTableRowData(json,
+                                      callback,
+                                      false);
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
@@ -72,8 +72,7 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
         throw dbsync_error{INVALID_TABLE};
     }
 
-    ctx->m_dbEngine->syncTableRowData(json.at("table"),
-                                      json.at("data"),
+    ctx->m_dbEngine->syncTableRowData(json,
                                       callback,
                                       true);
 }

@@ -356,4 +356,38 @@ class EXPORTED InsertQuery final : public Query<InsertQuery>
         InsertQuery & reset();
 };
 
+class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
+{
+    public:
+        SyncRowQuery() = default;
+        // LCOV_EXCL_START
+        virtual ~SyncRowQuery() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Set data to be updated.
+         *
+         * @param data Data to be updated.
+         */
+        SyncRowQuery & data(const nlohmann::json& data);
+
+        /**
+         * @brief Set column to be ignored when comparing row values.
+         *
+         * @param column Name of the column to be ignored.
+         */
+        SyncRowQuery & ignoreColumn(const std::string &column);
+
+        /**
+         * @brief Make this query return the old data as well.
+         */
+        SyncRowQuery & returnOldData();
+
+        /**
+         * @brief Reset all data to be inserted.
+         *
+         */
+        SyncRowQuery & reset();
+};
+
 #endif // _DBSYNC_HPP_

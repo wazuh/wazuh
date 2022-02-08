@@ -138,11 +138,34 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 }
 
 
-void SQLiteDBEngine::syncTableRowData(const std::string& table,
-                                      const nlohmann::json& data,
+void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                                       const DbSync::ResultCallback callback,
                                       const bool inTransaction)
 {
+    const auto& table { jsInput.at("table") };
+    const auto& data { jsInput.at("data") };
+
+    auto it { jsInput.find("options") };
+    auto returnOldData { false };
+    nlohmann::json ignoredColumns { };
+
+    if (jsInput.end() != it)
+    {
+        auto itOldData { it->find("return_old_data") };
+
+        if (it->end() != itOldData)
+        {
+            returnOldData = itOldData->is_boolean() ? itOldData.value().get<bool>() : returnOldData;
+        }
+
+        auto itIgnoredFields { it->find("ignore") };
+
+        if (it->end() != itIgnoredFields)
+        {
+            ignoredColumns = itIgnoredFields->is_array() ? itIgnoredFields.value() : ignoredColumns;
+        }
+    }
+
     static const auto getDataToUpdate
     {
         [](const std::vector<std::string>& primaryKeyList,
@@ -194,20 +217,31 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
 
             for (const auto& entry : data)
             {
-                nlohmann::json jsResult;
-                const bool diffExist { getRowDiff(primaryKeyList, table, entry, jsResult) };
+                nlohmann::json updated;
+                nlohmann::json oldData;
+                const bool diffExist { getRowDiff(primaryKeyList, ignoredColumns, table, entry, updated, oldData) };
 
                 if (diffExist)
                 {
-                    const auto& jsDataToUpdate{getDataToUpdate(primaryKeyList, jsResult, entry, inTransaction)};
+                    const auto& jsDataToUpdate{getDataToUpdate(primaryKeyList, updated, entry, inTransaction)};
 
                     if (!jsDataToUpdate.empty())
                     {
                         updateSingleRow(table, jsDataToUpdate);
 
-                        if (callback && !jsResult.empty())
+                        if (callback && !updated.empty())
                         {
-                            bulkModifyJson.push_back(jsResult);
+                            if (returnOldData)
+                            {
+                                nlohmann::json diff;
+                                diff["old"] = oldData;
+                                diff["new"] = updated;
+                                bulkModifyJson.push_back(std::move(diff));
+                            }
+                            else
+                            {
+                                bulkModifyJson.push_back(std::move(updated));
+                            }
                         }
                     }
                 }
@@ -1192,9 +1226,11 @@ std::string SQLiteDBEngine::buildLeftOnlyQuery(const std::string& t1,
 }
 
 bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
+                                const nlohmann::json& ignoredColumns,
                                 const std::string& table,
                                 const nlohmann::json& data,
-                                nlohmann::json& jsResult)
+                                nlohmann::json& updatedData,
+                                nlohmann::json& oldData)
 {
     bool diffExist { false };
     bool isModified { false };
@@ -1206,6 +1242,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
     const auto& tableFields { m_tableFields[table] };
     int32_t index { 1l };
 
+    // Always include primary keys
     for (const auto& pkValue : primaryKeyList)
     {
         const auto& it
@@ -1219,7 +1256,8 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
         if (it != tableFields.end())
         {
-            jsResult[pkValue] = data.at(pkValue);
+            updatedData[pkValue] = data.at(pkValue);
+            oldData[pkValue] = data.at(pkValue);
             bindJsonData(stmt, *it, data, index);
             ++index;
         }
@@ -1229,7 +1267,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
     if (diffExist)
     {
-        // The row exist, so lets generate the diff
+        // The row exists, so let's generate the diff
         Row registryFields;
 
         for (const auto& field : tableFields)
@@ -1254,11 +1292,13 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
                 if (data.end() != it)
                 {
-                    if (*it != object[value.first])
+                    // Only compare if not in ignore set
+                    if (*it != object.at(value.first))
                     {
                         // Diff found
                         isModified = true;
-                        jsResult[value.first] = *it;
+                        updatedData[value.first] = *it;
+                        oldData[value.first] = object[value.first];
                     }
                 }
             }
@@ -1267,7 +1307,43 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
     if (!isModified)
     {
-        jsResult.clear();
+        updatedData.clear();
+        oldData.clear();
+    }
+    else
+    {
+        if (!ignoredColumns.empty())
+        {
+            auto haveDiffOnNonIgnored
+            {
+                [&ignoredColumns, primaryKeyList](const nlohmann::json & rowToBeUpdated) -> bool
+                {
+                    bool haveDiff { false };
+
+                    for (const auto& fieldToBeUpdated : rowToBeUpdated.items())
+                    {
+                        if (std::find(ignoredColumns.begin(), ignoredColumns.end(),
+                                      fieldToBeUpdated.key()) == ignoredColumns.end())
+                        {
+                            if (std::find(primaryKeyList.begin(), primaryKeyList.end(),
+                                          fieldToBeUpdated.key()) == primaryKeyList.end())
+                            {
+                                haveDiff = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    return haveDiff;
+                }
+            };
+
+            if (!haveDiffOnNonIgnored(updatedData))
+            {
+                updatedData.clear();
+                oldData.clear();
+            }
+        }
     }
 
     return diffExist;
