@@ -25,7 +25,6 @@
 #define EXPORTED
 #endif
 
-#include <set>
 #include <functional>
 #include "json.hpp"
 #include "db_exception.h"
