@@ -106,14 +106,6 @@ TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
                     s.on_error(std::make_exception_ptr(e));
                 });
 
-            this->m_server->on<uvw::EndEvent>(
-                [s](const uvw::EndEvent &, uvw::TCPHandle & client)
-                {
-                    LOG(INFO) << "Shutting down server" << std::endl;
-                    client.close();
-                    s.on_completed();
-                });
-
             LOG(INFO) << "A route has been enabled for endpoint " << config << std::endl;
         });
 }
