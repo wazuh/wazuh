@@ -808,7 +808,7 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false };
 
-    fim_checker(path, &evt_data, configuration, NULL);
+    fim_checker(path, &evt_data, configuration, NULL, NULL);
 
     realtime_adddir(path, configuration);
 #ifdef ENABLE_AUDIT

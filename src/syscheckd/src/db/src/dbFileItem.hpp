@@ -44,7 +44,7 @@ struct FimFileDataDeleter
 class FileItem final : public DBItem
 {
     public:
-        FileItem(const fim_entry* const fim)
+        FileItem(const fim_entry* const fim, bool old_data=false)
             : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path
                      , fim->file_entry.data->scanned
                      , fim->file_entry.data->last_event
@@ -65,7 +65,7 @@ class FileItem final : public DBItem
             m_sha256 = fim->file_entry.data->hash_sha256[0] == '\0' ? "" : fim->file_entry.data->hash_sha256;
             m_uid = fim->file_entry.data->uid == NULL ? 0 : std::atoi(fim->file_entry.data->uid);
             m_username = fim->file_entry.data->user_name == NULL ? "" : fim->file_entry.data->user_name;
-            createJSON();
+            createJSON(old_data);
             createFimEntry();
         };
 
@@ -121,6 +121,6 @@ class FileItem final : public DBItem
         std::unique_ptr<nlohmann::json>                 m_statementConf;
 
         void createFimEntry();
-        void createJSON();
+        void createJSON(bool old_data=false);
 };
 #endif //_FILEITEM_HPP

@@ -259,7 +259,7 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
 
         if (entry->type == FIM_TYPE_FILE)
         {
-            syncItem = std::make_unique<FileItem>(entry);
+            syncItem = std::make_unique<FileItem>(entry, true);
         }
         else
         {

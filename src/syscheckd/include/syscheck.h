@@ -98,6 +98,13 @@ typedef struct get_data_ctx {
     const char *path;
 } get_data_ctx;
 
+typedef struct fim_txn_context_s {
+    event_data_t* evt_data;
+    fim_entry* latest_entry;
+    volatile bool db_full;
+
+} fim_txn_context_t;
+
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
@@ -180,7 +187,8 @@ void check_max_fps();
 void fim_checker(const char *path,
                  event_data_t *evt_data,
                  const directory_t *parent_configuration,
-                 TXN_HANDLE dbsync_txn);
+                 TXN_HANDLE dbsync_txn,
+                 fim_txn_context_t *ctx);
 
 /**
  * @brief Check file integrity monitoring on a specific folder
@@ -192,7 +200,12 @@ void fim_checker(const char *path,
  *
  * @return 0 on success, -1 on failure
  */
-int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration, TXN_HANDLE txn_handle);
+
+int fim_directory(const char *dir,
+                  event_data_t *evt_data,
+                  const directory_t *configuration,
+                  TXN_HANDLE dbsync_txn,
+                  fim_txn_context_t *ctx);
 
 /**
  * @brief Check file integrity monitoring on a specific file
@@ -202,7 +215,11 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
  * @param [in] evt_data Information associated to the triggered event
  * @param [in] txn_handle DBSync transaction handler. Can be NULL.
  */
-void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle);
+void fim_file(const char *path,
+              const directory_t *configuration,
+              event_data_t *evt_data,
+              TXN_HANDLE txn_handle,
+              fim_txn_context_t *ctx);
 
 /**
  * @brief Process FIM realtime event
