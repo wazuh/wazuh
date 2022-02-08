@@ -38,6 +38,12 @@ if(NOT STATIC_CMOCKA)
   message(FATAL_ERROR "libcmocka.a not found in /usr/i686-w64-mingw32/sys-root/mingw/lib/ Aborting...")
 endif()
 
+# FIM libraries
+find_library(STATIC_SYSCHECK NAMES libwazuh-syscheckd.a libfimdb.a libfim_db_interface_test.dll.a libfim_file_interface_test.dll.a libfim_registry_interface_test.dll.a libfimdb_unit_test.dll.a HINTS "${SRC_FOLDER}/syscheckd/build/lib")
+if(NOT STATIC_SYSCHECK)
+  message(FATAL_ERROR "FIM libraries not found in ${SRC_FOLDER}/syscheckd/build/lib Aborting...")
+endif()
+
 # Add compiling flags
 add_compile_options(-ggdb -O0 -g -coverage)
 add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600)
@@ -78,12 +84,12 @@ set_target_properties(
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${STATIC_CMOCKA} SYSCHECK_O wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${STATIC_CMOCKA} ${STATIC_SYSCHECK} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
-set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
-set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} ${STATIC_SYSCHECK} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} ${STATIC_SYSCHECK} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(client-agent)
 add_subdirectory(wazuh_modules)
