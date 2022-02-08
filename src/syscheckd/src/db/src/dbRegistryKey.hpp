@@ -62,9 +62,10 @@ class RegistryKey final : public DBItem
             createFimEntry();
         }
 
-        RegistryKey(const nlohmann::json& fim)
+        RegistryKey(const nlohmann::json& fim, bool oldData = false)
             : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
+            m_oldData = oldData;
             m_arch = fim.at("arch");
             m_gid = fim.at("gid");
             m_uid = fim.at("uid");

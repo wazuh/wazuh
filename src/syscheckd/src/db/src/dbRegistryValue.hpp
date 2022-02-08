@@ -53,9 +53,10 @@ class RegistryValue final : public DBItem
             createFimEntry();
         }
 
-        RegistryValue(const nlohmann::json& fim)
+        RegistryValue(const nlohmann::json& fim, bool oldData = false)
             : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
+            m_oldData = oldData;
             m_size = fim.at("size");
             m_type = fim.at("type");
             m_md5 = fim.at("hash_md5");
