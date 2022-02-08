@@ -10,7 +10,7 @@ import shutil
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -671,9 +671,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         while True:
             info = self.server.get_agent_groups_info(self.name)
             if info != {}:
-                self.send_agent_groups_status['date_start'] = datetime.utcnow().timestamp()
-                logger.info("Starting.")
                 try:
+                    self.send_agent_groups_status['date_start'] = \
+                        datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+                    logger.info("Starting.")
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'],
                                            chunks=self.server.agent_groups_control)
                 except Exception as e:
@@ -1087,7 +1088,7 @@ class Master(server.AbstractServer):
         The form of this data is ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
         """
         empty_data = ['[{"data":[]}]']
-        logger = self.setup_task_logger('Agent-groups send')
+        logger = self.setup_task_logger('Agent-groups get')
         wdb_conn = WazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
@@ -1096,14 +1097,15 @@ class Master(server.AbstractServer):
 
         while True:
             try:
-                before = datetime.utcnow()
+                before = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
                 sync_object.logger.info("Starting.")
                 if self.agent_groups_control == {}:
                     self.agent_groups_control = await sync_object.retrieve_information()
-                    logger.info(f"Finished in {(datetime.utcnow() - before).total_seconds():.3f}s. "
-                                f"Obtained agent-groups that require synchronization.")
-
-                    if self.agent_groups_control == empty_data:
+                    after = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+                    no_need_sync = self.agent_groups_control == empty_data
+                    logger.info(f"Finished in {(after - before):.3f}s. "
+                                f"Agent-group synchronization is {'not ' if no_need_sync else ''}required.")
+                    if no_need_sync:
                         self.agent_groups_control = {}
             except Exception as e:
                 sync_object.logger.error(f"Error getting agent-groups from WDB: {e}")
