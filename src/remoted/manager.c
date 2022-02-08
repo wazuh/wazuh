@@ -116,13 +116,21 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
 STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]);
 
 /**
- * @brief Check if the file sum has changed
+ * @brief Compare and check if the file sum has changed
  * @param old_sum File sum of previous scan
  * @param new_sum File sum of new scan
  * @return true Changed
  * @return false Didn't change
  */
 STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
+
+/**
+ * @brief Check if any group of a given multigroup has changed
+ * @param multi_group Multigroup name
+ * @return true Any group changed
+ * @return false Groups didn't change
+ */
+STATIC bool group_changed(const char *multi_group);
 
 /**
  * @brief Get agent group
@@ -725,6 +733,8 @@ STATIC void c_files()
     /* Analize multigroups */
     process_multi_groups();
 
+    // TODO: Delete groups and multigroups that no longer exist
+
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
@@ -770,7 +780,7 @@ STATIC void process_groups() {
             os_calloc(1, sizeof(group_t), groups[groups_size]);
             groups[groups_size]->name = strdup(entry->d_name);
             c_group(entry->d_name, subdir, &groups[groups_size]->f_sum, SHAREDCFG_DIR);
-            groups[groups_size]->has_changed = false;
+            groups[groups_size]->has_changed = true;
             groups[groups_size]->exists = true;
             groups[groups_size + 1] = NULL;
             groups_size++;
@@ -935,7 +945,7 @@ STATIC void process_multi_groups() {
                 }
                 os_free(multigroup->f_sum);
             }
-            c_multi_group(key, &multigroup->f_sum, data, false); //TODO true if any group changed
+            c_multi_group(key, &multigroup->f_sum, data, group_changed(key));
             multigroup->exists = true;
         }
 
@@ -1009,7 +1019,7 @@ STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, 
 }
 
 STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
-    int size_old, size_new = 0;
+    unsigned int size_old, size_new = 0;
 
     if (!old_sum || !new_sum) {
         if (!old_sum && !new_sum) {
@@ -1023,9 +1033,9 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
     for (size_new = 0; new_sum[size_new]; size_new++);
 
     if (size_old == size_new) {
-        for (int i = 0; old_sum[i]; i++) {
+        for (unsigned int i = 0; old_sum[i]; i++) {
             bool found = false;
-            for (int j = 0; new_sum[j]; j++) {
+            for (unsigned int j = 0; new_sum[j]; j++) {
                 if (!strcmp(old_sum[i]->name, new_sum[j]->name)) {
                     found = true;
                     if (strcmp(old_sum[i]->sum, new_sum[j]->sum)) {
@@ -1042,6 +1052,24 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
         return true;
     }
 
+    return false;
+}
+
+STATIC bool group_changed(const char *multi_group) {
+    char **mgroups = NULL;
+
+    mgroups = OS_StrBreak(MULTIGROUP_SEPARATOR, multi_group, MAX_GROUPS_PER_MULTIGROUP);
+
+    for (unsigned int i = 0; mgroups[i]; i++) {
+        group_t *group = NULL;
+
+        if (group = find_group(mgroups[i]), !group || !group->exists || group->has_changed) {
+            free_strarray(mgroups);
+            return true;
+        }
+    }
+
+    free_strarray(mgroups);
     return false;
 }
 
