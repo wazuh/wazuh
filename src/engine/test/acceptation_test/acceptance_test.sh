@@ -6,6 +6,12 @@ TEST_NAME=test
 
 STATS_MONITOR_POLL_TIME_SECS=0.1
 
+# Benchmark configuration
+BT_TIME=360
+BT_RATE=0
+BT_INPUT=./utils/test_logs.txt
+
+# Constants for the test
 CONFIG_SRC_DIR=./analysisd/config
 CONFIG_DST_DIR=/var/ossec/etc
 CONFIG_BACKUP_DIR=/var/ossec/backup/etc
@@ -61,8 +67,13 @@ MONITOR_PID=$!
 
 # Test script
 
-# go run ./utils/benchmark_tool.go -t 5 -r 100000 -i ./utils/test_logs.txt -T
-go run ./utils/benchmark_tool.go -t 5 -r 0 -i ./utils/test_logs.txt -T
+# Run the benchmark
+# -t <Estimated benchmark duration>
+# -r <Events per seconds. Use 0 for maximum rate allowed>
+# -i <Source of logs>
+# -T Truncate the alerts.json file to calculate the processed events after benchark
+
+go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T
 
 # Stop stats collector script
 

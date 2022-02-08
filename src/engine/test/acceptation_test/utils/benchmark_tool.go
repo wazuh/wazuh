@@ -58,7 +58,7 @@ func main() {
 
 	// Parcer arguments
 	// Bench
-	flag.IntVar(&timeTest, "t", 10, "Time of the benchmark")
+	flag.IntVar(&timeTest, "t", 5, "Time of the benchmark")
 	flag.IntVar(&rate, "r", 35, "Rate (Events/sec) of the benchmark. 0 for infinite")
 	flag.IntVar(&concurrent, "c", 1, "Number of concurrent connections")
 	// IO Files
@@ -72,7 +72,7 @@ func main() {
 		`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),`+
 		`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
 	//flag.BoolVar(&verbose, "v", false, "Verbose mode")
-	flag.BoolVar(&header, "h", false, "Use secure msg protocol. Preappend a header with size of logs (int32) before send")
+	flag.BoolVar(&header, "b", false, "Use secure msg protocol. Preappend a header with size of logs (int32) before send")
 	flag.Parse()
 
 	// Validate parameters
