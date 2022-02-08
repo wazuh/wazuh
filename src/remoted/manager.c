@@ -84,6 +84,16 @@ STATIC void process_groups();
 STATIC void process_multi_groups();
 
 /**
+ * @brief Delete all groups that no longer exist
+ */
+STATIC void process_deleted_groups();
+
+/**
+ * @brief Delete all multigroups that no longer exist
+ */
+STATIC void process_deleted_multi_groups();
+
+/**
  * @brief Find a group structure from its name
  * @param group Group name
  * @return Group structure if exists, NULL otherwise
@@ -733,7 +743,11 @@ STATIC void c_files()
     /* Analize multigroups */
     process_multi_groups();
 
-    // TODO: Delete groups and multigroups that no longer exist
+    /* Delete residual groups */
+    process_deleted_groups();
+
+    /* Delete residual multigroups */
+    process_deleted_multi_groups();
 
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
@@ -746,6 +760,7 @@ STATIC void process_groups() {
     char ** subdir;
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
+    unsigned int i;
 
     dp = opendir(SHAREDCFG_DIR);
 
@@ -798,7 +813,7 @@ STATIC void process_groups() {
                 group->has_changed = false;
             }
             if (old_sum) {
-                for (int i = 0; old_sum[i]; i++) {
+                for (i = 0; old_sum[i]; i++) {
                     os_free(old_sum[i]->name);
                     os_free(old_sum[i]);
                 }
@@ -819,6 +834,8 @@ STATIC void process_multi_groups() {
     char ** subdir;
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
+    OSHashNode *my_node;
+    unsigned int i, j;
 
     dp = opendir(GROUPS_DIR);
 
@@ -875,9 +892,6 @@ STATIC void process_multi_groups() {
             }
         }
     }
-
-    OSHashNode *my_node;
-    unsigned int i;
 
     for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
         char *key = NULL;
@@ -939,9 +953,9 @@ STATIC void process_multi_groups() {
 
         } else {
             if (multigroup->f_sum) {
-                for (int i = 0; multigroup->f_sum[i]; i++) {
-                    os_free(multigroup->f_sum[i]->name);
-                    os_free(multigroup->f_sum[i]);
+                for (j = 0; multigroup->f_sum[j]; j++) {
+                    os_free(multigroup->f_sum[j]->name);
+                    os_free(multigroup->f_sum[j]);
                 }
                 os_free(multigroup->f_sum);
             }
@@ -958,8 +972,106 @@ STATIC void process_multi_groups() {
     return;
 }
 
+STATIC void process_deleted_groups() {
+    bool update = 0;
+    unsigned int i, j;
+
+    for (i = 0; groups[i]; i++) {
+        if (!groups[i]->exists) {
+            update = true;
+            break;
+        }
+    }
+
+    if (update) {
+        group_t **old_groups = NULL;
+
+        old_groups = groups;
+        groups = NULL;
+
+        os_calloc(1, sizeof(group_t *), groups);
+        groups_size = 0;
+
+        for (i = 0; old_groups[i]; i++) {
+            if (old_groups[i]->exists) {
+                os_realloc(groups, (groups_size + 2) * sizeof(group_t *), groups);
+                groups[groups_size] = old_groups[i];
+                groups[groups_size]->has_changed = false;
+                groups[groups_size]->exists = false;
+                groups[groups_size + 1] = NULL;
+                groups_size++;
+            } else {
+                if (old_groups[i]->f_sum) {
+                    for (j = 0; old_groups[i]->f_sum[j]; j++) {
+                        os_free(old_groups[i]->f_sum[j]->name);
+                        os_free(old_groups[i]->f_sum[j]);
+                    }
+                    os_free(old_groups[i]->f_sum);
+                }
+                os_free(old_groups[i]->name);
+                os_free(old_groups[i]);
+            }
+        }
+        os_free(old_groups);
+
+    } else {
+        for (i = 0; groups[i]; i++) {
+            groups[i]->has_changed = false;
+            groups[i]->exists = false;
+        }
+    }
+}
+
+STATIC void process_deleted_multi_groups() {
+    bool update = 0;
+    unsigned int i, j;
+
+    for (i = 0; multi_groups[i]; i++) {
+        if (!multi_groups[i]->exists) {
+            update = true;
+            break;
+        }
+    }
+
+    if (update) {
+        group_t **old_multi_groups = NULL;
+
+        old_multi_groups = multi_groups;
+        multi_groups = NULL;
+
+        os_calloc(1, sizeof(group_t *), multi_groups);
+        multi_groups_size = 0;
+
+        for (i = 0; old_multi_groups[i]; i++) {
+            if (old_multi_groups[i]->exists) {
+                os_realloc(multi_groups, (multi_groups_size + 2) * sizeof(group_t *), multi_groups);
+                multi_groups[multi_groups_size] = old_multi_groups[i];
+                multi_groups[multi_groups_size]->exists = false;
+                multi_groups[multi_groups_size + 1] = NULL;
+                multi_groups_size++;
+            } else {
+                if (old_multi_groups[i]->f_sum) {
+                    for (j = 0; old_multi_groups[i]->f_sum[j]; j++) {
+                        os_free(old_multi_groups[i]->f_sum[j]->name);
+                        os_free(old_multi_groups[i]->f_sum[j]);
+                    }
+                    os_free(old_multi_groups[i]->f_sum);
+                }
+                os_free(old_multi_groups[i]->name);
+                os_free(old_multi_groups[i]);
+            }
+        }
+        os_free(old_multi_groups);
+
+    } else {
+        for (i = 0; multi_groups[i]; i++) {
+            multi_groups[i]->exists = false;
+        }
+    }
+}
+
 STATIC group_t* find_group(const char *group) {
-    int i;
+    unsigned int i;
 
     for (i = 0; groups[i]; i++) {
         if (!strcmp(groups[i]->name, group)) {
@@ -970,7 +1082,7 @@ STATIC group_t* find_group(const char *group) {
 }
 
 STATIC group_t* find_multi_group(const char *multigroup) {
-    int i;
+    unsigned int i;
 
     for (i = 0; multi_groups[i]; i++) {
         if (!strcmp(multi_groups[i]->name, multigroup)) {
@@ -981,8 +1093,8 @@ STATIC group_t* find_multi_group(const char *multigroup) {
 }
 
 STATIC group_t* find_group_from_file(const char * file, const char * md5, char group[OS_SIZE_65536]) {
-    int i, j;
     file_sum ** f_sum;
+    unsigned int i, j;
 
     for (i = 0; groups[i]; i++) {
         f_sum = groups[i]->f_sum;
@@ -1000,8 +1112,8 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
 }
 
 STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, char multigroup[OS_SIZE_65536]) {
-    int i, j;
     file_sum ** f_sum;
+    unsigned int i, j;
 
     for (i = 0; multi_groups[i]; i++) {
         f_sum = multi_groups[i]->f_sum;
@@ -1020,6 +1132,7 @@ STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, 
 
 STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
     unsigned int size_old, size_new = 0;
+    unsigned int i, j;
 
     if (!old_sum || !new_sum) {
         if (!old_sum && !new_sum) {
@@ -1033,9 +1146,9 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
     for (size_new = 0; new_sum[size_new]; size_new++);
 
     if (size_old == size_new) {
-        for (unsigned int i = 0; old_sum[i]; i++) {
+        for (i = 0; old_sum[i]; i++) {
             bool found = false;
-            for (unsigned int j = 0; new_sum[j]; j++) {
+            for (j = 0; new_sum[j]; j++) {
                 if (!strcmp(old_sum[i]->name, new_sum[j]->name)) {
                     found = true;
                     if (strcmp(old_sum[i]->sum, new_sum[j]->sum)) {
@@ -1057,10 +1170,11 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum) {
 
 STATIC bool group_changed(const char *multi_group) {
     char **mgroups = NULL;
+    unsigned int i;
 
     mgroups = OS_StrBreak(MULTIGROUP_SEPARATOR, multi_group, MAX_GROUPS_PER_MULTIGROUP);
 
-    for (unsigned int i = 0; mgroups[i]; i++) {
+    for (i = 0; mgroups[i]; i++) {
         group_t *group = NULL;
 
         if (group = find_group(mgroups[i]), !group || !group->exists || group->has_changed) {
