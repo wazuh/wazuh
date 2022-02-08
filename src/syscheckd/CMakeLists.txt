@@ -106,4 +106,3 @@ else()
     target_link_libraries(wazuh-syscheckd gcov asan ubsan)
   endif(FSANITIZE)
 endif(UNIT_TEST)
-

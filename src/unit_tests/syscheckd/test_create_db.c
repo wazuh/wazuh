@@ -38,7 +38,7 @@
 
 #include "test_fim.h"
 
-extern fim_state_db _db_state;
+fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
 void update_wildcards_config();
 void fim_process_wildcard_removed(directory_t *configuration);
@@ -609,10 +609,6 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
         will_return(__wrap_fim_db_file_update, FIMDB_FULL);
         // fim_json_event;
     }
-
-    expect_any_always(__wrap_fim_db_is_full, fim_sql);
-    will_return(__wrap_fim_db_is_full, false);
-    will_return_count(__wrap_fim_db_is_full, true, 2);
 
     will_return(__wrap_readdir, NULL);
 
@@ -1967,8 +1963,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     // Second scan
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, false);
 
     expect_string(__wrap_lstat, filename, "/boot");
     will_return(__wrap_lstat, &directory_buf);
@@ -2004,15 +1998,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         will_return(__wrap_fim_db_file_update, FIMDB_FULL);
     }
 
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, true);
-
     will_return(__wrap_readdir, NULL);
 
-    // fim_check_db_state
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+
+    // fim_check_db_state
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     // fim_send_scan_info
@@ -2076,9 +2068,6 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
-
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, true);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
@@ -2152,17 +2141,14 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_function_call(__wrap_realtime_sanitize_watch_map);
 
-    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_is_full, true);
-
-    // fim_check_db_state
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
+    // fim_check_db_state
     snprintf(debug_buffer, OS_SIZE_128, FIM_NUM_WATCHES, dirtb.elements);
     expect_string(__wrap__mdebug2, formatted_msg, debug_buffer);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2231,7 +2217,7 @@ static void test_fim_scan_db_free(void **state) {
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":1000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2837,8 +2823,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2906,9 +2892,6 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
-
-    expect_value_count(__wrap_fim_db_is_full, fim_sql, syscheck.database, 2);
-    will_return_count(__wrap_fim_db_is_full, true, 2);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
@@ -2982,7 +2965,7 @@ static void test_fim_scan_db_free(void **state) {
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":1000,\"alert_type\":\"normal\"}");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":1000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -3319,320 +3302,290 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
 
 /* fim_check_db_state */
 static void test_fim_check_db_state_normal_to_empty(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 0, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
 static void test_fim_check_db_state_empty_to_empty(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 0, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
 static void test_fim_check_db_state_empty_to_full(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 50000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
 static void test_fim_check_db_state_full_to_empty(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":0,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 0, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
 static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":46000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 46000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":0,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 0, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
 static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":41000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 41000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":0,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 0, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
 static void test_fim_check_db_state_empty_to_normal(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
-    assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 10000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
 static void test_fim_check_db_state_normal_to_normal(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 20000);
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 20000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
 static void test_fim_check_db_state_normal_to_full(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 50000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
 static void test_fim_check_db_state_full_to_normal(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":10000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 10000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
 static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":46000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 46000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":10000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 10000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
 static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":41000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 41000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 42000);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    fim_check_db_state(syscheck.db_entry_file_limit, 42000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    fim_check_db_state();
-
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_80_percentage_to_full(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 50000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
 static void test_fim_check_db_state_full_to_80_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":41000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 41000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":46000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 46000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 48000);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    fim_check_db_state(syscheck.db_entry_file_limit, 48000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    fim_check_db_state();
-
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_90_percentage_to_full(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":50000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 50000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
 static void test_fim_check_db_state_full_to_full(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 60000);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    fim_check_db_state(syscheck.db_entry_file_limit, 60000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    fim_check_db_state();
-
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
 static void test_fim_check_db_state_full_to_90_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":46000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_FULL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 46000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":41000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 41000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
 static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
-    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"db_entry_file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
+    expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert. Table: 'file_entry'.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"entries_limit\":50000,\"entries_count\":10000,\"fim_db_table\":\"file_entry\",\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, 10000, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
 static void test_fim_check_db_state_nodes_count_database_error(void **state) {
     expect_wrapper_fim_db_get_count_entries(syscheck.database, -1);
     expect_string(__wrap__mwarn, formatted_msg, "(6948): Unable to get the number of entries in database.");
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state();
+    fim_check_db_state(syscheck.db_entry_file_limit, -1, _files_db_state, FIMDB_FILE_TABLE_NAME);
 
-    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+    assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
 /* fim_directory */

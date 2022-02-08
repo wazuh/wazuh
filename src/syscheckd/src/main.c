@@ -228,12 +228,6 @@ int main(int argc, char **argv)
             minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
         }
 
-        if (syscheck.db_entry_limit_enabled) {
-            mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.db_entry_file_limit);
-        } else {
-            mdebug2(FIM_FILE_LIMIT_UNLIMITED);
-        }
-
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)

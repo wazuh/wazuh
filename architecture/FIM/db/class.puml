@@ -133,7 +133,7 @@ class "FimDB"  <<(S,#FF7700) Singleton>> {
     + void stopIntegrity()
     + void logFunction(const modules_log_level_t, const string&)
     + DBSYNC_HANDLE DBSyncHandle()
-    + void loopRsync(lock)
+    + void loopRsync()
     + void removeItem(json)
     + void updateItem(json, callback)
     + void executeQuery(json, callback)

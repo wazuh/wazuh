@@ -281,8 +281,7 @@ TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), testing::_));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
 
-    std::unique_lock<std::mutex> lock{test_mutex};
-    std::thread syncThread(&FIMDB::loopRSync, &fimDBMock, std::ref(lock));
+    std::thread syncThread(&FIMDB::loopRSync, &fimDBMock);
 
     fimDBMock.stopIntegrity();
 
@@ -299,8 +298,7 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
 
-    std::unique_lock<std::mutex> lock{test_mutex};
-    std::thread syncThread(&FIMDB::loopRSync, &fimDBMock, std::ref(lock));
+    std::thread syncThread(&FIMDB::loopRSync, &fimDBMock);
 
     fimDBMock.stopIntegrity();
 
