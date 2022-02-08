@@ -704,13 +704,32 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
     system_agents = get_agents_info()
+
+    # Check agent '000'
+    '000' in agent_list and agent_list.remove('000') and result.add_failed_item(id_='000', error=WazuhError(1703))
+
+    agent_list = set(agent_list)
+
+    # Check for non-existing agents
+    not_found_agents = agent_list - system_agents
+    for agent_id in not_found_agents:
+        result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+
+    agent_list -= not_found_agents
+
+    # Check for never_connected agents
+    with WazuhDBQueryAgents(limit=None, select=['id'], filters={'id': list(agent_list),
+                                                                'status': ['never_connected']}) as db_query:
+        never_connected_agents = set(db_query.run()['items'])
+
+    for agent_id in never_connected_agents:
+        result.add_failed_item(id_=agent_id, error=WazuhError(1753))
+
+    agent_list -= never_connected_agents
+
     for agent_id in agent_list:
         try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent.add_group_to_agent(group_id, agent_id, force=True, replace=replace, replace_list=replace_list)
+            Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
