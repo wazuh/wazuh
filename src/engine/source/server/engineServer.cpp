@@ -38,7 +38,6 @@ void EngineServer::configure(const vector<string> & config)
 
     auto obs = rxcpp::observable<>::iterate(tmpObs).flat_map([](auto o) { return o; });
     this->m_output = obs.flat_map([](auto o) { return o; });
-
 }
 
 EngineServer::EngineServer(const vector<string> & config)
