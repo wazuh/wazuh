@@ -225,3 +225,13 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     check_expected(dst);
     return mock_type(int);
 }
+
+int __wrap_TestUnmergeFiles(const char *finalpath, __attribute__((unused)) int mode) {
+    check_expected(finalpath);
+    return mock_type(int);
+}
+
+int __wrap_checkBinaryFile(const char *f_name) {
+    check_expected(f_name);
+    return mock_type(int);
+}
