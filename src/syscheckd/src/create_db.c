@@ -193,98 +193,18 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
     return old_attributes;
 }
 
-static cJSON* fim_dbsync_json_delete_event(const char* path,
-                                           const cJSON* dbsync_data,
-                                           const directory_t* configuration,
-                                           const event_data_t* evt_data) {
-    cJSON* json_event = cJSON_CreateObject();
-    cJSON_AddStringToObject(json_event, "type", "event");
-
-    cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-    // cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
-
-    cJSON_AddItemToObject(data, "attributes", dbsync_data);
-
-    char* tags = NULL;
-    if (evt_data->w_evt) {
-        cJSON_AddItemToObject(data, "audit", fim_audit_json(evt_data->w_evt));
-    }
-
-    tags = configuration->tag;
-
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
-    }
-
-    return json_event;
-}
-
-static cJSON* fim_dbsync_json_event(const char* path,
-                                    const char* diff,
-                                    const fim_entry* fim_entry,
-                                    const cJSON* dbsync_data,
-                                    const directory_t* configuration,
-                                    const event_data_t* evt_data) {
-    cJSON* old_data = NULL;
-    cJSON* old_attributes = NULL;
-    cJSON* changed_attributes = NULL;
-    cJSON* json_event = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(json_event, "type", "event");
-
-    cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-    cJSON_AddNumberToObject(data, "timestamp", time(NULL));
-
-    cJSON_AddItemToObject(data, "attributes", fim_attributes_json(fim_entry->file_entry.data));
-
-    old_data = cJSON_GetObjectItem(dbsync_data, "old");
-
-    if (old_data) {
-        old_attributes = cJSON_CreateObject();
-        changed_attributes = cJSON_CreateArray();
-        cJSON_AddItemToObject(data, "old_attributes", old_attributes);
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        fim_calculate_dbsync_difference(fim_entry->file_entry.data, old_data, old_attributes, changed_attributes);
-    }
-
-    char* tags = NULL;
-    if (evt_data->w_evt) {
-        cJSON_AddItemToObject(data, "audit", fim_audit_json(evt_data->w_evt));
-    }
-
-    tags = configuration->tag;
-
-    if (diff != NULL) {
-        cJSON_AddStringToObject(data, "content_changes", diff);
-    }
-
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
-    }
-
-    return json_event;
-}
-
 static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
     char *path = NULL;
     char *diff = NULL;
+    cJSON* json_event = NULL;
+    cJSON* data = NULL;
+    cJSON* old_attributes = NULL;
+    cJSON* changed_attributes = NULL;
+    cJSON* old_data = NULL;
     cJSON *dbsync_event = NULL;
-    cJSON *json_event = NULL;
     directory_t *configuration = NULL;
-    fim_txn_context_t *event_data = (fim_txn_context_t *) user_data;
+    fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
@@ -302,11 +222,11 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         dbsync_event = result_json;
     }
 
-    if (event_data->latest_entry == NULL) {
+    if (txn_context->latest_entry == NULL) {
         goto end;
     }
 
-    path = event_data->latest_entry->file_entry.path;
+    path = txn_context->latest_entry->file_entry.path;
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
         goto end;
@@ -318,11 +238,11 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     switch (resultType) {
         case INSERTED:
-            event_data->evt_data->type = FIM_ADD;
+            txn_context->evt_data->type = FIM_ADD;
             break;
 
         case MODIFIED:
-            event_data->evt_data->type = FIM_MODIFICATION;
+            txn_context->evt_data->type = FIM_MODIFICATION;
             break;
 
         case DELETED:
@@ -343,18 +263,46 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             goto end;
     }
 
+    json_event = cJSON_CreateObject();
+    data = cJSON_CreateObject();
+
+    if (json_event == NULL || data == NULL) {
+        goto end;
+    }
+
+    cJSON_AddStringToObject(json_event, "type", "event");
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
+    cJSON_AddNumberToObject(data, "timestamp", time(NULL));
+
     if (resultType == DELETED) {
-        json_event = fim_dbsync_json_delete_event(path,
-                                                  dbsync_event,
-                                                  configuration,
-                                                  event_data->evt_data);
+        cJSON_AddItemToObject(data, "attributes", dbsync_event);
     } else {
-        json_event = fim_dbsync_json_event(path,
-                                           diff,
-                                           event_data->latest_entry,
-                                           dbsync_event,
-                                           configuration,
-                                           event_data->evt_data);
+        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data));
+        old_data = cJSON_GetObjectItem(dbsync_event, "old");
+
+        if (old_data) {
+            old_attributes = cJSON_CreateObject();
+            changed_attributes = cJSON_CreateArray();
+            cJSON_AddItemToObject(data, "old_attributes", old_attributes);
+            cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+            fim_calculate_dbsync_difference(txn_context->latest_entry->file_entry.data, old_data, old_attributes, changed_attributes);
+        }
+    }
+
+    char* tags = NULL;
+    if (txn_context->evt_data->w_evt) {
+        cJSON_AddItemToObject(data, "audit", fim_audit_json(txn_context->evt_data->w_evt));
+    }
+
+    tags = configuration->tag;
+
+    if (tags != NULL) {
+        cJSON_AddStringToObject(data, "tags", tags);
     }
 
     if (json_event != NULL) {
