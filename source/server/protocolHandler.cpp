@@ -41,6 +41,7 @@ void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
     {
         LOG(ERROR) << e.what() << std::endl;
         s.on_error(std::current_exception());
+        return;
     }
 
     s.on_next(evt);

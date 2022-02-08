@@ -69,7 +69,7 @@ rxcpp::observable<BaseEndpoint::event_t> TCPEndpoint::connectionHandler(const uv
 
             LOG(INFO) << "Accepting client!" << std::endl;
             // TODO: configure timeout for a tcp connection
-            timer->start(uvw::TimerHandle::Time{1000}, uvw::TimerHandle::Time{1000});
+            timer->start(uvw::TimerHandle::Time{5000}, uvw::TimerHandle::Time{5000});
             srv.accept(*client);
             client->read();
         });
