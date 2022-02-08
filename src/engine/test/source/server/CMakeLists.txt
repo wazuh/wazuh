@@ -53,20 +53,6 @@ CPMAddPackage(
   VERSION 4.1.1
 )
 
-
-
-# Parent scope scope
-set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
-
-set(SOURCES
-  ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp
-  ${SERVER_ENGINE_SOURCE_DIR}/endpoints/endpointFactory.cpp
-)
-
 include_directories(
     ${RapidJSON_SOURCE_DIR}/include/
     ${ENGINE_SOURCE_DIR}
@@ -79,14 +65,14 @@ include_directories(
     ${ENGINE_SOURCE_DIR}/json
 )
 
-add_executable(server_test ${SOURCES} ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
-target_link_libraries(server_test gtest_main uv rxcpp nlohmann_json::nlohmann_json)
-gtest_discover_tests(server_test)
+add_executable(serverTest ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
+target_link_libraries(serverTest gtest_main uv rxcpp)
+gtest_discover_tests(serverTest)
 
-add_executable(tcp_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(tcp_test gtest_main uv rxcpp)
-gtest_discover_tests(tcp_test)
+add_executable(tcpTest ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
+target_link_libraries(tcpTest gtest_main uv rxcpp)
+gtest_discover_tests(tcpTest)
 
-add_executable(socket_test ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(socket_test gtest_main uv rxcpp)
-gtest_discover_tests(socket_test)
+add_executable(socketTest ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
+target_link_libraries(socketTest gtest_main uv rxcpp)
+gtest_discover_tests(socketTest)
