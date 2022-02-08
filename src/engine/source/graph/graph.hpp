@@ -127,33 +127,6 @@ public:
         }
     }
 
-    // void BFS(Value root, std::function<void()> fn)
-    // {
-    //     std::deque<std::pair<Value, std::set<Value>> queue;
-    //     std::map<Value, bool> visited;
-
-    //     auto itr = m_edges.find(root);
-    //     if (itr == m_edges.end()) {
-    //         throw std::invalid_argument("Root node not in the graph");
-    //     }
-    //     visited.insert(std::pair(itr->first, true));
-    //     queue.push_back(*itr);
-
-    //     while(!queue.empty())
-    //     {
-    //         auto n = queue.front();
-    //         // visit here
-    //         fn(n);
-    //         queue.pop_front();
-    //         for(auto c: n->second) {
-    //             if( visited.find(c) == visited.end())
-    //             {
-    //                 visited.insert(std::pair(c,true));
-    //                 queue.push_back(c);
-    //             }
-    //         }
-    //     }
-    // }
     /**
      * @brief Visit all graph leaves, which are the nodes with empty child sets.
      *
