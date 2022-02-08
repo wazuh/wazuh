@@ -1293,7 +1293,7 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                 if (data.end() != it)
                 {
                     // Only compare if not in ignore set
-                    if (*it != object.at(value.first) && ignoredColumns.count(value.first) == 0)
+                    if (*it != object.at(value.first))
                     {
                         // Diff found
                         isModified = true;
