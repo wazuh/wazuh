@@ -27,9 +27,9 @@ class FactoryAction
             {
                 return std::make_unique<GetFileAction>();
             }
-            else if (0 == actionCode.compare("CountFiles"))
+            else if (0 == actionCode.compare("CountEntries"))
             {
-                return std::make_unique<CountFilesAction>();
+                return std::make_unique<CountEntriesAction>();
             }
             else if (0 == actionCode.compare("UpdateFile"))
             {

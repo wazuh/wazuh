@@ -15,7 +15,7 @@ package "testtool" <<folder>> #DDDDDD {
         class "GetFileAction" {
             +void execute()
         }
-        class "CountFilesAction" {
+        class "CountEntriesAction" {
             +void execute()
         }
         class "UpdateFileAction" {
@@ -50,7 +50,7 @@ package "testtool" <<folder>> #DDDDDD {
 
 TestAction <|-- RemoveFileAction
 TestAction <|-- GetFileAction
-TestAction <|-- CountFilesAction
+TestAction <|-- CountEntriesAction
 TestAction <|-- UpdateFileAction
 TestAction <|-- CreateFileAction
 TestAction <|-- SearchFileAction

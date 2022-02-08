@@ -91,7 +91,7 @@ struct GetFileAction final : public IAction
     }
 };
 
-struct CountFilesAction final : public IAction
+struct CountEntriesAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
@@ -103,13 +103,14 @@ struct CountFilesAction final : public IAction
             {
                 static_cast<COUNT_SELECT_TYPE>(value.at("filter_type").get<int32_t>())
             };
-            count = DB::instance().countFiles(filterType);
+
+            count = DB::instance().countEntries(value.at("table").get_ref<const std::string&>(), filterType);
             retVal = true;
         }
         catch (const std::exception &e)
         {
-            std::cout << "Error counting files: "
-                << value.at("filter_type").get_ref<const std::string&>() << std::endl;
+            std::cout << "Error counting entries: "
+                << value.at("filter_type").get<int32_t>() << ", " << e.what() << std::endl;
         }
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
@@ -119,7 +120,7 @@ struct CountFilesAction final : public IAction
         const nlohmann::json jsonResult = {
                 {"result", retVal },
                 {"value", count},
-                {"action", "CountFiles"}
+                {"action", "CountEntries"}
             };
         outputFile << jsonResult.dump() << std::endl;
     }
