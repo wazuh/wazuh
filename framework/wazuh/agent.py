@@ -703,25 +703,28 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     # Check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
-    system_agents = get_agents_info()
+
+    with WazuhDBQueryAgents(limit=None, select=['id', 'status']) as db_query:
+        system_agents_with_status = {agent['id']: agent['status'] for agent in db_query.run()['items']}
 
     # Check agent '000'
-    '000' in agent_list and agent_list.remove('000') and result.add_failed_item(id_='000', error=WazuhError(1703))
+    if '000' in agent_list:
+        agent_list.remove('000')
+        result.add_failed_item(id_='000', error=WazuhError(1703))
 
     agent_list = set(agent_list)
 
     # Check for non-existing agents
-    not_found_agents = agent_list - system_agents
+    not_found_agents = agent_list - set(system_agents_with_status.keys())
     for agent_id in not_found_agents:
         result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
 
     agent_list -= not_found_agents
 
     # Check for never_connected agents
-    with WazuhDBQueryAgents(limit=None, select=['id'], filters={'id': list(agent_list),
-                                                                'status': ['never_connected']}) as db_query:
-        never_connected_agents = set(db_query.run()['items'])
-
+    never_connected_agents = {nc_agent_id for nc_agent_id, status in {agent_id: system_agents_with_status[agent_id]
+                                                                      for agent_id in agent_list}.items()
+                              if status == 'never_connected'}
     for agent_id in never_connected_agents:
         result.add_failed_item(id_=agent_id, error=WazuhError(1753))
 
