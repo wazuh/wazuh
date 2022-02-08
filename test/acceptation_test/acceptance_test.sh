@@ -61,7 +61,8 @@ MONITOR_PID=$!
 
 # Test script
 
-go run ./utils/benchmark_tool.go -t 5 -r 50000 -i ./utils/test_logs.txt
+# go run ./utils/benchmark_tool.go -t 5 -r 100000 -i ./utils/test_logs.txt -T
+go run ./utils/benchmark_tool.go -t 5 -r 0 -i ./utils/test_logs.txt -T
 
 # Stop stats collector script
 

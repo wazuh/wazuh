@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"io"
@@ -14,10 +15,12 @@ import (
 
 // Struct config for rate benchmark
 type rateConfig struct {
-	rate     int    // Rate (Events/sec) of the benchmark
-	timeTest int    // Time duration of the benchmark
-	srcFile  string // Path to dataset of event (1 event per line)
-	dstFile  string // Path to the output file
+	rate       int    // Rate (Events/sec) of the benchmark
+	timeTest   int    // Time duration of the benchmark
+	srcFile    string // Path to dataset of event (1 event per line)
+	dstFile    string // Path to the output file
+	truncFile  bool   // Truncate the output file
+	concurrent int    // Number of concurrent connections
 }
 
 // Report of rate benchmark
@@ -41,31 +44,44 @@ func main() {
 	var timeTest int
 	// Rate (Events/sec) of the benchmark
 	var rate int
+	// Number of concurrent connections
+	var concurrent int
 	// Path to the output file
 	var watchedFile string
+	var truncateWatched bool
 	// Path/Adress to the sockets
 	var sockPath string
 	// Path/Adress to the sockets
 	var sockProto string
+	// header size in message
+	var header bool
 
 	// Parcer arguments
 	// Bench
 	flag.IntVar(&timeTest, "t", 10, "Time of the benchmark")
-	flag.IntVar(&rate, "r", 35, "Rate (Events/sec) of the benchmark")
+	flag.IntVar(&rate, "r", 35, "Rate (Events/sec) of the benchmark. 0 for infinite")
+	flag.IntVar(&concurrent, "c", 1, "Number of concurrent connections")
 	// IO Files
 	flag.StringVar(&datasetFile, "i", "./test_logs.txt", "Path to dataset of logs. The input File")
 	flag.StringVar(&watchedFile, "o", "/var/ossec/logs/alerts/alerts.json", "Watched file. The Output file")
+	flag.BoolVar(&truncateWatched, "T", false, "Truncate the output file")
 	// Protocol
 	flag.StringVar(&sockPath, "s", "/var/ossec/queue/sockets/queue", "Path/Adress to the sockets")
-	flag.StringVar(&sockProto, "p", "unixgram", `Known networks are "tcp", "tcp4" (IPv4-only), ` +
-												`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), ` +
-												`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),` +
-												`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
+	flag.StringVar(&sockProto, "p", "unixgram", `Known networks are "tcp", "tcp4" (IPv4-only), `+
+		`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), `+
+		`"udp6" (IPv6-only), "ip", "ip4" (IPv4-only),`+
+		`"ip6" (IPv6-only), "unix", "unixgram" and "unixpacket". `)
+	//flag.BoolVar(&verbose, "v", false, "Verbose mode")
+	flag.BoolVar(&header, "h", false, "Use secure msg protocol. Preappend a header with size of logs (int32) before send")
 	flag.Parse()
 
 	// Validate parameters
-	if rate <= 0 || timeTest <= 0 {
-		log.Fatalf("Error: -t and -r must be greater than 0")
+	if concurrent < 1 {
+		log.Fatalf("Error: concurrent must be greater than 0\n")
+	} else if timeTest <= 0 {
+		log.Fatalf("Error: timeTest must be greater than 0\n")
+	} else if rate < 0 {
+		log.Fatalf("Error: rate must be greater than 0\n")
 	}
 
 	// Connect to the socket
@@ -73,8 +89,8 @@ func main() {
 	defer conn.Close()
 
 	// if benchmark is a rate benchmark
-	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile}
-	tReport := rateTest(rateConfig, conn)
+	rateConfig := rateConfig{rate, timeTest, datasetFile, watchedFile, truncateWatched, concurrent}
+	tReport := rateTest(rateConfig, conn, header)
 	printReport(tReport, rateConfig)
 
 }
@@ -85,11 +101,13 @@ func main() {
 // Rate test fuctions
 
 // Rate test
-func rateTest(config rateConfig, conn net.Conn) rateReport {
+func rateTest(config rateConfig, conn net.Conn, header bool) rateReport {
 
 	report := rateReport{}
 	//  Clean output before start
-	os.Truncate(config.dstFile, 0)
+	if config.truncFile {
+		os.Truncate(config.dstFile, 0)
+	}
 
 	// Read input file
 	BatchEvents, _ := loadLines(config.srcFile)
@@ -99,37 +117,67 @@ func rateTest(config rateConfig, conn net.Conn) rateReport {
 		log.Fatalf("Error: File %s is empty\n", config.srcFile)
 	}
 
-	report.repeat = config.rate / lenBatchEvents
-	report.rest = config.rate % lenBatchEvents
+	var sleepTimeNano time.Duration
+	// If not infinite rate
+	if config.rate != 0 {
+		report.repeat = config.rate / lenBatchEvents
+		report.rest = config.rate % lenBatchEvents
+		sleepTimeNano = time.Duration(1e9 / config.rate)
+		fmt.Printf("sleepTimeNano: %v\n", sleepTimeNano)
+	} else {
+		report.repeat = 1
+		report.rest = 0
+		sleepTimeNano = 0
+	}
 
 	// Start benchmark
+	report.totalEvents = 0
 	report.startTime = time.Now()
-	for sec := 0; sec < config.timeTest; sec++ {
-		// Windows time of the burst send
-		var ti time.Time = time.Now()
-		var tf time.Time
+	timeout := time.After(time.Duration(config.timeTest) * time.Second)
+	tick := time.NewTicker(1 * time.Second)
+	defer tick.Stop()
 
-		for i := int(0); i < report.repeat; i++ {
-			for _, line := range BatchEvents {
-				sendLogSock(conn, line)
+	var eps int
+	for {
+		select {
+
+		case <-timeout:
+			report.endTime = time.Now()
+			fmt.Printf("EPS: %10d\n", eps)
+			// Wait a grace period to process the last events and flush the queue
+			time.Sleep(time.Second * 5)
+			report.proccessEvents = fileLineCounter(config.dstFile)
+			return report
+		case <-tick.C:
+			// Calculate the eps
+			fmt.Printf("EPS: %10d\n", eps)
+			eps = 0
+		default:
+			// Send the batch
+			for i := int(0); i < report.repeat; i++ {
+				for _, line := range BatchEvents {
+					until := time.Now().Add(sleepTimeNano)
+					sendLogSock(conn, header, line)
+					eps += 1
+					report.totalEvents++
+					for time.Now().Before(until) {
+							continue
+					}
+
+				}
+			}
+			for i := int(0); i < report.rest; i++ {
+				until := time.Now().Add(sleepTimeNano)
+				sendLogSock(conn, header, BatchEvents[i])
+				eps += 1
+				report.totalEvents++
+				for time.Now().Before(until) {
+					continue
+				}
 			}
 		}
-		for i := int(0); i < report.rest; i++ {
-			sendLogSock(conn, BatchEvents[i])
-		}
 
-		tf = time.Now()
-		sleepTimeNano := time.Second - tf.Sub(ti) // It shouldn't be more than one second, let's not check it.
-		time.Sleep(sleepTimeNano)
 	}
-	report.endTime = time.Now()
-
-	// Wait a grace period to process the last events and flush the queue
-	time.Sleep(time.Millisecond * 500)
-	report.proccessEvents = fileLineCounter(config.dstFile)
-	report.totalEvents = (report.repeat*lenBatchEvents + report.rest) * config.timeTest
-
-	return report
 }
 
 // print report
@@ -139,8 +187,14 @@ func printReport(report rateReport, config rateConfig) {
 	fmt.Printf("----------------\n\n")
 
 	fmt.Printf("Configuration:\n")
-	fmt.Printf("Rate:         	  %10d events/sec\n", config.rate)
+	if config.rate != 0 {
+		fmt.Printf("Rate:         	  %10d events/sec\n", config.rate)
+	} else {
+		// Calcular los eps
+		fmt.Printf("Rate:         	  %10s events/sec\n", "infinite")
+	}
 	fmt.Printf("Time:         	  %10d sec\n", config.timeTest)
+	fmt.Printf("Concurrent connections: %d\n", config.concurrent)
 	fmt.Printf("Dataset: %s\n", config.srcFile)
 	fmt.Printf("Output:  %s\n", config.dstFile)
 	fmt.Printf("\n")
@@ -148,6 +202,7 @@ func printReport(report rateReport, config rateConfig) {
 	fmt.Printf("Results:\n")
 	fmt.Printf("Duration:         %10f seconds\n", report.endTime.Sub(report.startTime).Seconds())
 	fmt.Printf("Sent events:      %10v\n", report.totalEvents)
+
 	fmt.Printf("Processed events: %10v\n", report.proccessEvents)
 	fmt.Printf("Lost events:      %10v\n", report.totalEvents-report.proccessEvents)
 	fmt.Printf("\n")
@@ -171,11 +226,21 @@ func connectToSock(protocol string, address string) net.Conn {
 }
 
 // Exit on fail
-func sendLogSock(conn net.Conn, message string) {
+func sendLogSock(conn net.Conn, header bool, message string) {
 	var payload []byte
 
 	ret := '\r'
 	payload = []byte("1:[123] (hostname_test_bench) any->/var/some_location:" + message + string(ret))
+
+	if header {
+		secMsg := new(bytes.Buffer)
+		err := binary.Write(secMsg, binary.LittleEndian, int32(len(payload)))
+		if err != nil {
+			fmt.Println("binary.Write failed:", err)
+			os.Exit(1)
+		}
+		payload = append(secMsg.Bytes(), payload...)
+	}
 
 	if _, err := conn.Write(payload); err != nil {
 		fmt.Printf("Error: %v\n", err)
