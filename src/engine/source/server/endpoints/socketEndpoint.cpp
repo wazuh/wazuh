@@ -76,7 +76,7 @@ SocketEndpoint::SocketEndpoint(const std::string & config) : BaseEndpoint{config
     m_server = loop->resource<uvw::PipeHandle>();
 
     this->m_out = rxcpp::observable<>::create<BaseEndpoint::observable_t>(
-        [this, loop](BaseEndpoint::subscriber_t s)
+        [this, config](BaseEndpoint::subscriber_t s)
         {
             this->m_server->on<uvw::ErrorEvent>(
                 [s](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)
@@ -87,6 +87,8 @@ SocketEndpoint::SocketEndpoint(const std::string & config) : BaseEndpoint{config
 
             this->m_server->on<uvw::ListenEvent>([s, this](const uvw::ListenEvent & e, uvw::PipeHandle & client)
                                                  { s.on_next(this->connection(e, client)); });
+
+            LOG(INFO) << "A route has been enabled for endpoint " << config << std::endl;
         });
 }
 
