@@ -144,7 +144,7 @@ def test_accesslogger_log_hash_auth_context(request_path, token_info, request_bo
         # Test authorization context hash is being logged
         if (token_info and token_info.get('hash_auth_context')) or \
                 (request_path == "/security/user/authenticate/run_as" and request_body):
-            assert log_message[1] == HASH_AUTH_CONTEXT_TEST
+            assert log_message[1] == f"({HASH_AUTH_CONTEXT_TEST})"
         else:
             assert log_message[1] == request.remote
 
