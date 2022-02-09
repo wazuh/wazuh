@@ -31,6 +31,23 @@ constexpr auto LOCATION_FIELD   { "SUNW_PKG_DIR" };
 constexpr auto VENDOR_FIELD     { "VENDOR" };
 constexpr auto INSTALL_TIME_FIELD { "INSTDATE" };
 
+// Date format is Oct 06 2015 08:51
+enum DateFormat
+{
+    MONTH_INDEX,
+    DAY_INDEX,
+    YEAR_INDEX,
+    TIME_INDEX,
+    DATE_FORMAT_SIZE
+};
+
+// VERSION=1.2.3,REVISION=1234
+enum VersionFields
+{
+    VERSION_VALUE_INDEX,
+    REVISION_KEY_VALUE_INDEX
+};
+
 static const std::map<std::string, std::string> MONTH =
 {
     {"Jan", "01"},
@@ -92,7 +109,7 @@ class SolarisWrapper final : public IPackageWrapper
 
                 if (fields.size() > 1)
                 {
-                    version = fields.at(0);
+                    version = fields.at(VERSION_VALUE_INDEX);
                 }
             }
 
@@ -166,18 +183,14 @@ class SolarisWrapper final : public IPackageWrapper
 
             if (it != m_data.end())
             {
-                // Date format is Oct 06 2015 08:51
                 const  auto fields { Utils::split(it->second, ' ') };
 
                 try
                 {
-                    if (fields.size() >= 4)
-                    {
-                        installTime << std::setw(4) << std::setfill('0') << fields[2];                  // Year
-                        installTime << '/' << std::setw(2) << std::setfill('0') << MONTH.at(fields[0]); // Month
-                        installTime << '/' << std::setw(2) << std::setfill('0') << fields[1];           // Day
-                        installTime << ' ' << fields[3] << ":00";                                       // Time
-                    }
+                    installTime << std::setw(4) << std::setfill('0') << fields.at(YEAR_INDEX);
+                    installTime << '/' << std::setw(2) << std::setfill('0') << MONTH.at(fields.at(MONTH_INDEX));
+                    installTime << '/' << std::setw(2) << std::setfill('0') << fields.at(DAY_INDEX);
+                    installTime << ' ' << fields.at(TIME_INDEX) << ":00";
                 }
                 catch (...)
                 {
@@ -199,6 +212,8 @@ class SolarisWrapper final : public IPackageWrapper
         void getPkgData(const std::string& pkgDirectory)
         {
             std::fstream file { pkgDirectory + "/" + NAME_FILE_INFO, std::ios_base::in };
+            constexpr auto KEY { 0 };
+            constexpr auto VALUE { 1 };
 
             if (file.is_open())
             {
@@ -211,7 +226,7 @@ class SolarisWrapper final : public IPackageWrapper
 
                     if (fields.size() > 1)
                     {
-                        m_data[fields.at(0)] = fields.at(1);
+                        m_data[fields.at(KEY)] = fields.at(VALUE);
                     }
 
                 }
