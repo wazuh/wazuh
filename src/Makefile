@@ -680,6 +680,12 @@ BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
 
+ifeq (${uname_S},SunOS)
+ifeq ($(uname_R),5.10)
+	BUILD_AGENT+=libgcc_s.so.1
+endif
+endif
+
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -1647,6 +1653,13 @@ endif
 endif
 endif
 
+
+### libgcc_s #########
+
+LIBGCC := $(realpath $(dir $(shell which gcc))../lib/libgcc_s.so.1)
+libgcc_s.so.1: $(LIBGCC)
+	cp $< $@
+
 #### os_mail #########
 
 os_maild_c := $(wildcard os_maild/*.c)
@@ -2399,6 +2412,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
+	rm -f libgcc_s.so.1
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
