@@ -625,7 +625,7 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
     char path[PATH_MAX + 1];
     char ** files;
     char ** subdir;
-    char multi_path[PATH_MAX] = { 0 };
+    char multi_path[PATH_MAX] = {0};
 
     if (!hash_multigroup) {
         return;
@@ -1023,8 +1023,14 @@ STATIC void process_deleted_groups() {
 }
 
 STATIC void process_deleted_multi_groups() {
+    char multi_path[PATH_MAX] = {0};
+    char _hash[9] = {0};
+    os_sha256 multi_group_hash;
     bool update = 0;
     unsigned int i, j;
+
+    OSHash_Clean(m_hash, cleaner);
+    m_hash = OSHash_Create();
 
     for (i = 0; multi_groups[i]; i++) {
         if (!multi_groups[i]->exists) {
@@ -1050,7 +1056,11 @@ STATIC void process_deleted_multi_groups() {
                 multi_groups[multi_groups_size + 1] = NULL;
                 multi_groups_size++;
             } else {
-                cleaner(OSHash_Delete_ex(m_hash, old_multi_groups[i]->name));
+                OS_SHA256_String(old_multi_groups[i]->name, multi_group_hash);
+                strncpy(_hash, multi_group_hash, 8);
+                snprintf(multi_path, PATH_MAX,"%s/%s", MULTIGROUPS_DIR, _hash);
+                rmdir_ex(multi_path);
+
                 if (old_multi_groups[i]->f_sum) {
                     for (j = 0; old_multi_groups[i]->f_sum[j]; j++) {
                         os_free(old_multi_groups[i]->f_sum[j]->name);
