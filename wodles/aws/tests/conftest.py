@@ -23,7 +23,8 @@ def wazuh_integration(request):
     request : pytest.fixtures.SubRequest
         Object that contains information about the current test.
     """
-    with patch('aws_s3.WazuhIntegration.get_client'):
+    with patch('aws_s3.WazuhIntegration.get_client'), \
+         patch('sqlite3.connect'):
         return aws_s3.WazuhIntegration(**{k: v for i in request.param for k, v in i.items()})
 
 
@@ -37,7 +38,8 @@ def aws_bucket(request):
     request : pytest.fixtures.SubRequest
         Object that contains information about the current test.
     """
-    with patch('aws_s3.AWSBucket.get_client'):
+    with patch('aws_s3.AWSBucket.get_client'), \
+         patch('sqlite3.connect'):
         return aws_s3.AWSBucket(**{k: v for i in request.param for k, v in i.items()})
 
 @pytest.fixture(params= deepcopy(AWS_BUCKET_PARAMS))
@@ -51,6 +53,7 @@ def aws_waf_bucket(request):
         Object that contains information about the current test.
     """
     with patch('aws_s3.AWSWAFBucket.get_client'), \
-         patch('aws_s3.AWSWAFBucket.get_sts_client'):
+         patch('aws_s3.AWSWAFBucket.get_sts_client'), \
+         patch('sqlite3.connect'):
         return aws_s3.AWSWAFBucket(**{k: v for i in request.param for k, v in i.items()})
 

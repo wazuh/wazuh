@@ -86,8 +86,7 @@ class WazuhIntegration:
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
-                 db_name=None):
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -166,7 +165,7 @@ class WazuhIntegration:
                                       iam_role_duration=iam_role_duration
                                       )
 
-        self.db_name = db_name
+        # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
         self.db_connector = sqlite3.connect(self.db_path)
         self.db_cursor = self.db_connector.cursor()
@@ -319,7 +318,6 @@ class WazuhIntegration:
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
-
         except Exception as e:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
