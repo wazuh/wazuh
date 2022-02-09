@@ -829,6 +829,15 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_select_group_belong(wdb, next, output);
             }
+        } else if (strcmp(query, "get-group-agents") == 0) {
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-group-agents.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                result = wdb_parse_global_get_group_agents(wdb, next, output);
+            }
         } else if (strcmp(query, "delete-group") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for delete-group.");
@@ -5181,6 +5190,56 @@ int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) 
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(agent_groups);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_group_agents(wdb_t* wdb, char* input, char* output) {
+    int last_agent_id = 0;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+    char *group_name = NULL;
+
+    /* Get group name */
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments, group name not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, group name not found.");
+        return OS_INVALID;
+    }
+    group_name = next;
+
+    /* Get last_id */
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL || strcmp(next, "last_id") != 0) {
+        mdebug1("Invalid arguments, 'last_id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, 'last_id' not found");
+        return OS_INVALID;
+    }
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments, last agent id not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, last agent id not found.");
+        return OS_INVALID;
+    }
+    last_agent_id = atoi(next);
+
+    // Execute command
+    wdbc_result status = WDBC_UNKNOWN;
+    cJSON* result = wdb_global_get_group_agents(wdb, &status, group_name, last_agent_id);
+    if (!result) {
+        mdebug1("Error getting group agents from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting group agents from global.db.");
+        return OS_INVALID;
+    }
+
+    //Print response
+    char* out = cJSON_PrintUnformatted(result);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+    cJSON_Delete(result);
+    os_free(out)
 
     return OS_SUCCESS;
 }

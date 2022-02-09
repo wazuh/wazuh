@@ -162,6 +162,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG] = "DELETE FROM belongs WHERE id_group = ? and id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT 1 FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
+    [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
@@ -1014,7 +1015,18 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
     }
 }
 
-cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
+cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode) {
+    if(STMT_SINGLE_COLUMN == column_mode) {
+        return wdb_exec_row_stmt_single_column(stmt, status);
+    } else if (STMT_MULTI_COLUMN == column_mode){
+        return wdb_exec_row_stmt_multi_column(stmt, status);
+    } else {
+        mdebug2("Invalid column mode");
+        return NULL;
+    }
+}
+
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt * stmt, int* status) {
     cJSON* result = NULL;
 
     int _status = sqlite3_step(stmt);
@@ -1053,7 +1065,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
     return result;
 }
 
-cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status) {
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status, bool column_mode) {
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;
@@ -1064,7 +1076,7 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* stat
     int result_size = 2; //'[]' json array
     cJSON* row = NULL;
     bool fit = true;
-    while (fit && (row = wdb_exec_row_stmt(stmt, status))) {
+    while (fit && (row = wdb_exec_row_stmt(stmt, status, column_mode))) {
         char *row_str = cJSON_PrintUnformatted(row);
         size_t row_len = strlen(row_str)+1;
         //Check if new agent fits in response
@@ -1113,7 +1125,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     char* payload = response + header_size;
     int payload_size = OS_MAXSTR - header_size;
 
-    while ((row = wdb_exec_row_stmt(stmt, &sql_status))) {
+    while ((row = wdb_exec_row_stmt(stmt, &sql_status, STMT_MULTI_COLUMN))) {
         bool row_fits = cJSON_PrintPreallocated(row, payload, payload_size, FALSE);
         cJSON_Delete(row);
         if (row_fits) {
@@ -1149,7 +1161,7 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
 
     int status = SQLITE_ERROR;
     result = cJSON_CreateArray();
-    while ((row = wdb_exec_row_stmt(stmt, &status))) {
+    while ((row = wdb_exec_row_stmt(stmt, &status, STMT_MULTI_COLUMN))) {
         cJSON_AddItemToArray(result, row);
     }
 
@@ -1161,49 +1173,45 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     return result;
 }
 
-cJSON * wdb_exec_stmt_single_column(sqlite3_stmt * stmt) {
-    cJSON* j_result = NULL;
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status) {
+    cJSON* result = NULL;
+    int _status = SQLITE_ERROR;
 
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         return NULL;
     }
 
-    int status = SQLITE_ERROR;
-    j_result = cJSON_CreateArray();
+    _status = sqlite3_step(stmt);
+    if (SQLITE_ROW == _status) {
+        int count = sqlite3_column_count(stmt);
+        // Every step should return only one element. Extra columns will be ignored
+        if (count > 0) {
+            switch (sqlite3_column_type(stmt, 0)) {
+            case SQLITE_INTEGER:
+            case SQLITE_FLOAT:
+                result = cJSON_CreateNumber(sqlite3_column_double(stmt, 0));
+                break;
 
-    do {
-        status = sqlite3_step(stmt);
-        if (SQLITE_ROW == status) {
-            int count = sqlite3_column_count(stmt);
-            // Every step should return only one element. Extra columns will be ignored
-            if (count > 0) {
-                switch (sqlite3_column_type(stmt, 0)) {
-                case SQLITE_INTEGER:
-                case SQLITE_FLOAT:
-                    cJSON_AddItemToArray(j_result, cJSON_CreateNumber(sqlite3_column_double(stmt, 0)));
-                    break;
+            case SQLITE_TEXT:
+            case SQLITE_BLOB:
+                result = cJSON_CreateString((const char *)sqlite3_column_text(stmt, 0));
+                break;
 
-                case SQLITE_TEXT:
-                case SQLITE_BLOB:
-                    cJSON_AddItemToArray(j_result,cJSON_CreateString((const char *)sqlite3_column_text(stmt, 0)));
-                    break;
-
-                case SQLITE_NULL:
-                default:
-                    ;
-                }
+            case SQLITE_NULL:
+            default:
+                ;
             }
         }
-    } while (status == SQLITE_ROW);
-
-    if (status != SQLITE_DONE) {
+    } else if (_status != SQLITE_DONE) {
         mdebug1("SQL statement execution failed");
-        cJSON_Delete(j_result);
-        j_result = NULL;
     }
 
-    return j_result;
+    if (status) {
+        *status = _status;
+    }
+
+    return result;
 }
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql) {
