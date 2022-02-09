@@ -141,9 +141,8 @@ def test_inbuffer_receive_data():
 # Test ReceiveStringTask methods
 
 @patch("asyncio.create_task")
-@patch.object(logging.getLogger("wazuh"), "error")
 @patch("wazuh.core.cluster.common.ReceiveStringTask.set_up_coro")
-def test_rst_init(setup_coro_mock, logger_mock, create_task_mock):
+def test_rst_init(setup_coro_mock, create_task_mock):
     """Test the '__init__' method."""
 
     class TaskMock:
@@ -157,12 +156,12 @@ def test_rst_init(setup_coro_mock, logger_mock, create_task_mock):
     create_task_mock.return_value = TaskMock()
 
     with patch.object(TaskMock, "add_done_callback") as done_callback_mock:
-        string_task = cluster_common.ReceiveStringTask(wazuh_common=cluster_common.WazuhCommon(), logger=logger_mock,
-                                                       task_id=b"010")
+        string_task = cluster_common.ReceiveStringTask(wazuh_common=cluster_common.WazuhCommon(), logger='',
+                                                       info_type='testing', task_id=b"010")
         assert isinstance(string_task.wazuh_common, cluster_common.WazuhCommon)
         setup_coro_mock.assert_called_once()
         done_callback_mock.assert_called_once()
-        assert string_task.logger == logger_mock
+        assert string_task.info_type == 'testing'
         assert string_task.task_id == b"010"
         assert isinstance(string_task.task, TaskMock)
 
@@ -171,10 +170,10 @@ def test_rst_init(setup_coro_mock, logger_mock, create_task_mock):
 @patch('asyncio.create_task')
 @patch('wazuh.core.cluster.common.WazuhCommon')
 @patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro')
-def test_rst_str_method(wazuh_common_mock, create_task_mock, logger_mock, setup_coro_mock):
+def test_rst_str_method(setup_coro_mock, wazuh_common_mock, create_task_mock, logger_mock):
     """Test the proper output of the '__str__' method."""
 
-    string_task = cluster_common.ReceiveStringTask(wazuh_common_mock, b"task", logger_mock)
+    string_task = cluster_common.ReceiveStringTask(wazuh_common_mock, '', b"task", logger_mock)
     assert isinstance(string_task.__str__(), str)
     assert string_task.__str__() == "task"
 
@@ -217,9 +216,10 @@ def test_rst_done_callback(setup_coro_mock, create_task_mock):
     wazuh_common_mock = WazuhCommon()
 
     with patch.object(TaskMock, "add_done_callback"):
-        with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
-            string_task = cluster_common.ReceiveStringTask(wazuh_common=wazuh_common_mock,
-                                                           logger=logging.getLogger('wazuh'), task_id=b"010")
+        logger = logging.getLogger('wazuh')
+        with patch.object(logger, "error") as logger_mock:
+            string_task = cluster_common.ReceiveStringTask(wazuh_common=wazuh_common_mock, logger=logger,
+                                                           info_type='agent-groups', task_id=b"010")
             string_task.done_callback()
             assert string_task.wazuh_common.in_str == {b"011": b"123456789"}
             assert string_task.wazuh_common.sync_tasks == {b"011": b"123456789"}
@@ -967,7 +967,7 @@ def test_wazuh_common_get_logger():
 
 
 def test_wazuh_common_setup_receive_file():
-    """Checkif ReceiveFileTask class is created and added to the task dictionary."""
+    """Check if ReceiveFileTask class is created and added to the task dictionary."""
 
     class MyTaskMock:
 
@@ -977,11 +977,12 @@ def test_wazuh_common_setup_receive_file():
     my_task = MyTaskMock()
     mock_object = MagicMock(return_value=my_task)
 
-    first_output, second_output = wazuh_common.setup_receive_file(mock_object)
-    assert first_output == b'ok'
-    assert isinstance(second_output, bytes)
-    assert MyTaskMock().task_id in wazuh_common.sync_tasks
-    assert isinstance(wazuh_common.sync_tasks[MyTaskMock().task_id], MyTaskMock)
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger') as logger_mock:
+        first_output, second_output = wazuh_common.setup_receive_file(mock_object)
+        assert first_output == b'ok'
+        assert isinstance(second_output, bytes)
+        assert MyTaskMock().task_id in wazuh_common.sync_tasks
+        assert isinstance(wazuh_common.sync_tasks[MyTaskMock().task_id], MyTaskMock)
 
 
 @patch('wazuh.core.cluster.common.WazuhCommon')

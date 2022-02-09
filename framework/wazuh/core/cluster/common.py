@@ -13,6 +13,7 @@ import re
 import struct
 import traceback
 from importlib import import_module
+from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from uuid import uuid4
 
@@ -128,17 +129,19 @@ class ReceiveStringTask:
     Create an asyncio task that can be identified by a task_id specified in advance.
     """
 
-    def __init__(self, wazuh_common, task_id, logger='Agent-info sync', payload=None):
+    def __init__(self, wazuh_common, logger, task_id, info_type='Agent-info sync', payload=None):
         """Class constructor.
 
         Parameters
         ----------
         wazuh_common : WazuhCommon object
             Instance of WazuhCommon.
+        logger : Logger object
+            Logger to use during the receive process.
         task_id : bytes
             Pre-defined task_id to identify this object.
-        logger : str
-            Logger identifier to use during the receive process.
+        info_type : str
+            Information type handled.
         payload : dict
             Payload of the command used in the task.
         """
@@ -146,9 +149,10 @@ class ReceiveStringTask:
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
         self.task_id = task_id
-        self.logger = logger
-        self.task = asyncio.create_task(self.coro(self.task_id, self.logger))
+        self.info_type = info_type
+        self.task = asyncio.create_task(self.coro(self.task_id, self.info_type))
         self.task.add_done_callback(self.done_callback)
+        self.logger = logger
 
     def __str__(self) -> str:
         """Magic method str.
@@ -975,7 +979,7 @@ class WazuhCommon:
         bytes
             Task ID.
         """
-        my_task = ReceiveTaskClass(self, data)
+        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag), data)
         self.sync_tasks[my_task.task_id] = my_task
         return b'ok', str(my_task).encode()
 
@@ -1229,7 +1233,7 @@ class SyncWazuhdb(SyncTask):
 
         try:
             # Retrieve information from local wazuh-db
-            get_chunks_start_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
+            get_chunks_start_time = perf_counter()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
                 result = self.data_retriever(command=command)
@@ -1245,8 +1249,7 @@ class SyncWazuhdb(SyncTask):
             self.logger.error(f"Error obtaining data from wazuh-db: {e}")
             return []
 
-        after = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
-        self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(after - get_chunks_start_time):.3f}s.")
+        self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(perf_counter() - get_chunks_start_time):.3f}s.")
         return chunks
 
     async def sync(self, start_time: float, chunks: List):
@@ -1277,8 +1280,7 @@ class SyncWazuhdb(SyncTask):
             await self.manager.send_request(command=self.cmd, data=task_id)
             self.logger.debug(f"All chunks sent.")
         else:
-            after = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
-            self.logger.info( f"Finished in {(after - start_time):.3f}s (0 chunks sent).")
+            self.logger.info(f"Finished in {(perf_counter() - start_time):.3f}s (0 chunks sent).")
         return True
 
 
@@ -1305,8 +1307,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    after = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
-    msg = f"Finished in {(after - start_time):.3f}s ({data['updated_chunks']} " \
+    msg = f"Finished in {(perf_counter() - start_time):.3f}s ({data['updated_chunks']} " \
           f"chunks updated)."
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
@@ -1358,17 +1359,17 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     wdb_conn = WazuhDBConnection()
-    before = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp()
+    before = perf_counter()
 
     try:
         with utils.Timeout(timeout):
             for i, chunk in enumerate(data['chunks']):
                 try:
-                    if info_type == 'agent-groups':
+                    if info_type == 'agent-info':
+                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+                    elif info_type == 'agent-groups':
                         data['payload']['data'] = json.loads(chunk)[0]['data']
                         wdb_conn.send(f"{data['set_data_command']} {json.dumps(data['payload'])}", raw=True)
-                    elif info_type == 'agent-info':
-                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                     result['updated_chunks'] += 1
                 except TimeoutError as e:
                     raise e
@@ -1379,7 +1380,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     except Exception as e:
         result['error_messages']['others'].append(f'Error while processing {info_type} chunks: {e}')
 
-    result['time_spent'] = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).timestamp() - before
+    result['time_spent'] = perf_counter() - before
     wdb_conn.close()
     return result
 
