@@ -40,6 +40,7 @@ headerDic = {
     'rtr':              '=================== Running RTR checks  ===================',
     'coverage':         '=================== Running Coverage    ===================',
     'AStyle':           '=================== Running AStyle      ===================',
+    'deletelogs':       '=================== Clean result folders===================',
 }
 
 smokeTestsDic = {
@@ -105,6 +106,50 @@ smokeTestsDic = {
         }
     ],
     'syscheckd': [
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'output_folder': './output/fileTransaction',
+            'args': [
+                '-c config.json',
+                '-a FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json,FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_2.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json',
+                '-o ./output/fileTransaction'
+            ]
+        },
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'output_folder': './output/AtomicOperations',
+            'args': [
+                '-c config.json',
+                '-a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json',
+                '-o ./output/AtomicOperations'
+            ]
+        },
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'output_folder': './output/registryKeyTransaction',
+            'args': [
+                '-c configWindows.json',
+                '-a FimDBTransaction/StartTransactionRegistryKey.json,FimDBTransaction/SyncTxnRowsRegistryKey_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryKey.json,FimDBTransaction/SyncTxnRowsRegistryKey_2.json,FimDBTransaction/GetDeletedRows.json',
+                '-o ./output/registryKeyTransaction'
+            ]
+        },
+        {
+            'test_tool_name': 'fimdb_test_tool',
+            'smoke_tests_path': 'src/db/smokeTests',
+            'is_smoke_with_configuration': True,
+            'output_folder': './output/registryDataTransaction',
+            'args': [
+                '-c configWindows.json',
+                '-a FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_2.json,FimDBTransaction/GetDeletedRows.json',
+                '-o ./output/registryDataTransaction'
+            ]
+        }
     ]
 }
 
@@ -114,7 +159,7 @@ deleteFolderDic = {
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
     'shared_modules/utils':         ['build'],
-    'syscheckd':                    ['build']
+    'syscheckd':                    ['build', 'src/db/smokeTests/output', 'coverage_report'],
 }
 
 currentBuildDir = Path(__file__).parent
@@ -350,7 +395,7 @@ def cleanLib(moduleName):
     os.system('make clean -C' + currentDir)
 
 
-def cleanFolder(moduleName, additionalFolder):
+def cleanFolder(moduleName, additionalFolder, folderName=""):
 
     currentDir = currentDirPath(moduleName)
     cleanFolderCommand = f'rm -rf {os.path.join(currentDir, additionalFolder)}'
@@ -359,15 +404,15 @@ def cleanFolder(moduleName, additionalFolder):
         out = subprocess.run(
             cleanFolderCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         if out.returncode == 0 and not out.stderr:
-            printGreen('[Cleanfolder: PASSED]')
+            printGreen('[Cleanfolder {}: PASSED]'.format(folderName))
         else:
             print(cleanFolderCommand)
             print(out.stderr)
-            printFail('[Cleanfolder: FAILED]')
+            printFail('[Cleanfolder {}: FAILED]'.format(folderName))
             errorString = 'Error Running Cleanfolder: ' + str(out.returncode)
             raise ValueError(errorString)
     else:
-        printFail('[Cleanfolder: FAILED]')
+        printFail('[Cleanfolder {}: FAILED]'.format(folderName))
         errorString = 'Error Running Cleanfolder: additional folder not exist in delete folder dictionary.'
         raise ValueError(errorString)
 
@@ -472,18 +517,22 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
         raise ValueError(errorString)
 
 
-def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
+def runTestTool(moduleName, testToolCommand, element):
     printHeader('TESTTOOL', 'testtool')
     printGreen(testToolCommand)
     cwd = os.getcwd()
+    currentmoduleNameDir = currentDirPath(moduleName)
+    if moduleName == "syscheckd":
+        smoke_tests_folder = os.path.join(str.rstrip(currentmoduleNameDir, ' '), element['smoke_tests_path'])
+        output_folder = os.path.join(smoke_tests_folder, element['output_folder'])
+    else:
+        smoke_tests_folder = os.path.join(currentmoduleNameDir, 'smokeTests')
+        output_folder = os.path.join(currentmoduleNameDir, "output")
 
-    if isSmokeTest:
-        currentmoduleNameDir = currentDirPath(moduleName)
-        output_folder = os.path.join(currentmoduleNameDir, 'smokeTests/output')
-        os.chdir(os.path.join(currentmoduleNameDir, 'smokeTests'))
-        cleanFolder(moduleName, 'smokeTests/output')
+    if element['is_smoke_with_configuration']:
+        os.chdir(smoke_tests_folder)
         if not os.path.exists(output_folder):
-            os.mkdir(output_folder)
+            os.makedirs(output_folder)
 
     out = subprocess.run(testToolCommand, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, shell=True)
@@ -512,14 +561,19 @@ def runASAN(moduleName):
     cleanFolder(str(moduleName), "build")
     configureCMake(str(moduleName), True, False, True)
     makeLib(str(moduleName))
+    module = smokeTestsDic[moduleName]
+    if moduleName == "syscheckd":
+        path = module[0]['smoke_tests_path']
+    else:
+        path = "smokeTests"
+    cleanFolder(moduleName, os.path.join(path, "output"))
 
-    for element in smokeTestsDic[moduleName]:
+    for element in module:
         path = os.path.join(currentDirPathBuild(moduleName),
                             'bin', element['test_tool_name'])
         args = ' '.join(element['args'])
         testToolCommand = f'{path} {args}'
-        runTestTool(str(moduleName), testToolCommand,
-                    element['is_smoke_with_configuration'])
+        runTestTool(str(moduleName), testToolCommand, element)
 
     printGreen(f'<{moduleName}>[ASAN: PASSED]<{moduleName}>')
 
@@ -633,7 +687,7 @@ def runAStyleFormat(moduleName):
         raise ValueError(errorString)
 
 
-def runReadyToReview(moduleName):
+def runReadyToReview(moduleName, clean=False):
     """
     Executes all needed checks under the 'moduleName' lib.
 
@@ -654,3 +708,10 @@ def runReadyToReview(moduleName):
         runASAN(moduleName)
 
     printGreen(f'<{moduleName}>[RTR: PASSED]<{moduleName}>')
+    if clean:
+        deleteLogs(moduleName)
+
+def deleteLogs(moduleName):
+    printHeader(moduleName, 'deletelogs')
+    for folder in deleteFolderDic[moduleName]:
+        cleanFolder(str(moduleName), folder, folder)

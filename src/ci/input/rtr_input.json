@@ -36,8 +36,8 @@
             "compile": false
         },
         {
-            "name": "syscheckd/db",
-            "flags": "-t"
+            "name": "syscheckd",
+            "flags": "-r"
         }
     ]
 }
