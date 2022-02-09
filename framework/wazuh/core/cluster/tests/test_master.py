@@ -203,7 +203,8 @@ def test_revt_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
 def test_rait_init(set_up_coro_mock, create_task_mock):
     """Test the correct initialization of the ReceiveAgentInfoTask object."""
 
-    receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=cluster_common.WazuhCommon(), task_id="0101")
+    receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=cluster_common.WazuhCommon(),
+                                                          logger=logging.getLogger("wazuh"), task_id="0101")
 
     assert isinstance(receive_agent_info_task.wazuh_common, cluster_common.WazuhCommon)
     assert receive_agent_info_task.task_id == "0101"
@@ -216,7 +217,8 @@ def test_rait_init(set_up_coro_mock, create_task_mock):
 def test_rgit_init(set_up_coro_mock, create_task_mock):
     """Test the correct initialization of the ReceiveAgentGroupsTask object."""
 
-    receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=cluster_common.WazuhCommon(), task_id="0101")
+    receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=cluster_common.WazuhCommon(),
+                                                              logger=logging.getLogger("wazuh"), task_id="0101")
 
     assert isinstance(receive_agent_groups_task.wazuh_common, cluster_common.WazuhCommon)
     assert receive_agent_groups_task.task_id == "0101"
@@ -239,7 +241,8 @@ def test_rait_set_up_coro(create_task_mock):
             pass
 
     wazuh_common_mock = WazuhCommonMock()
-    receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=wazuh_common_mock, task_id="0101")
+    receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=wazuh_common_mock,
+                                                          logger=logging.getLogger("wazuh"), task_id="0101")
     assert receive_agent_info_task.set_up_coro() == wazuh_common_mock.sync_wazuh_db_information
     create_task_mock.assert_called_once()
 
@@ -259,7 +262,8 @@ def test_rgit_set_up_coro(create_task_mock):
             pass
 
     wazuh_common_mock = WazuhCommonMock()
-    receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock, task_id="0101")
+    receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock,
+                                                              logger=logging.getLogger("wazuh"), task_id="0101")
     assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.sync_wazuh_db_information
     create_task_mock.assert_called_once()
 
@@ -281,7 +285,8 @@ def test_rait_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
             pass
 
     wazuh_common_mock = WazuhCommonMock()
-    receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=wazuh_common_mock, task_id="0101")
+    receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=wazuh_common_mock,
+                                                          logger=logging.getLogger("wazuh"), task_id="0101")
     receive_agent_info_task.done_callback()
 
     create_task_mock.assert_called_once()
@@ -307,7 +312,8 @@ def test_rgit_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
             pass
 
     wazuh_common_mock = WazuhCommonMock()
-    receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock, task_id="0101")
+    receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock,
+                                                              logger=logging.getLogger("wazuh"), task_id="0101")
     receive_agent_groups_task.done_callback()
 
     create_task_mock.assert_called_once()
@@ -867,14 +873,14 @@ def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_moc
 
 
 @pytest.mark.asyncio
-@freeze_time("2021-11-02")
+@patch("wazuh.core.cluster.common.perf_counter", return_value=0.0)
 @patch("json.dumps", return_value="")
 @patch("wazuh.core.wdb.socket.socket")
 @patch("wazuh.core.wdb.WazuhDBConnection.send", return_value=["ok"])
 @patch("json.loads", return_value={"chunks": "1", "set_data_command": "1"})
 @patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value="response")
 async def test_master_handler_sync_wazuh_db_information_ok(send_request_mock, loads_mock, send_mock, socket_mock,
-                                                           json_dumps_mock):
+                                                           json_dumps_mock, perf_counter_mock):
     """Check if the chunks of data are updated and iterated."""
 
     class LoggerMock:
@@ -923,27 +929,28 @@ async def test_master_handler_sync_wazuh_db_information_ok(send_request_mock, lo
                return_value={'error_messages': {'others': 'ERROR', 'chunks': ''},
                              'updated_chunks': 1, 'time_spent': 1}):
         assert await master_handler.sync_wazuh_db_information(
-            b"task_id", logger='Agent-info sync') == send_request_mock.return_value
+            b"task_id", info_type='agent-info') == send_request_mock.return_value
 
     # Basic example where everything works correctly and the send_request output is returned (agent-groups)
     with patch('wazuh.core.cluster.master.cluster.run_in_pool',
                return_value={'error_messages': {'others': [], 'chunks': ''},
                              'updated_chunks': 1, 'time_spent': 1}):
         assert await master_handler.sync_wazuh_db_information(
-            b"task_id", logger='Agent-groups sync') == send_request_mock.return_value
+            b"task_id", info_type='agent-groups') == send_request_mock.return_value
 
     send_mock.return_value = ["not_ok"]
     assert await master_handler.sync_wazuh_db_information(
-        b"task_id", logger='Agent-info sync') == send_request_mock.return_value
+        b"task_id", info_type='agent-info') == send_request_mock.return_value
 
     send_mock.side_effect = Exception()
     assert await master_handler.sync_wazuh_db_information(
-        b"task_id", logger='Agent-info sync') == send_request_mock.return_value
+        b"task_id", info_type='agent-info') == send_request_mock.return_value
 
     send_request_mock.assert_has_calls([call(command=b'syn_m_g_e', data=b''), call(command=b'syn_m_a_e', data=b''),
                                         call(command=b'syn_m_a_e', data=b'')])
     loads_mock.assert_has_calls([call("payload"), call("payload"), call("payload")])
     assert socket_mock.call_count == 2
+    assert perf_counter_mock.call_count == 4
     json_dumps_mock.assert_has_calls(
         [call({'error_messages': [], 'updated_chunks': 1, 'time_spent': 1}),
          call({'updated_chunks': 1, 'error_messages': [], 'time_spent': 0.0}),
@@ -952,7 +959,7 @@ async def test_master_handler_sync_wazuh_db_information_ok(send_request_mock, lo
     assert master_handler.task_loggers["Agent-info sync"]._info == ["Starting.",
                                                                     "Finished in 0.000s. Updated 1 chunks.",
                                                                     "Starting.",
-                                                                    "Finished in 0.000s. Updated 1 chunks.",
+                                                                    "Finished in 0.002s. Updated 1 chunks.",
                                                                     "Starting.",
                                                                     "Finished in 0.000s. Updated 0 chunks."]
     assert master_handler.task_loggers["Agent-info sync"]._error == ['E', 'R', 'R', 'O', 'R',
@@ -993,17 +1000,17 @@ async def test_master_handler_sync_wazuh_db_info_ko(send_request_mock, loads_moc
 
     # Test the first except
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3035 .*'):
-        await master_handler.sync_wazuh_db_information(b"not_task_id", logger='Agent-info sync')
+        await master_handler.sync_wazuh_db_information(b"not_task_id", info_type='agent-info')
 
     # Test the second exception
     loads_mock.side_effect = ValueError()
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3036 .*'):
-        await master_handler.sync_wazuh_db_information(b"task_id", logger='Agent-groups sync')
+        await master_handler.sync_wazuh_db_information(b"task_id", info_type='agent-groups')
 
     # Test the third exception
     loads_mock.side_effect = None
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3037 .*'):
-        await master_handler.sync_wazuh_db_information(b"task_id", logger='Agent-info sync')
+        await master_handler.sync_wazuh_db_information(b"task_id", info_type='agent-info')
 
     send_request_mock.assert_has_calls(
         [call(command=b"syn_m_a_err", data=b"error while trying to access string under task_id b'not_task_id'."),
@@ -1860,9 +1867,9 @@ async def test_agent_groups_update(sleep_mock):
                 with pytest.raises(Exception, match='Stop while true'):
                     await master_class.agent_groups_update()
                 assert "Starting." in logger_mock._info
-                assert "Finished in 0.000s. Obtained agent-groups that require synchronization." in logger_mock._info
+                assert "Finished in 0.000s. Agent-group synchronization is not required." in logger_mock._info
                 assert "Error getting agent-groups from WDB: Testing" in logger_mock._error
-                setup_task_logger_mock.assert_called_once_with('Agent-groups send')
+                setup_task_logger_mock.assert_called_once_with('Agent-groups get')
 
 
 @pytest.mark.asyncio

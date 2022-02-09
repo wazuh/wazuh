@@ -11,6 +11,7 @@ from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timezone
+from time import perf_counter
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -117,7 +118,7 @@ class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
         kwargs
             Keyword arguments for parent constructor class.
         """
-        super().__init__(*args, **kwargs, logger='Agent-info sync')
+        super().__init__(*args, **kwargs, info_type='agent-info')
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its Agent info."""
@@ -153,7 +154,7 @@ class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
         kwargs
             Keyword arguments for parent constructor class.
         """
-        super().__init__(*args, **kwargs, logger='Agent-groups sync')
+        super().__init__(*args, **kwargs, info_type='agent-groups')
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its agent-groups."""
@@ -578,37 +579,38 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return super().end_receiving_file(task_and_file_names)
 
-    async def sync_wazuh_db_information(self, task_id: bytes, logger: str):
+    async def sync_wazuh_db_information(self, task_id: bytes, info_type: str):
         """Create a process to send to the local wazuh-db the chunks of data received from a worker.
 
         Parameters
         ----------
         task_id : bytes
             ID of the string where the JSON chunks are stored.
+        info_type : str
+            Information type handled.
 
         Returns
         -------
         result : bytes
             Worker's response after finishing the synchronization.
         """
-        # Guess information type
-        info_type = ''
+        logger = ''
         command = ''
         error_command = ''
         sync_dict = {}
-        if logger == 'Agent-info sync':
-            info_type = 'agent-info'
+        if info_type == 'agent-info':
+            logger = 'Agent-info sync'
             command = b'syn_m_a_e'
             error_command = b'syn_m_a_err'
             sync_dict = self.sync_agent_info_status
-        elif logger == 'Agent-groups sync':
-            info_type = 'agent-groups'
+        elif info_type == 'agent-groups':
+            logger = 'Agent-groups sync'
             command = b'syn_m_g_e'
             error_command = b'syn_m_g_err'
             sync_dict = self.sync_agent_groups_status
         logger = self.task_loggers[logger]
         logger.info('Starting.')
-        date_start_master = datetime.utcnow()
+        date_start_master = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
 
         try:
             # Chunks were stored under 'task_id' as an string.
@@ -647,12 +649,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Send result to worker
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
         response = await self.send_request(command=command, data=json.dumps(result).encode())
-        date_end_master = datetime.utcnow()
-        sync_dict.update({'date_start_master': date_start_master.strftime(decimals_date_format),
-                          'date_end_master': date_end_master.strftime(decimals_date_format),
+        date_end_master = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+        sync_dict.update({'date_start_master': date_start_master,
+                          'date_end_master': date_end_master,
                           'n_synced_chunks': result['updated_chunks']})
         logger.info('Finished in {:.3f}s. Updated {} chunks.'.format((date_end_master - date_start_master
-                                                                      ).total_seconds(), result['updated_chunks']))
+                                                                      ), result['updated_chunks']))
 
         return response
 
@@ -672,8 +674,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             info = self.server.get_agent_groups_info(self.name)
             if info != {}:
                 try:
-                    self.send_agent_groups_status['date_start'] = \
-                        datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+                    self.send_agent_groups_status['date_start'] = perf_counter()
                     logger.info("Starting.")
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'],
                                            chunks=self.server.agent_groups_control)
@@ -1056,8 +1057,10 @@ class Master(server.AbstractServer):
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     def get_agent_groups_info(self, client):
-        """Function in charge of ensuring that in each iteration of agent-groups, the updated group information will be sent only one time to each worker node.
-        The variable with this information will not be updated until all the MasterHandlers send the information to their worker node.
+        """Check whether the updated group information is sent only once per worker.
+
+        The variable with this information will not be updated until all the MasterHandlers send
+        the information to their worker node.
 
         Parameters
         ----------
@@ -1073,7 +1076,7 @@ class Master(server.AbstractServer):
         if client not in self.agent_groups_control_workers:
             result = self.agent_groups_control
             self.agent_groups_control_workers.add(client)
-        elif len(self.agent_groups_control_workers) == len(self.clients.keys()):
+        elif set(self.clients.keys()).issubset(self.agent_groups_control_workers):
             self.agent_groups_control = {}
             self.agent_groups_control_workers.clear()
 
@@ -1081,11 +1084,12 @@ class Master(server.AbstractServer):
 
     async def agent_groups_update(self):
         """Asynchronous task in charge of obtaining data related to agent-groups periodically.
+
         It updates the local variable agent_groups_control
         every self.cluster_items['intervals']['master']['sync_agent_groups'] seconds.
 
         This information will only be sent to the worker nodes when it contains data.
-        The form of this data is ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
+        It looks like this: ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
         """
         empty_data = ['[{"data":[]}]']
         logger = self.setup_task_logger('Agent-groups get')
@@ -1097,11 +1101,11 @@ class Master(server.AbstractServer):
 
         while True:
             try:
-                before = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+                before = perf_counter()
                 sync_object.logger.info("Starting.")
                 if self.agent_groups_control == {}:
                     self.agent_groups_control = await sync_object.retrieve_information()
-                    after = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+                    after = perf_counter()
                     no_need_sync = self.agent_groups_control == empty_data
                     logger.info(f"Finished in {(after - before):.3f}s. "
                                 f"Agent-group synchronization is {'not ' if no_need_sync else ''}required.")
