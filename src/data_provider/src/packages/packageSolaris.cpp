@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015, Wazuh Inc.
- * December 14, 2020.
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * January 11, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,36 +9,18 @@
  * Foundation.
  */
 
-#include "packageMac.h"
-#include "sharedDefs.h"
-#include "brewWrapper.h"
-#include "pkgWrapper.h"
+#include "packageSolaris.h"
 
-std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
+std::shared_ptr<IPackage> FactorySolarisPackage::create(const std::shared_ptr<IPackageWrapper>& pkgWrapper)
 {
-    std::shared_ptr<IPackage> ret;
-
-    if (ctx.second == BREW)
-    {
-        ret = std::make_shared<BSDPackageImpl>(std::make_shared<BrewWrapper>(ctx.first));
-    }
-    else if (ctx.second == PKG)
-    {
-        ret = std::make_shared<BSDPackageImpl>(std::make_shared<PKGWrapper>(ctx.first));
-    }
-    else
-    {
-        throw std::runtime_error { "Error creating BSD package data retriever." };
-    }
-
-    return ret;
+    return std::make_shared<SolarisPackageImpl>(pkgWrapper);
 }
 
-BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
+SolarisPackageImpl::SolarisPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
     : m_packageWrapper(packageWrapper)
 { }
 
-void BSDPackageImpl::buildPackageData(nlohmann::json& package)
+void SolarisPackageImpl::buildPackageData(nlohmann::json& package)
 {
     package["name"] = m_packageWrapper->name();
     package["version"] = m_packageWrapper->version();
@@ -53,5 +35,5 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["vendor"] = m_packageWrapper->vendor();
     package["install_time"] = m_packageWrapper->install_time();
     package["multiarch"] = m_packageWrapper->multiarch();
-}
 
+}
