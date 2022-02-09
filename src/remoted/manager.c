@@ -1697,11 +1697,18 @@ void manager_init()
     _stime = time(0);
     m_hash = OSHash_Create();
     invalid_files = OSHash_Create();
+
+    mdebug1("Running manager_init");
+
     os_calloc(1, sizeof(group_t *), groups);
     os_calloc(1, sizeof(group_t *), multi_groups);
-    mdebug1("Running manager_init");
+
+    /* Clean multigroups directory and run initial groups and multigroups scan */
+    cldir_ex(MULTIGROUPS_DIR);
     c_files();
+
     w_yaml_create_groups();
+
     pending_queue = linked_queue_init();
     pending_data = OSHash_Create();
 
