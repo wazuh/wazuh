@@ -57,6 +57,10 @@
 #define VULN_CVES_TYPE_OS         "OS"
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
+/* wdb_exec_row_stmt modes */
+#define STMT_MULTI_COLUMN 0
+#define STMT_SINGLE_COLUMN 1
+
 /// Enumeration of agent groups sync conditions
 typedef enum wdb_groups_sync_condition_t {
         WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
@@ -215,6 +219,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
     WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
+    WDB_STMT_GLOBAL_GROUP_BELONG_GET,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
@@ -830,9 +835,31 @@ int wdb_remove_database(const char * agent_id);
  *
  * @param [in] stmt The SQL statement to be executed.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
+ * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
+ *                         or STMT_MULTI_COLUMN if the query returns more than one column.
  * @return JSON array with the statement execution results. NULL On error.
  */
-cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
+cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode);
+
+/**
+ * @brief Function to execute one row of an SQL statement and save the result in a single JSON array without column name like:
+ *        ["column_value_1","column_value_2", ...]. The query should return only one column in every step.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [out] status The status code of the statement execution. If NULL no value is written.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status);
+
+/**
+ * @brief Function to execute one row of an SQL statement and save the result in a single JSON array with column name like:
+ *        ["column_name_1":"column_value_1","column_name_2":"column_value_2", ...].
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [out] status The status code of the statement execution. If NULL no value is written.
+ * @return JSON array with the statement execution results. NULL On error.
+ */
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt * stmt, int* status);
 
 /**
  * @brief Function to execute an SQL statement without a response.
@@ -844,7 +871,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.
- *        Each step of the statemente will be printed to know the size.
+ *        Each step of the statement will be printed to know the size.
  *        The result of each step will be placed in returned result while fits.
  *
  * @param [in] stmt The SQL statement to be executed.
@@ -852,9 +879,11 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
  *                     SQLITE_DONE means the statement is completed.
  *                     SQLITE_ROW means the statement has pending elements.
  *                     SQLITE_ERROR means an error occurred.
+ * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
+ *                         or STMT_MULTI_COLUMN if the query returns more than one column.
  * @return JSON array with the statement execution results. NULL On error.
  */
-cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
+cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status, bool column_mode);
 
 /**
  * @brief Function to execute a SQL statement and send the result via TCP socket.
@@ -879,15 +908,6 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
  * @return JSON array with the statement execution results. NULL On error.
  */
 cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
-
-/**
- * @brief Function to execute a SQL statement and save the result in a single JSON array without column name like:
- *        ["column_value_1","column_value_2", ...]. The query should return only one column in every step.
- *
- * @param [in] stmt The SQL statement to be executed.
- * @return JSON array with the statement execution results. NULL On error.
- */
-cJSON * wdb_exec_stmt_single_column(sqlite3_stmt * stmt);
 
 /**
  * @brief Function to execute a SQL query and save the result in a JSON array.
@@ -1231,6 +1251,17 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
+
+/**
+ * @brief Function to parse the get group agents request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the group name.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the set agent groups request.
@@ -1879,6 +1910,17 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name);
  * @return JSON with all the groups on success. NULL on error.
  */
 cJSON* wdb_global_select_groups(wdb_t *wdb);
+
+/**
+ * @brief Function to get all agents that belong to a group
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @param [in] group_name The name of the group to get the agents from
+ * @param [in] last_agent_id ID where to start querying.
+ * @retval JSON with agents IDs on success, NULL on error.
+ */
+cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.
