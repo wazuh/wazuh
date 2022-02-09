@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -166,18 +166,17 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
                                       )
 
     system_agents = get_agents_info()
-    wq = WazuhQueue(common.ARQUEUE)
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent(agent_id).reconnect(wq)
-            result.affected_items.append(agent_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    wq.close()
+    with WazuhQueue(common.ARQUEUE) as wq:
+        for agent_id in agent_list:
+            try:
+                if agent_id not in system_agents:
+                    raise WazuhResourceNotFound(1701)
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                Agent(agent_id).reconnect(wq)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
 
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
@@ -239,14 +238,13 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
             else agents_with_data
-        wq = WazuhQueue(common.ARQUEUE)
-        for agent in eligible_agents:
-            try:
-                send_restart_command(agent['id'], agent['version'], wq)
-                result.affected_items.append(agent['id'])
-            except WazuhException as e:
-                result.add_failed_item(id_=agent['id'], error=e)
-        wq.close()
+        with WazuhQueue(common.ARQUEUE) as wq:
+            for agent in eligible_agents:
+                try:
+                    send_restart_command(agent['id'], agent['version'], wq)
+                    result.affected_items.append(agent['id'])
+                except WazuhException as e:
+                    result.add_failed_item(id_=agent['id'], error=e)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)

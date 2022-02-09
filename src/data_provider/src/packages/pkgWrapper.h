@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -71,6 +71,31 @@ class PKGWrapper final : public IPackageWrapper
             return m_location;
         }
 
+        std::string priority() const override
+        {
+            return m_priority;
+        }
+
+        int size() const override
+        {
+            return m_size;
+        }
+
+        std::string vendor() const override
+        {
+            return m_vendor;
+        }
+
+        std::string install_time() const override
+        {
+            return m_installTime;
+        }
+
+        std::string multiarch() const override
+        {
+            return m_multiarch;
+        }
+
     private:
         void getPkgData(const std::string& filePath)
         {
@@ -129,6 +154,11 @@ class PKGWrapper final : public IPackageWrapper
                     }
 
                     m_architecture = UNKNOWN_VALUE;
+                    m_multiarch = UNKNOWN_VALUE;
+                    m_priority = UNKNOWN_VALUE;
+                    m_size = 0;
+                    m_vendor = UNKNOWN_VALUE;
+                    m_installTime = UNKNOWN_VALUE;
                     m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
                     m_location = filePath;
                 }
@@ -190,6 +220,11 @@ class PKGWrapper final : public IPackageWrapper
         std::string m_osPatch;
         std::string m_source;
         std::string m_location;
+        std::string m_multiarch;
+        std::string m_priority;
+        int m_size;
+        std::string m_vendor;
+        std::string m_installTime;
 };
 
 #endif //_PKG_WRAPPER_H

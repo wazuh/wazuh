@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from time import time
+from datetime import datetime
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -158,13 +158,13 @@ def generate_token(user_id=None, data=None, run_as=False):
                           logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    timestamp = int(time())
+    timestamp = int(datetime.utcnow().timestamp())
 
     payload = {
         "iss": JWT_ISSUER,
         "aud": "Wazuh API REST",
-        "nbf": int(timestamp),
-        "exp": int(timestamp + result['auth_token_exp_timeout']),
+        "nbf": timestamp,
+        "exp": timestamp + result['auth_token_exp_timeout'],
         "sub": str(user_id),
         "run_as": run_as,
         "rbac_roles": data['roles'],

@@ -2567,11 +2567,15 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:agent-key-polling:
             $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:agent-upgrade:
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:aws-s3:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:azure-logs:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:ciscat:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:control:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:command:
             $ref: '#/components/schemas/LogSummary'
@@ -2588,6 +2592,8 @@ components:
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:vulnerability-detector:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
 
     ConfirmationMessage:
@@ -4731,6 +4737,8 @@ components:
         - wazuh-modulesd:agent-key-polling
         - wazuh-modulesd:aws-s3
         - wazuh-modulesd:azure-logs
+        - wazuh-modulesd:agent-upgrade
+        - wazuh-modulesd:task-manager
         - wazuh-modulesd:ciscat
         - wazuh-modulesd:control
         - wazuh-modulesd:command
@@ -11992,7 +12000,7 @@ paths:
                   -  Rules config
                   -  Author: Daniel Cid.
                   -  Updated by Wazuh, Inc.
-                  -  Copyright (C) 2015-2021, Wazuh Inc.
+                  -  Copyright (C) 2015, Wazuh Inc.
                   -  Copyright (C) 2009 Trend Micro Inc.
                   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
                 -->
@@ -12773,7 +12781,7 @@ paths:
                 <!--
                   -  Wazuh decoders
                   -  Created by Wazuh, Inc.
-                  -  Copyright (C) 2015-2021, Wazuh Inc.
+                  -  Copyright (C) 2015, Wazuh Inc.
                   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
                 -->
                 <decoder name="wazuh">

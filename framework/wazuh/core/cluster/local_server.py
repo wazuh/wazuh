@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -290,7 +290,8 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
         """
         return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes)),
-                                 default=lambda o: "n/a" if isinstance(o, datetime) and o == datetime.fromtimestamp(0)
+                                 default=lambda o: "n/a" if
+                                 isinstance(o, datetime) and o == datetime.utcfromtimestamp(0)
                                  else (o.__str__() if isinstance(o, datetime) else None)).encode()
 
     def send_file_request(self, path, node_name):

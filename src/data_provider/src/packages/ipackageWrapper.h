@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -28,5 +28,10 @@ class IPackageWrapper
         virtual std::string osPatch() const = 0;
         virtual std::string source() const = 0;
         virtual std::string location() const = 0;
+        virtual std::string priority() const = 0;
+        virtual int size() const = 0;
+        virtual std::string vendor() const = 0;
+        virtual std::string install_time() const = 0;
+        virtual std::string multiarch() const = 0;
 };
 #endif // _PACKAGE_INTERFACE_WRAPPER_H

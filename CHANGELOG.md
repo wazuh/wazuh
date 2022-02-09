@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Vulnerability Detector introduces vulnerability inventory. ([#8237](https://github.com/wazuh/wazuh/pull/8237))
   - The manager will only deliver alerts when new vulnerabilities are detected in agents or when they stop applying.
 - Added a mechanism to ensure the worker synchronization permissions is reset after a fixed period of time. ([#11031](https://github.com/wazuh/wazuh/pull/11031))
+- Included mechanism to create and handle PID files for each child process of the API and cluster. ([#11799](https://github.com/wazuh/wazuh/pull/11799))
 
 #### Changed
 
@@ -95,8 +96,14 @@ All notable changes to this project will be documented in this file.
 - Fixed a memory overrun hazard in Vulnerability Detector. ([#11262](https://github.com/wazuh/wazuh/pull/11262))
 - Fixed a bug when using a limit parameter higher than the total number of objects in the wazuh-db queries. ([#11282](https://github.com/wazuh/wazuh/pull/11282))
 - Prevented a false positive for MySQL in Vulnerability Detector. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
-- Fixed segmentation fault when wrong configuration is set. ([# 11448](https://github.com/wazuh/wazuh/pull/11448))
- 
+- Fixed segmentation fault in Analysisd when setting the number of queues to zero. ([#11448](https://github.com/wazuh/wazuh/pull/11448))
+- Fixed false positives in Vulnerability Detector when scanning OVAl for Ubuntu Xenial and Bionic. ([#11440](https://github.com/wazuh/wazuh/pull/11440))
+- Fixed an argument injection hazard in the Pagerduty integration script. Reported by Jose Maria Zaragoza (@JoseMariaZ). ([#11835](https://github.com/wazuh/wazuh/pull/11835))
+- Fixed memory leaks in the feed parser at Vulnerability Detector. ([#11863](https://github.com/wazuh/wazuh/pull/11863))
+  - Architecture data member from the RHEL 5 feed.
+  - RHSA items containing no CVEs.
+  - Unused RHSA data member when parsing Debian feeds.
+
 #### Removed
 
 - The data reporting for Rootcheck scans in the agent_control tool has been deprecated. ([#8399](https://github.com/wazuh/wazuh/pull/8399))
@@ -177,11 +184,13 @@ All notable changes to this project will be documented in this file.
 - Prevented Syscollector from truncating the open port inode numbers on Linux. ([#11329](https://github.com/wazuh/wazuh/pull/11329))
 - Fixed agent auto-restart on configuration changes when started via `wazuh-control` on a Systemd based Linux OS. ([#11365](https://github.com/wazuh/wazuh/pull/11365))
 - Fixed a bug in the AWS module resulting in unnecessary API calls when trying to obtain the different Account IDs for the bucket. ([#10952](https://github.com/wazuh/wazuh/pull/10952))
-- Fixed reparse option in the AWS VPCFlow integration. ([#11194](https://github.com/wazuh/wazuh/pull/11194))
 - Fixed Azure integration's configuration parsing to allow omitting optional parameters. ([#11278](https://github.com/wazuh/wazuh/pull/11278))
 - Fixed Azure Storage credentials validation bug. ([#11296](https://github.com/wazuh/wazuh/pull/11296))
 - Fixed the read of the hostname in the installation process for openSUSE. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
-- Fixed the graceful shutdown when agent loses connection. ([# 11425](https://github.com/wazuh/wazuh/pull/11425))
+- Fixed the graceful shutdown when agent loses connection. ([#11425](https://github.com/wazuh/wazuh/pull/11425))
+- Fixed error "Unable to set server IP address" on the Windows agent. ([#11736](https://github.com/wazuh/wazuh/pull/11736))
+- Fixed reparse option in the AWS VPCFlow and Config integrations. ([#11608](https://github.com/wazuh/wazuh/pull/11608))
+- Removed unnecessary calls to the AWS API made by the VPCFlow and Config integration modules. ([#11644](https://github.com/wazuh/wazuh/pull/11644))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
@@ -264,6 +273,7 @@ All notable changes to this project will be documented in this file.
 - Fixed agent endpoints `q` parameter to allow more operators when filtering by groups. ([#10656](https://github.com/wazuh/wazuh/pull/10656))
 - Fixed API integration tests related to rule, decoder and task endpoints. ([#10830](https://github.com/wazuh/wazuh/pull/10830))
 - Improved exceptions handling when starting the Wazuh API service. ([#11411](https://github.com/wazuh/wazuh/pull/11411))
+- Fixed race condition while creating RBAC database. ([#11598](https://github.com/wazuh/wazuh/pull/11598))
 
 #### Removed
 
@@ -275,27 +285,66 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added Rules and Decoders for Wazuh API. ([#10428](https://github.com/wazuh/wazuh/pull/10428))
-- Added Rules and Decoders for TrendMicro Cloud One. ([#10458](https://github.com/wazuh/wazuh/pull/10458))
-- Added Rules for Sophos UTM Firewall. ([#10496](https://github.com/wazuh/wazuh/pull/10496))
-- Added SCA policy for Solaris 11.4. ([#10369](https://github.com/wazuh/wazuh/pull/10369))
-- Added Rules for Cloudflare WAF. ([#10658](https://github.com/wazuh/wazuh/pull/10658))
-- Added Rules and Decoders for FortiAuth. ([#10667](https://github.com/wazuh/wazuh/pull/10667))
+- Added Carbanak detection rules. ([#11306](https://github.com/wazuh/wazuh/pull/11306))
+- Added Cisco FTD rules and decoders. ([#11309](https://github.com/wazuh/wazuh/pull/11309))
+- Added decoders for AWS EKS service. ([#11284](https://github.com/wazuh/wazuh/pull/11284))
+- Added F5 BIG IP ruleset. ([#11394](https://github.com/wazuh/wazuh/pull/11394))
+- Added GCP VPC Storage, Firewall and Flow rules. ([#11191](https://github.com/wazuh/wazuh/pull/11191))
+- Added Gitlab v12 ruleset. ([#11323](https://github.com/wazuh/wazuh/pull/11323))
+- Added Microsoft Exchange Server rules and decoders. ([#11289](https://github.com/wazuh/wazuh/pull/11289))
+- Added Microsoft Windows persistence by using registry keys detection. ([#11390](https://github.com/wazuh/wazuh/pull/11390))
+- Added Oracle Database 12c rules and decoders. ([#11274](https://github.com/wazuh/wazuh/pull/11274))
+- Added rules for Carbanak step 1.A - User Execution: Malicious File. ([#8476](https://github.com/wazuh/wazuh/pull/8476))
+- Added rules for Carbanak step 2.A - Local Discovery. ([#11212](https://github.com/wazuh/wazuh/pull/11212))
+- Added rules for Carbanak step 2.B - Screen Capture. ([#9075](https://github.com/wazuh/wazuh/pull/9075))
+- Added rules for Carbanak step 5.B - Lateral Movement via SSH. ([#9097](https://github.com/wazuh/wazuh/pull/9097))
+- Added rules for Carbanak step 9.A - User Monitoring. ([#11342](https://github.com/wazuh/wazuh/pull/11342))
+- Added rules for Cloudflare WAF. ([#11373](https://github.com/wazuh/wazuh/pull/11373))
+- Added ruleset for ESET Remote console. ([#11013](https://github.com/wazuh/wazuh/pull/11013))
+- Added ruleset for GITHUB audit logs. ([#8532](https://github.com/wazuh/wazuh/pull/8532))
+- Added ruleset for Palo Alto v8.X - v10.X. ([#11137](https://github.com/wazuh/wazuh/pull/11137))
+- Added SCA policy for Amazon Linux 1. ([#11431](https://github.com/wazuh/wazuh/pull/11431))
+- Added SCA policy for Amazon Linux 2. ([#11480](https://github.com/wazuh/wazuh/pull/11480))
+- Added SCA policy for apple macOS 10.14 Mojave. ([#7035](https://github.com/wazuh/wazuh/pull/7035))
+- Added SCA policy for apple macOS 10.15 Catalina. ([#7036](https://github.com/wazuh/wazuh/pull/7036))
+- Added SCA policy for macOS Big Sur. ([#11454](https://github.com/wazuh/wazuh/pull/11454))
+- Added SCA policy for Microsoft IIS 10. ([#11250](https://github.com/wazuh/wazuh/pull/11250))
+- Added SCA policy for Microsoft SQL 2016. ([#11249](https://github.com/wazuh/wazuh/pull/11249))
+- Added SCA policy for Mongo Database 3.6. ([#11247](https://github.com/wazuh/wazuh/pull/11247))
+- Added SCA policy for NGINX. ([#11248](https://github.com/wazuh/wazuh/pull/11248))
+- Added SCA policy for Oracle Database 19c. ([#11245](https://github.com/wazuh/wazuh/pull/11245))
+- Added SCA policy for PostgreSQL 13. ([#11154](https://github.com/wazuh/wazuh/pull/11154))
+- Added SCA policy for SUSE Linux Enterprise Server 15. ([#11223](https://github.com/wazuh/wazuh/pull/11223))
+- Added SCA policy for Ubuntu 14. ([#11432](https://github.com/wazuh/wazuh/pull/11432))
+- Added SCA policy for Ubuntu 16. ([#11452](https://github.com/wazuh/wazuh/pull/11452))
+- Added SCA policy for Ubuntu 18. ([#11453](https://github.com/wazuh/wazuh/pull/11453))
+- Added SCA policy for Ubuntu 20. ([#11430](https://github.com/wazuh/wazuh/pull/11430))
+- Added SCA policy for. Solaris 11.4. ([#11286](https://github.com/wazuh/wazuh/pull/11286))
+- Added Sophos UTM Firewall ruleset. ([#11122](https://github.com/wazuh/wazuh/pull/11122))
+- Added Wazuh-api ruleset. ([#11357](https://github.com/wazuh/wazuh/pull/11357))
 
 #### Changed
 
-- Updated Amazon Linux 2 SCA up to version 2.0.0. ([#10315](https://github.com/wazuh/wazuh/pull/10315))
-- Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1. ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-- Updated Amazon rules to add more granularity. ([#10507](https://github.com/wazuh/wazuh/pull/10507))
-- Updated macOS Big Sur SCA up to 1.2.0 version. ([#10558](https://github.com/wazuh/wazuh/pull/10558))
+- Updated audit rules. ([#11016](https://github.com/wazuh/wazuh/pull/11016))
+- Updated AWS s3 ruleset. ([#11177](https://github.com/wazuh/wazuh/pull/11177))
+- Updated Exim 4 decoder and rules to latest format. ([#11344](https://github.com/wazuh/wazuh/pull/11344))
+- Updated MITRE DB with latest MITRE JSON specification. ([#8738](https://github.com/wazuh/wazuh/pull/8738))
+- Updated multiple rules to remove alert_by_email option. ([#11255](https://github.com/wazuh/wazuh/pull/11255))
+- Updated NextCloud ruleset. ([#11795](https://github.com/wazuh/wazuh/pull/11795))
+- Updated ProFTPD decoder. ([#11232](https://github.com/wazuh/wazuh/pull/11232))
+- Updated RedHat Enterprise Linux 8 SCA up to version 1.0.1. ([#11242](https://github.com/wazuh/wazuh/pull/11242))
+- Updated rules and decoders for FortiNet products. ([#11100](https://github.com/wazuh/wazuh/pull/11100))
+- Updated SCA policy for CentOS 7. ([#11429](https://github.com/wazuh/wazuh/pull/11429))
+- Updated SCA policy for CentOS 8. ([#8751](https://github.com/wazuh/wazuh/pull/8751))
+- Updated SonicWall rules decoder. ([#11263](https://github.com/wazuh/wazuh/pull/11263))
+- Updated SSHD ruleset. ([#11388](https://github.com/wazuh/wazuh/pull/11388))
 
 #### Fixed
 
-- Fixed enabled-like checks for Amazon Linux 2 SCA. ([#10315](https://github.com/wazuh/wazuh/pull/10315))
-- Fixed enabled-like checks for RedHat Enterprise Linux 8 SCA. ([#10354](https://github.com/wazuh/wazuh/pull/10354))
-- Fixed typos and not working tests for Centos 7 SCA. Thanks to RonnyMaas (@RonnyMaas). ([#10406](https://github.com/wazuh/wazuh/pull/10406))
-- Fixed YML syntax problems in Solaris 11.4 SCA. ([#10707](https://github.com/wazuh/wazuh/pull/10707))
-- Fixed a typo in the Xbox Live Networking Service check for SCA. ([#10375](https://github.com/wazuh/wazuh/pull/10375))
+- Fixed bad character on rules 60908 and 60884 - win-application rules. ([#11117](https://github.com/wazuh/wazuh/pull/11117))
+- Fixed Microsoft logs rules. ([#11369](https://github.com/wazuh/wazuh/pull/11369))
+- Fixed PHP rules for MITRE and groups. ([#11405](https://github.com/wazuh/wazuh/pull/11405))
+- Fixed rules id for Microsoft Windows Powershell. ([#11214](https://github.com/wazuh/wazuh/pull/11214))
 
 ### Other
 
@@ -314,8 +363,9 @@ All notable changes to this project will be documented in this file.
 - Fixed error detection in the CURL helper library. ([#9168](https://github.com/wazuh/wazuh/pull/9168))
 - Fixed external BerkeleyDB library support for GCC 11. ([#10899](https://github.com/wazuh/wazuh/pull/10899))
 - Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
+- Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
-## [v4.2.5]
+## [v4.2.5] - 2021-11-15
 
 ### Manager
 
@@ -1544,7 +1594,7 @@ All notable changes to this project will be documented in this file.
 - Analysisd crashed when parsing a log from OpenLDAP due to a bug in the option `<accumulate>`. ([#2456](https://github.com/wazuh/wazuh/pull/2456))
 - Modulesd closed unexpectedly if a command was defined without a `<tag>` option. ([#2470](https://github.com/wazuh/wazuh/pull/2470))
 - The Eventchannel decoder was not being escaping backslashes correctly. ([#2483](https://github.com/wazuh/wazuh/pull/2483))
-- The Eventchannel decoder was leaving spurious trailing spaces in some fields.  ([#2484](https://github.com/wazuh/wazuh/pull/2484))
+- The Eventchannel decoder was leaving spurious trailing spaces in some fields. ([#2484](https://github.com/wazuh/wazuh/pull/2484))
 
 
 ## [v3.8.1] - 2019-01-25

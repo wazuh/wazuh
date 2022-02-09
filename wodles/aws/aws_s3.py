@@ -2,7 +2,7 @@
 
 # Import AWS S3
 #
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>
@@ -981,9 +981,6 @@ class AWSBucket(WazuhIntegration):
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
-                # Optimize DB
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-                self.db_connector.commit()
 
                 if bucket_files['IsTruncated']:
                     new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
@@ -1354,9 +1351,6 @@ class AWSConfigBucket(AWSLogsBucket):
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
-            # Optimize DB
-            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-            self.db_connector.commit()
             # Iterate if there are more logs
             while bucket_files['IsTruncated']:
                 new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, True)
@@ -1391,9 +1385,6 @@ class AWSConfigBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
-                # Optimize DB
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-                self.db_connector.commit()
         except SystemExit:
             raise
         except Exception as err:
@@ -1713,6 +1704,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
+                    self.db_maintenance(aws_account_id, aws_region, flow_log_id)
 
     def db_count_region(self, aws_account_id, aws_region, flow_log_id):
         """Counts the number of rows in DB for a region
@@ -1837,10 +1829,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-            # Optimize DB
-            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region,
-                                flow_log_id=flow_log_id)
-            self.db_connector.commit()
             # Iterate if there are more logs
             while bucket_files['IsTruncated']:
                 new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id, True)
@@ -1877,10 +1865,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-                # Optimize DB
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region,
-                                    flow_log_id=flow_log_id)
-                self.db_connector.commit()
         except SystemExit:
             raise
         except Exception as err:
@@ -2497,9 +2481,6 @@ class AWSServerAccess(AWSCustomBucket):
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
-                # Optimize DB
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-                self.db_connector.commit()
 
                 if bucket_files['IsTruncated']:
                     new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
