@@ -237,7 +237,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         goto end;
     }
 
-    if (configuration->options & CHECK_SEECHANGES) {
+    if (configuration->options & CHECK_SEECHANGES && resultType != DELETED) {
         diff = fim_file_diff(path, configuration);
     }
 
@@ -305,6 +305,9 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
                                             changed_attributes);
         }
     }
+        if (diff != NULL) {
+            cJSON_AddStringToObject(data, "content_changes", diff);
+        }
 
     if (configuration->tag != NULL) {
         cJSON_AddStringToObject(data, "tags", configuration->tag);
