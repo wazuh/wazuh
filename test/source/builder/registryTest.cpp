@@ -28,6 +28,15 @@ TEST(Registry, RegisterBuilder)
     ASSERT_NO_THROW(reg.registerBuilder("test", c));
 }
 
+TEST(Registry, RegisterDuplicatedBuilder)
+{
+    Registry::BuildDocument b = build;
+    Registry::BuildType c = b;
+    Registry reg;
+    reg.registerBuilder("test", c);
+    ASSERT_THROW(reg.registerBuilder("test", c), invalid_argument);
+}
+
 TEST(Registry, GetBuilder)
 {
     Registry::BuildDocument b = build;
@@ -35,6 +44,12 @@ TEST(Registry, GetBuilder)
     Registry reg;
     reg.registerBuilder("test", c);
     ASSERT_NO_THROW(auto buildB = reg.getBuilder("test"));
+}
+
+TEST(Registry, GetNonExistentBuilder)
+{
+    Registry reg;
+    ASSERT_THROW(auto buildB = reg.getBuilder("test"), invalid_argument);
 }
 
 TEST(Registry, GetBuilderAndBuilds)
