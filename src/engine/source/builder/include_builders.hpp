@@ -10,6 +10,7 @@
 #ifndef _INCLUDE_BUILDERS_H
 #define _INCLUDE_BUILDERS_H
 
+#include "builders/builders.hpp"
 #include "builders/decoder.hpp"
 #include "builders/filter.hpp"
 #include "builders/output.hpp"
