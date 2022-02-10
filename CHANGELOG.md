@@ -154,6 +154,7 @@ All notable changes to this project will be documented in this file.
 - Agent logs for inability to resolve the manager hostname now have info level. ([#3659](https://github.com/wazuh/wazuh/pull/3659))
 - Added ID number to connection enrollment logs. ([#11276](https://github.com/wazuh/wazuh/pull/11276))
 - Standardized the use of the `only_logs_after` parameter in the external integration modules. ([#10838](https://github.com/wazuh/wazuh/pull/10838))
+- Updated DockerListener integration shebang to python3 for Wazuh agents. ([#12150](https://github.com/wazuh/wazuh/pull/12150))
 
 #### Fixed
 
