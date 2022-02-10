@@ -51,6 +51,7 @@ void FileItem::createJSON()
 {
     nlohmann::json conf;
     nlohmann::json data;
+    nlohmann::json options;
 
     conf["table"] = FIMDB_FILE_TABLE_NAME;
     data["path"] = m_identifier;
@@ -76,7 +77,9 @@ void FileItem::createJSON()
 
     if (m_oldData)
     {
-        conf["return_old_data"] = true;
+
+        options["return_old_data"] = true;
+        conf["options"] = options;
     }
 
     m_statementConf = std::make_unique<nlohmann::json>(conf);
