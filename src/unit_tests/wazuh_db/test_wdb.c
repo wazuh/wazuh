@@ -306,7 +306,7 @@ void test_wdb_exec_row_stmt_multi_column_error(void **state) {
 
 /* Tests wdb_exec_stmt_sized */
 
-void test_wdb_exec_stmt_sized_success_single_column(void **state){
+void test_wdb_exec_stmt_sized_success_single_column_string(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
     char col_text[4][16] = { 0 };
     int status = SQLITE_ERROR;
@@ -327,6 +327,30 @@ void test_wdb_exec_stmt_sized_success_single_column(void **state){
     char *ret_str = cJSON_PrintUnformatted(result);
 
     assert_string_equal("[\"COL_TEXT_0\",\"COL_TEXT_1\",\"COL_TEXT_2\",\"COL_TEXT_3\"]", ret_str);
+    assert_int_equal(status, SQLITE_DONE);
+    cJSON_Delete(result);
+    free(ret_str);
+}
+
+void test_wdb_exec_stmt_sized_success_single_column_value(void **state){
+    test_struct_t *data  = (test_struct_t *)*state;
+    int status = SQLITE_ERROR;
+
+    for (int i = 0; i < 4; ++i) {
+        expect_sqlite3_step_call(SQLITE_ROW);
+        will_return(__wrap_sqlite3_column_count, 1);
+        expect_value(__wrap_sqlite3_column_type, i, 0);
+        will_return(__wrap_sqlite3_column_type, SQLITE_INTEGER);
+        expect_value(__wrap_sqlite3_column_double, iCol, 0);
+        will_return(__wrap_sqlite3_column_double, i + 1);
+    }
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
+    char *ret_str = cJSON_PrintUnformatted(result);
+
+    assert_string_equal("[1,2,3,4]", ret_str);
     assert_int_equal(status, SQLITE_DONE);
     cJSON_Delete(result);
     free(ret_str);
@@ -992,7 +1016,8 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_invalid_statement, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_error, setup_wdb, teardown_wdb),
         // wdb_exec_stmt_sized
-        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_single_column, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_single_column_string, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_single_column_value, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_multi_column, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_success_limited, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_invalid_statement, setup_wdb, teardown_wdb),
