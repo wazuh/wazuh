@@ -5,8 +5,6 @@
 import asyncio
 import logging
 import sys
-import threading
-import time
 from collections import defaultdict
 from contextvars import ContextVar
 from datetime import datetime
@@ -201,7 +199,7 @@ def test_revt_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
 @patch("asyncio.create_task")
 @patch("wazuh.core.cluster.master.ReceiveAgentInfoTask.set_up_coro")
 def test_rait_init(set_up_coro_mock, create_task_mock):
-    """Test the correct initialization of the ReceiveAgentInfoTask object."""
+    """Test the initialization of the ReceiveAgentInfoTask object."""
 
     receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=cluster_common.WazuhCommon(),
                                                           logger=logging.getLogger("wazuh"), task_id="0101")
@@ -215,7 +213,7 @@ def test_rait_init(set_up_coro_mock, create_task_mock):
 @patch("asyncio.create_task")
 @patch("wazuh.core.cluster.master.ReceiveAgentGroupsTask.set_up_coro")
 def test_rgit_init(set_up_coro_mock, create_task_mock):
-    """Test the correct initialization of the ReceiveAgentGroupsTask object."""
+    """Test the initialization of the ReceiveAgentGroupsTask object."""
 
     receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=cluster_common.WazuhCommon(),
                                                               logger=logging.getLogger("wazuh"), task_id="0101")
@@ -1900,6 +1898,7 @@ async def test_master_file_status_update_ok(sleep_mock):
                 raise Exception("Stop while true")
 
     counter = 0
+
     async def run_in_pool(loop, pool, f, *args, **kwargs):
         nonlocal counter
         counter += 1
@@ -1913,7 +1912,6 @@ async def test_master_file_status_update_ok(sleep_mock):
     with patch("wazuh.core.cluster.master.cluster.run_in_pool", side_effect=run_in_pool) as run_in_pool_mock:
         with patch("wazuh.core.cluster.master.Master.setup_task_logger",
                    return_value=logger_mock) as setup_task_logger_mock:
-
             with pytest.raises(Exception, match='Stop while true'):
                 await master_class.file_status_update()
 
