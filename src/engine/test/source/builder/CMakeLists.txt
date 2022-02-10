@@ -74,6 +74,11 @@ link_libraries(
 add_executable(builderTest ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp)
 gtest_discover_tests(builderTest)
 
+# Registry test
+add_executable(registryTest ${BUILDER_TEST_SOURCE_DIR}/registryTest.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp)
+target_link_libraries(registryTest glog::glog)
+gtest_discover_tests(registryTest)
+
 ####################################################################################################
 # Builders targets
 ####################################################################################################
