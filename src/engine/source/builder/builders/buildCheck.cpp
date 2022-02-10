@@ -43,7 +43,7 @@ Op_t builder::internals::builders::buildCheckFH(const std::string path)
             [=](json::Document e)
             {
                 // auto v = e.get(ref);
-                return e.exists("/"+path);
+                return e.exists("/" + path);
             });
     };
 }

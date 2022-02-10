@@ -1,12 +1,21 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _REGISTRY_H
 #define _REGISTRY_H
 
+#include <functional>
 #include <glog/logging.h>
 #include <map>
 #include <rxcpp/rx.hpp>
 #include <string>
 #include <variant>
-#include <functional>
 
 #include "connectable.hpp"
 #include "json.hpp"

@@ -14,26 +14,26 @@
 #include <stdexcept>
 #include <string>
 
-#include "connectable.hpp"
-#include "json.hpp"
 #include "builders/buildCheck.hpp"
 #include "builders/buildOutput.hpp"
 #include "builders/stage.hpp"
+#include "connectable.hpp"
+#include "json.hpp"
 
 namespace builder::internals::builders
 {
-    // The type of the event which will flow through the stream
-    using Event_t = json::Document;
-    // The type of the observable which will compose the processing graph
-    using Obs_t = rxcpp::observable<Event_t>;
-    // The type of the connectables whisch will help us connect the assets ina graph
-    using Con_t = builder::internals::Connectable<Obs_t>;
-    // The type of a connectable operation
-    using Op_t = std::function<Obs_t(const Obs_t &)>;
-    // The signature of a maker function which will build an asset into a`
-    // connectable.
+// The type of the event which will flow through the stream
+using Event_t = json::Document;
+// The type of the observable which will compose the processing graph
+using Obs_t = rxcpp::observable<Event_t>;
+// The type of the connectables whisch will help us connect the assets ina graph
+using Con_t = builder::internals::Connectable<Obs_t>;
+// The type of a connectable operation
+using Op_t = std::function<Obs_t(const Obs_t &)>;
+// The signature of a maker function which will build an asset into a`
+// connectable.
 
-    using Graph_t = graph::Graph<Con_t>;
+using Graph_t = graph::Graph<Con_t>;
 /**
  * @brief Builds output connectable
  *
@@ -84,8 +84,9 @@ Con_t buildOutput(const json::Document & def)
         std::throw_with_nested(std::invalid_argument("Output builder expects definition to have a .outputs section."));
     }
     Op_t outputsStage = buildOutputStage(outputs);
-    
-    return Con_t(name->GetString(), parents,[=](const Obs_t & input) -> Obs_t { return outputsStage(checkStage(input)); });
+
+    return Con_t(name->GetString(), parents,
+                 [=](const Obs_t & input) -> Obs_t { return outputsStage(checkStage(input)); });
 }
 
 } // namespace builder::internals::builders

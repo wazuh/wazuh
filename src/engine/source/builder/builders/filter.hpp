@@ -50,7 +50,8 @@ Con_t buildFilter(const json::Document & def)
     auto after = def.get(".after");
     if (!after || !after->IsArray())
     {
-        throw std::invalid_argument("Filter builder expects a filter to have an .after array with the names of the assets this filter will be connected to.");
+        throw std::invalid_argument("Filter builder expects a filter to have an .after array with the names of the "
+                                    "assets this filter will be connected to.");
     }
 
     for (auto & i : after->GetArray())
