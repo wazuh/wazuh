@@ -21,8 +21,8 @@ namespace builder::internals
 void registerBuilders()
 {
     // Needed to initialize the variant type
-    Registry::BuildValue b;
-    Registry::BuildType c;
+    BuildValue b;
+    BuildType c;
 
     // Register all builders
     // Condition Value
