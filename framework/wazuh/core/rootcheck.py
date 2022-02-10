@@ -2,11 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
 from wazuh.core.agent import Agent
 from wazuh.core.common import DATE_FORMAT
 from wazuh.core.exception import WazuhException
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -67,7 +66,7 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
-            return datetime.utcfromtimestamp(value).strftime(DATE_FORMAT) \
+            return get_date_from_timestamp(value).strftime(DATE_FORMAT) \
                 if field_name in ['date_first', 'date_last'] else value
 
         return {'items': [{field: format_fields(field, db_tuple[field]) for field in self.select |
@@ -98,13 +97,14 @@ def last_scan(agent_id):
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event WHERE "
                               "log = 'Ending rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    end = datetime.utcfromtimestamp(time).strftime(DATE_FORMAT) if time is not None else None
+    end = get_date_from_timestamp(time).strftime(DATE_FORMAT) if time is not None else None
 
     # start time
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event "
                               "WHERE log = 'Starting rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    start = datetime.utcfromtimestamp(time).strftime(DATE_FORMAT) if time is not None else None
+
+    start = get_date_from_timestamp(time).strftime(DATE_FORMAT) if time is not None else None
 
     return {'start': start, 'end': None if start is None else None if end is None or end < start else end}
 

@@ -13,7 +13,7 @@ import sys
 import tempfile
 import typing
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
@@ -91,7 +91,7 @@ def previous_month(n=1):
     :return: First date of the previous n month.
     """
 
-    date = datetime.utcnow().replace(day=1)  # First day of current month
+    date = get_utc_now().replace(day=1)  # First day of current month
 
     for i in range(0, int(n)):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
@@ -933,7 +933,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         for pattern in date_patterns:
             try:
-                return datetime.strptime(element, pattern)
+                return get_utc_strptime(element, pattern)
             except ValueError:
                 pass
 
@@ -1293,15 +1293,13 @@ class WazuhDBQuery(object):
         self.select = self._parse_select_filter(self.select)
 
     def _parse_query(self):
-        """
-        A query has the following pattern: field operator value separator field operator value...
+        """A query has the following pattern: field operator value separator field operator value...
+
         An example of query: status=never_connected;name!=pepe
             * Field must be a database field (it must be contained in self.fields variable)
             * operator must be one of = != < >
             * value can be anything
             * Separator can be either ; for 'and' or , for 'or'.
-
-        :return: A list with processed query (self.fields)
         """
         if not self.query_regex.match(self.q):
             raise WazuhError(1407, self.q)
@@ -1440,7 +1438,7 @@ class WazuhDBQuery(object):
             raise WazuhError(1412, date_filter['value'])
 
     def general_run(self):
-        """Builds the query and runs it on the database"""
+        """Builds the query and runs it on the database."""
         self._add_select_to_query()
         self._add_filters_to_query()
         self._add_search_to_query()
@@ -1456,7 +1454,7 @@ class WazuhDBQuery(object):
 
     def oversized_run(self):
         """Method used when the size of the query exceeds the maximum available in the communication.
-        Builds the query and runs it on the database"""
+        Builds the query and runs it on the database."""
         self._add_select_to_query()
         original_select = self.select
         rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
@@ -1507,7 +1505,7 @@ class WazuhDBQuery(object):
 
     def run(self):
         """Generic function that will redirect the information
-        to the function that needs to be used for the specific case"""
+        to the function that needs to be used for the specific case."""
         if self.legacy_filters is None:
             return self.general_run()
 
@@ -1563,9 +1561,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
 class WazuhDBQueryGroupBy(WazuhDBQuery):
-    """
-    Retrieves unique values for multiple fields using group by
-    """
+    """Retrieves unique values for multiple fields using group by."""
 
     def __init__(self, filter_fields, *args, **kwargs):
         WazuhDBQuery.__init__(self, *args, **kwargs)
@@ -1874,9 +1870,7 @@ def full_copy(src: str, dst: str, follow_symlinks=True) -> None:
 
 
 class Timeout:
-    """
-    Raise TimeoutError after n seconds.
-    """
+    """Raise TimeoutError after n seconds."""
 
     def __init__(self, seconds, error_message=''):
         self.seconds = seconds
@@ -1891,3 +1885,48 @@ class Timeout:
 
     def __exit__(self, type, value, traceback):
         alarm(0)
+
+
+def get_date_from_timestamp(timestamp):
+    """
+    Function to return the date in datetime format and UTC timezone.
+
+    Parameters
+    ----------
+    timestamp: float
+        The timestamp.
+
+    Returns
+    -------
+    date: datetime
+        The default date.
+    """
+
+    date = datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+    return date
+
+
+def get_utc_now():
+    """Function to return the current date.
+
+    Returns
+    -------
+    date: datetime
+        The current date
+    """
+
+    date = datetime.utcnow().replace(tzinfo=timezone.utc)
+    return date
+
+
+def get_utc_strptime(date, datetime_format):
+    """Function to transform str to date.
+
+    Returns
+    -------
+    date: datetime
+        The current date
+    """
+
+    date = datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
+    return date

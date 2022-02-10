@@ -6,7 +6,7 @@ import ipaddress
 import re
 import threading
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from json import dumps, loads
 from os import chown, chmod
@@ -19,7 +19,8 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move, get_utc_now, get_utc_strptime, \
+    get_date_from_timestamp
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
@@ -753,7 +754,7 @@ class Agent:
 
     @staticmethod
     def check_if_delete_agent(id, seconds):
-        """Check if we should remove an agent: if time from last connection is greater thant <seconds>.
+        """Check if we should remove an agent: if time from last connection is greater than <seconds>.
 
         :param id: id of the new agent.
         :param seconds: Number of seconds.
@@ -771,10 +772,10 @@ class Agent:
                     remove_agent = True
                 else:
                     if isinstance(agent_info['lastKeepAlive'], datetime):
-                        last_date = agent_info['lastKeepAlive']
+                        last_date = agent_info['lastKeepAlive'].replace(tzinfo=timezone.utc)
                     else:
-                        last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                    difference = (datetime.utcnow() - last_date).total_seconds()
+                        last_date = get_utc_strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
+                    difference = (get_utc_now() - last_date).total_seconds()
                     if difference >= seconds:
                         remove_agent = True
 
@@ -922,7 +923,7 @@ def format_fields(field_name, value):
     elif field_name == 'group':
         return value.split(',')
     elif field_name in ['dateAdd', 'lastKeepAlive', 'disconnection_time']:
-        return datetime.utcfromtimestamp(value) if not isinstance(value, str) else value
+        return get_date_from_timestamp(value) if not isinstance(value, str) else value
     else:
         return value
 
@@ -1098,7 +1099,8 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     # Receive upgrade information from socket
     data = loads(s.receive().decode())
     s.close()
-    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(DATE_FORMAT))
+
+    [agent_info.update((k, get_utc_strptime(v, "%Y/%m/%d %H:%M:%S").strftime(DATE_FORMAT))
                        for k, v in agent_info.items() if k in {'create_time', 'update_time'})
      for agent_info in data['data']]
 

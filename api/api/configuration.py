@@ -201,10 +201,10 @@ def generate_self_signed_certificate(private_key, certificate_path):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow()
+        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     ).not_valid_after(
         # Our certificate will be valid for 10 days
-        datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     ).add_extension(
         x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
         critical=False,

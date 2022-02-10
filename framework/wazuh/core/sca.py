@@ -2,13 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import re
-from datetime import datetime
-
 from wazuh.core.agent import Agent
 from wazuh.core.common import MAXIMUM_DATABASE_LIMIT
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 
 # API field -> DB field
 fields_translation_sca = {'policy_id': 'policy_id',
@@ -74,7 +71,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
             if field_name in ['end_scan', 'start_scan']:
-                return datetime.utcfromtimestamp(value)
+                return get_date_from_timestamp(value)
             else:
                 return value
 

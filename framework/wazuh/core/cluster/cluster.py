@@ -20,7 +20,7 @@ from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.core.utils import md5, mkdir_with_mode
+from wazuh.core.utils import md5, mkdir_with_mode, get_utc_now, get_date_from_timestamp
 
 logger = logging.getLogger('wazuh')
 agent_groups_path = os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH)
@@ -615,7 +615,7 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
             with open(full_path, 'rb') as f:
                 data = f.read()
 
-            header = f"{len(data)} {filename} {datetime.utcfromtimestamp(stat_data.st_mtime)}"
+            header = f"{len(data)} {filename} {get_date_from_timestamp(stat_data.st_mtime)}"
 
             o_f.write((header + '\n').encode() + data)
 

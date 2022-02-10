@@ -3,12 +3,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import copy
-from datetime import datetime
 from functools import lru_cache
 from typing import Union
 
 from wazuh.core import common
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_utc_strptime
 from wazuh.core.utils import process_array
 
 # Optimal request_slice values for each WazuhDBQuery
@@ -72,7 +71,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         """Standardization of dates to the ISO 8601 format."""
-        [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.DECIMALS_DATE_FORMAT))
+        [t.update((k, get_utc_strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.DECIMALS_DATE_FORMAT))
                   for k, v in t.items() if k in self.date_fields) for t in self._data]
 
         return {'items': self._data, 'totalItems': self.total_items}

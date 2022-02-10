@@ -135,12 +135,13 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
                         mock_encode):
     """Verify if result is as expected"""
 
-    class NewDatetime(datetime):
+    class NewDatetime:
         def timestamp(self) -> float:
             return 0
 
     mock_raise_if_exc.return_value = security_conf
-    with patch('api.authentication.datetime', NewDatetime):
+    # with patch('api.authentication.datetime', NewDatetime):
+    with patch('api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
         result = authentication.generate_token('001', {'roles': [1]})
     assert result == 'test_token', 'Result is not as expected'
 

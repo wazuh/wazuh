@@ -9,7 +9,7 @@ import threading
 import time
 from collections import defaultdict
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 from unittest.mock import patch, MagicMock, call, ANY
 
@@ -31,6 +31,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster import common as cluster_common, client, master
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
+        from wazuh.core.utils import get_utc_strptime
 
 # Global variables
 
@@ -268,17 +269,20 @@ def test_master_handler_init():
         assert master_handler.sync_integrity_free[0] is True
         assert isinstance(master_handler.sync_integrity_free[1], datetime)
         assert master_handler.extra_valid_requested is False
-        assert master_handler.integrity_check_status == {'date_start_master': datetime(1970, 1, 1, 0, 0),
-                                                         'date_end_master': datetime(1970, 1, 1, 0, 0)}
-        assert master_handler.integrity_sync_status == {'date_start_master': datetime(1970, 1, 1, 0, 0),
-                                                        'tmp_date_start_master': datetime(1970, 1, 1, 0, 0),
-                                                        'date_end_master': datetime(1970, 1, 1, 0, 0),
-                                                        'total_extra_valid': 0,
-                                                        'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
-                                                                        'extra_valid': 0}}
-        assert master_handler.sync_agent_info_status == {'date_start_master': datetime(1970, 1, 1, 0, 0),
-                                                         'date_end_master': datetime(1970, 1, 1, 0, 0),
-                                                         'n_synced_chunks': 0}
+        assert master_handler.integrity_check_status == {
+            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)}
+        assert master_handler.integrity_sync_status == {
+            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'tmp_date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'total_extra_valid': 0,
+            'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
+                            'extra_valid': 0}}
+        assert master_handler.sync_agent_info_status == {
+            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'n_synced_chunks': 0}
         assert master_handler.version == ""
         assert master_handler.cluster_name == ""
         assert master_handler.node_type == ""
@@ -308,14 +312,16 @@ def test_master_handler_to_dict():
     assert "sync_integrity_free" in output["status"]
     assert output["status"]["sync_integrity_free"] == master_handler.sync_integrity_free[0]
     assert "last_check_integrity" in output["status"]
-    assert output["status"]["last_check_integrity"] == {'date_start_master': datetime(1970, 1, 1, 0, 0),
-                                                        'date_end_master': datetime(1970, 1, 1, 0, 0)}
+    assert output["status"]["last_check_integrity"] == {
+        'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+        'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)}
     assert "last_sync_integrity" in output["status"]
-    assert output["status"]["last_sync_integrity"] == {'date_start_master': datetime(1970, 1, 1, 0, 0),
-                                                       'date_end_master': datetime(1970, 1, 1, 0, 0),
-                                                       'total_extra_valid': 0,
-                                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
-                                                                       'extra_valid': 0}}
+    assert output["status"]["last_sync_integrity"] == {
+        'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+        'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+        'total_extra_valid': 0,
+        'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
+                        'extra_valid': 0}}
     assert "last_sync_agentinfo" in output["status"]
     assert output["status"]["last_sync_agentinfo"] == master_handler.sync_agent_info_status
     assert "last_keep_alive" in output["status"]
@@ -862,9 +868,10 @@ def test_manager_handler_send_data_to_wdb_ko(WazuhDBConnection_mock):
 @patch("json.dumps", return_value="")
 @patch("wazuh.core.wdb.socket.socket")
 @patch("wazuh.core.wdb.WazuhDBConnection.send", return_value=["ok"])
+@patch('wazuh.core.cluster.master.utils.get_utc_now', return_value=datetime(1970, 1, 1, 0, 0))
 @patch("json.loads", return_value={"chunks": "1", "set_data_command": "1"})
 @patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value="response")
-async def test_master_handler_sync_wazuh_db_info_ok(send_request_mock, loads_mock, send_mock, socket_mock,
+async def test_master_handler_sync_wazuh_db_info_ok(send_request_mock, loads_mock, utc_now_mock, send_mock, socket_mock,
                                                     json_dumps_mock):
     """Check if the chunks of data are updated and iterated."""
 
@@ -910,38 +917,18 @@ async def test_master_handler_sync_wazuh_db_info_ok(send_request_mock, loads_moc
 
     # Test the first and second try, also nested else
     with patch('wazuh.core.cluster.master.cluster.run_in_pool',
-               return_value={'error_messages': {'others': 'ERROR', 'chunks': ''},
+               return_value={'error_messages': {'others': ['ERROR'], 'chunks': [{0: 0, 1: 1}]},
                              'updated_chunks': 0, 'time_spent': 0}):
         assert await master_handler.sync_wazuh_db_info(b"task_id") == send_request_mock.return_value
 
-    # Test the first try and second try, nested if
-    send_mock.return_value = ["not_ok"]
-    assert await master_handler.sync_wazuh_db_info(b"task_id") == send_request_mock.return_value
-
-    # Test the first try and second except
-    send_mock.side_effect = Exception()
-    assert await master_handler.sync_wazuh_db_info(b"task_id") == send_request_mock.return_value
-
-    send_request_mock.assert_has_calls([call(command=b'syn_m_a_e', data=b''), call(command=b'syn_m_a_e', data=b''),
-                                        call(command=b'syn_m_a_e', data=b'')])
-    loads_mock.assert_has_calls([call("payload"), call("payload"), call("payload")])
-    assert socket_mock.call_count == 2
-    json_dumps_mock.assert_has_calls(
-        [call({'error_messages': [], 'updated_chunks': 0, 'time_spent': 0}),
-         call({'updated_chunks': 1, 'error_messages': [], 'time_spent': 0.0}),
-         call({'updated_chunks': 0, 'error_messages': [''], 'time_spent': 0.0})])
-    send_mock.assert_has_calls([call("1 1", raw=True), call("1 1", raw=True)])
+    send_request_mock.assert_called_once_with(command=b'syn_m_a_e', data=b'')
+    loads_mock.assert_called_once_with("payload")
+    json_dumps_mock.assert_called_once_with({'error_messages': [1], 'updated_chunks': 0, 'time_spent': 0})
     assert master_handler.task_loggers["Agent-info sync"]._info == ["Starting",
-                                                                    "Finished in 0.000s. Updated 0 chunks.",
-                                                                    "Starting",
-                                                                    "Finished in 0.000s. Updated 1 chunks.",
-                                                                    "Starting",
                                                                     "Finished in 0.000s. Updated 0 chunks."]
-    assert master_handler.task_loggers["Agent-info sync"]._error == ['E', 'R', 'R', 'O', 'R',
-                                                                     'Wazuh-db response for chunk 1/1 was not "ok": ']
-    assert master_handler.task_loggers["Agent-info sync"]._debug == ["0/1 chunks updated in wazuh-db in 0.000000s.",
-                                                                     "1/1 chunks updated in wazuh-db in 0.000000s.",
-                                                                     "0/1 chunks updated in wazuh-db in 0.000000s.", ]
+    assert master_handler.task_loggers["Agent-info sync"]._error == ['ERROR',
+                                                                     'Wazuh-db response for chunk 1/1 was not "ok": 1']
+    assert master_handler.task_loggers["Agent-info sync"]._debug == ["0/1 chunks updated in wazuh-db in 0.000000s."]
     assert master_handler.task_loggers["Agent-info sync"]._debug2 == ['Chunk 1/1: 1']
 
 
@@ -1103,7 +1090,7 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mo
     assert master_handler.integrity_sync_status['date_end_master'] == "2021-11-02T00:00:00.000000Z"
     logger_mock.assert_called_once_with(
         "Finished in {:.3f}s.".format(
-            (datetime.strptime(master_handler.integrity_sync_status['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ') -
+            (get_utc_strptime(master_handler.integrity_sync_status['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ') -
              master_handler.integrity_sync_status['tmp_date_start_master']).total_seconds()))
     assert master_handler.integrity_sync_status['date_start_master'] == "1970-01-01T00:00:00.000000Z"
     assert master_handler.extra_valid_requested is False
@@ -1788,6 +1775,7 @@ async def test_master_file_status_update_ok(run_in_pool_mock, sleep_mock):
 @patch("wazuh.core.agent.Agent.get_agents_overview", return_value={'items': [{'node_name': '1'}]})
 def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     """Check if nodes and the synchronization information is properly obtained."""
+
     class MockDict(Dict):
         def __init__(self, kwargs):
             super().__init__(**kwargs)
@@ -1798,7 +1786,6 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     class MockMaster(master.Master):
         def to_dict(self):
             return {'testing': 'get_health', 'info': {'type': 'master'}}
-
 
     master_class = MockMaster(performance_test=False, concurrency_test=False,
                               configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,

@@ -10,19 +10,19 @@
 # python mitredb.py -d /other/directory/mitre.db  -> install mitre.db in other directory
 # python mitredb.py -h -> Help
 
+import argparse
+import grp
 import json
 import os
 import pwd
-import grp
-import argparse
 import sys
-import copy
-import const
-from datetime import datetime
-from sqlalchemy import create_engine, Column, DateTime, String, Integer, ForeignKey, Boolean
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime, timezone
 
+from sqlalchemy import create_engine, Column, DateTime, String, ForeignKey, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+
+import const
 
 Base = declarative_base()
 
@@ -76,7 +76,7 @@ class Technique(Base):
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
-    modified_time = Column(const.MODIFIED_t ,DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
     mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
     mitre_detection = Column(const.MITRE_DETECTION_t, String, default=None)
     network_requirements = Column(const.NETWORK_REQ_t, Boolean, default=False)
@@ -403,9 +403,11 @@ def parse_table(function, data_object):
         row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
 
     if const.CREATED_j in data_object:
-        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
+        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT).replace(
+            tzinfo=timezone.utc)
     if const.MODIFIED_j in data_object:
-        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
+        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT).replace(
+            tzinfo=timezone.utc)
     if function.__name__ == 'Tactic':
         if const.SHORT_NAME_j in data_object:
             row[const.SHORT_NAME_t] = data_object[const.SHORT_NAME_j]
@@ -430,9 +432,11 @@ def parse_json_techniques(technique_json, phases_table):
     if technique_json.get(const.DESCRIPTION_t):
         row[const.DESCRIPTION_t] = technique_json[const.DESCRIPTION_t]
     if technique_json.get(const.CREATED_j):
-        row[const.CREATED_t] = datetime.strptime(technique_json[const.CREATED_j], const.TIME_FORMAT)
+        row[const.CREATED_t] = datetime.strptime(technique_json[const.CREATED_j], const.TIME_FORMAT).replace(
+            tzinfo=timezone.utc)
     if technique_json.get(const.MODIFIED_j):
-        row[const.MODIFIED_t] = datetime.strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT)
+        row[const.MODIFIED_t] = datetime.strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT).replace(
+            tzinfo=timezone.utc)
     if technique_json.get(const.MITRE_VERSION_j):
         row[const.MITRE_VERSION_t] = technique_json[const.MITRE_VERSION_j]
     if technique_json.get(const.MITRE_DETECTION_j):
@@ -481,7 +485,7 @@ def parse_json_techniques(technique_json, phases_table):
             requirement_rows_list.append(row_requirement)
     if technique_json.get(const.PHASES_j):
         for phase in technique_json[const.PHASES_j]:
-             phases_table.append([row[const.ID_t], phase[const.PHASE_NAME_j]])
+            phases_table.append([row[const.ID_t], phase[const.PHASE_NAME_j]])
 
     parse_common_tables(row[const.ID_t], technique_json)
 
@@ -499,9 +503,11 @@ def parse_json_mitigate_use(data_object):
     if data_object.get(const.DESCRIPTION_t):
         row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
     if data_object.get(const.CREATED_j):
-        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
+        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT).replace(
+            tzinfo=timezone.utc)
     if data_object.get(const.MODIFIED_j):
-        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
+        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT).replace(
+            tzinfo=timezone.utc)
 
     return row
 
@@ -584,10 +590,12 @@ def parse_json_ext_references(data_object):
 
 def parse_json_relationships(relationships_json, relationship_table_revoked_by, relationship_table_subtechique_of):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
-        relationship_table_revoked_by.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
+        relationship_table_revoked_by.append(
+            [relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.SUBTECHNIQUE_OF_j:
-        relationship_table_subtechique_of.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
+        relationship_table_subtechique_of.append(
+            [relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.MITIGATES_j:
         mitigate = parse_json_mitigate_use(relationships_json)
@@ -657,7 +665,8 @@ def parse_json(pathfile, session, database):
                     technique = parse_json_techniques(data_object, phases_table)
                     techniques.append(technique)
                 elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
-                    parse_json_relationships(data_object, relationship_table_revoked_by, relationship_table_subtechique_of)
+                    parse_json_relationships(data_object, relationship_table_revoked_by,
+                                             relationship_table_subtechique_of)
                 else:
                     continue
 
