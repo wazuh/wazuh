@@ -12,9 +12,9 @@
 namespace builder::internals
 {
 
-std::map<std::string, Registry::BuildType> Registry::m_registry;
+std::map<std::string, BuildType> Registry::m_registry;
 
-void Registry::registerBuilder(const std::string & builderName, const Registry::BuildType & builder)
+void Registry::registerBuilder(const std::string & builderName, const BuildType & builder)
 {
     if (Registry::m_registry.count(builderName) > 0)
     {
@@ -27,7 +27,7 @@ void Registry::registerBuilder(const std::string & builderName, const Registry::
     }
 }
 
-Registry::BuildType Registry::getBuilder(const std::string & builderName)
+BuildType Registry::getBuilder(const std::string & builderName)
 {
     if (Registry::m_registry.count(builderName) == 0)
     {
