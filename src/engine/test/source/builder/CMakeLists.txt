@@ -71,7 +71,14 @@ link_libraries(
 # Builder targets
 ####################################################################################################
 # Builder test
-add_executable(builderTest ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildCheck.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildMap.cpp)
+add_executable(
+  builderTest
+  ${BUILDER_ENGINE_SOURCE_DIR}/builder.cpp
+  ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildMap.cpp
+)
+target_link_libraries(builderTest glog::glog)
 gtest_discover_tests(builderTest)
 
 # Registry test
@@ -82,6 +89,7 @@ gtest_discover_tests(registryTest)
 # Register test
 add_executable(registerTest
   ${BUILDER_TEST_SOURCE_DIR}/registerTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildCheck.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   )
 target_link_libraries(registerTest glog::glog)
