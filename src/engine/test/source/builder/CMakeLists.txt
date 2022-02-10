@@ -91,10 +91,10 @@ gtest_discover_tests(registerTest)
 # Builders targets
 ####################################################################################################
 
-add_executable(buildCheckTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildCheckTest.cpp)
+add_executable(buildCheckTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildCheckTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildCheck.cpp)
 gtest_discover_tests(buildCheckTest)
 
-add_executable(buildMapTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildMapTest.cpp)
+add_executable(buildMapTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildMapTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildMap.cpp)
 gtest_discover_tests(buildMapTest)
 
 add_executable(checkStageTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/checkStageTest.cpp)
@@ -103,7 +103,7 @@ gtest_discover_tests(checkStageTest)
 add_executable(checkValTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/checkValTest.cpp)
 gtest_discover_tests(checkValTest)
 
-add_executable(decoderTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/decoderTest.cpp)
+add_executable(decoderTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/decoderTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/decoder.cpp)
 gtest_discover_tests(decoderTest)
 
 add_executable(fileOutputTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/fileOutputTest.cpp)
