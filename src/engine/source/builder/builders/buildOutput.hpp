@@ -55,10 +55,8 @@ Op_t buildFileOutput(const json::Value & def)
     {
         auto filePtr = std::make_shared<builder::internals::outputs::FileOutput>(filepath);
         input.subscribe([=](auto v) { filePtr->write(v); },
-                        [](std::exception_ptr e){
-                            std::cerr << rxcpp::util::what(e).c_str() << std::endl;
-                        },
-                        [=]() { // filePtr->close(); 
+                        [](std::exception_ptr e) { std::cerr << rxcpp::util::what(e).c_str() << std::endl; },
+                        [=]() { // filePtr->close();
                         });
         return input;
     };

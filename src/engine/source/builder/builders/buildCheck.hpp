@@ -30,35 +30,35 @@ using Obs_t = rxcpp::observable<Event_t>;
 using Op_t = std::function<Obs_t(const Obs_t &)>;
 
 /**
- * @brief 
- * 
- * @param input 
- * @return Obs_t 
+ * @brief
+ *
+ * @param input
+ * @return Obs_t
  */
 Obs_t unit_op(Obs_t input);
 
 /**
- * @brief 
- * 
- * @param def 
- * @return Op_t 
+ * @brief
+ *
+ * @param def
+ * @return Op_t
  */
 Op_t buildCheckVal(const json::Value & def);
 
 /**
- * @brief 
- * 
- * @param path 
- * @return Op_t 
+ * @brief
+ *
+ * @param path
+ * @return Op_t
  */
 Op_t buildCheckFH(const std::string path);
 
 /**
- * @brief 
- * 
- * @param path 
- * @param ref 
- * @return Op_t 
+ * @brief
+ *
+ * @param path
+ * @param ref
+ * @return Op_t
  */
 Op_t buildCheckRef(const std::string path, const std::string ref);
 
