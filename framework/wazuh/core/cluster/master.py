@@ -521,6 +521,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         ----------
         sync_type : bytes
             Sync process to start.
+        data : bytes
+            Data to be sent.
 
         Returns
         -------
@@ -1022,7 +1024,6 @@ class Master(server.AbstractServer):
         """
         super().__init__(**kwargs, tag="Master")
         self.agent_groups_control = {}
-        self.agent_groups_control_block = True
         self.agent_groups_control_workers = set()
         self.integrity_control = {}
         self.handler_class = MasterHandler
