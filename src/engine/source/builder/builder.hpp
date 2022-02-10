@@ -1,3 +1,12 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _BUILDER_H
 #define _BUILDER_H
 
@@ -196,12 +205,11 @@ public:
         return [=](Obs_t o) -> Obs_t
         {
             Obs_t last;
-            // This algorithm builds the RXCPP based graph of operations 
+            // This algorithm builds the RXCPP based graph of operations
             // every time the closure is called. The whole graph is captured
             // by value by the parent closure.
             auto visit = [&](Obs_t source, Con_t root, auto & visit_ref) -> void
             {
-  
                 auto itr = edges.find(root);
                 if (itr == edges.end())
                 {

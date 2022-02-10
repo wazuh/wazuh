@@ -29,19 +29,19 @@ using Obs_t = rxcpp::observable<Event_t>;
 using Op_t = std::function<Obs_t(const Obs_t &)>;
 
 /**
- * @brief 
- * 
- * @param def 
- * @return Op_t 
+ * @brief
+ *
+ * @param def
+ * @return Op_t
  */
 Op_t buildMapVal(const json::Value & def);
 
 /**
- * @brief 
- * 
- * @param path 
- * @param ref 
- * @return Op_t 
+ * @brief
+ *
+ * @param path
+ * @param ref
+ * @return Op_t
  */
 Op_t buildMapRef(const std::string path, const std::string ref);
 
