@@ -10,33 +10,13 @@
 #ifndef _BUILDERS_DECODER_H
 #define _BUILDERS_DECODER_H
 
-#include <algorithm>
-#include <functional>
-#include <rxcpp/rx.hpp>
-#include <stdexcept>
-#include <vector>
-
+#include "builders/builders.hpp"
 #include "builders/buildCheck.hpp"
 #include "builders/buildMap.hpp"
 #include "builders/stage.hpp"
-#include "connectable.hpp"
-#include "json.hpp"
 
 namespace builder::internals::builders
 {
-// The type of the event which will flow through the stream
-using Event_t = json::Document;
-// The type of the observable which will compose the processing graph
-using Obs_t = rxcpp::observable<Event_t>;
-// The type of the connectables whisch will help us connect the assets ina graph
-using Con_t = builder::internals::Connectable<Obs_t>;
-// The type of a connectable operation
-using Op_t = std::function<Obs_t(const Obs_t &)>;
-// The signature of a maker function which will build an asset into a`
-// connectable.
-
-using Graph_t = graph::Graph<Con_t>;
-
 /**
  * @brief Builds decoder connectable from the decoder definition.
  *
