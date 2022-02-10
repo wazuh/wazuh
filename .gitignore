@@ -62,24 +62,7 @@ _deps
 # Ignore all local history of files
 .history
 .ionide
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-# Support for Project snippet scope
-!.vscode/*.code-snippets
-
-# Personal
-_*.*pp
-=======
->>>>>>> Fix gitignore
-=======
 
 # Test output files
-<<<<<<< HEAD
-.log
-.csv
->>>>>>> Stats monitoring script called on main acceptance test script and gitignore updated
-=======
 *.log
 *.csv
->>>>>>> Scripts fixed and python script to process stats added
