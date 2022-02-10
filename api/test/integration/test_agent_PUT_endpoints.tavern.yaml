@@ -957,7 +957,6 @@ stages:
             - error:
                 code: 1822
                 message: !anystr
-                remediation: !anything
               id:
                 - '001'
         message: !anystr
@@ -1050,7 +1049,6 @@ stages:
             - error:
                 code: 1822
                 message: !anystr
-                remediation: !anything
               id:
                 - '001'
                 - '002'
