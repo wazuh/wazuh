@@ -9,11 +9,13 @@
  * Foundation.
  */
 
+#include <typeinfo>
 #ifdef WIN32
 
 #ifndef _REGISTRY_HELPER_H
 #define _REGISTRY_HELPER_H
 
+#include <iostream>
 #include <string>
 #include <windows.h>
 #include <winreg.h>
@@ -111,7 +113,7 @@ namespace Utils
             std::vector<std::string> enumerateValueKey() const
             {
                 std::vector<std::string> ret;
-                constexpr auto MAX_KEY_NAME_VALUE {260}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+                constexpr auto MAX_KEY_NAME_VALUE {32767}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
                 char buffer[MAX_KEY_NAME_VALUE];
                 DWORD size {MAX_KEY_NAME_VALUE};
                 DWORD index {0};
@@ -185,7 +187,7 @@ namespace Utils
 
             bool enumerateValueKey(std::vector<std::string>& values) const
             {
-                bool ret{true};
+                auto ret{true};
 
                 try
                 {
@@ -240,6 +242,26 @@ namespace Utils
                 }
 
                 return std::string{reinterpret_cast<const char*>(spBuff.get())};
+            }
+
+
+            bool longint(const std::string& valueName, ULONGLONG* value) const
+            {
+                DWORD size {sizeof(ULONGLONG)};
+                DWORD type;
+                const auto result { RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(value), &size) };
+
+                if (result != ERROR_SUCCESS)
+                {
+                    throw std::system_error
+                    {
+                        result,
+                        std::system_category(),
+                        "Error reading the value of: " + valueName
+                    };
+                }
+
+                return (type != REG_QWORD) ? false : true;
             }
 
             bool string(const std::string& valueName, std::string& value) const
