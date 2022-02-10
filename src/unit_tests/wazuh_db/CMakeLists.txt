@@ -48,6 +48,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity -Wl,--wrap,wdb_global_get_backups \
                              -Wl,--wrap,wdb_global_restore_backup -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                              -Wl,--wrap,wdb_global_select_group_belong -Wl,--wrap,wdb_global_set_agent_groups -Wl,--wrap,wdb_global_sync_agent_groups_get \
+                             -Wl,--wrap,wdb_global_get_group_agents \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")

@@ -5214,7 +5214,7 @@ int wdb_parse_global_get_group_agents(wdb_t* wdb, char* input, char* output) {
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL || strcmp(next, "last_id") != 0) {
         mdebug1("Invalid arguments, 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, 'last_id' not found");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments, 'last_id' not found.");
         return OS_INVALID;
     }
     next = strtok_r(NULL, delim, &savedptr);

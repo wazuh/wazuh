@@ -1077,7 +1077,11 @@ void test_wdb_global_sync_agent_groups_get_no_agents_get_hash_false(void **state
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id+1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_single_column, j_groups);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_groups);
     expect_function_call(__wrap_cJSON_Delete);
 
     /* Next agent */
@@ -1193,7 +1197,11 @@ void test_wdb_global_sync_agent_groups_get_set_synced_error(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id+1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_single_column, root);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
     /* wdb_global_set_agent_groups_sync_status */
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNC_SET);
@@ -1249,7 +1257,11 @@ void test_wdb_global_sync_agent_groups_get_due_buffer_full(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, last_agent_id+1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_single_column, j_groups);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_groups);
 
     result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, &j_output);
 
@@ -4623,9 +4635,33 @@ void test_wdb_global_select_group_belong_exec_fail(void **state)
     expect_any_always(__wrap_sqlite3_bind_int, index);
     expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    will_return(__wrap_wdb_exec_stmt_single_column, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed in getting the groups of the agent.");
+
+    j_result = wdb_global_select_group_belong(data->wdb, 1);
+    assert_null(j_result);
+}
+
+void test_wdb_global_select_group_belong_socket_size_error(void **state)
+{
+    cJSON *j_result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_any_always(__wrap_sqlite3_bind_int, index);
+    expect_any_always(__wrap_sqlite3_bind_int, value);
+    will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "The groups of the agent are bigger than the socket size.");
 
     j_result = wdb_global_select_group_belong(data->wdb, 1);
     assert_null(j_result);
@@ -4644,7 +4680,11 @@ void test_wdb_global_select_group_belong_success(void **state)
     expect_any_always(__wrap_sqlite3_bind_int, index);
     expect_any_always(__wrap_sqlite3_bind_int, value);
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_single_column, j_root);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_root);
 
     j_result = wdb_global_select_group_belong(data->wdb, 1);
 
@@ -4652,6 +4692,161 @@ void test_wdb_global_select_group_belong_success(void **state)
     assert_string_equal(result, "[\"default\",\"new_group\"]");
     __real_cJSON_Delete(j_root);
     os_free(result);
+}
+
+/* Tests wdb_global_get_group_agents */
+
+void test_wdb_global_get_group_agents_cache_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_result = NULL;
+    wdbc_result status = WDBC_UNKNOWN;
+    char* group_name = "group_name";
+    int last_agent_id = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    j_result = wdb_global_get_group_agents(data->wdb, &status, group_name, last_agent_id);
+
+    assert_null(j_result);
+    assert_int_equal(status, WDBC_ERROR);
+}
+
+void test_wdb_global_get_group_agents_bind_text_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_result = NULL;
+    wdbc_result status = WDBC_UNKNOWN;
+    char* group_name = "group_name";
+    int last_agent_id = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    j_result = wdb_global_get_group_agents(data->wdb, &status, group_name, last_agent_id);
+
+    assert_null(j_result);
+    assert_int_equal(status, WDBC_ERROR);
+}
+
+void test_wdb_global_get_group_agents_bind_int_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_result = NULL;
+    wdbc_result status = WDBC_UNKNOWN;
+    char* group_name = "group_name";
+    int last_agent_id = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    j_result = wdb_global_get_group_agents(data->wdb, &status, group_name, last_agent_id);
+
+    assert_null(j_result);
+    assert_int_equal(status, WDBC_ERROR);
+}
+
+void test_wdb_global_get_group_agents_stmt_ok(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_result = NULL;
+    wdbc_result status = WDBC_UNKNOWN;
+    char* group_name = "group_name";
+    int last_agent_id = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_result);
+
+    j_result = wdb_global_get_group_agents(data->wdb, &status, group_name, last_agent_id);
+
+    assert_null(j_result);
+    assert_int_equal(status, WDBC_OK);
+}
+
+void test_wdb_global_get_group_agents_stmt_due(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_result = NULL;
+    wdbc_result status = WDBC_UNKNOWN;
+    char* group_name = "group_name";
+    int last_agent_id = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
+    will_return(__wrap_wdb_exec_stmt_sized, j_result);
+
+    j_result = wdb_global_get_group_agents(data->wdb, &status, group_name, last_agent_id);
+
+    assert_null(j_result);
+    assert_int_equal(status, WDBC_DUE);
+}
+
+void test_wdb_global_get_group_agents_stmt_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *j_result = NULL;
+    wdbc_result status = WDBC_UNKNOWN;
+    char* group_name = "group_name";
+    int last_agent_id = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_BELONG_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, j_result);
+
+    j_result = wdb_global_get_group_agents(data->wdb, &status, group_name, last_agent_id);
+
+    assert_null(j_result);
+    assert_int_equal(status, WDBC_ERROR);
 }
 
 /* Tests wdb_global_insert_agent_belong */
@@ -5384,6 +5579,7 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Setting agents as disconnected
@@ -5440,6 +5636,7 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Setting agents as disconnected
@@ -5489,6 +5686,7 @@ void test_wdb_global_get_agents_to_disconnect_err(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
     will_return(__wrap_wdb_exec_stmt_sized, NULL);
 
@@ -5520,6 +5718,7 @@ void test_wdb_global_get_agents_to_disconnect_invalid_elements(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Element error
@@ -5556,6 +5755,7 @@ void test_wdb_global_get_agents_to_disconnect_update_status_fail(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
     //Disconnect query error
@@ -5646,6 +5846,7 @@ void test_wdb_global_get_all_agents_ok(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
 
@@ -5679,6 +5880,7 @@ void test_wdb_global_get_all_agents_due(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
     will_return(__wrap_wdb_exec_stmt_sized, root);
 
@@ -5704,6 +5906,7 @@ void test_wdb_global_get_all_agents_err(void **state)
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
     will_return(__wrap_wdb_exec_stmt_sized, NULL);
 
@@ -5904,6 +6107,7 @@ void test_wdb_global_get_agents_by_connection_status_ok(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
 
@@ -5940,6 +6144,7 @@ void test_wdb_global_get_agents_by_connection_status_due(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ROW);
     will_return(__wrap_wdb_exec_stmt_sized, root);
 
@@ -5969,6 +6174,7 @@ void test_wdb_global_get_agents_by_connection_status_err(void **state)
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
     will_return(__wrap_wdb_exec_stmt_sized, NULL);
 
@@ -6689,7 +6895,11 @@ void test_wdb_global_calculate_agent_group_csv_success(void **state) {
     cJSON *j_groups = __real_cJSON_CreateArray();
     cJSON_AddItemToArray(j_groups, cJSON_CreateString("group1"));
     cJSON_AddItemToArray(j_groups, cJSON_CreateString("group2"));
-    will_return(__wrap_wdb_exec_stmt_single_column, j_groups);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_groups);
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -7211,7 +7421,11 @@ void create_wdb_global_calculate_agent_group_csv_success_call(int agent_id, cJSO
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt_single_column, j_group_resp);
+    /* wdb_exec_stmt_sized */
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_SINGLE_COLUMN);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, j_group_resp);
     expect_function_call(__wrap_cJSON_Delete);
 }
 
@@ -7949,17 +8163,21 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_success, test_setup, test_teardown),
         /* Tests wdb_global_select_group_belong */
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_transaction_fail,
-                                        test_setup,
-                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_socket_size_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_group_belong_success, test_setup, test_teardown),
+        /* Tests wdb_global_get_group_agents */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_group_agents_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_group_agents_bind_text_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_group_agents_bind_int_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_group_agents_stmt_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_group_agents_stmt_due, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_group_agents_stmt_error, test_setup, test_teardown),
         /* Tests wdb_global_insert_agent_belong */
-        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_transaction_fail,
-                                        test_setup,
-                                        test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_bind1_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_belong_bind2_fail, test_setup, test_teardown),

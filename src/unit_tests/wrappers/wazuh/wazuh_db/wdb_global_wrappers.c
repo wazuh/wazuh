@@ -140,6 +140,17 @@ cJSON* __wrap_wdb_global_select_agent_group(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
+cJSON* __wrap_wdb_global_get_group_agents(__attribute__((unused)) wdb_t *wdb,
+                                          wdbc_result* status,
+                                          char* group_name,
+                                          int last_agent_id) {
+
+    check_expected(group_name);
+    check_expected(last_agent_id);
+    *status = mock();
+    return mock_ptr_type(cJSON*);
+}
+
 int __wrap_wdb_global_delete_agent_belong(__attribute__((unused)) wdb_t *wdb,
                                           int id) {
     check_expected(id);

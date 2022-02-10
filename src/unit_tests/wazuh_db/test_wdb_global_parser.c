@@ -1399,6 +1399,115 @@ void test_wdb_parse_global_select_group_belong_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_get_group_agents */
+
+void test_wdb_parse_global_get_group_agents_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-group-agents";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-group-agents");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-group-agents.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-group-agents");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-group-agents'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_group_agents_group_missing(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-group-agents ";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-group-agents ");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments, group name not found.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments, group name not found.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_group_agents_last_id_missing(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-group-agents group_name";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-group-agents group_name");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments, 'last_id' not found.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments, 'last_id' not found.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_group_agents_last_id_value_missing(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-group-agents group_name last_id";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-group-agents group_name last_id");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments, last agent id not found.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments, last agent id not found.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_group_agents_failed(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-group-agents group_name last_id 0";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-group-agents group_name last_id 0");
+
+    expect_string(__wrap_wdb_global_get_group_agents, group_name, "group_name");
+    expect_value(__wrap_wdb_global_get_group_agents, last_agent_id, 0);
+    will_return(__wrap_wdb_global_get_group_agents, WDBC_ERROR);
+    will_return(__wrap_wdb_global_get_group_agents, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting group agents from global.db.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting group agents from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_group_agents_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-group-agents group_name last_id 0";
+    cJSON *result = cJSON_Parse("[1,2,3]");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-group-agents group_name last_id 0");
+
+    expect_string(__wrap_wdb_global_get_group_agents, group_name, "group_name");
+    expect_value(__wrap_wdb_global_get_group_agents, last_agent_id, 0);
+    will_return(__wrap_wdb_global_get_group_agents, WDBC_OK);
+    will_return(__wrap_wdb_global_get_group_agents, result);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok [1,2,3]");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_delete_group */
 
 void test_wdb_parse_global_delete_group_syntax_error(void **state)
@@ -2719,6 +2828,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_group_belong_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_group_belong_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_group_belong_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_get_group_agents */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_group_agents_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_group_agents_group_missing, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_group_agents_last_id_missing, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_group_agents_last_id_value_missing, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_group_agents_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_group_agents_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_delete_group */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_group_query_error, test_setup, test_teardown),
