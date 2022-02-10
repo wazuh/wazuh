@@ -837,6 +837,7 @@ void test_wdb_agents_remove_vuln_cves_by_status_error_exec_stmt_sized(void **sta
 
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
     will_return(__wrap_wdb_exec_stmt_sized, NULL);
     expect_string(__wrap__merror, formatted_msg, "Failed to retrieve vulnerabilities with status OBSOLETE from the database");
@@ -874,6 +875,7 @@ void test_wdb_agents_remove_vuln_cves_by_status_error_removing_cve(void **state)
 
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
 
@@ -921,6 +923,7 @@ void test_wdb_agents_remove_vuln_cves_by_status_success(void **state) {
 
     //Executing statement
     expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    expect_value(__wrap_wdb_exec_stmt_sized, column_mode, STMT_MULTI_COLUMN);
     will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
     will_return(__wrap_wdb_exec_stmt_sized, root);
 
