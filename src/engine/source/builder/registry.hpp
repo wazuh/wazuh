@@ -22,22 +22,20 @@
 
 namespace builder::internals
 {
+using Event_t = json::Document;
+// The type of the observable which will compose the processing graph
+using Obs_t = rxcpp::observable<Event_t>;
+// The type of the connectables whisch will help us connect the assets ina graph
+using Con_t = builder::internals::Connectable<Obs_t>;
+// The type of a connectable operation
+using Op_t = std::function<Obs_t(const Obs_t &)>;
+
+using BuildDocument = std::function<Op_t(const json::Document &)>;
+using BuildValue = std::function<Op_t(const json::Value &)>;
+using BuildType = std::variant<BuildValue, BuildDocument>;
 
 class Registry
 {
-public:
-    using Event_t = json::Document;
-    // The type of the observable which will compose the processing graph
-    using Obs_t = rxcpp::observable<Event_t>;
-    // The type of the connectables whisch will help us connect the assets ina graph
-    using Con_t = builder::internals::Connectable<Obs_t>;
-    // The type of a connectable operation
-    using Op_t = std::function<Obs_t(const Obs_t &)>;
-
-    using BuildDocument = std::function<Op_t(const json::Document &)>;
-    using BuildValue = std::function<Op_t(const json::Value &)>;
-    using BuildType = std::variant<BuildValue, BuildDocument>;
-
 private:
     static std::map<std::string, BuildType> m_registry;
 

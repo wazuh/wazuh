@@ -21,13 +21,29 @@
 
 #include "rxcpp/rx.hpp"
 
-#include "connectable.hpp"
 #include "graph.hpp"
 #include "include_builders.hpp"
 #include "json.hpp"
 
 namespace builder
 {
+// The type of the event which will flow through the stream
+using Event_t = json::Document;
+// The type of the observable which will compose the processing graph
+using Obs_t = rxcpp::observable<Event_t>;
+// The type of the connectables whisch will help us connect the assets ina graph
+using Con_t = builder::internals::Connectable<Obs_t>;
+// The type of a connectable operation
+using Op_t = std::function<Obs_t(const Obs_t &)>;
+// The signature of a maker function which will build an asset into a`
+// connectable.
+using Maker_t = std::function<Con_t(const json::Document &)>;
+// The signature of a builder function which will build an operation from
+// a piece of an asset description.
+using Builder_t = std::function<Op_t(const json::Value &)>;
+// The type of the graph which will connect all the connectables into a
+// graph
+using Graph_t = graph::Graph<Con_t>;
 
 /**
  * @brief The builder class is the responsible to transform and environment
@@ -37,24 +53,6 @@ namespace builder
  */
 template <class Catalog> class Builder
 {
-    // The type of the event which will flow through the stream
-    using Event_t = json::Document;
-    // The type of the observable which will compose the processing graph
-    using Obs_t = rxcpp::observable<Event_t>;
-    // The type of the connectables whisch will help us connect the assets ina graph
-    using Con_t = builder::internals::Connectable<Obs_t>;
-    // The type of a connectable operation
-    using Op_t = std::function<Obs_t(const Obs_t &)>;
-    // The signature of a maker function which will build an asset into a`
-    // connectable.
-    using Maker_t = std::function<Con_t(const json::Document &)>;
-    // The signature of a builder function which will build an operation from
-    // a piece of an asset description.
-    using Builder_t = std::function<Op_t(const json::Value &)>;
-    // The type of the graph which will connect all the connectables into a
-    // graph
-    using Graph_t = graph::Graph<Con_t>;
-
 private:
     const Catalog & m_catalog;
 

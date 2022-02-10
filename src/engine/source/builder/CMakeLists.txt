@@ -41,6 +41,11 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
+target_sources(main PRIVATE
+    ${BUILDER_ENGINE_SOURCE_DIR}/builders/buildCheck.cpp
+    ${BUILDER_ENGINE_SOURCE_DIR}/builders/buildMap.cpp
+)
+
 target_include_directories(main PUBLIC
     ${BUILDER_ENGINE_SOURCE_DIR}
     ${BUILDER_ENGINE_SOURCE_DIR}/builders
