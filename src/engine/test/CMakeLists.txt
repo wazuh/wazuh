@@ -16,8 +16,11 @@ CPMAddPackage(
 )
 
 include(GoogleTest)
-gtest_discover_tests(unit_tests)
 
-
+add_subdirectory(${TEST_SOURCE_DIR}/server)
+add_subdirectory(${TEST_SOURCE_DIR}/router)
+add_subdirectory(${TEST_SOURCE_DIR}/json)
+add_subdirectory(${TEST_SOURCE_DIR}/builder)
+add_subdirectory(${TEST_SOURCE_DIR}/graph)
 add_subdirectory(${TEST_SOURCE_DIR}/catalog)
 add_subdirectory(${TEST_SOURCE_DIR}/cliParser)
