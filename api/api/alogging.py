@@ -19,7 +19,8 @@ request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 
-JSON_FORMAT = api_conf['logs']['format'] == 'json'
+PLAIN_LOG = 'plain' in api_conf['logs']['format']
+JSON_LOG = 'json' in api_conf['logs']['format']
 
 
 class AccessLogger(AbstractAccessLogger):
@@ -38,7 +39,9 @@ class AccessLogger(AbstractAccessLogger):
                              f'{remote} '
                              f'"{method} {path}" '
                              f'with parameters {json.dumps(query)} and body {json.dumps(body)} '
-                             f'done in {time:.3f}s: {status}')
+                             f'done in {time:.3f}s: {status}',
+                             extra={'log_type': 'log'}
+                             )
 
         def json_log(user, remote, method, path, query, body, time, status):
             self.logger.info({'user': user,
@@ -49,10 +52,15 @@ class AccessLogger(AbstractAccessLogger):
                               'body': body,
                               'time': f'{time:.3f}s',
                               'status_code': status
-                              }
+                              },
+                             extra={'log_type': 'json'}
                              )
 
-        return json_log if JSON_FORMAT else plain_log
+        def both_log(*args, **kwargs):
+            plain_log(*args, **kwargs)
+            json_log(*args, **kwargs)
+
+        return both_log if PLAIN_LOG and JSON_LOG else plain_log if PLAIN_LOG else json_log
 
     def log(self, request, response, time):
         query = dict(request.query)
@@ -92,9 +100,10 @@ class APILogger(WazuhLogger):
         """
         Constructor
         """
+        log_path = kwargs.get('log_path', '')
         super().__init__(*args, **kwargs,
-                         tag=None if JSON_FORMAT else '%(asctime)s %(levelname)s: %(message)s',
-                         custom_formatter=WazuhJsonFormatter if JSON_FORMAT else None)
+                         tag=None if log_path.endswith('json') else '%(asctime)s %(levelname)s: %(message)s',
+                         custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
 
     def setup_logger(self):
         """

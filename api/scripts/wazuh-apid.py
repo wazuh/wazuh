@@ -188,6 +188,9 @@ if __name__ == '__main__':
                 debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
             )
             api_logger.setup_logger()
+        if os.path.exists(log_path):
+            os.chown(log_path, common.wazuh_uid(), common.wazuh_gid())
+            os.chmod(log_path, 0o660)
 
     if args.config_file is not None:
         configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
@@ -195,10 +198,17 @@ if __name__ == '__main__':
     security_conf = configuration.security_conf
 
     # Set up logger
-    log_ext = '.json' if api_conf['logs']['format'] == 'json' else '.log'
-    api_log_file_path = f'{API_LOG_PATH}{log_ext}'
-    set_logging(log_path=api_log_file_path, debug_mode=api_conf['logs']['level'],
-                foreground_mode=args.foreground)
+    plain_log = 'plain' in api_conf['logs']['format']
+    json_log = 'json' in api_conf['logs']['format']
+    if plain_log:
+        api_log_file_path = f'{API_LOG_PATH}.log'
+        set_logging(log_path=api_log_file_path, debug_mode=api_conf['logs']['level'],
+                    foreground_mode=args.foreground)
+    if json_log:
+        api_log_file_path = f'{API_LOG_PATH}.json'
+        set_logging(log_path=api_log_file_path, debug_mode=api_conf['logs']['level'],
+                    foreground_mode=not plain_log and args.foreground)
+
     logger = logging.getLogger('wazuh-api')
 
     import asyncio
@@ -226,12 +236,7 @@ if __name__ == '__main__':
     if 'path' in api_conf['logs']:
         del api_conf['logs']['path']
         logger.warning("Log 'path' option was deprecated on v4.3.0. Default path will always be used: "
-                       f"{api_log_file_path}")
-
-    # Set correct permissions on api.log file
-    if os.path.exists(api_log_file_path):
-        os.chown(api_log_file_path, common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(api_log_file_path, 0o660)
+                       f"{API_LOG_PATH}.<log_format>")
 
     # Configure https
     ssl_context = None

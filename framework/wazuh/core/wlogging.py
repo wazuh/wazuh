@@ -56,6 +56,22 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         return f'{log_path}/{os.path.basename(self.baseFilename).replace(".log", "")}-{day}.log.gz'
 
 
+class CustomFilter():
+    """
+    Defines a custom filter to differentiate between log types
+    """
+    def __init__(self, log_type):
+        self.log_type = log_type
+
+    def filter(self, record):
+        try:
+            if record.log_type == self.log_type:
+                return True
+        except AttributeError:
+            # If the log file is not specifically filtered, then It should log into both files
+            return True
+
+
 class WazuhLogger:
     """
     Defines attributes of a Python wazuh daemon's logger
@@ -78,8 +94,9 @@ class WazuhLogger:
         self.foreground_mode = foreground_mode
         self.debug_level = debug_level
         self.logger_name = logger_name
+        self.default_formatter = logging.Formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
         if custom_formatter is None:
-            self.custom_formatter = logging.Formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
+            self.custom_formatter = self.default_formatter
         else:
             self.custom_formatter = custom_formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
 
@@ -95,11 +112,13 @@ class WazuhLogger:
         # configure logger
         fh = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
         fh.setFormatter(self.custom_formatter)
+        if self.logger_name != 'wazuh':
+            fh.addFilter(CustomFilter('log')) if self.log_path.endswith('.log') else fh.addFilter(CustomFilter('json'))
         logger.addHandler(fh)
 
         if self.foreground_mode:
             ch = logging.StreamHandler()
-            ch.setFormatter(self.custom_formatter)
+            ch.setFormatter(self.default_formatter)
             logger.addHandler(ch)
 
         # add a new debug level
