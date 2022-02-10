@@ -250,7 +250,21 @@ def test_get_files_status(mock_get_cluster_items):
             logger_mock.assert_called_once_with(f"Error getting file status: .")
 
 
-def test_update_cluster_control_with_failed():
+@pytest.mark.parametrize('failed_item, exists, expected_result', [
+    ('/test_file0', False, {'missing': {'/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                            'extra': {'/test_file2': 'test'}}),
+    ('/test_file1', False, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {},
+                             'extra': {'/test_file1': 'test', '/test_file2': 'test'}}),
+    ('/test_file2', False, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                             'extra': {'/test_file2': 'test'}}),
+    ('/test_file0', True, {'missing': {'/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                           'extra': {'/test_file2': 'test'}}),
+    ('/test_file1', True, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {},
+                            'extra': {'/test_file2': 'test'}}),
+    ('/test_file2', True, {'missing': {'/test_file0': 'test', '/test_file3': 'ok'}, 'shared': {'/test_file1': 'test'},
+                            'extra': {'/test_file2': 'test'}}),
+])
+def test_update_cluster_control(failed_item, exists, expected_result):
     """Check if cluster_control json is updated as expected."""
     ko_files = {
         'missing': {'/test_file0': 'test',
@@ -258,10 +272,8 @@ def test_update_cluster_control_with_failed():
         'shared': {'/test_file1': 'test'},
         'extra': {'/test_file2': 'test'}
     }
-    cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'], ko_files)
-
-    assert ko_files == {'missing': {'/test_file3': 'ok'}, 'shared': {},
-                        'extra': {'/test_file2': 'test', '/test_file1': 'test'}}
+    cluster.update_cluster_control(failed_item, ko_files, exists=exists)
+    assert ko_files == expected_result
 
 
 @patch('zlib.compress', return_value=b'compressed_test_content')
@@ -272,16 +284,16 @@ def test_update_cluster_control_with_failed():
 def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_get_cluster_items,
                            mock_zlib):
     """Check if the compressing function is working properly."""
-    mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000}}}
+    mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000, 'compress_level': 0}}}
 
     with patch('builtins.open', mock_open(read_data='test_content')) as open_mock:
         assert isinstance(cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'}), str)
         assert open_mock.call_args_list == [call(ANY, 'ab'), call(os.path.join(common.wazuh_path, 'some/path'), 'rb'),
                                             call(os.path.join(common.wazuh_path, 'another/path'), 'rb')]
         assert open_mock.return_value.write.call_args_list == [
-            call(f'some/path{cluster.path_sep}compressed_test_content{cluster.file_sep}'.encode()),
-            call(f'another/path{cluster.path_sep}compressed_test_content{cluster.file_sep}'.encode()),
-            call(f'files_metadata.json{cluster.path_sep}compressed_test_content'.encode())
+            call(f'some/path{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
+            call(f'another/path{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
+            call(f'files_metadata.json{cluster.PATH_SEP}compressed_test_content'.encode())
         ]
 
 
@@ -293,13 +305,14 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
     """Check if the compressing function is raising every exception."""
 
     with patch('builtins.open', mock_open(read_data='test_content')):
-        mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 5}}}
+        mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 5,'compress_level': 0}}}
         with patch.object(wazuh.core.cluster.cluster.logger, 'warning') as warning_logger:
                 cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
                 warning_logger.assert_called_with(f'File too large to be synced: '
                                                   f'{os.path.join(common.wazuh_path, "some/path")}')
 
-        mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 15}}}
+        mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 15, 'compress_level': 0}}
+                                               }
         with patch('zlib.compress', side_effect=zlib.error):
             with pytest.raises(WazuhError, match=r'.* 3001 .*'):
                 cluster.compress_files('some_name', ['some/path'], {'ko_file': 'file'})
@@ -307,8 +320,8 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
         with patch('zlib.compress', return_value=b'compressed_test_content'):
             with patch.object(wazuh.core.cluster.cluster.logger, 'warning') as warning_logger:
                 cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'})
-                warning_logger.assert_called_with('Maximum allowed zip size was exceeded so not all files will be '
-                                                  'compressed during this sync.')
+                warning_logger.assert_called_with('Maximum zip size exceeded. Not all files will be compressed '
+                                                  'during this sync.')
 
         with patch('zlib.compress', return_value='compressed_test_content'):
             with pytest.raises(WazuhError, match=r'.* 3001 .*'):
@@ -340,7 +353,7 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
                                    mock_makedirs, zlib_mock):
     """Check if the decompressing function is working properly."""
     zip_path = '/foo/bar/'
-    compress_data = f'path{cluster.path_sep}content{cluster.file_sep}path2{cluster.path_sep}content2'.encode()
+    compress_data = f'path{cluster.PATH_SEP}content{cluster.FILE_SEP}path2{cluster.PATH_SEP}content2'.encode()
 
     with patch('builtins.open', new_callable=mock_open, read_data=compress_data) as open_mock:
         handlers = [open_mock.return_value]*4
@@ -376,7 +389,7 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock)
             rmtree_mock.assert_called_once()
 
     with pytest.raises(Exception):
-        with patch('builtins.open', mock_open(read_data=f'path{cluster.path_sep}content'.encode())):
+        with patch('builtins.open', mock_open(read_data=f'path{cluster.PATH_SEP}content'.encode())):
             with patch('os.path.exists', return_value=False):
                 cluster.decompress_files(zip_dir)
 

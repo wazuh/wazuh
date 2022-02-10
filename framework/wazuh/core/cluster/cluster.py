@@ -25,14 +25,11 @@ from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
-<<<<<<< HEAD
 agent_groups_path = os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH)
 
-=======
-agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
-file_sep = '|@!@|'
-path_sep = '|!@!|'
->>>>>>> Add size limit and window_size to compress functions
+# Separators used in compression/decompression functions to delimit files.
+FILE_SEP = '|@!@|'
+PATH_SEP = '|!@!|'
 
 #
 # Cluster
@@ -236,26 +233,36 @@ def get_files_status(previous_status=None, get_md5=True):
     return final_items
 
 
-def update_cluster_control_with_failed(failed_files, ko_files):
-    """Check if file paths inside 'shared' and 'missing' do really exist.
+def update_cluster_control(failed_file, ko_files, exists=True):
+    """Move or remove files listed inside 'ko_files'.
 
-    Sometimes, files that no longer exist are still listed in cluster_control.json. Two situations can occur:
+    Sometimes, files that could not be compressed or that no longer exist, are still listed in cluster_control.json.
+    Two situations can occur:
         - A missing file on a worker no longer exists on the master. It is removed from the list of missing files.
+        - A missing file on a worker could not be compressed (too big or not space left). It is also removed from
+        the list of missing files.
         - A shared file no longer exists on the master. It is deleted from 'shared' and added to 'extra'.
+        - A shared file could not be compressed (too big or not space left). It is removed from the 'shared' list.
 
     Parameters
     ----------
-    failed_files : list
-        List of files to update
+    failed_file : str
+        File path (used as a dict key) to be searched and updated/deleted in the ko_files dict.
     ko_files : dict
         KO files dict with 'missing', 'shared' and 'extra' keys.
+    exists : bool
+        Whether the file to be removed exists in the master. If it does not exist, but it is in the 'shared' list,
+        it should be moved to the 'extra' files list.
     """
-    for f in failed_files:
-        if 'missing' in ko_files.keys() and f in ko_files['missing'].keys():
-            ko_files['missing'].pop(f, None)
-        elif 'shared' in ko_files.keys() and 'extra' in ko_files.keys() and f in ko_files['shared'].keys():
-            ko_files['extra'][f] = ko_files['shared'][f]
-            ko_files['shared'].pop(f, None)
+    try:
+        if failed_file in ko_files['missing']:
+            ko_files['missing'].pop(failed_file, None)
+        elif failed_file in ko_files['shared']:
+            if not exists:
+                ko_files['extra'][failed_file] = ko_files['shared'][failed_file]
+            ko_files['shared'].pop(failed_file, None)
+    except (KeyError, AttributeError, TypeError):
+        pass
 
 
 def compress_files(name, list_path, cluster_control_json):
@@ -278,25 +285,11 @@ def compress_files(name, list_path, cluster_control_json):
     compress_file_path : str
         Path where the compress file has been saved.
     """
-
-    def remove_from_cluster_control(file_to_remove):
-        """Discard file from 'missing' or 'shared' dicts inside cluster_control_json.
-
-        Parameters
-        ----------
-        file_to_remove : str
-            Relative file path, used as the key in the cluster_control_json dict.
-        """
-        try:
-            if not cluster_control_json['missing'].pop(file_to_remove, None):
-                cluster_control_json['shared'].pop(file_to_remove, None)
-        except (KeyError, TypeError):
-            pass
-
     zip_size = 0
-    failed_files = []
     exceeded_size = False
     max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
+
+    compress_level = get_cluster_items()['intervals']['communication']['compress_level']
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
 
@@ -305,44 +298,40 @@ def compress_files(name, list_path, cluster_control_json):
 
     with open(zip_file_path, 'ab') as wf:
         for file in list_path:
-            if not exceeded_size:
-                try:
-                    with open(path.join(common.wazuh_path, file), 'rb') as rf:
-                        new_file = rf.read()
-                        if len(new_file) > max_zip_size:
-                            logger.warning(f'File too large to be synced: {path.join(common.wazuh_path, file)}')
-                            remove_from_cluster_control(file)
-                            continue
-                        # Compress the content of each file and surrounds it with separators.
-                        new_file = f'{file}{path_sep}'.encode() + zlib.compress(new_file) + file_sep.encode()
+            if exceeded_size:
+                update_cluster_control(file, cluster_control_json)
+                continue
 
-                    if (len(new_file) + zip_size) <= max_zip_size:
-                        # Append the new compressed file to previous ones only if total size is under max allowed.
-                        zip_size += len(new_file)
-                        wf.write(new_file)
-                    else:
-                        # Otherwise, remove it from cluster_control_json.
-                        logger.warning('Maximum allowed zip size was exceeded so not all files will be compressed '
-                                       'during this sync.')
-                        exceeded_size = True
-                        remove_from_cluster_control(file)
-                except zlib.error as e:
-                    raise WazuhError(3001, str(e))
-                except Exception as e:
-                    logger.debug(str(WazuhException(3001, str(e))))
-                    failed_files.append(file)
-            else:
-                remove_from_cluster_control(file)
+            try:
+                with open(path.join(common.wazuh_path, file), 'rb') as rf:
+                    new_file = rf.read()
+                    if len(new_file) > max_zip_size:
+                        logger.warning(f'File too large to be synced: {path.join(common.wazuh_path, file)}')
+                        update_cluster_control(file, cluster_control_json)
+                        continue
+                    # Compress the content of each file and surrounds it with separators.
+                    new_file = f'{file}{PATH_SEP}'.encode() + zlib.compress(new_file, level=compress_level) + \
+                               FILE_SEP.encode()
+
+                if (len(new_file) + zip_size) <= max_zip_size:
+                    # Append the new compressed file to previous ones only if total size is under max allowed.
+                    zip_size += len(new_file)
+                    wf.write(new_file)
+                else:
+                    # Otherwise, remove it from cluster_control_json.
+                    logger.warning('Maximum zip size exceeded. Not all files will be compressed during this sync.')
+                    exceeded_size = True
+                    update_cluster_control(file, cluster_control_json)
+            except zlib.error as e:
+                raise WazuhError(3001, str(e))
+            except Exception as e:
+                logger.debug(str(WazuhException(3001, str(e))))
+                update_cluster_control(file, cluster_control_json, exists=False)
 
         try:
-            # Remove any non-compressed file from JSON
-            if cluster_control_json and failed_files:
-                update_cluster_control_with_failed(failed_files, cluster_control_json)
-
             # Compress and save cluster_control data as a JSON.
-            wf.write(
-                f'files_metadata.json{path_sep}'.encode() + zlib.compress(json.dumps(cluster_control_json).encode())
-            )
+            wf.write(f'files_metadata.json{PATH_SEP}'.encode() +
+                     zlib.compress(json.dumps(cluster_control_json).encode(), level=compress_level))
         except Exception as e:
             raise WazuhError(3001, str(e))
 
@@ -401,13 +390,13 @@ def decompress_files(compress_path, ko_files_name="files_metadata.json"):
             while True:
                 new_data = rf.read(window_size)
                 compressed_data += new_data
-                files = compressed_data.split(file_sep.encode())
+                files = compressed_data.split(FILE_SEP.encode())
                 if new_data:
                     # If 'files' list contains only 1 item, it is probably incomplete so it is not used.
                     compressed_data, files = (files[-1], files[:-1]) if len(files) > 1 else (files[0], [])
 
                 for file in files:
-                    filepath, content = file.split(path_sep.encode(), 1)
+                    filepath, content = file.split(PATH_SEP.encode(), 1)
                     content = zlib.decompress(content)
                     full_path = os.path.join(decompress_dir, filepath.decode())
                     if not os.path.exists(os.path.dirname(full_path)):

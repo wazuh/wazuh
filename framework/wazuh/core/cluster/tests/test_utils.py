@@ -156,7 +156,8 @@ def test_get_cluster_items():
                                               'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
                                               'timeout_agent_info': 40, 'max_locked_integrity_time': 1000},
                                    'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
-                                                     'timeout_receiving_file': 120, 'max_zip_size': 1073741824}},
+                                                     'timeout_receiving_file': 120, 'max_zip_size': 1073741824,
+                                                     'compress_level': 0}},
                      'distributed_api': {'enabled': True}}
 
 
