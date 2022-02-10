@@ -21,7 +21,6 @@
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
 #include "../../remoted/manager.c"
-#include "../../headers/hash_op.h"
 /* tests */
 
 static int test_c_group_setup(void ** state) {
