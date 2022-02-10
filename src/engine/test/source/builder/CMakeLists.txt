@@ -71,7 +71,7 @@ link_libraries(
 # Builder targets
 ####################################################################################################
 # Builder test
-add_executable(builderTest ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp)
+add_executable(builderTest ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildCheck.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildMap.cpp)
 gtest_discover_tests(builderTest)
 
 # Registry test
