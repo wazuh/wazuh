@@ -16,6 +16,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
+#include "../wrappers/posix/dirent_wrappers.h"
 
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
@@ -23,7 +24,7 @@
 #include "../../headers/hash_op.h"
 /* tests */
 
-static int test_c_groups_setup(void ** state) {
+static int test_c_group_setup(void ** state) {
     test_mode = 1;
 
     logr.nocmerged = 0;
@@ -37,7 +38,7 @@ static int test_c_groups_setup(void ** state) {
     return 0;
 }
 
-static int test_c_groups_teardown(void ** state) {
+static int test_c_group_teardown(void ** state) {
     int i;
     int j;
     file_sum **f_sum;
@@ -67,6 +68,14 @@ static int test_c_groups_teardown(void ** state) {
 
     return 0;
 }
+
+static int test_c_multi_group_setup(void ** state) {
+    test_mode = 1;
+    logr.nocmerged = 0;
+
+    return 0;
+}
+
 
 /* Tests lookfor_agent_group */
 
@@ -251,32 +260,6 @@ void test_lookfor_agent_group_message_without_second_enter(void **state)
     assert_null(r_group);
 }
 
-#if 0
-void test_c_files_free_groups_fail_opendir(void **state)
-{
-    groups = NULL;
-    should_clean = 1;
-
-    OSHash * m_hash = OSHash_Create();
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files sums.");
-    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
-
-    c_files();
-}
-
-void test_c_files_scan_directory_fail_opendir(void **state)
-{
-    groups = NULL;
-    should_clean = 0;
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files sums.");
-    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
-
-    c_files();
-}
-#endif
-
 void test_c_group_fail(void **state)
 {
     const char *group = "test_default";
@@ -320,9 +303,7 @@ void test_c_group_fail(void **state)
 
     c_group(group, files, &groups[0]->f_sum, SHAREDCFG_DIR);
 
-    os_free(files[0]);
-    os_free(files[1]);
-    os_free(files);
+    free_strarray(files);
 }
 
 void test_c_group_downloaded_file_is_corrupted(void **state)
@@ -371,9 +352,7 @@ void test_c_group_downloaded_file_is_corrupted(void **state)
     os_free(r_group->files);
     os_free(r_group);
 
-    os_free(files[0]);
-    os_free(files[1]);
-    os_free(files);
+    free_strarray(files);
 }
 
 void test_c_group_download_all_files(void **state)
@@ -430,9 +409,7 @@ void test_c_group_download_all_files(void **state)
     os_free(r_group->files);
     os_free(r_group);
 
-    os_free(files[0]);
-    os_free(files[1]);
-    os_free(files);
+    free_strarray(files);
 }
 
 void test_c_group_read_directory(void **state)
@@ -473,7 +450,7 @@ void test_c_group_read_directory(void **state)
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
 
-    expect_any(__wrap_OSHash_Get,  self);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_files");
     will_return(__wrap_OSHash_Get, NULL);
 
@@ -498,9 +475,7 @@ void test_c_group_read_directory(void **state)
     os_free(r_group->files);
     os_free(r_group);
 
-    os_free(files[0]);
-    os_free(files[0+1]);
-    os_free(files);
+    free_strarray(files);
 }
 
 void test_c_group_timeout_not_null(void **state)
@@ -545,14 +520,14 @@ void test_c_group_timeout_not_null(void **state)
     os_calloc(1, sizeof(time_t), last_modify);
     *last_modify = 10000;
 
-    expect_any(__wrap_OSHash_Get,  self);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_files");
     will_return(__wrap_OSHash_Get, last_modify);
 
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test_files");
     will_return(__wrap_checkBinaryFile, 1);
 
-    expect_any(__wrap_OSHash_Set,  self);
+    expect_any(__wrap_OSHash_Set, self);
     expect_string(__wrap_OSHash_Set, key, "etc/shared/test_default/test_files");
     expect_any(__wrap_OSHash_Set, data);
     will_return(__wrap_OSHash_Set, NULL);
@@ -573,9 +548,7 @@ void test_c_group_timeout_not_null(void **state)
     os_free(r_group->files);
     os_free(r_group);
 
-    os_free(files[0]);
-    os_free(files[0+1]);
-    os_free(files);
+    free_strarray(files);
 }
 
 void test_c_group_timeout_not_null_not_binary_file(void **state)
@@ -620,14 +593,14 @@ void test_c_group_timeout_not_null_not_binary_file(void **state)
     os_calloc(1, sizeof(time_t), last_modify);
     *last_modify = 10000;
 
-    expect_any(__wrap_OSHash_Get,  self);
+    expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_files");
     will_return(__wrap_OSHash_Get, last_modify);
 
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test_files");
     will_return(__wrap_checkBinaryFile, 0);
 
-    expect_any(__wrap_OSHash_Delete,  self);
+    expect_any(__wrap_OSHash_Delete, self);
     expect_string(__wrap_OSHash_Delete, key, "etc/shared/test_default/test_files");
     will_return(__wrap_OSHash_Delete, NULL);
 
@@ -647,9 +620,214 @@ void test_c_group_timeout_not_null_not_binary_file(void **state)
     os_free(r_group->files);
     os_free(r_group);
 
-    os_free(files[0]);
-    os_free(files[0+1]);
-    os_free(files);
+    free_strarray(files);
+}
+
+void test_c_multi_group_hash_multigroup_null(void **state)
+{
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+}
+
+void test_c_multi_group_open_directory_fail(void **state)
+{
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    os_strdup("multi_group_test", multi_group);
+    os_strdup("multi_group_hash", hash_multigroup);
+
+    will_return(__wrap_cldir_ex, 0);
+    will_return(__wrap_opendir, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/multi_group_test': No such file or directory");
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(hash_multigroup);
+    os_free(multi_group);
+}
+
+void test_c_multi_group_read_dir_fail(void **state)
+{
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    os_strdup("multi_group_test", multi_group);
+    os_strdup("multi_group_hash", hash_multigroup);
+
+    will_return(__wrap_cldir_ex, 0);
+    will_return(__wrap_opendir, 1);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
+
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "on purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
+
+    //expect_function_call(__wrap_closedir);
+
+    /* Open the multi-group files and generate merged */
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(hash_multigroup);
+    os_free(multi_group);
+}
+
+void test_c_multi_group_Ignore_hidden_files(void **state)
+{
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    os_strdup("multi_group_test", multi_group);
+    os_strdup("multi_group_hash", hash_multigroup);
+
+    will_return(__wrap_cldir_ex, 0);
+    will_return(__wrap_opendir, 1);
+
+    char** files = NULL;
+    os_malloc(5 * sizeof(char *), files);
+    os_strdup(".file_1", files[0]);
+    os_strdup("file_2", files[1]);
+    os_strdup("agent.conf", files[2]);
+    os_strdup("ignore_file", files[3]);
+    files[4] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    will_return(__wrap_wreaddir, files);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/file_2");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/agent.conf");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    time_t *last_modify;
+    os_calloc(1, sizeof(time_t), last_modify);
+    *last_modify = 10000;
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/ignore_file");
+    will_return(__wrap_OSHash_Get, last_modify);
+
+    //expect_function_call(__wrap_closedir);
+
+    /* Open the multi-group files and generate merged */
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(last_modify);
+    os_free(hash_multigroup);
+    os_free(multi_group);
+}
+
+void test_c_multi_group_large_path_fail(void **state)
+{
+    logr.nocmerged = 1;
+
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    os_calloc((4096 + 2), sizeof(char*), hash_multigroup);
+    for (unsigned int a = 0; a < 4096 + 2; a++) {
+        hash_multigroup[a] = 'c';
+    }
+
+    /* Open the multi-group files and generate merged */
+    will_return(__wrap_opendir, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "At c_multi_group(): path too long.");
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(hash_multigroup);
+    os_free(multi_group);
+}
+
+void test_c_multi_group_subdir_fail(void **state)
+{
+    logr.nocmerged = 1;
+
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    os_strdup("multi_group_test", multi_group);
+    os_strdup("hash_multi_group_test",hash_multigroup);
+
+    /* Open the multi-group files and generate merged */
+    will_return(__wrap_opendir, 1);
+
+    char** subdir = NULL;
+    expect_string(__wrap_wreaddir, name, "var/multigroups/hash_multi_group_test");
+    will_return(__wrap_wreaddir, subdir);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "At c_multi_group(): Could not open directory 'var/multigroups/hash_multi_group_test'");
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(hash_multigroup);
+    os_free(multi_group);
+}
+
+void test_c_multi_group_call_c_group(void **state)
+{
+    logr.nocmerged = 1;
+
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    os_malloc(sizeof(file_sum *), _f_sum);
+
+    char *hash_multigroup = NULL;
+
+    os_strdup("multi_group_test", multi_group);
+    os_strdup("hash_multi_group_test",hash_multigroup);
+
+    /* Open the multi-group files and generate merged */
+    will_return(__wrap_opendir, 1);
+
+    // Initialize files structure
+    char ** subdir = NULL;
+    os_malloc(1 * sizeof(char *), subdir);
+    subdir[0] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "var/multigroups/hash_multi_group_test");
+    will_return(__wrap_wreaddir, subdir);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "var/multigroups/hash_multi_group_test/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(_f_sum[0][0]->name);
+    os_free(_f_sum[0][0]);
+    os_free(_f_sum[0]);
+    os_free(_f_sum);
+    os_free(hash_multigroup);
+    os_free(multi_group);
 }
 
 int main(void)
@@ -662,17 +840,21 @@ int main(void)
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
         cmocka_unit_test(test_lookfor_agent_group_bad_message),
         cmocka_unit_test(test_lookfor_agent_group_message_without_second_enter),
-        // Tests c_files
-        //cmocka_unit_test(test_c_files_free_groups_fail_opendir),
-        //cmocka_unit_test(test_c_files_scan_directory_fail_opendir),
         // Tests c_group
-        cmocka_unit_test_setup_teardown(test_c_group_fail, test_c_groups_setup, test_c_groups_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_is_corrupted, test_c_groups_setup, test_c_groups_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_download_all_files, test_c_groups_setup, test_c_groups_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_read_directory, test_c_groups_setup, test_c_groups_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_timeout_not_null, test_c_groups_setup, test_c_groups_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_timeout_not_null_not_binary_file, test_c_groups_setup, test_c_groups_teardown),
-
+        cmocka_unit_test_setup_teardown(test_c_group_fail, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_is_corrupted, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_download_all_files, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_read_directory, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_timeout_not_null, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_timeout_not_null_not_binary_file, test_c_group_setup, test_c_group_teardown),
+        // Tests c_multi_group
+        cmocka_unit_test_setup(test_c_multi_group_hash_multigroup_null, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_open_directory_fail, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_read_dir_fail, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_Ignore_hidden_files, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_large_path_fail, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_subdir_fail, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_call_c_group, test_c_multi_group_setup),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
