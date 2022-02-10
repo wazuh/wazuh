@@ -129,7 +129,7 @@ class ReceiveStringTask:
     Create an asyncio task that can be identified by a task_id specified in advance.
     """
 
-    def __init__(self, wazuh_common, logger, task_id, info_type='Agent-info sync', payload=None):
+    def __init__(self, wazuh_common, logger, task_id, info_type='agent-info'):
         """Class constructor.
 
         Parameters
@@ -142,10 +142,7 @@ class ReceiveStringTask:
             Pre-defined task_id to identify this object.
         info_type : str
             Information type handled.
-        payload : dict
-            Payload of the command used in the task.
         """
-        self.payload = {} if payload is None else payload
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
         self.task_id = task_id
