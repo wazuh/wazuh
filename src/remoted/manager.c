@@ -952,14 +952,35 @@ STATIC void process_multi_groups() {
             multi_groups_size++;
 
         } else {
-            if (multigroup->f_sum) {
-                for (j = 0; multigroup->f_sum[j]; j++) {
-                    os_free(multigroup->f_sum[j]->name);
-                    os_free(multigroup->f_sum[j]);
+            if (group_changed(key)) {
+                // Multigroup needs to be updated
+                if (multigroup->f_sum) {
+                    for (j = 0; multigroup->f_sum[j]; j++) {
+                        os_free(multigroup->f_sum[j]->name);
+                        os_free(multigroup->f_sum[j]);
+                    }
+                    os_free(multigroup->f_sum);
                 }
-                os_free(multigroup->f_sum);
+                c_multi_group(key, &multigroup->f_sum, data, true);
+                mdebug2("Multigroup '%s' has changed.", multigroup->name);
+            } else {
+                file_sum **old_sum = multigroup->f_sum;
+                multigroup->f_sum = NULL;
+                c_multi_group(key, &multigroup->f_sum, data, false);
+                if (fsum_changed(old_sum, multigroup->f_sum)) {
+                    // Multigroup needs to be regenerated
+                    c_multi_group(key, &multigroup->f_sum, data, true);
+                    mwarn("The files of the multigroup '%s' were modified so it was necessary to regenerate it.",
+                          multigroup->name);
+                }
+                if (old_sum) {
+                    for (j = 0; old_sum[j]; j++) {
+                        os_free(old_sum[j]->name);
+                        os_free(old_sum[j]);
+                    }
+                    os_free(old_sum);
+                }
             }
-            c_multi_group(key, &multigroup->f_sum, data, group_changed(key));
             multigroup->exists = true;
         }
 
