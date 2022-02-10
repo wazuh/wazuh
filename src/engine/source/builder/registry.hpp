@@ -30,7 +30,7 @@ public:
     using BuildType = std::variant<BuildValue, BuildDocument>;
 
 private:
-    std::map<std::string, BuildType> m_registry;
+    static std::map<std::string, BuildType> m_registry;
 
 public:
     /**
@@ -39,7 +39,7 @@ public:
      * @param builderName
      * @param builder
      */
-    void registerBuilder(const std::string & builderName, const BuildType & builder);
+    static void registerBuilder(const std::string & builderName, const BuildType & builder);
 
     /**
      * @brief Get the Builder object
@@ -47,7 +47,7 @@ public:
      * @param builderName
      * @return builder_t
      */
-    BuildType getBuilder(const std::string & builderName);
+    static BuildType getBuilder(const std::string & builderName);
 };
 
 } // namespace builder::internals
