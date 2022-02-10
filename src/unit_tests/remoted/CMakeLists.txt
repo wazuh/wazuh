@@ -32,7 +32,9 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex \
-                            -Wl,--wrap,checkBinaryFile -Wl,--wrap,OSHash_Set -Wl,--wrap,_minfo")
+                            -Wl,--wrap,checkBinaryFile -Wl,--wrap,OSHash_Set -Wl,--wrap,_minfo \
+                            -Wl,--wrap,opendir -Wl,--wrap,cldir_ex -Wl,--wrap,wreaddir -Wl,--wrap=_mwarn \
+                            -Wl,--wrap,closedir")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
