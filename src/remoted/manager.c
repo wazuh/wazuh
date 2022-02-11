@@ -968,16 +968,19 @@ STATIC void process_multi_groups() {
                 c_multi_group(key, &multigroup->f_sum, data, !logr.worker_node, !logr.nocmerged);
                 mdebug2("Multigroup '%s' has changed.", multigroup->name);
 
-            } else if (!logr.worker_node) {
+            } else {
                 file_sum **old_sum = multigroup->f_sum;
                 multigroup->f_sum = NULL;
                 c_multi_group(key, &multigroup->f_sum, data, false, false);
                 if (fsum_changed(old_sum, multigroup->f_sum)) {
-                    // Multigroup needs to be regenerated
-                    free_file_sum(multigroup->f_sum);
-                    c_multi_group(key, &multigroup->f_sum, data, true, !logr.nocmerged);
-                    mwarn("The files of the multigroup '%s' were modified so it was necessary to regenerate it.",
-                          multigroup->name);
+                    // Multigroup was modified from outside
+                    if (!logr.worker_node) {
+                        free_file_sum(multigroup->f_sum);
+                        c_multi_group(key, &multigroup->f_sum, data, true, !logr.nocmerged);
+                        mwarn("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
+                    } else {
+                        mdebug2("Multigroup '%s' was modified from outside.", multigroup->name);
+                    }
                 }
                 free_file_sum(old_sum);
             }
