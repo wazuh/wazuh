@@ -1,8 +1,5 @@
 test_name: GET /overview/agents
 
-marks:
-  - rbac_tests
-
 stages:
 
  - name: Get full agents overview

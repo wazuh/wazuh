@@ -103,6 +103,7 @@ All notable changes to this project will be documented in this file.
   - Architecture data member from the RHEL 5 feed.
   - RHSA items containing no CVEs.
   - Unused RHSA data member when parsing Debian feeds.
+- Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
 
 #### Removed
 
@@ -153,6 +154,7 @@ All notable changes to this project will be documented in this file.
 - Agent logs for inability to resolve the manager hostname now have info level. ([#3659](https://github.com/wazuh/wazuh/pull/3659))
 - Added ID number to connection enrollment logs. ([#11276](https://github.com/wazuh/wazuh/pull/11276))
 - Standardized the use of the `only_logs_after` parameter in the external integration modules. ([#10838](https://github.com/wazuh/wazuh/pull/10838))
+- Updated DockerListener integration shebang to python3 for Wazuh agents. ([#12150](https://github.com/wazuh/wazuh/pull/12150))
 
 #### Fixed
 
@@ -218,6 +220,8 @@ All notable changes to this project will be documented in this file.
 - Added new filters to agents upgrade endpoints. ([#10457](https://github.com/wazuh/wazuh/pull/10457))
 - Added new API endpoints to access all the MITRE information. ([#8288](https://github.com/wazuh/wazuh/pull/8288))
 - Show agent-info permissions flag when using cluster_control and in the `GET /cluster/healthcheck` API endpoint. ([#10947](https://github.com/wazuh/wazuh/pull/10947))
+- Save agents' ossec.log if an API integration test fails. ([#11931](https://github.com/wazuh/wazuh/pull/11931))
+- Added `POST /security/user/authenticate/run_as` endpoint to API bruteforce blocking system. ([#12085](https://github.com/wazuh/wazuh/pull/12085))
 
 #### Changed
 
@@ -274,6 +278,7 @@ All notable changes to this project will be documented in this file.
 - Fixed API integration tests related to rule, decoder and task endpoints. ([#10830](https://github.com/wazuh/wazuh/pull/10830))
 - Improved exceptions handling when starting the Wazuh API service. ([#11411](https://github.com/wazuh/wazuh/pull/11411))
 - Fixed race condition while creating RBAC database. ([#11598](https://github.com/wazuh/wazuh/pull/11598))
+- Fixed API integration tests failures caused by race conditions. ([#12102](https://github.com/wazuh/wazuh/pull/12102))
 
 #### Removed
 

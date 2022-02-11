@@ -13,6 +13,7 @@ import yaml
 from py.xml import html
 
 current_path = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(current_path, 'env')
 test_logs_path = os.path.join(current_path, '_test_results', 'logs')
 docker_log_path = os.path.join(test_logs_path, 'docker.log')
 results = dict()
@@ -70,11 +71,10 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
     dict
         Dict with healthchecks parameters.
     """
-    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    os.chdir(pwd)
+    os.chdir(env_path)
     values = {
         'interval': interval,
-        'max_retries': 60,
+        'max_retries': 90,
         'retries': 0
     }
     values_build_env = {
@@ -102,18 +102,19 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
             else:
                 time.sleep(values_build_env['interval'])
                 values_build_env['retries'] += 1
+    os.chdir(current_path)
 
     return values
 
 
 def down_env():
     """Stop all Docker environments for the current test."""
-    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
-    os.chdir(pwd)
+    os.chdir(env_path)
     with open(docker_log_path, mode='a') as fdocker:
         current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"],
                                            stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
+    os.chdir(current_path)
 
 
 def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
@@ -160,9 +161,9 @@ def general_procedure(module: str):
     module : str
         Name of the tested module
     """
-    base_content = os.path.join(current_path, 'env', 'configurations', 'base', '*')
-    module_content = os.path.join(current_path, 'env', 'configurations', module, '*')
-    tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
+    base_content = os.path.join(env_path, 'configurations', 'base', '*')
+    module_content = os.path.join(env_path, 'configurations', module, '*')
+    tmp_content = os.path.join(env_path, 'configurations', 'tmp')
     os.makedirs(tmp_content, exist_ok=True)
     os.popen(f'cp -rf {base_content} {tmp_content}').close()
     os.popen(f'cp -rf {module_content} {tmp_content}').close()
@@ -176,8 +177,8 @@ def change_rbac_mode(rbac_mode: str = 'white'):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'config', 'api', 'configuration',
-                           'security', 'security.yaml'), 'r+') as rbac_conf:
+    with open(os.path.join(env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security',
+                           'security.yaml'), 'r+') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: {rbac_mode}', content))
@@ -186,8 +187,8 @@ def change_rbac_mode(rbac_mode: str = 'white'):
 def enable_white_mode():
     """Set white mode for non-rbac integration tests
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'config', 'api', 'configuration',
-                           'security', 'security.yaml'), '+r') as rbac_conf:
+    with open(os.path.join(env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security',
+                           'security.yaml'), '+r') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: white', content))
@@ -196,8 +197,8 @@ def enable_white_mode():
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager'), ignore_errors=True)
-    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agent'), ignore_errors=True)
+    shutil.rmtree(os.path.join(env_path, 'configurations', 'tmp', 'manager'), ignore_errors=True)
+    shutil.rmtree(os.path.join(env_path, 'configurations', 'tmp', 'agent'), ignore_errors=True)
 
 
 def generate_rbac_pair(index: int, permission: dict):
@@ -235,11 +236,11 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager',
-                                    'configuration_files', 'custom_rbac_schema.sql')
+    custom_rbac_path = os.path.join(env_path, 'configurations', 'tmp', 'manager', 'configuration_files',
+                                    'custom_rbac_schema.sql')
 
     try:
-        with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
+        with open(os.path.join(env_path, 'configurations', 'rbac', module,
                                f'{rbac_mode}_config.yaml')) as configuration_sentences:
             list_custom_policy = yaml.safe_load(configuration_sentences.read())
     except FileNotFoundError:

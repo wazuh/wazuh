@@ -8,7 +8,8 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree.ElementTree import Element, parse
+from xml.etree.ElementTree import Element
+from defusedxml.ElementTree import parse
 
 import pytest
 
@@ -177,38 +178,6 @@ def test_find_nth(string, substring, n, expected_index):
     result = utils.find_nth(string, substring, n)
 
     assert result == expected_index
-
-
-@patch('wazuh.core.utils.check_output', return_value='{"data": "Some data", "message": "Some message", "error":0}')
-def test_execute(mock_output):
-    """Test execute function."""
-    result = utils.execute('Command')
-
-    assert isinstance(result, str)
-
-
-@pytest.mark.parametrize('error_effect, expected_exception', [
-    (utils.CalledProcessError(returncode=1000, cmd='Unexpected error', output='{"data":"Some data", "message":"Error", '
-                                                                              '"error":1000}'), 1000),
-    (Exception, 1002),
-    (utils.CalledProcessError(returncode=1, cmd='Unexpected error', output={}), 1003),
-    (utils.CalledProcessError(returncode=1, cmd='Unexpected error', output='{"error":1000}'), 1004),
-    (utils.CalledProcessError(returncode=1, cmd='Unexpected error', output='{"data":"Some data", "message":"Error"}'),
-     1004)
-])
-def test_execute_ko(error_effect, expected_exception):
-    """Test execute function for all exceptions.
-    Cases:
-
-        * Output_json error value different to 0
-        * Check_output return Exception
-        * Loads function return Exception
-        * Data and message not exists into json
-        * Error not exists into json
-    """
-    with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
-        with patch('wazuh.core.utils.check_output', side_effect=error_effect):
-            utils.execute('Command')
 
 
 @pytest.mark.parametrize('array, limit', [

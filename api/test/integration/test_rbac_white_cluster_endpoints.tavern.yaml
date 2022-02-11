@@ -1,9 +1,6 @@
 ---
 test_name: /cluster/local/config
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get cluster config

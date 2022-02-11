@@ -1,9 +1,6 @@
 ---
 test_name: GET /cluster/local/config
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Get cluster config

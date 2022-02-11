@@ -39,8 +39,14 @@ int __wrap_sqlite3_bind_int64(__attribute__((unused)) sqlite3_stmt *stmt,
     return mock();
 }
 
-int __wrap_sqlite3_bind_null(__attribute__((unused)) sqlite3_stmt *stmt,
-                              int index) {
+int __wrap_sqlite3_bind_double(__attribute__((unused)) sqlite3_stmt *pStmt, int index, double value) {
+    check_expected(index);
+    check_expected(value);
+
+    return mock();
+}
+
+int __wrap_sqlite3_bind_null(__attribute__((unused)) sqlite3_stmt *pStmt, int index) {
     check_expected(index);
 
     return mock();
@@ -76,15 +82,6 @@ void expect_sqlite3_bind_text_call(int position, const char *buf, int ret) {
 int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
                                         const char *zName) {
     check_expected(zName);
-
-    return mock();
-}
-
-int __wrap_sqlite3_bind_double(__attribute__((unused)) sqlite3_stmt* stmt,
-                               int index,
-                               double value) {
-    check_expected(index);
-    check_expected(value);
 
     return mock();
 }
