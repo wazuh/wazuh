@@ -418,9 +418,10 @@ void test_c_group_read_directory(void **state)
 
     // Initialize files structure
     char ** files = NULL;
-    os_malloc((2) * sizeof(char *), files);
-    files[0] = strdup("test_files");
-    files[1] = NULL;
+    os_malloc((3) * sizeof(char *), files);
+    files[0] = strdup(".");
+    files[1] = strdup("test_files");
+    files[2] = NULL;
 
     // Initialize r_group structure
     remote_files_group *r_group = NULL;
@@ -465,6 +466,91 @@ void test_c_group_read_directory(void **state)
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
+
+    c_group(group, files, &groups[0]->f_sum, SHAREDCFG_DIR);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+
+    free_strarray(files);
+}
+
+void test_c_group_invalid_share_file(void **state)
+{
+    logr.nocmerged = 1;
+    const char *group = "test_default";
+
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test_files");
+    files[1] = NULL;
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 0;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 0;
+
+    //expect_string(__wrap_w_parser_get_group, name, groups[0]->group);
+    //will_return(__wrap_w_parser_get_group, NULL);
+
+    // expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    // expect_string(__wrap_MergeAppendFile, tag, "test_default");
+    // expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    // will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test_files");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 10);
+    invalid_files = OSHash_Create();
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_files");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test_files");
+    will_return(__wrap_checkBinaryFile, 1);
+
+    expect_string(__wrap_OSHash_Add, key, "etc/shared/test_default/test_files");
+    will_return(__wrap_OSHash_Add, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to add file 'test_files' to hash table of invalid files.");
+
+    // expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    // expect_string(__wrap_MergeAppendFile, tag, "test_default");
+    // expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    // will_return(__wrap_MergeAppendFile, 1);
+
+    // expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
+    // expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    // will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    // expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
 
     c_group(group, files, &groups[0]->f_sum, SHAREDCFG_DIR);
 
@@ -844,6 +930,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_is_corrupted, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_download_all_files, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_read_directory, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_invalid_share_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_timeout_not_null, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_timeout_not_null_not_binary_file, test_c_group_setup, test_c_group_teardown),
         // Tests c_multi_group
