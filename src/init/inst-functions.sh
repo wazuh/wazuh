@@ -809,6 +809,13 @@ InstallCommon()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
         fi
     fi
+    if [ ${NUNAME} = 'SunOS' ]
+    then
+        if [ ${VUNAME} = '5.10' ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 libgcc_s.so.1 ${INSTALLDIR}/lib
+        fi
+    fi
 
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
