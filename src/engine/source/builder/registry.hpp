@@ -10,34 +10,19 @@
 #ifndef _REGISTRY_H
 #define _REGISTRY_H
 
-#include <functional>
-#include <glog/logging.h>
 #include <map>
-#include <rxcpp/rx.hpp>
 #include <string>
-#include <variant>
 
-#include "connectable.hpp"
-#include "json.hpp"
+#include "builderTypes.hpp"
 
 namespace builder::internals
 {
-using Event_t = json::Document;
-// The type of the observable which will compose the processing graph
-using Obs_t = rxcpp::observable<Event_t>;
-// The type of the connectables whisch will help us connect the assets ina graph
-using Con_t = builder::internals::Connectable<Obs_t>;
-// The type of a connectable operation
-using Op_t = std::function<Obs_t(const Obs_t &)>;
-
-using BuildDocument = std::function<Op_t(const json::Document &)>;
-using BuildValue = std::function<Op_t(const json::Value &)>;
-using BuildType = std::variant<BuildValue, BuildDocument>;
 
 class Registry
 {
 private:
-    static std::map<std::string, BuildType> m_registry;
+    inline static std::map<std::string, types::BuilderVariant> m_registry =
+        std::map<std::string, types::BuilderVariant>{};
 
 public:
     /**
@@ -46,7 +31,7 @@ public:
      * @param builderName
      * @param builder
      */
-    static void registerBuilder(const std::string & builderName, const BuildType & builder);
+    static void registerBuilder(const std::string & builderName, const types::BuilderVariant & builder);
 
     /**
      * @brief Get the Builder object
@@ -54,7 +39,7 @@ public:
      * @param builderName
      * @return builder_t
      */
-    static BuildType getBuilder(const std::string & builderName);
+    static types::BuilderVariant getBuilder(const std::string & builderName);
 };
 
 } // namespace builder::internals
