@@ -174,6 +174,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
+        self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
     def to_dict(self):
         """Get worker healthcheck information.
@@ -704,7 +705,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = await cluster.run_in_pool(self.loop, self.server.task_pool,
                                                         wazuh.core.cluster.cluster.compress_files, self.name,
-                                                        master_files_paths, worker_files_ko)
+                                                        master_files_paths, worker_files_ko, self.current_zip_limit)
+
+            time_to_send = 0
+            sent_size = 0
 
             try:
                 # Start the synchronization process with the worker and get a taskID.
@@ -716,7 +720,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exc_info
 
                 # Send zip file to the worker into chunks.
-                await self.send_file(compressed_data, task_id)
+                time_to_send = time()
+                sent_size = await self.send_file(compressed_data, task_id)
+                time_to_send = time() - time_to_send
                 logger.debug("Zip with files to be synced sent to worker.")
 
                 # Notify what is the zip path for the current taskID.
@@ -739,10 +745,24 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                       cls=c_common.WazuhJSONEncoder).encode()
                 await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
             finally:
+                try:
+                    self.interrupted_tasks.remove(task_id)
+                    # Decrease max zip size if task was interrupted
+                    self.current_zip_limit = max(self.cluster_items['intervals']['communication']['min_zip_size'],
+                                                 sent_size * 0.9)
+                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 * 1024):.2f} MB.")
+                except KeyError:
+                    if self.current_zip_limit < self.cluster_items['intervals']['communication']['max_zip_size'] and \
+                            time_to_send < self.cluster_items['intervals']['communication'][
+                            'timeout_receiving_file'] * 0.8:
+                        # Increase max zip size
+                        self.current_zip_limit = min(self.cluster_items['intervals']['communication']['max_zip_size'],
+                                                     self.current_zip_limit * 1.1)
+                        self.logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024 * 1024):.2f}"
+                                          f" MB.")
+
                 # Remove local file.
                 os.unlink(compressed_data)
-                # In case task was interrupted, remove its ID from the interrupted set.
-                self.interrupted_tasks.discard(task_id)
                 logger.debug("Finished sending files to worker.")
                 # Log 'Finished in' message only if there are no extra_valid files to sync.
                 if not self.extra_valid_requested:

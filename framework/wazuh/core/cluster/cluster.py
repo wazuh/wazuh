@@ -12,7 +12,6 @@ from datetime import datetime
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
-from shutil import rmtree
 from uuid import uuid4
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -250,7 +249,7 @@ def update_cluster_control_with_failed(failed_files, ko_files):
             ko_files['shared'].pop(f, None)
 
 
-def compress_files(name, list_path, cluster_control_json=None):
+def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None):
     """Create a zip with cluster_control.json and the files listed in list_path.
 
     Iterate the list of files and groups them in the zip. If a file does not
@@ -261,20 +260,26 @@ def compress_files(name, list_path, cluster_control_json=None):
     name : str
         Name of the node to which the zip will be sent.
     list_path : list
-        List of file paths to be zipped.
+        File paths to be zipped.
     cluster_control_json : dict
         KO files (path-metadata) to be zipped as a json.
+    max_zip_size : int
+        Maximum size from which no new files should be added to the zip.
 
     Returns
     -------
     zip_file_path : str
         Path where the zip file has been saved.
     """
+    if max_zip_size is None:
+        max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
     failed_files = list()
     zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
+
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
+
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
         # write files
         if list_path:
@@ -484,7 +489,7 @@ def clean_up(node_name=""):
             f_path = path.join(local_rm_path, f)
             try:
                 if path.isdir(f_path):
-                    rmtree(f_path)
+                    shutil.rmtree(f_path)
                 else:
                     remove(f_path)
             except Exception as err:
