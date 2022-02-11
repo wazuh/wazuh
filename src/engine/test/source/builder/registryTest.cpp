@@ -5,39 +5,33 @@
 
 #include "registry.hpp"
 
-#include "test_utils.hpp"
+#include "testUtils.hpp"
 
 using namespace std;
-using namespace builder::internals;
 
-Registry::Op_t build(const json::Document & t)
+Lifter builderDummy(const Document & t)
 {
-    return [](const Registry::Obs_t & o) { return o; };
-}
-
-TEST(Registry, Initializes)
-{
-    ASSERT_NO_THROW(Registry reg);
+    return [](Observable o) { return o; };
 }
 
 TEST(Registry, RegisterBuilder)
 {
-    Registry::BuildDocument b = build;
-    Registry::BuildType c = b;
+    AssetBuilder b = builderDummy;
+    BuilderVariant c = b;
     ASSERT_NO_THROW(Registry::registerBuilder("test", c));
 }
 
 TEST(Registry, RegisterDuplicatedBuilder)
 {
-    Registry::BuildDocument b = build;
-    Registry::BuildType c = b;
+    types::AssetBuilder b = builderDummy;
+    types::BuilderVariant c = b;
     ASSERT_THROW(Registry::registerBuilder("test", c), invalid_argument);
 }
 
 TEST(Registry, GetBuilder)
 {
-    Registry::BuildDocument b = build;
-    Registry::BuildType c = b;
+    types::AssetBuilder b = builderDummy;
+    types::BuilderVariant c = b;
     ASSERT_NO_THROW(auto buildB = Registry::getBuilder("test"));
 }
 
@@ -48,8 +42,8 @@ TEST(Registry, GetNonExistentBuilder)
 
 TEST(Registry, GetBuilderAndBuilds)
 {
-    auto buildB = std::get<Registry::BuildDocument>(Registry::getBuilder("test"));
-    Registry::Obs_t o = rxcpp::observable<>::empty<Registry::Event_t>();
-    Registry::Obs_t expected = buildB(json::Document(R"({})"))(o);
+    auto buildB = std::get<types::AssetBuilder>(Registry::getBuilder("test"));
+    types::Observable o = rxcpp::observable<>::empty<types::Event>();
+    types::Observable expected = buildB(json::Document(R"({})"))(o);
     ASSERT_EQ(o, expected);
 }
