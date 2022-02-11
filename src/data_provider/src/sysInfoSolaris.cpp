@@ -1,7 +1,7 @@
 /*
  * Wazuh SysInfo
  * Copyright (C) 2015-2021, Wazuh Inc.
- * December 16, 2021.
+ * January 11, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,16 +11,24 @@
 #include <fstream>
 #include <sys/utsname.h>
 #include <unistd.h>
+
 #include "osinfo/sysOsParsers.h"
+#include "sharedDefs.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "timeHelper.h"
-#include "sharedDefs.h"
+#include "filesystemHelper.h"
+#include "packages/packageSolaris.h"
+#include "packages/solarisWrapper.h"
+#include "packages/packageFamilyDataAFactory.h"
 #include "network/networkSolarisHelper.hpp"
 #include "network/networkSolarisWrapper.hpp"
 #include "network/networkFamilyDataAFactory.h"
 #include "UtilsWrapperUnix.hpp"
 #include "uniqueFD.hpp"
+
+constexpr auto SUN_APPS_PATH {"/var/sadm/pkg/"};
+
 
 static void getOsInfoFromUname(nlohmann::json& info)
 {
@@ -62,10 +70,39 @@ void SysInfo::getMemory(nlohmann::json& /*info*/) const
 {
 
 }
+
+static void getPackagesFromPath(const std::string& pkgDirectory, std::function<void(nlohmann::json&)> callback)
+{
+    const auto packages { Utils::enumerateDir(pkgDirectory) };
+
+    for (const auto& package : packages)
+    {
+        nlohmann::json jsPackage;
+        const auto fullPath {  pkgDirectory + package };
+        const auto pkgWrapper{ std::make_shared<SolarisWrapper>(fullPath) };
+
+        FactoryPackageFamilyCreator<OSType::SOLARIS>::create(pkgWrapper)->buildPackageData(jsPackage);
+
+        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+        {
+            // Only return valid content packages
+            callback(jsPackage);
+        }
+    }
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
-    return nlohmann::json {};
+    nlohmann::json packages;
+
+    getPackages([&packages](nlohmann::json & data)
+    {
+        packages.push_back(data);
+    });
+
+    return packages;
 }
+
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
@@ -169,9 +206,14 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/
     // TODO
 }
 
-void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    // TODO
+    const auto pkgDirectory { SUN_APPS_PATH };
+
+    if (Utils::existsDir(pkgDirectory))
+    {
+        getPackagesFromPath(pkgDirectory, callback);
+    }
 }
 
 nlohmann::json SysInfo::getHotfixes() const

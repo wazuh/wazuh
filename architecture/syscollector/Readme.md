@@ -26,4 +26,5 @@ The System Inventory feature interacts with different modules to split responsab
 The different sequence diagrams ilustrate the flow of the different modules interacting on the syscollector general use.the configuration.
 - 001-sequence-wm-syscollector: It explains the wazuh module syscollector initialization, construction, use, destruction and stop from the wazuh modules daemon perspective.
 - 002-sequence-syscollector: It explains the syscollector internal interactions with modules like dbsync, rsync and normalizer. This diagram shows how is the flow for data synchronization, checksum calculation, scan starting, etc.
+- 003-sequence-manager-side: It explains the modules interaction (analysisd, wdb) when a syscollector message arrives from the manager perspective. This diagram shows how is the flow from the modules initialization to the database storage.
 

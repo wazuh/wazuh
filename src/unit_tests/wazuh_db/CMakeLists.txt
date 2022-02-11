@@ -29,6 +29,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdb_agents_get_packages -Wl,--wrap,wdb_agents_get_hotfixes -Wl,--wrap,close -Wl,--wrap,getpid \
                         -Wl,--wrap,wdb_package_save -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_package_update -Wl,--wrap,wdb_package_delete \
                         -Wl,--wrap,wdb_hotfix_delete -Wl,--wrap,time -Wl,--wrap,wdbi_update_attempt  -Wl,--wrap,wdbi_update_completion \
+                        -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_prepare_v2 \
+                        -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,sqlite3_column_text \
+                        -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_bind_int64\
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
@@ -117,11 +120,23 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_t
                              -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_step \
                              ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND wdb_tests_names "test_wdb_syscollector")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text \
+                             -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
+                             -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_double \
+                             -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_Parse \
+                             -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_IsNumber -Wl,--wrap,cJSON_IsString -Wl,--wrap,wdb_agents_get_sys_osinfo \
+                             ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND wdb_tests_names "test_wdb_task")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
                              -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND wdb_tests_names "test_wdb_delta_event")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 \
+                            -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_bind_double -Wl,--wrap,sqlite3_changes \
+                            -Wl,--wrap,sqlite3_bind_null ${DEBUG_OP_WRAPPERS}")
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)

@@ -26,7 +26,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.syscheck import AffectedItemsWazuhResult
         from wazuh import WazuhError, WazuhInternalError
         from wazuh.core import common
-        from wazuh.core.agent import Agent
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

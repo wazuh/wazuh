@@ -1,9 +1,6 @@
 ---
 test_name: GET USERS RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get all users in the system

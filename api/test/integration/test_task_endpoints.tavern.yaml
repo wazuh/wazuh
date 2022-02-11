@@ -1,9 +1,6 @@
 ---
 test_name: GET /tasks/status
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Get all existent tasks (At this point there are no tasks created)

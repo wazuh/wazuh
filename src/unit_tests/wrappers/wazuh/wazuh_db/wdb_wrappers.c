@@ -338,3 +338,7 @@ int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
     check_expected(scan_id);
     return mock();
 }
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
+    return mock_ptr_type(sqlite3_stmt*);
+}

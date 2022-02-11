@@ -139,6 +139,11 @@
 #define INVALID_GEOIP_DB        "(1276): Cannot open GeoIP database: '%s'."
 #define FIM_INVALID_MESSAGE     "(1277): Invalid syscheck message received."
 #define UNABLE_TO_RECONNECT     "(1278): Unable to reconnect to '%s': %s (%d)."
+#define INVALID_PREFIX          "(1283): Incorrect prefix message, message type: %s."
+#define INVALID_OPERATION       "(1284): Incorrect/unknown operation, type: %s."
+#define INVALID_RESPONSE        "(1285): Response without content, the event cannot be raised."
+#define A_QUERY_ERROR           "(1286): Wazuh-db query error, check wdb logs."
+#define INVALID_TYPE            "(1287): Incorrect/unknown type value %s."
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
@@ -331,6 +336,9 @@
 #define DB_SQL_ERROR          "(5211): SQL error: '%s'"
 #define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
 #define DB_CACHE_ERROR        "(5213): Cannot cache statement."
+#define DB_CACHE_NULL_STMT    "(5214): Null statement on internal cache."
+#define DB_AGENT_SQL_ERROR    "(5215): DB(%s) SQL Error: '%s'."
+#define DB_INVALID_DELTA_MSG  "(5216): Delta (%s) field count mismatch: expect %zu, received %zu."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."

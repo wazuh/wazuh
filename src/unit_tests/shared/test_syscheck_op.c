@@ -4040,7 +4040,6 @@ void test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer(void **
     cJSON *permissions = NULL;
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_ACCESS_DENIED);
-    expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
     retval = get_registry_permissions(hndl, &permissions);
 

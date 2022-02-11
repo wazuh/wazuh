@@ -574,11 +574,11 @@ help: failtarget
 	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make INSTALLDIR=/path        Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE.
+	@echo "   make INSTALLDIR=/path        Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
-	@echo "   make EXTERNAL_SRC_ONLY=yes   Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building.
+	@echo "   make EXTERNAL_SRC_ONLY=yes   Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -679,6 +679,12 @@ BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
+
+ifeq (${uname_S},SunOS)
+ifeq ($(uname_R),5.10)
+	BUILD_AGENT+=libgcc_s.so.1
+endif
+endif
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
@@ -1621,12 +1627,17 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
+ifneq ($(uname_R),5.10)
+LIBGCC_FLAGS := -static-libgcc
+else
+LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
+endif
 ifeq (${uname_P},sparc)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
 ifneq (,$(filter ${uname_S},AIX HP-UX))
@@ -1646,6 +1657,13 @@ endif
 endif
 endif
 endif
+
+
+### libgcc_s #########
+
+LIBGCC := $(realpath $(dir $(shell which gcc))../lib/libgcc_s.so.1)
+libgcc_s.so.1: $(LIBGCC)
+	cp $< $@
 
 #### os_mail #########
 
@@ -1833,12 +1851,17 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
+ifneq ($(uname_R),5.10)
+LIBGCC_FLAGS := -static-libgcc
+else
+LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
+endif
 ifeq (${uname_P},sparc)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
 ifneq (,$(filter ${uname_S},AIX HP-UX))
@@ -2403,6 +2426,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
+	rm -f libgcc_s.so.1
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}

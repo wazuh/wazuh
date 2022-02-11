@@ -1,9 +1,6 @@
 ---
 test_name: POST /agents (IPV6)
 
-marks:
-  - base_tests
-
 stages:
 
     # POST /agents

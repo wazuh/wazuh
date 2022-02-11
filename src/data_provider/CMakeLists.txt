@@ -115,9 +115,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
       "${CMAKE_SOURCE_DIR}/src/*Solaris.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/*Solaris.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/networkSolarisHelper.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Solaris.cpp")
+      "${CMAKE_SOURCE_DIR}/src/network/*Solaris.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 else()
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Unix.cpp"
@@ -139,9 +140,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(sysinfo PROPERTIES
-          LINK_FLAGS "-static-libgcc -static-libstdc++")
-
+  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
+    set_target_properties(sysinfo PROPERTIES
+      LINK_FLAGS "-static-libstdc++")
+  else()
+    set_target_properties(sysinfo PROPERTIES
+      LINK_FLAGS "-static-libgcc -static-libstdc++")
+  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()

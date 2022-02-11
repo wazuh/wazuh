@@ -1,9 +1,6 @@
 ---
 test_name: GET /decoders
 
-marks:
-  - base_tests
-
 stages:
 
     # GET /decoders

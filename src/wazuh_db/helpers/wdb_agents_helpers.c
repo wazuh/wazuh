@@ -34,7 +34,7 @@ cJSON* wdb_get_agent_sys_osinfo(int id,
     cJSON* result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     if (!result || !result->child) {
-        merror("Agents DB (%d) Error querying Wazuh DB to get OS information", id);
+        minfo("Agents DB (%d): No OS information available.", id);
         cJSON_Delete(result);
         result = NULL;
     }

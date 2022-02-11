@@ -12,8 +12,8 @@ from datetime import datetime
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
-from random import random
 from shutil import rmtree
+from uuid import uuid4
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
@@ -38,6 +38,7 @@ def check_cluster_config(config):
         - Cluster config block is not empty.
         - len(key) == 32 and only alphanumeric characters are used.
         - node_type is 'master' or 'worker'.
+        - Port is an int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
         - Reserved IPs are not used.
@@ -57,11 +58,15 @@ def check_cluster_config(config):
 
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
+
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
+
+    elif not isinstance(config['port'], int):
+        raise WazuhError(3004, "Port has to be an integer.")
 
     elif not 1024 < config['port'] < 65535:
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
@@ -267,7 +272,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     """
     failed_files = list()
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
-                              f'{name}-{datetime.utcnow().timestamp()}-{str(random())[2:]}.zip')
+                              f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
     with zipfile.ZipFile(zip_file_path, 'x') as zf:

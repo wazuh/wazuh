@@ -33,11 +33,10 @@ void buffer_push(buffer_t * const buffer, const char* const src, const size_t sr
         } else {
             buffer->status = FALSE;
         }
-    } 
+    }
 }
 
 void buffer_free(buffer_t *buffer) {
-    
     if (NULL != buffer) {
         if (buffer->data) {
             os_free(buffer->data);

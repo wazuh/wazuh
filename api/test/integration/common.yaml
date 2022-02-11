@@ -18,7 +18,6 @@ variables:
 
   # delays
   reconnect_delay: 30
-  restart_delay: 45
   restart_delay_cluster: 150
   upgrade_delay: 60
   global_db_delay: 30

@@ -84,18 +84,21 @@ async def test_middlewares_unlock_ip_ko():
         raise_mock.assert_called_once_with(WazuhPermissionError(6000))
 
 
-@pytest.mark.parametrize("stats", [
+@pytest.mark.parametrize('request_info', [
+    {'path': '/security/user/authenticate', 'method': 'GET', 'remote': 'ip'},
+    {'path': '/security/user/authenticate/run_as', 'method': 'POST', 'remote': 'ip'},
+])
+@pytest.mark.parametrize('stats', [
     {},
     {'ip': {'attempts': 4}},
 ])
 @pytest.mark.asyncio
-async def test_middlewares_prevent_bruteforce_attack(stats):
+async def test_middlewares_prevent_bruteforce_attack(request_info, stats):
     """Test `prevent_bruteforce_attack` blocks IPs when reaching max number of attempts."""
-    request = {'path': '/security/user/authenticate', 'method': 'GET', 'remote': 'ip'}
     with patch("api.middlewares.ip_stats", new=copy(stats)):
         from api.middlewares import ip_stats, ip_block
         previous_attempts = ip_stats['ip']['attempts'] if 'ip' in ip_stats else 0
-        await prevent_bruteforce_attack(DummyRequest(request),
+        await prevent_bruteforce_attack(DummyRequest(request_info),
                                         attempts=5)
         if stats:
             # There were previous attempts. This one reached the limit
