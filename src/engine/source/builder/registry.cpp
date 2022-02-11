@@ -9,12 +9,13 @@
 
 #include "registry.hpp"
 
+#include <stdexcept>
+#include <glog/logging.h>
+
 namespace builder::internals
 {
 
-std::map<std::string, BuildType> Registry::m_registry;
-
-void Registry::registerBuilder(const std::string & builderName, const BuildType & builder)
+void Registry::registerBuilder(const std::string & builderName, const types::BuilderVariant & builder)
 {
     if (Registry::m_registry.count(builderName) > 0)
     {
@@ -27,7 +28,7 @@ void Registry::registerBuilder(const std::string & builderName, const BuildType 
     }
 }
 
-BuildType Registry::getBuilder(const std::string & builderName)
+types::BuilderVariant Registry::getBuilder(const std::string & builderName)
 {
     if (Registry::m_registry.count(builderName) == 0)
     {
