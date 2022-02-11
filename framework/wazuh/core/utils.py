@@ -5,7 +5,6 @@
 import errno
 import glob
 import hashlib
-import json
 import operator
 import os
 import re
@@ -21,8 +20,6 @@ from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from signal import signal, alarm, SIGALRM
-from subprocess import CalledProcessError, check_output
-from xml.etree.ElementTree import ElementTree
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -100,34 +97,6 @@ def previous_month(n=1):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
 
     return date.replace(hour=00, minute=00, second=00, microsecond=00)
-
-
-def execute(command):
-    """Executes a command. It is used to execute Wazuh commands.
-
-    :param command: Command as list.
-    :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
-    """
-    try:
-        output = check_output(command)
-    except CalledProcessError as error:
-        output = error.output
-    except Exception as e:
-        raise WazuhInternalError(1002, "{0}: {1}".format(command, e))  # Error executing command
-
-    try:
-        output_json = json.loads(output)
-    except Exception as e:
-        raise WazuhInternalError(1003, command)  # Command output not in json
-
-    keys = output_json.keys()  # error and (data or message)
-    if 'error' not in keys or ('data' not in keys and 'message' not in keys):
-        raise WazuhInternalError(1004, command)  # Malformed command output
-
-    if output_json['error'] != 0:
-        raise WazuhInternalError(output_json['error'], output_json['message'], True)
-    else:
-        return output_json['data']
 
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
@@ -1762,7 +1731,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ElementTree(fromstring(f'<root>{xml_string}</root>'))
+        et = fromstring(f'<root>{xml_string}</root>')
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):
@@ -1780,7 +1749,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.tmp_path)
     try:
         with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
