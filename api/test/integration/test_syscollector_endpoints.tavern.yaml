@@ -2,7 +2,6 @@
 test_name: GET /syscollector/{agent_id}/os
 
 marks:
-  - base_tests
   - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:

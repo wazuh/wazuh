@@ -1,9 +1,6 @@
 ---
 test_name: GET /manager/configuration
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Request manager configuration (Allow)

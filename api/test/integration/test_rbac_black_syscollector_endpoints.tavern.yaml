@@ -3,7 +3,6 @@ test_name: GET OS SYSCOLLECTOR RBAC
 
 marks:
   - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
-  - base_tests
 
 stages:
 

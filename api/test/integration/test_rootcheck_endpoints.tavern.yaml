@@ -1,9 +1,6 @@
 ---
 test_name: GET /rootcheck/001
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /rootcheck/001

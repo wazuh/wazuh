@@ -1,9 +1,6 @@
 ---
 test_name: GET /agents
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get all agents (Partially allowed, user agnostic)

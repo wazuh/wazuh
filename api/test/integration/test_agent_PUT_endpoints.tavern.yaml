@@ -1,9 +1,6 @@
 ---
 test_name: PUT /agents/group
 
-marks:
-  - base_tests
-
 stages:
 
   # PUT /agents/group?group_id=wrong_group

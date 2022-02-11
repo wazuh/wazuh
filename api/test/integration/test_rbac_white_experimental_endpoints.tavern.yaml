@@ -1,9 +1,6 @@
 ---
 test_name: DELETE /experimental/rootcheck
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Delete rootcheck scans in agent 001 (Allow)

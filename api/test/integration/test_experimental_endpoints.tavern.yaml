@@ -1,9 +1,6 @@
 ---
 test_name: DELETE /experimental/rootcheck
 
-marks:
-  - base_tests
-
 stages:
 
   # DELETE /experimental/rootcheck
