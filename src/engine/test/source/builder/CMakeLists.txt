@@ -63,6 +63,7 @@ include_directories(
 )
 
 link_libraries(
+  glog::glog
   gtest_main
   rxcpp
 )
@@ -99,8 +100,17 @@ gtest_discover_tests(registerTest)
 # Builders targets
 ####################################################################################################
 
-add_executable(buildCheckTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildCheckTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildCheck.cpp)
-gtest_discover_tests(buildCheckTest)
+add_executable(opBuilderConditionValueTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValueTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp)
+gtest_discover_tests(opBuilderConditionValueTest)
+
+add_executable(opBuilderConditionReferenceTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReferenceTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp)
+gtest_discover_tests(opBuilderConditionReferenceTest)
+
+add_executable(opBuilderHelperExistsTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExistsTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(opBuilderHelperExistsTest)
+
+add_executable(opBuilderConditionTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(opBuilderConditionTest)
 
 add_executable(buildMapTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildMapTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildMap.cpp)
 gtest_discover_tests(buildMapTest)
