@@ -1221,20 +1221,26 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     cJSON_ArrayForEach (j_group_name, j_groups) {
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
-            if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
-                result = WDBC_ERROR;
+            if (!strchr(group_name, MULTIGROUP_SEPARATOR)) {
+                if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
+                    result = WDBC_ERROR;
+                }
             }
 
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
             if (j_find_response) {
                 cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
-                int group_id = j_group_id->valueint;
                 cJSON_Delete(j_find_response);
-                if (OS_INVALID == wdb_global_insert_agent_belong(wdb, group_id, id, priority)) {
-                    mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
-                    result = WDBC_ERROR;
+                if (cJSON_IsNumber(j_group_id)) {
+                    if (OS_INVALID == wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority)) {
+                        mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
+                        result = WDBC_ERROR;
+                    } else {
+                        priority++;
+                    }
+                } else {
+                    mwarn("The group '%s' does not exist", group_name);
                 }
-                priority++;
             } else {
                 mdebug1("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
