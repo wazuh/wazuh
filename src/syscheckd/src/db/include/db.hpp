@@ -91,6 +91,17 @@ public:
     DBSYNC_HANDLE DBSyncHandle();
 
     /**
+    * @brief createJsonEvent Create and fill the json with event data.
+    *
+    * @param fileJson The json structure with fim file data.
+    * @param resultJson The json structure with the result of the dbsync querie.
+    * @param type Represents the result type of the database operation events.
+    * @param ctx Context struct with data related to the fim_entry.
+    * @return jsonEvent The json structure with the event information.
+    */
+    nlohmann::json createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, create_json_event_ctx* ctx);
+
+    /**
     * @brief removeFile Remove a file from the database.
     *
     * @param path File to remove.
@@ -118,9 +129,10 @@ public:
     * @brief updateFile Update/insert a file in the database.
     *
     * @param file File entry/data to update/insert.
-    * @return true if the file was updated, false if the file is inserted.
+    * @param ctx Context struct with data related to the fim_entry.
+    * @param callback Callback to send the fim message.
     */
-    bool updateFile(const nlohmann::json &file);
+    void updateFile(const nlohmann::json& file, create_json_event_ctx* ctx, std::function<void(nlohmann::json)> callbackPrimitive);
 
     /**
     * @brief searchFiles Search files in the database.

@@ -70,7 +70,7 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         }
     }
 }
-
+/*
 TEST_F(DBTestFixture, TestFimDBInit)
 {
     EXPECT_NO_THROW(
@@ -111,7 +111,7 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
         fim_sync_push_msg(test);
     });
 }
-
+*/
 TEST_F(DBTestFixture, TestFimRunIntegrity)
 {
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);

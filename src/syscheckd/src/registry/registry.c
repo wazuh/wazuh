@@ -1017,8 +1017,6 @@ void fim_open_key(HKEY root_key_handle,
 
     txn_ctx_reg->key = new.registry_entry.key;
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
     result_transaction = fim_db_transaction_sync_row(regkey_txn_handler, &new);
 
     if(result_transaction < 0){
@@ -1031,7 +1029,6 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     fim_registry_free_key(new.registry_entry.key);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
     RegCloseKey(current_key_handle);
 }
 

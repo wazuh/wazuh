@@ -134,7 +134,7 @@ struct UpdateFileAction final : public IAction
         auto updated { false };
         try
         {
-            updated = DB::instance().updateFile(value);
+            //updated = DB::instance().updateFile(value);
             retVal = true;
         }
         catch (const std::exception &e)

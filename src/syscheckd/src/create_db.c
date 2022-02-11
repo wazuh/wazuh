@@ -689,16 +689,39 @@ int fim_directory(const char *dir,
     return 0;
 }
 
+void fim_event_callback(void* data, void * ctx)
+{
+    struct create_json_event_ctx* ctx_data = (struct create_json_event_ctx*)ctx;
+    cJSON* json_event = (cJSON*)data;
 
-/**
- * @brief Processes a file, update the DB entry and return an event. No mutex is used inside this function.
- *
- * @param path The path to the file being processed.
- * @param configuration The configuration associated with the file being processed.
- * @param evt_data Information on how the event was triggered.
- * @param txn_handle DBSync transaction handler. Can be NULL.
- */
-static void _fim_file(const char *path,
+    if (json_event != NULL) {
+        cJSON* data_json = cJSON_GetObjectItem(json_event, "data");
+        if (ctx_data->config->options & CHECK_SEECHANGES) {
+            char* path;
+            char* diff;
+
+            path = cJSON_GetStringValue(cJSON_GetObjectItem(data_json, "path"));
+
+            diff = fim_file_diff(path, ctx_data->config);
+            if (diff != NULL) {
+                cJSON_AddStringToObject(data_json, "content_changes", diff);
+            }
+            os_free(diff);
+        }
+
+        if (ctx_data->event->w_evt) {
+            cJSON_AddItemToObject(data_json, "audit", fim_audit_json(ctx_data->event->w_evt));
+        }
+
+        if (ctx_data->config->tag != NULL) {
+            cJSON_AddStringToObject(data_json, "tags", ctx_data->config->tag);
+        }
+
+        send_syscheck_msg(json_event);
+    }
+}
+
+void fim_file(const char *path,
                       const directory_t *configuration,
                       event_data_t *evt_data,
                       TXN_HANDLE txn_handle,
@@ -707,9 +730,9 @@ static void _fim_file(const char *path,
     assert(configuration != NULL);
     assert(evt_data != NULL);
 
-    bool saved;
-    char *diff = NULL;
     fim_entry new_entry;
+
+    check_max_fps();
 
     new_entry.type = FIM_TYPE_FILE;
     new_entry.file_entry.path = (char *)path;
@@ -724,44 +747,25 @@ static void _fim_file(const char *path,
         txn_context->latest_entry = &new_entry;
 
         fim_db_transaction_sync_row(txn_handle, &new_entry);
-        free_file_data(new_entry.file_entry.data);
 
         txn_context->latest_entry = NULL;
-        return;
-    }
-
-    if (fim_db_file_update(&new_entry, &saved) != FIMDB_OK) {
-        free_file_data(new_entry.file_entry.data);
-        return;
-    }
-
-    if (!saved) {
-        evt_data->type = FIM_ADD; // New entry
     } else {
-        evt_data->type = FIM_MODIFICATION; // Checking for changes
+        create_json_event_ctx ctx = {
+            .event = evt_data,
+            .config = configuration,
+        };
+
+        callback_context_t callback_data;
+        callback_data.callback = fim_event_callback;
+        callback_data.context = &ctx;
+
+        fim_db_file_update(&new_entry, callback_data);
     }
 
-    if (configuration->options & CHECK_SEECHANGES) {
-        diff = fim_file_diff(path, configuration);
-    }
-
-    os_free(diff);
     free_file_data(new_entry.file_entry.data);
+
+    return;
 }
-
-void fim_file(const char *path,
-              const directory_t *configuration,
-              event_data_t *evt_data,
-              TXN_HANDLE txn_handle,
-              fim_txn_context_t *ctx) {
-
-    check_max_fps();
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    _fim_file(path, configuration, evt_data, txn_handle, ctx);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-}
-
 
 void fim_realtime_event(char *file) {
     struct stat file_stat;
