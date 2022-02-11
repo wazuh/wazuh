@@ -56,8 +56,9 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
  * @param files Group files
  * @param _f_sum File sum structure to update
  * @param sharedcfg_dir Group directory
+ * @param create_merged Flag indicating if merged.mg needs to be created
  */
-STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir);
+STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged);
 
 /**
  * @brief Process multigroup, update file sum structure and create merged.mg file
@@ -65,8 +66,9 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
  * @param _f_sum File sum structure to update
  * @param hash_multigroup Multigroup hash
  * @param replace_files Flag indicating if multigroup files need to be replaced
+ * @param create_merged Flag indicating if merged.mg needs to be created
  */
-STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool replace_files);
+STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool replace_files, bool create_merged);
 
 /**
  * @brief Process groups and multigroups files
@@ -185,6 +187,17 @@ void cleaner(void* data) {
     os_free(data);
 }
 
+// Frees file sum structure
+void free_file_sum(file_sum **f_sum) {
+    if (f_sum) {
+        for (unsigned int i = 0; f_sum[i]; i++) {
+            os_free(f_sum[i]->name);
+            os_free(f_sum[i]);
+        }
+        os_free(f_sum);
+    }
+}
+
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
@@ -259,7 +272,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node?"syncreq":"synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node ? "syncreq" : "synced", wdb_sock);
 
         if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
@@ -285,7 +298,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock);
+            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq" : "synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
@@ -295,7 +308,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node?"syncreq":"synced", wdb_sock);
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
@@ -401,7 +414,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 }
 
 /* Generate merged file for groups */
-STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir) {
+STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
@@ -424,7 +437,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
-    if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
+    if (create_merged && (r_group = w_parser_get_group(group), r_group)) {
         if (r_group->current_polling_time <= 0) {
             r_group->current_polling_time = r_group->poll;
 
@@ -499,7 +512,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
         f_sum[f_size] = NULL;
     } else {
         // Merge ar.conf always
-        if (!logr.nocmerged) {
+        if (create_merged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
             // First call, truncate merged file
             MergeAppendFile(merged_tmp, NULL, group, -1);
@@ -513,7 +526,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
             f_sum[f_size + 1] = NULL;
 
-            if (!logr.nocmerged) {
+            if (create_merged) {
                 MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
             }
 
@@ -589,7 +602,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
                 strncpy(f_sum[f_size]->sum, md5sum, 32);
                 os_strdup(files[i], f_sum[f_size]->name);
 
-                if (!logr.nocmerged) {
+                if (create_merged) {
                     MergeAppendFile(merged_tmp, file, NULL, -1);
                 }
 
@@ -599,12 +612,12 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
 
         f_sum[f_size] = NULL;
 
-        if (!logr.nocmerged) {
+        if (create_merged) {
             OS_MoveFile(merged_tmp, merged);
         }
 
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            if (!logr.nocmerged) {
+            if (create_merged) {
                 merror("Accessing file '%s'", merged);
             }
 
@@ -617,7 +630,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
 }
 
 /* Generate merged file for multigroups */
-STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool replace_files) {
+STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup, bool replace_files, bool create_merged) {
     DIR *dp;
     char *group;
     char *save_ptr = NULL;
@@ -631,7 +644,7 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
         return;
     }
 
-    if (!logr.nocmerged && replace_files) {
+    if (replace_files) {
         /* Get each group of the multi-group */
         group = strtok_r(multi_group, delim, &save_ptr);
 
@@ -723,7 +736,7 @@ next:
         return;
     }
 
-    c_group(hash_multigroup, subdir, _f_sum, MULTIGROUPS_DIR);
+    c_group(hash_multigroup, subdir, _f_sum, MULTIGROUPS_DIR, create_merged);
     free_strarray(subdir);
 
     closedir(dp);
@@ -760,7 +773,6 @@ STATIC void process_groups() {
     char ** subdir;
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
-    unsigned int i;
 
     dp = opendir(SHAREDCFG_DIR);
 
@@ -794,7 +806,7 @@ STATIC void process_groups() {
             os_realloc(groups, (groups_size + 2) * sizeof(group_t *), groups);
             os_calloc(1, sizeof(group_t), groups[groups_size]);
             groups[groups_size]->name = strdup(entry->d_name);
-            c_group(entry->d_name, subdir, &groups[groups_size]->f_sum, SHAREDCFG_DIR);
+            c_group(entry->d_name, subdir, &groups[groups_size]->f_sum, SHAREDCFG_DIR, !logr.nocmerged);
             groups[groups_size]->has_changed = true;
             groups[groups_size]->exists = true;
             groups[groups_size + 1] = NULL;
@@ -803,22 +815,20 @@ STATIC void process_groups() {
         } else {
             file_sum **old_sum = group->f_sum;
             group->f_sum = NULL;
-            c_group(entry->d_name, subdir, &group->f_sum, SHAREDCFG_DIR);
+            c_group(entry->d_name, subdir, &group->f_sum, SHAREDCFG_DIR, false);
             if (fsum_changed(old_sum, group->f_sum)) {
                 // Group has changed
+                if (!logr.nocmerged) {
+                    free_file_sum(group->f_sum);
+                    c_group(entry->d_name, subdir, &group->f_sum, SHAREDCFG_DIR, true);
+                }
                 group->has_changed = true;
                 mdebug2("Group '%s' has changed.", group->name);
             } else {
                 // Group didn't change
                 group->has_changed = false;
             }
-            if (old_sum) {
-                for (i = 0; old_sum[i]; i++) {
-                    os_free(old_sum[i]->name);
-                    os_free(old_sum[i]);
-                }
-                os_free(old_sum);
-            }
+            free_file_sum(old_sum);
             group->exists = true;
         }
 
@@ -835,7 +845,7 @@ STATIC void process_multi_groups() {
     struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
     OSHashNode *my_node;
-    unsigned int i, j;
+    unsigned int i;
 
     dp = opendir(GROUPS_DIR);
 
@@ -946,7 +956,7 @@ STATIC void process_multi_groups() {
             os_realloc(multi_groups, (multi_groups_size + 2) * sizeof(group_t *), multi_groups);
             os_calloc(1, sizeof(group_t), multi_groups[multi_groups_size]);
             multi_groups[multi_groups_size]->name = strdup(key);
-            c_multi_group(key, &multi_groups[multi_groups_size]->f_sum, data, true);
+            c_multi_group(key, &multi_groups[multi_groups_size]->f_sum, data, !logr.worker_node, !logr.nocmerged);
             multi_groups[multi_groups_size]->exists = true;
             multi_groups[multi_groups_size + 1] = NULL;
             multi_groups_size++;
@@ -954,32 +964,22 @@ STATIC void process_multi_groups() {
         } else {
             if (group_changed(key)) {
                 // Multigroup needs to be updated
-                if (multigroup->f_sum) {
-                    for (j = 0; multigroup->f_sum[j]; j++) {
-                        os_free(multigroup->f_sum[j]->name);
-                        os_free(multigroup->f_sum[j]);
-                    }
-                    os_free(multigroup->f_sum);
-                }
-                c_multi_group(key, &multigroup->f_sum, data, true);
+                free_file_sum(multigroup->f_sum);
+                c_multi_group(key, &multigroup->f_sum, data, !logr.worker_node, !logr.nocmerged);
                 mdebug2("Multigroup '%s' has changed.", multigroup->name);
-            } else {
+
+            } else if (!logr.worker_node) {
                 file_sum **old_sum = multigroup->f_sum;
                 multigroup->f_sum = NULL;
-                c_multi_group(key, &multigroup->f_sum, data, false);
+                c_multi_group(key, &multigroup->f_sum, data, false, false);
                 if (fsum_changed(old_sum, multigroup->f_sum)) {
                     // Multigroup needs to be regenerated
-                    c_multi_group(key, &multigroup->f_sum, data, true);
+                    free_file_sum(multigroup->f_sum);
+                    c_multi_group(key, &multigroup->f_sum, data, true, !logr.nocmerged);
                     mwarn("The files of the multigroup '%s' were modified so it was necessary to regenerate it.",
                           multigroup->name);
                 }
-                if (old_sum) {
-                    for (j = 0; old_sum[j]; j++) {
-                        os_free(old_sum[j]->name);
-                        os_free(old_sum[j]);
-                    }
-                    os_free(old_sum);
-                }
+                free_file_sum(old_sum);
             }
             multigroup->exists = true;
         }
@@ -995,7 +995,7 @@ STATIC void process_multi_groups() {
 
 STATIC void process_deleted_groups() {
     bool update = 0;
-    unsigned int i, j;
+    unsigned int i;
 
     for (i = 0; groups[i]; i++) {
         if (!groups[i]->exists) {
@@ -1022,13 +1022,7 @@ STATIC void process_deleted_groups() {
                 groups[groups_size + 1] = NULL;
                 groups_size++;
             } else {
-                if (old_groups[i]->f_sum) {
-                    for (j = 0; old_groups[i]->f_sum[j]; j++) {
-                        os_free(old_groups[i]->f_sum[j]->name);
-                        os_free(old_groups[i]->f_sum[j]);
-                    }
-                    os_free(old_groups[i]->f_sum);
-                }
+                free_file_sum(old_groups[i]->f_sum);
                 os_free(old_groups[i]->name);
                 os_free(old_groups[i]);
             }
@@ -1048,7 +1042,7 @@ STATIC void process_deleted_multi_groups() {
     char _hash[9] = {0};
     os_sha256 multi_group_hash;
     bool update = 0;
-    unsigned int i, j;
+    unsigned int i;
 
     OSHash_Clean(m_hash, cleaner);
     m_hash = OSHash_Create();
@@ -1081,14 +1075,7 @@ STATIC void process_deleted_multi_groups() {
                 strncpy(_hash, multi_group_hash, 8);
                 snprintf(multi_path, PATH_MAX,"%s/%s", MULTIGROUPS_DIR, _hash);
                 rmdir_ex(multi_path);
-
-                if (old_multi_groups[i]->f_sum) {
-                    for (j = 0; old_multi_groups[i]->f_sum[j]; j++) {
-                        os_free(old_multi_groups[i]->f_sum[j]->name);
-                        os_free(old_multi_groups[i]->f_sum[j]);
-                    }
-                    os_free(old_multi_groups[i]->f_sum);
-                }
+                free_file_sum(old_multi_groups[i]->f_sum);
                 os_free(old_multi_groups[i]->name);
                 os_free(old_multi_groups[i]);
             }
