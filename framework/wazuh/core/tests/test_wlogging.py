@@ -160,3 +160,21 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
     else:
         with pytest.raises(expected_exception):
             w_logger.__getattr__('doesnt_exists')
+
+
+def test_customfilter():
+    """
+    Test if CustomFilter class works properly.
+    """
+    class MockedRecord():
+        def __init__(self, log_type):
+            if log_type:
+                self.log_type = log_type
+    # Return True
+    for value in ['test', None]:
+        cf = wlogging.CustomFilter(value)
+        assert cf.filter(MockedRecord(value))
+
+    # Return False
+    cf = wlogging.CustomFilter('testA')
+    assert not cf.filter(MockedRecord('testB'))

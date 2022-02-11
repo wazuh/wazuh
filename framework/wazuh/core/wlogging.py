@@ -64,12 +64,8 @@ class CustomFilter():
         self.log_type = log_type
 
     def filter(self, record):
-        try:
-            if record.log_type == self.log_type:
-                return True
-        except AttributeError:
-            # If the log file is not specifically filtered, then It should log into both files
-            return True
+        # If the log file is not specifically filtered, then It should log into both files
+        return True if not hasattr(record, 'log_type') or record.log_type == self.log_type else False
 
 
 class WazuhLogger:
