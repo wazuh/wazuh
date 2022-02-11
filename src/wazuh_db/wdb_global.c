@@ -1273,6 +1273,8 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
                         mdebug1("Unable to delete group '%s' for agent '%d'", group_name, id);
                         result = WDBC_ERROR;
                     }
+                } else {
+                    mwarn("The group '%s' does not exist", group_name);
                 }
             } else {
                 mdebug1("Unable to find the id of the group '%s'", group_name);
