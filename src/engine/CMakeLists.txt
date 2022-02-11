@@ -106,6 +106,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
+add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 
 target_link_libraries(main  ${EXTERNAL_DEPS})
 
