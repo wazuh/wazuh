@@ -147,7 +147,7 @@ def get_agents_summary_os(agent_list=None):
 
 
 @expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1757]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
 def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
     """Force reconnect a list of agents.
 

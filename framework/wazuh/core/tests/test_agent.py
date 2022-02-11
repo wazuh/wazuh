@@ -608,7 +608,7 @@ def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
 def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
     """Test if method reconnect raises exception."""
     # Assert exception is raised when status of agent is not 'active'
-    with pytest.raises(WazuhError, match='.* 1757 .*'):
+    with pytest.raises(WazuhError, match='.* 1707 .*'):
         agent = Agent(3)
         agent.reconnect(mock_queue)
 

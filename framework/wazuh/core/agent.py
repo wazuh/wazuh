@@ -435,7 +435,7 @@ class Agent:
         ------
         WazuhError(1750)
             If the agent has active response disabled.
-        WazuhError(1757)
+        WazuhError(1707)
             If the agent to be reconnected is not active.
 
         Returns
@@ -446,7 +446,7 @@ class Agent:
         # Check if agent is active
         self.get_basic_information()
         if self.status.lower() != 'active':
-            raise WazuhError(1757)
+            raise WazuhError(1707)
 
         # Send force reconnect message to the WazuhQueue
         ret_msg = wq.send_msg_to_agent(WazuhQueue.HC_FORCE_RECONNECT, self.id)
