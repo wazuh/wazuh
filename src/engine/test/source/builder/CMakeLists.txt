@@ -112,6 +112,17 @@ gtest_discover_tests(opBuilderHelperExistsTest)
 add_executable(opBuilderConditionTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
 gtest_discover_tests(opBuilderConditionTest)
 
+add_executable(opBuilderMapValueTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapValueTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp)
+gtest_discover_tests(opBuilderMapValueTest)
+
+add_executable(opBuilderMapReferenceTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapReferenceTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
+gtest_discover_tests(opBuilderMapReferenceTest)
+
+add_executable(opBuilderMapTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
+gtest_discover_tests(opBuilderMapTest)
+
+
+
 add_executable(buildMapTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildMapTest.cpp ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/buildMap.cpp)
 gtest_discover_tests(buildMapTest)
 
