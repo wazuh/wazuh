@@ -42,6 +42,7 @@ EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
+EXTERNAL_JEMALLOC=external/jemalloc/
 ifeq (${uname_S},Linux)
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
@@ -71,7 +72,7 @@ USE_BIG_ENDIAN=no
 USE_AUDIT=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
-
+DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
@@ -586,6 +587,7 @@ help: failtarget
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=no     Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -803,7 +805,7 @@ BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
-
+JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -842,7 +844,7 @@ endif
 
 
 .PHONY: external test_external
-external: test_external $(EXTERNAL_LIBS)
+external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 external: build_gtest
@@ -1124,6 +1126,16 @@ ${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
 ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
 	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="${RPM_CFLAGS}" CC=${RPM_CC} cmake ..
 
+#### jemalloc ##########
+
+$(JEMALLOC_LIB):
+ifeq (${TARGET},server)
+ifneq ($(wildcard external/jemalloc/configure),)
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./configure --disable-static && ${MAKE}
+else
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./autogen.sh --disable-static && ${MAKE}
+endif
+endif
 
 ################################
 #### External dependencies  ####
@@ -1177,7 +1189,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm jemalloc
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -2073,8 +2085,14 @@ wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${fo
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
+ifeq (${TARGET},server)
+ifeq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
+	MODULESD_LDFLAGS=-L${EXTERNAL_JEMALLOC}lib -ljemalloc
+endif
+endif
+
 wazuh-modulesd: ${wmodulesd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
 
 ### wazuh-gtest-gmock ###
 
@@ -2343,6 +2361,10 @@ endif
 
 ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
+endif
+
+ifneq ($(wildcard external/jemalloc/Makefile),)
+	cd ${EXTERNAL_JEMALLOC} && ${MAKE} clean
 endif
 
 ifneq ($(wildcard external/pacman/lib/libalpm/*),)
