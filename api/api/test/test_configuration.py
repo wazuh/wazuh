@@ -9,7 +9,6 @@ import pytest
 
 import api.constants
 from api import configuration, api_exception
-from wazuh.core import common
 
 custom_api_configuration = {
     "host": "0.0.0.0",
@@ -168,5 +167,3 @@ def test_generate_self_signed_certificate(mock_open, mock_chmod):
 
     assert mock_open.call_count == 2, 'Not expected number of calls'
     assert mock_chmod.call_count == 2, 'Not expected number of calls'
-
-

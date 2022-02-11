@@ -5,22 +5,20 @@
 
 import logging
 import os
-import sys
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from werkzeug.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from api import alogging
 
 
-@pytest.mark.parametrize('json_format', [
+@pytest.mark.parametrize('json_log', [
     False,
     True
 ])
-def test_accesslogger_log_credentials(json_format):
+def test_accesslogger_log_credentials(json_log):
     """Check AccessLogger is hiding confidential data from logs"""
     class MockedRequest(dict):
         query = {'password': 'password_value'
@@ -34,12 +32,12 @@ def test_accesslogger_log_credentials(json_format):
                                          'key': 'key_value'})
             super().__setitem__('user', 'wazuh')
 
-    with patch('api.alogging.JSON_FORMAT', json_format):
+    with patch('api.alogging.JSON_LOG', json_log):
         with patch('logging.Logger.info') as mock_logger_info:
             test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
             test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
 
-            if json_format:
+            if json_log:
                 assert mock_logger_info.call_args.args[0]['parameters'] == {"password": "****"}
                 assert mock_logger_info.call_args.args[0]['body'] == {"password": "****", "key": "****"}
             else:
@@ -47,14 +45,14 @@ def test_accesslogger_log_credentials(json_format):
                     in mock_logger_info.call_args.args[0]
 
 
-@pytest.mark.parametrize('side_effect, user, json_format', [
+@pytest.mark.parametrize('side_effect, user, json_log', [
     ('unknown', '', True),
     (None, '', False),
     (None, 'wazuh', True),
     (None, 'wazuh', False)
 ])
 @patch('api.alogging.json.dumps')
-def test_accesslogger_log(mock_dumps, side_effect, user, json_format):
+def test_accesslogger_log(mock_dumps, side_effect, user, json_log):
     """Test expected methods are called when using log().
 
     Parameters
@@ -72,7 +70,7 @@ def test_accesslogger_log(mock_dumps, side_effect, user, json_format):
 
         def get(self, *args, **kwargs):
             return user
-    with patch('api.alogging.JSON_FORMAT', json_format):
+    with patch('api.alogging.JSON_LOG', json_log):
         # Mock decode_token and logger.info
         with patch('logging.Logger.info') as mock_logger_info:
 
@@ -84,43 +82,41 @@ def test_accesslogger_log(mock_dumps, side_effect, user, json_format):
             # if we have token_info or UNKNOWN_USER if not
             if not user:
                 expected_user = 'wazuh' if side_effect is None else alogging.UNKNOWN_USER_STRING
-                if json_format:
+                if json_log:
                     assert mock_logger_info.call_args.args[0]['user'] == expected_user
                 else:
                     assert mock_logger_info.call_args.args[0].split(" ")[0] == expected_user
             # If user, logger.info must be called with the user
             else:
-                if json_format:
+                if json_log:
                     assert mock_logger_info.call_args.args[0]['user'] == user
                 else:
                     assert mock_logger_info.call_args.args[0].split(" ")[0] == user
 
 
-@pytest.mark.parametrize('json_format', [
+@pytest.mark.parametrize('json_log', [
     False,
     True
 ])
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')
-def test_apilogger_init(mock_wazuhlogger, json_format):
-    """Check parameters are as expected when calling __init__ method"""
-    # Mock json log format
-    with patch('api.alogging.JSON_FORMAT', json_format):
-        current_logger_path = os.path.join(os.path.dirname(__file__), 'testing')
-        alogging.APILogger(log_path=current_logger_path, foreground_mode=False, debug_level='info',
-                           logger_name='wazuh')
+def test_apilogger_init(mock_wazuhlogger, json_log):
+    log_name = 'testing.json' if json_log else 'testing.log'
+    current_logger_path = os.path.join(os.path.dirname(__file__), log_name)
+    alogging.APILogger(log_path=current_logger_path, foreground_mode=False, debug_level='info',
+                       logger_name='wazuh')
 
-        assert mock_wazuhlogger.call_args.kwargs['log_path'] == current_logger_path
-        assert not mock_wazuhlogger.call_args.kwargs['foreground_mode']
-        assert mock_wazuhlogger.call_args.kwargs['debug_level'] == 'info'
-        assert mock_wazuhlogger.call_args.kwargs['logger_name'] == 'wazuh'
-        if json_format:
-            assert mock_wazuhlogger.call_args.kwargs['tag'] is None
-            assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] == alogging.WazuhJsonFormatter
-        else:
-            assert mock_wazuhlogger.call_args.kwargs['tag'] == '%(asctime)s %(levelname)s: %(message)s'
-            assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] is None
+    assert mock_wazuhlogger.call_args.kwargs['log_path'] == current_logger_path
+    assert not mock_wazuhlogger.call_args.kwargs['foreground_mode']
+    assert mock_wazuhlogger.call_args.kwargs['debug_level'] == 'info'
+    assert mock_wazuhlogger.call_args.kwargs['logger_name'] == 'wazuh'
+    if json_log:
+        assert mock_wazuhlogger.call_args.kwargs['tag'] is None
+        assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] == alogging.WazuhJsonFormatter
+    else:
+        assert mock_wazuhlogger.call_args.kwargs['tag'] == '%(asctime)s %(levelname)s: %(message)s'
+        assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] is None
 
-        os.path.exists(current_logger_path) and os.remove(current_logger_path)
+    os.path.exists(current_logger_path) and os.remove(current_logger_path)
 
 
 @pytest.mark.parametrize('debug_level, expected_level', [

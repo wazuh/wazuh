@@ -96,7 +96,8 @@ def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_nam
 @patch.object(wlogging.WazuhLogger, 'debug_level', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'logger_name', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'custom_formatter', create=True, new_callable=PropertyMock)
-def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
+@patch('logging.Formatter')
+def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
                               mock_logger, mock_tag, mock_log_path):
     """Test if WazuhLogger __init__ method initialize all attributes properly.
 
@@ -119,9 +120,9 @@ def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level
     """
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
-        test = wlogging.WazuhLogger(foreground_mode=mock_foreground_mode, log_path=mock_log_path, tag=mock_tag,
-                                    debug_level=mock_debug_level, logger_name=mock_logger_name,
-                                    custom_formatter=mock_formatter)
+        wlogging.WazuhLogger(foreground_mode=mock_foreground_mode, log_path=mock_log_path, tag=mock_tag,
+                             debug_level=mock_debug_level, logger_name=mock_logger_name,
+                             custom_formatter=mock_formatter)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
               mock_logger, mock_tag, mock_log_path]:
         x.assert_called()
@@ -138,7 +139,7 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_v
 
     Parameters
     ----------
-    expected_value: lol
+    expected_value:
         Expected result of the __getattr__(attribute) call.
     mock_fh: MagicMock
         Mock of CustomFileRotatingHandler function.
