@@ -20,7 +20,7 @@
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
-#include "../syscheckd/include/syscheck.h"
+#include "syscheckd/include/syscheck.h"
 
 syscheck_config syscheck;
 

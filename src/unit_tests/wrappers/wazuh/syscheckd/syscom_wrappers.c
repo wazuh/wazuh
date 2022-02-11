@@ -18,3 +18,10 @@ size_t __wrap_syscom_dispatch(char * command, char ** output) {
     *output = mock_type(char*);
     return mock();
 }
+
+size_t __wrap_syscom_getconfig(const char * section, char ** output) {
+    check_expected(section);
+
+    *output = mock_type(char*);
+    return mock();
+}

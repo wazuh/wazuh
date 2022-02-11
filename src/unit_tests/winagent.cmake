@@ -39,7 +39,7 @@ if(NOT STATIC_CMOCKA)
 endif()
 
 # FIM libraries
-find_library(STATIC_SYSCHECK NAMES libwazuh-syscheckd.a libfimdb.a libfim_db_interface_test.dll.a libfim_file_interface_test.dll.a libfim_registry_interface_test.dll.a libfimdb_unit_test.dll.a HINTS "${SRC_FOLDER}/syscheckd/build/lib")
+find_library(STATIC_SYSCHECK NAMES libwazuh-syscheckd.a libfimdb.a HINTS "${SRC_FOLDER}/syscheckd/build/lib")
 if(NOT STATIC_SYSCHECK)
   message(FATAL_ERROR "FIM libraries not found in ${SRC_FOLDER}/syscheckd/build/lib Aborting...")
 endif()

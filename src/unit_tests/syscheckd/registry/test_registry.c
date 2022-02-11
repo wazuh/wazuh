@@ -12,9 +12,9 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../syscheckd/syscheck.h"
-#include "../syscheckd/registry/registry.h"
-#include "db/include/db.h"
+#include "syscheckd/include/syscheck.h"
+#include "syscheckd/src/registry/registry.h"
+#include "syscheckd/src/db/include/db.h"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/windows/sddl_wrappers.h"

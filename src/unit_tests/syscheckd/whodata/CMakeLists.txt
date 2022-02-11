@@ -115,6 +115,7 @@ else()
     target_compile_options(test_win_whodata PRIVATE "-Wall")
     set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
+                           -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
                            -Wl,--wrap,check_path_type -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,fim_whodata_event \
                            -Wl,--wrap,fim_checker -Wl,--wrap,os_random \

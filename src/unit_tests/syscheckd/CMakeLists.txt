@@ -75,8 +75,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate syscheckd-event library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/*-event.o ${SRC_FOLDER}/syscheckd/*/*-event.o)
-
+  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
+                                 ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
+  list(REMOVE_ITEM sysfiles {SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/main.obj)
   add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
   set_source_files_properties(
@@ -135,8 +136,10 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
 
 list(APPEND syscheckd_tests_names "create_db")
 if(${TARGET} STREQUAL "winagent")
-    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
-                                          -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
+                                          -Wl,--wrap,getpid -Wl,--wrap=fim_db_get_count_registry_data \
+                                          -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                          -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs -Wl,--wrap=os_winreg_check \
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg")
 else()
@@ -165,7 +168,8 @@ list(APPEND syscheckd_tests_names "fim_diff_changes")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
+                                    -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
 endif()
@@ -186,13 +190,15 @@ list(APPEND syscheckd_tests_names "run_realtime")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg")
+  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
                                            -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists \
-                                           -Wl,--wrap,fim_sync_push_msg")
+                                           -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
+                                           -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
@@ -211,7 +217,7 @@ list(APPEND syscheckd_tests_names "config")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 else()
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 endif()
 
 # syscheck.c tests
@@ -224,7 +230,8 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int \
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
-                                    -Wl,--wrap=Read_Syscheck_Config \
+                                    -Wl,--wrap=Read_Syscheck_Config -Wl,--wrap=fim_db_get_count_registry_data \
+                                    -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=os_wait \
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
@@ -264,7 +271,9 @@ elseif(${TARGET} STREQUAL "winagent")
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
-                                                                   -Wl,--wrap=audit_restore
+                                                                   -Wl,--wrap=fim_db_get_count_registry_data \
+                                                                   -Wl,--wrap=fim_db_get_count_registry_key \
+                                                                   -Wl,--wrap=syscom_dispatch -Wl,--wrap=audit_restore \
                                                                    -Wl,--wrap,pthread_rwlock_rdlock \
                                                                    -Wl,--wrap,pthread_rwlock_unlock \
                                                                    -Wl,--wrap,pthread_mutex_lock \

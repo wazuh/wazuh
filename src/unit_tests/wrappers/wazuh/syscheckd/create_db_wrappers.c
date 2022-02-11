@@ -88,3 +88,7 @@ int __wrap_fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* 
 TXN_HANDLE __wrap_fim_db_transaction_start(const char* table, result_callback_t row_callback, void *user_data){
     return mock_type(TXN_HANDLE);
 }
+
+int __wrap_Start_win32_Syscheck(){
+    function_called();
+}

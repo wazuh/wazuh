@@ -1857,7 +1857,6 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
     OSListNode *node_it;
     TXN_HANDLE mock_handle = NULL;
@@ -2461,7 +2460,6 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 static void test_fim_scan_db_full_double_scan(void **state) {
     char test_file_path[OS_SIZE_256];
     struct stat directory_stat = { .st_mode = S_IFDIR };
-    struct stat file_stat = { .st_mode = S_IFREG };
     TXN_HANDLE mock_handle;
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {

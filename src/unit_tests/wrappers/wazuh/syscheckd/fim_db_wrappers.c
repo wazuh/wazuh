@@ -17,6 +17,14 @@ int __wrap_fim_db_get_count_file_entry(){
     return mock();
 }
 
+int __wrap_fim_db_get_count_registry_data(){
+    return mock();
+}
+
+int __wrap_fim_db_get_count_registry_key(){
+    return mock();
+}
+
 FIMDBErrorCode __wrap_fim_db_get_path(const char* file_path,
                                      __attribute__((unused))callback_context_t callback) {
     check_expected(file_path);

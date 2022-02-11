@@ -9,12 +9,15 @@ list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthre
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat,--wrap,chmod,--wrap,getpid \
-                            -Wl,--wrap,unlink,--wrap,fopen,--wrap,fflush,--wrap,fclose \
+                            -Wl,--wrap,unlink,--wrap,fopen,--wrap,fflush,--wrap,fclose -Wl,--wrap=rootcheck_init \
                             -Wl,--wrap,fread,--wrap,ftell,--wrap,fseek,--wrap,fwrite,--wrap,remove \
                             -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
                             -Wl,--wrap,bzip2_uncompress,--wrap,lstat \
@@ -28,6 +31,9 @@ else()
                                     -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                     -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                     -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                    -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                                    -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                     -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg
                                     ${DEBUG_OP_WRAPPERS}")
 endif()
@@ -40,6 +46,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_validate_op")
@@ -47,6 +56,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_string_op")
@@ -54,11 +66,18 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_expression")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
-                                -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
+                                -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
+                                -Wl,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
@@ -72,6 +91,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_queue_linked_op")
@@ -80,6 +102,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_agent_op")
@@ -87,6 +111,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "server")
@@ -110,7 +136,8 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 if(${TARGET} STREQUAL "winagent")
-    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
+    list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck")
 else()
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname \
                                 -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat,--wrap=getpid")
@@ -118,16 +145,20 @@ endif()
 
 list(APPEND shared_tests_names "test_time_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
--Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
--Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
--Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
--Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
+                                -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                                -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
+                                -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_buffer_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_utf8_op")
@@ -135,6 +166,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_log_builder")
@@ -142,6 +175,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap=fim_db_file_
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 list(APPEND shared_tests_names "test_custom_output_search_replace")
@@ -149,6 +183,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 
 if(${TARGET} STREQUAL "server")
@@ -228,6 +263,7 @@ endif()
 
 list(APPEND shared_tests_names "test_atomic")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
@@ -251,7 +287,11 @@ if(${TARGET} STREQUAL "winagent")
                                 -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4 -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
+                                -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
                                 -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+
                                 -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \

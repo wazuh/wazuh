@@ -9,7 +9,7 @@
 
 #ifdef WIN32
 
-#include "../../../include/syscheck.h"
+#include "../../include/syscheck.h"
 
 static const char *FIM_EVENT_TYPE_ARRAY[] = { "added", "deleted", "modified" };
 

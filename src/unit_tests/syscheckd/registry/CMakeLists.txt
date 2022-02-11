@@ -14,6 +14,7 @@ target_link_libraries(test_registry "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=
                                      -Wl,--wrap=get_registry_permissions
                                      -Wl,--wrap=decode_win_acl_json,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock
                                      -Wl,--wrap,fim_db_init,--wrap=fim_sync_push_msg
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path
                                      -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start
@@ -29,6 +30,10 @@ add_executable(test_events test_events.c)
 target_compile_options(test_events PRIVATE "-Wall")
 
 target_link_libraries(test_events SYSCHECK_O ${TEST_DEPS} fim_shared)
-target_link_libraries(test_events "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn,--wrap=_merror_exit,--wrap=_mterror_exit")
+target_link_libraries(test_events "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn,--wrap=_merror_exit,--wrap=_mterror_exit \
+                                   -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap=fim_run_integrity \
+                                   -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_start -Wl,--wrap,fim_db_init \
+                                   -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                   -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path")
 
 add_test(NAME test_events COMMAND test_events)
