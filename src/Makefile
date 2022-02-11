@@ -1131,9 +1131,9 @@ ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
 $(JEMALLOC_LIB):
 ifeq (${TARGET},server)
 ifneq ($(wildcard external/jemalloc/configure),)
-	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s LIBS='-static-libgcc -static-libstdc++' ./configure --disable-static je_cv_libstdcxx='no' && ${MAKE}
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./configure --disable-static --disable-cxx && ${MAKE}
 else
-	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s LIBS='-static-libgcc -static-libstdc++' ./autogen.sh --disable-static je_cv_libstdcxx='no' && ${MAKE}
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./autogen.sh --disable-static --disable-cxx && ${MAKE}
 endif
 endif
 
