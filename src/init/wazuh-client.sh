@@ -11,10 +11,13 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
+VERSION="v4.4.0"
 REVISION="40400"
 TYPE="agent"
+
 ###  Do not modify below here ###
 AUTHOR="Wazuh Inc."
+DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
