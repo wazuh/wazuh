@@ -587,7 +587,7 @@ help: failtarget
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_JEMALLOC=no     Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=yes     Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -1131,9 +1131,9 @@ ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
 $(JEMALLOC_LIB):
 ifeq (${TARGET},server)
 ifneq ($(wildcard external/jemalloc/configure),)
-	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./configure --disable-static && ${MAKE}
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s LIBS='-static-libgcc -static-libstdc++' ./configure --disable-static je_cv_libstdcxx='no' && ${MAKE}
 else
-	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./autogen.sh --disable-static && ${MAKE}
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s LIBS='-static-libgcc -static-libstdc++' ./autogen.sh --disable-static je_cv_libstdcxx='no' && ${MAKE}
 endif
 endif
 
