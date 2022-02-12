@@ -837,7 +837,7 @@ int wdb_remove_database(const char * agent_id);
  * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
  *                         or STMT_MULTI_COLUMN if the query returns more than one column.
- * @return JSON array with the statement execution results. NULL On error.
+ * @return JSON array with the statement execution results, NULL on error.
  */
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode);
 
@@ -847,7 +847,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode);
  *
  * @param [in] stmt The SQL statement to be executed.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
- * @return JSON array with the statement execution results. NULL On error.
+ * @return JSON array with the statement execution results, NULL on error.
  */
 cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status);
 
@@ -857,7 +857,7 @@ cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status);
  *
  * @param [in] stmt The SQL statement to be executed.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
- * @return JSON array with the statement execution results. NULL On error.
+ * @return JSON array with the statement execution results, NULL on error.
  */
 cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt * stmt, int* status);
 
@@ -881,7 +881,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
  *                     SQLITE_ERROR means an error occurred.
  * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
  *                         or STMT_MULTI_COLUMN if the query returns more than one column.
- * @return JSON array with the statement execution results. NULL On error.
+ * @return JSON array with the statement execution results, NULL on error.
  */
 cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status, bool column_mode);
 

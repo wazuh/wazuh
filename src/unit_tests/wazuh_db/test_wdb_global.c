@@ -4672,7 +4672,7 @@ void test_wdb_global_select_group_belong_exec_fail(void **state)
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_failed_call(STMT_SINGLE_COLUMN);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Failed in getting the groups of the agent.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to get agent groups.");
 
     j_result = wdb_global_select_group_belong(data->wdb, 1);
     assert_null(j_result);
@@ -4691,7 +4691,7 @@ void test_wdb_global_select_group_belong_socket_size_error(void **state)
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_socket_full_call(NULL, STMT_SINGLE_COLUMN);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "The groups of the agent are bigger than the socket size.");
+    expect_string(__wrap__mdebug2, formatted_msg, "The agent's groups exceed the socket maximum response size.");
 
     j_result = wdb_global_select_group_belong(data->wdb, 1);
     assert_null(j_result);
