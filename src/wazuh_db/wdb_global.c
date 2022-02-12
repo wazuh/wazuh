@@ -748,9 +748,9 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
     cJSON *result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_SINGLE_COLUMN);
 
     if (SQLITE_ROW == sql_status) {
-        mdebug2("The groups of the agent are bigger than the socket size.");
+        mdebug2("The agent's groups exceed the socket maximum response size.");
     } else if (SQLITE_DONE != sql_status) {
-        mdebug1("Failed in getting the groups of the agent.");
+        mdebug1("Failed to get agent groups.");
     }
 
     return result;

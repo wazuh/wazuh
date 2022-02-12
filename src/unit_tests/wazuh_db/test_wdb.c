@@ -324,7 +324,7 @@ void test_wdb_exec_stmt_sized_success_single_column_string(void **state){
     expect_sqlite3_step_call(SQLITE_DONE);
 
     cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
-    char *ret_str = cJSON_PrintUnformatted(result);
+    char* ret_str = cJSON_PrintUnformatted(result);
 
     assert_string_equal("[\"COL_TEXT_0\",\"COL_TEXT_1\",\"COL_TEXT_2\",\"COL_TEXT_3\"]", ret_str);
     assert_int_equal(status, SQLITE_DONE);
@@ -348,7 +348,7 @@ void test_wdb_exec_stmt_sized_success_single_column_value(void **state){
     expect_sqlite3_step_call(SQLITE_DONE);
 
     cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
-    char *ret_str = cJSON_PrintUnformatted(result);
+    char* ret_str = cJSON_PrintUnformatted(result);
 
     assert_string_equal("[1,2,3,4]", ret_str);
     assert_int_equal(status, SQLITE_DONE);
