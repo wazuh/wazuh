@@ -32,9 +32,9 @@
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
-#include "../syscheckd/include/syscheck.h"
-#include "../config/syscheck-config.h"
-#include "../syscheckd/src/db/include/db.h"
+#include "syscheck.h"
+#include "config/syscheck-config.h"
+#include "db/include/db.h"
 
 #include "test_fim.h"
 

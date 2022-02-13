@@ -1,13 +1,14 @@
-include_directories((${SRC_FOLDER}/syscheckd))
-include_directories((${SRC_FOLDER}/unit_tests))
-include_directories((${SRC_FOLDER}/config))
+include_directories(${SRC_FOLDER}/syscheckd/include)
+include_directories(${SRC_FOLDER}/syscheckd/src)
+include_directories(${SRC_FOLDER}/unit_tests)
+include_directories(${SRC_FOLDER}/config)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 if(NOT ${TARGET} STREQUAL "winagent")
     # test_audit_healthcheck tests
-    add_executable(test_audit_healthcheck test_audit_healthcheck.c)
+    add_executable(test_audit_healthcheck test_audit_healthcheck.c ${SRC_FOLDER}/syscheckd/src/whodata/audit_healthcheck.c)
     target_compile_options(test_audit_healthcheck PRIVATE "-Wall")
 
     set(AUDIT_HC_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap,audit_add_rule \
@@ -30,7 +31,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_test(NAME test_audit_healthcheck COMMAND test_audit_healthcheck)
 
     # test_syscheck_rule_handling tests
-    add_executable(test_audit_rule_handling test_audit_rule_handling.c)
+    add_executable(test_audit_rule_handling test_audit_rule_handling.c ${SRC_FOLDER}/syscheckd/src/whodata/audit_rule_handling.c)
     target_compile_options(test_audit_rule_handling PRIVATE "-Wall")
 
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=_merror,--wrap=_mwarn,--wrap=audit_add_rule\
@@ -53,7 +54,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_test(NAME test_audit_rule_handling COMMAND test_audit_rule_handling)
 
     # test_syscheck_audit tests
-    add_executable(test_syscheck_audit test_syscheck_audit.c)
+    add_executable(test_syscheck_audit test_syscheck_audit.c ${SRC_FOLDER}/syscheckd/src/whodata/syscheck_audit.c)
     target_compile_options(test_syscheck_audit PRIVATE "-Wall")
 
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
@@ -83,7 +84,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_test(NAME test_syscheck_audit COMMAND test_syscheck_audit)
 
     # test_audit_parse tests
-    add_executable(test_audit_parse test_audit_parse.c)
+    add_executable(test_audit_parse test_audit_parse.c ${SRC_FOLDER}/syscheckd/src/whodata/audit_parse.c)
     target_compile_options(test_audit_parse PRIVATE "-Wall")
 
     set(AUDIT_PARSE_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap=_mwarn -Wl,--wrap=_minfo \
