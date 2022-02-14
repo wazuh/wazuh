@@ -33,3 +33,11 @@ void __wrap_fim_diff_process_delete_registry(){
 void __wrap_fim_diff_process_delete_value(){
     function_called();
 }
+
+void __wrap_registry_key_transaction_callback(){
+    function_called();
+}
+
+void __wrap_registry_value_transaction_callback(){
+    function_called();
+}
