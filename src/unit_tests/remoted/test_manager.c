@@ -48,20 +48,20 @@ static int test_c_group_teardown(void ** state) {
 
             if (f_sum) {
                 for (j = 0; f_sum[j]; j++) {
-                    free(f_sum[j]->name);
-                    free(f_sum[j]);
+                    os_free(f_sum[j]->name);
+                    os_free(f_sum[j]);
                     f_sum[j] = NULL;
                 }
 
-                free(f_sum);
+                os_free(f_sum);
                 f_sum = NULL;
             }
 
-            free(groups[i]->group);
-            free(groups[i]);
+            os_free(groups[i]->group);
+            os_free(groups[i]);
         }
 
-        free(groups);
+        os_free(groups);
         groups = NULL;
     }
 
@@ -480,7 +480,7 @@ void test_c_group_read_directory(void **state)
 
 void test_c_group_invalid_share_file(void **state)
 {
-    logr.nocmerged = 1;
+    logr.nocmerged = 0;
     const char *group = "test_default";
 
     // Initialize files structure
@@ -502,18 +502,22 @@ void test_c_group_invalid_share_file(void **state)
     r_group->merge_file_index = 0;
     r_group->merged_is_downloaded = 0;
 
-    //expect_string(__wrap_w_parser_get_group, name, groups[0]->group);
-    //will_return(__wrap_w_parser_get_group, NULL);
+    expect_string(__wrap_w_parser_get_group, name, groups[0]->group);
+    will_return(__wrap_w_parser_get_group, NULL);
 
-    // expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
-    // expect_string(__wrap_MergeAppendFile, tag, "test_default");
-    // expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    // will_return(__wrap_MergeAppendFile, 1);
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_MergeAppendFile, tag, "test_default");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test_files");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -536,21 +540,20 @@ void test_c_group_invalid_share_file(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Unable to add file 'test_files' to hash table of invalid files.");
 
-    // expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
-    // expect_string(__wrap_MergeAppendFile, tag, "test_default");
-    // expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    // will_return(__wrap_MergeAppendFile, 1);
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
 
-    // expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
-    // expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
-    // will_return(__wrap_OS_MoveFile, 0);
+    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_OS_MoveFile, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    // expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
+    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
 
     c_group(group, files, &groups[0]->f_sum, SHAREDCFG_DIR);
 
@@ -698,7 +701,6 @@ void test_c_group_timeout_not_null_not_binary_file(void **state)
 
     c_group(group, files, &groups[0]->f_sum, SHAREDCFG_DIR);
 
-    //os_free(last_modify);
     os_free(r_group->name);
     os_free(r_group->files->name);
     os_free(r_group->files->url);
@@ -757,13 +759,40 @@ void test_c_multi_group_read_dir_fail(void **state)
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "on purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
 
-    //expect_function_call(__wrap_closedir);
-
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
     c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    os_free(hash_multigroup);
+    os_free(multi_group);
+}
+
+void test_c_multi_group_read_dir_fail_no_entry(void **state)
+{
+    char *multi_group = NULL;
+    file_sum ***_f_sum = NULL;
+    char *hash_multigroup = NULL;
+
+    os_strdup("multi_group_test", multi_group);
+    os_strdup("multi_group_hash", hash_multigroup);
+
+    will_return(__wrap_cldir_ex, 0);
+    will_return(__wrap_opendir, 1);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    will_return(__wrap_wreaddir, NULL);
+
+    /* Open the multi-group files and generate merged */
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': Not a directory");
+
+    errno = ENOTDIR;
+
+    c_multi_group(multi_group, _f_sum, hash_multigroup);
+
+    errno = 0;
 
     os_free(hash_multigroup);
     os_free(multi_group);
@@ -807,8 +836,6 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/ignore_file");
     will_return(__wrap_OSHash_Get, last_modify);
-
-    //expect_function_call(__wrap_closedir);
 
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
@@ -898,7 +925,7 @@ void test_c_multi_group_call_c_group(void **state)
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 1);
+    will_return(__wrap_OS_MD5_File, -1);
 
     expect_string(__wrap_OS_MD5_File, fname, "var/multigroups/hash_multi_group_test/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -937,6 +964,7 @@ int main(void)
         cmocka_unit_test_setup(test_c_multi_group_hash_multigroup_null, test_c_multi_group_setup),
         cmocka_unit_test_setup(test_c_multi_group_open_directory_fail, test_c_multi_group_setup),
         cmocka_unit_test_setup(test_c_multi_group_read_dir_fail, test_c_multi_group_setup),
+        cmocka_unit_test_setup(test_c_multi_group_read_dir_fail_no_entry, test_c_multi_group_setup),
         cmocka_unit_test_setup(test_c_multi_group_Ignore_hidden_files, test_c_multi_group_setup),
         cmocka_unit_test_setup(test_c_multi_group_large_path_fail, test_c_multi_group_setup),
         cmocka_unit_test_setup(test_c_multi_group_subdir_fail, test_c_multi_group_setup),
