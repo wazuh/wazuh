@@ -1189,7 +1189,10 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm jemalloc
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
+ifeq (${TARGET},server)
+	EXTERNAL_RES += jemalloc
+endif
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
