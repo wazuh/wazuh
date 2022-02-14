@@ -72,8 +72,8 @@ class WazuhLogger:
     """
     Defines attributes of a Python wazuh daemon's logger
     """
-    def __init__(self, foreground_mode: bool, log_path: str, tag: str, debug_level: [int, str], logger_name='wazuh',
-                 custom_formatter=None):
+    def __init__(self, foreground_mode: bool, log_path: str, debug_level: [int, str], logger_name='wazuh',
+                 custom_formatter=None, tag='%(asctime)s %(levelname)s: %(message)s'):
         """
         Constructor
 
@@ -85,16 +85,15 @@ class WazuhLogger:
         :param custom_formatter: subclass of logging.Formatter. Allows formatting messages depending on their contents
         """
         self.log_path = os.path.join(common.WAZUH_PATH, log_path)
-        self.tag = tag
         self.logger = None
         self.foreground_mode = foreground_mode
         self.debug_level = debug_level
         self.logger_name = logger_name
-        self.default_formatter = logging.Formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
+        self.default_formatter = logging.Formatter(tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
         if custom_formatter is None:
             self.custom_formatter = self.default_formatter
         else:
-            self.custom_formatter = custom_formatter(self.tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
+            self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
 
     def setup_logger(self):
         """
@@ -104,17 +103,18 @@ class WazuhLogger:
             * An additional debug level.
         """
         logger = logging.getLogger(self.logger_name)
+        cf = CustomFilter('log') if self.log_path.endswith('.log') else CustomFilter('json')
         logger.propagate = False
         # configure logger
         fh = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
         fh.setFormatter(self.custom_formatter)
-        if self.logger_name != 'wazuh':
-            fh.addFilter(CustomFilter('log')) if self.log_path.endswith('.log') else fh.addFilter(CustomFilter('json'))
+        fh.addFilter(cf)
         logger.addHandler(fh)
 
         if self.foreground_mode:
             ch = logging.StreamHandler()
             ch.setFormatter(self.default_formatter)
+            ch.addFilter(CustomFilter('log'))
             logger.addHandler(ch)
 
         # add a new debug level
