@@ -35,6 +35,38 @@ static int test_c_group_setup(void ** state) {
     return 0;
 }
 
+static int test_find_group_setup(void ** state) {
+    test_mode = 1;
+
+    // Initialize main groups structure
+    os_calloc(1, (2) * sizeof(group_t *), groups);
+    os_calloc(1, sizeof(group_t), groups[0]);
+    groups[0]->name = strdup("test_default");
+    os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
+    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
+    os_strdup("test_file", groups[0]->f_sum[0]->name);
+    strncpy(groups[0]->f_sum[0]->sum, "ABCDEF1234567890", 32);
+    groups[1] = NULL;
+
+    return 0;
+}
+
+static int test_find_multi_group_setup(void ** state) {
+    test_mode = 1;
+
+    // Initialize main groups structure
+    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
+    os_calloc(1, sizeof(group_t), multi_groups[0]);
+    multi_groups[0]->name = strdup("test_default2");
+    os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
+    os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
+    os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
+    strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
+    multi_groups[1] = NULL;
+
+    return 0;
+}
+
 static int test_c_group_teardown(void ** state) {
     int i;
     int j;
@@ -42,25 +74,30 @@ static int test_c_group_teardown(void ** state) {
 
     if (groups) {
         for (i = 0; groups[i]; i++) {
-            f_sum = groups[i]->f_sum;
-
-            if (f_sum) {
-                for (j = 0; f_sum[j]; j++) {
-                    os_free(f_sum[j]->name);
-                    os_free(f_sum[j]);
-                    f_sum[j] = NULL;
-                }
-
-                os_free(f_sum);
-                f_sum = NULL;
-            }
-
+            free_file_sum(groups[i]->f_sum);
             os_free(groups[i]->name);
             os_free(groups[i]);
         }
 
         os_free(groups);
-        groups = NULL;
+    }
+
+    return 0;
+}
+
+static int test_c_multi_group_teardown(void ** state) {
+    int i;
+    int j;
+    file_sum **f_sum;
+
+    if (multi_groups) {
+        for (i = 0; multi_groups[i]; i++) {
+            free_file_sum(multi_groups[i]->f_sum);
+            os_free(multi_groups[i]->name);
+            os_free(multi_groups[i]);
+        }
+
+        os_free(multi_groups);
     }
 
     return 0;
@@ -923,6 +960,94 @@ void test_c_multi_group_call_c_group(void **state)
     os_free(multi_group);
 }
 
+void test_find_group_found(void **state)
+{
+    group_t *group = find_group("test_default");
+
+    assert_non_null(group);
+    assert_string_equal(group->name, "test_default");
+    assert_non_null(group->f_sum);
+    assert_non_null(group->f_sum[0]);
+    assert_string_equal(group->f_sum[0]->name, "test_file");
+    assert_string_equal(group->f_sum[0]->sum, "ABCDEF1234567890");
+    assert_null(group->f_sum[1]);
+}
+
+void test_find_group_not_found(void **state)
+{
+    group_t *group = find_group("invalid_group");
+
+    assert_null(group);
+}
+
+void test_find_multi_group_found(void **state)
+{
+    group_t *multi_group = find_multi_group("test_default2");
+
+    assert_non_null(multi_group);
+    assert_string_equal(multi_group->name, "test_default2");
+    assert_non_null(multi_group->f_sum);
+    assert_non_null(multi_group->f_sum[0]);
+    assert_string_equal(multi_group->f_sum[0]->name, "test_file2");
+    assert_string_equal(multi_group->f_sum[0]->sum, "1234567890ABCDEF");
+    assert_null(multi_group->f_sum[1]);
+}
+
+void test_find_multi_group_not_found(void **state)
+{
+    group_t *multi_group = find_multi_group("invalid_multi_group");
+
+    assert_null(multi_group);
+}
+
+void test_find_group_from_file_found(void **state)
+{
+    char group_name[OS_SIZE_65536] = {0};
+    group_t *group = find_group_from_file("test_file", "ABCDEF1234567890", group_name);
+
+    assert_string_equal(group_name, "test_default");
+    assert_non_null(group);
+    assert_string_equal(group->name, "test_default");
+    assert_non_null(group->f_sum);
+    assert_non_null(group->f_sum[0]);
+    assert_string_equal(group->f_sum[0]->name, "test_file");
+    assert_string_equal(group->f_sum[0]->sum, "ABCDEF1234567890");
+    assert_null(group->f_sum[1]);
+}
+
+void test_find_group_from_file_not_found(void **state)
+{
+    char group_name[OS_SIZE_65536] = {0};
+    group_t *group = find_group_from_file("invalid_file", "", group_name);
+
+    assert_string_equal(group_name, "\0");
+    assert_null(group);
+}
+
+void test_find_multi_group_from_file_found(void **state)
+{
+    char multi_group_name[OS_SIZE_65536] = {0};
+    group_t *multi_group = find_multi_group_from_file("test_file2", "1234567890ABCDEF", multi_group_name);
+
+    assert_string_equal(multi_group_name, "test_default2");
+    assert_non_null(multi_group);
+    assert_string_equal(multi_group->name, "test_default2");
+    assert_non_null(multi_group->f_sum);
+    assert_non_null(multi_group->f_sum[0]);
+    assert_string_equal(multi_group->f_sum[0]->name, "test_file2");
+    assert_string_equal(multi_group->f_sum[0]->sum, "1234567890ABCDEF");
+    assert_null(multi_group->f_sum[1]);
+}
+
+void test_find_multi_group_from_file_not_found(void **state)
+{
+    char multi_group_name[OS_SIZE_65536] = {0};
+    group_t *multi_group = find_multi_group_from_file("invalid_file", "", multi_group_name);
+
+    assert_string_equal(multi_group_name, "\0");
+    assert_null(multi_group);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -950,6 +1075,18 @@ int main(void)
         cmocka_unit_test(test_c_multi_group_large_path_fail),
         cmocka_unit_test(test_c_multi_group_subdir_fail),
         cmocka_unit_test(test_c_multi_group_call_c_group),
+        // Test find_group
+        cmocka_unit_test_setup_teardown(test_find_group_found, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_find_group_not_found, test_find_group_setup, test_c_group_teardown),
+        // Test find_multi_group
+        cmocka_unit_test_setup_teardown(test_find_multi_group_found, test_find_multi_group_setup, test_c_multi_group_teardown),
+        cmocka_unit_test_setup_teardown(test_find_multi_group_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
+        // Test find_group_from_file
+        cmocka_unit_test_setup_teardown(test_find_group_from_file_found, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_find_group_from_file_not_found, test_find_group_setup, test_c_group_teardown),
+        // Test find_multi_group_from_file
+        cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_found, test_find_multi_group_setup, test_c_multi_group_teardown),
+        cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
