@@ -5,7 +5,6 @@
 import hashlib
 import operator
 from os import chmod, path, listdir
-from shutil import copyfile
 from typing import Union
 
 from wazuh.core import common, configuration
@@ -16,7 +15,8 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches
+from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
+    full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -624,10 +624,11 @@ def create_group(group_id):
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    group_def_path = path.join(common.shared_path, 'agent-template.conf')
+    agent_conf_template = path.join(common.shared_path, 'agent-template.conf')
     try:
         mkdir_with_mode(group_path)
-        copyfile(group_def_path, path.join(group_path, 'agent.conf'))
+        full_copy(agent_conf_template, path.join(group_path, 'agent.conf'))
+
         chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)

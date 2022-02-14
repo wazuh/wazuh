@@ -734,7 +734,8 @@ def upload_group_configuration(group_id, file_content):
         # move temporary file to group folder
         try:
             new_conf_path = os_path.join(common.shared_path, group_id, "agent.conf")
-            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+            safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
+                      permissions=0o660)
         except Exception as e:
             raise WazuhInternalError(1016, extra_message=str(e))
 
