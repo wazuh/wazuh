@@ -10,6 +10,8 @@ bool matchLiteral(const char **it, std::string literal);
 
 std::string parseJson(const char **it);
 
+std::string parseIPaddress(const char **it, char endToken);
+
 bool parseTimeStamp(char **it, char endToken);
 
 bool parseURI(char **it, char endToken);

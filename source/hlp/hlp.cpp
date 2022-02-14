@@ -53,6 +53,16 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
                 }
                 break;
             }
+            case ParserType::IP: {
+                auto ret = parseIPaddress(&eventIt, parser.endToken);
+                if (!ret.empty()) {
+                    result[parser.name] = ret;
+                }
+                else {
+                    error = true;
+                }
+                break;
+            }
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",
