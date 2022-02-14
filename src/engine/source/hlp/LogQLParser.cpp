@@ -9,10 +9,9 @@
 #include "hlp.hpp"
 
 static const std::unordered_map<std::string_view, ParserType> ECSParserMapper {
-    { "source.ip", ParserType::Keyword },
+    { "source.ip", ParserType::IP },
     { "timestamp", ParserType::Keyword },
-    { "http.reqest.method", ParserType::Keyword },
-    { "http.reqest.method", ParserType::Keyword },
+    { "http.request.method", ParserType::Keyword },
     { "JSON", ParserType::Json},
 };
 
