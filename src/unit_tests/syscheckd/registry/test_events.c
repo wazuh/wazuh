@@ -45,6 +45,7 @@ cJSON* fim_dbsync_registry_key_json_event(const cJSON* dbsync_event,
 cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
                                             const fim_registry_value_data *value,
                                             const registry_t *configuration,
+                                            fim_event_mode mode,
                                             const event_data_t *evt_data,
                                             __attribute__((unused)) whodata_evt *w_evt,
                                             const char* diff);
@@ -142,6 +143,7 @@ static void test_fim_dbsync_registry_key_json_event_key_null(void **state) {
     assert_int_equal(cJSON_GetObjectItem(attributes, "mtime")->valueint, 1642007903);
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum")),
                         "75d3de895d77868e60a97ffb9ec96df0a9001835");
+
     assert_string_equal(cJSON_PrintUnformatted(cJSON_GetObjectItem(attributes, "perm")),
                         "{\"S-1-5-32-636\":{\"name\":\"Users\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"],\"denied\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}");
 
@@ -165,8 +167,8 @@ static void test_fim_dbsync_registry_value_json_event_value_not_null(void **stat
 
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, "tag"};
     event_data_t evt_data_registry_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-
-    cJSON* ret = fim_dbsync_registry_value_json_event(dbsync_event, &new_data, &configuration, &evt_data_registry_data, NULL,
+    fim_event_mode mode = FIM_SCHEDULED;
+    cJSON* ret = fim_dbsync_registry_value_json_event(dbsync_event, &new_data, &configuration, mode, &evt_data_registry_data, NULL,
                                                       diff);
 
     *state = ret;
@@ -209,8 +211,9 @@ static void test_fim_dbsync_registry_value_json_event_value_null(void **state) {
 
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, "tag"};
     event_data_t evt_data_registry_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
+    fim_event_mode mode = FIM_SCHEDULED;
 
-    cJSON* ret = fim_dbsync_registry_value_json_event(dbsync_event, new_data, &configuration, &evt_data_registry_data, NULL,
+    cJSON* ret = fim_dbsync_registry_value_json_event(dbsync_event, new_data, &configuration, mode, &evt_data_registry_data, NULL,
                                                       diff);
 
     *state = ret;

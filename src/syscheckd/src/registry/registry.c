@@ -568,7 +568,7 @@ cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
         cJSON_AddNumberToObject(data, "version", 2.0);
         cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
         cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64");
+        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
         cJSON_AddStringToObject(data, "value_name", value->name);
 
     } else
