@@ -1208,8 +1208,7 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
             group_priority = j_priority->valueint;
         }
         cJSON_Delete(j_result);
-    }
-    else{
+    } else {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
     }
 
@@ -1222,27 +1221,30 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     cJSON_ArrayForEach (j_group_name, j_groups) {
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
-            if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
-                result = WDBC_ERROR;
-            }
-
-            cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
-            if (j_find_response) {
-                cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
-                int group_id = j_group_id->valueint;
-                cJSON_Delete(j_find_response);
-                if (OS_INVALID == wdb_global_insert_agent_belong(wdb, group_id, id, priority)) {
-                    mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
+            if (!strchr(group_name, MULTIGROUP_SEPARATOR)) {
+                if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
                     result = WDBC_ERROR;
                 }
-                priority++;
             }
-            else {
+            cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
+            if (j_find_response) {
+                cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
+                if (cJSON_IsNumber(j_group_id)) {
+                    if (OS_INVALID == wdb_global_insert_agent_belong(wdb, j_group_id->valueint, id, priority)) {
+                        mdebug1("Unable to insert group '%s' for agent '%d'", group_name, id);
+                        result = WDBC_ERROR;
+                    } else {
+                        priority++;
+                    }
+                } else {
+                    mwarn("The group '%s' does not exist", group_name);
+                }
+                cJSON_Delete(j_find_response);
+            } else {
                 mdebug1("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
             }
-        }
-        else {
+        } else {
             mdebug1("Invalid groups set information");
             result = WDBC_ERROR;
         }
@@ -1254,28 +1256,42 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
     cJSON* j_group_name = NULL;
     wdbc_result result = WDBC_OK;
     cJSON_ArrayForEach (j_group_name, j_groups) {
-        if (cJSON_IsString(j_group_name)){
+        if (cJSON_IsString(j_group_name)) {
             char* group_name = j_group_name->valuestring;
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
             if (j_find_response) {
-                cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child,"id");
-                int group_id = j_group_id->valueint;
-                cJSON_Delete(j_find_response);
-                if (OS_INVALID == wdb_global_delete_tuple_belong(wdb, group_id, id)) {
-                    mdebug1("Unable to delete group '%s' for agent '%d'", group_name, id);
-                    result = WDBC_ERROR;
+                cJSON* j_group_id = cJSON_GetObjectItem(j_find_response->child, "id");
+                if (cJSON_IsNumber(j_group_id)) {
+                    if (OS_SUCCESS == wdb_global_delete_tuple_belong(wdb, j_group_id->valueint, id)) {
+                        if (OS_INVALID == wdb_global_get_agent_max_group_priority(wdb, id)) {
+                            cJSON* j_default_group = cJSON_CreateArray();
+                            cJSON_AddItemToArray(j_default_group, cJSON_CreateString("default"));
+                            if (WDBC_OK == wdb_global_assign_agent_group(wdb, id, j_default_group, 0)) {
+                                mdebug1("Agent '%03d' reassigned to 'default' group", id);
+                            } else {
+                                merror("There was an error assigning the agent '%03d' to default group", id);
+                                result = WDBC_ERROR;
+                            }
+                            cJSON_Delete(j_default_group);
+                        }
+                    } else {
+                        mdebug1("Unable to delete group '%s' for agent '%d'", group_name, id);
+                        result = WDBC_ERROR;
+                    }
+                } else {
+                    mwarn("The group '%s' does not exist", group_name);
                 }
-            }
-            else {
+                cJSON_Delete(j_find_response);
+            } else {
                 mdebug1("Unable to find the id of the group '%s'", group_name);
                 result = WDBC_ERROR;
             }
-        }
-        else {
+        } else {
             mdebug1("Invalid groups remove information");
             result = WDBC_ERROR;
         }
     }
+
     return result;
 }
 
@@ -1310,7 +1326,6 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                         group_priority = last_group_priority+1;
                     }
                 }
-
                 if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
                     ret = WDBC_ERROR;
                     merror("There was an error assigning the groups to agent '%03d'", agent_id);
