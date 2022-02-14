@@ -19,7 +19,7 @@ from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 from pyexpat import ExpatError
-from shutil import Error, copyfile, move
+from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
@@ -1879,6 +1879,28 @@ def temporary_cache():
         return wrapper
 
     return decorator
+
+
+def full_copy(src: str, dst: str, follow_symlinks=True) -> None:
+    """Copy a file maintaining all metadata if possible.
+
+    Parameters
+    ----------
+    src: str
+        Source absolute path.
+    dst: str
+        Destination absolute path.
+    follow_symlinks: bool
+        Make `copy2` follow symbolic links. False otherwise.
+    """
+    file_stat = os.stat(src)
+    copy2(src, dst, follow_symlinks=follow_symlinks)
+    try:
+        # copy2 does not always copy the correct ownership
+        chown(dst, file_stat.st_uid, file_stat.st_gid)
+    except PermissionError:
+        # Tried to assign 'root' ownership without being root. Default API permissions will be applied
+        pass
 
 
 class Timeout:
