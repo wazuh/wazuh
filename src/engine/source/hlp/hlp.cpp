@@ -5,9 +5,12 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include "SpecificParsers.hpp"
+
 #include "LogQLParser.hpp"
+#include "SpecificParsers.hpp"
 #include "hlp.hpp"
+
+using ParserList = std::vector<Parser>;
 
 void executeParserList(std::string const &event, ParserList const &parsers, ParseResult &result) {
     const char *eventIt = event.c_str();
@@ -20,16 +23,16 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
     printf("-------------------------------|------|------|------\n");
     for (auto const &parser : parsers) {
         printf("%-30s | %4i | %4i | '%1c'\n",
-               parser.name.c_str(),
-               (int)parser.parserType,
-               (int)parser.combType,
+               parser.captureOpts[0].c_str(),
+               parser.parserType,
+               parser.combType,
                parser.endToken);
 
         switch (parser.parserType) {
-            case ParserType::Keyword: {
+            case ParserType::Any: {
                 auto ret = parseAny(&eventIt, parser.endToken);
                 if (!ret.empty()) {
-                    result[parser.name] = ret;
+                    result[parser.captureOpts[0]] = ret;
                 }
                 else {
                     error = true;
@@ -37,18 +40,26 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
                 break;
             }
             case ParserType::Literal: {
-                if (!matchLiteral(&eventIt, parser.name)) {
+                if (!matchLiteral(&eventIt, parser.captureOpts[0])) {
                     fprintf(stderr, "Failed matching literal string\n");
                     error = true;
                 }
                 break;
             }
-            case ParserType::Json: {
-                auto ret = parseJson(&eventIt);
-                if (!ret.empty()) {
-                    result[parser.name] = ret;
+            case ParserType::URL: {
+                URLResult urlResult;
+                if (parseURL(&eventIt, parser.endToken, urlResult)) {
+                    result["url.domain"] = std::move(urlResult.domain);
+                    result["url.fragment"] = std::move(urlResult.fragment);
+                    result["url.original"] = std::move(urlResult.original);
+                    result["url.password"] = std::move(urlResult.password);
+                    result["url.username"] = std::move(urlResult.username);
+                    result["url.scheme"] = std::move(urlResult.scheme);
+                    result["url.query"] = std::move(urlResult.query);
+                    result["url.path"] = std::move(urlResult.path);
+                    result["url.port"] = std::move(urlResult.port);
                 }
-                else {
+                else{
                     error = true;
                 }
                 break;
@@ -56,7 +67,17 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
             case ParserType::IP: {
                 auto ret = parseIPaddress(&eventIt, parser.endToken);
                 if (!ret.empty()) {
-                    result[parser.name] = ret;
+                    result[parser.captureOpts[0]] = ret;
+                }
+                else {
+                    error = true;
+                }
+                break;
+            }
+            case ParserType::JSON: {
+                auto ret = parseJson(&eventIt);
+                if (!ret.empty()) {
+                    result["json"] = ret;
                 }
                 else {
                     error = true;
@@ -66,7 +87,7 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",
-                        (int)parser.parserType);
+                        parser.parserType);
                 break;
             }
         }
