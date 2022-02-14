@@ -17,6 +17,9 @@
 #include "../wrappers/posix/time_wrappers.h"
 #include "wazuhdb_op.h"
 
+#define GROUPS_SIZE 10
+#define AGENTS_SIZE 10
+
 extern void __real_cJSON_Delete(cJSON *item);
 extern int test_mode;
 
@@ -6897,7 +6900,6 @@ void test_wdb_global_calculate_agent_group_csv_success(void **state) {
 /* wdb_global_assign_agent_group */
 
 void test_wdb_global_assign_agent_group_success(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -6953,7 +6955,6 @@ void test_wdb_global_assign_agent_group_success(void **state) {
 }
 
 void test_wdb_global_assign_agent_group_invalid_group_name(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int initial_priority = 0;
@@ -6983,7 +6984,6 @@ void test_wdb_global_assign_agent_group_invalid_group_name(void **state) {
 }
 
 void test_wdb_global_assign_agent_group_insert_belong_error(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int initial_priority = 0;
@@ -7029,7 +7029,6 @@ void test_wdb_global_assign_agent_group_insert_belong_error(void **state) {
 }
 
 void test_wdb_global_assign_agent_group_find_error(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int initial_priority = 0;
@@ -7065,7 +7064,6 @@ void test_wdb_global_assign_agent_group_find_error(void **state) {
 }
 
 void test_wdb_global_assign_agent_group_insert_error(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7117,7 +7115,6 @@ void test_wdb_global_assign_agent_group_insert_error(void **state) {
 }
 
 void test_wdb_global_assign_agent_group_invalid_json(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int initial_priority = 0;
@@ -7154,7 +7151,6 @@ void create_wdb_global_get_agent_max_group_priority_success_call(int agent_id, c
 /* wdb_global_unassign_agent_group */
 
 void test_wdb_global_unassign_agent_group_success(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7240,7 +7236,6 @@ void create_wdb_global_assign_agent_group_success_call(int agent_id, int group_i
 }
 
 void test_wdb_global_unassign_agent_group_success_assign_default_group(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7292,7 +7287,6 @@ void test_wdb_global_unassign_agent_group_success_assign_default_group(void **st
 }
 
 void test_wdb_global_unassign_agent_group_delete_tuple_error(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
@@ -7330,7 +7324,6 @@ void test_wdb_global_unassign_agent_group_delete_tuple_error(void **state) {
 }
 
 void test_wdb_global_unassign_agent_group_find_error(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
@@ -7357,7 +7350,6 @@ void test_wdb_global_unassign_agent_group_find_error(void **state) {
 }
 
 void test_wdb_global_unassign_agent_group_invalid_json(void **state) {
-    #define GROUPS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     cJSON* find_group_resp = cJSON_Parse("[{\"id\":1}]");
@@ -7538,7 +7530,6 @@ void create_wdb_global_set_agent_group_context_success_call(int agent_id, char* 
 }
 
 void test_wdb_global_set_agent_groups_override_success(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7579,7 +7570,6 @@ void test_wdb_global_set_agent_groups_override_success(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7622,7 +7612,6 @@ void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char group_name[] = "GROUP";
@@ -7666,7 +7655,6 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_append_success(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7709,7 +7697,6 @@ void test_wdb_global_set_agent_groups_append_success(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_empty_only_success(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7752,7 +7739,6 @@ void test_wdb_global_set_agent_groups_empty_only_success(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_empty_only_not_empty_error(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     char group_name[] = "GROUP";
@@ -7783,7 +7769,6 @@ void test_wdb_global_set_agent_groups_empty_only_not_empty_error(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_remove_success(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7826,7 +7811,6 @@ void test_wdb_global_set_agent_groups_remove_success(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_remove_unassign_error(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     //int group_id = 1;
@@ -7868,7 +7852,6 @@ void test_wdb_global_set_agent_groups_remove_unassign_error(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_invalid_json(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     char sync_status[] = "synced";
     wdb_groups_set_mode_t mode = WDB_GROUP_REMOVE;
@@ -7890,7 +7873,6 @@ void test_wdb_global_set_agent_groups_invalid_json(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
@@ -7932,7 +7914,6 @@ void test_wdb_global_set_agent_groups_calculate_csv_error(void **state) {
 }
 
 void test_wdb_global_set_agent_groups_set_group_ctx_error(void **state) {
-    #define AGENTS_SIZE 10
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
     int group_id = 1;
