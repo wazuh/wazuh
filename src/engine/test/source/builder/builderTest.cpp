@@ -10,6 +10,7 @@
 #include "builder.hpp"
 #include "builderTest.hpp"
 #include "connectable.hpp"
+#include "register.hpp"
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
@@ -20,6 +21,7 @@ template <class T> using Con_t = builder::internals::Connectable<Obs_t<T>>;
 
 TEST(Builder, EnvironmentSingleDecoder)
 {
+    builder::internals::registerBuilders();
     FakeCatalog fCatalog;
     auto builder = builder::Builder<FakeCatalog>(fCatalog);
     auto root = builder.build("environment_1");
