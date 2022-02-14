@@ -48,12 +48,11 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         rotated_file = os.path.basename(rotated_filepath)
         year, month, day = re.match(r'[\w\.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
         month = calendar.month_abbr[int(month)]
-
-        log_path = os.path.join(self.baseFilename.replace('.log', ''), year, month)
+        log_path = os.path.join(os.path.splitext(self.baseFilename)[0], year, month)
         if not os.path.exists(log_path):
             utils.mkdir_with_mode(log_path, 0o750)
 
-        return f'{log_path}/{os.path.basename(self.baseFilename).replace(".log", "")}-{day}.log.gz'
+        return f'{log_path}/{os.path.basename(self.baseFilename)}-{day}.gz'
 
 
 class CustomFilter():
