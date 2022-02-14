@@ -10,9 +10,11 @@
 #ifndef _BUILDER_TYPES_H
 #define _BUILDER_TYPES_H
 
+#include "connectable.hpp"
 #include <functional>
 #include <rxcpp/rx.hpp>
 #include <variant>
+#include <vector>
 
 #include "json.hpp"
 
@@ -28,9 +30,11 @@ using Document = json::Document;
 using DocumentValue = json::Value;
 using Observable = rxcpp::observable<Event>;
 using Lifter = std::function<Observable(Observable)>;
-using AssetBuilder = std::function<Lifter(const Document &)>;
+using ConnectableT = Connectable<Observable>;
+using AssetBuilder = std::function<ConnectableT(const Document &)>;
 using OpBuilder = std::function<Lifter(const DocumentValue &)>;
-using BuilderVariant = std::variant<AssetBuilder, OpBuilder>;
+using CombinatorBuilder = std::function<Lifter(std::vector<Lifter>)>;
+using BuilderVariant = std::variant<AssetBuilder, OpBuilder, CombinatorBuilder>;
 
 } // namespace builder::internals::types
 
