@@ -5,7 +5,7 @@
     <scan_on_start>yes</scan_on_start>
     <hardware>no</hardware>
     <os>yes</os>
-    <network>no</network>
+    <network>yes</network>
     <packages>no</packages>
     <ports all="no">no</ports>
     <processes>no</processes>
