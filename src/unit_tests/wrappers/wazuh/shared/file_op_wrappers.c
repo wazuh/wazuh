@@ -215,7 +215,9 @@ const char *__wrap_getuname() {
 
 int __wrap_MergeAppendFile(const char *finalpath, __attribute__((unused)) const char *files, const char *tag, int path_offset) {
     check_expected(finalpath);
-    check_expected(tag);
+    if (tag) {
+        check_expected(tag);
+    }
     check_expected(path_offset);
     return mock_type(int);
 }
