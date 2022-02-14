@@ -2,6 +2,9 @@
 #define _HLP_H
 
 #include <string>
+#include <vector>
+#include <unordered_map>
+#include <functional>
 
 using ParseResult = std::unordered_map<std::string, std::string>;
 using ParserFn = std::function<ParseResult(std::string)>;
@@ -9,28 +12,29 @@ using ParserFn = std::function<ParseResult(std::string)>;
 enum class CombType {
     Null,
     Optional,
+    Or,
+    OrEnd,
+    Invalid,
 };
 
 enum class ParserType {
-    Keyword,
-    Literal,
+    Any, Literal,
     IP,
     Ts,
-    Json,
+    URL,
+    JSON,
     Invalid,
 };
 
 struct Parser {
+    std::vector<std::string> captureOpts; // TODO The options include the name on the first slot
+                                          // This is probably not the best way but works so far
     ParserType parserType;
     CombType combType;
-    std::string name; // TODO: SSO saves us the alloc here
-                      // but check if we can avoid the copy
     char endToken;
 };
 
-using ParserList = std::vector<Parser>;
 
-void executeParserList(std::string const &event, ParserList const &parsers, ParseResult &result);
 ParserFn getParserOp(std::string const &logQl);
 
 #endif // _HLP_H
