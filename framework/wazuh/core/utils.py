@@ -584,8 +584,8 @@ def delete_wazuh_file(full_path):
         raise WazuhError(1906)
 
 
-def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid()), time=None, permissions=None):
-    """Moves a file even between filesystems
+def safe_move(source, target, ownership=None, time=None, permissions=None):
+    """Move a file even between filesystems
 
     This function is useful to move files even when target directory is in a different filesystem from the source.
     Write permissions are required on target directory.
@@ -600,16 +600,17 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
         Tuple in the form (user, group) to be set up after the file is moved.
     time : tuple
         Tuple in the form (addition_timestamp, modified_timestamp).
-    permissions : str
-        String mask in octal notation. I.e.: '0o640'.
+    permissions : octal
+        String mask in octal notation. I.e.: 0o640.
     """
     # Create temp file. Move between
     tmp_path, tmp_filename = path.split(target)
     tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
-    move(source, tmp_target, copy_function=copyfile)
+    move(source, tmp_target, copy_function=full_copy)
 
     # Set up metadata
-    chown(tmp_target, *ownership)
+    if ownership is not None:
+        chown(tmp_target, *ownership)
     if permissions is not None:
         chmod(tmp_target, permissions)
     if time is not None:
@@ -623,7 +624,7 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
         # For example, when target is a mounted file in a Docker container
         # However, this is not an atomic operation and could lead to race conditions
         # if the file is read/written simultaneously with other processes
-        move(tmp_target, target, copy_function=copyfile)
+        move(tmp_target, target, copy_function=full_copy)
 
 
 def mkdir_with_mode(name, mode=0o770):
@@ -1792,7 +1793,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
     # Move temporary file to group folder
     try:
         new_conf_path = path.join(common.wazuh_path, file_path)
-        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+        safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
 
@@ -1817,7 +1818,7 @@ def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: ca
         If there is any `IOError` while doing the backup.
     """
     try:
-        copyfile(abs_path, backup_file)
+        full_copy(abs_path, backup_file)
     except IOError:
         raise WazuhError(1019)
     delete_function(filename=path.basename(abs_path))
