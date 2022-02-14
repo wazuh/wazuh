@@ -124,7 +124,7 @@ def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name,
                              debug_level=mock_debug_level, logger_name=mock_logger_name,
                              custom_formatter=mock_formatter)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
-              mock_logger, mock_tag, mock_log_path]:
+              mock_logger, mock_log_path]:
         x.assert_called()
 
 

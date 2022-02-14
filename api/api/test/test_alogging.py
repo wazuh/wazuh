@@ -14,11 +14,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from api import alogging
 
 
-@pytest.mark.parametrize('json_log', [
-    False,
-    True
-])
-def test_accesslogger_log_credentials(json_log):
+def test_accesslogger_log_credentials():
     """Check AccessLogger is hiding confidential data from logs"""
     class MockedRequest(dict):
         query = {'password': 'password_value'
@@ -32,27 +28,31 @@ def test_accesslogger_log_credentials(json_log):
                                          'key': 'key_value'})
             super().__setitem__('user', 'wazuh')
 
-    with patch('api.alogging.JSON_LOG', json_log):
-        with patch('logging.Logger.info') as mock_logger_info:
-            test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
-            test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
+    with patch('logging.Logger.info') as mock_logger_info:
+        test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
+        test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
 
-            if json_log:
-                assert mock_logger_info.call_args.args[0]['parameters'] == {"password": "****"}
-                assert mock_logger_info.call_args.args[0]['body'] == {"password": "****", "key": "****"}
-            else:
-                assert 'parameters {"password": "****"} and body {"password": "****", "key": "****"}' \
-                    in mock_logger_info.call_args.args[0]
+        assert mock_logger_info.call_count == 2
+
+        json_call = mock_logger_info.call_args_list[1][0][0]
+        log_call = mock_logger_info.call_args_list[0][0][0]
+
+        assert json_call['parameters'] == {"password": "****"}
+        assert json_call['body'] == {"password": "****", "key": "****"}
+        assert 'parameters {"password": "****"} and body {"password": "****", "key": "****"}' in log_call
+
+        assert mock_logger_info.call_args_list[1][1]['extra'] == {'log_type': 'json'}
+        assert mock_logger_info.call_args_list[0][1]['extra'] == {'log_type': 'log'}
 
 
-@pytest.mark.parametrize('side_effect, user, json_log', [
-    ('unknown', '', True),
-    (None, '', False),
-    (None, 'wazuh', True),
-    (None, 'wazuh', False)
+@pytest.mark.parametrize('side_effect, user', [
+    ('unknown', ''),
+    (None, ''),
+    (None, 'wazuh'),
+    (None, 'wazuh')
 ])
 @patch('api.alogging.json.dumps')
-def test_accesslogger_log(mock_dumps, side_effect, user, json_log):
+def test_accesslogger_log(mock_dumps, side_effect, user):
     """Test expected methods are called when using log().
 
     Parameters
@@ -70,28 +70,26 @@ def test_accesslogger_log(mock_dumps, side_effect, user, json_log):
 
         def get(self, *args, **kwargs):
             return user
-    with patch('api.alogging.JSON_LOG', json_log):
         # Mock decode_token and logger.info
-        with patch('logging.Logger.info') as mock_logger_info:
+    with patch('logging.Logger.info') as mock_logger_info:
 
-            # Create an AccessLogger object and log a mocked call
-            test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
-            test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
+        # Create an AccessLogger object and log a mocked call
+        test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
+        test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
 
-            # If not user, decode_token must be called to get the user and logger.info must be called with the user
-            # if we have token_info or UNKNOWN_USER if not
-            if not user:
-                expected_user = 'wazuh' if side_effect is None else alogging.UNKNOWN_USER_STRING
-                if json_log:
-                    assert mock_logger_info.call_args.args[0]['user'] == expected_user
-                else:
-                    assert mock_logger_info.call_args.args[0].split(" ")[0] == expected_user
-            # If user, logger.info must be called with the user
-            else:
-                if json_log:
-                    assert mock_logger_info.call_args.args[0]['user'] == user
-                else:
-                    assert mock_logger_info.call_args.args[0].split(" ")[0] == user
+        json_call = mock_logger_info.call_args_list[1][0][0]
+        log_call = mock_logger_info.call_args_list[0][0][0]
+
+        # If not user, decode_token must be called to get the user and logger.info must be called with the user
+        # if we have token_info or UNKNOWN_USER if not
+        if not user:
+            expected_user = 'wazuh' if side_effect is None else alogging.UNKNOWN_USER_STRING
+            assert json_call['user'] == expected_user
+            assert log_call.split(" ")[0] == expected_user
+        # If user, logger.info must be called with the user
+        else:
+            assert json_call['user'] == user
+            assert log_call.split(" ")[0] == user
 
 
 @pytest.mark.parametrize('json_log', [
@@ -110,10 +108,8 @@ def test_apilogger_init(mock_wazuhlogger, json_log):
     assert mock_wazuhlogger.call_args.kwargs['debug_level'] == 'info'
     assert mock_wazuhlogger.call_args.kwargs['logger_name'] == 'wazuh'
     if json_log:
-        assert mock_wazuhlogger.call_args.kwargs['tag'] is None
         assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] == alogging.WazuhJsonFormatter
     else:
-        assert mock_wazuhlogger.call_args.kwargs['tag'] == '%(asctime)s %(levelname)s: %(message)s'
         assert mock_wazuhlogger.call_args.kwargs['custom_formatter'] is None
 
     os.path.exists(current_logger_path) and os.remove(current_logger_path)
