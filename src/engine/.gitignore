@@ -66,6 +66,3 @@ _deps
 # Test output files
 *.log
 *.csv
-
-# Backup temporary folder
-bak/*

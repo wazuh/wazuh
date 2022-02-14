@@ -15,6 +15,7 @@
 #include "engineServer.hpp"
 #include "graph.hpp"
 #include "json.hpp"
+#include "register.hpp"
 #include "router.hpp"
 
 using namespace std;
@@ -64,6 +65,15 @@ int main(int argc, char * argv[])
     }
 
     // Builder
+    try
+    {
+        builder::internals::registerBuilders();
+    }
+    catch (const std::exception & e)
+    {
+        LOG(ERROR) << "Engine error, got exception while registering builders: " << e.what() << endl;
+        return 1;
+    }
     builder::Builder<catalog::Catalog> _builder(_catalog);
 
     // Build router

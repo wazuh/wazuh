@@ -19,31 +19,15 @@
 #include <utility>
 #include <vector>
 
-#include "rxcpp/rx.hpp"
-
+#include "builderTypes.hpp"
 #include "graph.hpp"
-#include "include_builders.hpp"
-#include "json.hpp"
+#include "registry.hpp"
 
 namespace builder
 {
-// The type of the event which will flow through the stream
-using Event_t = json::Document;
-// The type of the observable which will compose the processing graph
-using Obs_t = rxcpp::observable<Event_t>;
-// The type of the connectables whisch will help us connect the assets ina graph
-using Con_t = builder::internals::Connectable<Obs_t>;
-// The type of a connectable operation
-using Op_t = std::function<Obs_t(const Obs_t &)>;
-// The signature of a maker function which will build an asset into a`
-// connectable.
-using Maker_t = std::function<Con_t(const json::Document &)>;
-// The signature of a builder function which will build an operation from
-// a piece of an asset description.
-using Builder_t = std::function<Op_t(const json::Value &)>;
 // The type of the graph which will connect all the connectables into a
 // graph
-using Graph_t = graph::Graph<Con_t>;
+using Graph_t = graph::Graph<internals::types::ConnectableT>;
 
 /**
  * @brief The builder class is the responsible to transform and environment
@@ -66,7 +50,7 @@ private:
      * @param in input node
      * @param out output node
      */
-    void connectGraph(Graph_t & g, Con_t in, Con_t out)
+    void connectGraph(Graph_t & g, internals::types::ConnectableT in, internals::types::ConnectableT out)
     {
 
         g.addNode(in);
@@ -74,7 +58,7 @@ private:
         g.visit(
             [&](auto edges)
             {
-                Con_t node = edges.first;
+                internals::types::ConnectableT node = edges.first;
 
                 // TODO: do not relay on special names with input and output in the name
                 if (node == in || node == out || node.m_name.find("INPUT") != std::string::npos ||
@@ -88,14 +72,14 @@ private:
 
                 for (auto p : node.m_parents)
                 {
-                    g.addEdge(Con_t(p), node);
+                    g.addEdge(internals::types::ConnectableT(p), node);
                 }
             });
 
         g.addNode(out);
 
         g.leaves(
-            [&](Con_t leaf)
+            [&](internals::types::ConnectableT leaf)
             {
                 if (leaf != out)
                 {
@@ -115,7 +99,7 @@ private:
      * @param make the maker function which will convert a single asset into
      * a connectable.
      */
-    void assetBuilder(Graph_t & g, std::string atype, const json::Value * v, Maker_t make)
+    void assetBuilder(Graph_t & g, std::string atype, const json::Value * v, internals::types::AssetBuilder make)
     {
 
         if (v && v->IsArray())
@@ -139,11 +123,11 @@ private:
         filters.visit(
             [&](auto edges)
             {
-                Con_t filter = edges.first;
+                internals::types::ConnectableT filter = edges.first;
                 for (auto & p : filter.m_parents)
                 {
                     g.addNode(filter);
-                    g.injectEdge(Con_t(p), filter);
+                    g.injectEdge(internals::types::ConnectableT(p), filter);
                 }
             });
     }
@@ -173,40 +157,48 @@ public:
         Graph_t filters;
         json::Document asset = m_catalog.getAsset("environment", name);
 
-        this->assetBuilder(g, "decoder", asset.get(".decoders"), internals::builders::buildDecoder);
-        this->connectGraph(g, Con_t("DECODERS_INPUT"), Con_t("DECODERS_OUTPUT"));
+        this->assetBuilder(g, "decoder", asset.get(".decoders"),
+                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
+        this->connectGraph(g, internals::types::ConnectableT("DECODERS_INPUT"),
+                           internals::types::ConnectableT("DECODERS_OUTPUT"));
 
-        g.addNode(Con_t("RULES_INPUT"));
-        g.addEdge(Con_t("DECODERS_OUTPUT"), Con_t("RULES_INPUT"));
+        g.addNode(internals::types::ConnectableT("RULES_INPUT"));
+        g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"), internals::types::ConnectableT("RULES_INPUT"));
 
-        this->assetBuilder(g, "rule", asset.get(".rules"), internals::builders::buildRule);
-        this->connectGraph(g, Con_t("RULES_INPUT"), Con_t("RULES_OUTPUT"));
+        this->assetBuilder(g, "rule", asset.get(".rules"),
+                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("rule")));
+        this->connectGraph(g, internals::types::ConnectableT("RULES_INPUT"),
+                           internals::types::ConnectableT("RULES_OUTPUT"));
 
-        g.addNode(Con_t("OUTPUTS_INPUT"));
-        g.addEdge(Con_t("DECODERS_OUTPUT"), Con_t("OUTPUTS_INPUT"));
-        g.addEdge(Con_t("RULES_OUTPUT"), Con_t("OUTPUTS_INPUT"));
+        g.addNode(internals::types::ConnectableT("OUTPUTS_INPUT"));
+        g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"), internals::types::ConnectableT("OUTPUTS_INPUT"));
+        g.addEdge(internals::types::ConnectableT("RULES_OUTPUT"), internals::types::ConnectableT("OUTPUTS_INPUT"));
 
-        this->assetBuilder(g, "output", asset.get(".outputs"), internals::builders::buildOutput);
-        this->connectGraph(g, Con_t("OUTPUTS_INPUT"), Con_t("OUTPUTS_OUTPUT"));
+        this->assetBuilder(g, "output", asset.get(".outputs"),
+                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("output")));
+        this->connectGraph(g, internals::types::ConnectableT("OUTPUTS_INPUT"),
+                           internals::types::ConnectableT("OUTPUTS_OUTPUT"));
 
-        this->assetBuilder(filters, "filter", asset.get(".filters"), internals::builders::buildFilter);
+        this->assetBuilder(filters, "filter", asset.get(".filters"),
+                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("filter")));
         this->filterGraph(g, filters);
 
         return g;
     }
 
-    Op_t operator()(const std::string & name)
+    internals::types::Lifter operator()(const std::string & name)
     {
 
         auto g = this->build(name);
         auto edges = g.get();
-        return [=](Obs_t o) -> Obs_t
+        return [=](internals::types::Observable o) -> internals::types::Observable
         {
-            Obs_t last;
+            internals::types::Observable last;
             // This algorithm builds the RXCPP based graph of operations
             // every time the closure is called. The whole graph is captured
             // by value by the parent closure.
-            auto visit = [&](Obs_t source, Con_t root, auto & visit_ref) -> void
+            auto visit = [&](internals::types::Observable source, internals::types::ConnectableT root,
+                             auto & visit_ref) -> void
             {
                 auto itr = edges.find(root);
                 if (itr == edges.end())
@@ -215,15 +207,15 @@ public:
                 }
 
                 // Visit node
-                Con_t node = itr->first;
+                internals::types::ConnectableT node = itr->first;
                 if (node.m_inputs.size() == 0)
                 {
                     node.addInput(source);
                 }
-                Obs_t obs = node.connect();
+                internals::types::Observable obs = node.connect();
 
                 // Add obs as an input to the childs
-                for (Con_t n : itr->second)
+                for (internals::types::ConnectableT n : itr->second)
                 {
                     n.addInput(obs);
                 }
@@ -240,7 +232,7 @@ public:
                 }
             };
 
-            visit(o, Con_t("DECODERS_INPUT"), visit);
+            visit(o, internals::types::ConnectableT("DECODERS_INPUT"), visit);
             return last;
         };
     }
