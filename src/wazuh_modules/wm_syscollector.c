@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSCOLLECTOR
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * November 11, 2021.
  *
  * This program is free software; you can redistribute it
@@ -52,28 +52,22 @@ static bool is_shutdown_process_started() {
     return ret_val;
 }
 
-static void wm_sys_send_diff_message(/*const void* data*/) {
-    // const int eps = 1000000/syscollector_sync_max_eps;
-    // Sending deltas is disabled due to issue: 7322 - https://github.com/wazuh/wazuh/issues/7322
-    // wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
- }
-
-static void wm_sys_send_dbsync_message(const void* data) {
-    if(!os_iswait() && !is_shutdown_process_started()) {
+static void wm_sys_send_message(const void* data, const char queue_id) {
+    if (!is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_sync_max_eps;
-        if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
-#ifdef CLIENT
+        if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
+    #ifdef CLIENT
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-#else
+    #else
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-#endif
+    #endif
             // Since this method is beign called by multiple threads it's necessary this particular portion of code
             // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.
             w_mutex_lock(&sys_reconnect_mutex);
-            if (!is_shutdown_process_started() && wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
+            if (!is_shutdown_process_started() && wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
                 if (queue_fd = MQReconnectPredicated(DEFAULTQUEUE, &is_shutdown_process_started), 0 <= queue_fd) {
                     mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
-                    if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
+                    if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
                         mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
                     }
                 }
@@ -81,6 +75,16 @@ static void wm_sys_send_dbsync_message(const void* data) {
             w_mutex_unlock(&sys_reconnect_mutex);
         }
     }
+}
+
+static void wm_sys_send_diff_message(const void* data) {
+    if (!os_iswait()) {
+        wm_sys_send_message(data, SYSCOLLECTOR_MQ);
+    }
+}
+
+static void wm_sys_send_dbsync_message(const void* data) {
+    wm_sys_send_message(data, DBSYNC_MQ);
 }
 
 static void wm_sys_log_config(wm_sys_t *sys)

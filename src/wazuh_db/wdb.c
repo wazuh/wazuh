@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -1418,4 +1418,58 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
     }
 
     return wdb->stmt[statement_index];
+}
+
+sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
+    sqlite3_stmt * ret_val = NULL;
+    if (NULL != wdb && NULL != query) {
+        struct stmt_cache_list *node_stmt = NULL;
+        for (node_stmt = wdb->cache_list; node_stmt ; node_stmt=node_stmt->next) {
+            if (node_stmt->value.query) {
+                if (strcmp(node_stmt->value.query, query) == 0)
+                {
+                    if (sqlite3_reset(node_stmt->value.stmt) != SQLITE_OK || sqlite3_clear_bindings(node_stmt->value.stmt) != SQLITE_OK) {
+                        mdebug1("DB(%s) sqlite3_reset() stmt(%s): %s", wdb->id, sqlite3_sql(node_stmt->value.stmt), sqlite3_errmsg(wdb->db));
+                    }
+                    ret_val = node_stmt->value.stmt;
+                    break;
+                }
+            }
+        }
+        bool is_first_element = true;
+        if (NULL == ret_val) {
+            struct stmt_cache_list *new_item = NULL;
+            if (NULL == wdb->cache_list) {
+                os_malloc(sizeof(struct stmt_cache_list), wdb->cache_list);
+                new_item = wdb->cache_list;
+            } else {
+                node_stmt = wdb->cache_list;
+                while (node_stmt->next){
+                    node_stmt = node_stmt->next;
+                }
+                is_first_element = false;
+                os_malloc(sizeof(struct stmt_cache_list), node_stmt->next);
+                //Add element in the end list
+                new_item = node_stmt->next;
+            }
+            new_item->next = NULL;
+            os_malloc(strlen(query) + 1, new_item->value.query);
+            strcpy(new_item->value.query, query);
+
+            if (sqlite3_prepare_v2(wdb->db, new_item->value.query, -1, &new_item->value.stmt, NULL) != SQLITE_OK) {
+                merror("DB(%s) sqlite3_prepare_v2() : %s", wdb->id, sqlite3_errmsg(wdb->db));
+                os_free(new_item->value.query);
+                if (is_first_element) {
+                    os_free(wdb->cache_list);
+                    wdb->cache_list = NULL;
+                } else {
+                    os_free(node_stmt->next);
+                    node_stmt->next = NULL;
+                }
+            } else {
+                ret_val = new_item->value.stmt;
+            }
+        }
+    }
+    return ret_val;
 }

@@ -1,9 +1,6 @@
 ---
 test_name: POST /agents
 
-marks:
-  - base_tests
-
 stages:
 
     # POST /agents

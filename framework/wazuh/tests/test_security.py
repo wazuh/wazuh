@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -72,6 +72,12 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
+                    # Invalidate in-memory database
+                    conn = orm._engine.connect()
+                    orm._Session().close()
+                    conn.invalidate()
+                    orm._engine.dispose()
+
                     reload(orm)
                     orm.create_rbac_db()
                     import wazuh.rbac.decorators as decorators

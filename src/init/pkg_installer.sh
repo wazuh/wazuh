@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 
 SERVICE=wazuh-agent
 OSSEC_INIT_FILE=/etc/ossec-init.conf

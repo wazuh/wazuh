@@ -1,8 +1,5 @@
 test_name: GET /sca/{agent_id} for agents with Wazuh version >=4.2.0 (001) and <4.2.0 (006)
 
-marks:
-  - base_tests
-
 stages:
 
   # Testing GET /sca/001

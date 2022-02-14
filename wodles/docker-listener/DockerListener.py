@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ import time
 try:
     import docker
 except:
-    sys.stderr.write("'docker' module needs to be installed. Execute 'pip install docker' to do it.\n")
+    sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
     exit(1)
 
 class DockerListener:

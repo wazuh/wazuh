@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -78,5 +78,7 @@ void __wrap_wdb_pool_append(wdb_t * wdb);
 sqlite3_stmt* __wrap_wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
 int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt);
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 #endif

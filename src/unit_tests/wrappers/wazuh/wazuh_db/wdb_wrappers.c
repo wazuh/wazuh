@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -337,4 +337,8 @@ int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
                               const char * scan_id) {
     check_expected(scan_id);
     return mock();
+}
+
+sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
+    return mock_ptr_type(sqlite3_stmt*);
 }

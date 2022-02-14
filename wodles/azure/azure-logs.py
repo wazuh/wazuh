@@ -2,7 +2,7 @@
 
 ###
 # Integration of Wazuh agent with Microsoft Azure
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ from azure.storage.common._error import AzureSigningError
 from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
 from pytz import UTC
-from requests import get, post, HTTPError
+from requests import get, post, HTTPError, RequestException
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from utils import ANALYSISD, find_wazuh_path
@@ -791,12 +791,23 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
     }
     auth_url = f'{url_logging}/{domain}/oauth2/v2.0/token'
     try:
-        token_response = post(auth_url, data=body)
-        return token_response.json()['access_token']
-    except (ValueError, KeyError) as e:
-        logging.error(f"Error: Couldn't get the token for authentication: '{e}'.")
-        sys.exit(1)
+        token_response = post(auth_url, data=body).json()
+        return token_response['access_token']
+    except (ValueError, KeyError):
+        if token_response['error'] == 'unauthorized_client':
+            err_msg = "The application id provided is not valid."
+        elif token_response['error'] == 'invalid_client':
+            err_msg = "The application key provided is not valid."
+        elif token_response['error'] == 'invalid_request' and 90002 in token_response['error_codes']:
+            err_msg = f"The '{domain}' tenant domain was not found."
+        else:
+            err_msg = "Couldn't get the token for authentication."
+        logging.error(f"Error: {err_msg}")
 
+    except RequestException as e:
+        logging.error(f"Error: An error occurred while trying to obtain the authentication token: {e}")
+
+    sys.exit(1)
 
 def send_message(message: str):
     """Send a message with a header to the analysisd queue.

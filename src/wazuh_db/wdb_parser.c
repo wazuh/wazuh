@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 16, 2018.
  *
  * This program is free software; you can redistribute it
@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "wazuhdb_op.h"
 #include "wdb.h"
 #include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
@@ -21,6 +22,7 @@ static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_TEXT, 3, false, true, "hotfix" }, .next = &TABLE_HOTFIXES[3] },
     { .value = {FIELD_TEXT, 4, false, false, "checksum" }, .next = NULL },
 };
+#define HOTFIXES_FIELD_COUNT 3
 
 static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 1,true,false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
@@ -46,7 +48,7 @@ static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 21,false,false,"vm_size" }, .next = &TABLE_PROCESSES[21] },
     { .value = { FIELD_INTEGER, 22,false,false,"resident" }, .next = &TABLE_PROCESSES[22] },
     { .value = { FIELD_INTEGER, 23,false,false,"share" }, .next = &TABLE_PROCESSES[23] },
-    { .value = { FIELD_INTEGER, 24,false,false,"start_time" }, .next = &TABLE_PROCESSES[24] },
+    { .value = { FIELD_INTEGER_LONG, 24,false,false,"start_time" }, .next = &TABLE_PROCESSES[24] },
     { .value = { FIELD_INTEGER, 25,false,false,"pgrp" }, .next = &TABLE_PROCESSES[25] },
     { .value = { FIELD_INTEGER, 26,false,false,"session" }, .next = &TABLE_PROCESSES[26] },
     { .value = { FIELD_INTEGER, 27,false,false,"nlwp" }, .next = &TABLE_PROCESSES[27] },
@@ -55,6 +57,7 @@ static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 30,false,false,"processor"}, .next = &TABLE_PROCESSES[30] },
     { .value = { FIELD_TEXT, 31, false, false, "checksum" }, .next = NULL }
 };
+#define PROCESSES_FIELD_COUNT 30
 
 static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_NETIFACE[1] } ,
@@ -76,6 +79,7 @@ static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_NETIFACE[17] } ,
     { .value = { FIELD_TEXT, 18, false, false, "item_id" }, .next = NULL }
 };
+#define NETIFACE_FIELD_COUNT 17
 
 static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETPROTO[1]},
@@ -87,6 +91,7 @@ static struct column_list const TABLE_NETPROTO[] = {
     { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETPROTO[7]},
     { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL }
 };
+#define NETPROTO_FIELD_COUNT 7
 
 static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_NETADDR[1]},
@@ -98,6 +103,7 @@ static struct column_list const TABLE_NETADDR[] = {
     { .value = { FIELD_TEXT,7, false, false, "checksum" }, .next = &TABLE_NETADDR[7]},
     { .value = { FIELD_TEXT,8, false, false, "item_id" }, .next = NULL},
 };
+#define NETADDR_FIELD_COUNT 7
 
 static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_PORTS[1]},
@@ -109,16 +115,17 @@ static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER,7, false, false, "remote_port" }, .next = &TABLE_PORTS[7]},
     { .value = { FIELD_INTEGER,8, false, false, "tx_queue" }, .next = &TABLE_PORTS[8]},
     { .value = { FIELD_INTEGER,9, false, false, "rx_queue" }, .next = &TABLE_PORTS[9]},
-    { .value = { FIELD_INTEGER,10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
+    { .value = { FIELD_INTEGER_LONG,10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
     { .value = { FIELD_TEXT,11, false, false, "state" }, .next = &TABLE_PORTS[11]},
     { .value = { FIELD_INTEGER,12, false, false, "PID" }, .next = &TABLE_PORTS[12]},
     { .value = { FIELD_TEXT,13, false, false, "process" }, .next = &TABLE_PORTS[13]},
     { .value = { FIELD_TEXT,14, false, false, "checksum" }, .next = &TABLE_PORTS[14]},
     { .value = { FIELD_TEXT,15, false, false, "item_id" }, .next = NULL},
 };
+#define PORTS_FIELD_COUNT 14
 
 static struct column_list const TABLE_PACKAGES[] = {
-    { .value = { FIELD_INTEGER, 1, true, true, "scan_id" }, .next = &TABLE_PACKAGES[1] },
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_PACKAGES[2] },
     { .value = { FIELD_TEXT, 3, false, false, "format" }, .next = &TABLE_PACKAGES[3] },
     { .value = { FIELD_TEXT, 4, false, true, "name" }, .next = &TABLE_PACKAGES[4] },
@@ -139,6 +146,7 @@ static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = &TABLE_PACKAGES[19] },
     { .value = { FIELD_TEXT, 20, false, false, "item_id" }, .next = NULL },
 };
+#define PACKAGES_FIELD_COUNT 19
 
 static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_OS[1] },
@@ -157,9 +165,12 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 14, false, false, "release" }, .next = &TABLE_OS[14] },
     { .value = { FIELD_TEXT, 15, false, false, "version" }, .next = &TABLE_OS[15] },
     { .value = { FIELD_TEXT, 16, false, false, "os_release" }, .next = &TABLE_OS[16] },
-    { .value = { FIELD_TEXT, 17, false, false, "os_display_version" }, .next = &TABLE_OS[17] },
-    { .value = { FIELD_TEXT, 18, false, false, "checksum" }, .next = NULL }
+    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_OS[17] },
+    { .value = { FIELD_TEXT, 18, false, false, "os_display_version" }, .next = &TABLE_OS[18] },
+    { .value = { FIELD_INTEGER, 19, false, false, "triaged" }, .next = &TABLE_OS[19] },
+    { .value = { FIELD_TEXT, 20, false, false, "reference" }, .next = NULL },
 };
+#define OS_FIELD_COUNT 19
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
@@ -173,18 +184,19 @@ static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 9, false, false, "ram_usage" }, .next = &TABLE_HARDWARE[9] },
     { .value = { FIELD_TEXT, 10, false, false, "checksum" }, .next = NULL }
 };
-
+#define HARDWARE_FIELD_COUNT 9
 
 
 static struct kv_list const TABLE_MAP[] = {
-    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE }, .next = &TABLE_MAP[1]},
-    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO }, .next = &TABLE_MAP[2]},
-    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR }, .next = &TABLE_MAP[3]},
-    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS }, .next = &TABLE_MAP[4]},
-    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
-    { .current = { "ports", "sys_ports", false, TABLE_PORTS }, .next = &TABLE_MAP[6]},
-    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES }, .next = &TABLE_MAP[7]},
-    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES}, .next = NULL},
+    { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE, NETIFACE_FIELD_COUNT }, .next = &TABLE_MAP[1]},
+    { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO, NETPROTO_FIELD_COUNT }, .next = &TABLE_MAP[2]},
+    { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR, NETADDR_FIELD_COUNT }, .next = &TABLE_MAP[3]},
+    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS, OS_FIELD_COUNT }, .next = &TABLE_MAP[4]},
+    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE, HARDWARE_FIELD_COUNT }, .next = &TABLE_MAP[5]},
+    { .current = { "ports", "sys_ports", false, TABLE_PORTS, PORTS_FIELD_COUNT }, .next = &TABLE_MAP[6]},
+    { .current = { "packages", "sys_programs", false, TABLE_PACKAGES, PACKAGES_FIELD_COUNT }, .next = &TABLE_MAP[7]},
+    { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
+    { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
 
@@ -438,8 +450,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                if (wdb_parse_dbsync(wdb, next, output)){
-                    mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
+                if (wdb_parse_dbsync(wdb, next, output) != OS_SUCCESS){
+                    mdebug1("Unable to updated based on table deltas for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "ciscat") == 0) {
@@ -2897,18 +2909,18 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         }
 
         iface = curr;
-		*next++ = '\0';
-		curr = next;
+        *next++ = '\0';
+        curr = next;
 
-		if (next = strchr(curr, '|'), !next) {
-			mdebug1("Invalid netaddr query syntax.");
-			mdebug2("netaddr query: %s", iface);
-			snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
-			return -1;
-		}
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid netaddr query syntax.");
+            mdebug2("netaddr query: %s", iface);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
+            return -1;
+        }
 
-		if (!strcmp(iface, "NULL"))
-			iface = NULL;
+        if (!strcmp(iface, "NULL"))
+            iface = NULL;
 
         proto = strtol(curr,NULL,10);
 
@@ -5564,7 +5576,7 @@ int wdb_parse_global_disconnect_agents(wdb_t* wdb, char* input, char* output) {
     return OS_SUCCESS;
 }
 
-bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, char *data)
+bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *operation, const char *data, char *output)
 {
     bool ret_val = false;
     if (NULL != kv_value) {
@@ -5574,19 +5586,21 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
             if (strcmp(operation, "INSERTED") == 0) {
                 ret_val = wdb_insert_dbsync(wdb, kv_value, data);
             } else if (strcmp(operation, "MODIFIED") == 0) {
-                ret_val = wdb_modify_dbsync(wdb, kv_value, data);
+                if (ret_val = wdb_modify_dbsync(wdb, kv_value, data), ret_val) {
+                    wdb_select_dbsync(wdb, kv_value, data, output);
+                }
             } else if (strcmp(operation, "DELETED") == 0) {
+                wdb_select_dbsync(wdb, kv_value, data, output);
                 ret_val = wdb_delete_dbsync(wdb, kv_value, data);
             }
         }
     }
-
     return ret_val;
 }
 
 
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     char *next = NULL;
     char *curr = input;
     if (next = strchr(curr, ' '), !next) {
@@ -5608,27 +5622,32 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '\0'), !next) {
+    if (!strlen(curr)) {
         mdebug2("DBSYNC query: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid dbsync query syntax, near '%.32s'", input);
         return ret_val;
     }
 
     char *data = curr;
-
+    char select_output[OS_SIZE_6144 - WDB_RESPONSE_OK_SIZE - 1] = { '\0' };
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
-            ret_val = process_dbsync_data(wdb, &head->current, operation, data);
+            const size_t field_count = os_strcnt(data, *FIELD_SEPARATOR_DBSYNC);
+            if (field_count == head->current.field_count) {
+                ret_val = process_dbsync_data(wdb, &head->current, operation, data, select_output) ? OS_SUCCESS : OS_NOTFOUND;
+            } else {
+                merror(DB_INVALID_DELTA_MSG, data, head->current.field_count, field_count);
+            }
             break;
         }
         head = head->next;
     }
 
-    if (ret_val) {
-        strcat(output, "ok");
+    if (OS_SUCCESS == ret_val) {
+        snprintf(output, OS_SIZE_6144 - 1, "ok %s", select_output);
     } else {
-        strcat(output, "error");
+        strcat(output, "err");
     }
     return ret_val;
 }

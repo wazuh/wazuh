@@ -1,9 +1,6 @@
 ---
 test_name: GET /agents
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Get all agents
@@ -4448,7 +4445,6 @@ stages:
             - error: # No task in DB
                 code: 1813
                 message: !anystr
-                remediation: !anything
               id:
                 - '008'
         message: !anystr

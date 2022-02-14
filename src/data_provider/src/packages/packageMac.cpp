@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -48,4 +48,10 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["format"] = m_packageWrapper->format();
     package["source"] = m_packageWrapper->source();
     package["location"] = m_packageWrapper->location();
+    package["priority"] = m_packageWrapper->priority();
+    package["size"] = m_packageWrapper->size();
+    package["vendor"] = m_packageWrapper->vendor();
+    package["install_time"] = m_packageWrapper->install_time();
+    package["multiarch"] = m_packageWrapper->multiarch();
 }
+

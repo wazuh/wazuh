@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -147,7 +147,7 @@ def get_agents_summary_os(agent_list=None):
 
 
 @expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1757]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
 def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
     """Force reconnect a list of agents.
 
@@ -166,18 +166,17 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
                                       )
 
     system_agents = get_agents_info()
-    wq = WazuhQueue(common.ARQUEUE)
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent(agent_id).reconnect(wq)
-            result.affected_items.append(agent_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    wq.close()
+    with WazuhQueue(common.ARQUEUE) as wq:
+        for agent_id in agent_list:
+            try:
+                if agent_id not in system_agents:
+                    raise WazuhResourceNotFound(1701)
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                Agent(agent_id).reconnect(wq)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
 
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
@@ -239,14 +238,13 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
             else agents_with_data
-        wq = WazuhQueue(common.ARQUEUE)
-        for agent in eligible_agents:
-            try:
-                send_restart_command(agent['id'], agent['version'], wq)
-                result.affected_items.append(agent['id'])
-            except WazuhException as e:
-                result.add_failed_item(id_=agent['id'], error=e)
-        wq.close()
+        with WazuhQueue(common.ARQUEUE) as wq:
+            for agent in eligible_agents:
+                try:
+                    send_restart_command(agent['id'], agent['version'], wq)
+                    result.affected_items.append(agent['id'])
+                except WazuhException as e:
+                    result.add_failed_item(id_=agent['id'], error=e)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -632,7 +630,7 @@ def create_group(group_id):
         copyfile(group_def_path, path.join(group_path, 'agent.conf'))
         chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
-        chmod(group_path, 0o770)
+        chmod(group_path, 0o700)
         msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
