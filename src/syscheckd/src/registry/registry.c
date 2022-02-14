@@ -13,9 +13,9 @@
 #include <cJSON.h>
 #include "registry.h"
 #include "shared.h"
-#include "../../../include/syscheck.h"
+#include "../../include/syscheck.h"
 #include "../../config/syscheck-config.h"
-#include "db.h"
+#include "../db/include/db.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
@@ -1096,7 +1096,7 @@ void fim_registry_scan() {
     event_data_t evt_data_registry_value = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
     fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value };
     TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
-                                                                 registry_value_transaction_callback, &txn_ctx_regval);
+                                                             registry_value_transaction_callback, &txn_ctx_regval);
 
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);

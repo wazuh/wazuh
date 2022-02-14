@@ -1,4 +1,5 @@
-include_directories((${SRC_FOLDER}/syscheckd))
+include_directories(${SRC_FOLDER}/syscheckd/src)
+include_directories(${SRC_FOLDER}/syscheckd/include)
 
 link_directories(${SRC_FOLDER}/unit_tests/wrappers/syscheckd/registry)
 
