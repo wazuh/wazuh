@@ -3,10 +3,10 @@
 #include "hlp/hlp.hpp"
 
     static const char *logQl =
-        "<source.address> - - [<timestamp/APACHE>] \"<http.request.method> <url> HTTP/<http.version>\" "
+        "<source.ip> <source.address> - - [<timestamp/APACHE>] \"<http.request.method> <url> HTTP/<http.version>\" "
         "<http.response.status_code> <http.response.body.bytes> \"-\" \"<user_agent.original>\"";
     static const char *event =
-        "monitoring-server - - [29/May/2017:19:02:48 +0000] \"GET /status HTTP/1.1\" 200 612 \"-\" "
+        "2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF monitoring-server - - [29/May/2017:19:02:48 +0000] \"GET /status HTTP/1.1\" 200 612 \"-\" "
         "\"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\"";
 
     static const char *logQl2 = "<source.ip> - - [<timestamp/APACHE>] \"-\" "
