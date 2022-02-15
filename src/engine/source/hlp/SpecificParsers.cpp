@@ -43,17 +43,18 @@ std::string parseIPaddress(const char **it, char endToken) {
     struct in_addr ip;
     struct in6_addr ipv6;
     const char *start = *it;
-    while (**it != endToken) { (*it)++; }
-    std::string ret, srcip { start, (size_t)((*it) - start) };
+    while (**it != 0 && **it != endToken) { (*it)++; }
+    std::string srcip { start, (size_t)((*it) - start) };
 
     if(inet_pton(AF_INET,srcip.c_str(), &ip)) {
-        ret = srcip;
+        return srcip;
     }
     else if(inet_pton(AF_INET6,srcip.c_str(), &ipv6)) {
-        ret = srcip;
+        return srcip;
     }
-
-    return ret;
+    else {
+        return {};
+    }
 }
 
 bool parseTimeStamp(char **it, char endToken) {
