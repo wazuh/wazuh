@@ -16,7 +16,7 @@
 #include "opBuilderCondition.hpp"
 #include "opBuilderConditionReference.hpp"
 #include "opBuilderConditionValue.hpp"
-#include "opBuilderHelperExists.hpp"
+#include "OpBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
 using namespace builder::internals::builders;

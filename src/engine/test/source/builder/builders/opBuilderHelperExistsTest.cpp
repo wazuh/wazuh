@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include "opBuilderHelperExists.hpp"
+#include "OpBuilderHelperFilter.hpp"
 
 using namespace builder::internals::builders;
 

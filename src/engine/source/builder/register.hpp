@@ -24,7 +24,7 @@
 #include "opBuilderConditionReference.hpp"
 #include "opBuilderConditionValue.hpp"
 #include "opBuilderFileOutput.hpp"
-#include "opBuilderHelperExists.hpp"
+#include "OpBuilderHelperFilter.hpp"
 #include "opBuilderMap.hpp"
 #include "opBuilderMapReference.hpp"
 #include "opBuilderMapValue.hpp"
