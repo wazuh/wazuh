@@ -1188,6 +1188,57 @@ void test_group_changed_invalid_group(void **state)
     assert_true(group_changed("test_default,test_test_default,invalid_group"));
 }
 
+void test_process_deleted_groups_delete(void **state)
+{
+    groups[0]->exists = false;
+    groups[0]->has_changed = false;
+    groups[1]->exists = true;
+    groups[1]->has_changed = false;
+
+    process_deleted_groups();
+
+    assert_non_null(groups[0]);
+    assert_string_equal(groups[0]->name, "test_test_default");
+    assert_non_null(groups[0]->f_sum);
+    assert_non_null(groups[0]->f_sum[0]);
+    assert_string_equal(groups[0]->f_sum[0]->name, "test_test_file");
+    assert_string_equal(groups[0]->f_sum[0]->sum, "12345ABCDEF67890");
+    assert_null(groups[0]->f_sum[1]);
+    assert_false(groups[0]->has_changed);
+    assert_false(groups[0]->exists);
+    assert_null(groups[1]);
+}
+
+void test_process_deleted_groups_no_changes(void **state)
+{
+    groups[0]->exists = true;
+    groups[0]->has_changed = false;
+    groups[1]->exists = true;
+    groups[1]->has_changed = false;
+
+    process_deleted_groups();
+
+    assert_non_null(groups[0]);
+    assert_string_equal(groups[0]->name, "test_default");
+    assert_non_null(groups[0]->f_sum);
+    assert_non_null(groups[0]->f_sum[0]);
+    assert_string_equal(groups[0]->f_sum[0]->name, "test_file");
+    assert_string_equal(groups[0]->f_sum[0]->sum, "ABCDEF1234567890");
+    assert_null(groups[0]->f_sum[1]);
+    assert_false(groups[0]->has_changed);
+    assert_false(groups[0]->exists);
+    assert_non_null(groups[1]);
+    assert_string_equal(groups[1]->name, "test_test_default");
+    assert_non_null(groups[1]->f_sum);
+    assert_non_null(groups[1]->f_sum[0]);
+    assert_string_equal(groups[1]->f_sum[0]->name, "test_test_file");
+    assert_string_equal(groups[1]->f_sum[0]->sum, "12345ABCDEF67890");
+    assert_null(groups[1]->f_sum[1]);
+    assert_false(groups[1]->has_changed);
+    assert_false(groups[1]->exists);
+    assert_null(groups[2]);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1239,6 +1290,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_group_changed_has_changed, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_group_changed_not_exists, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_group_changed_invalid_group, test_find_group_setup, test_c_group_teardown),
+        // Test process_deleted_groups
+        cmocka_unit_test_setup_teardown(test_process_deleted_groups_delete, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_deleted_groups_no_changes, test_find_group_setup, test_c_group_teardown),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }
