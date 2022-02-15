@@ -132,7 +132,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         except (TypeError, IndexError):
             return list()
 
-    def _update_last_processed_files(self, processed_files: list[storage.blob]):
+    def _update_last_processed_files(self, processed_files: list):
         """Remove the records for the previous execution and store the new values from the current one.
 
         Parameters
@@ -151,12 +151,13 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                 pass
 
             for blob in processed_files:
+                creation_time = datetime.strftime(blob.time_created, self.datetime_format)
                 self.db_connector.execute(self.sql_insert_processed_file.format(table_name=self.db_table_name,
                                                                                 project_id=self.project_id,
                                                                                 bucket_name=self.bucket_name,
                                                                                 prefix=self.prefix,
                                                                                 blob_name=blob.name,
-                                                                                creation_time=blob.time_created))
+                                                                                creation_time=creation_time))
     processed_files = list()
 
     def _get_last_creation_time(self):
