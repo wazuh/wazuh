@@ -2,7 +2,10 @@
 #define _LOGQL_PARSER_H
 
 #include <string>
-#include "hlp.hpp"
+#include <vector>
+
+struct Parser;
+using ParserList = std::vector<Parser>;
 
 ParserList parseLogQlExpr(std::string const &expr);
 
