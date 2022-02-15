@@ -839,7 +839,7 @@ int wdb_remove_database(const char * agent_id);
  *                         or STMT_MULTI_COLUMN if the query returns more than one column.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode);
+cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode);
 
 /**
  * @brief Function to execute one row of an SQL statement and save the result in a single JSON array without column name like:
@@ -849,7 +849,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode);
  * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status);
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status);
 
 /**
  * @brief Function to execute one row of an SQL statement and save the result in a single JSON array with column name like:
@@ -859,7 +859,7 @@ cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status);
  * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt * stmt, int* status);
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status);
 
 /**
  * @brief Function to execute an SQL statement without a response.
@@ -883,7 +883,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
  *                         or STMT_MULTI_COLUMN if the query returns more than one column.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status, bool column_mode);
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* status, bool column_mode);
 
 /**
  * @brief Function to execute a SQL statement and send the result via TCP socket.
@@ -907,7 +907,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
  * @param [in] stmt The SQL statement to be executed.
  * @return JSON array with the statement execution results. NULL On error.
  */
-cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
+cJSON* wdb_exec_stmt(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL query and save the result in a JSON array.
@@ -916,7 +916,7 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
  * @param [in] sql The SQL query.
  * @return JSON array with the query results. NULL On error.
  */
-cJSON * wdb_exec(sqlite3 * db, const char * sql);
+cJSON* wdb_exec(sqlite3* db, const char * sql);
 
 // Execute SQL script into an database
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);

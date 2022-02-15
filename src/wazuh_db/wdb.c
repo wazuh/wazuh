@@ -1015,7 +1015,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
     }
 }
 
-cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode) {
+cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode) {
     if(STMT_SINGLE_COLUMN == column_mode) {
         return wdb_exec_row_stmt_single_column(stmt, status);
     } else if (STMT_MULTI_COLUMN == column_mode){
@@ -1026,7 +1026,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status, bool column_mode) {
     }
 }
 
-cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt * stmt, int* status) {
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status) {
     cJSON* result = NULL;
 
     int _status = sqlite3_step(stmt);
@@ -1065,7 +1065,7 @@ cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt * stmt, int* status) {
     return result;
 }
 
-cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status, bool column_mode) {
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* status, bool column_mode) {
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;
@@ -1150,7 +1150,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     return status;
 }
 
-cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
+cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
     cJSON * result;
     cJSON * row;
 
@@ -1173,7 +1173,7 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     return result;
 }
 
-cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status) {
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
     cJSON* result = NULL;
     int _status = SQLITE_ERROR;
 
@@ -1214,7 +1214,7 @@ cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt * stmt, int* status) {
     return result;
 }
 
-cJSON * wdb_exec(sqlite3 * db, const char * sql) {
+cJSON* wdb_exec(sqlite3* db, const char * sql) {
     sqlite3_stmt * stmt = NULL;
     cJSON * result = NULL;
 
