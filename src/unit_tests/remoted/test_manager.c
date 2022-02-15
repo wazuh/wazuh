@@ -43,14 +43,20 @@ static int test_c_group_setup(void ** state) {
 }
 
 static int test_find_group_setup(void ** state) {
-    os_calloc(1, (2) * sizeof(group_t *), groups);
+    os_calloc(1, (3) * sizeof(group_t *), groups);
     os_calloc(1, sizeof(group_t), groups[0]);
     groups[0]->name = strdup("test_default");
     os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
     os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
     os_strdup("test_file", groups[0]->f_sum[0]->name);
     strncpy(groups[0]->f_sum[0]->sum, "ABCDEF1234567890", 32);
-    groups[1] = NULL;
+    os_calloc(1, sizeof(group_t), groups[1]);
+    groups[1]->name = strdup("test_test_default");
+    os_calloc(2, sizeof(file_sum *), groups[1]->f_sum);
+    os_calloc(1, sizeof(file_sum), groups[1]->f_sum[0]);
+    os_strdup("test_test_file", groups[1]->f_sum[0]->name);
+    strncpy(groups[1]->f_sum[0]->sum, "12345ABCDEF67890", 32);
+    groups[2] = NULL;
 
     return 0;
 }
@@ -1142,6 +1148,46 @@ void test_fsum_changed_both_null(void **state)
     assert_false(fsum_changed(f_sum1, f_sum2));
 }
 
+void test_group_changed_not_changed(void **state)
+{
+    groups[0]->exists = true;
+    groups[0]->has_changed = false;
+    groups[1]->exists = true;
+    groups[1]->has_changed = false;
+
+    assert_false(group_changed("test_default,test_test_default"));
+}
+
+void test_group_changed_has_changed(void **state)
+{
+    groups[0]->exists = true;
+    groups[0]->has_changed = false;
+    groups[1]->exists = true;
+    groups[1]->has_changed = true;
+
+    assert_true(group_changed("test_default,test_test_default"));
+}
+
+void test_group_changed_not_exists(void **state)
+{
+    groups[0]->exists = true;
+    groups[0]->has_changed = false;
+    groups[1]->exists = false;
+    groups[1]->has_changed = false;
+
+    assert_true(group_changed("test_default,test_test_default"));
+}
+
+void test_group_changed_invalid_group(void **state)
+{
+    groups[0]->exists = true;
+    groups[0]->has_changed = false;
+    groups[1]->exists = true;
+    groups[1]->has_changed = false;
+
+    assert_true(group_changed("test_default,test_test_default,invalid_group"));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1188,6 +1234,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_fsum_changed_different_size, test_fsum_changed_setup, test_fsum_changed_teardown),
         cmocka_unit_test_setup_teardown(test_fsum_changed_one_null, test_fsum_changed_setup, test_fsum_changed_teardown),
         cmocka_unit_test(test_fsum_changed_both_null),
+        // Test group_changed
+        cmocka_unit_test_setup_teardown(test_group_changed_not_changed, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_group_changed_has_changed, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_group_changed_not_exists, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_group_changed_invalid_group, test_find_group_setup, test_c_group_teardown),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }
