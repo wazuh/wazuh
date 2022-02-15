@@ -77,9 +77,9 @@ static void executeParserList(std::string const &event, ParserList const &parser
                 break;
             }
             case ParserType::JSON: {
-                auto ret = parseJson(&eventIt, parser.endToken);
+                auto ret = parseJson(&eventIt);
                 if (!ret.empty()) {
-                    result["json"] = ret;
+                    result[parser.name] = ret;
                 }
                 else {
                     error = true;
