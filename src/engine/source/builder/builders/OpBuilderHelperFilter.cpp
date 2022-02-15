@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "opBuilderHelperExists.hpp"
+#include "OpBuilderHelperFilter.hpp"
 
 #include <string>
 
