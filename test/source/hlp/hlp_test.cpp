@@ -119,3 +119,15 @@ TEST(hlpTests, url_parsing)
     ASSERT_EQ("https", result["url.scheme"]);
     ASSERT_EQ("user", result["url.username"]);
 }
+
+TEST(json_test, dummy_test)
+{
+    const char *logQl = "<_json1/JSON> - <_json2/JSON>";
+    const char *event = "{\"String\":\"This is a string\"} - {\"String\":\"This is another string\"}";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ("{\"String\":\"This is a string\"}", result["_json1"]);
+    ASSERT_EQ("{\"String\":\"This is another string\"}", result["_json2"]);
+}
