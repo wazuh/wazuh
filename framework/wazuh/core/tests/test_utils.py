@@ -1673,8 +1673,8 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
             utils.validate_wazuh_xml(input_file)
 
 
-@patch('wazuh.core.utils.copyfile')
-def test_delete_file_with_backup(mock_copyfile):
+@patch('wazuh.core.utils.full_copy')
+def test_delete_file_with_backup(mock_full_copy):
     """Test delete_file_with_backup function."""
     backup_file = 'backup'
     abs_path = 'testing/dir/subdir/file'
@@ -1682,11 +1682,11 @@ def test_delete_file_with_backup(mock_copyfile):
 
     utils.delete_file_with_backup(backup_file, abs_path, delete_function)
 
-    mock_copyfile.assert_called_with(abs_path, backup_file)
+    mock_full_copy.assert_called_with(abs_path, backup_file)
     delete_function.assert_called_once_with(filename=os.path.basename(abs_path))
 
 
-@patch('wazuh.core.utils.copyfile', side_effect=IOError)
+@patch('wazuh.core.utils.full_copy', side_effect=IOError)
 def test_delete_file_with_backup_ko(mock_copyfile):
     """Test delete_file_with_backup function exceptions."""
     with pytest.raises(utils.WazuhError, match='.* 1019 .*'):

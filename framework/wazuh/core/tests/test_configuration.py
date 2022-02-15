@@ -268,8 +268,10 @@ def test_get_internal_options_value():
         assert configuration.get_internal_options_value('ossec', 'python', 5, 1) == 1
 
 
+@patch('wazuh.core.configuration.common.wazuh_gid')
+@patch('wazuh.core.configuration.common.wazuh_uid')
 @patch('builtins.open')
-def test_upload_group_configuration(mock_open):
+def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.upload_group_configuration('noexists', 'noexists')
 
@@ -287,7 +289,8 @@ def test_upload_group_configuration(mock_open):
                         with patch('wazuh.core.utils.chmod', side_effect=None):
                             with patch('wazuh.core.configuration.safe_move'):
                                 assert isinstance(configuration.upload_group_configuration('default',
-                                                                                           "<agent_config>new_config</agent_config>"),
+                                                                                           "<agent_config>new_config"
+                                                                                           "</agent_config>"),
                                                   str)
                             with patch('wazuh.core.configuration.safe_move', side_effect=Exception):
                                 with pytest.raises(WazuhInternalError, match=".* 1016 .*"):
@@ -307,9 +310,11 @@ def test_upload_group_configuration(mock_open):
                                 mock_remove.assert_called_once()
 
 
+@patch('wazuh.core.configuration.common.wazuh_gid')
+@patch('wazuh.core.configuration.common.wazuh_uid')
 @patch('builtins.open')
 @patch('wazuh.core.configuration.safe_move')
-def test_upload_group_file(mock_safe_move, mock_open):
+def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.upload_group_file('noexists', 'given', 'noexists')
 
