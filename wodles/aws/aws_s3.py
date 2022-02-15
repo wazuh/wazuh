@@ -537,6 +537,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix_regex= re.compile("^\d{12}$")
         self.check_prefix = False
         self.date_format = "%Y/%m/%d"
+        self._db_date_format = "%Y%m%d"
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -1220,11 +1221,21 @@ class AWSConfigBucket(AWSLogsBucket):
                     self.iter_files_in_bucket(aws_account_id, aws_region, date)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
-    def add_zero_to_day(self, date):
-        # add zero to days with one digit
-        aux = datetime.strptime(date.replace('/', ''), '%Y%m%d')
+    def _format_created_date(self, date: str) -> str:
+        """
+        Return a date with the format used by the created_date field of the database.
 
-        return datetime.strftime(aux, '%Y%m%d')
+        Parameters
+        ----------
+        date : str
+            Date in the "%Y/%m/%d" format.
+
+        Returns
+        -------
+        str
+            Date with the format used by the database.
+        """
+        return datetime.strftime(datetime.strptime(date, self.date_format), self._db_date_format)
 
     def _remove_padding_zeros_from_marker(self, marker: str) -> str:
         """Remove the leading zeros from the month and day of a given marker.
@@ -1300,7 +1311,7 @@ class AWSConfigBucket(AWSLogsBucket):
         if self.reparse:
             filter_marker = self.marker_custom_date(aws_region, aws_account_id, datetime.strptime(date, self.date_format))
         else:
-            created_date = self.add_zero_to_day(date)
+            created_date = self._format_created_date(date)
             query_last_key_of_day = self.db_connector.execute(
                 self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
                                                                bucket_path=self.bucket_path,
