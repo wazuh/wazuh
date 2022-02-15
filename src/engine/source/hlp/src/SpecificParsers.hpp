@@ -20,7 +20,7 @@ bool parseFilePath(const char **it, char endToken);
 std::string parseAny(const char **it, char endToken);
 bool matchLiteral(const char **it, std::string const& literal);
 
-std::string parseJson(const char **it, char endToken);
+std::string parseJson(const char **it);
 
 std::string parseIPaddress(const char **it, char endToken);
 

@@ -93,7 +93,6 @@ static std::vector<std::string> splitSlashSeparatedField(std::string_view str){
 static Parser parseCaptureString(Token token) {
     // TODO assert token type
     // TODO report errors
-    ParserType type = ParserType::Any;
     std::vector<std::string> captureParams;
 
     // We could be parsing:
@@ -102,21 +101,25 @@ static Parser parseCaptureString(Token token) {
     //      '<_name/type>'
     //      '<_name/type/type2>'
     captureParams = splitSlashSeparatedField({ token.text, token.len });
-
-    if (token.text[0] != '_') {
-        auto it = ECSParserMapper.find({ token.text, token.len });
-        if (it != ECSParserMapper.end()) {
-            type = it->second;
-        }
-    }
-
     Parser parser;
-    parser.parserType = type;
+    parser.parserType = ParserType::Any;
     parser.combType = CombType::Null;
     parser.endToken = 0;
     parser.name = captureParams[0];
     captureParams.erase(captureParams.begin());
     parser.captureOpts = std::move(captureParams);
+    if (token.text[0] != '_') {
+        auto it = ECSParserMapper.find({ token.text, token.len });
+        if (it != ECSParserMapper.end()) {
+            parser.parserType = it->second;
+        }
+    }
+    else if (!parser.captureOpts.empty()) {
+        auto it = ECSParserMapper.find({ parser.captureOpts[0].c_str(), parser.captureOpts[0].length()});
+        if (it != ECSParserMapper.end()) {
+            parser.parserType = it->second;
+        }
+    }
 
     return parser;
 }

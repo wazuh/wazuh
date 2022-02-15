@@ -45,27 +45,21 @@ bool matchLiteral(const char **it, std::string const& literal) {
     return literal[i] == '\0';
 }
 
-std::string parseJson(const char **it, char endToken) {
+std::string parseJson(const char **it) {
+    // TODO: Implement a benchmark test comparing this approach and a possible more performant one:
+    // With Nlohman Json library it's possible to validate a Json string without having to parse it (convert and allocate a json object).
+    // Note: Callbacks on parse() are required to catch the end of the json if the string has trailing data.
     rapidjson::Document doc;
-
     if (doc.Parse<rapidjson::kParseStopWhenDoneFlag>(*it).HasParseError()) {
         // TODO error handling
         return {};
     }
 
-    // TODO probably we are doing an extra copy of the original event to the string buffer
-    // check how this really works to see if there's something we can do to avoid the copy
     rapidjson::StringBuffer s;
     rapidjson::Writer<rapidjson::StringBuffer> writer(s);
     doc.Accept(writer);
 
-    // Advance the iterator on the actual size of the parsed json
     *it += s.GetLength();
-    if (**it != endToken) {
-        // TODO Error?
-        return {};
-    }
-
     return s.GetString();
 };
 
