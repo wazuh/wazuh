@@ -28,10 +28,10 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
             if (n > 0)
                 message[n++] = ' ';
 
-            strncpy(message + n, cache[i], z);
+            strncat(message, cache[i], OS_MAXSTR - OS_LOG_HEADER - 1 - n);
+            n += z;
         }
 
-        n += z;
         free(cache[i]);
     }
 

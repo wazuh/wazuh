@@ -33,7 +33,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     int lines = 0;
     /* Zero buffer and str */
     buffer[0] = '\0';
-    buffer[OS_MAXSTR] = '\0';
+    buffer[OS_MAXST] = '\0';
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 

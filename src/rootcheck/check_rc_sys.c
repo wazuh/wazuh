@@ -86,8 +86,8 @@ static int read_sys_file(const char *file_name, int do_read)
             } else if (total != statbuf.st_size) {
                 struct stat statbuf2;
 
-                if ((lstat(file_name, &statbuf2) == 0) &&
-                        (total != statbuf2.st_size) &&
+                if ((lstat(file_name, &statbuf2) == 0) && 
+                        (total != statbuf2.st_size) && 
                         (statbuf.st_size == statbuf2.st_size)) {
                     char op_msg[OS_SIZE_1024 + 1];
                     snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file "

@@ -221,7 +221,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         /* Generate final msg */
         snprintf(final_msg, OS_MAXSTR, "Host: %s, open ports:",
                  ip);
-        final_msg_s = OS_MAXSTR - ((strlen(final_msg) + 3));
+        final_msg_s = OS_MAXSTR - ((strlen(final_msg) +3));
 
         /* Get port and protocol */
         do {
