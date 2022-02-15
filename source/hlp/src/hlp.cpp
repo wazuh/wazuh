@@ -19,10 +19,10 @@ static void executeParserList(std::string const &event, ParserList const &parser
     // but we will want to re-do it or revise it to implement
     // better parser combinations
     bool error = false;
-    printf("%30s | %4s | %4s | %4s | %5s\n", "Capture", "type", "comb", "etok", "ret");
-    printf("-------------------------------|------|------|------|-----------\n");
+    fprintf(stderr, "%30s | %4s | %4s | %4s | %5s\n", "Capture", "type", "comb", "etok", "ret");
+    fprintf(stderr, "-------------------------------|------|------|------|-----------\n");
     for (auto const &parser : parsers) {
-        printf("%-30s | %4i | %4i |  '%*s' | ",
+        fprintf(stderr, "%-30s | %4i | %4i |  '%*s' | ",
                parser.name.c_str(),
                parser.parserType,
                parser.combType,
@@ -95,9 +95,9 @@ static void executeParserList(std::string const &event, ParserList const &parser
         }
 
         if (error) {
-            if(parser.combType == CombType::Or){
+            if(parser.combType == CombType::Optional || parser.combType == CombType::Or){
                 //We need to test the second part of the 'OR' capture
-                printf("Optional [%s] didn't match\n", parser.name.c_str());
+                fprintf(stderr, "Optional [%s] didn't match\n", parser.name.c_str());
                 eventIt = prevIt;
                 error = false;
             }
@@ -107,16 +107,25 @@ static void executeParserList(std::string const &event, ParserList const &parser
             }
         }
         else {
-            printf("\xE2\x9C\x94\n");
+            fprintf(stderr, "\xE2\x9C\x94\n");
         }
     }
 }
 
 ParserFn getParserOp(std::string const &logQl) {
+    if(logQl.empty()){
+        //TODO report error - empty logQl expresion string
+        return {};
+    }
+
     ParserList parserList = parseLogQlExpr(logQl);
+    if(parserList.empty()){
+        //TODO some error occured while parsing the logQl expr
+        return {};
+    }
 
     ParserFn parseFn = [expr = logQl, parserList = std::move(parserList)](std::string const &event) {
-        printf("event:\n\t%s\n\t%s\n\n", event.c_str(), expr.c_str());
+        fprintf(stderr, "event:\n\t%s\n\t%s\n\n", event.c_str(), expr.c_str());
         ParseResult result;
         executeParserList(event, parserList, result);
         return result;
