@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <arpa/inet.h>
 #include <functional>
 #include <stdio.h>
 #include <string>
@@ -37,6 +38,24 @@ std::string parseJson(const char **it) {
 
     return "DUMMY";
 };
+
+std::string parseIPaddress(const char **it, char endToken) {
+    struct in_addr ip;
+    struct in6_addr ipv6;
+    const char *start = *it;
+    while (**it != 0 && **it != endToken) { (*it)++; }
+    std::string srcip { start, (size_t)((*it) - start) };
+
+    if(inet_pton(AF_INET,srcip.c_str(), &ip)) {
+        return srcip;
+    }
+    else if(inet_pton(AF_INET6,srcip.c_str(), &ipv6)) {
+        return srcip;
+    }
+    else {
+        return {};
+    }
+}
 
 bool parseTimeStamp(char **it, char endToken) {
     return true;
