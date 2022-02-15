@@ -13,9 +13,6 @@
                                 "<http.response.status_code> <http.response.body.bytes> \"-\" \"-\"";
     static const char *event2 = "127.0.0.1 - - [02/Feb/2019:05:38:45 +0100] \"-\" 408 152 \"-\" \"-\"";
 
-    static const char *logQl3 = "<source.ip> - <server.ip> -- <source.nat.ip> \"-\" \"-\"";
-    static const char *event3 = "127.0.0.1 - 2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF -- 0:db8:0:4:CCCC:0:EEEE:FFFF \"-\" \"-\"";
-
 // Test: An asset that fails the check against the schema
 TEST(suite_1, test_1)
 {
@@ -42,13 +39,15 @@ TEST(suite_1, test_1)
 }
 
 // Test: parsing succesfully three different IP addresses 
-TEST(suite_1, test_IP_Parser)
+TEST(test_IP_Parser, dummy_test)
 {
+    const char *logQl = "<source.ip> - <server.ip> -- <source.nat.ip> \"-\" \"-\"";
+    const char *event = "127.0.0.1 - 2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF -- 0:db8:0:4:CCCC:0:EEEE:FFFF \"-\" \"-\"";
 
-    printf("\n\n---HLP Test- IP parser --\n");
+    printf("\n\n---HLP IP parser Test---\n");
 
-    auto parseOp = getParserOp(logQl3);
-    auto result = parseOp(event3);
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
     putchar('\n');
     printf("%30s | %s\n", "Key", "Val");
     printf("-------------------------------|------------\n");
