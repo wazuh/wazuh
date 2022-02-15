@@ -4694,8 +4694,9 @@ void test_wdb_global_select_group_belong_exec_fail(void **state)
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_failed_call(STMT_SINGLE_COLUMN);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Failed to get agent groups.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to get agent groups: ERROR MESSAGE.");
 
     j_result = wdb_global_select_group_belong(data->wdb, 1);
     assert_null(j_result);
@@ -4713,8 +4714,7 @@ void test_wdb_global_select_group_belong_socket_size_error(void **state)
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_OK);
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_socket_full_call(NULL, STMT_SINGLE_COLUMN);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "The agent's groups exceed the socket maximum response size.");
+    expect_string(__wrap__mwarn, formatted_msg, "The agent's groups exceed the socket maximum response size.");
 
     j_result = wdb_global_select_group_belong(data->wdb, 1);
     assert_null(j_result);
