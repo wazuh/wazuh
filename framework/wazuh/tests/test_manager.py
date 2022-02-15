@@ -230,10 +230,8 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-@patch('wazuh.core.manager.open')
-@patch('wazuh.core.manager.fcntl')
 @patch("wazuh.core.manager.exists", return_value=True)
-def test_validation(mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
+def test_validation(mock_exists, error_flag, error_msg):
     """Test validation() method works as expected
 
     Tests configuration validation function with multiple scenarios:
