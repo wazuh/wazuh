@@ -1038,8 +1038,6 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, &file);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_OK);
 
-    will_return(__wrap_fim_db_process_read_file, 0);
-
     will_return(__wrap_fim_db_get_registry_data_not_scanned, &file);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
 
