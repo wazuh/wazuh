@@ -977,4 +977,7 @@ void fim_send_sync_control(const char *component,
                            const char *top,
                            const char *tail,
                            const char *checksum);
+
+bool fim_shutdown_process_on();
+
 #endif /* SYSCHECK_H */

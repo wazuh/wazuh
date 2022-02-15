@@ -39,5 +39,11 @@ void taggedLogFunction(modules_log_level_t level, const char* log, const char* t
  */
 void loggingFunction(modules_log_level_t level, const char* log);
 
+/**
+* @brief Global function to send a error log message
+*
+* @param log Message to send into the log as error
+*/
+void loggingErrorFunction(const char* log);
 
 #endif //_LOGGINGHELPER_H

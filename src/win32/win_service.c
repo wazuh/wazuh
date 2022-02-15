@@ -13,7 +13,7 @@
 #include "shared.h"
 #include "os_win.h"
 #include <winsvc.h>
-
+#include "syscheckd/src/db/include/db.h"
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"
 #endif
@@ -246,6 +246,8 @@ int UninstallService()
 /* "Signal" handler */
 VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
+    extern bool is_fim_shutdown;
+
     if (ossecServiceStatusHandle) {
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
@@ -262,6 +264,9 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
                 stop_wmodules();
+                is_fim_shutdown = true;
+                fim_db_teardown();
+                os_delwait();
 #endif
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);

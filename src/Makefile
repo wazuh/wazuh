@@ -329,7 +329,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I./syscheckd
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I./syscheckd/include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -2278,12 +2278,11 @@ win32/setup-iis.exe: win32/setup-iis.o
 
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
-
 win32/auth_resource.o: win32/agent-auth.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
 
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@

@@ -64,9 +64,20 @@ STATIC void fim_link_silent_scan(const char *path, directory_t *configuration);
 STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration);
 #endif
 
+bool is_fim_shutdown = false;
+
+bool fim_shutdown_process_on() {
+    bool ret = is_fim_shutdown;
+    return ret;
+}
+
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
-    if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
+    if (fim_shutdown_process_on()) {
+        return;
+    }
+
+    if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
         merror(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
@@ -74,7 +85,7 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
         }
 
         // Try to send it again
-        SendMSG(syscheck.queue, msg, location, mq);
+        SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on);
     }
 }
 

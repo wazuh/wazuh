@@ -40,11 +40,14 @@ __attribute__((noreturn)) static void help_syscheckd()
     exit(1);
 }
 
+extern bool is_fim_shutdown;
+
 /* Shut down syscheckd properly */
 static void fim_shutdown(int sig)
 {
     /* Close sync thread and release dbsync and rsync */
     minfo(SK_SHUTDOWN);
+    is_fim_shutdown = true;
     fim_db_teardown();
     HandleSIG(sig);
 }
@@ -114,6 +117,10 @@ int main(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
+
+    /* Initialize error logging for shared modulesd */
+    dbsync_initialize(loggingErrorFunction);
+    rsync_initialize(loggingErrorFunction);
 
     /* Read internal options */
     read_internal(debug_level);
