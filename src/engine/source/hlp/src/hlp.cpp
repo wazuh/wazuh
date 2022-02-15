@@ -8,31 +8,33 @@
 
 #include "LogQLParser.hpp"
 #include "SpecificParsers.hpp"
-#include "hlp.hpp"
+#include "hlpDetails.hpp"
 
-using ParserList = std::vector<Parser>;
+#include <hlp/hlp.hpp>
 
-void executeParserList(std::string const &event, ParserList const &parsers, ParseResult &result) {
+static void executeParserList(std::string const &event, ParserList const &parsers, ParseResult &result) {
     const char *eventIt = event.c_str();
 
     // TODO This implementation is super simple for the POC
     // but we will want to re-do it or revise it to implement
     // better parser combinations
     bool error = false;
-    printf("%30s | %4s | %4s | %4s\n", "Capture", "type", "comb", "etok");
-    printf("-------------------------------|------|------|------\n");
+    printf("%30s | %4s | %4s | %4s | %5s\n", "Capture", "type", "comb", "etok", "ret");
+    printf("-------------------------------|------|------|------|-----------\n");
     for (auto const &parser : parsers) {
-        printf("%-30s | %4i | %4i | '%1c'\n",
-               parser.captureOpts[0].c_str(),
+        printf("%-30s | %4i | %4i |  '%*s' | ",
+               parser.name.c_str(),
                parser.parserType,
                parser.combType,
-               parser.endToken);
+               1,
+               &parser.endToken);
 
+        const char* prevIt = eventIt;
         switch (parser.parserType) {
             case ParserType::Any: {
                 auto ret = parseAny(&eventIt, parser.endToken);
                 if (!ret.empty()) {
-                    result[parser.captureOpts[0]] = ret;
+                    result[parser.name] = ret;
                 }
                 else {
                     error = true;
@@ -40,7 +42,7 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
                 break;
             }
             case ParserType::Literal: {
-                if (!matchLiteral(&eventIt, parser.captureOpts[0])) {
+                if (!matchLiteral(&eventIt, parser.name)) {
                     fprintf(stderr, "Failed matching literal string\n");
                     error = true;
                 }
@@ -67,7 +69,7 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
             case ParserType::IP: {
                 auto ret = parseIPaddress(&eventIt, parser.endToken);
                 if (!ret.empty()) {
-                    result[parser.captureOpts[0]] = ret;
+                    result[parser.name] = ret;
                 }
                 else {
                     error = true;
@@ -75,7 +77,7 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
                 break;
             }
             case ParserType::JSON: {
-                auto ret = parseJson(&eventIt);
+                auto ret = parseJson(&eventIt, parser.endToken);
                 if (!ret.empty()) {
                     result["json"] = ret;
                 }
@@ -93,7 +95,19 @@ void executeParserList(std::string const &event, ParserList const &parsers, Pars
         }
 
         if (error) {
-            break;
+            if(parser.combType == CombType::Or){
+                //We need to test the second part of the 'OR' capture
+                printf("Optional [%s] didn't match\n", parser.name.c_str());
+                eventIt = prevIt;
+                error = false;
+            }
+            else {
+                // TODO report error
+                break;
+            }
+        }
+        else {
+            printf("\xE2\x9C\x94\n");
         }
     }
 }

@@ -7,6 +7,11 @@
 #include <arpa/inet.h>
 #include <curl/curl.h>
 
+#include "rapidjson/document.h"
+#include "rapidjson/error/en.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+
 #include "SpecificParsers.hpp"
 
 bool parseFilePath(const char **it, char endToken) {
@@ -40,10 +45,28 @@ bool matchLiteral(const char **it, std::string const& literal) {
     return literal[i] == '\0';
 }
 
-std::string parseJson(const char **it) {
-    const char *start = *it;
+std::string parseJson(const char **it, char endToken) {
+    rapidjson::Document doc;
 
-    return "DUMMY";
+    if (doc.Parse<rapidjson::kParseStopWhenDoneFlag>(*it).HasParseError()) {
+        // TODO error handling
+        return {};
+    }
+
+    // TODO probably we are doing an extra copy of the original event to the string buffer
+    // check how this really works to see if there's something we can do to avoid the copy
+    rapidjson::StringBuffer s;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+    doc.Accept(writer);
+
+    // Advance the iterator on the actual size of the parsed json
+    *it += s.GetLength();
+    if (**it != endToken) {
+        // TODO Error?
+        return {};
+    }
+
+    return s.GetString();
 };
 
 std::string parseIPaddress(const char **it, char endToken) {
@@ -84,7 +107,7 @@ bool parseURL(const char **it, char endToken, URLResult &result) {
     std::string urlStr { start, *it };
     auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.c_str(), 0);
     if (uc) {
-        fprintf(stderr, "Error setting URL to parse: [%s]\n", curl_url_strerror(uc));
+        //TODO error handling
         return false;
     }
 
