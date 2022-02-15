@@ -213,7 +213,6 @@ static int setup_group(void **state) {
 
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -301,7 +300,6 @@ static int setup_root_group(void **state) {
 
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1857,6 +1855,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
+    struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
     OSListNode *node_it;
     TXN_HANDLE mock_handle = NULL;

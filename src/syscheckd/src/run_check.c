@@ -33,6 +33,7 @@ time_t last_time = 0;
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#define localtime_r(x, y)
 #endif
 // Remove static qualifier when unit testing
 #define STATIC

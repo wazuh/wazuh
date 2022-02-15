@@ -1,13 +1,18 @@
 # Generate syscheck library
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
-                   ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
-list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.obj
+                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.obj)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.obj)
+else()
+  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
+                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
+endif()
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 
 if(${TARGET} STREQUAL "winagent")
-  # Exclude winagent files
-  list(FILTER sysfiles EXCLUDE REGEX ".*-event.o$")
+  # Exclude winagent file
   list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
 
   # Add test wrappers
@@ -104,48 +109,18 @@ add_subdirectory(whodata)
 # Generate Syscheckd tests
 # syscom.c tests
 list(APPEND syscheckd_tests_names "syscom")
-list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
-                                   -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
-                                   -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
-                                   -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
-                                   -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
-                                   -Wl,--wrap,fim_db_init ${DEBUG_OP_WRAPPERS}")
+set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions \
+                           -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
 
-# create_db.c tests
-set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
-                          -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
-                          -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
-                          -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
-                          -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
-                          -Wl,--wrap,get_group,--wrap,mdebug2 \
-                          -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
-                          -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
-                          -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
-                          -Wl,--wrap,fim_db_get_count_entries \
-                          -Wl,--wrap,fim_db_file_is_scanned -Wl,--wrap,fim_db_data_exists \
-                          -Wl,--wrap,fim_db_append_paths_from_inode -Wl,--wrap,pthread_rwlock_wrlock \
-                          -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
-                          -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
-                          -Wl,--wrap,realtime_sanitize_watch_map,--wrap=fim_db_remove_path \
-                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_init \
-                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
-                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
-                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                          ${DEBUG_OP_WRAPPERS}")
-
-list(APPEND syscheckd_tests_names "create_db")
 if(${TARGET} STREQUAL "winagent")
-    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
-                                          -Wl,--wrap,getpid -Wl,--wrap=fim_db_get_count_registry_data \
-                                          -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
-                                          -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs -Wl,--wrap=os_winreg_check \
-                                          -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
-                                          -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg")
+  list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=fim_db_init -Wl,--wrap,fim_sync_push_msg \
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
+                                     -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                                     -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_transaction_start \
+                                     -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_deleted_rows \
+                                     -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_transaction_sync_row")
 else()
-    list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
-                                       -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
-                                       -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
+  list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS}")
 endif()
 
 # fim_diff_changes.c tests
@@ -165,13 +140,11 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap=fim_db_transaction_deleted_rows ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "fim_diff_changes")
-if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
-elseif(${TARGET} STREQUAL "winagent")
+if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
-                                    -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 else()
-  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()
 
 # run_realtime.c tests
@@ -187,9 +160,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_realtime")
-if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
-elseif(${TARGET} STREQUAL "winagent")
+if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 
@@ -217,7 +188,13 @@ list(APPEND syscheckd_tests_names "config")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 else()
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
+  if(${TARGET} STREQUAL "winagent")
+    list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,fim_sync_push_msg \
+                                      -Wl,--wrap=fim_db_get_count_registry_data \
+                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+  else()
+    list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
+  endif()
 endif()
 
 # syscheck.c tests
@@ -230,8 +207,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int \
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
-                                    -Wl,--wrap=Read_Syscheck_Config -Wl,--wrap=fim_db_get_count_registry_data \
-                                    -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                    -Wl,--wrap=Read_Syscheck_Config \
                                     -Wl,--wrap=os_wait \
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
@@ -239,7 +215,9 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap,getpid,--wrap,realtime_start \
                                     -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
                                     -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
-                                    -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_sync_push_msg")
+                                    -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_sync_push_msg \
+                                    -Wl,--wrap=fim_db_get_count_registry_data \
+                                    -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -266,20 +244,21 @@ elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start \
                                      -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
                                      -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
-                                     -Wl,--wrap,fim_sync_push_msg")
+                                     -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
+                                     -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
-                                                                   -Wl,--wrap=fim_db_get_count_registry_data \
-                                                                   -Wl,--wrap=fim_db_get_count_registry_key \
-                                                                   -Wl,--wrap=syscom_dispatch -Wl,--wrap=audit_restore \
+                                                                   -Wl,--wrap=audit_restore
                                                                    -Wl,--wrap,pthread_rwlock_rdlock \
                                                                    -Wl,--wrap,pthread_rwlock_unlock \
                                                                    -Wl,--wrap,pthread_mutex_lock \
                                                                    -Wl,--wrap,pthread_rwlock_wrlock \
                                                                    -Wl,--wrap,pthread_mutex_unlock \
-                                                                   -Wl,--wrap,fim_sync_push_msg")
+                                                                   -Wl,--wrap,fim_sync_push_msg \
+                                                                   -Wl,--wrap=fim_db_get_count_registry_data \
+                                                                   -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()
@@ -336,3 +315,46 @@ if(${TARGET} STREQUAL "winagent")
       add_test(NAME ${test_name} COMMAND ${test_name})
   endforeach()
 endif()
+
+# create_db.c tests
+add_executable(test_create_db test_create_db.c)
+
+target_compile_options(test_create_db PRIVATE "-Wall")
+
+set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
+                          -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
+                          -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
+                          -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
+                          -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
+                          -Wl,--wrap,get_group,--wrap,mdebug2 \
+                          -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
+                          -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
+                          -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
+                          -Wl,--wrap,fim_db_get_count_entries \
+                          -Wl,--wrap,fim_db_file_is_scanned -Wl,--wrap,fim_db_data_exists \
+                          -Wl,--wrap,fim_db_append_paths_from_inode -Wl,--wrap,pthread_rwlock_wrlock \
+                          -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
+                          -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
+                          -Wl,--wrap,realtime_sanitize_watch_map,--wrap=fim_db_remove_path \
+                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_init \
+                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                          ${DEBUG_OP_WRAPPERS}")
+
+target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
+if(${TARGET} STREQUAL "winagent")
+    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
+                                          -Wl,--wrap,getpid -Wl,--wrap=fim_db_get_count_registry_data \
+                                          -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                          -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs -Wl,--wrap=os_winreg_check \
+                                          -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
+                                          -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg")
+else()
+    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
+                                          -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
+                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
+endif()
+
+add_test(NAME test_create_db COMMAND test_create_db)

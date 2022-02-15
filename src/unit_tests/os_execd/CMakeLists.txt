@@ -30,10 +30,7 @@ if(${TARGET} STREQUAL "winagent")
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                              -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap,fwrite \
                              -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
-                             -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
-                             -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
-                             -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
-                             -Wl,--wrap,fim_db_init ${DEBUG_OP_WRAPPERS}")
+                             ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND execd_names "test_execd")
     list(APPEND execd_flags "-Wl,--wrap,time -Wl,--wrap,select -Wl,--wrap,OS_RecvUnix \

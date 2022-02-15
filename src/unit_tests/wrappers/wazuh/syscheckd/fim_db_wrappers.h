@@ -28,7 +28,7 @@ int __wrap_fim_db_get_count_file_entry();
 
 int __wrap_fim_db_get_count_registry_data();
 
-int __wrap_fim_db_get_count_registry_data();
+int __wrap_fim_db_get_count_registry_key();
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
                                   fim_type type,

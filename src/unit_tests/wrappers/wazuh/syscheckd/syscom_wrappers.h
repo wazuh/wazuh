@@ -15,6 +15,4 @@
 
 size_t __wrap_syscom_dispatch(char * command, char ** output);
 
-size_t __wrap_syscom_getconfig(const char * section, char ** output);
-
 #endif

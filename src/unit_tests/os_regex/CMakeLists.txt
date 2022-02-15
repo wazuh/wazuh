@@ -21,14 +21,13 @@ target_link_libraries(OS_REGEX_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate os_regex tests
 list(APPEND os_regex_names "test_os_regex")
-list(APPEND os_regex_flags "-Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
-                            -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
-                            -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
-                            -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
-                            -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
-                            -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \ 
-                            -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key \
-                            -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND os_regex_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                            -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                            -Wl,--wrap,syscom_dispatch")
+else()
+list(APPEND os_regex_flags " ")
+endif()
 
 # Compiling tests
 list(LENGTH os_regex_names count)
