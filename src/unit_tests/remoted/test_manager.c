@@ -23,10 +23,17 @@
 #include "../../remoted/manager.c"
 /* tests */
 
-static int test_c_group_setup(void ** state) {
+static int test_setup_group(void ** state) {
     test_mode = 1;
+    return 0;
+}
 
-    // Initialize main groups structure
+static int test_teardown_group(void ** state) {
+    test_mode = 0;
+    return 0;
+}
+
+static int test_c_group_setup(void ** state) {
     os_calloc(1, (2) * sizeof(group_t *), groups);
     os_calloc(1, sizeof(group_t), groups[0]);
     groups[0]->name = strdup("test_default");
@@ -36,9 +43,6 @@ static int test_c_group_setup(void ** state) {
 }
 
 static int test_find_group_setup(void ** state) {
-    test_mode = 1;
-
-    // Initialize main groups structure
     os_calloc(1, (2) * sizeof(group_t *), groups);
     os_calloc(1, sizeof(group_t), groups[0]);
     groups[0]->name = strdup("test_default");
@@ -52,9 +56,6 @@ static int test_find_group_setup(void ** state) {
 }
 
 static int test_find_multi_group_setup(void ** state) {
-    test_mode = 1;
-
-    // Initialize main groups structure
     os_calloc(1, (2) * sizeof(group_t *), multi_groups);
     os_calloc(1, sizeof(group_t), multi_groups[0]);
     multi_groups[0]->name = strdup("test_default2");
@@ -63,6 +64,30 @@ static int test_find_multi_group_setup(void ** state) {
     os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
     strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
     multi_groups[1] = NULL;
+
+    return 0;
+}
+
+static int test_fsum_changed_setup(void ** state) {
+    file_sum **f_sum1;
+    file_sum **f_sum2;
+    os_calloc(3, sizeof(file_sum *), f_sum1);
+    os_calloc(1, sizeof(file_sum), f_sum1[0]);
+    os_calloc(1, sizeof(file_sum), f_sum1[1]);
+    strncpy(f_sum1[0]->sum, "FEDCBA0987654321", 32);
+    os_strdup("file1", f_sum1[0]->name);
+    strncpy(f_sum1[1]->sum, "0987654321FEDCBA", 32);
+    os_strdup("file2", f_sum1[1]->name);
+    os_calloc(3, sizeof(file_sum *), f_sum2);
+    os_calloc(1, sizeof(file_sum), f_sum2[0]);
+    os_calloc(1, sizeof(file_sum), f_sum2[1]);
+    strncpy(f_sum2[0]->sum, "0987654321FEDCBA", 32);
+    os_strdup("file2", f_sum2[0]->name);
+    strncpy(f_sum2[1]->sum, "FEDCBA0987654321", 32);
+    os_strdup("file1", f_sum2[1]->name);
+
+    state[0] = f_sum1;
+    state[1] = f_sum2;
 
     return 0;
 }
@@ -99,6 +124,15 @@ static int test_c_multi_group_teardown(void ** state) {
 
         os_free(multi_groups);
     }
+
+    return 0;
+}
+
+static int test_fsum_changed_teardown(void ** state) {
+    file_sum **f_sum1 = (file_sum **)state[0];
+    file_sum **f_sum2 = (file_sum **)state[1];
+    free_file_sum(f_sum1);
+    free_file_sum(f_sum2);
 
     return 0;
 }
@@ -1048,6 +1082,66 @@ void test_find_multi_group_from_file_not_found(void **state)
     assert_null(multi_group);
 }
 
+void test_fsum_changed_same_fsum(void **state)
+{
+    file_sum **f_sum1 = (file_sum **)state[0];
+    file_sum **f_sum2 = (file_sum **)state[1];
+
+    assert_false(fsum_changed(f_sum1, f_sum2));
+}
+
+void test_fsum_changed_different_fsum_sum(void **state)
+{
+    file_sum **f_sum1 = (file_sum **)state[0];
+    file_sum **f_sum2 = (file_sum **)state[1];
+
+    strncpy(f_sum2[1]->sum, "0987654321FEDCAB", 32);
+
+    assert_true(fsum_changed(f_sum1, f_sum2));
+}
+
+void test_fsum_changed_different_fsum_name(void **state)
+{
+    file_sum **f_sum1 = (file_sum **)state[0];
+    file_sum **f_sum2 = (file_sum **)state[1];
+
+    os_free(f_sum2[0]->name);
+    os_strdup("file3", f_sum2[0]->name);
+
+    assert_true(fsum_changed(f_sum1, f_sum2));
+}
+
+void test_fsum_changed_different_size(void **state)
+{
+    file_sum **f_sum1 = (file_sum **)state[0];
+    file_sum **f_sum2 = NULL;
+
+    os_calloc(2, sizeof(file_sum *), f_sum2);
+    os_calloc(1, sizeof(file_sum), f_sum2[0]);
+    strncpy(f_sum2[0]->sum, "0987654321FEDCBA", 32);
+    os_strdup("file2", f_sum2[0]->name);
+
+    assert_true(fsum_changed(f_sum1, f_sum2));
+
+    free_file_sum(f_sum2);
+}
+
+void test_fsum_changed_one_null(void **state)
+{
+    file_sum **f_sum1 = (file_sum **)state[0];
+    file_sum **f_sum2 = NULL;
+
+    assert_true(fsum_changed(f_sum1, f_sum2));
+}
+
+void test_fsum_changed_both_null(void **state)
+{
+    file_sum **f_sum1 = NULL;
+    file_sum **f_sum2 = NULL;
+
+    assert_false(fsum_changed(f_sum1, f_sum2));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1087,6 +1181,13 @@ int main(void)
         // Test find_multi_group_from_file
         cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_found, test_find_multi_group_setup, test_c_multi_group_teardown),
         cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
+        // Test fsum_changed
+        cmocka_unit_test_setup_teardown(test_fsum_changed_same_fsum, test_fsum_changed_setup, test_fsum_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_fsum_changed_different_fsum_sum, test_fsum_changed_setup, test_fsum_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_fsum_changed_different_fsum_name, test_fsum_changed_setup, test_fsum_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_fsum_changed_different_size, test_fsum_changed_setup, test_fsum_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_fsum_changed_one_null, test_fsum_changed_setup, test_fsum_changed_teardown),
+        cmocka_unit_test(test_fsum_changed_both_null),
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }
