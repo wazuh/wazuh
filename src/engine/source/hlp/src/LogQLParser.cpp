@@ -3,7 +3,6 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-
 #include "LogQLParser.hpp"
 #include "hlpDetails.hpp"
 
@@ -64,16 +63,16 @@ bool requireToken(Tokenizer &tk, TokenType req) {
     return getToken(tk).type == req;
 }
 
-Token peekToken(Tokenizer const &tk) {
+static Token peekToken(Tokenizer const &tk) {
     Tokenizer tmp { tk.stream };
     return getToken(tmp);
 }
 
-char peekChar(Tokenizer const &tk) {
+static char peekChar(Tokenizer const &tk) {
     return tk.stream[0];
 }
 
-std::vector<std::string> splitSlashSeparatedField(std::string_view str){
+static std::vector<std::string> splitSlashSeparatedField(std::string_view str){
     std::vector<std::string> ret;
     while (true) {
         auto pos = str.find('/');
@@ -93,6 +92,7 @@ std::vector<std::string> splitSlashSeparatedField(std::string_view str){
 
 static Parser parseCaptureString(Token token) {
     // TODO assert token type
+    // TODO report errors
     ParserType type = ParserType::Any;
     std::vector<std::string> captureParams;
 
@@ -121,7 +121,7 @@ static Parser parseCaptureString(Token token) {
     return parser;
 }
 
-static void parseCapture(Tokenizer &tk, ParserList &parsers) {
+static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
     //<name> || <?name> || <name1>?<name2>
     Token token = getToken(tk);
     bool optional = false;
@@ -135,7 +135,12 @@ static void parseCapture(Tokenizer &tk, ParserList &parsers) {
 
         if (!requireToken(tk, TokenType::CloseAngle)) {
             // TODO report parsing error
-            return;
+            return false;
+        }
+
+        // TODO check if there's a better way to do this
+        if (optional) {
+            parsers.back().combType = CombType::Optional;
         }
 
         if (peekToken(tk).type == TokenType::QuestionMark) {
@@ -145,7 +150,7 @@ static void parseCapture(Tokenizer &tk, ParserList &parsers) {
 
             if (!requireToken(tk, TokenType::OpenAngle)) {
                 // TODO report error
-                return;
+                return false;
             }
             // Fix up the combType of the previous capture as this is now an OR
             auto &prevCapture = parsers.back();
@@ -157,7 +162,7 @@ static void parseCapture(Tokenizer &tk, ParserList &parsers) {
 
             if (!requireToken(tk, TokenType::CloseAngle)) {
                 // TODO report error
-                return;
+                return false;
             }
 
             char endToken = peekChar(tk);
@@ -171,7 +176,10 @@ static void parseCapture(Tokenizer &tk, ParserList &parsers) {
     }
     else {
         // TODO error
+        return false;
     }
+
+    return true;
 }
 
 ParserList parseLogQlExpr(std::string const &expr) {
@@ -183,10 +191,26 @@ ParserList parseLogQlExpr(std::string const &expr) {
         Token token = getToken(tokenizer);
         switch (token.type) {
             case TokenType::OpenAngle: {
-                parseCapture(tokenizer, parsers);
-                if(peekToken(tokenizer).type == TokenType::OpenAngle){
-                    //TODO report error. Can't have two captures back to back
-                    fprintf(stderr, "Invalid logQl expresion. Can't have captures back to back\n");
+                const char *prev = tokenizer.stream - 1;
+
+                if (!parseCapture(tokenizer, parsers)) {
+                    // TODO report error
+                    //  Reset the parser list to signify an error occurred
+                    parsers.clear();
+                    done = true;
+                }
+
+                if (peekToken(tokenizer).type == TokenType::OpenAngle) {
+                    // TODO report error. Can't have two captures back to back
+                    const char *end = tokenizer.stream;
+                    while (*end++ != '>') {};
+                    fprintf(stderr,
+                            "Invalid capture expression detected [%.*s]. Can't have back to back "
+                            "captures.\n",
+                            (int)(end - prev),
+                            prev);
+                    // Reset the parser list to signify an error occurred
+                    parsers.clear();
                     done = true;
                 }
                 break;
