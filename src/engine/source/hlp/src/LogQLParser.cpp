@@ -5,15 +5,16 @@
 #include <vector>
 
 #include "LogQLParser.hpp"
-#include "hlp.hpp"
+#include "hlpDetails.hpp"
 
 static const std::unordered_map<std::string_view, ParserType> ECSParserMapper {
     { "source.ip", ParserType::IP },
     { "server.ip", ParserType::IP },
     { "source.nat.ip", ParserType::IP },
     { "timestamp", ParserType::Any },
-    { "http.request.method", ParserType::Any },
     { "JSON", ParserType::JSON},
+    { "url", ParserType::URL},
+    { "http.request.method", ParserType::Any },
 };
 
 struct Tokenizer {
@@ -93,28 +94,31 @@ std::vector<std::string> splitSlashSeparatedField(std::string_view str){
 static Parser parseCaptureString(Token token) {
     // TODO assert token type
     ParserType type = ParserType::Any;
-    std::vector<std::string> captureOpts;
+    std::vector<std::string> captureParams;
 
-    if (token.text[0] == '_') {
-        // We could be parsing:
-        //      '<_>'
-        //      '<_name>'
-        //      '<_name/type>'
-        //      '<_name/type/type2>'
-        if (token.len != 1) {
-            captureOpts = splitSlashSeparatedField({ token.text, token.len });
-        }
-    }
-    else {
-        captureOpts = splitSlashSeparatedField({ token.text, token.len });
+    // We could be parsing:
+    //      '<_>'
+    //      '<_name>'
+    //      '<_name/type>'
+    //      '<_name/type/type2>'
+    captureParams = splitSlashSeparatedField({ token.text, token.len });
 
+    if (token.text[0] != '_') {
         auto it = ECSParserMapper.find({ token.text, token.len });
         if (it != ECSParserMapper.end()) {
             type = it->second;
         }
     }
 
-    return { std::move(captureOpts), type, CombType::Null, 0 };
+    Parser parser;
+    parser.parserType = type;
+    parser.combType = CombType::Null;
+    parser.endToken = 0;
+    parser.name = captureParams[0];
+    captureParams.erase(captureParams.begin());
+    parser.captureOpts = std::move(captureParams);
+
+    return parser;
 }
 
 static void parseCapture(Tokenizer &tk, ParserList &parsers) {
@@ -147,7 +151,7 @@ static void parseCapture(Tokenizer &tk, ParserList &parsers) {
             auto &prevCapture = parsers.back();
             prevCapture.combType = CombType::Or;
 
-            parsers.emplace_back(parseCaptureString(token));
+            parsers.emplace_back(parseCaptureString(getToken(tk)));
             auto &currentCapture = parsers.back();
             currentCapture.combType = CombType::OrEnd;
 
@@ -188,7 +192,8 @@ ParserList parseLogQlExpr(std::string const &expr) {
                 break;
             }
             case TokenType::Literal: {
-                parsers.push_back({ { { token.text, token.text + token.len } },
+                parsers.push_back({ {},
+                                    { token.text, token.text + token.len },
                                     ParserType::Literal,
                                     CombType::Null,
                                     0 });
