@@ -13,7 +13,7 @@
 #include "opBuilderMap.hpp"
 #include "opBuilderMapReference.hpp"
 #include "opBuilderMapValue.hpp"
-#include "opBuilderHelperExists.hpp"
+#include "OpBuilderHelperFilter.hpp"
 
 using namespace builder::internals::builders;
 

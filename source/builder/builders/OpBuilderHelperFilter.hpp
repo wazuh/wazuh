@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _OP_BUILDER_HELPER_EXISTS_H
-#define _OP_BUILDER_HELPER_EXISTS_H
+#ifndef _OP_BUILDER_HELPER_FILTER_H
+#define _OP_BUILDER_HELPER_FILTER_H
 
 #include "builderTypes.hpp"
 
@@ -33,6 +33,15 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
 
+/**
+ * @brief Builds helper integer equal operation.
+ * Checks that the field is equal to an integer or another numeric field
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
-#endif // _OP_BUILDER_HELPER_EXISTS_H
+#endif // _OP_BUILDER_HELPER_FILTER_H
