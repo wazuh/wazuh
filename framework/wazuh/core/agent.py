@@ -706,7 +706,7 @@ class Agent:
             ID of the agent.
         replace: bool
             Whether to append new group to current agent's group or replace it.
-        replace_list: bool
+        replace_list: list
             List of group names that can be replaced.
 
         Returns
@@ -719,10 +719,9 @@ class Agent:
 
         # Get agent's group
         try:
-            agent_multigroups = Agent.get_agent_groups(agent_id)
+            agent_groups = set(Agent.get_agent_groups(agent_id))
         except Exception as e:
-            raise WazuhInternalError(1005, extra_message=str(e))
-        agent_groups = set(agent_multigroups)
+            raise WazuhInternalError(2007, extra_message=str(e))
 
         if replace:
             if not agent_groups.issubset(set(replace_list)):
@@ -867,14 +866,12 @@ class Agent:
                 set_default = True
 
         # Update group file
-        # TODO core team is implementing a fix to make this whole process atomic. Default addition is failing too
         Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
-        set_default and Agent.set_agent_group_relationship(agent_id, 'default')
 
         return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
                                                                    if set_default else "")
 
-    def getconfig(self, component: str = '', config: str = '', agent_version: str = '') -> dict:
+    def get_config(self, component: str = '', config: str = '', agent_version: str = '') -> dict:
         """Read agent's loaded configuration.
 
         Parameters
@@ -1003,43 +1000,32 @@ def expand_group(group_name):
     set
         Set of agent IDs.
     """
-    agents_ids = set()
-    if group_name == '*':
-        # for file in listdir(common.groups_path):
-        #     try:
-        #         if path.getsize(path.join(common.groups_path, file)) > 0:
-        #             agents_ids.add(file)
-        #     except FileNotFoundError:
-        #         # Agent group removed while running through listed dir
-        #         pass
+    agents_ids = []
+    wdb_conn = WazuhDBConnection()
+    try:
         last_id = 0
-        wdb_conn = WazuhDBConnection()
-        try:
-            while True:
+        while True:
+            if group_name == '*':
                 command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
-                status, payload = wdb_conn.run_wdb_command(command)
-                for agent in json.loads(payload)[0]['data']:
-                    agents_ids.add(str(agent['id']).zfill(3))
+            else:
+                command = f'global get-group-agents {group_name} last_id {last_id}'
 
-                if status == 'ok':
-                    break
-                else:
-                    last_id += 1
-        finally:
-            wdb_conn.close()
+            status, payload = wdb_conn.run_wdb_command(command)
+            agents = json.loads(payload)
 
-    else:
-        # TODO new wdb command to expand single groups
-        for file in listdir(common.groups_path):
-            try:
-                with open(path.join(common.groups_path, file), 'r') as f:
-                    file_content = f.readlines()
-                len(file_content) == 1 and group_name in file_content[0].strip().split(',') and agents_ids.add(file)
-            except FileNotFoundError:
-                # Agent group removed while running through listed dir
-                pass
+            for agent in agents[0]['data'] if group_name == '*' else agents:
+                agent_id = str(agent['id'] if isinstance(agent, dict) else agent).zfill(3)
+                agents_ids.append(agent_id)
 
-    return agents_ids & get_agents_info()
+            if status == 'ok':
+                break
+            else:
+                last_id = int(agents_ids[-1])
+
+    finally:
+        wdb_conn.close()
+
+    return set(agents_ids) & get_agents_info()
 
 
 @lru_cache()

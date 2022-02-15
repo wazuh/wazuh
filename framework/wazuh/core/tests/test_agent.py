@@ -1233,7 +1233,7 @@ def test_agent_getconfig(socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
     mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.getconfig('com', 'active-response', 'Wazuh v4.0.0')
+    result = agent.get_config('com', 'active-response', 'Wazuh v4.0.0')
     assert result == {"test": "conf"}, 'Result message is not as expected.'
 
 
@@ -1245,18 +1245,18 @@ def test_agent_getconfig_ko(socket_mock, send_mock, mock_wazuh_socket):
     # Invalid component
     agent = Agent('003')
     with pytest.raises(WazuhError, match=".* 1101 .*"):
-        agent.getconfig('invalid_component', 'active-response', 'Wazuh v4.0.0')
+        agent.get_config('invalid_component', 'active-response', 'Wazuh v4.0.0')
 
     # Component or config is none
     agent = Agent('003')
     with pytest.raises(WazuhError, match=".* 1307 .*"):
-        agent.getconfig('com', None, 'Wazuh v4.0.0')
-        agent.getconfig(None, 'active-response', 'Wazuh v4.0.0')
+        agent.get_config('com', None, 'Wazuh v4.0.0')
+        agent.get_config(None, 'active-response', 'Wazuh v4.0.0')
 
     # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
-        agent.getconfig('com', 'active-response', 'Wazuh v3.6.0')
+        agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
 
 
 @patch('wazuh.core.stats.WazuhSocket')
