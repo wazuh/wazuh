@@ -4086,9 +4086,27 @@ void test_wdb_global_select_groups_exec_fail(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
 
-    will_return(__wrap_wdb_exec_stmt, NULL);
+    /* wdb_exec_stmt_sized */
+    wrap_wdb_exec_stmt_sized_failed_call(STMT_MULTI_COLUMN);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to get groups: ERROR MESSAGE.");
+
+    result = wdb_global_select_groups(data->wdb);
+
+    assert_null(result);
+}
+
+void test_wdb_global_select_groups_socket_full(void **state)
+{
+    cJSON *result = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    /* wdb_exec_stmt_sized */
+    wrap_wdb_exec_stmt_sized_socket_full_call(NULL, STMT_MULTI_COLUMN);
+    expect_string(__wrap__mwarn, formatted_msg, "The groups exceed the socket maximum response size.");
 
     result = wdb_global_select_groups(data->wdb);
 
@@ -4102,7 +4120,9 @@ void test_wdb_global_select_groups_success(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
-    will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
+
+    /* wdb_exec_stmt_sized */
+    wrap_wdb_exec_stmt_sized_success_call((cJSON*) 1, STMT_MULTI_COLUMN);
 
     result = wdb_global_select_groups(data->wdb);
 
@@ -8195,6 +8215,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_socket_full, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_groups_success, test_setup, test_teardown),
         /* Tests wdb_global_select_agent_keepalive */
         cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_keepalive_transaction_fail,
