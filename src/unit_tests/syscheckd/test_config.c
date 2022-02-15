@@ -146,6 +146,11 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
     assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_int_equal(syscheck.db_entry_limit_enabled, 1);
+    assert_int_equal(syscheck.db_entry_file_limit, 50000);
+#ifdef WIN32
+    assert_int_equal(syscheck.db_entry_registry_limit, 50000);
+#endif
 }
 
 void test_Read_Syscheck_Config_invalid(void **state)
@@ -173,7 +178,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 
     ret = Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -211,6 +215,11 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 5);
     assert_int_equal(syscheck.diff_folder_size, 0);
+    assert_int_equal(syscheck.db_entry_limit_enabled, 1);
+    assert_int_equal(syscheck.db_entry_file_limit, 50000);
+#ifdef WIN32
+    assert_int_equal(syscheck.db_entry_registry_limit, 50000);
+#endif
 }
 
 void test_Read_Syscheck_Config_unparsed(void **state)
@@ -275,7 +284,6 @@ void test_getSyscheckConfig(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "Duplicated registration entry: HKEY_SOME_KEY\\the_key9");
 #endif
@@ -420,8 +428,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
-
 
     Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -572,11 +578,15 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
-    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
-    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
+    cJSON *db_limit = cJSON_GetObjectItem(sys_items, "db_entry_limit");
+    cJSON *db_limit_enabled = cJSON_GetObjectItem(db_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(db_limit_enabled), "yes");
+    cJSON *file_limit_entries = cJSON_GetObjectItem(db_limit, "files");
     assert_int_equal(file_limit_entries->valueint, 100000);
+#ifdef WIN32
+    cJSON *reg_limit_entries = cJSON_GetObjectItem(db_limit, "registries");
+    assert_int_equal(reg_limit_entries->valueint, 100000);
+#endif
 
     cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
 
@@ -668,7 +678,6 @@ void test_getSyscheckInternalOptions(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 
     Read_Syscheck_Config("test_syscheck.conf");
 
