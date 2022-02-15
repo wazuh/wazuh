@@ -24,3 +24,6 @@ add_subdirectory(${TEST_SOURCE_DIR}/builder)
 add_subdirectory(${TEST_SOURCE_DIR}/graph)
 add_subdirectory(${TEST_SOURCE_DIR}/catalog)
 add_subdirectory(${TEST_SOURCE_DIR}/cliParser)
+
+# Other tets
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/rxcpp)
