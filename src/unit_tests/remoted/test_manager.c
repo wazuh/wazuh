@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/os_crypto/sha256_op_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
@@ -62,14 +63,20 @@ static int test_find_group_setup(void ** state) {
 }
 
 static int test_find_multi_group_setup(void ** state) {
-    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
+    os_calloc(1, (3) * sizeof(group_t *), multi_groups);
     os_calloc(1, sizeof(group_t), multi_groups[0]);
     multi_groups[0]->name = strdup("test_default2");
     os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
     os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
     os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
     strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
-    multi_groups[1] = NULL;
+    os_calloc(1, sizeof(group_t), multi_groups[1]);
+    multi_groups[1]->name = strdup("test_test_default2");
+    os_calloc(2, sizeof(file_sum *), multi_groups[1]->f_sum);
+    os_calloc(1, sizeof(file_sum), multi_groups[1]->f_sum[0]);
+    os_strdup("test_test_file2", multi_groups[1]->f_sum[0]->name);
+    strncpy(multi_groups[1]->f_sum[0]->sum, "67890ABCDEF12345", 32);
+    multi_groups[2] = NULL;
 
     return 0;
 }
@@ -1239,6 +1246,73 @@ void test_process_deleted_groups_no_changes(void **state)
     assert_null(groups[2]);
 }
 
+void test_process_deleted_multi_groups_delete(void **state)
+{
+    multi_groups[0]->exists = false;
+    multi_groups[0]->has_changed = false;
+    multi_groups[1]->exists = true;
+    multi_groups[1]->has_changed = false;
+
+    will_return(__wrap_OSHash_Clean, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, NULL);
+
+    expect_any(__wrap_OS_SHA256_String, str);
+    will_return(__wrap_OS_SHA256_String, "6e3a107738e7d0fc85241f04ed9686d37738e7d08086fb46e3a100fc85241f04");
+
+    expect_string(__wrap_rmdir_ex, name, "var/multigroups/6e3a1077");
+    will_return(__wrap_rmdir_ex, 0);
+
+    process_deleted_multi_groups();
+
+    assert_non_null(multi_groups[0]);
+    assert_string_equal(multi_groups[0]->name, "test_test_default2");
+    assert_non_null(multi_groups[0]->f_sum);
+    assert_non_null(multi_groups[0]->f_sum[0]);
+    assert_string_equal(multi_groups[0]->f_sum[0]->name, "test_test_file2");
+    assert_string_equal(multi_groups[0]->f_sum[0]->sum, "67890ABCDEF12345");
+    assert_null(multi_groups[0]->f_sum[1]);
+    assert_false(multi_groups[0]->has_changed);
+    assert_false(multi_groups[0]->exists);
+    assert_null(multi_groups[1]);
+}
+
+void test_process_deleted_multi_groups_no_changes(void **state)
+{
+    multi_groups[0]->exists = true;
+    multi_groups[0]->has_changed = false;
+    multi_groups[1]->exists = true;
+    multi_groups[1]->has_changed = false;
+
+    will_return(__wrap_OSHash_Clean, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, NULL);
+
+    process_deleted_multi_groups();
+
+    assert_non_null(multi_groups[0]);
+    assert_string_equal(multi_groups[0]->name, "test_default2");
+    assert_non_null(multi_groups[0]->f_sum);
+    assert_non_null(multi_groups[0]->f_sum[0]);
+    assert_string_equal(multi_groups[0]->f_sum[0]->name, "test_file2");
+    assert_string_equal(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF");
+    assert_null(multi_groups[0]->f_sum[1]);
+    assert_false(multi_groups[0]->has_changed);
+    assert_false(multi_groups[0]->exists);
+    assert_non_null(multi_groups[1]);
+    assert_string_equal(multi_groups[1]->name, "test_test_default2");
+    assert_non_null(multi_groups[1]->f_sum);
+    assert_non_null(multi_groups[1]->f_sum[0]);
+    assert_string_equal(multi_groups[1]->f_sum[0]->name, "test_test_file2");
+    assert_string_equal(multi_groups[1]->f_sum[0]->sum, "67890ABCDEF12345");
+    assert_null(multi_groups[1]->f_sum[1]);
+    assert_false(multi_groups[1]->has_changed);
+    assert_false(multi_groups[1]->exists);
+    assert_null(multi_groups[2]);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1293,6 +1367,9 @@ int main(void)
         // Test process_deleted_groups
         cmocka_unit_test_setup_teardown(test_process_deleted_groups_delete, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_process_deleted_groups_no_changes, test_find_group_setup, test_c_group_teardown),
+        // Test process_deleted_multi_groups
+        cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_delete, test_find_multi_group_setup, test_c_multi_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_no_changes, test_find_multi_group_setup, test_c_multi_group_teardown),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }
