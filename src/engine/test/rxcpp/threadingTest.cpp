@@ -226,32 +226,65 @@ TEST(RxcppThreading, SimpleRoundRobin)
     GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Finish task" << endl;
 }
 
-TEST(RxcppThreading, RxcppEventLoopRoundRobin)
+TEST(RxcppThreading, ObserveOnWithMiddleSubject)
 {
     GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Start task" << endl;
     rxcpp::subjects::subject<int> subj;
+    auto values = subj.get_observable()
+        .observe_on(rxcpp::synchronize_new_thread())
+        .tap([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] TapOnNext: " << v << endl; });
+
+    auto middleSubj = subjects::subject<int>();
+    middleSubj.get_observable()
+        .subscribe([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
+                   []() { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnCompleted" << endl; });
+    values.subscribe(middleSubj.get_subscriber());
+
     auto input = subj.get_subscriber();
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 1" << endl;
+    input.on_next(1);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 2" << endl;
+    input.on_next(2);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 3" << endl;
+    input.on_next(3);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Finish task" << endl;
+}
 
-    auto sched = schedulers::make_event_loop();
-    auto worker1 = sched.create_worker();
-    auto worker11 = sched.create_worker();
-    auto worker2 = sched.create_worker();
-    auto worker22 = sched.create_worker();
+TEST(RxcppThreading, CustomScheduler)
+{
+    auto worker = schedulers::worker();
+    auto action = schedulers::make_action([](schedulers::schedulable){
+        GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Action" << endl;
+    });
+    auto loop = schedulers::make_event_loop(
+        // This lambda is the thread pool factory
+        // f is the task issued by rxcpp
+        [](function<void()> f) -> thread {
+            // Thread pool implementation goes here
+            return thread(f);
+        }
+    );
 
-    for (int i = 0; i < 2; ++i)
-    {
-        observable<>::from(1, 2, 3)
-            .observe_on(identity_same_worker(worker1))
-            .map(
-                [](int v)
-                {
-                    cout << "map: tid=" << this_thread::get_id() << " v=" << v << endl;
-                    return v + 3;
-                })
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Start task" << endl;
+    rxcpp::subjects::subject<int> subj;
+    auto values = subj.get_observable()
+        .observe_on(identity_same_worker(loop.create_worker()))
+        .tap([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] TapOnNext: " << v << endl; })
+        .subscribe([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
+                   []() { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnCompleted" << endl; });
 
-            .subscribe([](int v) { cout << "next: tid=" << this_thread::get_id() << " v=" << v << endl; });
-        std::this_thread::sleep_for(chrono::milliseconds(10));
-    }
-
+    auto input = subj.get_subscriber();
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 1" << endl;
+    input.on_next(1);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 2" << endl;
+    input.on_next(2);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 3" << endl;
+    input.on_next(3);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
     GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Finish task" << endl;
 }
