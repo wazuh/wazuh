@@ -23,7 +23,6 @@ TEST(RxcppThreading, ObserveOnExample)
             return v;
         });
 
-
     values.observe_on(rxcpp::synchronize_new_thread())
         .as_blocking()
         .subscribe([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
@@ -230,15 +229,53 @@ TEST(RxcppThreading, ObserveOnWithMiddleSubject)
 {
     GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Start task" << endl;
     rxcpp::subjects::subject<int> subj;
-    auto values = subj.get_observable()
-        .observe_on(rxcpp::synchronize_new_thread())
-        .tap([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] TapOnNext: " << v << endl; });
+    auto values =
+        subj.get_observable()
+            .observe_on(rxcpp::synchronize_new_thread())
+            .tap([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] TapOnNext: " << v << endl; });
 
     auto middleSubj = subjects::subject<int>();
-    middleSubj.get_observable()
-        .subscribe([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
-                   []() { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnCompleted" << endl; });
+    middleSubj.get_observable().subscribe(
+        [](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
+        []() { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnCompleted" << endl; });
     values.subscribe(middleSubj.get_subscriber());
+
+    auto input = subj.get_subscriber();
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 1" << endl;
+    input.on_next(1);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 2" << endl;
+    input.on_next(2);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 3" << endl;
+    input.on_next(3);
+    std::this_thread::sleep_for(chrono::milliseconds(10));
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Finish task" << endl;
+}
+
+TEST(RxcppThreading, ThreadFactory)
+{
+    auto worker = schedulers::worker();
+    auto action = schedulers::make_action(
+        [](schedulers::schedulable) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Action" << endl; });
+    auto loop = schedulers::make_event_loop(
+        // This lambda is the thread pool factory
+        // f is the task issued by rxcpp
+        [](function<void()> f) -> thread
+        {
+            // Thread pool implementation goes here
+            return thread(f);
+        });
+
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Start task" << endl;
+    rxcpp::subjects::subject<int> subj;
+    auto values =
+        subj.get_observable()
+            .observe_on(identity_same_worker(loop.create_worker()))
+            .tap([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] TapOnNext: " << v << endl; })
+            .subscribe([](int v)
+                       { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
+                       []() { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnCompleted" << endl; });
 
     auto input = subj.get_subscriber();
     GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 1" << endl;
@@ -255,36 +292,57 @@ TEST(RxcppThreading, ObserveOnWithMiddleSubject)
 
 TEST(RxcppThreading, CustomScheduler)
 {
-    auto worker = schedulers::worker();
-    auto action = schedulers::make_action([](schedulers::schedulable){
-        GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Action" << endl;
-    });
-    auto loop = schedulers::make_event_loop(
-        // This lambda is the thread pool factory
-        // f is the task issued by rxcpp
-        [](function<void()> f) -> thread {
-            // Thread pool implementation goes here
-            return thread(f);
-        }
-    );
+    printsafe("Start task");
 
-    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Start task" << endl;
-    rxcpp::subjects::subject<int> subj;
-    auto values = subj.get_observable()
-        .observe_on(identity_same_worker(loop.create_worker()))
-        .tap([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] TapOnNext: " << v << endl; })
-        .subscribe([](int v) { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnNext: " << v << endl; },
-                   []() { GTEST_COUT << "[thread " << std::this_thread::get_id() << "] OnCompleted" << endl; });
+    //---------- Get a Coordination
+    auto coordination = rxcpp::serialize_new_thread();
 
-    auto input = subj.get_subscriber();
-    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 1" << endl;
-    input.on_next(1);
-    std::this_thread::sleep_for(chrono::milliseconds(10));
-    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 2" << endl;
-    input.on_next(2);
-    std::this_thread::sleep_for(chrono::milliseconds(10));
-    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Produces 3" << endl;
-    input.on_next(3);
-    std::this_thread::sleep_for(chrono::milliseconds(10));
-    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] Finish task" << endl;
+    //------- Create a Worker instance through a factory method
+    auto worker = coordination.create_coordinator().get_worker();
+
+    //--------- Create a action object
+    auto sub_action =
+        rxcpp::schedulers::make_action([](const rxcpp::schedulers::schedulable &) { printsafe("Action executed"); });
+
+    //------------- Create a schedulable and schedule the action
+    auto scheduled = rxcpp::schedulers::make_schedulable(worker, sub_action);
+    scheduled.schedule();
+
+    printsafe("Finish task");
+}
+
+TEST(RxcppThreading, CustomSchedulerSchedule)
+{
+    printsafe("Start task");
+
+    //-------- Create a Coordination function
+    auto coordination = rxcpp::identity_current_thread();
+    //-------- Instantiate a coordinator and create a worker
+    auto worker = coordination.create_coordinator().get_worker();
+    //--------- start and the period
+    auto start = coordination.now() + std::chrono::milliseconds(1);
+    auto period = std::chrono::milliseconds(1);
+    //----------- Create an Observable (Replay )
+    auto values = rxcpp::observable<>::interval(start, period).take(5).replay(2, coordination);
+    //--------------- Subscribe first time using a Worker
+    worker.schedule(
+        [&](const rxcpp::schedulers::schedulable &) {
+            values.subscribe([](long v) { printsafe("1: " + std::to_string(v)); },
+                             []() { printsafe("1: OnCompletedn"); });
+        });
+    worker.schedule(
+        [&](const rxcpp::schedulers::schedulable &) {
+            values.subscribe([](long v) { printsafe("2: " + std::to_string(v)); },
+                             []() { printsafe("2: OnCompletedn"); });
+        });
+    //----- Start the emission of values
+    worker.schedule([&](const rxcpp::schedulers::schedulable &) { values.connect(); });
+    //------- Add blocking subscription to see results
+    values.as_blocking().subscribe();
+
+    printsafe("Finish task");
+
+    // We created a hot Observable using the replay mechanism to take care of the late subscription by some Observers.
+    // We also created a Worker to do the scheduling for subscription and to connect the Observers with the Observable.
+    // The previous program demonstrates how the Scheduler works in RxCpp
 }
