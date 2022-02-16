@@ -42,6 +42,7 @@ fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
 void update_wildcards_config();
 void fim_process_wildcard_removed(directory_t *configuration);
+void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
 
 /* auxiliary structs */
 typedef struct __fim_data_s {
@@ -56,6 +57,12 @@ typedef struct __fim_data_s {
     OSList *list;
     rb_tree *tree;
 } fim_data_t;
+
+typedef struct _txn_data_s {
+    fim_txn_context_t *txn_context;
+    char *diff;
+    cJSON *dbsync_event;
+} txn_data_t;
 
 const struct stat DEFAULT_STATBUF = { .st_mode = S_IFREG | 00444,
                                       .st_size = 1000,
@@ -532,6 +539,44 @@ static int teardown_fim_scan_realtime(void **state) {
 
 #endif
 
+static int setup_transaction_callback(void **state) {
+    txn_data_t *txn_data = calloc(1, sizeof(txn_data_t));
+
+    if (txn_data == NULL) {
+        return 1;
+    }
+
+    txn_data->txn_context = calloc(1, sizeof(fim_txn_context_t));
+    if (txn_data->txn_context == NULL) {
+        return 1;
+    }
+    txn_data->txn_context->evt_data = calloc(1, sizeof(event_data_t));
+    txn_data->txn_context->evt_data->report_event = true;
+    txn_data->txn_context->evt_data->mode = FIM_SCHEDULED;
+    txn_data->txn_context->evt_data->type = FIM_DELETE;
+
+    *state = txn_data;
+    return 0;
+}
+
+static int teardown_transaction_callback(void **state) {
+    txn_data_t *txn_data = (txn_data_t *) *state;
+    cJSON_Delete (txn_data->dbsync_event);
+
+    if (txn_data->diff != NULL) {
+        free(txn_data->diff);
+    }
+
+    if (txn_data->txn_context != NULL) {
+        if (txn_data->txn_context->evt_data != NULL) {
+            free(txn_data->txn_context->evt_data);
+        }
+        free(txn_data->txn_context);
+    }
+
+    free(txn_data);
+    return 0;
+}
 /* Auxiliar functions */
 void expect_get_data (char *user, char *group, char *file_path, int calculate_checksums) {
 #ifndef TEST_WINAGENT
@@ -1254,7 +1299,7 @@ static void test_init_fim_data_entry(void **state) {
 }
 
 static void test_fim_file_add(void **state) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1275,10 +1320,72 @@ static void test_fim_file_add(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
+static void test_fim_file_modify_transaction(void **state) {
+    fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    TXN_HANDLE mock_handle = (TXN_HANDLE)1;
+
+    fim_txn_context_t mock_context = {0};
+
+#ifdef TEST_WINAGENT
+    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
+    cJSON *permissions = create_win_permissions_object();
+#else
+    char file_path[OS_SIZE_256] = "/bin/ls";
+#endif
+
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    // Inside fim_get_data
+#ifndef TEST_WINAGENT
+    expect_get_user(0, strdup("user"));
+
+    expect_get_group(0, strdup("group"));
+#else
+
+    expect_get_file_user(file_path, "0", strdup("user"));
+    expect_w_get_file_permissions(file_path, permissions, 0);
+
+    expect_value(__wrap_decode_win_acl_json, perms, permissions);
+#endif
+
+    expect_OS_MD5_SHA1_SHA256_File_call(file_path, file_path, "d41d8cd98f00b204e9800998ecf8427e",
+                                        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+                                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
+                                        0x400, 0);
+
+    will_return(__wrap_fim_db_transaction_sync_row, FIMDB_OK);
+
+    fim_file(file_path, &configuration, &evt_data, mock_handle, &mock_context);
+}
 
 static void test_fim_file_modify(void **state) {
     fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -3583,6 +3690,179 @@ static void test_update_wildcards_config_list_null() {
     update_wildcards_config();
 }
 
+static void test_transaction_callback_add(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+
+    fim_txn_context_t *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = "/etc/a_test_file.txt", .file_entry.data=&DEFAULT_FILE_DATA};
+    cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"dev\":64768,\"gid\":0,\"group_name\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":801978,\"last_event\":0,\"mode\":0,\"mtime\":1645001030,\"options\":139775,\"path\":\"/etc/a_test_file.txt\",\"perm\":\"rw-r--r--\",\"scanned\":1,\"size\":0,\"uid\":0,\"user_name\":\"root\"}]");
+
+    txn_context->latest_entry = &entry;
+    data->dbsync_event = result;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    transaction_callback(INSERTED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_ADD);
+
+    data->txn_context->latest_entry = NULL;
+}
+
+static void test_transaction_callback_modify(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+
+    fim_txn_context_t *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = "/etc/a_test_file.txt", .file_entry.data=&DEFAULT_FILE_DATA};
+    txn_context->latest_entry = &entry;
+
+    cJSON *result = cJSON_Parse("[{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0}}]");
+    data->dbsync_event = result;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    transaction_callback(MODIFIED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
+
+    data->txn_context->latest_entry = NULL;
+}
+
+static void test_transaction_callback_modify_report_changes(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+    fim_txn_context_t *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = "/etc/a_test_file.txt", .file_entry.data=&DEFAULT_FILE_DATA};
+    txn_context->latest_entry = &entry;
+
+    cJSON *result = cJSON_Parse("[{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0}}]");
+    data->dbsync_event = result;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_fim_file_diff(entry.file_entry.path, strdup("diff"));
+
+    transaction_callback(MODIFIED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
+
+    data->txn_context->latest_entry = NULL;
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
+}
+
+static void test_transaction_callback_delete(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+
+    fim_txn_context_t *txn_context = data->txn_context;
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    data->dbsync_event = result;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    transaction_callback(DELETED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
+}
+
+static void test_transaction_callback_delete_report_changes(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+
+    fim_txn_context_t *txn_context = data->txn_context;
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    data->dbsync_event = result;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_fim_diff_process_delete_file("/etc/a_test_file.txt", 0);
+
+    transaction_callback(DELETED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
+
+}
+
+static void test_transaction_callback_delete_full_db(void **state) {
+    txn_data_t *data = (txn_data_t *) *state;
+
+    fim_txn_context_t *txn_context = data->txn_context;
+    txn_context->db_full = true;
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    data->dbsync_event = result;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    transaction_callback(DELETED, result, txn_context);
+    assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
+    assert_int_equal(txn_context->db_full, false);
+}
+
+static void test_transaction_callback_full_db(void **state) {
+    const char *path = "/etc/a_test_file.txt";
+    txn_data_t *data = (txn_data_t *) *state;
+    char debug_msg[OS_SIZE_128] = {0};
+
+    fim_txn_context_t *txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+
+    txn_context->db_full = true;
+    txn_context->latest_entry = &entry;
+    data->dbsync_event = result;
+
+    // These functions are called every time transaction_callback calls fim_configuration_directory
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    snprintf(debug_msg, OS_SIZE_128, "Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    transaction_callback(MAX_ROWS, result, txn_context);
+    assert_int_equal(txn_context->db_full, true);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_json_event */
@@ -3637,6 +3917,8 @@ int main(void) {
         /* fim_file */
         cmocka_unit_test(test_fim_file_add),
         cmocka_unit_test_setup_teardown(test_fim_file_modify, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_file_modify_transaction, setup_fim_entry, teardown_fim_entry),
+
         cmocka_unit_test(test_fim_file_no_attributes),
         cmocka_unit_test_setup_teardown(test_fim_file_error_on_insert, setup_fim_entry, teardown_fim_entry),
 
@@ -3731,6 +4013,15 @@ int main(void) {
 
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),
+
+        /* transaction_callback */
+        cmocka_unit_test_setup_teardown(test_transaction_callback_add, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_modify, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_report_changes, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_delete, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_delete_report_changes, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_delete_full_db, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_full_db, setup_transaction_callback, teardown_transaction_callback),
 
     };
 

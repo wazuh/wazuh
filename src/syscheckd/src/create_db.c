@@ -44,6 +44,7 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+// LCOV_EXCL_START
 cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
                                         const cJSON* changed_data,
                                         cJSON* old_attributes,
@@ -192,6 +193,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     return old_attributes;
 }
+// LCOV_EXCL_STOP
 
 static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data) {
     char *path = NULL;
@@ -207,14 +209,14 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
-        return;
+        return; // LCOV_EXCL_LINE
     }
 
     // DBSync returns an array when there is a addition or modification. This callback is executed for each entry, so
     // this array only has one element.
     if (cJSON_IsArray(result_json)) {
         if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
-            return;
+            return; // LCOV_EXCL_LINE
         }
     // In case of a deletion, DBSync is not going to return an array.
     } else {
@@ -222,13 +224,13 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     }
 
     // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
-    if (txn_context->latest_entry == NULL) {
+    if (resultType == DELETED) {
         cJSON *path_cjson = cJSON_GetObjectItem(dbsync_event, "path");
         if (path_cjson == NULL) {
             goto end;
         }
         path = cJSON_GetStringValue(path_cjson);
-    } else {
+    } else if (txn_context->latest_entry != NULL) {
         path = txn_context->latest_entry->file_entry.path;
     }
 
@@ -273,7 +275,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     data = cJSON_CreateObject();
 
     if (json_event == NULL || data == NULL) {
-        goto end;
+        goto end; // LCOV_EXCL_LINE
     }
 
     cJSON_AddStringToObject(json_event, "type", "event");
@@ -305,17 +307,16 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
                                             changed_attributes);
         }
     }
-        if (diff != NULL) {
-            cJSON_AddStringToObject(data, "content_changes", diff);
-        }
+
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
 
     if (configuration->tag != NULL) {
         cJSON_AddStringToObject(data, "tags", configuration->tag);
     }
 
-    if (json_event != NULL) {
-        send_syscheck_msg(json_event);
-    }
+    send_syscheck_msg(json_event);
 
 end:
     os_free(diff);
