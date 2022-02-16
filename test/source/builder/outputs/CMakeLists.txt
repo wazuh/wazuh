@@ -13,6 +13,7 @@ add_executable(file_output_test
 
 target_include_directories(file_output_test PUBLIC
     ${ENGINE_SOURCE_DIR}/
+    ${ENGINE_SOURCE_DIR}/json
     ${RapidJSON_SOURCE_DIR}/include/
 )
 
