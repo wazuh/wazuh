@@ -110,8 +110,8 @@ TEST(hlpTests_logQL, optional_Or)
 
 TEST(hlpTests_logQL, options_parsing)
 {
-    static const char *logQl = "<_> <_temp> <_temp1/type> <_temp2/type/type2>";
-    static const char *event = "one temp temp1 temp2";
+    const char *logQl = "<_> <_temp> <_temp1/type> <_temp2/type/type2>";
+    const char *event = "one temp temp1 temp2";
 
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
@@ -120,6 +120,26 @@ TEST(hlpTests_logQL, options_parsing)
     ASSERT_EQ("temp", result["_temp"]);
     ASSERT_EQ("temp1", result["_temp1"]);
     ASSERT_EQ("temp2", result["_temp2"]);
+
+}
+
+TEST(hlpTests, annon_type)
+{
+    const char *logQl = "this has an annon ip <_tempIp/ip> in it";
+    const char *event = "this has an annon ip 127.0.0.1 in it";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ("127.0.0.1", result["_tempIp"]);
+
+    const char *logQl2 = "the temp param has an [<_temp/url>] type";
+    const char *event2 = "the temp param has an [incorrect] type";
+
+    auto parseOp2 = getParserOp(logQl2);
+    auto result2 = parseOp2(event2);
+
+    ASSERT_EQ(result2.cend(), result2.find("_temp"));
 }
 
 TEST(hlpTests_URL, url_parsing)

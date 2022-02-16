@@ -73,7 +73,7 @@ static Token getToken(Tokenizer &tk) {
     return { 0, 0, TokenType::Unknown };
 }
 
-bool requireToken(Tokenizer &tk, TokenType req) {
+static bool requireToken(Tokenizer &tk, TokenType req) {
     return getToken(tk).type == req;
 }
 
@@ -120,6 +120,7 @@ static Parser parseCaptureString(Token token) {
     parser.endToken = 0;
     parser.name = captureParams[0];
     captureParams.erase(captureParams.begin());
+
     parser.parserType = ParserType::Any;
     if (token.text[0] == '_') {
         if (token.len != 1) {
