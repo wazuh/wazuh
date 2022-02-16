@@ -66,8 +66,6 @@ static char *default_ignore_regex_patterns[] = { "IgnoreRegex", "IgnoreRegex", N
 
 static registry_ignore_regex default_ignore_regex[] = { { NULL, ARCH_32BIT }, { NULL, ARCH_64BIT }, { NULL, 0 } };
 
-// static registry_t empty_config[] = { { NULL, 0, 0, 320, 0, NULL, NULL, NULL } }; DEPRECATED_CODE
-
 extern int _base_line;
 
 typedef struct tmp_file_entry_s {
@@ -204,20 +202,6 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-/*static int setup_remove_entries(void **state) {
-    syscheck.registry = empty_config;
-
-    return 0;
-}
-
-static int teardown_restore_scan(void **state) {
-    syscheck.registry = default_config;
-
-    _base_line = 0;
-
-    return 0;
-} DEPRECATED_CODE*/
-
 static int setup_test_hashes(void **state) {
     syscheck.registry = default_config;
 
@@ -263,118 +247,6 @@ static int teardown_test_hashes(void **state) {
 
     return 0;
 }
-
-/*static int setup_process_delete_events(void **state) {
-    tmp_file_entry_t *data = malloc(sizeof(tmp_file_entry_t));
-    if (data == NULL) {
-        return 1;
-    }
-
-    syscheck.registry = default_config;
-    // Set fim_entry
-
-    if(data->entry = calloc(1, sizeof(fim_entry)), data->entry == NULL) {
-        return -1;
-    }
-
-    data->entry->type = FIM_TYPE_REGISTRY;
-    // Key
-    data->entry->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
-                            "permissions", "userid", "groupid", "username", "groupname");
-    // Value
-    data->entry->registry_entry.value = create_reg_value_data(1, "valuename", REG_DWORD, 4);
-
-    if (data->file = calloc(1, sizeof(fim_tmp_file)), data->file == NULL) {
-        return 1;
-    }
-
-    *state = data;
-    return 0;
-
-}
-
-static int teardown_process_delete_events(void **state) {
-    tmp_file_entry_t *data = *state;
-    free_entry(data->entry);
-    free(data->file);
-
-    free(data);
-
-    return 0;
-}
-
-static int setup_process_value_events(void **state) {
-    syscheck.registry = default_config;
-    fim_entry **entry_array = calloc(3, sizeof(fim_entry*));
-
-    // Set fim_entry
-    fim_entry *entry1 = calloc(1, sizeof(fim_entry));
-    if(entry1 == NULL)
-        return -1;
-    entry1->type = FIM_TYPE_REGISTRY;
-
-    // Key
-    entry1->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
-                            "permissions", "userid", "groupid", "username", "groupname");
-
-    // Value
-    char value_name[10] = "valuename";
-    unsigned int value_type = REG_DWORD;
-    unsigned int value_size = 4;
-
-    entry1->registry_entry.value = create_reg_value_data(1, value_name, value_type, value_size);
-
-    // Set fim_entry2
-    fim_entry *entry2 = calloc(1, sizeof(fim_entry));
-    if(entry2 == NULL)
-        return -1;
-    entry2->type = FIM_TYPE_REGISTRY;
-
-    // Key
-    entry2->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
-                            "permissions", "userid", "groupid", "username", "groupname");
-
-    // Value
-    unsigned int value_type2 = REG_QWORD;
-    unsigned int value_size2 = 8;
-
-    entry2->registry_entry.value = create_reg_value_data(1, value_name, value_type2, value_size2);
-
-    entry_array[0] = entry1;
-    entry_array[1] = entry2;
-    entry_array[2] = NULL;
-
-    *state = entry_array;
-    return 0;
-}
-
-static int teardown_process_value_events_failed(void **state) {
-    fim_entry **entry_array = *state;
-
-    // Free state
-    if (entry_array){
-        int i = 0;
-        while (entry_array[i]){
-            if (entry_array[i++])
-                fim_registry_free_entry(entry_array[i++]);
-        }
-        free(entry_array);
-    }
-
-    return 0;
-}
-
-static int teardown_process_value_events_success(void **state) {
-    fim_entry **entry_array = *state;
-
-    // Free state
-    if (entry_array){
-        fim_registry_free_entry(entry_array[1]);
-        free(entry_array);
-    }
-
-    return 0;
-} DEPRECATED_CODE*/
 
 // TESTS
 
@@ -1031,7 +903,6 @@ static void test_fim_registry_key_transaction_callback_insert(){
     ReturnTypeCallback resultType = INSERTED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
-    //cJSON* mock_event_json = cJSON_CreateObject();
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_registry_key_transaction_callback);
@@ -1044,7 +915,6 @@ static void test_fim_registry_key_transaction_callback_modify(){
     ReturnTypeCallback resultType = MODIFIED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
-    //cJSON* mock_event_json = cJSON_CreateObject();
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
     expect_function_call(__wrap_registry_key_transaction_callback);
@@ -1058,7 +928,6 @@ static void test_fim_registry_key_transaction_callback_delete(){
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
-    //cJSON* mock_event_json = cJSON_CreateObject();
 
     expect_function_call(__wrap_registry_key_transaction_callback);
     registry_key_transaction_callback(resultType, result_json, &user_data);
@@ -1073,7 +942,6 @@ static void test_fim_registry_key_transaction_callback_max_rows(){
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
-    //expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' entry into DB. The DB is full, please check your configuration.");
 
     expect_function_call(__wrap_registry_key_transaction_callback);
     registry_key_transaction_callback(resultType, result_json, &user_data);
@@ -1108,7 +976,6 @@ static void test_fim_registry_value_transaction_callback_insert(){
     ReturnTypeCallback resultType = INSERTED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
-    //cJSON* mock_event_json = cJSON_CreateObject();
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_registry_value_transaction_callback);
@@ -1121,7 +988,6 @@ static void test_fim_registry_value_transaction_callback_modify(){
     ReturnTypeCallback resultType = MODIFIED;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
-    //cJSON* mock_event_json = cJSON_CreateObject();
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
     expect_function_call(__wrap_registry_value_transaction_callback);
@@ -1135,7 +1001,6 @@ static void test_fim_registry_value_transaction_callback_delete(){
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
-    //cJSON* mock_event_json = cJSON_CreateObject();
 
     expect_function_call(__wrap_registry_value_transaction_callback);
     registry_value_transaction_callback(resultType, result_json, &user_data);
@@ -1150,7 +1015,6 @@ static void test_fim_registry_value_transaction_callback_max_rows(){
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = &value, .evt_data = &event_data, .diff = NULL};
-    //expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert 'mock_value_name' value into DB. The DB is full, please check your configuration.");
     expect_function_call(__wrap_registry_value_transaction_callback);
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
