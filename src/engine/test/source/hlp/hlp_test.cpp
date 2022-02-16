@@ -131,3 +131,43 @@ TEST(json_test, dummy_test)
     ASSERT_EQ("{\"String\":\"This is a string\"}", result["_json1"]);
     ASSERT_EQ("{\"String\":\"This is another string\"}", result["_json2"]);
 }
+
+TEST(map_test, success_test)
+{
+    const char *logQl ="<_map/MAP/ /=>-<_dummy>";
+    const char *event ="key1=Value1 Key2=Value2-dummy";
+
+    ParserFn parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+
+    ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}", result["_map"]);
+    ASSERT_EQ("dummy", result["_dummy"]);
+}
+
+TEST(map_test, end_mark_test)
+{
+    const char *logQl ="<_map/MAP/ /=/.> <_dummy>";
+    const char *event ="key1=Value1 Key2=Value2. dummy";
+
+    ParserFn parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}", result["_map"]);
+    ASSERT_EQ("dummy", result["_dummy"]);
+}
+
+TEST(map_test, incomplete_map_test)
+{
+    const char *logQl ="<_map/MAP/ /=>";
+    const char *event1 ="key1=Value1 Key2=";
+    const char *event2 ="key1=Value1 Key2=";
+    const char *event3 ="key1=Value1 =Value2";
+
+    ParserFn parseOp = getParserOp(logQl);
+    auto result1 = parseOp(event);
+    auto result2 = parseOp(event);
+    auto result3 = parseOp(event);
+
+    //ASSERT_EQ("{\"key1\":\"Value1\",\"key2\":\"Value2\"}", result["_map"]);
+}
