@@ -36,47 +36,32 @@ namespace builder::internals
 {
 void registerBuilders()
 {
-    // Needed to initialize the variant type
-    types::BuilderVariant c;
-
     // Register all builders
-    c = builders::opBuilderMapValue;
-    Registry::registerBuilder("map.value", c);
-    c = builders::opBuilderMapReference;
-    Registry::registerBuilder("map.reference", c);
-    c = builders::opBuilderMap;
-    Registry::registerBuilder("map", c);
-    c = builders::combinatorBuilderChain;
-    Registry::registerBuilder("combinator.chain", c);
-    c = builders::combinatorBuilderBroadcast;
-    Registry::registerBuilder("combinator.broadcast", c);
-    c = builders::opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = builders::opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
-    c = builders::opBuilderHelperExists;
-    Registry::registerBuilder("helper.exists", c);
-    c = builders::opBuilderHelperNotExists;
-    Registry::registerBuilder("helper.not_exists", c);
-    c = builders::opBuilderFileOutput;
-    Registry::registerBuilder("file", c);
-    c = builders::opBuilderCondition;
-    Registry::registerBuilder("condition", c);
-    c = builders::stageBuilderNormalize;
-    Registry::registerBuilder("normalize", c);
-    c = builders::stageBuilderCheck;
-    Registry::registerBuilder("check", c);
-    Registry::registerBuilder("allow", c);
-    c = builders::stageBuilderOutputs;
-    Registry::registerBuilder("outputs", c);
-    c = builders::assetBuilderDecoder;
-    Registry::registerBuilder("decoder", c);
-    c = builders::assetBuilderFilter;
-    Registry::registerBuilder("filter", c);
-    c = builders::assetBuilderRule;
-    Registry::registerBuilder("rule", c);
-    c = builders::assetBuilderOutput;
-    Registry::registerBuilder("output", c);
+    // Operations
+    Registry::registerBuilder("map.value", builders::opBuilderMapValue);
+    Registry::registerBuilder("map.reference", builders::opBuilderMapReference);
+    Registry::registerBuilder("condition.value", builders::opBuilderConditionValue);
+    Registry::registerBuilder("condition.reference", builders::opBuilderConditionReference);
+    Registry::registerBuilder("file", builders::opBuilderFileOutput);
+    // Auxiliary
+    Registry::registerBuilder("condition", builders::opBuilderCondition);
+    Registry::registerBuilder("map", builders::opBuilderMap);
+    // Helpers
+    Registry::registerBuilder("helper.exists", builders::opBuilderHelperExists);
+    Registry::registerBuilder("helper.not_exists", builders::opBuilderHelperNotExists);
+    // Combinators
+    Registry::registerBuilder("combinator.chain", builders::combinatorBuilderChain);
+    Registry::registerBuilder("combinator.broadcast", builders::combinatorBuilderBroadcast);
+    // Stages
+    Registry::registerBuilder("check", builders::stageBuilderCheck);
+    Registry::registerBuilder("allow", builders::stageBuilderCheck);
+    Registry::registerBuilder("normalize", builders::stageBuilderNormalize);
+    Registry::registerBuilder("outputs", builders::stageBuilderOutputs);
+    // Assets
+    Registry::registerBuilder("decoder", builders::assetBuilderDecoder);
+    Registry::registerBuilder("filter", builders::assetBuilderFilter);
+    Registry::registerBuilder("rule", builders::assetBuilderRule);
+    Registry::registerBuilder("output", builders::assetBuilderOutput);
 }
 } // namespace builder::internals
 
