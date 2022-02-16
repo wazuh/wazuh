@@ -169,5 +169,7 @@ TEST(map_test, incomplete_map_test)
     auto result2 = parseOp(event);
     auto result3 = parseOp(event);
 
-    //ASSERT_EQ("{\"key1\":\"Value1\",\"key2\":\"Value2\"}", result["_map"]);
+    ASSERT_TRUE(result1.empty());
+    ASSERT_TRUE(result2.empty());
+    ASSERT_TRUE(result3.empty());
 }
