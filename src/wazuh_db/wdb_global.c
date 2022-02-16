@@ -1373,7 +1373,7 @@ int wdb_global_set_agent_groups_sync_status(wdb_t *wdb, int id, const char* sync
     return wdb_exec_stmt_silent(stmt);
 }
 
-wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_condition_t condition, int last_agent_id, bool set_synced, bool get_hash, cJSON** output) {
+wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_condition_t condition, int last_agent_id, bool set_synced, bool get_hash, int agent_registration_delta, cJSON** output) {
     wdbc_result status = WDBC_UNKNOWN;
 
     wdb_stmt sync_statement_index = WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET;
@@ -1402,6 +1402,8 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
     char *out_aux = cJSON_PrintUnformatted(*output);
     size_t response_size = strlen(out_aux);
     os_free(out_aux);
+    // Recent agents will be excluded
+    int agent_registration_time = time(NULL) - agent_registration_delta;
 
     while (status == WDBC_UNKNOWN) {
         //Prepare SQL query
@@ -1412,6 +1414,11 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
         }
         sqlite3_stmt* sync_stmt = wdb->stmt[sync_statement_index];
         if (sqlite3_bind_int(sync_stmt, 1, last_agent_id) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            status = WDBC_ERROR;
+            break;
+        }
+        if (sqlite3_bind_int(sync_stmt, 2, agent_registration_time) != SQLITE_OK) {
             merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             status = WDBC_ERROR;
             break;
