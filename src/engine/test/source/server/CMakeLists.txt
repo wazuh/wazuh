@@ -45,6 +45,19 @@ CPMAddPackage(
         # "RAPIDJSON_BUILD_CXX17 ON"
 )
 
+# google logging
+CPMAddPackage(
+  NAME glog
+  GITHUB_REPOSITORY google/glog
+  GIT_TAG v0.5.0
+  VERSION 0.5.0
+  OPTIONS
+      "WITH_GTEST OFF"
+      "BUILD_SHARED_LIBS OFF"
+      "WITH_GFLAGS OFF"
+      "WITH_UNWIND OFF"
+)
+
 # ReactiveX/RxCpp
 CPMAddPackage(
   NAME RxCpp
@@ -65,14 +78,17 @@ include_directories(
     ${ENGINE_SOURCE_DIR}/json
 )
 
-add_executable(serverTest ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
-target_link_libraries(serverTest gtest_main uv rxcpp)
+add_executable(serverTest
+  #${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
+  #${SERVER_ENGINE_SOURCE_DIR}/engineServer.hpp
+  ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
+target_link_libraries(serverTest gtest_main uv rxcpp "glog::glog")
 gtest_discover_tests(serverTest)
 
 add_executable(tcpTest ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(tcpTest gtest_main uv rxcpp)
+target_link_libraries(tcpTest gtest_main uv rxcpp "glog::glog")
 gtest_discover_tests(tcpTest)
 
 add_executable(socketTest ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(socketTest gtest_main uv rxcpp)
+target_link_libraries(socketTest gtest_main uv rxcpp "glog::glog")
 gtest_discover_tests(socketTest)
