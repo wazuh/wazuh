@@ -6,14 +6,17 @@
 #include "LogQLParser.hpp"
 #include "hlpDetails.hpp"
 
-static const std::unordered_map<std::string_view, ParserType> ECSParserMapper {
+static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     { "source.ip", ParserType::IP },
     { "server.ip", ParserType::IP },
     { "source.nat.ip", ParserType::IP },
     { "timestamp", ParserType::Any },
-    { "JSON", ParserType::JSON},
     { "url", ParserType::URL},
     { "http.request.method", ParserType::Any },
+};
+
+static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
+    { "JSON", ParserType::JSON },
 };
 
 struct Tokenizer {
@@ -102,24 +105,33 @@ static Parser parseCaptureString(Token token) {
     //      '<_name/type/type2>'
     captureParams = splitSlashSeparatedField({ token.text, token.len });
     Parser parser;
-    parser.parserType = ParserType::Any;
     parser.combType = CombType::Null;
     parser.endToken = 0;
     parser.name = captureParams[0];
     captureParams.erase(captureParams.begin());
+    parser.parserType = ParserType::Any;
+    if (token.text[0] == '_') {
+        if (token.len != 1) {
+            // We have a temp capture with the format <_temp/type/typeN>
+            // we need to take the first parameter after the name and set the type from it
+            if(!captureParams.empty()){
+                auto it = kTempTypeMapper.find(captureParams[0]);
+                if(it != kTempTypeMapper.end()){
+                    parser.parserType = it->second;
+                }
+                // erase the type from the list so we are
+                // consistent with the non temp case
+                captureParams.erase(captureParams.begin());
+            }
+        }
+    }
+    else{
+        auto it = kECSParserMapper.find(captureParams[0]);
+        if (it != kECSParserMapper.end()) {
+            parser.parserType = it->second;
+        }
+    }
     parser.captureOpts = std::move(captureParams);
-    if (token.text[0] != '_') {
-        auto it = ECSParserMapper.find({ token.text, token.len });
-        if (it != ECSParserMapper.end()) {
-            parser.parserType = it->second;
-        }
-    }
-    else if (!parser.captureOpts.empty()) {
-        auto it = ECSParserMapper.find({ parser.captureOpts[0].c_str(), parser.captureOpts[0].length()});
-        if (it != ECSParserMapper.end()) {
-            parser.parserType = it->second;
-        }
-    }
 
     return parser;
 }
