@@ -35,7 +35,7 @@ static void executeParserList(std::string const &event, ParserList const &parser
             case ParserType::Any: {
                 auto ret = parseAny(&eventIt, parser.endToken);
                 if (!ret.empty()) {
-                    result[parser.name] = ret;
+                    result[parser.name] = std::move(ret);
                 }
                 else {
                     error = true;
@@ -70,7 +70,7 @@ static void executeParserList(std::string const &event, ParserList const &parser
             case ParserType::IP: {
                 auto ret = parseIPaddress(&eventIt, parser.endToken);
                 if (!ret.empty()) {
-                    result[parser.name] = ret;
+                    result[parser.name] = std::move(ret);
                 }
                 else {
                     error = true;
@@ -166,6 +166,7 @@ static void executeParserList(std::string const &event, ParserList const &parser
             }
             else {
                 // TODO report error
+                fprintf(stderr, "Capture [%s] failed validation\n", parser.name.c_str());
                 break;
             }
         }
