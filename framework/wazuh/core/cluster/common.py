@@ -25,6 +25,7 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster
+from wazuh.core.common import decimals_date_format
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -300,6 +301,10 @@ class Handler(asyncio.Protocol):
         self.cluster_items = cluster_items
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
+        # Asyncio event loop object.
+        self.loop = None
+        # Abstract server object.
+        self.server = None
 
     def push(self, message: bytes):
         """Send a message to peer.
@@ -483,6 +488,141 @@ class Handler(asyncio.Protocol):
             self.box[msg_counter] = None
             return b'Error sending request: timeout expired.'
         return response_data
+
+    async def get_chunks_in_task_id(self, task_id: bytes, error_command: bytes) -> dict:
+        """Function in charge of collecting the chunks stored under task_id.
+
+        Parameters
+        ----------
+        task_id : bytes
+            Pre-defined task_id to identify this object.
+        error_command : bytes
+            Command sent to the sender node in case of error.
+
+        Returns
+        -------
+        data : dict
+            Chunks collected through task_id.
+        """
+        try:
+            # Chunks were stored under 'task_id' as an string.
+            received_string = self.in_str[task_id].payload
+            data = json.loads(received_string.decode())
+        except KeyError as e:
+            print(str(e))
+            await self.send_request(command=error_command,
+                                    data=f'error while trying to access string under task_id {str(e)}.'.encode())
+            raise exception.WazuhClusterError(3035,
+                                              extra_message=f"it should be under task_id {str(e)}, but it's empty.")
+        except ValueError as e:
+            await self.send_request(command=error_command, data=f'error while trying to load JSON: {str(e)}'.encode())
+            raise exception.WazuhClusterError(3036, extra_message=str(e))
+
+        return data
+
+    async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes) -> dict:
+        """Send the received data to WDB and returns the result of the operation.
+
+        Parameters
+        ----------
+        data : dict
+            Dict containing command and list of chunks to be sent to wazuh-db.
+        info_type : str
+            Information type handled.
+        logger : Logger object
+            Logger to use.
+        error_command : bytes
+            Command sent to the sender node in case of error.
+
+        Returns
+        -------
+        result : dict
+            Dict containing number of updated chunks, error messages (if any) and time spent.
+        """
+        try:
+            result = await cluster.run_in_pool(self.loop, self.server.task_pool, send_data_to_wdb, data,
+                                               self.cluster_items['intervals']['worker']['timeout_agent_groups'],
+                                               info_type=info_type)
+        except Exception as e:
+            print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+            await self.send_request(command=error_command,
+                                    data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+            raise exception.WazuhClusterError(3037, extra_message=str(e))
+
+        # Log information about the results
+        for error in result['error_messages']['others']:
+            logger.error(error)
+
+        for error in result['error_messages']['chunks']:
+            logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
+            logger.error(
+                f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
+
+        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
+                     f'in {result["time_spent"]:3f}s.')
+        result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
+
+        return result
+
+    async def send_result_to_manager(self, command: bytes, result: dict) -> bytes:
+        """Send the results to the manager with the specified command.
+
+        Parameters
+        ----------
+        command : bytes
+            Command sent to the sender node.
+        result : dict
+            Insertion operation result.
+
+        Returns
+        -------
+        response : bytes
+            Response from the receiving node to the sender node of the task.
+        """
+        response = await self.send_request(command=command, data=json.dumps(result).encode())
+
+        return response
+
+    async def sync_wazuh_db_information(self, task_id: bytes, info_type: str, logger: logging.Logger,
+                                        command: bytes, error_command: bytes, sync_dict: dict = None) -> bytes:
+        """Create a process to send to the local wazuh-db the chunks of data received from a master/worker node.
+
+        Parameters
+        ----------
+        task_id : bytes
+            Pre-defined task_id to identify this object.
+        info_type : str
+            Information type handled.
+        logger : Logger object
+            Logger to use.
+        command : bytes
+            Command sent to the sender node.
+        error_command : bytes
+            Command sent to the sender node in case of error.
+        sync_dict : dict
+            Dictionary with general cluster information.
+
+        Returns
+        -------
+        response : bytes
+            Response from the receiving node to the sender node of the task.
+        """
+        sync_dict = sync_dict if sync_dict is not None else {}
+        logger.info('Starting.')
+
+        start_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        data = await self.get_chunks_in_task_id(task_id, error_command)
+        result = await self.update_chunks_wdb(data, info_type, logger, error_command)
+        response = await self.send_result_to_manager(command, result)
+        end_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+
+        sync_dict.update({'date_start_master': start_time.strftime(decimals_date_format),
+                          'date_end_master': end_time.strftime(decimals_date_format),
+                          'n_synced_chunks': result['updated_chunks']})
+        logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
+                    f'Updated {result["updated_chunks"]} chunks.')
+
+        return response
 
     async def send_file(self, filename: str) -> bytes:
         """Send a file to peer, slicing it into chunks.
@@ -1075,7 +1215,7 @@ class SyncTask:
         """
         self.cmd = cmd
         self.logger = logger
-        self.manager = manager
+        self.server = manager
 
     async def request_permission(self):
         """Request permission to start synchronization process with the master.
@@ -1085,7 +1225,7 @@ class SyncTask:
         bool
             Whether permission is granted.
         """
-        result = await self.manager.send_request(command=self.cmd + b'_p', data=b'')
+        result = await self.server.send_request(command=self.cmd + b'_p', data=b'')
 
         if isinstance(result, Exception):
             self.logger.error(f"Error asking for permission: {result}")
@@ -1096,6 +1236,73 @@ class SyncTask:
             self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
 
         return False
+
+
+class SyncFiles(SyncTask):
+    """
+    Define methods to synchronize files with master.
+    """
+
+    async def sync(self, files_to_sync: Dict, files_metadata: Dict):
+        """Send metadata and files to the master node.
+        Parameters
+        ----------
+        files_to_sync : dict
+            Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
+            will be iterated to add the files they refer to the zip file that the master will receive.
+        files_metadata : dict
+            Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
+            a JSON file named files_metadata.json.
+        Returns
+        -------
+        bool
+            True if files were correctly sent to the master node, None otherwise.
+        """
+        # Start the synchronization process with the master and get a taskID.
+        task_id = await self.server.send_request(command=self.cmd, data=b'')
+        if isinstance(task_id, Exception):
+            raise task_id
+        elif task_id.startswith(b'Error'):
+            self.logger.error(task_id.decode())
+            exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
+                                  cls=WazuhJSONEncoder).encode()
+            await self.server.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
+            return
+
+        self.logger.debug(
+            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
+        )
+        compressed_data_path = cluster.compress_files(name=self.server.name, list_path=files_to_sync,
+                                                      cluster_control_json=files_metadata)
+
+        try:
+            # Send zip file to the master into chunks.
+            self.logger.debug("Sending zip file to master.")
+            await self.server.send_file(filename=compressed_data_path)
+            self.logger.debug("Zip file sent to master.")
+
+            # Finish the synchronization process and notify where the file corresponding to the taskID is located.
+            result = await self.server.send_request(command=self.cmd + b'_e',
+                                                    data=task_id + b' ' + os.path.relpath(compressed_data_path,
+                                                                                          common.wazuh_path).encode())
+            if isinstance(result, Exception):
+                raise result
+            elif result.startswith(b'Error'):
+                raise exception.WazuhClusterError(3016, extra_message=result.decode())
+            return True
+        except exception.WazuhException as e:
+            # Notify error to master and delete its received file.
+            self.logger.error(f"Error sending zip file: {e}")
+            await self.server.send_request(command=self.cmd + b'_r',
+                                           data=task_id + b' ' + json.dumps(e, cls=WazuhJSONEncoder).encode())
+        except Exception as e:
+            # Notify error to master and delete its received file.
+            self.logger.error(f"Error sending zip file: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
+                                  cls=WazuhJSONEncoder).encode()
+            await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
+        finally:
+            os.unlink(compressed_data_path)
 
 
 class SyncWazuhdb(SyncTask):
@@ -1199,13 +1406,13 @@ class SyncWazuhdb(SyncTask):
             # Send list of chunks as a JSON string
             data = json.dumps({'set_data_command': self.set_data_command,
                                'payload': self.set_payload, 'chunks': chunks}).encode()
-            task_id = await self.manager.send_string(data)
+            task_id = await self.server.send_string(data)
             if task_id.startswith(b'Error'):
                 raise exception.WazuhClusterError(3016, extra_message=f'String with agents information could '
                                                                       f'not be sent to the master node: {task_id}')
 
             # Specify under which task_id the JSON can be found in the master/worker.
-            await self.manager.send_request(command=self.cmd, data=task_id)
+            await self.server.send_request(command=self.cmd, data=task_id)
             self.logger.debug(f"All chunks sent.")
         else:
             self.logger.info(f"Finished in {(perf_counter() - start_time):.3f}s (0 chunks sent).")
@@ -1245,7 +1452,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
 
 def error_receiving_agent_information(logger, response, info_type):
     """Function called when the master/worker sends the
-    "syn_m_a_err", "syn_m_g_err", "syn_w_g_err" "syn_w_g_err" command.
+    "syn_m_a_err", "syn_m_g_err", "syn_w_g_err" or "syn_w_g_err" command.
 
     Parameters
     ----------
