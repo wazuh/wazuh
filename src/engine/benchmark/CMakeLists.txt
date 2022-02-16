@@ -22,3 +22,4 @@ CPMAddPackage(
 )
 
 add_subdirectory(${BENCHMARK_SOURCE_DIR}/regex)
+add_subdirectory(${BENCHMARK_SOURCE_DIR}/hlp)
