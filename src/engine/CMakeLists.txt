@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Project settings
 project(wazuh-engine
