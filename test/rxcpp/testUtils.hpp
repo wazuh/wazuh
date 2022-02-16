@@ -10,9 +10,21 @@
 #ifndef _TEST_UTILS_H
 #define _TEST_UTILS_H
 
-#define GTEST_COUT std::cout << "[          ] [ INFO ] "
+#include <mutex>
 
 using namespace std;
 using namespace rxcpp;
+
+mutex m;
+
+#define GTEST_COUT std::cout << "[          ] [ INFO ] "
+
+void printsafe(std::string s){
+    m.lock();
+    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] " << s << endl;
+    m.unlock();
+}
+
+
 
 #endif // _TEST_UTILS_H
