@@ -270,8 +270,7 @@ foreach(counter RANGE ${count})
     list(GET syscheckd_tests_names ${counter} test_name)
     list(GET syscheckd_tests_flags ${counter} test_flags)
 
-    add_executable(test_${test_name} test_${test_name}.c ${SRC_FOLDER}/syscheckd/src/${test_name}.c)
-
+    add_executable(test_${test_name} test_${test_name}.c)
     target_link_libraries(
       test_${test_name}
       SYSCHECK_O
