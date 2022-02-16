@@ -10,7 +10,7 @@ import shutil
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime
 from time import perf_counter
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -122,7 +122,7 @@ class ReceiveAgentInfoTask(c_common.ReceiveStringTask):
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its Agent info."""
-        return self.wazuh_common.sync_wazuh_db_information
+        return self.wazuh_common.setup_sync_wazuh_db_information
 
     def done_callback(self, future=None):
         """Check whether the synchronization process was correct and free its lock.
@@ -158,7 +158,7 @@ class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its agent-groups."""
-        return self.wazuh_common.sync_wazuh_db_information
+        return self.wazuh_common.setup_sync_wazuh_db_information
 
     def done_callback(self, future=None):
         """Check whether the synchronization process was correct and free its lock.
@@ -275,7 +275,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_dapi_res(data)
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+            asyncio.create_task(
+                self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'get_nodes':
             cmd, res = self.get_nodes(json.loads(data))
@@ -323,7 +324,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             client = client.decode()
             if client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi',
-                                                                         request_id.encode() + b' ' + request)).decode()
+                                                                          request_id.encode() + b' ' + request)).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
         # Add request to local API requests queue.
@@ -581,7 +582,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return super().end_receiving_file(task_and_file_names)
 
-    async def sync_wazuh_db_information(self, task_id: bytes, info_type: str):
+    async def setup_sync_wazuh_db_information(self, task_id: bytes, info_type: str):
         """Create a process to send to the local wazuh-db the chunks of data received from a worker.
 
         Parameters
@@ -601,64 +602,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         error_command = ''
         sync_dict = {}
         if info_type == 'agent-info':
-            logger = 'Agent-info sync'
+            logger = self.task_loggers['Agent-info sync']
             command = b'syn_m_a_e'
             error_command = b'syn_m_a_err'
             sync_dict = self.sync_agent_info_status
         elif info_type == 'agent-groups':
-            logger = 'Agent-groups sync'
+            logger = self.task_loggers['Agent-groups sync']
             command = b'syn_m_g_e'
             error_command = b'syn_m_g_err'
             sync_dict = self.sync_agent_groups_status
-        logger = self.task_loggers[logger]
-        logger.info('Starting.')
-        date_start_master = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
 
-        try:
-            # Chunks were stored under 'task_id' as an string.
-            received_string = self.in_str[task_id].payload
-            data = json.loads(received_string.decode())
-        except KeyError as e:
-            await self.send_request(command=error_command,
-                                    data=f'error while trying to access string under task_id {str(e)}.'.encode())
-            raise exception.WazuhClusterError(3035,
-                                              extra_message=f"it should be under task_id {str(e)}, but it's empty.")
-        except ValueError as e:
-            await self.send_request(command=error_command, data=f'error while trying to load JSON: {str(e)}'.encode())
-            raise exception.WazuhClusterError(3036, extra_message=str(e))
-
-        # Update chunks in local wazuh-db
-        try:
-            result = await cluster.run_in_pool(self.loop, self.server.task_pool, c_common.send_data_to_wdb, data,
-                                               self.cluster_items['intervals']['master']['timeout_agent_info'],
-                                               info_type=info_type)
-        except Exception as e:
-            await self.send_request(command=error_command,
-                                    data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
-            raise exception.WazuhClusterError(3037, extra_message=str(e))
-
-        # Log information about the results
-        for error in result['error_messages']['others']:
-            logger.error(error)
-
-        for error in result['error_messages']['chunks']:
-            logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
-            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
-
-        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
-                     f'in {result["time_spent"]:3f}s.')
-
-        # Send result to worker
-        result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
-        response = await self.send_request(command=command, data=json.dumps(result).encode())
-        date_end_master = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
-        sync_dict.update({'date_start_master': date_start_master,
-                          'date_end_master': date_end_master,
-                          'n_synced_chunks': result['updated_chunks']})
-        logger.info('Finished in {:.3f}s. Updated {} chunks.'.format((date_end_master - date_start_master
-                                                                      ), result['updated_chunks']))
-
-        return response
+        return await super().sync_wazuh_db_information(task_id=task_id, info_type=info_type, error_command=error_command,
+                                                       logger=logger, command=command, sync_dict=sync_dict)
 
     async def send_agent_groups_information(self):
         """Function in charge of sending the group information to the worker node.
