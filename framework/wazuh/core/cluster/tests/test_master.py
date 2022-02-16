@@ -1456,7 +1456,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
 
     basename_mock.return_value = "/os/path/basename"
     with patch("wazuh.core.cluster.cluster.unmerge_info",
-               return_value=[("/file/path", "file data", '1970-01-01 00:00:00.000')]) as unmerge_info_mock:
+               return_value=[("/file/path", "file data", '1970-01-01 00:00:00.000+00:00')]) as unmerge_info_mock:
         with patch('os.path.isfile', return_value=True) as isfile_mock:
             with patch('os.stat', return_value=StatMock()) as os_stas_mock:
                 # Test until the 'continue'
@@ -1480,7 +1480,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                 reset_mock(all_mocks)
 
                 # Test until the 'continue'
-                unmerge_info_mock.return_value = [("/file/path", "file data", '1970-01-01 00:00:00')]
+                unmerge_info_mock.return_value = [("/file/path", "file data", '1970-01-01 00:00:00+00:00')]
                 result = master_handler.process_files_from_worker(files_metadata=files_metadata,
                                                                   decompressed_files_path=decompressed_files_path,
                                                                   cluster_items=cluster_items, worker_name=worker_name,

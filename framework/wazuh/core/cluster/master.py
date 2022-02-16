@@ -843,7 +843,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
         files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
             received_filename)
-        logger.debug(f"Received {len(files_metadata)} extra-valid files to check.")
 
         # Create a child process to run the task.
         try:
@@ -911,9 +910,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                                 # Format the file_data specified inside the merged file.
                                 try:
-                                    mtime = utils.get_utc_strptime(file_time, '%Y-%m-%d %H:%M:%S.%f')
+                                    mtime = utils.get_utc_strptime(file_time, '%Y-%m-%d %H:%M:%S.%f%z')
                                 except ValueError:
-                                    mtime = utils.get_utc_strptime(file_time, '%Y-%m-%d %H:%M:%S')
+                                    mtime = utils.get_utc_strptime(file_time, '%Y-%m-%d %H:%M:%S%z')
 
                                 # If the file already existed, check if it is older than the one from worker.
                                 if os.path.isfile(full_unmerged_name):
