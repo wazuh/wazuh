@@ -234,14 +234,14 @@ def test_rait_set_up_coro(create_task_mock):
         def __init__(self):
             pass
 
-        def sync_wazuh_db_information(self, wazuh_common, task_id):
+        def setup_sync_wazuh_db_information(self, wazuh_common, task_id):
             """Auxiliary method."""
             pass
 
     wazuh_common_mock = WazuhCommonMock()
     receive_agent_info_task = master.ReceiveAgentInfoTask(wazuh_common=wazuh_common_mock,
                                                           logger=logging.getLogger("wazuh"), task_id="0101")
-    assert receive_agent_info_task.set_up_coro() == wazuh_common_mock.sync_wazuh_db_information
+    assert receive_agent_info_task.set_up_coro() == wazuh_common_mock.setup_sync_wazuh_db_information
     create_task_mock.assert_called_once()
 
 
@@ -255,14 +255,14 @@ def test_rgit_set_up_coro(create_task_mock):
         def __init__(self):
             pass
 
-        def sync_wazuh_db_information(self, wazuh_common, task_id):
+        def setup_sync_wazuh_db_information(self, wazuh_common, task_id):
             """Auxiliary method."""
             pass
 
     wazuh_common_mock = WazuhCommonMock()
     receive_agent_groups_task = master.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock,
                                                               logger=logging.getLogger("wazuh"), task_id="0101")
-    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.sync_wazuh_db_information
+    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.setup_sync_wazuh_db_information
     create_task_mock.assert_called_once()
 
 
@@ -303,7 +303,7 @@ def test_rgit_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
         """Auxiliary class."""
 
         def __init__(self):
-            self.sync_agent_info_free = None
+            self.sync_agent_groups_free = None
 
         def sync_integrity(self, task, info):
             """Auxiliary method."""
@@ -871,153 +871,28 @@ def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_moc
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.perf_counter", return_value=0.0)
-@patch("json.dumps", return_value="")
-@patch("wazuh.core.wdb.socket.socket")
-@patch("wazuh.core.wdb.WazuhDBConnection.send", return_value=["ok"])
-@patch("json.loads", return_value={"chunks": "1", "set_data_command": "1"})
-@patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value="response")
-async def test_master_handler_sync_wazuh_db_information_ok(send_request_mock, loads_mock, send_mock, socket_mock,
-                                                           json_dumps_mock, perf_counter_mock):
-    """Check if the chunks of data are updated and iterated."""
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-            self._error = []
-            self._debug = []
-            self._debug2 = []
-
-        def info(self, data):
-            """Auxiliary method."""
-            self._info.append(data)
-
-        def debug(self, data):
-            """Auxiliary method."""
-            self._debug.append(data)
-
-        def debug2(self, data):
-            """Auxiliary method."""
-            self._debug2.append(data)
-
-        def error(self, data):
-            """Auxiliary method."""
-            self._error.append(data)
-
-    class TaskMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self.payload = b"payload"
-
-    class ServerMock:
-        def __init__(self):
-            self.task_pool = None
+@patch('wazuh.core.cluster.common.Handler.sync_wazuh_db_information', return_value='check')
+async def test_master_handler_setup_sync_wazuh_db_information(sync_wazuh_db_information_mock):
+    """Check that the wazuh-db data reception task is created."""
 
     master_handler = get_master_handler()
-    master_handler.task_loggers["Agent-info sync"] = LoggerMock()
-    master_handler.task_loggers["Agent-groups sync"] = LoggerMock()
-    master_handler.in_str[b"task_id"] = TaskMock()
-    master_handler.server = ServerMock()
+    master_handler.task_loggers['Agent-groups sync'] = {}
+    master_handler.task_loggers['Agent-info sync'] = {}
+    master_handler.sync_agent_info_status = {'n_synced_chunks': 0}
+    master_handler.sync_agent_groups_status = {'n_synced_chunks': 0}
 
-    # Basic example where everything works correctly and the send_request output is returned (agent-info)
-    with patch('wazuh.core.cluster.master.cluster.run_in_pool',
-               return_value={'error_messages': {'others': 'ERROR', 'chunks': ''},
-                             'updated_chunks': 1, 'time_spent': 1}):
-        assert await master_handler.sync_wazuh_db_information(
-            b"task_id", info_type='agent-info') == send_request_mock.return_value
+    assert await master_handler.setup_sync_wazuh_db_information(task_id=b'17', info_type='agent-groups') == 'check'
+    sync_wazuh_db_information_mock.assert_called_once_with(
+        task_id=b'17', info_type='agent-groups', error_command=b'syn_m_g_err',
+        logger=master_handler.task_loggers['Agent-groups sync'], command=b'syn_m_g_e',
+        sync_dict=master_handler.sync_agent_groups_status)
+    sync_wazuh_db_information_mock.reset_mock()
 
-    # Basic example where everything works correctly and the send_request output is returned (agent-groups)
-    with patch('wazuh.core.cluster.master.cluster.run_in_pool',
-               return_value={'error_messages': {'others': [], 'chunks': ''},
-                             'updated_chunks': 1, 'time_spent': 1}):
-        assert await master_handler.sync_wazuh_db_information(
-            b"task_id", info_type='agent-groups') == send_request_mock.return_value
-
-    send_mock.return_value = ["not_ok"]
-    assert await master_handler.sync_wazuh_db_information(
-        b"task_id", info_type='agent-info') == send_request_mock.return_value
-
-    send_mock.side_effect = Exception()
-    assert await master_handler.sync_wazuh_db_information(
-        b"task_id", info_type='agent-info') == send_request_mock.return_value
-
-    send_request_mock.assert_has_calls([call(command=b'syn_m_g_e', data=b''), call(command=b'syn_m_a_e', data=b''),
-                                        call(command=b'syn_m_a_e', data=b'')])
-    loads_mock.assert_has_calls([call("payload"), call("payload"), call("payload")])
-    assert socket_mock.call_count == 2
-    assert perf_counter_mock.call_count == 4
-    json_dumps_mock.assert_has_calls(
-        [call({'error_messages': [], 'updated_chunks': 1, 'time_spent': 1}),
-         call({'updated_chunks': 1, 'error_messages': [], 'time_spent': 0.0}),
-         call({'updated_chunks': 0, 'error_messages': [''], 'time_spent': 0.0})])
-    send_mock.assert_has_calls([call("1 1", raw=True), call("1 1", raw=True)])
-    assert master_handler.task_loggers["Agent-info sync"]._info == ["Starting.",
-                                                                    "Finished in 0.000s. Updated 1 chunks.",
-                                                                    "Starting.",
-                                                                    "Finished in 0.002s. Updated 1 chunks.",
-                                                                    "Starting.",
-                                                                    "Finished in 0.000s. Updated 0 chunks."]
-    assert master_handler.task_loggers["Agent-info sync"]._error == ['E', 'R', 'R', 'O', 'R',
-                                                                     'Wazuh-db response for chunk 1/1 was not "ok": ']
-    assert master_handler.task_loggers["Agent-info sync"]._debug == ["1/1 chunks updated in wazuh-db in 1.000000s.",
-                                                                     "1/1 chunks updated in wazuh-db in 0.000000s.",
-                                                                     "0/1 chunks updated in wazuh-db in 0.000000s.", ]
-    assert master_handler.task_loggers["Agent-info sync"]._debug2 == ['Chunk 1/1: 1']
-
-
-@pytest.mark.asyncio
-@patch("wazuh.core.wdb.socket.socket")
-@patch("json.loads", return_value={"chunks": "1", "set_data_command": "1"})
-@patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value="response")
-async def test_master_handler_sync_wazuh_db_info_ko(send_request_mock, loads_mock, socket_mock):
-    """Check if the exceptions are correctly handled."""
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-
-        def info(self, data):
-            """Auxiliary method."""
-            self._info.append(data)
-
-    class TaskMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self.payload = b"payload"
-
-    master_handler = get_master_handler()
-    master_handler.task_loggers["Agent-info sync"] = LoggerMock()
-    master_handler.task_loggers["Agent-groups sync"] = LoggerMock()
-    master_handler.in_str[b"task_id"] = TaskMock()
-
-    # Test the first except
-    with pytest.raises(exception.WazuhClusterError, match=r'.* 3035 .*'):
-        await master_handler.sync_wazuh_db_information(b"not_task_id", info_type='agent-info')
-
-    # Test the second exception
-    loads_mock.side_effect = ValueError()
-    with pytest.raises(exception.WazuhClusterError, match=r'.* 3036 .*'):
-        await master_handler.sync_wazuh_db_information(b"task_id", info_type='agent-groups')
-
-    # Test the third exception
-    loads_mock.side_effect = None
-    with pytest.raises(exception.WazuhClusterError, match=r'.* 3037 .*'):
-        await master_handler.sync_wazuh_db_information(b"task_id", info_type='agent-info')
-
-    send_request_mock.assert_has_calls(
-        [call(command=b"syn_m_a_err", data=b"error while trying to access string under task_id b'not_task_id'."),
-         call(command=b"syn_m_g_err", data=b"error while trying to load JSON: "),
-         call(command=b"syn_m_a_err", data=b"error processing agent-info chunks in process pool: "
-                                           b"'AbstractClientManager' object has no attribute 'task_pool'")])
-    loads_mock.assert_has_calls([call("payload")])
-    assert master_handler.task_loggers["Agent-info sync"]._info == ["Starting.", "Starting."]
-    assert master_handler.task_loggers["Agent-groups sync"]._info == ["Starting."]
+    assert await master_handler.setup_sync_wazuh_db_information(task_id=b'17', info_type='agent-info') == 'check'
+    sync_wazuh_db_information_mock.assert_called_once_with(
+        task_id=b'17', info_type='agent-info', error_command=b'syn_m_a_err',
+        logger=master_handler.task_loggers['Agent-info sync'], command=b'syn_m_a_e',
+        sync_dict=master_handler.sync_agent_info_status)
 
 
 @pytest.mark.asyncio

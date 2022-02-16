@@ -324,7 +324,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             client = client.decode()
             if client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi',
-                                                                          request_id.encode() + b' ' + request)).decode()
+                                                                         request_id.encode() + b' ' + request)).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
         # Add request to local API requests queue.
