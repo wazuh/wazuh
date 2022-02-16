@@ -16,6 +16,7 @@ enum class ParserType {
     Ts,
     URL,
     JSON,
+    Map,
     Invalid,
 };
 
@@ -27,4 +28,3 @@ struct Parser {
     CombType combType;
     char endToken;
 };
-

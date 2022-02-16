@@ -17,6 +17,7 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
 
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     { "JSON", ParserType::JSON },
+    { "MAP", ParserType::Map},
 };
 
 struct Tokenizer {
@@ -132,12 +133,6 @@ static Parser parseCaptureString(Token token) {
         }
     }
     parser.captureOpts = std::move(captureParams);
-    if (!parser.captureOpts.empty()) {
-        auto it = ECSParserMapper.find({ parser.captureOpts[0].c_str(), parser.captureOpts[0].length()});
-        if (it != ECSParserMapper.end()) {
-            parser.parserType = it->second;
-        }
-    }
 
     return parser;
 }
