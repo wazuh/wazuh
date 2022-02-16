@@ -232,8 +232,9 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         path = cJSON_GetStringValue(path_cjson);
     } else if (txn_context->latest_entry != NULL) {
         path = txn_context->latest_entry->file_entry.path;
+    } else {
+        goto end;
     }
-
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
         goto end;
