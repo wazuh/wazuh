@@ -161,13 +161,13 @@ TEST(map_test, incomplete_map_test)
 {
     const char *logQl ="<_map/MAP/ /=>";
     const char *event1 ="key1=Value1 Key2=";
-    const char *event2 ="key1=Value1 Key2=";
+    const char *event2 ="key1=Value1 Key2";
     const char *event3 ="key1=Value1 =Value2";
 
     ParserFn parseOp = getParserOp(logQl);
-    auto result1 = parseOp(event);
-    auto result2 = parseOp(event);
-    auto result3 = parseOp(event);
+    auto result1 = parseOp(event1);
+    auto result2 = parseOp(event2);
+    auto result3 = parseOp(event3);
 
     ASSERT_TRUE(result1.empty());
     ASSERT_TRUE(result2.empty());
