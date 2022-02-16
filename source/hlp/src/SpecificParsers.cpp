@@ -63,6 +63,76 @@ std::string parseJson(const char **it) {
     return s.GetString();
 };
 
+std::string parseMap(const char **it, char endToken, std::vector<std::string> captureOpts) {
+    size_t opts_size = captureOpts.size();
+    if (opts_size < 3) {
+        return {};
+    }
+    char tuples_separator = captureOpts[1][0];
+    char values_separator = captureOpts[2][0];
+    char map_finalizer = endToken;
+    bool has_map_finalizer = false;
+    if (opts_size > 3) {
+        map_finalizer = captureOpts[3][0];
+        has_map_finalizer = true;
+    }
+
+    const char *start = *it;
+    while (**it != map_finalizer && **it != '\0') { (*it)++; }
+    std::string map_str { start, (size_t)((*it) - start) };
+    if (has_map_finalizer) {
+        (*it)++;
+    }
+
+    rapidjson::Document output_doc;
+    output_doc.SetObject();
+    auto& allocator = output_doc.GetAllocator();
+
+    size_t tuple_start_pos = 0;
+    bool stop = false;
+    bool error = false;
+    while (!stop)
+    {
+        size_t separator_pos = map_str.find(values_separator, tuple_start_pos);
+        if (separator_pos == std::string::npos) {
+            stop = true;
+            error = true;
+            //TODO Log error: Missing Separator
+            break;
+        }
+        size_t tuple_end_pos = map_str.find(tuples_separator, separator_pos);
+        if (tuple_end_pos == std::string::npos) {
+            // Map ended
+            stop = true;
+        }
+        std::string key_str = map_str.substr(tuple_start_pos, separator_pos-tuple_start_pos);
+        std::string value_str = map_str.substr(separator_pos+1, tuple_end_pos-(separator_pos+1));
+        if (key_str.empty() || value_str.empty() )
+        {
+            stop = true;
+            error = true;
+            //TODO Log error: Empty map fields
+            break;
+        }
+        tuple_start_pos = tuple_end_pos+1;
+
+        output_doc.AddMember(
+            rapidjson::Value(key_str.c_str(), allocator),
+            rapidjson::Value(value_str.c_str(), allocator),
+            allocator);
+    }
+
+    if (!error) {
+        rapidjson::StringBuffer s;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+        output_doc.Accept(writer);
+        return s.GetString();
+    }
+    else {
+        return {};
+    }
+};
+
 std::string parseIPaddress(const char **it, char endToken) {
     struct in_addr ip;
     struct in6_addr ipv6;

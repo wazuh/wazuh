@@ -86,6 +86,16 @@ static void executeParserList(std::string const &event, ParserList const &parser
                 }
                 break;
             }
+            case ParserType::Map: {
+                auto ret = parseMap(&eventIt, parser.endToken, parser.captureOpts);
+                if (!ret.empty()) {
+                    result[parser.name] = ret;
+                }
+                else {
+                    error = true;
+                }
+                break;
+            }
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",

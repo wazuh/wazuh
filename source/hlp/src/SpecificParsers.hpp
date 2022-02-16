@@ -22,6 +22,8 @@ bool matchLiteral(const char **it, std::string const& literal);
 
 std::string parseJson(const char **it);
 
+std::string parseMap(const char **it, char endToken, std::vector<std::string> captureOpts);
+
 std::string parseIPaddress(const char **it, char endToken);
 
 bool parseTimeStamp(char **it, char endToken);
