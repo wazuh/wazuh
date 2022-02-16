@@ -167,6 +167,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND] = "SELECT 1 FROM agent WHERE group_sync_status = 'syncreq';",
+    [WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET] = "SELECT count(id_group) groups_number from belongs WHERE id_agent = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_SET] = "UPDATE agent SET group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_PRIORITY_GET] = "SELECT MAX(priority) FROM belongs WHERE id_agent=?;",
     [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT `group` from agent where id = ?;",
