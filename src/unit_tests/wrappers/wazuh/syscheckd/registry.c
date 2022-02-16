@@ -19,11 +19,11 @@ void __wrap_fim_registry_scan() {
 }
 
 cJSON* __wrap_fim_dbsync_registry_key_json_event(){
-    return mock();
+    return mock_ptr_type(cJSON*);
 }
 
 cJSON* __wrap_fim_dbsync_registry_value_json_event(){
-    return mock();
+    return mock_ptr_type(cJSON*);
 }
 
 void __wrap_fim_diff_process_delete_registry(){

@@ -91,6 +91,7 @@ TXN_HANDLE __wrap_fim_db_transaction_start(__attribute__((unused))const char* ta
     return mock_type(TXN_HANDLE);
 }
 
-int __wrap_Start_win32_Syscheck(){
+int __wrap_Start_win32_Syscheck() {
     function_called();
+    return mock();
 }

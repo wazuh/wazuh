@@ -27,7 +27,7 @@
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
 time_t last_time = 0;
-
+void audit_set_db_consistency(void);
 #ifdef WIN32
 
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"

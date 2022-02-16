@@ -102,7 +102,7 @@ void test_fim_initialize(void **state)
 #ifdef WIN32
     expect_wrapper_fim_db_init(syscheck_conf->database_store,
                                syscheck_conf->sync_interval,
-                               syscheck_conf->file_limit,
+                               syscheck_conf->db_entry_file_limit,
                                syscheck_conf->db_entry_registry_limit,
                                true);
 #else
