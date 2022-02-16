@@ -1,5 +1,3 @@
-find_package(CURL REQUIRED)
-
 CPMAddPackage(
     NAME RapidJSON
     GITHUB_REPOSITORY Tencent/rapidjson
@@ -15,8 +13,6 @@ CPMAddPackage(
 add_executable(hlp_test
   ${TEST_SOURCE_DIR}/hlp/hlp_test.cpp
 )
-
-target_include_directories(hlp_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
 
 target_link_libraries(hlp_test hlp gtest_main)
 
