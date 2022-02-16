@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include "json.hpp"
 
 namespace builder::internals::outputs
 {
