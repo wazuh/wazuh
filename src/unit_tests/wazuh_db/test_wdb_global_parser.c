@@ -2063,6 +2063,7 @@ void test_wdb_parse_global_sync_agent_groups_get_null_response(void **state)
     expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, agent_registration_delta, 0);
     will_return(__wrap_wdb_global_sync_agent_groups_get, NULL);
     will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_ERROR);
 
@@ -2076,7 +2077,8 @@ void test_wdb_parse_global_sync_agent_groups_get_success(void **state)
 {
     int ret = 0;
     test_struct_t *data = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true,"
+                                 "\"agent_registration_delta\":10}";
     cJSON *output = cJSON_CreateArray();
     cJSON *j_response = cJSON_CreateObject();
     cJSON *j_data = cJSON_CreateArray();
@@ -2085,11 +2087,13 @@ void test_wdb_parse_global_sync_agent_groups_get_success(void **state)
     cJSON_AddStringToObject(j_response, "hash", "random_hash");
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,"
+                                                  "\"get_global_hash\":true,\"agent_registration_delta\":10}");
     expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_ALL);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, agent_registration_delta, 10);
     will_return(__wrap_wdb_global_sync_agent_groups_get, output);
     will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_OK);
 
@@ -2103,7 +2107,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_response(void **state)
 {
     int ret = 0;
     test_struct_t *data = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}";
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true,"
+                                 "\"agent_registration_delta\":15}";
 
     cJSON *output = cJSON_CreateArray();
     cJSON *j_response = cJSON_CreateObject();
@@ -2131,11 +2136,13 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_response(void **state)
     cJSON_AddItemToArray(j_data, j_data_object_2);
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,\"get_global_hash\":true}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"all\",\"last_id\":3,\"set_synced\":true,"
+                                                  "\"get_global_hash\":true,\"agent_registration_delta\":15}");
     expect_value(__wrap_wdb_global_sync_agent_groups_get, condition, WDB_GROUP_ALL);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, last_agent_id, 3);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, set_synced, true);
     expect_value(__wrap_wdb_global_sync_agent_groups_get, get_hash, true);
+    expect_value(__wrap_wdb_global_sync_agent_groups_get, agent_registration_delta, 15);
     will_return(__wrap_wdb_global_sync_agent_groups_get, output);
     will_return(__wrap_wdb_global_sync_agent_groups_get, WDBC_OK);
 
