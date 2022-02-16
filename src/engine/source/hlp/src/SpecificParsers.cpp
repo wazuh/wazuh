@@ -61,7 +61,7 @@ std::string parseJson(const char **it) {
 
     *it += s.GetLength();
     return s.GetString();
-};
+}
 
 std::string parseMap(const char **it, char endToken, std::vector<std::string> const& captureOpts) {
     size_t opts_size = captureOpts.size();
@@ -98,16 +98,17 @@ std::string parseMap(const char **it, char endToken, std::vector<std::string> co
             break;
         }
         size_t tuple_end_pos = map_str.find(tuples_separator, separator_pos);
-        if (tuple_end_pos == std::string::npos) {
-            // Map ended
-            done = true;
-        }
         std::string key_str(map_str.substr(tuple_start_pos, separator_pos-tuple_start_pos));
         std::string value_str(map_str.substr(separator_pos+1, tuple_end_pos-(separator_pos+1)));
+
         if (key_str.empty() || value_str.empty() )
         {
             //TODO Log error: Empty map fields
             break;
+        }
+        else if (tuple_end_pos == std::string::npos) {
+            // Map ended
+            done = true;
         }
         tuple_start_pos = tuple_end_pos+1;
 
@@ -126,7 +127,7 @@ std::string parseMap(const char **it, char endToken, std::vector<std::string> co
     else {
         return {};
     }
-};
+}
 
 std::string parseIPaddress(const char **it, char endToken) {
     struct in_addr ip;
