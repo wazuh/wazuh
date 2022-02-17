@@ -1334,18 +1334,18 @@ wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id
             if (cJSON_IsString(j_group_name)) {
                 ++groups_number;
                 if ((groups_number + existent_groups_number) > MAX_GROUPS_PER_MULTIGROUP) {
-                    merror("Invalid groups number. Groups exceed maximum number (%d) permitted", MAX_GROUPS_PER_MULTIGROUP);
+                    mwarn("Invalid groups number. Groups exceed maximum number (%d) permitted", MAX_GROUPS_PER_MULTIGROUP);
                     ret = WDBC_ERROR;
                     break;
                 }
                 char* group_name = j_group_name->valuestring;
                 if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
-                    merror("Invalid group name. Group contains comma in its name");
+                    mwarn("Invalid group name. Group contains comma in its name");
                     ret = WDBC_ERROR;
                     break;
                 }
                 if (strlen(group_name) > MAX_GROUP_NAME) {
-                    merror("Invalid group name. Group name exceeds maximum length (%d characters) permitted", MAX_GROUP_NAME);
+                    mwarn("Invalid group name. Group name exceeds maximum length (%d characters) permitted", MAX_GROUP_NAME);
                     ret = WDBC_ERROR;
                     break;
                 }
