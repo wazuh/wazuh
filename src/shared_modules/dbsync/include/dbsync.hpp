@@ -209,9 +209,10 @@ public:
      * @brief Gets the deleted rows (diff) from the database.
      *
      * @param callbackData    Result callback(std::function) will be called for each result.
+     * @param options
      *
      */
-    virtual void getDeletedRows(ResultCallbackData callbackData);
+    virtual void getDeletedRows(ResultCallbackData callbackData, const nlohmann::json& options);
 
     /**
      * @brief Get current dbsync transaction handle in the instance.
@@ -389,5 +390,20 @@ class EXPORTED SyncRowQuery final : public Query<SyncRowQuery>
          */
         SyncRowQuery & reset();
 };
+
+class EXPORTED GetDeletedQuery final : public Query<GetDeletedQuery>
+{
+    public:
+        GetDeletedQuery() = default;
+        // LCOV_EXCL_START
+        virtual ~GetDeletedQuery() = default;
+        // LCOV_EXCL_STOP
+
+        /**
+         * @brief Set option to retrieve all columns from deleted rows.
+         */
+        GetDeletedQuery & allColumns();
+};
+
 
 #endif // _DBSYNC_HPP_

@@ -1,0 +1,6 @@
+{
+    "action": "dbsync_get_deleted_rows",
+    "options": {
+        "all_columns":true
+    }
+}

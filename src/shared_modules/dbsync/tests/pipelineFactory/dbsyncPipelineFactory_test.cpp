@@ -131,7 +131,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowInvalidData)
     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
     pipeline->syncRow(nlohmann::json::parse(jsonInputNoTable));
     pipeline->syncRow(nlohmann::json::parse(jsonInputNoData));
-    pipeline->getDeleted(nullptr);
+    pipeline->getDeleted(nullptr, {});
     m_pipelineFactory.destroy(pipeHandle);
 }
 
@@ -170,7 +170,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
     pipeline->syncRow(nlohmann::json::parse(jsonInput1));
     pipeline->syncRow(nlohmann::json::parse(jsonInput2));
     pipeline->syncRow(nlohmann::json::parse(jsonInput2));
-    pipeline->getDeleted(nullptr);
+    pipeline->getDeleted(nullptr, {});
     m_pipelineFactory.destroy(pipeHandle);
 }
 
@@ -200,7 +200,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
     EXPECT_CALL(wrapper, callback(INSERTED, nlohmann::json::parse(R"([{"pid":4,"name":"System","tid":100}])"))).Times(1);
     pipeline->syncRow(nlohmann::json::parse(jsonInput));
-    pipeline->getDeleted(nullptr);
+    pipeline->getDeleted(nullptr, {});
     m_pipelineFactory.destroy(pipeHandle);
 }
 
@@ -237,7 +237,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeleted)
     const auto pipeline{ m_pipelineFactory.pipeline(pipeHandle) };
     pipeline->syncRow(nlohmann::json::parse(jsonInputTxn1));
     pipeline->syncRow(nlohmann::json::parse(jsonInputTxn2));
-    pipeline->getDeleted(resultFnc);
+    pipeline->getDeleted(resultFnc, {});
     m_pipelineFactory.destroy(pipeHandle);
 }
 
@@ -275,7 +275,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeletedSameData)
     pipeline->syncRow(nlohmann::json::parse(jsonInputTxn1));
     pipeline->syncRow(nlohmann::json::parse(jsonInputTxn2));
     pipeline->syncRow(nlohmann::json::parse(jsonInputTxn3));
-    pipeline->getDeleted(resultFnc);
+    pipeline->getDeleted(resultFnc, {});
     m_pipelineFactory.destroy(pipeHandle);
 }
 

@@ -140,12 +140,13 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
 
 void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
                                       const TXN_HANDLE      txnHandle,
-                                      const ResultCallback  callback)
+                                      const ResultCallback  callback,
+                                      const nlohmann::json& options)
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txnHandle) };
 
-    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback);
+    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback, options);
 }
 
 void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,

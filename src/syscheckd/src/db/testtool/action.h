@@ -362,13 +362,13 @@ struct SyncTxnRowsAction final : public IAction
 struct GetDeletedRowsAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx,
-                 const nlohmann::json& /*value*/) override
+                 const nlohmann::json& value) override
     {
+        const auto options { value.contains("options") ? value["options"] : "{}"_json };
         const auto txnOutputFileName{ ctx->outputPath + "/txn_ops.json" };
-
         auto callbackDelete
         {
-            [txnOutputFileName, &ctx](ReturnTypeCallback type, const nlohmann::json & json)
+            [txnOutputFileName, options, &ctx](ReturnTypeCallback type, const nlohmann::json & json)
             {
                 std::lock_guard<std::mutex> lock(ctx->txn_callback_mutex);
                 std::ifstream inputFile{ txnOutputFileName };
@@ -383,7 +383,8 @@ struct GetDeletedRowsAction final : public IAction
                 jsonResult["data"].push_back( {
                     {"Operation type", RETURN_TYPE_OPERATION.at(type) },
                     {"value", json },
-                    {"action", "GetDeletedRows" }
+                    {"action", "GetDeletedRows" },
+                    {"options", options }
                     } );
 
                 std::ofstream outputFile{ txnOutputFileName };
@@ -394,7 +395,7 @@ struct GetDeletedRowsAction final : public IAction
         auto retVal { false };
         try
         {
-            ctx->txn->getDeletedRows(callbackDelete);
+            ctx->txn->getDeletedRows(callbackDelete, options);
             retVal = true;
         }
         catch (const std::exception& ex)

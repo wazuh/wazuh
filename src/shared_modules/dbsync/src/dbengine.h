@@ -49,7 +49,8 @@ namespace DbSync
             virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
 
             virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
-                                                   const DbSync::ResultCallback callback) = 0;
+                                                   const DbSync::ResultCallback callback,
+                                                   const nlohmann::json& options) = 0;
 
             virtual void selectData(const std::string& table,
                                     const nlohmann::json& query,

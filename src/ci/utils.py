@@ -77,7 +77,25 @@ smokeTestsDic = {
             'is_smoke_with_configuration': True,
             'args': [
                 '-c config.json',
-                '-a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json',
+                '-a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/pksGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json',
+                '-o ./output'
+            ]
+        },
+        {
+            'test_tool_name': 'dbsync_test_tool',
+            'is_smoke_with_configuration': True,
+            'args': [
+                '-c config.json',
+                '-a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/fullyGetDeletedRows.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json',
+                '-o ./output'
+            ]
+        },
+        {
+            'test_tool_name': 'dbsync_test_tool',
+            'is_smoke_with_configuration': True,
+            'args': [
+                '-c config.json',
+                '-a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json',
                 '-o ./output'
             ]
         },
