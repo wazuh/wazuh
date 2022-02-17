@@ -856,7 +856,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 if (wdb_set_agent_groups_csv(atoi(cur->id),
                                              cur->group,
                                              WDB_GROUP_MODE_OVERRIDE,
-                                             "synced",
+                                             w_is_single_node(NULL) ? "synced" : "syncreq",
                                              &wdb_sock)) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
