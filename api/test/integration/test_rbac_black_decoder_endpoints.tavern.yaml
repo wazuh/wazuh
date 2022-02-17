@@ -1,9 +1,6 @@
 ---
 test_name: GET DECODERS RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Try to show the decoders of the system

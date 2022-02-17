@@ -1,9 +1,6 @@
 ---
 test_name: GET /mitre/metadata
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /mitre/metadata
@@ -30,9 +27,6 @@ stages:
 
 ---
 test_name: GET /mitre/mitigations
-
-marks:
-  - base_mitigation_tests
 
 stages:
 
@@ -351,9 +345,6 @@ stages:
 ---
 test_name: GET /mitre/references
 
-marks:
-  - base_reference_tests
-
 stages:
 
   - name: Show one reference
@@ -639,9 +630,6 @@ stages:
 
 ---
 test_name: GET /mitre/tactics
-
-marks:
-  - base_tactic_tests
 
 stages:
 
@@ -940,9 +928,6 @@ stages:
 
 ---
 test_name: GET /mitre/techniques
-
-marks:
-  - base_technique_tests
 
 stages:
 

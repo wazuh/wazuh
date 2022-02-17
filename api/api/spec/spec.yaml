@@ -10655,7 +10655,7 @@ paths:
                     - timestamp: '2020-04-15T13:50:24Z'
                       tag: wazuh-maild
                       level: error
-                      description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
+                      description: " (1263): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
@@ -12000,7 +12000,7 @@ paths:
                   -  Rules config
                   -  Author: Daniel Cid.
                   -  Updated by Wazuh, Inc.
-                  -  Copyright (C) 2015-2021, Wazuh Inc.
+                  -  Copyright (C) 2015, Wazuh Inc.
                   -  Copyright (C) 2009 Trend Micro Inc.
                   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
                 -->
@@ -12781,7 +12781,7 @@ paths:
                 <!--
                   -  Wazuh decoders
                   -  Created by Wazuh, Inc.
-                  -  Copyright (C) 2015-2021, Wazuh Inc.
+                  -  Copyright (C) 2015, Wazuh Inc.
                   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
                 -->
                 <decoder name="wazuh">

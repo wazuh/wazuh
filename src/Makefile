@@ -1,7 +1,7 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # TODO: mysql and postgresql?
 #
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +42,11 @@ EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
+EXTERNAL_JEMALLOC=external/jemalloc/
+ifeq (${uname_S},Linux)
+EXTERNAL_RPM=external/rpm/
+EXTERNAL_POPT=external/popt/
+endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
@@ -67,7 +72,7 @@ USE_BIG_ENDIAN=no
 USE_AUDIT=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
-
+DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
@@ -321,7 +326,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include  -I${SYSINFO}include  -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -570,11 +575,11 @@ help: failtarget
 	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make INSTALLDIR=/path        Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE.
+	@echo "   make INSTALLDIR=/path        Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
-	@echo "   make EXTERNAL_SRC_ONLY=yes   Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building.
+	@echo "   make EXTERNAL_SRC_ONLY=yes   Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -582,6 +587,7 @@ help: failtarget
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=yes     Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -675,6 +681,12 @@ BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
+
+ifeq (${uname_S},SunOS)
+ifeq ($(uname_R),5.10)
+	BUILD_AGENT+=libgcc_s.so.1
+endif
+endif
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
@@ -797,6 +809,9 @@ LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
+POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
+RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
+JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
@@ -815,6 +830,9 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
+ifneq ($(CHECK_CENTOS5),YES)
+EXTERNAL_LIBS += ${RPM_LIB} ${POPT_LIB}
+endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
@@ -830,8 +848,9 @@ ifeq (${uname_S},Darwin)
 EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
+
 .PHONY: external test_external
-external: test_external $(EXTERNAL_LIBS)
+external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 external: build_gtest
@@ -1081,6 +1100,49 @@ else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
 endif
 
+### popt lib ###
+
+POPT_BUILD_DIR = $(EXTERNAL_POPT)build/
+
+$(POPT_LIB): $(POPT_BUILD_DIR)Makefile
+	 $(MAKE) -C $(POPT_BUILD_DIR)
+$(POPT_BUILD_DIR)Makefile:
+	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
+
+### rpm lib ###
+
+RPM_BUILD_DIR = ${EXTERNAL_RPM}/builddir
+
+RPM_INC_PATHS = -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
+				-I${ROUTE_PATH}/${EXTERNAL_ZLIB} \
+				-I${ROUTE_PATH}/${EXTERNAL_POPT}/src \
+				-I${ROUTE_PATH}/${EXTERNAL_SQLITE}
+
+RPM_LIB_PATHS = -L${ROUTE_PATH}/${EXTERNAL_OPENSSL} \
+				-L${ROUTE_PATH}/${EXTERNAL_ZLIB} \
+				-L${ROUTE_PATH}/${EXTERNAL_POPT}/build/output/src/.libs/ \
+				-L${ROUTE_PATH}/${EXTERNAL_SQLITE}
+
+RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}
+RPM_CC = gcc
+
+${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
+	cd ${RPM_BUILD_DIR} && ${MAKE}
+
+${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
+	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="${RPM_CFLAGS}" CC=${RPM_CC} cmake ..
+
+#### jemalloc ##########
+
+$(JEMALLOC_LIB):
+ifeq (${TARGET},server)
+ifneq ($(wildcard external/jemalloc/configure),)
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./configure --disable-static --disable-cxx && ${MAKE}
+else
+	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./autogen.sh --disable-static --disable-cxx && ${MAKE}
+endif
+endif
+
 ################################
 #### External dependencies  ####
 ################################
@@ -1089,7 +1151,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 15
+DEPS_VERSION = 16
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
@@ -1133,7 +1195,10 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
+ifeq (${TARGET},server)
+	EXTERNAL_RES += jemalloc
+endif
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -1577,12 +1642,17 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
+ifneq ($(uname_R),5.10)
+LIBGCC_FLAGS := -static-libgcc
+else
+LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
+endif
 ifeq (${uname_P},sparc)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
 ifneq (,$(filter ${uname_S},AIX HP-UX))
@@ -1602,6 +1672,13 @@ endif
 endif
 endif
 endif
+
+
+### libgcc_s #########
+
+LIBGCC := $(realpath $(dir $(shell which gcc))../lib/libgcc_s.so.1)
+libgcc_s.so.1: $(LIBGCC)
+	cp $< $@
 
 #### os_mail #########
 
@@ -1785,12 +1862,17 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
+ifneq ($(uname_R),5.10)
+LIBGCC_FLAGS := -static-libgcc
+else
+LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
+endif
 ifeq (${uname_P},sparc)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
 ifneq (,$(filter ${uname_S},AIX HP-UX))
@@ -2029,8 +2111,14 @@ wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${fo
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
+ifeq (${TARGET},server)
+ifeq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
+	MODULESD_LDFLAGS=-L${EXTERNAL_JEMALLOC}lib -ljemalloc
+endif
+endif
+
 wazuh-modulesd: ${wmodulesd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
 
 ### wazuh-gtest-gmock ###
 
@@ -2290,6 +2378,8 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
 	-cd ${EXTERNAL_LIBPCRE2} && ${MAKE} distclean && rm include/*
+	rm -rf ${POPT_BUILD_DIR}
+	rm -rf ${RPM_BUILD_DIR}
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
@@ -2297,6 +2387,10 @@ endif
 
 ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
+endif
+
+ifneq ($(wildcard external/jemalloc/Makefile),)
+	cd ${EXTERNAL_JEMALLOC} && ${MAKE} clean
 endif
 
 ifneq ($(wildcard external/pacman/lib/libalpm/*),)
@@ -2353,6 +2447,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
+	rm -f libgcc_s.so.1
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}

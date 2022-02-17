@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -126,11 +126,9 @@ def test_get_logs_summary():
                                                      'debug': 2}
 
 
-@patch('wazuh.core.manager.open')
-@patch('wazuh.core.manager.fcntl')
 @patch('wazuh.core.manager.exists', return_value=True)
 @patch('wazuh.core.manager.WazuhSocket')
-def test_validate_ossec_conf(mock_wazuhsocket, mock_exists, mock_fcntl, mock_open):
+def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
     with patch('socket.socket') as sock:
         # Mock sock response
         json_response = json.dumps({'error': 0, 'message': ""}).encode()
@@ -138,15 +136,11 @@ def test_validate_ossec_conf(mock_wazuhsocket, mock_exists, mock_fcntl, mock_ope
         result = validate_ossec_conf()
 
         assert result == {'status': 'OK'}
-        assert mock_fcntl.lockf.call_count == 2
         mock_exists.assert_called_with(join(common.wazuh_path, 'queue', 'sockets', 'com'))
-        mock_open.assert_called_once_with(join(common.wazuh_path, "var", "run", ".api_wcom_lock"), 'a+')
 
 
-@patch('wazuh.core.manager.open')
-@patch('wazuh.core.manager.fcntl')
 @patch("wazuh.core.manager.exists", return_value=True)
-def test_validation_ko(mosck_exists, mock_lockf, mock_open):
+def test_validation_ko(mock_exists):
     # Socket creation raise socket.error
     with patch('socket.socket', side_effect=socket.error):
         with pytest.raises(WazuhInternalError, match='.* 1013 .*'):

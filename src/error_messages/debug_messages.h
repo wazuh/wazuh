@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 17, 2018.
  *
  * This program is free software; you can redistribute it
@@ -303,5 +303,10 @@
 /* Logcollector */
 
 #define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
+
+/* Analysisd */
+
+#define MESSAGE_TOO_LONG                    "(9200): Long message, cannot be processed."
+#define UNABLE_TO_SEND_INFORMATION_TO_WDB   "(9201): Unable to send dbsync information to Wazuh DB."
 
 #endif /* DEBUG_MESSAGES_H */

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -809,6 +809,13 @@ InstallCommon()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
         fi
     fi
+    if [ ${NUNAME} = 'SunOS' ]
+    then
+        if [ ${VUNAME} = '5.10' ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 libgcc_s.so.1 ${INSTALLDIR}/lib
+        fi
+    fi
 
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
@@ -1034,6 +1041,14 @@ InstallServer()
 {
 
     InstallLocal
+    if [ -f external/jemalloc/lib/libjemalloc.so.2 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/jemalloc/lib/libjemalloc.so.2 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libjemalloc.so.2
+        fi
+    fi
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster

@@ -1,11 +1,10 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import errno
 import glob
 import hashlib
-import json
 import operator
 import os
 import re
@@ -17,13 +16,10 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from functools import wraps
 from itertools import groupby, chain
-from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
-from os.path import join, basename, relpath
+from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 from pyexpat import ExpatError
-from shutil import Error, copyfile, move
+from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM
-from subprocess import CalledProcessError, check_output
-from xml.etree.ElementTree import ElementTree
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -45,7 +41,7 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
-def check_pid(daemon):
+def clean_pid_files(daemon):
     """Check the existence of '.pid' files for a specified daemon.
 
     Parameters
@@ -53,14 +49,14 @@ def check_pid(daemon):
     daemon : str
         Daemon's name.
     """
-    regex = rf'{daemon}-(.*).pid'
-    for pidfile in os.listdir(pidfiles_path):
-        if match := re.match(regex, pidfile):
+    regex = rf'{daemon}[\w_]*-(\d+).pid'
+    for pid_file in os.listdir(pidfiles_path):
+        if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), 0)
             except OSError:
                 print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
-                os.remove(f'{pidfiles_path}/{pidfile}')
+                os.remove(path.join(pidfiles_path, pid_file))
 
 
 def find_nth(string, substring, n):
@@ -101,34 +97,6 @@ def previous_month(n=1):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
 
     return date.replace(hour=00, minute=00, second=00, microsecond=00)
-
-
-def execute(command):
-    """Executes a command. It is used to execute Wazuh commands.
-
-    :param command: Command as list.
-    :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
-    """
-    try:
-        output = check_output(command)
-    except CalledProcessError as error:
-        output = error.output
-    except Exception as e:
-        raise WazuhInternalError(1002, "{0}: {1}".format(command, e))  # Error executing command
-
-    try:
-        output_json = json.loads(output)
-    except Exception as e:
-        raise WazuhInternalError(1003, command)  # Command output not in json
-
-    keys = output_json.keys()  # error and (data or message)
-    if 'error' not in keys or ('data' not in keys and 'message' not in keys):
-        raise WazuhInternalError(1004, command)  # Malformed command output
-
-    if output_json['error'] != 0:
-        raise WazuhInternalError(output_json['error'], output_json['message'], True)
-    else:
-        return output_json['data']
 
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
@@ -514,39 +482,49 @@ def tail(filename, n=20):
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
-def chmod_r(filepath, mode):
+def chmod_r(file_path, mode):
     """Recursive chmod.
 
-    :param filepath: Path to the file.
-    :param mode: file mode in octal.
+    Parameters
+    ----------
+    file_path: str
+        Path to the file.
+    mode: int
+        File mode in octal.
     """
-    if path.isdir(filepath):
-        for item in listdir(filepath):
-            itempath = path.join(filepath, item)
-            if path.isfile(itempath):
-                chmod(itempath, mode)
-            elif path.isdir(itempath):
-                chmod_r(itempath, mode)
 
-    chmod(filepath, mode)
+    if path.isdir(file_path):
+        for item in listdir(file_path):
+            item_path = path.join(file_path, item)
+            if path.isfile(item_path):
+                chmod(item_path, mode)
+            elif path.isdir(item_path):
+                chmod_r(item_path, mode)
+
+    chmod(file_path, mode)
 
 
-def chown_r(filepath, uid, gid):
-    """Recursive chmod.
+def chown_r(file_path, uid, gid):
+    """Recursive chown.
 
-    :param filepath: Path to the file.
-    :param uid: user ID.
-    :param gid: group ID.
+    Parameters
+    ----------
+    file_path: str
+        Path to the file.
+    uid: int
+        User ID.
+    gid: int
+        Group ID.
     """
-    chown(filepath, uid, gid)
+    chown(file_path, uid, gid)
 
-    if path.isdir(filepath):
-        for item in listdir(filepath):
-            itempath = path.join(filepath, item)
-            if path.isfile(itempath):
-                chown(itempath, uid, gid)
-            elif path.isdir(itempath):
-                chown_r(itempath, uid, gid)
+    if path.isdir(file_path):
+        for item in listdir(file_path):
+            item_path = path.join(file_path, item)
+            if path.isfile(item_path):
+                chown(item_path, uid, gid)
+            elif path.isdir(item_path):
+                chown_r(item_path, uid, gid)
 
 
 def delete_wazuh_file(full_path):
@@ -575,8 +553,8 @@ def delete_wazuh_file(full_path):
         raise WazuhError(1906)
 
 
-def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid()), time=None, permissions=None):
-    """Moves a file even between filesystems
+def safe_move(source, target, ownership=None, time=None, permissions=None):
+    """Move a file even between filesystems
 
     This function is useful to move files even when target directory is in a different filesystem from the source.
     Write permissions are required on target directory.
@@ -591,16 +569,17 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
         Tuple in the form (user, group) to be set up after the file is moved.
     time : tuple
         Tuple in the form (addition_timestamp, modified_timestamp).
-    permissions : str
-        String mask in octal notation. I.e.: '0o640'.
+    permissions : octal
+        String mask in octal notation. I.e.: 0o640.
     """
     # Create temp file. Move between
     tmp_path, tmp_filename = path.split(target)
     tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
-    move(source, tmp_target, copy_function=copyfile)
+    move(source, tmp_target, copy_function=full_copy)
 
     # Set up metadata
-    chown(tmp_target, *ownership)
+    if ownership is not None:
+        chown(tmp_target, *ownership)
     if permissions is not None:
         chmod(tmp_target, permissions)
     if time is not None:
@@ -614,7 +593,7 @@ def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid())
         # For example, when target is a mounted file in a Docker container
         # However, this is not an atomic operation and could lead to race conditions
         # if the file is read/written simultaneously with other processes
-        move(tmp_target, target, copy_function=copyfile)
+        move(tmp_target, target, copy_function=full_copy)
 
 
 def mkdir_with_mode(name, mode=0o770):
@@ -1732,18 +1711,28 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         raise WazuhError(1113, str(e))
 
 
-def upload_file(content, path, check_xml_formula_values=True):
-    """
-    Upload files (rules, lists, decoders and ossec.conf)
-    :param content: content of the XML file
-    :param path: Destination of the new XML file
-    :return: Confirmation message
+def upload_file(content, file_path, check_xml_formula_values=True):
+    """Upload files (rules, lists, decoders and ossec.conf).
+
+    Parameters
+    ----------
+    content: str
+        Content of the XML file.
+    file_path: str
+        Destination of the new XML file.
+    check_xml_formula_values: bool
+        Check formula values in the resulting XML if true.
+
+    Returns
+    -------
+    results.WazuhResult
+        Confirmation message.
     """
 
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ElementTree(fromstring(f'<root>{xml_string}</root>'))
+        et = fromstring(f'<root>{xml_string}</root>')
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):
@@ -1761,7 +1750,7 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.tmp_path)
     try:
         with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
@@ -1772,8 +1761,8 @@ def upload_file(content, path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = join(common.wazuh_path, path)
-        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+        new_conf_path = path.join(common.wazuh_path, file_path)
+        safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
 
@@ -1798,10 +1787,10 @@ def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: ca
         If there is any `IOError` while doing the backup.
     """
     try:
-        copyfile(abs_path, backup_file)
+        full_copy(abs_path, backup_file)
     except IOError:
         raise WazuhError(1019)
-    delete_function(filename=basename(abs_path))
+    delete_function(filename=path.basename(abs_path))
 
 
 def replace_in_comments(original_content, to_be_replaced, replacement):
@@ -1827,7 +1816,7 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     str
         Relative path to `full_path` from `prefix`.
     """
-    return relpath(full_path, prefix)
+    return path.relpath(full_path, prefix)
 
 
 def clear_temporary_caches():
@@ -1860,6 +1849,28 @@ def temporary_cache():
         return wrapper
 
     return decorator
+
+
+def full_copy(src: str, dst: str, follow_symlinks=True) -> None:
+    """Copy a file maintaining all metadata if possible.
+
+    Parameters
+    ----------
+    src: str
+        Source absolute path.
+    dst: str
+        Destination absolute path.
+    follow_symlinks: bool
+        Make `copy2` follow symbolic links. False otherwise.
+    """
+    file_stat = os.stat(src)
+    copy2(src, dst, follow_symlinks=follow_symlinks)
+    try:
+        # copy2 does not always copy the correct ownership
+        chown(dst, file_stat.st_uid, file_stat.st_gid)
+    except PermissionError:
+        # Tried to assign 'root' ownership without being root. Default API permissions will be applied
+        pass
 
 
 class Timeout:

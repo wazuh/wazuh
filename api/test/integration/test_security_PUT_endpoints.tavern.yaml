@@ -1,9 +1,6 @@
 ---
 test_name: PUT /security/roles
 
-marks:
-  - base_tests
-
 stages:
 
   # PUT /security/roles/{role_id}

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -98,6 +98,10 @@ char* WSTD_CALL __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON *
 }
 
 cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
+    return mock_type(cJSON_bool);
+}
+
+cJSON_bool __wrap_cJSON_IsString(const cJSON * const item) {
     return mock_type(cJSON_bool);
 }
 

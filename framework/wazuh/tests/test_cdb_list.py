@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -353,7 +353,7 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
             result = upload_list_file(filename='test', content='test:content')
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1905
             # Original file is restored with safe_move
-            mock_safe_move.assert_called_once_with('', os.path.join(common.user_lists_path, 'test'), permissions=432)
+            mock_safe_move.assert_called_once_with('', os.path.join(common.user_lists_path, 'test'))
 
             # File with same name already exists in subdirectory, raise exception
             with patch('wazuh.cdb_list.get_filenames_paths', return_value=['/test']):

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -301,7 +301,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     except WazuhError as e:
         result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
+        exists(backup_file) and safe_move(backup_file, full_path)
 
     return result
 

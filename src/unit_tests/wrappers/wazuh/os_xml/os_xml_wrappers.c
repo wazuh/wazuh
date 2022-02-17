@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -32,6 +32,8 @@ xml_node ** __wrap_OS_GetElementsbyNode(const OS_XML * _lxml, const xml_node * n
 }
 
 void __wrap_OS_ClearNode(xml_node ** node) {
+
+    function_called();
     if (node != NULL) {
         for (int i = 0; node[i]; i++) {
             if (node[i]->element) {

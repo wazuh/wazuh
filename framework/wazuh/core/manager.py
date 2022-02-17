@@ -1,9 +1,8 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-import fcntl
 import json
 import re
 import socket
@@ -20,7 +19,6 @@ from wazuh.core.utils import tail
 from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-wcom_lockfile = join(common.wazuh_path, "var", "run", ".api_wcom_lock")
 
 
 def status():
@@ -119,46 +117,38 @@ def validate_ossec_conf():
         Status of the configuration.
     """
 
-    lock_file = open(wcom_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
+    # Socket path
+    wcom_socket_path = common.WCOM_SOCKET
+    # Message for checking Wazuh configuration
+    wcom_msg = common.CHECK_CONFIG_COMMAND
+
+    # Connect to wcom socket
+    if exists(wcom_socket_path):
+        try:
+            wcom_socket = WazuhSocket(wcom_socket_path)
+        except WazuhException as e:
+            extra_msg = f'Socket: WAZUH_PATH/queue/sockets/com. Error {e.message}'
+            raise WazuhInternalError(1013, extra_message=extra_msg)
+    else:
+        raise WazuhInternalError(1901)
+
+    # Send msg to wcom socket
+    try:
+        wcom_socket.send(wcom_msg.encode())
+
+        buffer = bytearray()
+        datagram = wcom_socket.receive()
+        buffer.extend(datagram)
+
+    except (socket.error, socket.timeout) as e:
+        raise WazuhInternalError(1014, extra_message=str(e))
+    finally:
+        wcom_socket.close()
 
     try:
-        # Socket path
-        wcom_socket_path = common.WCOM_SOCKET
-        # Message for checking Wazuh configuration
-        wcom_msg = common.CHECK_CONFIG_COMMAND
-
-        # Connect to wcom socket
-        if exists(wcom_socket_path):
-            try:
-                wcom_socket = WazuhSocket(wcom_socket_path)
-            except WazuhException as e:
-                extra_msg = f'Socket: WAZUH_PATH/queue/sockets/com. Error {e.message}'
-                raise WazuhInternalError(1013, extra_message=extra_msg)
-        else:
-            raise WazuhInternalError(1901)
-
-        # Send msg to wcom socket
-        try:
-            wcom_socket.send(wcom_msg.encode())
-
-            buffer = bytearray()
-            datagram = wcom_socket.receive()
-            buffer.extend(datagram)
-
-            wcom_socket.close()
-        except (socket.error, socket.timeout) as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-        finally:
-            wcom_socket.close()
-
-        try:
-            response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhInternalError(1904, extra_message=str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
+        response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+    except (KeyError, json.decoder.JSONDecodeError) as e:
+        raise WazuhInternalError(1904, extra_message=str(e))
 
     return response
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -26,7 +26,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.syscheck import AffectedItemsWazuhResult
         from wazuh import WazuhError, WazuhInternalError
         from wazuh.core import common
-        from wazuh.core.agent import Agent
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

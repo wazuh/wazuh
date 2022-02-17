@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -194,7 +194,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
 /* Network counter */
 
-void rem_initList(size_t initial_size);
+void rem_initList(int initial_size);
 void rem_setCounter(int fd, size_t counter);
 size_t rem_getCounter(int fd);
 

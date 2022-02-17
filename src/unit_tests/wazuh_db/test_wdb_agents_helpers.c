@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * February 23, 2021.
  *
  * This program is free software; you can redistribute it
@@ -50,7 +50,7 @@ void test_wdb_get_sys_osinfo_error_sql_execution(void ** state)
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
     // Handling result
-    expect_string(__wrap__merror, formatted_msg, "Agents DB (1) Error querying Wazuh DB to get OS information");
+    expect_string(__wrap__minfo, formatted_msg, "Agents DB (1): No OS information available.");
 
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);

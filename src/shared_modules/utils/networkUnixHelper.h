@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -50,7 +50,7 @@ namespace Utils
 
                     for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
                     {
-                        if (!(ifa->ifa_flags & IFF_LOOPBACK))
+                        if (!(ifa->ifa_flags & IFF_LOOPBACK) && ifa->ifa_name)
                         {
                             networkInterfaces[substrOnFirstOccurrence(ifa->ifa_name, ":")].push_back(ifa);
                         }

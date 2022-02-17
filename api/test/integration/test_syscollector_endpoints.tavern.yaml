@@ -1,10 +1,6 @@
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-marks:
-  - base_tests
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
-
 stages:
 
   - name: Get the OS of an agent
@@ -60,7 +56,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -96,9 +91,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -148,7 +140,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -1323,9 +1314,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
 
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
-
 stages:
 
   - name: Netaddress of an agent
@@ -1667,7 +1655,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -2043,9 +2030,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -2656,7 +2640,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -2713,9 +2696,6 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
-
 stages:
 
   - name: Get the OS of an agent
@@ -2765,7 +2745,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -2803,9 +2782,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/hardware
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -2851,7 +2827,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -2882,9 +2857,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -3185,7 +3157,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:
@@ -3561,9 +3532,6 @@ stages:
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -4159,7 +4127,6 @@ stages:
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
 
 marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
   - parametrize:
       key: field
       vals:

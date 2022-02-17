@@ -1,9 +1,6 @@
 ---
 test_name: GET /security/roles
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /security/roles

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -151,7 +151,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
         result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
         # If backup file was not deleted (any exception was raised), it should be restored.
-        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
+        exists(backup_file) and safe_move(backup_file, full_path)
 
     return result
 

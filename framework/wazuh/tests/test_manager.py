@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
@@ -230,10 +230,8 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-@patch('wazuh.core.manager.open')
-@patch('wazuh.core.manager.fcntl')
 @patch("wazuh.core.manager.exists", return_value=True)
-def test_validation(mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
+def test_validation(mock_exists, error_flag, error_msg):
     """Test validation() method works as expected
 
     Tests configuration validation function with multiple scenarios:
@@ -324,11 +322,12 @@ def test_get_basic_info(mock_open):
 @patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
 @patch('wazuh.manager.write_ossec_conf')
 @patch('wazuh.manager.validate_wazuh_xml')
-@patch('wazuh.manager.copyfile')
+@patch('wazuh.manager.full_copy')
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
-def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock):
+def test_update_ossec_conf(move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
+                           validate_mock):
     """Test update_ossec_conf works as expected."""
     result = update_ossec_conf(new_conf="placeholder config")
     write_mock.assert_called_once()
@@ -344,11 +343,12 @@ def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prett
 @patch('wazuh.manager.validate_ossec_conf')
 @patch('wazuh.manager.write_ossec_conf')
 @patch('wazuh.manager.validate_wazuh_xml')
-@patch('wazuh.manager.copyfile')
+@patch('wazuh.manager.full_copy')
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
-def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock, new_conf):
+def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
+                              validate_mock, new_conf):
     """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
     is not valid."""
     result = update_ossec_conf(new_conf=new_conf)
