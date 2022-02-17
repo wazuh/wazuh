@@ -181,7 +181,7 @@ if __name__ == '__main__':
     from api import alogging, configuration
     from wazuh.core import common, utils
 
-    def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
+    def set_logging(log_path=f'{API_LOG_PATH}.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
                 log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,

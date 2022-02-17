@@ -22,14 +22,32 @@ UNKNOWN_USER_STRING = "unknown_user"
 
 class AccessLogger(AbstractAccessLogger):
     """
-    Defines the log writter used by aiohttp
+    Define the log writter used by aiohttp.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def custom_logging(self, user, remote, method, path, query, body, time, status):
-        """Provides the log entry structure depending on the logging format"""
+        """Provide the log entry structure depending on the logging format.
+
+        Parameters
+        ----------
+        user : str
+            User who perform the request.
+        remote : str
+            IP address of the request.
+        method : str
+            HTTP method used in the request.
+        path : str
+            Endpoint used in the request.
+        query : dict
+            Dictionary with the request parameters.
+        body : dict
+            Dictionary with the request body.
+        time : float
+            Required time to compute the request.
+        status : int
+            Status code of the request.
+        """
+
         self.logger.info(f'{user} '
                          f'{remote} '
                          f'"{method} {path}" '
@@ -40,7 +58,7 @@ class AccessLogger(AbstractAccessLogger):
 
         self.logger.info({'user': user,
                           'ip': remote,
-                          'http_method': f'{method}',
+                          'http_method': method,
                           'uri': f'{method} {path}',
                           'parameters': query,
                           'body': body,
@@ -81,7 +99,7 @@ class AccessLogger(AbstractAccessLogger):
 
 class APILogger(WazuhLogger):
     """
-    Defines the logger used by wazuh-apid
+    Define the logger used by wazuh-apid.
     """
 
     def __init__(self, *args, **kwargs):
@@ -117,9 +135,20 @@ class APILogger(WazuhLogger):
 
 class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     """
-    Defines the custom JSON log formatter used by wlogging
+    Define the custom JSON log formatter used by wlogging.
     """
     def add_fields(self, log_record, record, message_dict):
+        """Implement custom logic for adding fields in a log entry.
+
+        Parameters
+        ----------
+        log_record : collections.OrderedDict
+            Dictionary with custom fields used to generate a log entry.
+        record : logging.LogRecord
+            Contains all the information to the event being logged.
+        message_dict : dict
+            Dictionary with a request or exception information.
+        """
         # Request handling
         if record.message is None:
             record.message = {

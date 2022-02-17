@@ -57,13 +57,32 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
 
 class CustomFilter():
     """
-    Defines a custom filter to differentiate between log types
+    Define a custom filter to differentiate between log types.
     """
     def __init__(self, log_type):
+        """Constructor.
+
+        Parameters
+        ----------
+        log_type : str
+            Value used to specify the log type of the related log handler.
+        """
         self.log_type = log_type
 
     def filter(self, record):
-        # If the log file is not specifically filtered, then It should log into both files
+        """Filter the log entry depending on its log type.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            Contains all the information to the event being logged.
+
+        Returns
+        -------
+        boolean
+            Boolean used to determine if the log entry should be logged.
+        """
+        # If the log file is not specifically filtered, then it should log into both files
         return True if not hasattr(record, 'log_type') or record.log_type == self.log_type else False
 
 

@@ -24,9 +24,9 @@ def test_accesslogger_log_credentials():
         method = 'method_value'
 
         def __init__(self):
-            super().__setitem__('body', {'password': 'password_value',
-                                         'key': 'key_value'})
-            super().__setitem__('user', 'wazuh')
+            self['body'] = {'password': 'password_value',
+                            'key': 'key_value'}
+            self['user'] = 'wazuh'
 
     with patch('logging.Logger.info') as mock_logger_info:
         test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
@@ -48,7 +48,6 @@ def test_accesslogger_log_credentials():
 @pytest.mark.parametrize('side_effect, user', [
     ('unknown', ''),
     (None, ''),
-    (None, 'wazuh'),
     (None, 'wazuh')
 ])
 @patch('api.alogging.json.dumps')
@@ -70,7 +69,7 @@ def test_accesslogger_log(mock_dumps, side_effect, user):
 
         def get(self, *args, **kwargs):
             return user
-        # Mock decode_token and logger.info
+    # Mock decode_token and logger.info
     with patch('logging.Logger.info') as mock_logger_info:
 
         # Create an AccessLogger object and log a mocked call
@@ -98,6 +97,13 @@ def test_accesslogger_log(mock_dumps, side_effect, user):
 ])
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')
 def test_apilogger_init(mock_wazuhlogger, json_log):
+    """Check parameters are as expected when calling __init__ method.
+
+    Parameters
+    ----------
+    json_log : boolean
+        Boolean used to define the log file format.
+    """
     log_name = 'testing.json' if json_log else 'testing.log'
     current_logger_path = os.path.join(os.path.dirname(__file__), log_name)
     alogging.APILogger(log_path=current_logger_path, foreground_mode=False, debug_level='info',
@@ -125,7 +131,15 @@ def test_apilogger_init(mock_wazuhlogger, json_log):
 ])
 @patch('api.alogging.logging.Logger.setLevel')
 def test_apilogger_setup_logger(mock_logger, debug_level, expected_level):
-    """Check loggin level is as expected"""
+    """Check loggin level is as expected.
+
+    Parameters
+    ----------
+    debug_level : str
+        Value used to configure the debug level of the logger.
+    expected_level : int
+        Expeced value of the debug level.
+    """
     current_logger_path = os.path.join(os.path.dirname(__file__), 'testing')
     logger = alogging.APILogger(log_path=current_logger_path, foreground_mode=False, debug_level=debug_level,
                                 logger_name='wazuh')
@@ -141,7 +155,15 @@ def test_apilogger_setup_logger(mock_logger, debug_level, expected_level):
     ('message_value', {})
 ])
 def test_wazuhjsonformatter(message, dkt):
-    """Check wazuh json formatter is working as expected"""
+    """Check wazuh json formatter is working as expected.
+
+    Parameters
+    ----------
+    message : str
+        Value used as a log record message.
+    dkt : dict
+        Dictionary used as a request or exception information.
+    """
     with patch('api.alogging.logging.LogRecord') as mock_record:
         mock_record.message = message
         wjf = alogging.WazuhJsonFormatter()
