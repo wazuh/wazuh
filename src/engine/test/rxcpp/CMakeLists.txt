@@ -19,13 +19,38 @@ CPMAddPackage(
   VERSION 4.1.1
 )
 
+CPMAddPackage(
+  NAME libuv
+  GITHUB_REPOSITORY libuv/libuv
+  GIT_TAG v1.34.2
+  VERSION 1.34.2
+  OPTIONS
+      "BUILD_SHARED_LIBS ON"
+      "BUILD_TESTS OFF"
+      "BUILD_EXAMPLES OFF"
+)
+
+CPMAddPackage(
+  NAME uvw
+  GITHUB_REPOSITORY skypjack/uvw
+  GIT_TAG v2.3.1_libuv-v1.34
+  VERSION 2.3.1
+  OPTIONS
+      "BUILD_UVW_LIBS OFF"
+      "BUILD_DOCS OFF"
+      "BUILD_TESTING OFF"
+)
+
 link_libraries(
   gtest_main
   rxcpp
+  uv
 )
 
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
+    ${uvw_SOURCE_DIR}/src/
+    ${uvw_SOURCE_DIR}/src/uvw/
 )
 
 add_executable(rxcppThreadingTest
