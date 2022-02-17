@@ -17,6 +17,14 @@ int __wrap_fim_db_get_count_file_entry(){
     return mock();
 }
 
+int __wrap_fim_db_get_count_registry_data(){
+    return mock();
+}
+
+int __wrap_fim_db_get_count_registry_key(){
+    return mock();
+}
+
 FIMDBErrorCode __wrap_fim_db_get_path(const char* file_path,
                                      __attribute__((unused))callback_context_t callback) {
     check_expected(file_path);
@@ -86,8 +94,9 @@ void expect_fim_db_remove_path(const char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-int __wrap_fim_db_file_update(fim_entry* new,
-                              bool* saved) {
+int __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
+                              __attribute__((unused)) bool*      saved)
+{
     return mock();
 }
 

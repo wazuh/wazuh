@@ -21,7 +21,13 @@ target_link_libraries(OS_REGEX_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate os_regex tests
 list(APPEND os_regex_names "test_os_regex")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND os_regex_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                            -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                            -Wl,--wrap,syscom_dispatch")
+else()
 list(APPEND os_regex_flags " ")
+endif()
 
 # Compiling tests
 list(LENGTH os_regex_names count)

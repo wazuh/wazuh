@@ -48,6 +48,6 @@ int __wrap_fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*);
 void __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                             result_callback_t callback,
                                             void* txn_ctx);
-
+int __wrap_Start_win32_Syscheck();
 
 #endif

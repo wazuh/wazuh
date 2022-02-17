@@ -213,7 +213,6 @@ static int setup_group(void **state) {
 
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -301,7 +300,6 @@ static int setup_root_group(void **state) {
 
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mwarn, formatted_msg);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -2228,10 +2226,10 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     errno = ENOENT;
 
-    expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
+    expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
-    expect_fim_diff_process_delete_file(path, 0);
+    expect_fim_diff_process_delete_file(expanded_path, 0);
 
     fim_checker(expanded_path, &evt_data, NULL, NULL);
 
@@ -2265,10 +2263,9 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
     // Inside fim_file
     expect_get_data(strdup("user"), "group", expanded_path, 0);
-
+    will_return(__wrap_fim_db_file_update, 1);
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
-    will_return(__wrap_fim_db_transaction_sync_row, 0);
     fim_checker(expanded_path, &evt_data, NULL, NULL);
 }
 
@@ -2461,7 +2458,6 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 static void test_fim_scan_db_full_double_scan(void **state) {
     char test_file_path[OS_SIZE_256];
     struct stat directory_stat = { .st_mode = S_IFDIR };
-    struct stat file_stat = { .st_mode = S_IFREG };
     TXN_HANDLE mock_handle;
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
@@ -2504,13 +2500,19 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_stat, __file, expanded_dirs[i]);
         will_return(__wrap_stat, &directory_stat);
         will_return(__wrap_stat, 0);
+
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
 
-        will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
+        will_return(__wrap_opendir, 1);
     }
+    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
+    will_return_maybe(__wrap_realtime_adddir, 0);
 
+    will_return(__wrap_fim_db_get_count_file_entry, 1);
+    will_return(__wrap_fim_db_get_count_file_entry, 1);
+    will_return(__wrap_fim_db_get_count_registry_data, 1);
     snprintf(test_file_path, 160, "%s\\test_file", expanded_dirs[0]);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -2569,7 +2571,12 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         will_return(__wrap_readdir, NULL);
     }
 
+    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
+    will_return_maybe(__wrap_realtime_adddir, 0);
 
+    will_return(__wrap_fim_db_get_count_file_entry, 1);
+    will_return(__wrap_fim_db_get_count_file_entry, 1);
+    will_return(__wrap_fim_db_get_count_registry_data, 1);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2627,6 +2634,9 @@ static void test_fim_scan_no_limit(void **state) {
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
     }
+    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
+    will_return_maybe(__wrap_realtime_adddir, 0);
+
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
@@ -2692,7 +2702,7 @@ static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
 static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
-    will_return(__wrap_send_log_msg, 1); 
+    will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
@@ -3228,7 +3238,9 @@ static void test_fim_whodata_event_file_missing(void **state) {
 #endif
     errno = ENOENT;
 
+#ifndef TEST_WINAGENT
     expect_fim_db_file_inode_search(606060, 12345678, FIMDB_OK);
+#endif
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
     fim_whodata_event(fim_data->w_evt);
     errno = 0;
@@ -3246,12 +3258,19 @@ static void test_fim_process_missing_entry_no_data(void **state) {
     char debug_msg[70];
     sprintf(debug_msg,"(6319): No configuration found for (file):'%s'", path);
 
+#ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     fim_process_missing_entry(path, FIM_REALTIME, NULL);
@@ -3270,12 +3289,19 @@ static void test_fim_process_missing_entry_failure(void **state) {
     char error_msg[OS_SIZE_256] = {0};
     char debug_msg[70];
     sprintf(debug_msg,"(6319): No configuration found for (file):'%s'", path);
+#ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
     snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
     snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
 

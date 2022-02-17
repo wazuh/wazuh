@@ -23,4 +23,9 @@ add_executable(test_os_xml test_os_xml.c)
 target_compile_options(test_os_xml PRIVATE "-Wall")
 target_link_libraries(test_os_xml OS_XML_O ${TEST_DEPS})
 target_link_libraries(test_os_xml "-Wl,--wrap,getpid")
+if(${TARGET} STREQUAL "winagent")
+target_link_libraries(test_os_xml "-Wl,--wrap,getpid -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
+                                   -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
+                                   -Wl,--wrap,syscom_dispatch")
+endif()
 add_test(NAME test_os_xml COMMAND test_os_xml)

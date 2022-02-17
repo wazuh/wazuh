@@ -27,12 +27,13 @@
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
 time_t last_time = 0;
-
+void audit_set_db_consistency(void);
 #ifdef WIN32
 
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#define localtime_r(x, y)
 #endif
 // Remove static qualifier when unit testing
 #define STATIC
@@ -96,23 +97,6 @@ void fim_send_sync_state(const char *location, const char* msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
     fim_send_msg(DBSYNC_MQ, location, msg);
     fim_sync_check_eps();
-}
-
-// Send a data synchronization control message
-void fim_send_sync_control(const char *component,
-                           dbsync_msg msg,
-                           long id,
-                           const char *start,
-                           const char *top,
-                           const char *tail,
-                           const char *checksum) {
-    /*char *plain = dbsync_check_msg(component, msg, id, start, top, tail, checksum);
-    mdebug2(FIM_DBSYNC_SEND, plain);
-    fim_send_msg(DBSYNC_MQ, component, plain);
-
-    os_free(plain);
-
-    fim_sync_check_eps();*/
 }
 
 // Send a message related to syscheck change/addition

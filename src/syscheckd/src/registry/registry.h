@@ -12,7 +12,7 @@
 
 #ifdef WIN32
 
-#include "syscheck.h"
+#include "../../include/syscheck.h"
 
 /**
  * @brief Retrieves the configuration associated with a given registry element.

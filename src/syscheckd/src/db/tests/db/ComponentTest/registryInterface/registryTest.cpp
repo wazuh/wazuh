@@ -46,7 +46,9 @@ const auto insertRegistryValueStatement2 = R"({
     }
 )"_json;
 
-void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data){}
+void transaction_callback( __attribute__((unused)) ReturnTypeCallback resultType,
+                           __attribute__((unused)) const cJSON* result_json,
+                           __attribute__((unused)) void* user_data){}
 
 TEST_F(DBTestWinFixture, TestFimDBGetCountRegistryEntry)
 {

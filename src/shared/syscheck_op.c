@@ -1113,7 +1113,6 @@ end:
 DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl) {
     PSECURITY_DESCRIPTOR pSecurityDescriptor;
     DWORD dwRtnCode = 0;
-    DWORD dwErrorCode = 0;
     DWORD lpcbSecurityDescriptor = 0;
 
     dwRtnCode = RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor);
