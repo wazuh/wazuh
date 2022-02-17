@@ -237,3 +237,11 @@ int __wrap_checkBinaryFile(const char *f_name) {
     check_expected(f_name);
     return mock_type(int);
 }
+
+int __wrap_w_copy_file(const char *src, const char *dst, char mode, __attribute__((unused)) char * message, int silent) {
+    check_expected(src);
+    check_expected(dst);
+    check_expected(mode);
+    check_expected(silent);
+    return mock_type(int);
+}
