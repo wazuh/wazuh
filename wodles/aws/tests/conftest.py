@@ -5,9 +5,11 @@
 import sys
 import os
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from copy import deepcopy
 
+sys.modules['boto3'] = MagicMock()
+sys.modules['botocore'] = MagicMock()
 
 import aws_s3
 from .data.fixture_parameters import *
