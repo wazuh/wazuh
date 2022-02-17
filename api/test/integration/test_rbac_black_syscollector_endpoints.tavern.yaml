@@ -1,10 +1,6 @@
 ---
 test_name: GET OS SYSCOLLECTOR RBAC
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get os from an agent (Allow)
@@ -54,10 +50,6 @@ stages:
 ---
 test_name: GET HARDWARE SYSCOLLECTOR RBAC
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get hardware from an agent (Allow)
@@ -101,10 +93,6 @@ stages:
 ---
 test_name: GET NETADDR SYSCOLLECTOR RBAC
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get netaddr from an agent (Allow)
@@ -141,10 +129,6 @@ stages:
 
 ---
 test_name: GET NETIFACE SYSCOLLECTOR RBAC
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -194,10 +178,6 @@ stages:
 ---
 test_name: GET NETPROTO SYSCOLLECTOR RBAC
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get netiface from an agent (Allow)
@@ -233,10 +213,6 @@ stages:
 
 ---
 test_name: GET PACKAGES SYSCOLLECTOR RBAC
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -284,10 +260,6 @@ stages:
 ---
 test_name: GET PORTS SYSCOLLECTOR RBAC
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Get netiface from an agent (Allow)
@@ -333,10 +305,6 @@ stages:
 
 ---
 test_name: GET PROCESSES SYSCOLLECTOR RBAC
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
