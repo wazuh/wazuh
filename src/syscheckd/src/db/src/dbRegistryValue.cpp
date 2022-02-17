@@ -39,7 +39,6 @@ void RegistryValue::createJSON()
     nlohmann::json data;
     nlohmann::json options;
 
-
     conf["table"] = FIMDB_REGISTRY_VALUE_TABLENAME;
     data["path"] = m_path;
     data["arch"] = ((m_arch == 0) ? "[x32]" : "[x64]");
@@ -59,9 +58,7 @@ void RegistryValue::createJSON()
     {
         options["return_old_data"] = true;
         conf["options"] = options;
-
     }
 
     m_statementConf = std::make_unique<nlohmann::json>(conf);
-
 }

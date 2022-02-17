@@ -77,7 +77,6 @@ void FileItem::createJSON()
 
     if (m_oldData)
     {
-
         options["return_old_data"] = true;
         conf["options"] = options;
     }
