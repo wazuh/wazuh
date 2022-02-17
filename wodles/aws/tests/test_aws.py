@@ -191,9 +191,9 @@ def test_config_format_created_date(date: str, expected_date: str):
     expected_date : str
         The date that the method should return.
     """
-    with patch(f'aws_s3.AWSConfigBucket.get_client'), \
-        patch(f'aws_s3.AWSConfigBucket.get_sts_client'), \
-        patch(f'sqlite3.connect'):
+    with patch('aws_s3.AWSConfigBucket.get_client'), \
+        patch('aws_s3.AWSConfigBucket.get_sts_client'), \
+        patch('sqlite3.connect'):
         bucket = aws_s3.AWSConfigBucket(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test',
                         'only_logs_after': '19700101', 'skip_on_error': True,

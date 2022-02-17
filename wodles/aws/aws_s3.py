@@ -537,7 +537,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix_regex= re.compile("^\d{12}$")
         self.check_prefix = False
         self.date_format = "%Y/%m/%d"
-        self._db_date_format = "%Y%m%d"
+        self.db_date_format = "%Y%m%d"
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -1235,7 +1235,7 @@ class AWSConfigBucket(AWSLogsBucket):
         str
             Date with the format used by the database.
         """
-        return datetime.strftime(datetime.strptime(date, self.date_format), self._db_date_format)
+        return datetime.strftime(datetime.strptime(date, self.date_format), self.db_date_format)
 
     def _remove_padding_zeros_from_marker(self, marker: str) -> str:
         """Remove the leading zeros from the month and day of a given marker.
