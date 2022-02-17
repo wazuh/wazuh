@@ -785,7 +785,7 @@ static void c_files()
             cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
             if(j_agent_info) {
                 char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
-                char* agent_groups_hash = cJSON_GetStringValue(cJSON_DetachItemFromObject(j_agent_info->child, "groups_hash"));
+                char* agent_groups_hash = cJSON_GetStringValue(cJSON_DetachItemFromObject(j_agent_info->child, "group_hash"));
 
                 // If it's not a multigroup, skip it
                 if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
@@ -1068,7 +1068,7 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         wdb_set_agent_groups_csv(atoi(agent_id),
                                  group,
                                  WDB_GROUP_MODE_EMPTY_ONLY,
-                                 w_is_worker() ? "syncreq" : "synced",
+                                 w_is_single_node(NULL) ? "synced" : "syncreq",
                                  NULL);
 
         *r_group = group;
