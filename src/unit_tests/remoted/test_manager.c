@@ -153,35 +153,6 @@ static int test_fsum_changed_teardown(void ** state) {
 
 /* Tests lookfor_agent_group */
 
-void test_lookfor_agent_group_null_groups(void **state)
-{
-    const char *agent_id = "001";
-    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
-    char *r_group = NULL;
-
-    expect_string(__wrap_w_parser_get_agent, name, agent_id);
-    will_return(__wrap_w_parser_get_agent, NULL);
-
-    expect_string(__wrap_get_agent_group, id, agent_id);
-    will_return(__wrap_get_agent_group, "");
-    will_return(__wrap_get_agent_group, -1);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is ''");
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group '' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
-
-    expect_string(__wrap_set_agent_group, id, agent_id);
-    expect_string(__wrap_set_agent_group, group, "default");
-    will_return(__wrap_set_agent_group, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
-
-    int ret = lookfor_agent_group(agent_id, msg, &r_group);
-    assert_int_equal(OS_SUCCESS, ret);
-    assert_string_equal(r_group, "default");
-
-    os_free(r_group);
-}
-
 void test_lookfor_agent_group_set_default_group(void **state)
 {
     const char *agent_id = "001";
@@ -787,7 +758,7 @@ void test_c_multi_group_hash_multigroup_null(void **state)
     file_sum ***_f_sum = NULL;
     char *hash_multigroup = NULL;
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true, true);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 }
 
 void test_c_multi_group_open_directory_fail(void **state)
@@ -804,7 +775,7 @@ void test_c_multi_group_open_directory_fail(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/multi_group_test': No such file or directory");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true, true);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 
     os_free(hash_multigroup);
     os_free(multi_group);
@@ -834,7 +805,7 @@ void test_c_multi_group_read_dir_fail(void **state)
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true, true);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 
     os_free(hash_multigroup);
     os_free(multi_group);
@@ -861,7 +832,7 @@ void test_c_multi_group_read_dir_fail_no_entry(void **state)
 
     errno = ENOTDIR;
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true, true);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 
     errno = 0;
 
@@ -912,31 +883,9 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true, true);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 
     os_free(last_modify);
-    os_free(hash_multigroup);
-    os_free(multi_group);
-}
-
-void test_c_multi_group_large_path_fail(void **state)
-{
-    char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
-    char *hash_multigroup = NULL;
-
-    os_calloc((4096 + 2), sizeof(char*), hash_multigroup);
-    for (unsigned int a = 0; a < 4096 + 2; a++) {
-        hash_multigroup[a] = 'c';
-    }
-
-    /* Open the multi-group files and generate merged */
-    will_return(__wrap_opendir, 1);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "At c_multi_group(): path too long.");
-
-    c_multi_group(multi_group, _f_sum, hash_multigroup, false, false);
-
     os_free(hash_multigroup);
     os_free(multi_group);
 }
@@ -959,7 +908,7 @@ void test_c_multi_group_subdir_fail(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "At c_multi_group(): Could not open directory 'var/multigroups/hash_multi_group_test'");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, false, false);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, false);
 
     os_free(hash_multigroup);
     os_free(multi_group);
@@ -997,7 +946,7 @@ void test_c_multi_group_call_c_group(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, false, false);
+    c_multi_group(multi_group, _f_sum, hash_multigroup, false);
 
     os_free(_f_sum[0][0]->name);
     os_free(_f_sum[0][0]);
@@ -1317,7 +1266,6 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         // Tests lookfor_agent_group
-        cmocka_unit_test(test_lookfor_agent_group_null_groups),
         cmocka_unit_test(test_lookfor_agent_group_set_default_group),
         cmocka_unit_test(test_lookfor_agent_group_get_group_from_files_yml),
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
@@ -1337,7 +1285,6 @@ int main(void)
         cmocka_unit_test(test_c_multi_group_read_dir_fail),
         cmocka_unit_test(test_c_multi_group_read_dir_fail_no_entry),
         cmocka_unit_test(test_c_multi_group_Ignore_hidden_files),
-        cmocka_unit_test(test_c_multi_group_large_path_fail),
         cmocka_unit_test(test_c_multi_group_subdir_fail),
         cmocka_unit_test(test_c_multi_group_call_c_group),
         // Test find_group
