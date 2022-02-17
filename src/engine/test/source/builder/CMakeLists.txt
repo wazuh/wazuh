@@ -32,6 +32,13 @@ CPMAddPackage(
   VERSION 4.1.1
 )
 
+CPMAddPackage(
+  NAME RE2
+  GITHUB_REPOSITORY google/re2
+  GIT_TAG 2022-02-01
+  VERSION release 2022-02-01
+)
+
 # Tencent/rapidjson
 CPMAddPackage(
   NAME rapidjson
@@ -68,6 +75,7 @@ link_libraries(
   glog::glog
   gtest_main
   rxcpp
+  re2
 )
 
 ####################################################################################################
@@ -275,6 +283,12 @@ add_executable(opBuilderMapTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
 gtest_discover_tests(opBuilderMapTest)
+
+add_executable(opBuilderHelperRegexMatchTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatchTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
+gtest_discover_tests(opBuilderHelperRegexMatchTest)
 
 # add_executable(combinatorBuilderChainTest)
 # gtest_discover_tests(combinatorBuilderChainTest)
