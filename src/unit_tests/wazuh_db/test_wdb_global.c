@@ -3884,7 +3884,7 @@ void test_wdb_global_select_agent_name_transaction_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, -1);
+    will_return(__wrap_wdb_begin2, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_select_agent_name(data->wdb, 1);
@@ -3897,8 +3897,8 @@ void test_wdb_global_select_agent_name_cache_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_select_agent_name(data->wdb, 1);
@@ -3911,8 +3911,8 @@ void test_wdb_global_select_agent_name_bind_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -3930,8 +3930,8 @@ void test_wdb_global_select_agent_name_exec_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -3950,8 +3950,8 @@ void test_wdb_global_select_agent_name_success(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -3970,7 +3970,7 @@ void test_wdb_global_select_agent_group_transaction_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, -1);
+    will_return(__wrap_wdb_begin2, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_select_agent_group(data->wdb, 1);
@@ -3983,8 +3983,8 @@ void test_wdb_global_select_agent_group_cache_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_select_agent_group(data->wdb, 1);
@@ -3997,8 +3997,8 @@ void test_wdb_global_select_agent_group_bind_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -4016,8 +4016,8 @@ void test_wdb_global_select_agent_group_exec_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -4036,8 +4036,8 @@ void test_wdb_global_select_agent_group_success(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -4056,7 +4056,7 @@ void test_wdb_global_select_groups_transaction_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, -1);
+    will_return(__wrap_wdb_begin2, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
     result = wdb_global_select_groups(data->wdb);
@@ -4069,8 +4069,8 @@ void test_wdb_global_select_groups_cache_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, -1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     result = wdb_global_select_groups(data->wdb);
@@ -4083,8 +4083,8 @@ void test_wdb_global_select_groups_exec_fail(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_failed_call(STMT_MULTI_COLUMN);
@@ -4101,8 +4101,8 @@ void test_wdb_global_select_groups_socket_full(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_socket_full_call(NULL, STMT_MULTI_COLUMN);
@@ -4118,8 +4118,8 @@ void test_wdb_global_select_groups_success(void **state)
     cJSON *result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_wdb_begin2, 1);
-    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
     /* wdb_exec_stmt_sized */
     wrap_wdb_exec_stmt_sized_success_call((cJSON*) 1, STMT_MULTI_COLUMN);
