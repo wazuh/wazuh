@@ -54,6 +54,7 @@ FetchContent_GetProperties(
 ####################################################################################################
 include_directories(
   ${ENGINE_SOURCE_DIR}
+  ${ENGINE_SOURCE_DIR}/shared
   ${BUILDER_ENGINE_SOURCE_DIR}
   ${BUILDER_ENGINE_SOURCE_DIR}/builders
   ${BUILDER_ENGINE_SOURCE_DIR}/outputs
@@ -74,6 +75,7 @@ link_libraries(
 ####################################################################################################
 # Builder test
 add_executable(builderTest
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
