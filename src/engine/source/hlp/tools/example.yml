@@ -1,0 +1,6 @@
+-
+  logql_expression: "<_map/MAP/ /=/.> <_dummy>"
+  event: "key1=Value1 Key2=Value2. dummy"
+-
+  logql_expression: "<_map/MAP/ /=>"
+  event: "key1=Value1 Key2="
