@@ -265,11 +265,11 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
         {
             if (entry->registry_entry.key == NULL)
             {
-                syncItem = std::make_unique<RegistryValue>(entry);
+                syncItem = std::make_unique<RegistryValue>(entry, true);
             }
             else
             {
-                syncItem = std::make_unique<RegistryKey>(entry);
+                syncItem = std::make_unique<RegistryKey>(entry, true);
             }
         }
 
