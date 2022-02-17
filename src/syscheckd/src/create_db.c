@@ -747,7 +747,7 @@ void fim_file(const char *path,
         txn_context->latest_entry = &new_entry;
 
         fim_db_transaction_sync_row(txn_handle, &new_entry);
-
+        free_file_data(new_entry.file_entry.data);
         txn_context->latest_entry = NULL;
     } else {
         create_json_event_ctx ctx = {
@@ -760,9 +760,9 @@ void fim_file(const char *path,
         callback_data.context = &ctx;
 
         fim_db_file_update(&new_entry, callback_data);
+        free_file_data(new_entry.file_entry.data);
     }
 
-    free_file_data(new_entry.file_entry.data);
 
     return;
 }
