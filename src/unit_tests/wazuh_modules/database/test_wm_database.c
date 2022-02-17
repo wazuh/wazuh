@@ -149,6 +149,7 @@ void test_wm_sync_group_file_success_more_than_max_groups(void **state)
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
     // Setting groups
+    will_return(__wrap_w_is_single_node, 1);
     expect_value(__wrap_wdb_set_agent_groups, id, agent_id);
     expect_string(__wrap_wdb_set_agent_groups, mode, "override");
     expect_string(__wrap_wdb_set_agent_groups, sync_status, "synced");
@@ -182,6 +183,7 @@ void test_wm_sync_group_file_success_max_groups(void **state)
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
     // Setting groups
+    will_return(__wrap_w_is_single_node, 1);
     expect_value(__wrap_wdb_set_agent_groups, id, agent_id);
     expect_string(__wrap_wdb_set_agent_groups, mode, "override");
     expect_string(__wrap_wdb_set_agent_groups, sync_status, "synced");
@@ -272,6 +274,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state)
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
     // Setting groups
+    will_return(__wrap_w_is_single_node, 1);
     expect_value(__wrap_wdb_set_agent_groups, id, agent_id);
     expect_string(__wrap_wdb_set_agent_groups, mode, "override");
     expect_string(__wrap_wdb_set_agent_groups, sync_status, "synced");
