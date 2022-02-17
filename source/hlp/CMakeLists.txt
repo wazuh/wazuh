@@ -9,6 +9,7 @@ project(wazuh-engine)
 
 set(ENGINE_HLP_SOURCE_DIR ${ENGINE_SOURCE_DIR}/hlp/src)
 set(ENGINE_HLP_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/hlp/include)
+set(ENGINE_HLP_TOOLS_DIR ${ENGINE_SOURCE_DIR}/hlp/tools)
 
 ####################################################################################################
 # Dependencies
@@ -49,3 +50,13 @@ target_include_directories(hlp PUBLIC
     ${RapidJSON_SOURCE_DIR}/include/
     ${ENGINE_HLP_INCLUDE_DIR}
 )
+
+####################################################################################################
+# Test tool
+####################################################################################################
+
+add_executable(hlp_cli
+  ${ENGINE_HLP_TOOLS_DIR}/hlp_cli.cpp
+)
+
+target_link_libraries(hlp_cli hlp ${EXTERNAL_DEPS})
