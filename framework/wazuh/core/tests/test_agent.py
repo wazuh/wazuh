@@ -1088,8 +1088,8 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, wdb_command_moc
     """
     agent_id = '001'
     group_id = 'default'
-    wdb_command = r'global set-agent-groups {"mode":"(.+)","sync_status":"syncreq","data":[{"id":(.+),' \
-                  r'"groups":["(.+)"]}]}'.replace('"', '\\"').replace('[', '\\[').replace(']', '\\]')
+    wdb_command = r'global set-agent-groups {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{\"id\":(.+),' \
+                  r'\"groups\":\[\"(.+)\"]}]}'
 
     # Default relationship -> add an agent to a group
     Agent.set_agent_group_relationship(agent_id, group_id, remove, override)
