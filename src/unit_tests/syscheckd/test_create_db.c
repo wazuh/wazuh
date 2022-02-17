@@ -3707,6 +3707,8 @@ static void test_transaction_callback_add(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    expect_function_call(__wrap_send_syscheck_msg);
+
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_ADD);
 
@@ -3729,6 +3731,8 @@ static void test_transaction_callback_modify(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
@@ -3761,6 +3765,8 @@ static void test_transaction_callback_modify_report_changes(void **state) {
 
     expect_fim_file_diff(entry.file_entry.path, strdup("diff"));
 
+    expect_function_call(__wrap_send_syscheck_msg);
+
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_MODIFICATION);
 
@@ -3782,6 +3788,8 @@ static void test_transaction_callback_delete(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
@@ -3810,6 +3818,8 @@ static void test_transaction_callback_delete_report_changes(void **state) {
 
     expect_fim_diff_process_delete_file("/etc/a_test_file.txt", 0);
 
+    expect_function_call(__wrap_send_syscheck_msg);
+
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
@@ -3830,6 +3840,8 @@ static void test_transaction_callback_delete_full_db(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_function_call(__wrap_send_syscheck_msg);
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
