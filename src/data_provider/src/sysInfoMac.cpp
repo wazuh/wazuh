@@ -61,50 +61,55 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/usr/local/Cellar", BREW},
 };
 
-static const std::array<std::string, 9> s_mapTaskInfoState =
+enum class State : int
 {
-#define STATE_UNKNOWN 0
-    "E",   // Error/invalid
-#define STATE_RUN 1
-    "R",   // Idle
-#define STATE_UNINTERRUPTIBLE 2
-    "S",   // Uninterruptible sleep
-#define STATE_STUCK 3
-    "S",   // Sleep
-#define STATE_STOP 4
-    "T",   // Stopped
-#define STATE_HALT 5
-    "T",   // Halt
-#define STATE_IDLE 6
-    "S",   // Sleep
-#define STATE_SLEEP 7
-    "S",   // Sleep
-#define STATE_ZOMBIE 8
-    "Z"
+    Unknown,
+    Run,
+    UninterruptibleSleep,
+    Stuck,
+    Stop,
+    Halt,
+    Idle,
+    Sleep,
+    Zombie
+};
+
+static const std::map<State, std::string> s_mapTaskInfoState =
+{
+    {State::Unknown, "E"},
+    {State::Run, "R"},
+    {State::UninterruptibleSleep, "S"},
+    {State::Stuck, "S"},
+    {State::Stop, "T"},
+    {State::Halt, "T"},
+    {State::Idle, "S"},
+    {State::Sleep, "S"},
+    {State::Zombie, "Z"}
 };
 
 
-static int toProcessState(int state, long sleeptime)
+// Maps thread states to our own process state.
+static State toProcessState(int state, long sleeptime)
 {
     switch (state)
     {
         case TH_STATE_RUNNING:
-            return STATE_RUN;
+            return State::Run;
 
         case TH_STATE_UNINTERRUPTIBLE:
-            return STATE_STUCK;
+            return State::Stuck;
 
         case TH_STATE_STOPPED:
-            return STATE_STOP;
+            return State::Stop;
 
         case TH_STATE_HALTED:
-            return STATE_HALT;
+            return State::Halt;
 
         case TH_STATE_WAITING:
-            return (sleeptime > 0) ? STATE_IDLE : STATE_SLEEP;
+            return (sleeptime > 0) ? State::Idle : State::Sleep;
 
         default:
-            return STATE_UNKNOWN;
+            return State::Unknown;
     }
 }
 
@@ -138,7 +143,7 @@ struct DarwinProcessInfo
 {
     DarwinProcessInfo(const kinfo_proc& kinfo)
         : name { kinfo.kp_proc.p_comm }
-        , state { STATE_UNKNOWN }
+        , state { State::Unknown }
         , pid { kinfo.kp_proc.p_pid }
         , ppid { kinfo.kp_eproc.e_ppid  }
         , euid { kinfo.kp_eproc.e_ucred.cr_uid}
@@ -146,7 +151,7 @@ struct DarwinProcessInfo
         , rgid { kinfo.kp_eproc.e_pcred.p_rgid}
         , priority { kinfo.kp_proc.p_priority }
         , nice { kinfo.kp_proc.p_nice }
-        , virtualMemorySizeKiB {}
+        , virtualMemorySizeKiB {0}
         , startTime { kinfo.kp_proc.p_un.__p_starttime.tv_sec  }
     {
         // Get total virtual memory size
@@ -186,7 +191,7 @@ struct DarwinProcessInfo
 
         result["pid"]        = std::to_string(pid);
         result["name"]       = std::move(name);
-        result["state"]      = s_mapTaskInfoState[state];
+        result["state"]      = s_mapTaskInfoState.at(state);
         result["ppid"]       = ppid;
         result["priority"]   = priority;
         result["nice"]       = nice;
@@ -230,16 +235,16 @@ struct DarwinProcessInfo
 
     }
     std::string name;
-    char state;
+    State state;
     pid_t pid;
     pid_t ppid;
     uid_t euid;
     uid_t ruid;
     gid_t rgid;
-    int32_t priority = 0;
-    int32_t nice = 0;
-    uint64_t virtualMemorySizeKiB = 0;
-    __darwin_time_t startTime = 0;
+    int32_t priority;
+    int32_t nice;
+    uint64_t virtualMemorySizeKiB;
+    __darwin_time_t startTime;
 };
 
 static std::map<pid_t, DarwinProcessInfo> processesMap;
@@ -520,7 +525,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     kern_return_t kr = 0;
     kr = host_processor_sets(port, &psets, &pcnt);
 
-    if (kr != KERN_SUCCESS)
+    if (KERN_SUCCESS != kr)
     {
         throw std::runtime_error { "error getting processor sets: " + std::to_string(kr) };
     }
@@ -532,7 +537,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
         processor_set_t pset;
         kr = host_processor_set_priv(port, psets[i], &pset);
 
-        if (kr != KERN_SUCCESS)
+        if (KERN_SUCCESS != kr)
         {
             throw std::runtime_error { "processor_set_priv failed" + std::to_string(kr) };
         }
@@ -545,7 +550,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
         mach_msg_type_number_t taskCount;
         kr = processor_set_tasks(pset, &tasks, &taskCount);
 
-        if (kr != KERN_SUCCESS)
+        if (KERN_SUCCESS != kr)
         {
             throw std::runtime_error { "failed to get tasks from processor set" + std::to_string(kr) };
         }
@@ -557,7 +562,13 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
             const auto& task { tasks[j] };
             defer(mach_port_deallocate(mach_task_self(), task));
             int pid;
-            pid_for_task(task, &pid);
+            kr = pid_for_task(task, &pid);
+
+            if (KERN_SUCCESS != kr)
+            {
+                // Might be PID = 0, we should skip it.
+                continue;
+            }
 
             // Check if we already know this pid and create a new ProcessInfo if not.
             auto it = processesMap.find(pid);
@@ -573,19 +584,19 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
             auto& currentProcess { it->second };
 
             // If the process is in a zombie state, then it has no threads so we don't need to iterate over them.
-            if (currentProcess.state != STATE_ZOMBIE)
+            if (currentProcess.state != State::Zombie)
             {
                 thread_act_array_t threads;
                 mach_msg_type_number_t threadCount;
                 kr = task_threads(task, &threads, &threadCount);
 
-                if (kr != KERN_SUCCESS)
+                if (KERN_SUCCESS != kr)
                 {
                     throw std::runtime_error{"Failed to get threads of a task: " + std::to_string(kr)};
                 }
 
                 // Go through all threads, translating the thread state to a unified process state and take the minimum state value.
-                int state = INT_MAX;
+                State state = State::Zombie;
 
                 for (mach_msg_type_number_t k = 0; k < threadCount; k++)
                 {
@@ -593,7 +604,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
                     mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
                     kr = thread_info(threads[k], THREAD_BASIC_INFO, reinterpret_cast<thread_info_t>(&info), &count);
 
-                    if (kr != KERN_SUCCESS)
+                    if (KERN_SUCCESS != kr)
                     {
                         throw std::runtime_error{"Failed to get thread info: " + std::to_string(kr)};
                     }
@@ -602,7 +613,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
                     state = std::min(state, toProcessState(info.run_state, info.sleep_time));
                 }
 
-                currentProcess.state = state != INT_MAX ? state : STATE_UNKNOWN;
+                currentProcess.state = (state != State::Zombie) ? state : State::Unknown;
             }
 
 
