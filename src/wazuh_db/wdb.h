@@ -2060,16 +2060,17 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
 wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
 
 /**
- * @brief Return the number of groups are assigned to agent_id
+ * @brief Returns the number of groups that are assigned to an agent.
  *
- * @param wdb The Global struct database.
- * @param agent_id ID of the agent to get the groups number from.
+ * @param [in] wdb The Global struct database.
+ * @param [in] agent_id ID of the agent to get the groups number from.
  * @return int Returns the groups number or -1 on error.
  */
 int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
 
 /**
- * @brief Verifies that groups to be asigned are not more are
+ * @brief Verifies that the number of groups to be assigned is less or equal to 128 and
+ *        there's no group longer than 255 characters nor contains a comma as part of its name.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] j_groups JSON array with all the groups to be assigned to an agent.
