@@ -764,7 +764,12 @@ class AWSBucket(WazuhIntegration):
         try:
             prefixes = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.get_base_prefix(),
                                                    Delimiter='/')['CommonPrefixes']
-            return [account_id for p in prefixes if self.prefix_regex.match(account_id := p['Prefix'].split('/')[-2])]
+            accounts = []
+            for p in prefixes:
+                account_id = p['Prefix'].split('/')[-2]
+                if self.prefix_regex.match(account_id):
+                    accounts.append(account_id)
+            return accounts
         except KeyError:
             bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
@@ -808,8 +813,10 @@ class AWSBucket(WazuhIntegration):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            filter_args['StartAfter'] = filter_marker if not self.only_logs_after or \
-                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
+            filter_args['StartAfter'] = filter_marker
+            if self.only_logs_after:
+                only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+                filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
 
             if custom_delimiter:
                 prefix_len = len(filter_args['Prefix'])
@@ -1814,8 +1821,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            filter_args['StartAfter'] = filter_marker if self.only_logs_after is None or \
-                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
+            filter_args['StartAfter'] = filter_marker
+            if self.only_logs_after:
+                only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+                filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
             debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
@@ -2571,7 +2580,8 @@ class AWSServerAccess(AWSCustomBucket):
         """Load data from a S3 access log file."""
         def parse_line(line_):
             def merge_values(delimiter='"', remove=False):
-                while next_ := next(it, None):
+                next_ = next(it, None)
+                while next_:
                     value_list[-1] = f'{value_list[-1]} {next_}'
                     try:
                         if next_[-1] == delimiter:
@@ -2580,10 +2590,12 @@ class AWSServerAccess(AWSCustomBucket):
                             break
                     except TypeError:
                         pass
+                    next_ = next(it, None)
 
             value_list = list()
             it = iter(line_.split(" "))
-            while value := next(it, None):
+            value = next(it, None)
+            while value:
                 value_list.append(value)
                 # Check if the current value should be combined with the next ones
                 try:
@@ -2597,6 +2609,7 @@ class AWSServerAccess(AWSCustomBucket):
                         value_list[-1] = value_list[-1][1:-1]
                 except TypeError:
                     pass
+                value = next(it, None)
             try:
                 value_list[-1] = value_list[-1].replace("\n", "")
             except TypeError:
@@ -2769,7 +2782,7 @@ class AWSInspector(AWSService):
         self.reparse = reparse
         self.sent_events = 0
 
-    def send_describe_findings(self, arn_list):
+    def send_describe_findings(self, arn_list: list):
         """
         Collect and send to analysisd the requested findings.
 
@@ -2808,11 +2821,11 @@ class AWSInspector(AWSService):
             last_scan = initial_date
 
         date_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
-        if not self.only_logs_after or date_last_scan > (date_only_logs :=
-                                                         datetime.strptime(self.only_logs_after, "%Y%m%d")):
-            date_scan = date_last_scan
-        else:
-            date_scan = date_only_logs
+        date_scan = date_last_scan
+        if self.only_logs_after:
+            date_only_logs = datetime.strptime(self.only_logs_after, "%Y%m%d")
+            date_scan = date_only_logs if date_only_logs > date_last_scan else date_last_scan
+
         # get current time (UTC)
         date_current = datetime.utcnow()
         # describe_findings only retrieves 100 results per call
@@ -3272,9 +3285,11 @@ class AWSCloudWatchLogs(AWSService):
             # Get all log streams using the token of the previous call to describe_log_streams
             response = self.client.describe_log_streams(logGroupName=log_group)
             log_streams = response['logStreams']
-            while token := response.get('nextToken'):
+            token = response.get('nextToken')
+            while token:
                 response = self.client.describe_log_streams(logGroupName=log_group, nextToken=token)
                 log_streams.extend(response['logStreams'])
+                token = response.get('nextToken')
 
             for log_stream in log_streams:
                 debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
