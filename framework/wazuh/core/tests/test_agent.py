@@ -7,7 +7,6 @@ import os
 import sqlite3
 import sys
 from copy import copy
-from shutil import rmtree
 from unittest.mock import patch, mock_open, call
 
 import pytest
@@ -21,7 +20,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 # all necessary params
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_agent')
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_agent')
 
 
@@ -99,7 +97,7 @@ def get_manager_version():
     """
     Get manager version
     """
-    manager = Agent(id=0)
+    manager = Agent(id='000')
     manager.load_info_from_db()
 
     return manager.version
@@ -585,7 +583,7 @@ def test_agent_get_key(socket_mock, send_mock, id, expected_key):
 def test_agent_get_key_ko(socket_mock, send_mock):
     """Tests if method get_key raises exception when ID is 0"""
     with pytest.raises(WazuhError, match='.* 1703 .*'):
-        agent = Agent(0)
+        agent = Agent('000')
         agent.get_key()
 
 
@@ -609,7 +607,7 @@ def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
     """Test if method reconnect raises exception."""
     # Assert exception is raised when status of agent is not 'active'
     with pytest.raises(WazuhError, match='.* 1707 .*'):
-        agent = Agent(3)
+        agent = Agent('003')
         agent.reconnect(mock_queue)
 
 
@@ -618,7 +616,7 @@ def test_agent_remove(mock_remove_authd):
     """Tests if method remove() works as expected."""
 
     with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'}):
-        agent = Agent(0)
+        agent = Agent('000')
         result = agent.remove()
         assert result == 'Agent was successfully deleted', 'Not expected message'
 
@@ -629,14 +627,14 @@ def test_agent_remove(mock_remove_authd):
 def test_agent_remove_ko(mock_remove_authd):
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
-        agent = Agent(0)
+        agent = Agent('000')
         agent.remove()
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_remove_authd(mock_wazuh_socket):
     """Tests if method remove_authd() works as expected"""
-    agent = Agent(0)
+    agent = Agent('000')
     agent._remove_authd(purge=True)
     mock_wazuh_socket.return_value.send.assert_called_once_with(
         {"function": "remove", "arguments": {"id": str(0).zfill(3), "purge": True}})
@@ -671,7 +669,7 @@ def test_agent_add(mock_add_authd, authd_status, ip, id, key, force):
     force : dict
         Remove old agents with same name or IP if conditions are met.
     """
-    agent = Agent(1)
+    agent = Agent('001')
 
     with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'}):
         agent._add('test_name', ip, id=id, key=key, force=force)
@@ -682,7 +680,7 @@ def test_agent_add(mock_add_authd, authd_status, ip, id, key, force):
 @patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'stopped'})
 def test_agent_add_ko(mock_maganer_status):
     """Test if _add() method raises expected exception."""
-    agent = Agent(1)
+    agent = Agent('001')
 
     with pytest.raises(WazuhError, match='.* 1706 .*'):
         agent._add('test_name', 'http://jaosdf')
@@ -762,22 +760,20 @@ def test_get_manager_name(mock_connect, mock_send):
     mock_send.assert_has_calls(calls)
 
 
+@patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.path.exists', return_value=True)
 @patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.common.backup_path', new=os.path.join(test_data_path, 'backup'))
-@patch('wazuh.core.agent.safe_move')
-@patch('wazuh.core.agent.time', return_value=0)
-def test_agent_delete_single_group(mock_time, mock_safe_move, mock_exists):
+def test_agent_delete_single_group(mock_exists, mock_rmtree):
     """Tests if method delete_single_group() works as expected"""
 
-    agent = Agent(0)
-    result = agent.delete_single_group('001')
+    agent = Agent('000')
+    group = 'test_group'
 
+    result = agent.delete_single_group(group)
     assert isinstance(result, dict), 'Result is not a dict'
-    assert result['message'] == "Group '001' deleted.", 'Not expected message'
-    mock_safe_move.assert_called_once_with(os.path.join(common.shared_path, '001'),
-                                           os.path.join(common.backup_path, 'groups', '001_0'),
-                                           permissions=0o660), 'Safe_move not called with expected params'
+    assert result['message'] == f"Group '{group}' deleted.", 'Not expected message'
+    mock_rmtree.assert_called_once_with(os.path.join(common.shared_path, group))
 
 
 @pytest.mark.parametrize("agent_id, expected_result", [
@@ -805,7 +801,7 @@ def test_agent_get_agent_os_name(socket_mock, send_mock, agent_id, expected_resu
 @patch('socket.socket.connect')
 def test_agent_get_agent_os_name_ko(socket_mock, send_mock):
     """Tests if method get_agent_os_name() returns expected value when there is no attribute in the DB"""
-    agent = Agent(4)
+    agent = Agent('004')
     assert 'null' == agent.get_agent_os_name()
 
 
@@ -952,17 +948,14 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     assert agents['items'][0]['id'] == first_id
 
 
-@pytest.mark.parametrize("agent_id, group_id, force, replace, replace_list", [
-    ('002', 'test_group', False, False, None),
-    ('002', 'test_group', True, False, None),
-    ('002', 'test_group', False, True, ['default']),
+@pytest.mark.parametrize("agent_id, group_id, replace, replace_list", [
+    ('002', 'test_group', False, None),
+    ('002', 'test_group', True, ['default']),
 ])
-@patch('wazuh.core.common.groups_path', new=test_data_path)
-@patch('wazuh.core.common.shared_path', new=test_data_path)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_add_group_to_agent(socket_mock, send_mock, agent_id, group_id, force, replace, replace_list):
-    """Test if add_group_to_agent() works as expected when adding an existing group to agent
+@patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
+@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
+def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock, agent_id, group_id, replace, replace_list):
+    """Test if add_group_to_agent() works as expected and uses the correct parameters.
 
     Parameters
     ----------
@@ -970,78 +963,37 @@ def test_agent_add_group_to_agent(socket_mock, send_mock, agent_id, group_id, fo
         Id of the agent to be searched.
     group_id : str
         Name of the group to be added.
-    force : bool
-        Do not check if agent exists.
     replace : bool
         Whether to append new group to current agent's group or replace it.
     replace_list : list
         List of Group names that can be replaced.
     """
-    try:
-        # Create the file 'group_id'
-        with open(os.path.join(test_data_path, group_id), 'w+'):
-            pass
-        # Create the file 'agent_id'
-        with open(os.path.join(test_data_path, agent_id), 'w+') as f:
-            f.write('default')
-
-        with patch('sqlite3.connect') as mock_db:
-            mock_db.return_value = test_data.global_db
-
-            # Run the method with different options
-            result = Agent.add_group_to_agent(group_id, agent_id, force, replace, replace_list)
-            assert result == f'Agent {agent_id} assigned to {group_id}', 'Result is not the expected one'
-
-            with open(os.path.join(test_data_path, agent_id), 'r') as f:
-                agent_groups = f.readline().split(',')
-                assert group_id in agent_groups, f'{group_id} should be in file {agent_id} but it is not'
-                if replace:
-                    assert 'default' not in agent_groups, '"default" group should not be within agent groups'
-                else:
-                    assert 'default' in agent_groups, '"default" group should be within agent groups'
-
-    finally:
-        # Remove created files in the test
-        os.remove(os.path.join(test_data_path, group_id))
-        os.remove(os.path.join(test_data_path, agent_id))
+    # Run the method with different options
+    result = Agent.add_group_to_agent(group_id, agent_id, replace, replace_list)
+    assert result == f'Agent {agent_id} assigned to {group_id}', 'Result is not the expected one'
+    set_agent_group_mock.assert_called_once_with(agent_id, group_id, override=replace)
 
 
-@patch('wazuh.core.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_add_group_to_agent_ko(socket_mock, send_mock):
+@patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
+def test_agent_add_group_to_agent_ko(agent_groups_mock):
     """Test if add_group_to_agent() raises expected exceptions"""
-    # Master cannot be added to a conf group
-    with pytest.raises(WazuhError, match='.* 1703 .*'):
-        Agent.add_group_to_agent('test_group', '000')
-
-    # Group does not exists
-    with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
-        Agent.add_group_to_agent('test_group', '002')
-
-    with patch('os.path.exists', return_value=True):
-        # Agent status is never_connected
-        with pytest.raises(WazuhError, match='.* 1753 .*'):
-            Agent.add_group_to_agent('test_group', '003')
-
-        # Agent file does not exists
-        with pytest.raises(WazuhInternalError, match='.* 1005 .*'):
+    # Error getting agent groups
+    with patch('wazuh.core.agent.Agent.get_agent_groups', side_effect=WazuhError(2003)):
+        with pytest.raises(WazuhInternalError, match='.* 2007 .*'):
             Agent.add_group_to_agent('test_group', '002')
 
-        with patch('builtins.open', mock_open(read_data='default')):
-            # Group cannot be replaced because it is not in replace_list (not enough permissions in rbac)
-            with pytest.raises(WazuhError, match='.* 1752 .*'):
-                Agent.add_group_to_agent('test_group', '002', replace=True, replace_list=['other'])
+    # Group cannot be replaced because it is not in replace_list (not enough permissions in rbac)
+    with pytest.raises(WazuhError, match='.* 1752 .*'):
+        Agent.add_group_to_agent('test_group', '002', replace=True, replace_list=['other'])
 
-            # The group already belongs to the agent
-            with pytest.raises(WazuhError, match='.* 1751 .*'):
-                Agent.add_group_to_agent('default', '002')
+    # The group already belongs to the agent
+    with pytest.raises(WazuhError, match='.* 1751 .*'):
+        Agent.add_group_to_agent('default', '002')
 
-            with patch('wazuh.core.common.max_groups_per_multigroup', new=0):
-                # Multigroup limit exceeded.
-                with pytest.raises(WazuhError, match='.* 1737 .*'):
-                    Agent.add_group_to_agent('test_group', '002')
+    with patch('wazuh.core.common.max_groups_per_multigroup', new=0):
+        # Multigroup limit exceeded.
+        with pytest.raises(WazuhError, match='.* 1737 .*'):
+            Agent.add_group_to_agent('test_group', '002')
 
 
 @pytest.mark.parametrize("agent_id, seconds, expected_result", [
@@ -1101,61 +1053,71 @@ def test_agent_group_exists_ko():
         Agent.group_exists('default**')
 
 
-@pytest.mark.parametrize("group_exists", [
-    True,
-    False,
+@patch('wazuh.core.agent.WazuhDBConnection.run_wdb_command', return_value=('ok', '["payload"]'))
+@patch('socket.socket.connect')
+def test_agent_get_agent_groups(socket_connect_mock, wdb_command_mock):
+    """Test if get_agent_groups() asks for agent's groups correctly."""
+    agent_id = '001'
+    agent_groups = Agent.get_agent_groups(agent_id)
+
+    wdb_command = 'global select-group-belong :agent_id:'
+    wdb_command_mock.assert_called_once_with(wdb_command.replace(':agent_id:', agent_id))
+    assert agent_groups == ['payload']
+
+
+@pytest.mark.parametrize('remove, override, expected_mode', [
+    (False, False, 'append'),
+    (True, False, 'remove'),
+    (True, True, 'remove'),
+    (False, True, 'override')
 ])
-@patch('builtins.open', mock_open(read_data='default'))
-def test_agent_get_agents_group_file(group_exists):
-    """Test if get_agents_group_file() returns the group of the agent.
+@patch('wazuh.core.agent.WazuhDBConnection.run_wdb_command')
+@patch('socket.socket.connect')
+def test_agent_set_agent_group_relationship(socket_connect_mock, wdb_command_mock, remove, override, expected_mode):
+    """Test if set_agent_group_relationship() uses the correct command to create/remove the relationship between
+    an agent and a group.
 
     Parameters
     ----------
-    group_exists : bool
-        If group should be returned.
+    remove: bool
+        Whether to remove the relationship or not.
+    override: bool
+        Whether to override the previous groups or not.
+    expected_mode: str
+        Expected mode to send to wdb to change the relationship between an agent and a group.
     """
-    with patch('os.path.exists', return_value=group_exists):
-        result = Agent.get_agents_group_file('002')
-        if group_exists:
-            assert result == 'default', 'Group "default" should be returned.'
-        else:
-            assert result == '', 'No group should be returned.'
+    agent_id = '001'
+    group_id = 'default'
+    wdb_command = r'global set-agent-groups {"mode":"(.+)","sync_status":"syncreq","data":[{"id":(.+),' \
+                  r'"groups":["(.+)"]}]}'.replace('"', '\\"').replace('[', '\\[').replace(']', '\\]')
+
+    # Default relationship -> add an agent to a group
+    Agent.set_agent_group_relationship(agent_id, group_id, remove, override)
+    match = re.match(wdb_command, wdb_command_mock.call_args[0][0])
+    assert match, 'WDB command has changed'
+    assert (expected_mode, agent_id, group_id) == match.groups(), 'Unexpected mode when setting agent-group ' \
+                                                                  'relationship'
 
 
-@patch('builtins.open')
-@patch('wazuh.core.common.wazuh_uid')
-@patch('wazuh.core.common.wazuh_gid')
-@patch('wazuh.core.agent.chown')
-@patch('wazuh.core.agent.chmod')
-def test_agent_set_agent_group_file(mock_chmod, mock_chown, mock_gid, mock_uid, mock_open):
-    """Test if set_agent_group_file() set the group_id in the agent"""
-    Agent.set_agent_group_relationship('002', 'test_group')
-
-    # Assert methods are called with expected params
-    mock_open.assert_called_once_with(os.path.join(common.groups_path, '002'), 'w')
-    mock_chown.assert_called_once()
-    mock_chmod.assert_called_once_with(os.path.join(common.groups_path, '002'), 0o660)
-
-
-def test_agent_set_agent_group_file_ko():
-    """Test if set_agent_group_file() raises expected exception"""
+@patch('socket.socket.connect')
+def test_agent_set_agent_group_relationship_ko(socket_connect_mock):
+    """Test if set_agent_group_relationship() raises expected exception."""
     with pytest.raises(WazuhInternalError, match='.* 1005 .*'):
         Agent.set_agent_group_relationship('002', 'test_group')
 
 
 @pytest.mark.parametrize('agent_id, group_id, force, previous_groups, set_default', [
-    ('002', 'test_group', False, 'default,test_group,another_test', False),
-    ('002', 'test_group', True, 'default,test_group,another_test', False),
-    ('002', 'test_group', False, 'test_group', True),
-    ('002', 'test_group', False, 'test_group,another_test', False)
+    ('002', 'test_group', False, ['default', 'test_group', 'another_test'], False),
+    ('002', 'test_group', True, ['default', 'test_group', 'another_test'], False),
+    ('002', 'test_group', False, ['test_group'], True),
+    ('002', 'test_group', False, ['test_group', 'another_test'], False)
 ])
-@patch('wazuh.core.common.groups_path', new=test_data_path)
-@patch('wazuh.core.common.shared_path', new=test_data_path)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_id, force, previous_groups,
-                                        set_default):
-    """Test if unset_single_group_agent() returns expected message and removes group from agent
+@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+@patch('wazuh.core.agent.Agent.get_basic_information')
+def test_agent_unset_single_group_agent(agent_info_mock, group_exists_mock, set_agent_group_mock, agent_id, group_id,
+                                        force, previous_groups, set_default):
+    """Test if unset_single_group_agent() returns expected message and removes group from agent.
 
     Parameters
     ----------
@@ -1170,66 +1132,47 @@ def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_
     set_default : bool
         The agent belongs to 'default' group.
     """
-    try:
-        # Create the file 'group_id'
-        with open(os.path.join(test_data_path, group_id), 'w+'):
-            pass
-        # Create the file 'agent_id'
-        with open(os.path.join(test_data_path, agent_id), 'w+') as f:
-            f.write(previous_groups)
+    with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=previous_groups):
+        result = Agent.unset_single_group_agent(agent_id, group_id, force)
 
-        with patch('sqlite3.connect') as mock_db:
-            mock_db.return_value = test_data.global_db
+    not force and agent_info_mock.assert_called_once()
 
-            result = Agent.unset_single_group_agent(agent_id, group_id, force)
-            # Assert message is as expected
-            assert result == f"Agent '{agent_id}' removed from '{group_id}'." + \
-                   (" Agent reassigned to group default." if set_default else ""), 'Result message not as expected.'
-
-            # Check that the agent groups file has been updated.
-            with open(os.path.join(test_data_path, agent_id), 'r') as f:
-                agent_groups = f.readline().split(',')
-                if set_default:
-                    assert 'default' in agent_groups
-                else:
-                    assert group_id not in agent_groups, f'{group_id} should not be in file {agent_id}'
-
-    finally:
-        # Remove created files in the test
-        os.remove(os.path.join(test_data_path, group_id))
-        os.remove(os.path.join(test_data_path, agent_id))
+    set_agent_group_mock.assert_called_once_with(agent_id, group_id, remove=True)
+    assert result == f"Agent '{agent_id}' removed from '{group_id}'." + \
+           (" Agent reassigned to group default." if set_default else ""), 'Result message not as expected.'
 
 
-@patch('wazuh.core.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('socket.socket.connect')
-def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
-    """Test if unset_single_group_agent() raises expected exceptions"""
+def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_mock):
+    """Test if unset_single_group_agent() raises expected exceptions."""
     # Master cannot be added to a conf group
     with pytest.raises(WazuhError, match='.* 1703 .*'):
         Agent.unset_single_group_agent('000', 'test_group')
+    agent_information_mock.assert_called_once()
 
     # Group does not exists
-    with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
-        Agent.unset_single_group_agent('002', 'test_group')
+    with patch('wazuh.core.agent.Agent.group_exists', return_value=False):
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
+            Agent.unset_single_group_agent('002', 'test_group')
 
-    with patch('os.path.exists', return_value=True):
-        with patch('wazuh.core.agent.Agent.get_agents_group_file', return_value='new_group,new_group2'):
-            # Group_id is not within group_list
-            with pytest.raises(WazuhError, match='.* 1734 .*'):
-                Agent.unset_single_group_agent('002', 'test_group')
+    # Agent does not belong to group
+    with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['new_group', 'new_group2']):
+        # Group_id is not within group_list
+        with pytest.raises(WazuhError, match='.* 1734 .*'):
+            Agent.unset_single_group_agent('002', 'test_group', force=True)
 
-        with patch('wazuh.core.agent.Agent.get_agents_group_file', return_value='default'):
-            # Agent file does not exists
-            with pytest.raises(WazuhError, match='.* 1745 .*'):
-                Agent.unset_single_group_agent('002', 'default')
+    # Group ID is 'default' and it is the last only one remaining
+    with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default']):
+        # Agent file does not exists
+        with pytest.raises(WazuhError, match='.* 1745 .*'):
+            Agent.unset_single_group_agent('002', 'default', force=True)
 
 
 @patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getconfig(socket_mock, send_mock, mock_wazuh_socket):
+def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
     mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
@@ -1240,7 +1183,7 @@ def test_agent_getconfig(socket_mock, send_mock, mock_wazuh_socket):
 @patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getconfig_ko(socket_mock, send_mock, mock_wazuh_socket):
+def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method raises expected exceptions."""
     # Invalid component
     agent = Agent('003')
@@ -1335,42 +1278,32 @@ def test_get_groups():
             rmtree(shared)
 
 
-@pytest.mark.parametrize('group, expected_agents', [
-    ('group1', {'000'}),
-    ('group2', {'001'}),
-    ('group21', {'006'}),
-    ('*', {'000', '001', '002', '005', '006'})
+@pytest.mark.parametrize('group, wdb_response, expected_agents', [
+    ('default', [('due', '[1,2]'), ('ok', '[3,4]')], {'001', '002', '003', '004'}),
+    ('test_group', [('ok', '[1,2,3,999]')], {'001', '002', '003'}),
+    ('*', [('due', '[{"data": [{"id": 1}, {"id": 2}]}]'), ('ok', '[{"data": [{"id": 3}, {"id": 4}]}]')],
+     {'001', '002', '003', '004'}),
+    ('*', [('ok', '[{"data": [{"id": 1}, {"id": 2}, {"id": 999}]}]')], {'001', '002'})
 ])
-def test_expand_group(group, expected_agents):
-    """Test that expand_group() returns expected agent IDs
+@patch('socket.socket.connect')
+def test_expand_group(socket_mock, group, wdb_response, expected_agents):
+    """Test that expand_group() returns expected agent IDs.
 
     Parameters
     ----------
     group : str
-        Name of the group to be expanded
+        Name of the group to be expanded.
+    wdb_response: list
+        Mock return values for the `WazuhDBConnection.run_wdb_command` method.
     expected_agents : set
-        Expected agent IDs for the selected group
+        Expected agent IDs for the selected group.
     """
     # Clear and set get_agents_info cache
     reset_context_cache()
     test_get_agents_info()
 
-    id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': 'group21'}
-    agent_groups = os.path.join(test_data_path, 'agent-groups')
-
-    with patch('wazuh.core.common.groups_path', new=agent_groups):
-        try:
-            os.makedirs(agent_groups)
-            for id_, groups in id_groups.items():
-                with open(os.path.join(agent_groups, id_), 'w+') as f:
-                    f.write(groups)
-
-            result = expand_group(group)
-            assert result == expected_agents
-        except Exception as e:
-            pytest.fail(f'Exception raised: {e}')
-        finally:
-            rmtree(agent_groups)
+    with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command', side_effect=wdb_response):
+        assert expand_group(group) == expected_agents, 'Agent IDs do not match with the expected result'
 
 
 @pytest.mark.parametrize('system_resources, permitted_resources, filters, expected_result', [
