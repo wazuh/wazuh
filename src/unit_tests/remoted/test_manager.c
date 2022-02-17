@@ -57,7 +57,7 @@ void test_lookfor_agent_group_null_groups()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group 'default' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
-    will_return(__wrap_w_is_worker, 0);
+    will_return(__wrap_w_is_single_node, 0);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
@@ -81,7 +81,7 @@ void test_lookfor_agent_group_set_default_group()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group 'default' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
-    will_return(__wrap_w_is_worker, 0);
+    will_return(__wrap_w_is_single_node, 0);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
