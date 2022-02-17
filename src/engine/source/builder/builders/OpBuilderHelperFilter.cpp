@@ -7,9 +7,9 @@
  * Foundation.
  */
 
+#include <optional>
 #include <string>
 #include <tuple>
-#include <optional>
 
 #include "OpBuilderHelperFilter.hpp"
 #include "stringUtils.hpp"
@@ -27,14 +27,16 @@ using opString = std::optional<std::string>;
  * @return std::tuple<std::string, opString, opString> the operator,
  * the value to compare and the reference to value to compare (if exists)
  * @throw std::runtime_error if the number of parameters is not valid
- * @throw std::logic_error if the json node is not valid definition for the helper function
+ * @throw std::logic_error if the json node is not valid definition for the helper
+ * function
  */
 std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentValue & def)
 {
     // Get destination path
     std::string field = def.MemberBegin()->name.GetString();
     // Get function helper
-    if (!def.MemberBegin()->value.IsString()) {
+    if (!def.MemberBegin()->value.IsString())
+    {
         throw std::logic_error("Invalid operator definition");
     }
     std::string rawValue = def.MemberBegin()->value.GetString();
@@ -179,8 +181,7 @@ types::Lifter opBuilderHelperStringEQ(const DocumentValue & def)
             [key, refValue, value](types::Event e)
             {
                 // try and catche, return false
-                return opBuilderHelperStringComparison(key, '=', e,
-                                                       refValue, value);
+                return opBuilderHelperStringComparison(key, '=', e, refValue, value);
             });
     };
 }
@@ -195,10 +196,8 @@ types::Lifter opBuilderHelperStringNE(const DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter(
-            [key, refValue, value](types::Event e) {
-                return opBuilderHelperStringComparison(key, '!', e,
-                                                       refValue, value);
-            });
+            [key, refValue, value](types::Event e)
+            { return opBuilderHelperStringComparison(key, '!', e, refValue, value); });
     };
 }
 
@@ -212,10 +211,8 @@ types::Lifter opBuilderHelperStringGT(const DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter(
-            [key, refValue, value](types::Event e) {
-                return opBuilderHelperStringComparison(key, '>', e,
-                                                       refValue, value);
-            });
+            [key, refValue, value](types::Event e)
+            { return opBuilderHelperStringComparison(key, '>', e, refValue, value); });
     };
 }
 
@@ -229,10 +226,8 @@ types::Lifter opBuilderHelperStringGE(const DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter(
-            [key, refValue, value](types::Event e) {
-                return opBuilderHelperStringComparison(key, 'g', e,
-                                                       refValue, value);
-            });
+            [key, refValue, value](types::Event e)
+            { return opBuilderHelperStringComparison(key, 'g', e, refValue, value); });
     };
 }
 
@@ -246,10 +241,8 @@ types::Lifter opBuilderHelperStringLT(const DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter(
-            [key, refValue, value](types::Event e) {
-                return opBuilderHelperStringComparison(key, '<', e,
-                                                       refValue, value);
-            });
+            [key, refValue, value](types::Event e)
+            { return opBuilderHelperStringComparison(key, '<', e, refValue, value); });
     };
 }
 
@@ -263,10 +256,8 @@ types::Lifter opBuilderHelperStringLE(const DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter(
-            [key, refValue, value](types::Event e) {
-                return opBuilderHelperStringComparison(key, 'l', e,
-                                                       refValue, value);
-            });
+            [key, refValue, value](types::Event e)
+            { return opBuilderHelperStringComparison(key, 'l', e, refValue, value); });
     };
 }
 
@@ -281,7 +272,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
 
     // TODO Remove try catch or if nullptr after fix get method of document class
     // Get value to compare
-    const rapidjson::Value * fieldValue {};
+    const rapidjson::Value * fieldValue{};
     try
     {
         fieldValue = e.get("/" + field);
@@ -302,7 +293,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
     {
         // Get reference to json event
         // TODO Remove try catch or if nullptr after fix get method of document class
-        const rapidjson::Value * refValueToCheck {};
+        const rapidjson::Value * refValueToCheck{};
         try
         {
             refValueToCheck = e.get("/" + refValue.value());
@@ -352,7 +343,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr]{getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -372,7 +363,7 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr]{getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -395,7 +386,7 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr]{getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -418,7 +409,7 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr]{getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -441,7 +432,7 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr]{getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -464,7 +455,7 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr]{getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -482,5 +473,23 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
             });
     };
 }
+
+types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
+{
+    // Get field
+    std::string field = def.MemberBegin()->name.GetString();
+    std::string value = def.MemberBegin()->value.GetString();
+    std::vector<std::string> parameters = utils::string::split(value, '/');
+    if (parameters.size() != 2)
+    {
+        throw std::invalid_argument("Wrong number of arguments passed");
+    }
+    std::string regexp = parameters[1];
+
+    // Append rxcpp operations
+    return o.filter(
+        [=](types::Event e)
+        { return (RE2::FullMatch(e.get("/" + field)->GetString(), regexp));
+    });
 
 } // namespace builder::internals::builders

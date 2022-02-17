@@ -22,6 +22,14 @@ CPMAddPackage(
 list(APPEND EXTERNAL_DEPS "rxcpp")
 
 CPMAddPackage(
+  NAME RE2
+  GITHUB_REPOSITORY google/re2
+  GIT_TAG 2022-02-01
+  VERSION release 2022-02-01
+)
+list(APPEND EXTERNAL_DEPS "re2")
+
+CPMAddPackage(
   NAME rapidjson
   GITHUB_REPOSITORY Tencent/rapidjson
   GIT_TAG master

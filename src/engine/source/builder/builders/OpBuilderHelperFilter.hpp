@@ -10,6 +10,7 @@
 #ifndef _OP_BUILDER_HELPER_FILTER_H
 #define _OP_BUILDER_HELPER_FILTER_H
 
+#include "stringUtils.hpp"
 #include "builderTypes.hpp"
 #include "stringUtils.hpp"
 
@@ -19,6 +20,8 @@
  *
  * Warning: this function never should throw an exception.
  */
+
+#include <re2/re2.h>
 
 namespace builder::internals::builders
 {
@@ -244,6 +247,15 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def);
  * @throw std::runtime_error if the parameter is not a integer.
  */
 types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def);
+
+/**
+ * @brief Builds helper regex match operation.
+ * Checks that the field value matches a regular expression
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
 
 } // namespace builder::internals::builders
 
