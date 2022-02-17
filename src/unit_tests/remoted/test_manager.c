@@ -105,6 +105,25 @@ static int test_fsum_changed_setup(void ** state) {
     return 0;
 }
 
+static int test_process_group_setup(void ** state) {
+    os_calloc(1, (2) * sizeof(group_t *), groups);
+    os_calloc(1, sizeof(group_t), groups[0]);
+    groups[0]->name = strdup("test_default");
+    os_calloc(4, sizeof(file_sum *), groups[0]->f_sum);
+    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
+    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[1]);
+    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[2]);
+    strncpy(groups[0]->f_sum[0]->sum, "AAAAAAAAAAAAAAAA", 32);
+    os_strdup("merged.mg", groups[0]->f_sum[0]->name);
+    strncpy(groups[0]->f_sum[1]->sum, "BBBBBBBBBBBBBBBB", 32);
+    os_strdup("test_file", groups[0]->f_sum[1]->name);
+    strncpy(groups[0]->f_sum[2]->sum, "CCCCCCCCCCCCCCCC", 32);
+    os_strdup("agent.conf", groups[0]->f_sum[2]->name);
+    groups[1] = NULL;
+
+    return 0;
+}
+
 static int test_c_group_teardown(void ** state) {
     int i;
     int j;
@@ -773,6 +792,8 @@ void test_c_multi_group_open_directory_fail(void **state)
     will_return(__wrap_cldir_ex, 0);
     will_return(__wrap_opendir, 0);
 
+    will_return(__wrap_strerror, "No such file or directory");
+
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/multi_group_test': No such file or directory");
 
     c_multi_group(multi_group, _f_sum, hash_multigroup, true);
@@ -799,10 +820,12 @@ void test_c_multi_group_read_dir_fail(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
 
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "At purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
 
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
     c_multi_group(multi_group, _f_sum, hash_multigroup, true);
@@ -828,6 +851,7 @@ void test_c_multi_group_read_dir_fail_no_entry(void **state)
 
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "Not a directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': Not a directory");
 
     errno = ENOTDIR;
@@ -881,6 +905,7 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
 
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
     c_multi_group(multi_group, _f_sum, hash_multigroup, true);
@@ -1262,6 +1287,371 @@ void test_process_deleted_multi_groups_no_changes(void **state)
     assert_null(multi_groups[2]);
 }
 
+void test_process_groups_open_directory_fail(void **state)
+{
+    will_return(__wrap_opendir, 0);
+
+    will_return(__wrap_strerror, "No such file or directory");
+    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    
+    process_groups();
+}
+
+void test_process_groups_readdir_fail(void **state)
+{
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+}
+
+void test_process_groups_subdir_null(void **state)
+{
+    struct dirent *entry;
+    os_calloc(1, sizeof(struct dirent), entry);
+    strcpy(entry->d_name, "test");
+
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, entry);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "At process_groups(): Could not open directory 'etc/shared/test'");
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+
+    os_free(entry);
+}
+
+void test_process_groups_skip(void **state)
+{
+    struct dirent *entry;
+    os_calloc(1, sizeof(struct dirent), entry);
+    strcpy(entry->d_name, ".");
+
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, entry);
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+
+    os_free(entry);
+}
+
+void test_process_groups_skip_2(void **state)
+{
+    struct dirent *entry;
+    os_calloc(1, sizeof(struct dirent), entry);
+    strcpy(entry->d_name, "..");
+
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, entry);
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+
+    os_free(entry);
+}
+
+void test_process_groups_find_group_null(void **state)
+{
+    struct dirent *entry;
+    os_calloc(1, sizeof(struct dirent), entry);
+    strcpy(entry->d_name, "test");
+
+    char** subdir = NULL;
+    os_malloc(5 * sizeof(char *), subdir);
+    os_strdup("file_1", subdir[0]);
+    os_strdup("file_2", subdir[1]);
+    os_strdup("agent.conf", subdir[2]);
+    subdir[3] = NULL;
+
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, entry);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test");
+    will_return(__wrap_wreaddir, subdir);
+
+    expect_string(__wrap_w_parser_get_group, name, "test");
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test/merged.mg.tmp");
+    expect_string(__wrap_MergeAppendFile, tag, "test");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test/file_1");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_file_1");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test/file_1");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test/file_1");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test/merged.mg.tmp");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test/file_2");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_file_2");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test/file_2");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test/file_2");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test/merged.mg.tmp");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test/agent.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_agent.conf");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test/agent.conf");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test/agent.conf");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test/merged.mg.tmp");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test/merged.mg.tmp");
+    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test/merged.mg");
+    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_merged");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+
+    assert_non_null(groups[1]);
+    assert_string_equal(groups[1]->name, "test");
+    assert_non_null(groups[1]->f_sum);
+    assert_non_null(groups[1]->f_sum[0]);
+    assert_string_equal(groups[1]->f_sum[0]->name, "merged.mg");
+    assert_non_null(groups[1]->f_sum[1]);
+    assert_string_equal(groups[1]->f_sum[1]->name, "file_1");
+    assert_non_null(groups[1]->f_sum[2]);
+    assert_string_equal(groups[1]->f_sum[2]->name, "file_2");
+    assert_non_null(groups[1]->f_sum[3]);
+    assert_string_equal(groups[1]->f_sum[3]->name, "agent.conf");
+    assert_true(groups[1]->has_changed);
+    assert_true(groups[1]->exists);
+    assert_null(groups[2]);
+
+    os_free(entry);
+}
+
+void test_process_groups_find_group_changed(void **state)
+{
+    struct dirent *entry;
+    os_calloc(1, sizeof(struct dirent), entry);
+    strcpy(entry->d_name, "test_default");
+
+    char** subdir = NULL;
+    os_malloc(2 * sizeof(char *), subdir);
+    os_strdup("test_file_change", subdir[0]);
+    subdir[1] = NULL;
+
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, entry);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, subdir);
+
+    // Start c_group
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test_file_change");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "AAAAAAAAAAAAAAA");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_file_change");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test_file_change");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "BBBBBBBBBBBBB");
+    will_return(__wrap_OS_MD5_File, 0);
+    // End c_group
+
+    // Start c_group
+    expect_string(__wrap_w_parser_get_group, name, "test_default");
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_MergeAppendFile, tag, "test_default");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test_file_change");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "AAAAAAAAAAAAAAA");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_file_change");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test_file_change");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "BBBBBBBBBBBBB");
+    will_return(__wrap_OS_MD5_File, 0);
+    // End c_group
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Group 'test_default' has changed.");
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+
+    assert_non_null(groups[0]);
+    assert_string_equal(groups[0]->name, "test_default");
+    assert_non_null(groups[0]->f_sum);
+    assert_non_null(groups[0]->f_sum[0]);
+    assert_string_equal(groups[0]->f_sum[0]->name, "merged.mg");
+    assert_non_null(groups[0]->f_sum[1]);
+    assert_string_equal(groups[0]->f_sum[1]->name, "test_file_change");
+    assert_true(groups[0]->has_changed);
+    assert_true(groups[0]->exists);
+    assert_null(groups[1]);
+
+    os_free(entry);
+}
+
+void test_process_groups_find_group_not_changed(void **state)
+{
+    struct dirent *entry;
+    os_calloc(1, sizeof(struct dirent), entry);
+    strcpy(entry->d_name, "test_default");
+
+    char** subdir = NULL;
+    os_malloc(4 * sizeof(char *), subdir);
+    os_strdup("merged.mg", subdir[0]);
+    os_strdup("test_file", subdir[1]);
+    os_strdup("agent.conf", subdir[2]);
+    subdir[3] = NULL;
+
+    will_return(__wrap_opendir, 1);
+
+    will_return(__wrap_readdir, entry);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, subdir);
+
+    // Start c_group
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test_file");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "BBBBBBBBBBBBBBBB");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test_file");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test_file");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/agent.conf");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "CCCCCCCCCCCCCCCC");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/agent.conf");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/agent.conf");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "AAAAAAAAAAAAAAAA");
+    will_return(__wrap_OS_MD5_File, 0);
+    // End c_group
+
+    will_return(__wrap_readdir, NULL);
+
+    process_groups();
+
+    assert_non_null(groups[0]);
+    assert_string_equal(groups[0]->name, "test_default");
+    assert_non_null(groups[0]->f_sum);
+    assert_non_null(groups[0]->f_sum[0]);
+    assert_string_equal(groups[0]->f_sum[0]->name, "merged.mg");
+    assert_non_null(groups[0]->f_sum[1]);
+    assert_string_equal(groups[0]->f_sum[1]->name, "test_file");
+    assert_non_null(groups[0]->f_sum[1]);
+    assert_string_equal(groups[0]->f_sum[2]->name, "agent.conf");
+    assert_false(groups[0]->has_changed);
+    assert_true(groups[0]->exists);
+    assert_null(groups[1]);
+
+    os_free(entry);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1317,6 +1707,16 @@ int main(void)
         // Test process_deleted_multi_groups
         cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_delete, test_find_multi_group_setup, test_c_multi_group_teardown),
         cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_no_changes, test_find_multi_group_setup, test_c_multi_group_teardown),
+        // Test process_groups
+        cmocka_unit_test(test_process_groups_open_directory_fail),
+        cmocka_unit_test(test_process_groups_readdir_fail),
+        cmocka_unit_test(test_process_groups_subdir_null),
+        cmocka_unit_test(test_process_groups_skip),
+        cmocka_unit_test(test_process_groups_skip_2),
+        cmocka_unit_test_setup_teardown(test_process_groups_find_group_null, test_process_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_groups_find_group_changed, test_process_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_groups_find_group_not_changed, test_process_group_setup, test_c_group_teardown),
+
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }
