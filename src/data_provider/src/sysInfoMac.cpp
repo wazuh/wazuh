@@ -183,11 +183,8 @@ struct DarwinProcessInfo
         }
 
         std::vector<char> buff(maxBufferSize, '\0');
-        passwd userInfo;
-        group groupInfo;
-        // infoPtr will point to "info" if calls to getpwuid_r are successful.
+        passwd userInfo = {};
         passwd* userInfoPtr { nullptr };
-        group* groupInfoPtr { nullptr };
 
         result["pid"]        = std::to_string(pid);
         result["name"]       = std::move(name);
@@ -198,7 +195,6 @@ struct DarwinProcessInfo
         result["vm_size"]    = virtualMemorySizeKiB;
         result["start_time"] = startTime;
 
-        memset(&userInfo, 0, sizeof userInfo);
         getpwuid_r(euid, &userInfo, buff.data(), buff.size(), &userInfoPtr);
 
         if (userInfoPtr)
@@ -220,7 +216,8 @@ struct DarwinProcessInfo
             }
         }
 
-        memset(&groupInfo, 0, sizeof groupInfo);
+        group groupInfo = {};
+        group* groupInfoPtr { nullptr };
         getgrgid_r(rgid, &groupInfo, buff.data(), buff.size(), &groupInfoPtr);
 
         if (groupInfoPtr)
