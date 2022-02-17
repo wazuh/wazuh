@@ -217,9 +217,9 @@ def test_decompress_file_snappy_skip(log_key: str, aws_bucket: aws_s3.AWSBucket)
         Instance of the AWSBucket class.
     """
     aws_bucket.skip_on_error = True
-    with patch('io.BytesIO') as mock_io:
+    with patch('io.BytesIO'):
         aws_bucket.decompress_file(log_key)
-    
+
 
 @pytest.mark.parametrize('log_key, skip_on_error, expected_exception', [
     ('test.snappy', False, SystemExit),
@@ -227,7 +227,7 @@ def test_decompress_file_snappy_skip(log_key: str, aws_bucket: aws_s3.AWSBucket)
 def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exception: Exception,
                             aws_bucket: aws_s3.AWSBucket):
     """
-    Test that the decompress_file method raises an exception when used with 
+    Test that the decompress_file method raises an exception when used with
     invalid arguments.
 
     Parameters
@@ -242,8 +242,7 @@ def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exceptio
         Instance of the AWSBucket class.
     """
     aws_bucket.skip_on_error = skip_on_error
-    with patch('io.BytesIO') as mock_io, \
-         pytest.raises(expected_exception):
+    with patch('io.BytesIO'), pytest.raises(expected_exception):
         aws_bucket.decompress_file(log_key)
 
 
@@ -262,7 +261,7 @@ def test_aws_waf_load_information_from_file(log_file: str, aws_waf_bucket: aws_s
     ----------
     log_file : str
         File that should be decompressed.
-    aws_waf_bucket : aws_s3.AWSWAFBucket    
+    aws_waf_bucket : aws_s3.AWSWAFBucket
         Instance of the AWSWAFBucket class.
     skip_on_error : bool
         If the skip_on_error is disabled or not.
@@ -270,7 +269,7 @@ def test_aws_waf_load_information_from_file(log_file: str, aws_waf_bucket: aws_s
     aws_waf_bucket.skip_on_error = skip_on_error
     with open(log_file, 'rb') as f:
         aws_waf_bucket.client.get_object.return_value.__getitem__.return_value = f
-        loaded_data = aws_waf_bucket.load_information_from_file(log_file)
+        aws_waf_bucket.load_information_from_file(log_file)
 
 
 @pytest.mark.parametrize('log_file, skip_on_error, expected_exception', [

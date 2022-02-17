@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-import os
 import pytest
 from unittest.mock import patch, MagicMock
 from copy import deepcopy
@@ -12,10 +11,10 @@ sys.modules['boto3'] = MagicMock()
 sys.modules['botocore'] = MagicMock()
 
 import aws_s3
-from .data.fixture_parameters import *
+from .data.fixture_parameters import AWS_INTEGRATION_PARAMS, AWS_BUCKET_PARAMS
 
 
-@pytest.fixture(params= deepcopy(AWS_INTEGRATION_PARAMS))
+@pytest.fixture(params=deepcopy(AWS_INTEGRATION_PARAMS))
 def wazuh_integration(request):
     """
     Return a WazuhIntegration instance.
@@ -26,11 +25,12 @@ def wazuh_integration(request):
         Object that contains information about the current test.
     """
     with patch('aws_s3.WazuhIntegration.get_client'), \
-         patch('sqlite3.connect'):
+         patch('sqlite3.connect'), \
+         patch('utils.get_wazuh_version'):
         return aws_s3.WazuhIntegration(**{k: v for i in request.param for k, v in i.items()})
 
 
-@pytest.fixture(params= deepcopy(AWS_BUCKET_PARAMS))
+@pytest.fixture(params=deepcopy(AWS_BUCKET_PARAMS))
 def aws_bucket(request):
     """
     Return a AWSBucket instance.
@@ -41,10 +41,12 @@ def aws_bucket(request):
         Object that contains information about the current test.
     """
     with patch('aws_s3.AWSBucket.get_client'), \
-         patch('sqlite3.connect'):
+         patch('sqlite3.connect'), \
+         patch('utils.get_wazuh_version'):
         return aws_s3.AWSBucket(**{k: v for i in request.param for k, v in i.items()})
 
-@pytest.fixture(params= deepcopy(AWS_BUCKET_PARAMS))
+
+@pytest.fixture(params=deepcopy(AWS_BUCKET_PARAMS))
 def aws_waf_bucket(request):
     """
     Return a AWSWAFBucket instance.
@@ -56,6 +58,6 @@ def aws_waf_bucket(request):
     """
     with patch('aws_s3.AWSWAFBucket.get_client'), \
          patch('aws_s3.AWSWAFBucket.get_sts_client'), \
-         patch('sqlite3.connect'):
+         patch('sqlite3.connect'), \
+         patch('utils.get_wazuh_version'):
         return aws_s3.AWSWAFBucket(**{k: v for i in request.param for k, v in i.items()})
-
