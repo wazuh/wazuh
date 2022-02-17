@@ -27,7 +27,7 @@ def test_custom_file_rotating_handler_do_rollover():
         today = date.today()
         backup_file = join(tmp_dir, 'test', str(today.year),
                            today.strftime("%b"),
-                           f"test-{today.day:02d}.log.gz")
+                           f"test.log-{today.day:02d}.gz")
 
         with gzip.open(backup_file, 'r') as backup:
             assert backup.read().decode() == test_str
@@ -55,7 +55,7 @@ def test_custom_file_rotating_handler_compute_archives_directory(mock_mkdir, rot
         year = year.split('.')[2]
         month = calendar.month_abbr[int(month)]
         log_path = join(tmp_dir, 'test', year, month)
-        expected_name = join(log_path, f"test-{int(day):02d}.log.gz")
+        expected_name = join(log_path, f"test.log-{int(day):02d}.gz")
         computed_name = fh.computeArchivesDirectory(rotated_file)
 
         assert expected_name == computed_name
