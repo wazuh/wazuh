@@ -30,7 +30,6 @@ static std::string getRandomString(int len, bool includeSymbols = false) {
     for (int i = 0; i < len; ++i) {
         tmp_s += dict[rand() % dict.size()];
     }
-    
     return tmp_s;
 }
 
@@ -80,6 +79,7 @@ static const char *event =
 static void capture_expr_parse(benchmark::State &state)
 {
     auto expr = getRandomCapExpr(state.range(0));
+    printf("%s\n", expr.c_str());
     for (auto _ : state)
     {
         auto parseOp = getParserOp(expr);
@@ -217,7 +217,7 @@ static void map_parse(benchmark::State &state)
     std::string ev = createMap(state.range(0));
     std::vector<std::string> opts {" ", "=", ";"};
 
-    ev += getRandomCapExpr(20);
+    ev += getRandomString(20);
     for (auto _ : state) {
         const char *eventIt = ev.c_str();
         if (parseMap(&eventIt, 0, opts).empty()) {
