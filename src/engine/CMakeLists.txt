@@ -83,6 +83,7 @@ list(APPEND EXTERNAL_DEPS "glog::glog")
 ####################################################################################################
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
+add_subdirectory(${ENGINE_SOURCE_DIR}/shared)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
