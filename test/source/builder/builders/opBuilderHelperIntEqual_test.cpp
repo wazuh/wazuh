@@ -31,7 +31,7 @@ TEST(opBuilderHelperIntEqual, Builds_error_bad_parameter)
         "check":
             {"field_test": "+int/test"}
     })"};
-    ASSERT_THROW(opBuilderHelperIntEqual(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntEqual(*doc.get("/check")), std::invalid_argument);
 }
 
 TEST(opBuilderHelperIntEqual, Builds_error_more_parameters)
@@ -154,28 +154,28 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
         [=](auto s)
         {
             s.on_next(Event{R"(
-                {{"field_test":9},{"field_src":10}}
+                {"field_test": 9,"field_src": 10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":10},{"field_src":10}}
+                {"field_test":10,"field_src":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":10},{"field_src":10}}
+                {"field_test":10,"field_src":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":10},{"field_src":"10"}}
+                {"field_test":10,"field_src":"10"}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":"10"},{"field_src":10}}
+                {"field_test":"10","field_src":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":"10"},{"field_src":"10"}}
+                {"field_test":"10","field_src":"10"}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":11},{"field_src":"10"}}
+                {"field_test":11,"field_src":"10"}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":10},{"field_src":"test"}}
+                {"field_test":10,"field_src":"test"}
             )"});
             s.on_completed();
         });
@@ -188,17 +188,11 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
         return std::stoi(s);
     };
 
-    ASSERT_EQ(expected.size(), 5);
+    ASSERT_EQ(expected.size(), 2);
     ASSERT_EQ(expected[0].get("/field_test")->GetInt(),
               expected[0].get("/field_src")->GetInt());
     ASSERT_EQ(expected[1].get("/field_test")->GetInt(),
               expected[0].get("/field_src")->GetInt());
-    ASSERT_EQ(expected[1].get("/field_test")->GetInt(),
-              str2Int(expected[0].get("/field_src")->GetString()));
-    ASSERT_EQ(str2Int(expected[1].get("/field_test")->GetString()),
-              expected[0].get("/field_src")->GetInt());
-    ASSERT_EQ(str2Int(expected[1].get("/field_test")->GetString()),
-              str2Int(expected[0].get("/field_src")->GetString()));
 
 }
 
@@ -213,28 +207,28 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_false)
         [=](auto s)
         {
             s.on_next(Event{R"(
-                {{"field_test2":9},{"field_src":10}}
+                {"field_test2":9,"field_src":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":10},{"field_src3":10}}
+                {"field_test":10,"field_src3":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":10},{"field_src4":10}}
+                {"field_test":10,"field_src4":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_test5":10},{"field_src":"10"}}
+                {"field_test5":10,"field_src":"10"}
             )"});
             s.on_next(Event{R"(
-                {{"field_test6":"10"},{"field_src2":10}}
+                {"field_test6":"10","field_src2":10}
             )"});
             s.on_next(Event{R"(
-                {{"field_":"10"},{"field_src":"10"}}
+                {"field_":"10","field_src":"10"}
             )"});
             s.on_next(Event{R"(
-                {{"field_test":11},{"field_src2":"10"}}
+                {"field_test":11,"field_src2":"10"}
             )"});
             s.on_next(Event{R"(
-                {{"field_test2":10},{"field_src2":"test"}}
+                {"field_test2":10,"field_src2":"test"}
             )"});
             s.on_completed();
         });
