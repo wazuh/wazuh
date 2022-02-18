@@ -48,15 +48,6 @@ std::tuple<std::string, opString, opString>  getCompOpParameter(const DocumentVa
 namespace builder::internals::builders
 {
 
-/**
- * @brief Create `exists` helper function that filters events that contains specified field.
- *
- * The filter checks if a field exists in the JSON event `e`.
- * For example: if def = `{wazuh: +exists}` only events containing `wazuh` field
- * will continue on the rxcpp pipeline.
- * @param def The filter definition. i.e : `{wazuh: +exists}`
- * @return types::Lifter The lifter with the `exists` filter.
- */
 types::Lifter opBuilderHelperExists(const types::DocumentValue & def)
 {
     // Get field
@@ -70,15 +61,6 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue & def)
     };
 }
 
-/**
- * @brief Create `notExists` helper function that filters events that not contains specified field.
- *
- * The filter checks if a field not exists in the JSON event `e`.
- * For example: if def = `{wazuh: +not_exists}` only events not containing `wazuh`
- * field will continue on the rxcpp pipeline.
- * @param def The filter definition. i.e : `{wazuh: +exists}`
- * @return types::Lifter The lifter with the `exists` filter.
- */
 types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def)
 {
     // Get field
@@ -94,15 +76,6 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def)
 
 // TODO field: +s_eq/str|$ref/
 
-/**
- * @brief Create `s_eq` helper function that filters events with a string
- * field equals to a value.
- *
- * The filter checks if a field in the JSON event `wazuh` is equal to a value.
- * @param def The filter definition. i.e : `{wazuh: +s_eq/value}`
- * @return types::Lifter The lifter with the `s_eq` filter.
- * @throw std::runtime_error if the parameter is not a string.
- */
 types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def)
 {
     // Get field key to check
@@ -127,7 +100,10 @@ types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def)
         // Append rxcpp operation
         return o.filter([expectedStr, key](types::Event e) {
             try {
-                    return e.get("/" + key)->IsString() && e.get("/" + key)->GetString() == expectedStr;
+                    if(auto f2c = e.get("/" + key); f2c) {
+                        return f2c->IsString() && std::string{f2c->GetString()} == expectedStr;
+                    }
+                    return false;
             } catch (std::exception & e) {
                 // TODO Check exception type
                 return false;
