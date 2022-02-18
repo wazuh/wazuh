@@ -54,6 +54,8 @@ TEST(opBuilderHelperRegexMatch, RegexMatches)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(RE2::FullMatch(expected[0].get("/field")->GetString(), "exp"));
+    ASSERT_EQ(expected.size(), 3);
+    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/field")->GetString(), "exp"));
 }
