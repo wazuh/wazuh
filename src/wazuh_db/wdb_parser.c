@@ -5313,15 +5313,21 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output) {
                 mode = WDB_GROUP_REMOVE;
             }
 
-            if (cJSON_IsString(j_sync_status)){
-                sync_status = j_sync_status->valuestring;
-            }
+            if (WDB_GROUP_INVALID_MODE != mode) {
+                if (cJSON_IsString(j_sync_status)){
+                    sync_status = j_sync_status->valuestring;
+                }
 
-            wdbc_result status = wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
-            if (status == WDBC_OK) {
-                snprintf(output, OS_MAXSTR + 1, "%s",  WDBC_RESULT[status]);
+                wdbc_result status = wdb_global_set_agent_groups(wdb, mode, sync_status, j_groups_data);
+                if (status == WDBC_OK) {
+                    snprintf(output, OS_MAXSTR + 1, "%s",  WDBC_RESULT[status]);
+                } else {
+                    snprintf(output, OS_MAXSTR + 1, "%s An error occurred during the set of the groups",  WDBC_RESULT[status]);
+                    ret = OS_INVALID;
+                }
             } else {
-                snprintf(output, OS_MAXSTR + 1, "%s An error occurred during the set of the groups",  WDBC_RESULT[status]);
+                mdebug1("Invalid mode '%s' in set_agent_groups command.", j_mode->valuestring);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid mode '%s' in set_agent_groups command", j_mode->valuestring);
                 ret = OS_INVALID;
             }
         } else {
