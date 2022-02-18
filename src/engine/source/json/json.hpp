@@ -109,8 +109,8 @@ public:
      * @brief Method that returns a pointer to the value of a given json path.
      *
      * @param path json path of the value that will be returned.
-     *
      * @return rapidjson::Value * Pointer to the value of path.
+     * @throws std::invalid_argument if the path is invalid (not found).
      */
     const rapidjson::Value * get(std::string path) const
     {

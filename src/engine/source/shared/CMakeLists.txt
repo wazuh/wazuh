@@ -1,5 +1,5 @@
 # Minimum 3.14 required by googletest discover tests
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
