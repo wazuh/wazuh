@@ -1961,6 +1961,22 @@ void test_wdb_parse_global_set_agent_groups_missing_field(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_wdb_parse_global_set_agent_groups_invalid_mode(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global set-agent-groups {\"mode\":\"invalid_mode\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {\"mode\":\"invalid_mode\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid mode 'invalid_mode' in set_agent_groups command.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid mode 'invalid_mode' in set_agent_groups command");
+    assert_int_equal(ret, OS_INVALID);
+}
+
 void test_wdb_parse_global_set_agent_groups_fail(void **state)
 {
     int ret = 0;
@@ -2870,6 +2886,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_missing_field, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_invalid_mode, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_set_agent_groups_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_sync_agent_groups_get */
