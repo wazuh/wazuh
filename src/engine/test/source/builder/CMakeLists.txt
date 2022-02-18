@@ -297,6 +297,12 @@ add_executable(opBuilderHelperRegexMatchTest
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
 gtest_discover_tests(opBuilderHelperRegexMatchTest)
 
+add_executable(opBuilderHelperRegexNotMatchTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatchTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
+gtest_discover_tests(opBuilderHelperRegexNotMatchTest)
+
 # add_executable(combinatorBuilderChainTest)
 # gtest_discover_tests(combinatorBuilderChainTest)
 # add_executable(combinatorBuilderBroadcastTest)

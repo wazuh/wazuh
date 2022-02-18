@@ -257,6 +257,15 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
  */
 types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
 
+/**
+ * @brief Builds helper regex not match operation.
+ * Checks that the field value doesn't match a regular expression
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
