@@ -15,11 +15,10 @@
 #include <mutex>
 #include <rxcpp/rx.hpp>
 #include <thread>
-#include <uvw/tcp.hpp>
 
 #include "threadPool.hpp"
 
-#define GTEST_COUT std::cout << "[          ] [ INFO ] "
+#define GTEST_COUT std::cout << "[   INFO   ] "
 
 void printsafe(std::string s)
 {
