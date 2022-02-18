@@ -16,11 +16,11 @@
 namespace threadpool
 {
 
-struct threadPool : public rxcpp::schedulers::scheduler_interface
+struct ThreadPool : public rxcpp::schedulers::scheduler_interface
 {
 private:
-    typedef threadPool this_type;
-    threadPool(const this_type &);
+    typedef ThreadPool this_type;
+    ThreadPool(const this_type &);
 
     struct loop_worker : public rxcpp::schedulers::worker_interface
     {
@@ -59,9 +59,9 @@ private:
     void initThreads(void);
 
 public:
-    threadPool(int _nThreads = 1);
-    explicit threadPool(int _nThreads, rxcpp::schedulers::thread_factory tf);
-    virtual ~threadPool();
+    ThreadPool(int _nThreads = 1);
+    explicit ThreadPool(int _nThreads, rxcpp::schedulers::thread_factory tf);
+    virtual ~ThreadPool();
 
     virtual clock_type::time_point now() const;
 
