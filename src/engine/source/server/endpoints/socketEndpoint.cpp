@@ -13,14 +13,13 @@
 namespace engineserver::endpoints
 {
 
-rxcpp::observable<BaseEndpoint::event_t> SocketEndpoint::connection(const uvw::ListenEvent & event,
-                                                                    uvw::PipeHandle & srv)
+BaseEndpoint::ConnectionObs SocketEndpoint::connection(const uvw::ListenEvent & event, uvw::PipeHandle & srv)
 {
     auto client = srv.loop().resource<uvw::PipeHandle>();
     auto timer = client->loop().resource<uvw::TimerHandle>();
 
-    auto obs = rxcpp::observable<>::create<BaseEndpoint::event_t>(
-        [client, timer, &srv](rxcpp::subscriber<BaseEndpoint::event_t> s)
+    auto obs = rxcpp::observable<>::create<BaseEndpoint::EventObs>(
+        [client, timer, &srv](rxcpp::subscriber<BaseEndpoint::EventObs> s)
         {
             auto ph = std::make_shared<ProtocolHandler>();
 
@@ -75,8 +74,8 @@ SocketEndpoint::SocketEndpoint(const std::string & config) : BaseEndpoint{config
     auto loop = uvw::Loop::getDefault();
     m_server = loop->resource<uvw::PipeHandle>();
 
-    this->m_out = rxcpp::observable<>::create<BaseEndpoint::observable_t>(
-        [this, config](BaseEndpoint::subscriber_t s)
+    this->m_out = rxcpp::observable<>::create<BaseEndpoint::ConnectionObs>(
+        [this, config](rxcpp::subscriber<BaseEndpoint::ConnectionObs> s)
         {
             this->m_server->on<uvw::ErrorEvent>(
                 [s](const uvw::ErrorEvent & event, uvw::PipeHandle & socket)

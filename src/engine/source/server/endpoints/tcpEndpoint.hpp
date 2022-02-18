@@ -37,7 +37,7 @@ private:
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::TCPHandle> m_server;
 
-    rxcpp::observable<BaseEndpoint::event_t> connectionHandler(const uvw::ListenEvent & event, uvw::TCPHandle & srv);
+    BaseEndpoint::ConnectionObs connectionHandler(const uvw::ListenEvent & event, uvw::TCPHandle & srv);
 
 public:
     /**

@@ -29,12 +29,12 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
+void ProtocolHandler::send(const rxcpp::subscriber<rxcpp::observable<std::string>> s)
 {
-    json::Document evt;
+    std::string evt;
     try
     {
-        evt = parse();
+        evt = std::string(m_buff.begin() + sizeof(int), m_buff.end());
         m_buff.clear();
     }
     catch (std::exception & e)
@@ -44,16 +44,16 @@ void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
         return;
     }
 
-    s.on_next(evt);
+    s.on_next(rxcpp::observable<>::just(evt));
 }
 
-json::Document ProtocolHandler::parse()
+json::Document ProtocolHandler::parse(const std::string & event) const
 {
     json::Document doc;
     doc.m_doc.SetObject();
     rapidjson::Document::AllocatorType & allocator = doc.getAllocator();
 
-    auto event = std::string(m_buff.begin() + sizeof(int), m_buff.end());
+    // auto event = std::string(m_buff.begin() + sizeof(int), m_buff.end());
 
     auto queuePos = event.find(":");
     try
@@ -95,7 +95,7 @@ json::Document ProtocolHandler::parse()
     return doc;
 }
 
-bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> s)
+bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subscriber<rxcpp::observable<std::string>> s)
 {
     for (std::size_t i = 0; i < length; i++)
     {

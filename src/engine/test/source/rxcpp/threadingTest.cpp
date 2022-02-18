@@ -15,7 +15,7 @@ using std::string;
 using std::thread;
 using std::to_string;
 using std::vector;
-using threadpool::threadPool;
+//using threadpool::threadPool;
 
 using rxcpp::composite_subscription;
 using rxcpp::observable;
