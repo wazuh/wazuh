@@ -10,7 +10,8 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     { "source.ip", ParserType::IP },
     { "server.ip", ParserType::IP },
     { "source.nat.ip", ParserType::IP },
-    { "timestamp", ParserType::Any },
+    { "timestamp", ParserType::Ts },
+    { "JSON", ParserType::JSON},
     { "url", ParserType::URL},
     { "http.request.method", ParserType::Any },
 };

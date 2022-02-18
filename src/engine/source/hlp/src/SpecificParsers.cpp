@@ -1,8 +1,14 @@
 #include <algorithm>
+#include <chrono>
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <stdio.h>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+
+#include "date/date.h"
 
 #include <arpa/inet.h>
 #include <curl/curl.h>
@@ -147,8 +153,67 @@ std::string parseIPaddress(const char **it, char endToken) {
     }
 }
 
-bool parseTimeStamp(char **it, char endToken) {
-    return true;
+
+/* */
+
+//TODO: force an specific format (e.g. <timestamp/APACHE>)
+//TODO: using a fromat string like get_time.
+bool parseTimeStamp(const char **it, char endToken, TimeStampResult &tsr) {
+    using namespace date;
+
+    sys_time<std::chrono::microseconds> tp;
+
+    const std::unordered_map<TimeStampFormat,std::string> TimeStampFormatMapper {
+        {TimeStampFormat::ANSICM     ,"%a %b _%d %H:%M:%S.123456 %Y"},  // microseconds pending
+        {TimeStampFormat::Layout     ,"%d/%m %H:%M:%S '%y %z"},
+        {TimeStampFormat::UnixDate   ,"%a %b _%d %H:%M:%S %Z %Y"},
+        {TimeStampFormat::ANSIC      ,"%a %b _%d %H:%M:%S %Y"},
+        {TimeStampFormat::APACHE     ,"%a %b _%d %T %Y"},               // need to check one or the other
+        {TimeStampFormat::RubyDate   ,"%a %b %d %H:%M:%S %z %Y"},
+        {TimeStampFormat::RFC822     ,"%d %b %y %H:%M %Z"},
+        {TimeStampFormat::RFC822Z    ,"%d %b %Ey %H:%M:%S %z"},
+        {TimeStampFormat::RFC850     ,"%A, %d-%b-%y %H:%M:%S %Z"},
+        {TimeStampFormat::RFC1123Z   ,"%a, %d %b %Y %T %z"},
+        {TimeStampFormat::RFC1123    ,"%a, %d %b %Y %T %Z"},
+        {TimeStampFormat::RFC3339Nano,"%Y-%m-%dT%H:%M:%S.999999999Z%Ez"},       // microseconds pending
+        {TimeStampFormat::RFC3339    ,"%Y-%m-%dT%H:%M:%SZ%Ez"},
+        {TimeStampFormat::StampNano  ,"%b _%d %H:%M:%S.000000000"},             // nano seconds pending
+        {TimeStampFormat::StampMicro ,"%b _%d %H:%M:%S.000000"},                // microseconds pending
+        {TimeStampFormat::StampMilli ,"%b _%d %H:%M:%S.000"},                   // mili seconds pending
+        {TimeStampFormat::Stamp      ,"%b _%d %H:%M:%S"},
+        {TimeStampFormat::Kitchen    ,"%I:%M%p"},                               // Not Working
+        {TimeStampFormat::NONE       ,""},
+    };
+
+    const char *start = *it;
+    while (**it != endToken) { (*it)++; }
+    std::string sw { start, (size_t)((*it) - start) };
+    std::istringstream ss;
+
+    TimeStampFormat i;
+    for(i = TimeStampFormat::Layout; i != TimeStampFormat::NONE; i = static_cast<TimeStampFormat>(static_cast<int>(i) + 1)) {
+        ss.clear(); //may this be costly to the performance?
+        ss.str(sw);
+        // ss.imbue(std::locale("en_US.UTF-8")); // check in which cases this could be nnecesary
+        ss >> parse(TimeStampFormatMapper.at(i), tp);
+        if(!ss.fail()) {
+            auto tp_days = floor<days>(tp);
+            auto ymd = year_month_day{tp_days};
+            auto time = make_time(std::chrono::duration_cast<std::chrono::milliseconds>(tp - tp_days));
+
+            tsr.year = std::to_string(int(ymd.year()));
+            tsr.month = std::to_string(uint(ymd.month()));
+            tsr.day = std::to_string(uint(ymd.day()));
+            tsr.hour = std::to_string(int(time.hours().count()));
+            tsr.minutes = std::to_string(int(time.minutes().count()));
+            tsr.seconds = std::to_string(int(time.seconds().count())) + "." + std::to_string((time.subseconds().count()));
+            return true;
+        }
+    }
+
+    if(i == TimeStampFormat::NONE){
+        return false;
+    }
 }
 
 bool parseURL(const char **it, char endToken, URLResult &result) {
