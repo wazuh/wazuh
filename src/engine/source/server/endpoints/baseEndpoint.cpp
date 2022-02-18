@@ -25,7 +25,7 @@ BaseEndpoint::~BaseEndpoint()
 {
 }
 
-BaseEndpoint::out_t BaseEndpoint::output(void) const
+BaseEndpoint::EndpointObs BaseEndpoint::output(void) const
 {
     return this->m_out;
 }

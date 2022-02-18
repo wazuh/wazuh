@@ -19,12 +19,13 @@
 #include "json.hpp"
 
 using namespace std;
+using namespace engineserver::endpoints;
 
 namespace engineserver
 {
 void EngineServer::configure(const vector<string> & config)
 {
-    vector<endpoints::BaseEndpoint::out_t> tmpObs;
+    vector<BaseEndpoint::EndpointObs> tmpObs;
 
     // <EnpointType>:<config_string> tcp:localhost:5054 socket:path/to/socket
     for (auto endpointConf : config)
@@ -36,8 +37,17 @@ void EngineServer::configure(const vector<string> & config)
         tmpObs.push_back(this->m_endpoints[endpointConf]->output());
     }
 
-    auto obs = rxcpp::observable<>::iterate(tmpObs).flat_map([](auto o) { return o; });
-    this->m_output = obs.flat_map([](auto o) { return o; });
+    auto obs = rxcpp::observable<>::iterate(tmpObs)
+        // TODO: Handle endpoint server errors
+        // From -> EndpointObs observable->observable->observable->event
+        // Emits -> ConnectionObs observable->observable->event
+        .flat_map([](BaseEndpoint::EndpointObs o) { return o; })
+        // TODO: Handle endpoint connection errors
+        // From -> ConnectionObs observable->observable->event
+        // Emits -> EventObs observable->event
+        .flat_map([](BaseEndpoint::ConnectionObs o) { return o; });
+
+    this->m_output = obs;
 }
 
 EngineServer::EngineServer(const vector<string> & config)
@@ -45,7 +55,7 @@ EngineServer::EngineServer(const vector<string> & config)
     this->configure(config);
 }
 
-rxcpp::observable<json::Document> EngineServer::output(void) const
+endpoints::BaseEndpoint::ConnectionObs EngineServer::output(void) const
 {
     return this->m_output;
 }

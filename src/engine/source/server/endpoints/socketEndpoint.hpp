@@ -33,7 +33,16 @@ private:
     std::string m_path;
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::PipeHandle> m_server;
-    rxcpp::observable<BaseEndpoint::event_t> connection(const uvw::ListenEvent & event, uvw::PipeHandle & srv);
+
+    /**
+     * @brief This function handles connections and returns a connection observable that
+     *  emits event observables.
+     *
+     * @param event
+     * @param srv
+     * @return BaseEndpoint::ConnectionObs
+     */
+    BaseEndpoint::ConnectionObs connection(const uvw::ListenEvent & event, uvw::PipeHandle & srv);
 
 public:
     /**

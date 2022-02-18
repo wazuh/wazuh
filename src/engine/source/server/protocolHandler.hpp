@@ -30,12 +30,7 @@ private:
     int m_pending{0};
     int m_stage{0};
 
-    /**
-     * @brief generate a json::Document from internal state
-     *
-     * @return json::Document
-     */
-    json::Document parse();
+
 
     /**
      * @brief Update pending value and return true if we have enough data
@@ -51,9 +46,15 @@ private:
      *
      * @param s a subscriber of this connection.
      */
-    void send(const rxcpp::subscriber<json::Document> s);
+    void send(const rxcpp::subscriber<rxcpp::observable<std::string>> s);
 
 public:
+    /**
+     * @brief generate a json::Document from internal state
+     *
+     * @return json::Document
+     */
+    json::Document parse(const std::string & event) const;
     /**
      * @brief process the chunk of data and send messages to dst when. Return
      * true if all data was processed correctly, or false in case of error.
@@ -65,7 +66,7 @@ public:
      * @return true no errors
      * @return false errors in processing
      */
-    bool process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> dst);
+    bool process(char * data, std::size_t length, const rxcpp::subscriber<rxcpp::observable<std::string>> dst);
 };
 
 } // namespace engineserver
