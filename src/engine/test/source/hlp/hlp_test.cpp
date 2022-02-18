@@ -210,3 +210,18 @@ TEST(hlpTests, timestamp_parsing_pending)
     ASSERT_EQ("4", result["timestamp.minutes"]);
     ASSERT_EQ("5.0", result["timestamp.seconds"]);
 }
+
+TEST(hlpTests, timestamp_parsing_specific_type)
+{
+
+    static const char *logQl =
+        "[<timestamp/APACHE>] - [<timestamp/ANSIC>] - [<timestamp/Stamp>] - [<timestamp/RFC822>] - [<timestamp/RubyDate>] - [<timestamp/Kitchen>] - [<timestamp/ANSICM>] -\"";
+    static const char *event =
+        "[Mon Jan _2 15:04:05.123456 2006] -  [01/02 03:04:05PM '06 -0700] - [3:04PM] - [Jan _2 15:04:05] - [Jan _2 15:04:05.000] - [Jan _2 15:04:05.000000] - [Jan _2 15:04:05.000000000] -\"";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    // ASSERT_EQ("3", result["hour"]);
+    // ASSERT_EQ("4", result["minutes"]);
+}

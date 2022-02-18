@@ -163,9 +163,11 @@ bool parseTimeStamp(const char **it, char endToken, TimeStampResult &tsr) {
 
     sys_time<std::chrono::microseconds> tp;
 
+    const std::vector<std::string> TimeStampFormatNames = { "ANSIC","Layout","UnixDate","ANSICM","APACHE","RubyDate","RFC822","RFC822Z","RFC850","RFC1123Z","RFC1123","RFC3339Nano","RFC3339","StampNano","StampMicro","StampMilli","Stamp","Kitchen"};
+
     const std::unordered_map<TimeStampFormat,std::string> TimeStampFormatMapper {
         {TimeStampFormat::ANSICM     ,"%a %b _%d %H:%M:%S.123456 %Y"},  // microseconds pending
-        {TimeStampFormat::Layout     ,"%d/%m %I:%M:%S%P '%y %z"},
+        {TimeStampFormat::Layout     ,"%d/%m %I:%M:%S %P '%y %z"},
         {TimeStampFormat::UnixDate   ,"%a %b _%d %H:%M:%S %Z %Y"},
         {TimeStampFormat::ANSIC      ,"%a %b _%d %H:%M:%S %Y"},
         {TimeStampFormat::APACHE     ,"%a %b _%d %T %Y"},               // need to check one or the other
@@ -188,10 +190,42 @@ bool parseTimeStamp(const char **it, char endToken, TimeStampResult &tsr) {
     const char *start = *it;
     while (**it != endToken) { (*it)++; }
     std::string sw { start, (size_t)((*it) - start) };
+
+    // shouldn't it be better to make this function public? is the same that in LogQLParser
+    // _splitSlashSeparatedField.cpp_
+    std::vector<std::string> timestampTypes;
+    std::string_view str(sw);
+    while (true) {
+        auto pos = str.find('/');
+        if (pos == str.npos) {
+            break;
+        }
+        timestampTypes.emplace_back(str.substr(0, pos));
+        str = str.substr(pos + 1);
+    }
+
+    if (!str.empty()) {
+        timestampTypes.emplace_back(str);
+    }
+    size_t fields = timestampTypes.size();
+
+    TimeStampFormat i = TimeStampFormat::Layout;
+
+    if(fields == 2){
+        auto it = std::find(TimeStampFormatNames.begin(), TimeStampFormatNames.end(),timestampTypes[1]);
+        if(it != TimeStampFormatNames.end()){
+            //this way we're starting to loop on the selected type, this shouldn't happent (in this cases just skip all the rest)
+            i = static_cast<TimeStampFormat>(static_cast<int>(std::distance(TimeStampFormatNames.begin(),it)));
+        }
+    }
+    else {
+        //not handled error
+        return false;
+    }
+
     std::istringstream ss;
 
-    TimeStampFormat i;
-    for(i = TimeStampFormat::Layout; i != TimeStampFormat::NONE; i = static_cast<TimeStampFormat>(static_cast<int>(i) + 1)) {
+    for(; i != TimeStampFormat::NONE; i = static_cast<TimeStampFormat>(static_cast<int>(i) + 1)) {
         ss.clear(); //may this be costly to the performance?
         ss.str(sw);
         // ss.imbue(std::locale("en_US.UTF-8")); // check in which cases this could be nnecesary
