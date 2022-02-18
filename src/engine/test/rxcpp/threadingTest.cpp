@@ -7,16 +7,25 @@
  * Foundation.
  */
 
-#include <chrono>
-#include <gtest/gtest.h>
-#include <rxcpp/rx.hpp>
-#include <testUtils.hpp>
-#include <thread>
+#include "threadingTest.hpp"
+
+using std::function;
+using std::ostringstream;
+using std::string;
+using std::thread;
+using std::to_string;
+using std::vector;
+using threadpool::threadPool;
+
+using rxcpp::composite_subscription;
+using rxcpp::observable;
+
+rxcpp::schedulers::run_loop rl;
 
 // TEST(RxcppThreading, ObserveOnExample)
 // {
 //     GTEST_COUT << "[thread " << std::_thread::get_id() << "] Start task" << endl;
-//     auto values = rxcpp::observable<>::range(1, 3).map(
+//     auto values = observable<>::range(1, 3).map(
 //         [](int v)
 //         {
 //             GTEST_COUT << "[thread " << std::_thread::get_id() << "] Emit value " << v << endl;
@@ -39,7 +48,7 @@
 // TEST(RxcppThreading, SubscribeOnExample)
 // {
 //     GTEST_COUT << "[thread " << std::_thread::get_id() << "] Start task" << endl;
-//     auto values = rxcpp::observable<>::range(1, 3).map(
+//     auto values = observable<>::range(1, 3).map(
 //         [](int v)
 //         {
 //             GTEST_COUT << "[thread " << std::_thread::get_id() << "] Emit value " << v << endl;
@@ -333,7 +342,7 @@
 //     auto start = coordination.now() + std::chrono::milliseconds(1);
 //     auto period = std::chrono::milliseconds(1);
 //     //----------- Create an Observable (Replay )
-//     auto values = rxcpp::observable<>::interval(start, period).take(5).replay(2, coordination);
+//     auto values = observable<>::interval(start, period).take(5).replay(2, coordination);
 //     //--------------- Subscribe first time using a Worker
 //     worker.schedule(
 //         [&](const rxcpp::schedulers::schedulable & sc)
@@ -377,102 +386,97 @@
 //     // The previous program demonstrates how the Scheduler works in RxCpp
 // }
 
-#include <memory>
-#include <uvw/tcp.hpp>
-schedulers::run_loop rl;
-using obs_t = observable<observable<observable<int>>>;
-using namespace rxcpp::schedulers;
+// struct threadPool : public scheduler_interface
+// {
+// private:
+//     typedef threadPool this_type;
+//     threadPool(const this_type &);
 
-struct event_loopC : public scheduler_interface
-{
-private:
-    typedef event_loopC this_type;
-    event_loopC(const this_type &);
+//     struct loop_worker : public worker_interface
+//     {
+//     private:
+//         typedef loop_worker this_type;
+//         loop_worker(const this_type &);
 
-    struct loop_worker : public worker_interface
-    {
-    private:
-        typedef loop_worker this_type;
-        loop_worker(const this_type &);
+//         typedef rxcpp::schedulers::detail::schedulable_queue<typename clock_type::time_point> queue_item_time;
 
-        typedef rxcpp::schedulers::detail::schedulable_queue<typename clock_type::time_point> queue_item_time;
+//         typedef queue_item_time::item_type item_type;
 
-        typedef queue_item_time::item_type item_type;
+//         composite_subscription lifetime;
+//         worker controller;
+//         std::shared_ptr<const scheduler_interface> alive;
 
-        composite_subscription lifetime;
-        worker controller;
-        std::shared_ptr<const scheduler_interface> alive;
+//     public:
+//         virtual ~loop_worker()
+//         {
+//         }
+//         loop_worker(composite_subscription cs, worker w, std::shared_ptr<const scheduler_interface> alive)
+//             : lifetime(cs), controller(w), alive(alive)
+//         {
+//             auto token = controller.add(cs);
+//             cs.add([token, w]() { w.remove(token); });
+//         }
 
-    public:
-        virtual ~loop_worker()
-        {
-        }
-        loop_worker(composite_subscription cs, worker w, std::shared_ptr<const scheduler_interface> alive)
-            : lifetime(cs), controller(w), alive(alive)
-        {
-            auto token = controller.add(cs);
-            cs.add([token, w]() { w.remove(token); });
-        }
+//         virtual clock_type::time_point now() const
+//         {
+//             return clock_type::now();
+//         }
 
-        virtual clock_type::time_point now() const
-        {
-            return clock_type::now();
-        }
+//         virtual void schedule(const schedulable & scbl) const
+//         {
+//             controller.schedule(lifetime, scbl.get_action());
+//         }
 
-        virtual void schedule(const schedulable & scbl) const
-        {
-            controller.schedule(lifetime, scbl.get_action());
-        }
+//         virtual void schedule(clock_type::time_point when, const schedulable & scbl) const
+//         {
+//             controller.schedule(when, lifetime, scbl.get_action());
+//         }
+//     };
 
-        virtual void schedule(clock_type::time_point when, const schedulable & scbl) const
-        {
-            controller.schedule(when, lifetime, scbl.get_action());
-        }
-    };
+//     mutable thread_factory factory;
+//     scheduler newthread;
+//     mutable std::atomic<std::size_t> count;
+//     composite_subscription loops_lifetime;
+//     std::vector<worker> loops;
 
-    mutable thread_factory factory;
-    scheduler newthread;
-    mutable std::atomic<std::size_t> count;
-    composite_subscription loops_lifetime;
-    std::vector<worker> loops;
+// public:
+//     threadPool()
+//         : factory([](std::function<void()> start) { return std::thread(std::move(start)); }),
+//           newthread(make_new_thread()), count(0)
+//     {
+//         auto remaining = 6;
 
-public:
-    event_loopC()
-        : factory([](std::function<void()> start) { return std::thread(std::move(start)); }),
-          newthread(make_new_thread()), count(0)
-    {
-        auto remaining = 6;
+//         // auto remaining = std::max(std::thread::hardware_concurrency(), unsigned(4));
+//         while (remaining--)
+//         {
+//             loops.push_back(newthread.create_worker(loops_lifetime));
+//         }
+//     }
+//     explicit threadPool(thread_factory tf) : factory(tf), newthread(make_new_thread(tf)), count(0)
+//     {
+//         // auto remaining = std::max(std::thread::hardware_concurrency(), unsigned(4));
+//         auto remaining = 6;
+//         while (remaining--)
+//         {
+//             loops.push_back(newthread.create_worker(loops_lifetime));
+//         }
+//     }
+//     virtual ~threadPool()
+//     {
+//         loops_lifetime.unsubscribe();
+//     }
 
-        // auto remaining = std::max(std::thread::hardware_concurrency(), unsigned(4));
-        while (remaining--)
-        {
-            loops.push_back(newthread.create_worker(loops_lifetime));
-        }
-    }
-    explicit event_loopC(thread_factory tf) : factory(tf), newthread(make_new_thread(tf)), count(0)
-    {
-        // auto remaining = std::max(std::thread::hardware_concurrency(), unsigned(4));
-        auto remaining = 6;
-        while (remaining--)
-        {
-            loops.push_back(newthread.create_worker(loops_lifetime));
-        }
-    }
-    virtual ~event_loopC()
-    {
-        loops_lifetime.unsubscribe();
-    }
+//     virtual clock_type::time_point now() const
+//     {
+//         return clock_type::now();
+//     }
 
-    virtual clock_type::time_point now() const
-    {
-        return clock_type::now();
-    }
-
-    virtual worker create_worker(composite_subscription cs) const
-    {
-        return worker(cs, std::make_shared<loop_worker>(cs, loops[++count % loops.size()], this->shared_from_this()));
-    }
-};
+//     virtual worker create_worker(composite_subscription cs) const
+//     {
+//         return worker(cs, std::make_shared<loop_worker>(cs, loops[++count % loops.size()],
+//         this->shared_from_this()));
+//     }
+// };
 
 TEST(RxcppThreading, test)
 {
@@ -514,26 +518,28 @@ TEST(RxcppThreading, test)
 
     printsafe("Start task");
 
-    auto mainThread = observe_on_run_loop(rl);
-    auto poolThread = observe_on_event_loop();
-    int nT = 0;
-    auto coord = schedulers::make_scheduler<event_loopC>(
-        //  lambda is the thread pool factory
-        // f is the task issued by rxcpp
-        [&](function<void()> f) -> thread
-        {
-            // Thread pool implementation goes here
-            thread t(f);
-            ostringstream ss;
-            ss << t.get_id();
-            string idstr = ss.str();
-            printsafe("ThreadPool created " + idstr);
-            return t;
-        });
+    auto nThreads = 5;
+    auto nEvents = 15;
+
+    auto mainThread = rxcpp::observe_on_run_loop(rl);
+    auto poolThread = rxcpp::observe_on_event_loop();
+    auto coord = rxcpp::schedulers::make_scheduler<threadPool>(nThreads,
+                                                               //  lambda is the thread pool factory
+                                                               // f is the task issued by rxcpp
+                                                               [&](function<void()> f) -> thread
+                                                               {
+                                                                   // Thread pool implementation goes here
+                                                                   thread t(f);
+                                                                   ostringstream ss;
+                                                                   ss << t.get_id();
+                                                                   string idstr = ss.str();
+                                                                   printsafe("ThreadPool created " + idstr);
+                                                                   return t;
+                                                               });
 
     // auto poolCoordintaor = poolThread.create_coordinator();
     vector<observable<int>> events;
-    for (auto i = 0; i < 30; ++i)
+    for (auto i = 0; i < nEvents; ++i)
     {
         events.push_back(observable<>::just<int>(i));
     }
@@ -544,7 +550,7 @@ TEST(RxcppThreading, test)
 
     composite_subscription lifetime;
 
-    while (lifetime.is_subscribed())
+    if (lifetime.is_subscribed())
     {
         printsafe("Tick Main");
         while (!rl.empty() && rl.peek().when < rl.now())
