@@ -20,34 +20,31 @@ using threadpool::threadPool;
 using rxcpp::composite_subscription;
 using rxcpp::observable;
 
-TEST(RxcppThreading, test)
-{
-    rxcpp::schedulers::run_loop rl;
-    std::shared_ptr<uvw::Loop> uvloop = uvw::Loop::getDefault();
-    std::shared_ptr<uvw::TCPHandle> tcpServer = uvloop->resource<uvw::TCPHandle>();
-    const std::string address = std::string{"127.0.0.1"};
-    const unsigned int port = 5054;
+#define WAIT_FOR_WORKERS_TIME_MS    50
 
+TEST(RxcppThreading, testSchedulerCustomFactoryWithPrints)
+{
     printsafe("Start task");
 
-    auto nThreads = 5;
-    auto nEvents = 15;
+    rxcpp::schedulers::run_loop rl;
 
-    auto mainThread = rxcpp::observe_on_run_loop(rl);
-    auto poolThread = rxcpp::observe_on_event_loop();
-    auto coord = rxcpp::schedulers::make_scheduler<threadPool>(nThreads,
-                                                               //  lambda is the thread pool factory
-                                                               // f is the task issued by rxcpp
-                                                               [&](function<void()> f) -> thread
-                                                               {
-                                                                   // Thread pool implementation goes here
-                                                                   thread t(f);
-                                                                   ostringstream ss;
-                                                                   ss << t.get_id();
-                                                                   string idstr = ss.str();
-                                                                   printsafe("ThreadPool created " + idstr);
-                                                                   return t;
-                                                               });
+    std::atomic<int> events_count = 0;
+
+    auto nThreads = 5;
+    auto nEvents = 26;
+
+    auto eventScheduler =
+        rxcpp::schedulers::make_scheduler<threadPool>(nThreads,
+                                                      // lambda of the threadpool factory, f is the task issued by rxcpp
+                                                      [&](function<void()> f) -> thread
+                                                      {
+                                                          thread t(f);
+                                                          ostringstream ss;
+                                                          ss << t.get_id();
+                                                          string idstr = ss.str();
+                                                          printsafe("ThreadPool created " + idstr);
+                                                          return t;
+                                                      });
 
     vector<observable<int>> events;
     for (auto i = 0; i < nEvents; ++i)
@@ -55,9 +52,14 @@ TEST(RxcppThreading, test)
         events.push_back(observable<>::just<int>(i));
     }
 
-    auto serverFactory = observable<>::iterate(events, mainThread);
-    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(coord.create_worker())); })
-        .subscribe([](auto o) { printsafe("Got event " + to_string(o)); });
+    auto serverFactory = observable<>::iterate(events);
+    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(eventScheduler.create_worker())); })
+        .subscribe(
+            [&](auto o)
+            {
+                printsafe("Got event " + to_string(o));
+                events_count++;
+            });
 
     composite_subscription lifetime;
 
@@ -71,5 +73,202 @@ TEST(RxcppThreading, test)
         }
     }
 
+    // Replace with an automated check for jobs consumed.
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_FOR_WORKERS_TIME_MS));
+
+    ASSERT_EQ(nEvents, events_count);
+
     printsafe("End task");
+}
+
+TEST(RxcppThreading, testScheduler_1threads_10events)
+{
+    rxcpp::schedulers::run_loop rl;
+
+    std::atomic<int> events_count = 0;
+
+    auto nThreads = 1;
+    auto nEvents = 10;
+
+    auto eventScheduler = rxcpp::schedulers::make_scheduler<threadPool>(nThreads);
+
+    vector<observable<int>> events;
+
+    for (auto i = 0; i < nEvents; ++i)
+    {
+        events.push_back(observable<>::just<int>(i));
+    }
+
+    auto serverFactory = observable<>::iterate(events);
+    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(eventScheduler.create_worker())); })
+        .subscribe([&](auto o) { events_count++; });
+
+    composite_subscription lifetime;
+
+    if (lifetime.is_subscribed())
+    {
+        while (!rl.empty() && rl.peek().when < rl.now())
+        {
+            rl.dispatch();
+        }
+    }
+
+    // Replace with an automated check for jobs consumed.
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_FOR_WORKERS_TIME_MS));
+
+    ASSERT_EQ(nEvents, events_count);
+}
+
+TEST(RxcppThreading, testScheduler_6threads_60events)
+{
+    rxcpp::schedulers::run_loop rl;
+
+    std::atomic<int> events_count = 0;
+
+    auto nThreads = 6;
+    auto nEvents = 60;
+
+    auto eventScheduler = rxcpp::schedulers::make_scheduler<threadPool>(nThreads);
+
+    vector<observable<int>> events;
+
+    for (auto i = 0; i < nEvents; ++i)
+    {
+        events.push_back(observable<>::just<int>(i));
+    }
+
+    auto serverFactory = observable<>::iterate(events);
+    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(eventScheduler.create_worker())); })
+        .subscribe([&](auto o) { events_count++; });
+
+    composite_subscription lifetime;
+
+    if (lifetime.is_subscribed())
+    {
+        while (!rl.empty() && rl.peek().when < rl.now())
+        {
+            rl.dispatch();
+        }
+    }
+
+    // Replace with an automated check for jobs consumed.
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_FOR_WORKERS_TIME_MS));
+
+    ASSERT_EQ(nEvents, events_count);
+}
+
+TEST(RxcppThreading, testScheduler_5threads_50events)
+{
+    rxcpp::schedulers::run_loop rl;
+
+    std::atomic<int> events_count = 0;
+
+    auto nThreads = 5;
+    auto nEvents = 50;
+
+    auto eventScheduler = rxcpp::schedulers::make_scheduler<threadPool>(nThreads);
+
+    vector<observable<int>> events;
+
+    for (auto i = 0; i < nEvents; ++i)
+    {
+        events.push_back(observable<>::just<int>(i));
+    }
+
+    auto serverFactory = observable<>::iterate(events);
+    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(eventScheduler.create_worker())); })
+        .subscribe([&](auto o) { events_count++; });
+
+    composite_subscription lifetime;
+
+    if (lifetime.is_subscribed())
+    {
+        while (!rl.empty() && rl.peek().when < rl.now())
+        {
+            rl.dispatch();
+        }
+    }
+
+    // Replace with an automated check for jobs consumed.
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_FOR_WORKERS_TIME_MS));
+
+    ASSERT_EQ(nEvents, events_count);
+}
+
+TEST(RxcppThreading, testScheduler_15threads_40events)
+{
+    rxcpp::schedulers::run_loop rl;
+
+    std::atomic<int> events_count = 0;
+
+    auto nThreads = 15;
+    auto nEvents = 40;
+
+    auto eventScheduler = rxcpp::schedulers::make_scheduler<threadPool>(nThreads);
+
+    vector<observable<int>> events;
+
+    for (auto i = 0; i < nEvents; ++i)
+    {
+        events.push_back(observable<>::just<int>(i));
+    }
+
+    auto serverFactory = observable<>::iterate(events);
+    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(eventScheduler.create_worker())); })
+        .subscribe([&](auto o) { events_count++; });
+
+    composite_subscription lifetime;
+
+    if (lifetime.is_subscribed())
+    {
+        while (!rl.empty() && rl.peek().when < rl.now())
+        {
+            rl.dispatch();
+        }
+    }
+
+    // Replace with an automated check for jobs consumed.
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_FOR_WORKERS_TIME_MS));
+
+    ASSERT_EQ(nEvents, events_count);
+}
+
+TEST(RxcppThreading, testWithFactory)
+{
+    rxcpp::schedulers::run_loop rl;
+
+    std::atomic<int> events_count = 0;
+
+    auto nThreads = 5;
+    auto nEvents = 50;
+
+    auto eventScheduler =
+        rxcpp::schedulers::make_scheduler<threadPool>(nThreads,
+                                                      // lambda of the threadpool factory, f is the task issued by rxcpp
+                                                      [&](function<void()> f) -> thread { return thread{f}; });
+
+    vector<observable<int>> events;
+    for (auto i = 0; i < nEvents; ++i)
+    {
+        events.push_back(observable<>::just<int>(i));
+    }
+
+    auto serverFactory = observable<>::iterate(events);
+    serverFactory.flat_map([&](auto o) { return o.observe_on(identity_same_worker(eventScheduler.create_worker())); })
+        .subscribe([&](auto o) { events_count++; });
+
+    composite_subscription lifetime;
+
+    if (lifetime.is_subscribed())
+    {
+        while (!rl.empty() && rl.peek().when < rl.now())
+        {
+            rl.dispatch();
+        }
+    }
+
+    // Replace with an automated check for jobs consumed.
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_FOR_WORKERS_TIME_MS));
+
+    ASSERT_EQ(nEvents, events_count);
 }
