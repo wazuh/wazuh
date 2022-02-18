@@ -96,6 +96,21 @@ static void executeParserList(std::string const &event, ParserList const &parser
                 }
                 break;
             }
+            case ParserType::Ts: {
+                TimeStampResult tsr;
+                if (parseTimeStamp(&eventIt, parser.endToken, tsr)) {
+                    result["year"] = tsr.year;
+                    result["month"] = tsr.month;
+                    result["day"] = tsr.day;
+                    result["hour"] = tsr.hour;
+                    result["minutes"] = tsr.minutes;
+                    result["seconds"] = tsr.seconds;
+                }
+                else {
+                    error = true;
+                }
+                break;
+            }
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",
