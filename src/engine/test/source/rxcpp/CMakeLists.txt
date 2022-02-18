@@ -1,4 +1,3 @@
-
 #  Copyright (C) 2015-2021, Wazuh Inc.
 #  All rights reserved.
 #
@@ -7,10 +6,20 @@
 #  License (version 2) as published by the FSF - Free Software
 #  Foundation.
 
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+
+# Set c++17
+set(CMAKE_CXX_STANDARD 17)
+
+# Project settings
+project(wazuh-engine)
+
+# ------------------------------- Set Variables -------------------------------
+
 set(THREAD_POOL_SOURCE_DIR ${ENGINE_SOURCE_DIR}/threadPool/)
 
-# dependencies
-# Processor test
+# ------------------------- CPM Packages dependencies -------------------------
+
 CPMAddPackage(
   NAME RxCpp
   GITHUB_REPOSITORY ReactiveX/RxCpp
@@ -29,24 +38,24 @@ CPMAddPackage(
         "RAPIDJSON_BUILD_DOC OFF"
         "RAPIDJSON_BUILD_EXAMPLES OFF"
         "RAPIDJSON_BUILD_TESTS OFF"
-        # "RAPIDJSON_BUILD_CXX17 ON"
 )
+
+
+# ----------------------------- Configure Targets -----------------------------
 
 # Configuration rxcpp test
 add_executable(rxcpp_test
   ${TEST_SOURCE_DIR}/rxcpp/rxcpp_test.cpp
   ${TEST_SOURCE_DIR}/rxcpp/rxcpp_test.hpp
 )
-target_include_directories(rxcpp_test PRIVATE "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/" )
+target_include_directories(rxcpp_test PRIVATE ${ENGINE_SOURCE_DIR} ${RapidJSON_SOURCE_DIR}/include/ )
 target_link_libraries(rxcpp_test gtest_main benchmark::benchmark_main rxcpp)
 gtest_discover_tests(rxcpp_test)
 
-
+# Configuration to test the thread pool
 add_executable(rxcppThreadingTest
     ${THREAD_POOL_SOURCE_DIR}/threadPool.cpp
-    ${THREAD_POOL_SOURCE_DIR}/threadPool.hpp
     ${TEST_SOURCE_DIR}/rxcpp/threadingTest.cpp
-    ${TEST_SOURCE_DIR}/rxcpp/threadingTest.hpp
 )
 target_include_directories(rxcppThreadingTest PRIVATE
     ${TEST_SOURCE_DIR}/rxcpp/
