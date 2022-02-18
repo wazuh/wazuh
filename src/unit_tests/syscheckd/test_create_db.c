@@ -3699,8 +3699,8 @@ static void test_transaction_callback_add(void **state) {
 #endif
 
     fim_txn_context_t *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"dev\":64768,\"gid\":0,\"group_name\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":801978,\"last_event\":0,\"mode\":0,\"mtime\":1645001030,\"options\":139775,\"path\":\"/etc/a_test_file.txt\",\"perm\":\"rw-r--r--\",\"scanned\":1,\"size\":0,\"uid\":0,\"user_name\":\"root\"}]");
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = "/etc/a_test_file.txt", .file_entry.data=&DEFAULT_FILE_DATA};
+    cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"dev\":64768,\"gid\":0,\"group_name\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":801978,\"last_event\":123456789,\"mode\":0,\"mtime\":1645001030,\"options\":139775,\"path\":\"/etc/a_test_file.txt\",\"perm\":\"rw-r--r--\",\"scanned\":1,\"size\":0,\"uid\":0,\"user_name\":\"root\"}]");
 
     txn_context->latest_entry = &entry;
     data->dbsync_event = result;
