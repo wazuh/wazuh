@@ -748,9 +748,9 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
     cJSON *result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_SINGLE_COLUMN);
 
     if (SQLITE_ROW == sql_status) {
-        mdebug2("The agent's groups exceed the socket maximum response size.");
+        mwarn("The agent's groups exceed the socket maximum response size.");
     } else if (SQLITE_DONE != sql_status) {
-        mdebug1("Failed to get agent groups.");
+        mdebug1("Failed to get agent groups: %s.", sqlite3_errmsg(wdb->db));
     }
 
     return result;
@@ -861,9 +861,6 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
 }
 
 cJSON* wdb_global_select_groups(wdb_t *wdb) {
-    sqlite3_stmt *stmt = NULL;
-    cJSON * result = NULL;
-
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return NULL;
@@ -874,12 +871,15 @@ cJSON* wdb_global_select_groups(wdb_t *wdb) {
         return NULL;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_GROUPS];
+    sqlite3_stmt *stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_GROUPS];
 
-    result = wdb_exec_stmt(stmt);
+    int sql_status = SQLITE_ERROR;
+    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
 
-    if (!result) {
-        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+    if (SQLITE_ROW == sql_status) {
+        mwarn("The groups exceed the socket maximum response size.");
+    } else if (SQLITE_DONE != sql_status) {
+        mdebug1("Failed to get groups: %s.", sqlite3_errmsg(wdb->db));
     }
 
     return result;
