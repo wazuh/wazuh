@@ -562,36 +562,6 @@ int wdb_create_agent_db2(const char * agent_id) {
     return 0;
 }
 
-/* Get agent name from location string */
-char* wdb_agent_loc2name(const char *location) {
-    char *name;
-    char *end;
-
-    switch (location[0]) {
-    case 'r':
-    case 's':
-        if (!(strncmp(location, "syscheck", 8) && strncmp(location, "rootcheck", 9)))
-            return strdup("localhost");
-            else
-            return NULL;
-
-    case '(':
-        name = strdup(location + 1);
-
-        if ((end = strchr(name, ')')))
-            *end = '\0';
-        else {
-            free(name);
-            name = NULL;
-        }
-
-        return name;
-
-    default:
-        return NULL;
-    }
-}
-
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail) {
     int result;

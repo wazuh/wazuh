@@ -486,9 +486,6 @@ wdb_t * wdb_open_agent2(int agent_id);
  */
 wdb_t * wdb_open_tasks();
 
-/* Get agent name from location string */
-char* wdb_agent_loc2name(const char *location);
-
 /* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
 int wdb_find_file(sqlite3 *db, const char *path, int type);
 
@@ -695,13 +692,7 @@ int wdb_delete_fim(int id);
 void wdb_delete_fim_all();
 
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_pm(int id);
-
-/* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_rootcheck_delete(wdb_t * wdb);
-
-/* Deletes PM events of all agents */
-void wdb_delete_pm_all();
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
 int wdb_vacuum(sqlite3 *db);
@@ -1598,14 +1589,6 @@ int wdb_journal_wal(sqlite3 *db);
  * @retval -1 On error.
  */
 int wdb_enable_foreign_keys(sqlite3 *db);
-
-/**
-*  @brief Calculates SHA1 hash from a NULL terminated string array.
-*
-* @param [in] strings_to_hash NULL Terminated array with strings to hash
-* @param [out] hexdigest Result
-*/
- int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest);
 
 /**
 *  @brief Calculates SHA1 hash from a NULL terminated set of strings.

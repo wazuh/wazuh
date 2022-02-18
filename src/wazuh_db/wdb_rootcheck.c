@@ -12,8 +12,6 @@
 #include "wdb.h"
 #include "helpers/wdb_global_helpers.h"
 
-static const char *SQL_DELETE_PM = "DELETE FROM pm_event;";
-
 /* Get PCI_DSS requirement from log string */
 static char* get_pci_dss(const char *string);
 
@@ -66,41 +64,6 @@ int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event) {
     return result;
 }
 
-/* Delete PM events of an agent. Returns 0 on success or -1 on error. */
-int wdb_delete_pm(int id) {
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    int result;
-
-    char *name = id ? wdb_get_agent_name(id, NULL) : strdup("localhost");
-
-    if (!name)
-        return -1;
-
-    if (*name == '\0') {
-        free(name);
-        return -1;
-    }
-
-    db = wdb_open_agent(id, name);
-    free(name);
-
-    if (!db)
-        return -1;
-
-    if (wdb_prepare(db, SQL_DELETE_PM, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        return -1;
-    }
-
-    result = wdb_step(stmt) == SQLITE_DONE ? sqlite3_changes(db) : -1;
-    sqlite3_finalize(stmt);
-    wdb_vacuum(db);
-    sqlite3_close_v2(db);
-    return result;
-}
-
 int wdb_rootcheck_delete(wdb_t * wdb) {
     sqlite3_stmt *stmt;
     int result;
@@ -114,21 +77,6 @@ int wdb_rootcheck_delete(wdb_t * wdb) {
 
     result = wdb_step(stmt) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
     return result;
-}
-
-/* Delete PM events of all agents */
-void wdb_delete_pm_all() {
-    int i;
-    int *agents = wdb_get_all_agents(FALSE, NULL);
-
-    if (agents) {
-        wdb_delete_pm(0);
-
-        for (i = 0; agents[i] >= 0; i++)
-            wdb_delete_pm(agents[i]);
-
-        free(agents);
-    }
 }
 
 /* Get PCI_DSS requirement from log string */
