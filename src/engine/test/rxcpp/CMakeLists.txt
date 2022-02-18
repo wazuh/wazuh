@@ -11,6 +11,8 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 # Project settings
 project(wazuh-engine)
 
+set(THREAD_POOL_SOURCE_DIR ${ENGINE_SOURCE_DIR}/threadPool)
+
 # ReactiveX/RxCpp
 CPMAddPackage(
   NAME RxCpp
@@ -49,11 +51,13 @@ link_libraries(
 
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
+    ${THREAD_POOL_SOURCE_DIR}
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
 )
 
 add_executable(rxcppThreadingTest
+    ${THREAD_POOL_SOURCE_DIR}/threadPool.cpp
     ${CMAKE_CURRENT_LIST_DIR}/threadingTest.cpp
 )
 gtest_discover_tests(rxcppThreadingTest)
