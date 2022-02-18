@@ -486,10 +486,12 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
     }
     std::string regexp = parameters[1];
 
-    // Append rxcpp operations
-    return o.filter(
-        [=](types::Event e)
-        { return (RE2::FullMatch(e.get("/" + field)->GetString(), regexp));
-    });
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operations
+        return o.filter([=](types::Event e) { return (RE2::PartialMatch(e.get("/" + field)->GetString(), regexp)); });
+    };
+}
 
 } // namespace builder::internals::builders
