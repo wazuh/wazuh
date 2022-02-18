@@ -74,8 +74,6 @@ wdbc_result __wrap_wdb_global_set_agent_groups(__attribute__((unused)) wdb_t *wd
 
 cJSON* __wrap_wdb_global_select_groups(wdb_t *wdb);
 
-cJSON* __wrap_wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
-
 wdbc_result __wrap_wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output);
 
 int __wrap_wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent);

@@ -1478,83 +1478,6 @@ void test_wdb_parse_global_select_groups_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_parse_global_select_agent_keepalive */
-
-void test_wdb_parse_global_select_agent_keepalive_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-keepalive";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-keepalive");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-keepalive.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-keepalive");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-keepalive'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_keepalive_syntax_error2(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-keepalive test_name";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-keepalive test_name");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "DB query error near: test_name");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'test_name'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_keepalive_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-keepalive test_name 0.0.0.0";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-keepalive test_name 0.0.0.0");
-    expect_string(__wrap_wdb_global_select_agent_keepalive, name, "test_name");
-    expect_string(__wrap_wdb_global_select_agent_keepalive, ip, "0.0.0.0");
-    will_return(__wrap_wdb_global_select_agent_keepalive, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent keepalive from global.db.");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error getting agent keepalive from global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_keepalive_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-keepalive test_name 0.0.0.0";
-    cJSON *j_object = NULL;
-
-    j_object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object, "keepalive", 1000);
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-keepalive test_name 0.0.0.0");
-    expect_string(__wrap_wdb_global_select_agent_keepalive, name, "test_name");
-    expect_string(__wrap_wdb_global_select_agent_keepalive, ip, "0.0.0.0");
-    will_return(__wrap_wdb_global_select_agent_keepalive, j_object);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok {\"keepalive\":1000}");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_parse_global_sync_agent_info_get */
 
 void test_wdb_parse_global_sync_agent_info_get_success(void **state)
@@ -2830,11 +2753,6 @@ int main()
         /* Tests wdb_parse_global_select_groups */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_groups_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_groups_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_select_agent_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_syntax_error2, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_keepalive_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_sync_agent_info_get */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_last_id_success, test_setup, test_teardown),

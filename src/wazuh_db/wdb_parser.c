@@ -852,15 +852,6 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "select-groups") == 0) {
             result = wdb_parse_global_select_groups(wdb, output);
-        } else if (strcmp(query, "select-keepalive") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for select-keepalive.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_select_agent_keepalive(wdb, next, output);
-            }
         } else if (strcmp(query, "sync-agent-groups-get") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for sync-agent-groups-get.");
@@ -5416,37 +5407,6 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
     }
 
     return ret;
-}
-
-int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output) {
-   char *out = NULL;
-   char *next = NULL;
-
-   if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return OS_INVALID;
-    }
-    *next++ = '\0';
-
-    char* agent_name = input;
-    char* agent_ip = next;
-    cJSON *keepalive = NULL;
-
-    keepalive = wdb_global_select_agent_keepalive(wdb, agent_name, agent_ip);
-    if (!keepalive) {
-        mdebug1("Error getting agent keepalive from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent keepalive from global.db.");
-        return OS_INVALID;
-    }
-
-    out = cJSON_PrintUnformatted(keepalive);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(keepalive);
-
-    return OS_SUCCESS;
 }
 
 int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) {

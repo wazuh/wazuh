@@ -30,7 +30,6 @@ static const char *global_db_commands[] = {
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
-    [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
@@ -570,38 +569,6 @@ char* wdb_get_agent_group(int id, int *sock) {
     if (cJSON_IsString(json_group) && json_group->valuestring != NULL) {
         os_strdup(json_group->valuestring, output);
     }
-
-    cJSON_Delete(root);
-    return output;
-}
-
-time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    time_t output = 0;
-    cJSON *root = NULL;
-    cJSON *json_keepalive = NULL;
-    int aux_sock = -1;
-
-    if (!name || !ip) {
-        mdebug1("Empty agent name or ip when trying to get last keepalive.");
-        return OS_INVALID;
-    }
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_KEEPALIVE], name, ip);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the last agent keepalive.");
-        return OS_INVALID;
-    }
-
-    json_keepalive = cJSON_GetObjectItem(root->child,"last_keepalive");
-    output = cJSON_IsNumber(json_keepalive) ? json_keepalive->valueint : 0;
 
     cJSON_Delete(root);
     return output;

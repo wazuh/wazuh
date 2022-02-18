@@ -2349,79 +2349,6 @@ void test_wdb_remove_agent_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_get_agent_keepalive */
-
-void test_wdb_get_agent_keepalive_error_no_name_nor_ip(void **state) {
-    time_t keepalive = 0;
-    char *name = NULL;
-    char *ip = NULL;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Empty agent name or ip when trying to get last keepalive.");
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(OS_INVALID, keepalive);
-}
-
-void test_wdb_get_agent_keepalive_error_no_json_response(void **state) {
-    time_t keepalive = 0;
-    char name[]="agent1";
-    char ip[]="0.0.0.1";
-    cJSON* response = NULL;
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, response);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the last agent keepalive.");
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(OS_INVALID, keepalive);
-}
-
-void test_wdb_get_agent_keepalive_error_empty_json_response(void **state) {
-    time_t keepalive = 0;
-    char name[]="agent1";
-    char ip[]="0.0.0.1";
-    cJSON* response = __real_cJSON_Parse("[{}]");
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, response);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, NULL);
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(OS_SUCCESS, keepalive);
-
-    __real_cJSON_Delete(response);
-}
-
-void test_wdb_get_agent_keepalive_success(void **state) {
-    time_t keepalive = 0;
-    char name[]="agent1";
-    char ip[]="0.0.0.1";
-    cJSON* response = __real_cJSON_Parse("[{\"last_keepalive\":100}]");
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, response);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(response->child, "last_keepalive"));
-
-    keepalive = wdb_get_agent_keepalive(name, ip, NULL);
-
-    assert_int_equal(100, keepalive);
-
-    __real_cJSON_Delete(response);
-}
-
 /* Tests wdb_get_agent_group */
 
 void test_wdb_get_agent_group_error_no_json_response(void **state) {
@@ -3923,11 +3850,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_get_agent_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_name_nor_ip, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

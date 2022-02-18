@@ -27,7 +27,6 @@ typedef enum global_db_access {
     WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
-    WDB_SELECT_KEEPALIVE,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
     WDB_DELETE_AGENT,
@@ -172,16 +171,6 @@ char* wdb_get_agent_name(int id, int *sock);
  * @return A string with the agent group on success or NULL on failure.
  */
 char* wdb_get_agent_group(int id, int *sock);
-
-/**
- * @brief Function to get the agent last keepalive.
- *
- * @param [in] name String with the name of the agent.
- * @param [in] ip String with the ip of the agent.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns this value, 0 on NULL or OS_INVALID on error.
- */
-time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock);
 
 /**
  * @brief Find group by name.
