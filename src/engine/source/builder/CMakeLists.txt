@@ -44,6 +44,7 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 ####################################################################################################
 target_sources(main PRIVATE
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
@@ -67,5 +68,6 @@ target_include_directories(main PUBLIC
     ${BUILDER_ENGINE_SOURCE_DIR}
     ${BUILDER_ENGINE_SOURCE_DIR}/outputs
     ${BUILDER_ENGINE_SOURCE_DIR}/builders
+    ${ENGINE_SOURCE_DIR}/shared
     ${rapidjson_headers}/include
 )
