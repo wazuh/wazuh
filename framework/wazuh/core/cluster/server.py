@@ -29,6 +29,8 @@ class AbstractServerHandler(c_common.Handler):
         ----------
         server : AbstractServer object
             Abstract server object that created this handler.
+        loop : asyncio.AbstractEventLoop
+            Asyncio loop.
         fernet_key : str
             Key used to encrypt and decrypt messages.
         cluster_items : dict
