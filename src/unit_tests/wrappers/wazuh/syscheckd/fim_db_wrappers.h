@@ -70,7 +70,7 @@ void expect_wrapper_fim_db_get_count_file_entry(int ret);
  */
 void expect_fim_db_remove_path(const char *path, int ret_val);
 
-int __wrap_fim_db_file_update(fim_entry* new, bool *saved);
+int __wrap_fim_db_file_update(fim_entry* new, callback_context_t callback);
 
 int __wrap_fim_db_file_pattern_search(const char* pattern,
                                       __attribute__((unused)) callback_context_t callback);
