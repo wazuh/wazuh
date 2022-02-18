@@ -486,18 +486,6 @@ wdb_t * wdb_open_agent2(int agent_id);
  */
 wdb_t * wdb_open_tasks();
 
-/* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int wdb_find_file(sqlite3 *db, const char *path, int type);
-
-/* Find file, Returns ID, or -1 on error. */
-int wdb_insert_file(sqlite3 *db, const char *path, int type);
-
-/* Get last event from file: returns WDB_FIM_*, or -1 on error. */
-int wdb_get_last_fim(sqlite3 *db, const char *path, int type);
-
-/* Insert FIM entry. Returns ID, or -1 on error. */
-int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, const char *event, const sk_sum_t *sum);
-
 int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size);
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file);
@@ -684,12 +672,6 @@ int wdb_create_profile(const char *path);
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
-
-/* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_fim(int id);
-
-/* Delete FIM events of all agents. */
-void wdb_delete_fim_all();
 
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_rootcheck_delete(wdb_t * wdb);
