@@ -99,12 +99,12 @@ static void executeParserList(std::string const &event, ParserList const &parser
             case ParserType::Ts: {
                 TimeStampResult tsr;
                 if (parseTimeStamp(&eventIt, parser.endToken, tsr)) {
-                    result["year"] = tsr.year;
-                    result["month"] = tsr.month;
-                    result["day"] = tsr.day;
-                    result["hour"] = tsr.hour;
-                    result["minutes"] = tsr.minutes;
-                    result["seconds"] = tsr.seconds;
+                    result["timestamp.year"] = tsr.year;
+                    result["timestamp.month"] = tsr.month;
+                    result["timestamp.day"] = tsr.day;
+                    result["timestamp.hour"] = tsr.hour;
+                    result["timestamp.minutes"] = tsr.minutes;
+                    result["timestamp.seconds"] = tsr.seconds;
                 }
                 else {
                     error = true;
