@@ -298,7 +298,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
     WDB_STMT_VULN_CVES_INSERT,
-    WDB_STMT_VULN_CVES_CLEAR,
     WDB_STMT_VULN_CVES_UPDATE,
     WDB_STMT_VULN_CVES_UPDATE_BY_TYPE,
     WDB_STMT_VULN_CVES_UPDATE_ALL,
@@ -2381,16 +2380,6 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  *        -1 On error: response contains "err" and an error description.
  */
  int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output);
-
- /**
- * @brief Function to parse the vuln_cves clear action.
- *
- * @param [in] wdb The global struct database.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout

@@ -67,10 +67,6 @@ wdbc_result __wrap_wdb_agents_remove_vuln_cves_by_status(__attribute__((unused))
     return mock();
 }
 
-int __wrap_wdb_agents_clear_vuln_cves(__attribute__((unused)) wdb_t *wdb) {
-    return mock();
-}
-
 bool __wrap_wdb_agents_find_package(__attribute__((unused)) wdb_t *wdb, const char* reference){
     check_expected(reference);
     return mock();

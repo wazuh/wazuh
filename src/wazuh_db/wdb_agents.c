@@ -280,16 +280,6 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
     return wdb_res;
 }
 
-int wdb_agents_clear_vuln_cves(wdb_t *wdb) {
-
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_CLEAR);
-    if (stmt == NULL) {
-        return OS_INVALID;
-    }
-
-    return wdb_exec_stmt_silent(stmt);
-}
-
 int wdb_agents_set_packages_triaged(wdb_t *wdb) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
     if (!stmt) {

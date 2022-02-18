@@ -1049,34 +1049,6 @@ void test_wdb_agents_remove_vuln_cves_by_status_success(void **state) {
     __real_cJSON_Delete(root);
 }
 
-/* Tests wdb_agents_clear_vuln_cves */
-
-void test_wdb_agents_clear_vuln_cves_statement_init_fail(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_CLEAR);
-
-    ret = wdb_agents_clear_vuln_cves(data->wdb);
-
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_agents_clear_vuln_cves_success(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_CLEAR);
-
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-
-    ret = wdb_agents_clear_vuln_cves(data->wdb);
-
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_agents_set_sys_osinfo_triaged */
 
 void test_wdb_agents_set_sys_osinfo_triaged_statement_init_fail(void **state) {
@@ -1453,9 +1425,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_by_status_error_exec_stmt_sized, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_by_status_error_removing_cve, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_by_status_success, test_setup, test_teardown),
-        /* Tests wdb_agents_clear_vuln_cves */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_statement_init_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_success, test_setup, test_teardown),
         /* Tests wdb_agents_set_sys_osinfo_triaged */
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_success, test_setup, test_teardown),

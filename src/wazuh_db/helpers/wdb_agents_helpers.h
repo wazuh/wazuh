@@ -18,7 +18,6 @@ typedef enum agents_db_access {
     WDB_AGENTS_SYS_OSINFO_GET,
     WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED,
     WDB_AGENTS_VULN_CVES_INSERT,
-    WDB_AGENTS_VULN_CVES_CLEAR,
     WDB_AGENTS_VULN_CVES_REMOVE,
     WDB_AGENTS_VULN_CVES_UPDATE_STATUS
 } agents_db_access;
@@ -91,16 +90,6 @@ cJSON* wdb_insert_vuln_cves(int id,
                             const char *updated,
                             bool check_pkg_existence,
                             int *sock);
-
-/**
- * @brief Removes all the entries from the vuln_cves table in the agents database.
- *
- * @param[in] id The agent ID.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_clear_vuln_cves(int id,
-                        int *sock);
 
 /**
  * @brief Removes an entry from the vuln_cves table in the agent's database.

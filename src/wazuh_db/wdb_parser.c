@@ -6209,20 +6209,13 @@ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output) {
 
     if (!next){
         snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cves action");
-    }
-    else if (strcmp(next, "insert") == 0) {
+    } else if (strcmp(next, "insert") == 0) {
         result = wdb_parse_agents_insert_vuln_cves(wdb, tail, output);
-    }
-    else if (strcmp(next, "update_status") == 0) {
+    } else if (strcmp(next, "update_status") == 0) {
         result = wdb_parse_agents_update_vuln_cves_status(wdb, tail, output);
-    }
-    else if (strcmp(next, "remove") == 0) {
+    } else if (strcmp(next, "remove") == 0) {
         result = wdb_parse_agents_remove_vuln_cves(wdb, tail, output);
-    }
-    else if (strcmp(next, "clear") == 0) {
-        result = wdb_parse_agents_clear_vuln_cves(wdb, output);
-    }
-    else {
+    } else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves action: %s", next);
     }
 
@@ -6373,18 +6366,6 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     }
 
     cJSON_Delete(data);
-    return ret;
-}
-
-int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output) {
-    int ret = wdb_agents_clear_vuln_cves(wdb);
-    if (OS_SUCCESS != ret) {
-        mdebug1("DB(%s) Cannot execute vuln_cves clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
-    }
-    else {
-        snprintf(output, OS_MAXSTR + 1, "ok");
-    }
     return ret;
 }
 
