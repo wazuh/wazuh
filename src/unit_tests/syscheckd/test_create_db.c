@@ -3699,8 +3699,8 @@ static void test_transaction_callback_add(void **state) {
 #endif
 
     fim_txn_context_t *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = "/etc/a_test_file.txt", .file_entry.data=&DEFAULT_FILE_DATA};
-    cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"dev\":64768,\"gid\":0,\"group_name\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":801978,\"last_event\":123456789,\"mode\":0,\"mtime\":1645001030,\"options\":139775,\"path\":\"/etc/a_test_file.txt\",\"perm\":\"rw-r--r--\",\"scanned\":1,\"size\":0,\"uid\":0,\"user_name\":\"root\"}]");
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"dev\":64768,\"gid\":0,\"group_name\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":801978,\"last_event\":0,\"mode\":0,\"mtime\":1645001030,\"options\":139775,\"path\":\"/etc/a_test_file.txt\",\"perm\":\"rw-r--r--\",\"scanned\":1,\"size\":0,\"uid\":0,\"user_name\":\"root\"}]");
 
     txn_context->latest_entry = &entry;
     data->dbsync_event = result;
@@ -3804,9 +3804,9 @@ static void test_transaction_callback_modify_report_changes(void **state) {
 static void test_transaction_callback_delete(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"last_event\":123456789,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #else
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"last_event\":123456789,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #endif
 
     fim_txn_context_t *txn_context = data->txn_context;
@@ -3839,10 +3839,10 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     fim_txn_context_t *txn_context = data->txn_context;
 #ifndef TEST_WINAGENT
     const char* path = "/etc/a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"last_event\":123456789,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #else
     const char *path = "c:\\windows\\a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"last_event\":123456789,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #endif
     data->dbsync_event = result;
 
@@ -3869,9 +3869,9 @@ static void test_transaction_callback_delete_report_changes(void **state) {
 static void test_transaction_callback_delete_full_db(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"last_event\":123456789,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #else
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"last_event\":123456789,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":801978,\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
 #endif
 
     fim_txn_context_t *txn_context = data->txn_context;
