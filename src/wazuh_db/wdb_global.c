@@ -1221,10 +1221,8 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
     cJSON_ArrayForEach (j_group_name, j_groups) {
         if (cJSON_IsString(j_group_name)){
             char* group_name = j_group_name->valuestring;
-            if (!strchr(group_name, MULTIGROUP_SEPARATOR)) {
-                if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
-                    result = WDBC_ERROR;
-                }
+            if (OS_INVALID == wdb_global_insert_agent_group(wdb, group_name)) {
+                result = WDBC_ERROR;
             }
             cJSON* j_find_response = wdb_global_find_group(wdb, group_name);
             if (j_find_response) {
@@ -1295,9 +1293,74 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
     return result;
 }
 
+int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
+    sqlite3_stmt *stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET);
+
+    if (stmt == NULL) {
+        return OS_INVALID;
+    }
+
+    if (sqlite3_bind_int(stmt, 1, agent_id) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    int groups_number = OS_INVALID;
+    cJSON* j_result = wdb_exec_stmt(stmt);
+
+    if (j_result) {
+        if (j_result->child && j_result->child->child) {
+            cJSON* j_groups_number = j_result->child->child;
+            groups_number = j_groups_number->valueint;
+        }
+        cJSON_Delete(j_result);
+    } else {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+    }
+
+    return groups_number;
+}
+
+wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
+    cJSON* j_group_name = NULL;
+    wdbc_result ret = WDBC_OK;
+    int groups_counter = 0;
+
+    int groups_number = wdb_global_groups_number_get(wdb, agent_id);
+
+    if (groups_number != OS_INVALID) {
+        cJSON_ArrayForEach (j_group_name, j_groups) {
+            if (cJSON_IsString(j_group_name)) {
+                ++groups_counter;
+                if ((groups_counter + groups_number) > MAX_GROUPS_PER_MULTIGROUP) {
+                    mwarn("The groups assigned to agent %03d exceed the maximum of %d permitted.", agent_id, MAX_GROUPS_PER_MULTIGROUP);
+                    ret = WDBC_ERROR;
+                    break;
+                }
+                char* group_name = j_group_name->valuestring;
+                if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
+                    mwarn("Invalid character in the group name. The group '%s' contains comma.", group_name);
+                    ret = WDBC_ERROR;
+                    break;
+                }
+                if (strlen(group_name) > MAX_GROUP_NAME) {
+                    mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
+                    ret = WDBC_ERROR;
+                    break;
+                }
+            }
+        }
+    } else {
+        ret = WDBC_ERROR;
+    }
+
+    return ret;
+}
+
 wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info) {
     wdbc_result ret = WDBC_OK;
     cJSON* j_group_info = NULL;
+    wdbc_result valid_groups = WDBC_OK;
     cJSON_ArrayForEach (j_group_info, j_agents_group_info) {
         cJSON* j_agent_id = cJSON_GetObjectItem(j_group_info, "id");
         cJSON* j_groups = cJSON_GetObjectItem(j_group_info, "groups");
@@ -1326,25 +1389,30 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                         group_priority = last_group_priority+1;
                     }
                 }
-                if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
+                if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), WDBC_OK == valid_groups) {
+                    if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
+                        ret = WDBC_ERROR;
+                        merror("There was an error assigning the groups to agent '%03d'", agent_id);
+                    }
+                } else {
                     ret = WDBC_ERROR;
-                    merror("There was an error assigning the groups to agent '%03d'", agent_id);
                 }
             }
-
-            char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
-            if (agent_groups_csv) {
-                char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
-                OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
-                if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
+            if (WDBC_OK == valid_groups) {
+                char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
+                if (agent_groups_csv) {
+                    char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
+                    OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
+                    if (WDBC_ERROR == wdb_global_set_agent_group_context(wdb, agent_id, agent_groups_csv, groups_hash, sync_status)) {
+                        ret = WDBC_ERROR;
+                        merror("There was an error assigning the groups context to agent '%03d'", agent_id);
+                    }
+                    os_free(agent_groups_csv);
+                    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+                } else {
                     ret = WDBC_ERROR;
-                    merror("There was an error assigning the groups context to agent '%03d'", agent_id);
+                    mdebug1("The agent groups where empty right after the set");
                 }
-                os_free(agent_groups_csv);
-                wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
-            } else {
-                ret = WDBC_ERROR;
-                mdebug1("The agent groups where empty right after the set");
             }
         } else {
             ret = WDBC_ERROR;

@@ -224,6 +224,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
     WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND,
+    WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
     WDB_STMT_GLOBAL_GROUP_CSV_GET,
@@ -2057,6 +2058,26 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
  * @return wdbc_result representing the status of the command.
  */
 wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
+
+/**
+ * @brief Returns the number of groups that are assigned to an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] agent_id ID of the agent to get the groups number from.
+ * @return int Returns the groups number or -1 on error.
+ */
+int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
+
+/**
+ * @brief Verifies that the number of groups to be assigned is less or equal to 128 and
+ *        there's no group longer than 255 characters nor contains a comma as part of its name.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] j_groups JSON array with all the groups to be assigned to an agent.
+ * @param [in] agent_id ID of the agent to add new groups.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id);
 
 /**
  * @brief Sets the belongship af a set of agents.
