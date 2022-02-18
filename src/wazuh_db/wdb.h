@@ -643,18 +643,6 @@ int wdb_remove_agent_db(int id, const char * name);
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
 
-/* Insert or update metadata entries. Returns 0 on success or -1 on error. */
-int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
-
-/* Find metadata entries. Returns 0 if doesn't found, 1 on success or -1 on error. */
-int wdb_metadata_find_entry(wdb_t * wdb, const char * key);
-
-/* Insert entry. Returns 0 on success or -1 on error. */
-int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
-
-/* Update entries. Returns 0 on success or -1 on error. */
-int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value);
-
 /* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
 int wdb_metadata_fill_version(sqlite3 *db);
 
