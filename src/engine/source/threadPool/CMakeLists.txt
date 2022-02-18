@@ -1,12 +1,4 @@
-#  Copyright (C) 2015-2021, Wazuh Inc.
-#  All rights reserved.
-#
-#  This program is free software; you can redistribute it
-#  and/or modify it under the terms of the GNU General Public
-#  License (version 2) as published by the FSF - Free Software
-#  Foundation.
-
-# Minimum 3.20 required
+# Minimum 3.14 required by googletest discover tests
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 # Set c++17
@@ -15,9 +7,9 @@ set(CMAKE_CXX_STANDARD 17)
 # Project settings
 project(wazuh-engine)
 
-# set(SERVER_TEST_SOURCE_DIR ${TEST_SOURCE_DIR}/server)
-set(THREAD_POOL_SOURCE_DIR ${ENGINE_SOURCE_DIR}/threadPool)
-
+####################################################################################################
+# Dependencies
+####################################################################################################
 # ReactiveX/RxCpp
 CPMAddPackage(
   NAME RxCpp
@@ -25,11 +17,18 @@ CPMAddPackage(
   GIT_TAG v4.1.1
   VERSION 4.1.1
 )
+list(APPEND EXTERNAL_DEPS "rxcpp")
 
-include_directories(
-    ${THREAD_POOL_SOURCE_DIR}
+# Add this dependencies to parent CMakeLists scope
+set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
+
+####################################################################################################
+# Sources - Includes
+####################################################################################################
+target_sources(main PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/threadPool.cpp
 )
 
-add_executable(threadPool ${THREAD_POOL_SOURCE_DIR}/threadPool.cpp)
-target_link_libraries(threadPool gtest_main rxcpp)
-gtest_discover_tests(threadPool)
+target_include_directories(main PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}
+)
