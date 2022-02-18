@@ -131,10 +131,28 @@ struct UpdateFileAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
         auto retVal { false };
-        auto updated { false };
+        nlohmann::json jsonEvent;
+        directory_t configuration;
+        event_data_t evt_data;
+        create_json_event_ctx callback_ctx;
+
+        configuration = {
+            .options = -1
+        };
+        evt_data = {
+            .report_event = true
+        };
+        callback_ctx = {
+            .event = &evt_data,
+            .config = &configuration
+        };
+
         try
         {
-            //updated = DB::instance().updateFile(value);
+            DB::instance().updateFile(value, &callback_ctx,
+            [&jsonEvent](const nlohmann::json data) {
+                jsonEvent.push_back(data);
+            });
             retVal = true;
         }
         catch (const std::exception &e)
@@ -149,7 +167,7 @@ struct UpdateFileAction final : public IAction
         std::ofstream outputFile{ outputFileName };
         const nlohmann::json jsonResult = {
                 {"result", retVal },
-                {"updated", updated },
+                {"jsonEvent", jsonEvent },
                 {"action", "UpdateFile" }
             };
         outputFile << jsonResult.dump() << std::endl;
