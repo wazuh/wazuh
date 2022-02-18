@@ -1,5 +1,6 @@
 #ifndef _DEFER_HPP
 #define _DEFER_HPP
+/*
  * Wazuh SysInfo
  * Copyright (C) 2022, Wazuh Inc.
  * February 15, 2022.
@@ -8,6 +9,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
+ */
 
 template <typename F>
 struct privDefer {
