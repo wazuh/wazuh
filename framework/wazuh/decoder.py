@@ -20,7 +20,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,
-                 limit=common.database_limit, select=None, sort_by=None, sort_ascending=True, search_text=None,
+                 limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True, search_text=None,
                  complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of available decoders.
 
@@ -88,7 +88,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
 
 
 @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
-def get_decoders_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.database_limit,
+def get_decoders_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
                        sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
                        search_in_fields=None):
     """Gets a list of the available decoder files.
@@ -157,7 +157,7 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
     if len(decoders) > 0:
         decoder_path = decoders[0]['relative_dirname']
         try:
-            full_path = join(common.wazuh_path, decoder_path, filename)
+            full_path = join(common.WAZUH_PATH, decoder_path, filename)
             with open(full_path) as f:
                 file_content = f.read()
             if raw:
@@ -200,7 +200,7 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
                                       )
-    full_path = join(common.user_decoders_path, filename)
+    full_path = join(common.USER_DECODERS_PATH, filename)
     backup_file = ''
     try:
         if len(content) == 0:
@@ -243,7 +243,7 @@ def delete_decoder_file(filename: str) -> AffectedItemsWazuhResult:
                                       none_msg='Could not delete decoder file'
                                       )
 
-    full_path = join(common.user_decoders_path, filename[0])
+    full_path = join(common.USER_DECODERS_PATH, filename[0])
 
     try:
         if exists(full_path):

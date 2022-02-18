@@ -17,7 +17,7 @@ from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import database_limit
+from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -98,7 +98,7 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, agents_l
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents(request, pretty=False, wait_for_complete=False, agents_list=None, offset=0, limit=database_limit,
+async def get_agents(request, pretty=False, wait_for_complete=False, agents_list=None, offset=0, limit=DATABASE_LIMIT,
                      select=None, sort=None, search=None, status=None, q=None, older_than=None,
                      manager=None, version=None, group=None, node_name=None, name=None, ip=None):
     """Get information about all agents or a list of them
@@ -877,7 +877,7 @@ async def get_list_group(request, pretty=False, wait_for_complete=False, groups_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
+async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
                               select=None, sort=None, search=None, status=None, q=None):
     """Get the list of agents that belongs to the specified group.
 
@@ -950,7 +950,7 @@ async def post_group(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
+async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT):
     """Get group configuration defined in the `agent.conf` file.
 
     :param pretty: Show results in human-readable format
@@ -1180,7 +1180,7 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
+async def get_agent_no_group(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
                              select=None, sort=None, search=None, q=None):
     """Get agents without group.
 
@@ -1215,7 +1215,7 @@ async def get_agent_no_group(request, pretty=False, wait_for_complete=False, off
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_outdated(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit, sort=None,
+async def get_agent_outdated(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT, sort=None,
                              search=None, q=None):
     """Get outdated agents.
 
@@ -1249,7 +1249,7 @@ async def get_agent_outdated(request, pretty=False, wait_for_complete=False, off
 
 
 async def get_agent_fields(request, pretty: bool = False, wait_for_complete: bool = False, fields: str = None,
-                           offset: int = 0, limit: int = database_limit, sort: str = None, search: str = None,
+                           offset: int = 0, limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
                            q: str = None) -> web.Response:
     """Get distinct fields in agents.
 

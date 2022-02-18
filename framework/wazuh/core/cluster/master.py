@@ -22,7 +22,7 @@ from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
-from wazuh.core.common import decimals_date_format
+from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -337,7 +337,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
-        worker_dir = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name)
+        worker_dir = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', self.name)
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
@@ -614,8 +614,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
         date_end_master = datetime.utcnow()
-        self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
-                                            'date_end_master': date_end_master.strftime(decimals_date_format),
+        self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(DECIMALS_DATE_FORMAT),
+                                            'date_end_master': date_end_master.strftime(DECIMALS_DATE_FORMAT),
                                             'n_synced_chunks': result['updated_chunks']})
         logger.info('Finished in {:.3f}s. Updated {} chunks.'.format((date_end_master - date_start_master
                                                                       ).total_seconds(), result['updated_chunks']))
@@ -676,8 +676,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         total_time = (datetime.utcnow() - date_start_master).total_seconds()
         self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
-        self.integrity_check_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
-                                            'date_end_master': datetime.utcnow().strftime(decimals_date_format)})
+        self.integrity_check_status.update({'date_start_master': date_start_master.strftime(DECIMALS_DATE_FORMAT),
+                                            'date_end_master': datetime.utcnow().strftime(DECIMALS_DATE_FORMAT)})
 
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
@@ -721,7 +721,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 # Finish the synchronization process and notify where the file corresponding to the taskID is located.
                 result = await self.send_request(command=b'syn_m_c_e',
                                                  data=task_id + b' ' + os.path.relpath(
-                                                     compressed_data, common.wazuh_path).encode())
+                                                     compressed_data, common.WAZUH_PATH).encode())
                 if isinstance(result, Exception):
                     raise result
                 elif result.startswith(b'Error'):
@@ -748,9 +748,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                self.integrity_sync_status['tmp_date_start_master'])
                                                               .total_seconds()))
                     self.integrity_sync_status['date_start_master'] = self.integrity_sync_status[
-                        'tmp_date_start_master'].strftime(decimals_date_format)
+                        'tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
                     self.integrity_sync_status['date_end_master'] = \
-                        self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
+                        self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
 
         return result
 
@@ -771,9 +771,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             (self.integrity_sync_status['date_end_master'] -
              self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
         self.integrity_sync_status['date_start_master'] = \
-            self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
+            self.integrity_sync_status['tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
         self.integrity_sync_status['date_end_master'] = \
-            self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
+            self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
         self.extra_valid_requested = False
         self.sync_integrity_free[0] = True
 
@@ -850,7 +850,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             with utils.Timeout(timeout):
                 for file_path, data in files_metadata.items():
-                    full_path = os.path.join(common.wazuh_path, file_path)
+                    full_path = os.path.join(common.WAZUH_PATH, file_path)
                     item_key = data['cluster_item_key']
 
                     # Only valid client.keys is the local one (master).
@@ -864,9 +864,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         ):
                             try:
                                 # Destination path.
-                                full_unmerged_name = os.path.join(common.wazuh_path, unmerged_file_path)
+                                full_unmerged_name = os.path.join(common.WAZUH_PATH, unmerged_file_path)
                                 # Path where to create the file before moving it to the destination path.
-                                tmp_unmerged_path = os.path.join(common.wazuh_path, 'queue', 'cluster', worker_name,
+                                tmp_unmerged_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', worker_name,
                                                                  os.path.basename(unmerged_file_path))
 
                                 # Format the file_data specified inside the merged file.
@@ -1050,7 +1050,7 @@ class Master(server.AbstractServer):
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.utcfromtimestamp(workers_info[node_name]['status']['last_keep_alive']
-                                              ).strftime(decimals_date_format))
+                                              ).strftime(DECIMALS_DATE_FORMAT))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
 

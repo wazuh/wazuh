@@ -257,7 +257,7 @@ def test_wazuh_db_query_sca_check__add_limit_to_query_ko(agent_id, offset, limit
         wdbq_sca_check = WazuhDBQuerySCACheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                               select=select, query=query, count=count, get_data=get_data)
 
-    wdbq_sca_check.limit = common.maximum_database_limit + 1 if expected_error == '1405' else 0
+    wdbq_sca_check.limit = common.MAXIMUM_DATABASE_LIMIT + 1 if expected_error == '1405' else 0
 
     with pytest.raises(WazuhError, match=f".* {expected_error} .*"):
         wdbq_sca_check._add_limit_to_query()

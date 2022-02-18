@@ -4,7 +4,7 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version, agent_name_len_limit
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION as wazuh_full_version, AGENT_NAME_LEN_LIMIT
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
@@ -289,7 +289,7 @@ class WazuhException(Exception):
                'remediation': 'Please choose another group or remove an agent from the target group'
                },
         1738: {'message': 'Agent name is too long',
-               'remediation': f'Max length allowed for agent name is {agent_name_len_limit}'
+               'remediation': f'Max length allowed for agent name is {AGENT_NAME_LEN_LIMIT}'
                },
         1740: {'message': 'Action only available for active agents',
                'remediation': 'Please activate the agent to synchronize it'

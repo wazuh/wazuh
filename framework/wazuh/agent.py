@@ -41,7 +41,7 @@ ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT = [1813]
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.database_limit, sort: str = None,
+def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: str = None,
                         search: str = None, fields: str = None, q: str = None) -> AffectedItemsWazuhResult:
     """Get all the different combinations that all system agents have for the selected fields. It also indicates the
     total number of agents that have each combination.
@@ -166,7 +166,7 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
                                       )
 
     system_agents = get_agents_info()
-    with WazuhQueue(common.ARQUEUE) as wq:
+    with WazuhQueue(common.AR_SOCKET) as wq:
         for agent_id in agent_list:
             try:
                 if agent_id not in system_agents:
@@ -238,7 +238,7 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
             else agents_with_data
-        with WazuhQueue(common.ARQUEUE) as wq:
+        with WazuhQueue(common.AR_SOCKET) as wq:
             for agent in eligible_agents:
                 try:
                     send_restart_command(agent['id'], agent['version'], wq)
@@ -289,7 +289,7 @@ def restart_agents_by_group(agent_list=None):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701]})
-def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_agents(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                filters=None, q=None):
     """Gets a list of available agents with basic attributes.
 
@@ -330,7 +330,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_agents_in_group(group_list, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                         filters=None, q=None):
     """Gets a list of available agents with basic attributes.
 
@@ -490,7 +490,7 @@ def add_agent(name=None, agent_id=None, key=None, ip='any', force=None):
         Added agent information.
     """
     # Check length of agent name
-    if len(name) > common.agent_name_len_limit:
+    if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
     new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
@@ -529,7 +529,7 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
             query_data = group_query.run()
 
         for group in query_data['items']:
-            full_entry = path.join(common.shared_path, group['name'])
+            full_entry = path.join(common.SHARED_PATH, group['name'])
 
             # merged.mg and agent.conf sum
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
@@ -567,7 +567,7 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
     # We access unique group_id from list, this may change if and when we decide to add option to get files for
     # a list of groups
     group_id = group_list[0]
-    group_path = common.shared_path
+    group_path = common.SHARED_PATH
     result = AffectedItemsWazuhResult(all_msg='All selected groups files were returned',
                                       some_msg='Some groups files were not returned',
                                       none_msg='No groups files were returned'
@@ -576,7 +576,7 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
         if not Agent.group_exists(group_id):
             result.add_failed_item(id_=group_id, error=WazuhResourceNotFound(1710))
             return result
-        group_path = path.join(common.shared_path, group_id)
+        group_path = path.join(common.SHARED_PATH, group_id)
 
     if not path.exists(group_path):
         result.add_failed_item(id_=group_path, error=WazuhError(1006))
@@ -591,7 +591,7 @@ def get_group_files(group_list=None, offset=0, limit=None, search_text=None, sea
             data.append(item)
 
         # ar.conf
-        ar_path = path.join(common.shared_path, 'ar.conf')
+        ar_path = path.join(common.SHARED_PATH, 'ar.conf')
         data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
@@ -618,13 +618,13 @@ def create_group(group_id):
     if not InputValidator().group(group_id):
         raise WazuhError(1722)
 
-    group_path = path.join(common.shared_path, group_id)
+    group_path = path.join(common.SHARED_PATH, group_id)
 
     if group_id.lower() == "default" or path.exists(group_path):
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    agent_conf_template = path.join(common.shared_path, 'agent-template.conf')
+    agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
     try:
         mkdir_with_mode(group_path)
         full_copy(agent_conf_template, path.join(group_path, 'agent.conf'))
@@ -827,7 +827,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_outdated_agents(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                         q=None):
     """Gets the outdated agents.
 
@@ -1125,9 +1125,9 @@ def get_agents_sync_group(agent_list=None):
                 if len(agent_info['group']) > 1:
                     multi_group = ','.join(agent_info['group'])
                     multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-                    group_merged_path = path.join(common.multi_groups_path, multi_group, "merged.mg")
+                    group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
                 else:
-                    group_merged_path = path.join(common.shared_path, agent_info['group'][0], "merged.mg")
+                    group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
                 result.affected_items.append({'id': agent_id,
                                               'synced': md5(group_merged_path) == agent_info['mergedSum']})
         except (IOError, KeyError):
@@ -1161,7 +1161,7 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=common.database_limit):
+def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=common.DATABASE_LIMIT):
     """ Reads agent conf for specified group.
 
     :param group_list: List of Group names.

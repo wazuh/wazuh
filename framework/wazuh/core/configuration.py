@@ -467,7 +467,7 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, from_import=False):
+def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_import=False):
     """Returns ossec.conf (manager) as dictionary.
 
     Parameters
@@ -520,15 +520,15 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, from_i
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filename='agent.conf', return_format=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
-    agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
+    agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, agent_conf)
@@ -551,18 +551,18 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.database_limit, filename=None):
+def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.DATABASE_LIMIT, filename=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
     # Check if a multigroup_id is provided and it exists
-    if multigroup_id and not os_path.exists(os_path.join(common.multi_groups_path, multigroup_id)) or not multigroup_id:
+    if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
         raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
 
     agent_conf_name = filename if filename else 'agent.conf'
-    agent_conf = os_path.join(common.multi_groups_path, multigroup_id, agent_conf_name)
+    agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
 
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
@@ -585,10 +585,10 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
 
     :return: configuration file as dictionary.
     """
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
-    file_path = os_path.join(common.shared_path, group_id if not filename == 'ar.conf' else '', filename)
+    file_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '', filename)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -633,20 +633,20 @@ def parse_internal_options(high_name, low_name):
 
         return config
 
-    if not os_path.exists(common.internal_options):
+    if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
         raise WazuhInternalError(1107)
 
     # Check if the option exists at local internal options
-    if os_path.exists(common.local_internal_options):
+    if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
         try:
-            return get_config(common.local_internal_options).get('root',
-                                                                 '{0}.{1}'.format(high_name, low_name))
+            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root',
+                                                                      '{0}.{1}'.format(high_name, low_name))
         except NoOptionError:
             pass
 
     try:
-        return get_config(common.internal_options).get('root',
-                                                       '{0}.{1}'.format(high_name, low_name))
+        return get_config(common.INTERNAL_OPTIONS_CONF).get('root',
+                                                            '{0}.{1}'.format(high_name, low_name))
     except NoOptionError as e:
         raise WazuhInternalError(1108, e.args[0])
 
@@ -670,10 +670,10 @@ def upload_group_configuration(group_id, file_content):
     :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.tmp_path)
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.OSSEC_TMP_PATH)
     # create temporary file for parsing xml input and validate XML format
     try:
         with open(handle, 'w') as tmp_file:
@@ -710,7 +710,7 @@ def upload_group_configuration(group_id, file_content):
     try:
         # check Wazuh xml format
         try:
-            subprocess.check_output([os_path.join(common.wazuh_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
+            subprocess.check_output([os_path.join(common.WAZUH_PATH, "bin", "verify-agent-conf"), '-f', tmp_file_path],
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
@@ -733,7 +733,7 @@ def upload_group_configuration(group_id, file_content):
 
         # move temporary file to group folder
         try:
-            new_conf_path = os_path.join(common.shared_path, group_id, "agent.conf")
+            new_conf_path = os_path.join(common.SHARED_PATH, group_id, "agent.conf")
             safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
                       permissions=0o660)
         except Exception as e:
@@ -756,7 +756,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     :return: Confirmation message in string
     """
     # Check if the group exists
-    if not os_path.exists(os_path.join(common.shared_path, group_id)):
+    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
     if file_name == 'agent.conf':
@@ -782,7 +782,7 @@ def get_active_configuration(agent_id, component, configuration):
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.wazuh_path, "queue", "sockets")
+    sockets_path = os_path.join(common.WAZUH_PATH, "queue", "sockets")
 
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
@@ -815,7 +815,7 @@ def get_active_configuration(agent_id, component, configuration):
         # Include password if auth->use_password enabled and authd.pass file exists
         if msg.get('auth', {}).get('use_password') == 'yes':
             try:
-                with open(os_path.join(common.wazuh_path, "etc", "authd.pass"), 'r') as f:
+                with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
                     msg['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass
@@ -836,7 +836,7 @@ def write_ossec_conf(new_conf: str):
         The new configuration to be applied.
     """
     try:
-        with open(common.ossec_conf, 'w') as f:
+        with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
     except Exception:
         raise WazuhError(1126)

@@ -128,7 +128,7 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
     assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=['ar.conf'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == {}
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_called_once_with(common.wazuh_path, '/foo/bar')
+    path_join_mock.assert_called_once_with(common.WAZUH_PATH, '/foo/bar')
     md5_mock.assert_not_called()
     getmtime_mock.assert_not_called()
 
@@ -141,7 +141,7 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                path_join_mock.return_value: {'mod_time': 45}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_has_calls([call(common.wazuh_path, '/foo/bar'),
+    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
                                      call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
                                      call('/mock/foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
@@ -157,7 +157,7 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                                  'merge_name': '/mock/foo/bar', 'md5': 'hash'}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_has_calls([call(common.wazuh_path, '/foo/bar'),
+    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
                                      call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
                                      call('/mock/foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
@@ -174,7 +174,7 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                                  'merge_name': '/mock/foo/bar', 'md5': 'hash'}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_has_calls([call(common.wazuh_path, '/foo/bar'),
+    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
                                      call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
                                      call('/mock/foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
@@ -368,7 +368,7 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
     # Second condition
     condition = {'some/path5/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
                  'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
-                 os.path.relpath(common.groups_path, common.wazuh_path): {'cluster_item_key': "key",
+                 os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH): {'cluster_item_key': "key",
                                                                           'md5': 'md5 value'}}
 
     files, count = cluster.compare_files(seq, condition, 'worker1')
@@ -392,7 +392,7 @@ def test_compare_files_ko(wazuh_db_query_mock, logger_mock, mock_get_cluster_ite
            'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
     condition = {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
                  'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
-                 os.path.relpath(common.groups_path, common.wazuh_path): {'cluster_item_key': "key",
+                 os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH): {'cluster_item_key': "key",
                                                                           'md5': 'md5 value'}}
 
     # Test the exception
@@ -464,9 +464,9 @@ def test_merge_info(stat_mock, listdir_mock):
 
     with patch('builtins.open', mock_open(read_data=agent_groups)) as open_mock:
         files_to_send, output_file = cluster.merge_info('agent-groups', 'worker1', file_type='-shared')
-        open_mock.assert_any_call(common.wazuh_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
-        open_mock.assert_any_call(common.wazuh_path + '/queue/agent-groups/005', 'rb')
-        open_mock.assert_any_call(common.wazuh_path + '/queue/agent-groups/006', 'rb')
+        open_mock.assert_any_call(common.WAZUH_PATH + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
+        open_mock.assert_any_call(common.WAZUH_PATH + '/queue/agent-groups/005', 'rb')
+        open_mock.assert_any_call(common.WAZUH_PATH + '/queue/agent-groups/006', 'rb')
 
         assert files_to_send == 2
         assert output_file == "queue/cluster/worker1/agent-groups-shared.merged"

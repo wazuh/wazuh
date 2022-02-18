@@ -63,13 +63,13 @@ rule_contents = '''
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
-    with patch('wazuh.core.common.wazuh_path', new=parent_directory):
+    with patch('wazuh.core.common.WAZUH_PATH', new=parent_directory):
         yield
 
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_rules_path():
-    with patch('wazuh.core.common.ruleset_rules_path', new=data_path):
+    with patch('wazuh.core.common.RULES_PATH', new=data_path):
         yield
 
 

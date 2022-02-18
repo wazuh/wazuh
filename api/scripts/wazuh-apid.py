@@ -229,9 +229,9 @@ if __name__ == '__main__':
                        f"{API_LOG_FILE_PATH}")
 
     # Set correct permissions on api.log file
-    if os.path.exists(os.path.join(common.wazuh_path, API_LOG_FILE_PATH)):
-        os.chown(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), 0o660)
+    if os.path.exists(os.path.join(common.WAZUH_PATH, API_LOG_FILE_PATH)):
+        os.chown(os.path.join(common.WAZUH_PATH, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
+        os.chmod(os.path.join(common.WAZUH_PATH, API_LOG_FILE_PATH), 0o660)
 
     # Configure https
     ssl_context = None

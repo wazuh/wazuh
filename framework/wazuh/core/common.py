@@ -13,9 +13,7 @@ from pwd import getpwnam
 from typing import Any, Dict
 
 
-# ----------------------------------------------------------------------------------------------------------------------
 # ===================================================== Functions ======================================================
-# ----------------------------------------------------------------------------------------------------------------------
 @lru_cache(maxsize=None)
 def find_wazuh_path() -> str:
     """
@@ -30,10 +28,10 @@ def find_wazuh_path() -> str:
     allparts = []
     while 1:
         parts = os.path.split(abs_path)
-        if parts[0] == abs_path:  # sentinel for absolute paths
+        if parts[0] == abs_path:  # sentinel for absolute paths.
             allparts.insert(0, parts[0])
             break
-        elif parts[1] == abs_path:  # sentinel for relative paths
+        elif parts[1] == abs_path:  # sentinel for relative paths.
             allparts.insert(0, parts[1])
             break
         else:
@@ -51,25 +49,25 @@ def find_wazuh_path() -> str:
 
 
 def wazuh_uid():
-    """_summary_
+    """Retrieve the numerical user ID for the wazuh user.
 
     Returns
     -------
-    _type_
-        _description_
+    int
+        Numerical user ID.
     """
-    return getpwnam(USER_NAME).pw_uid if globals()['_wazuh_uid'] is None else globals()['_wazuh_uid']
+    return getpwnam(USER_NAME).pw_uid if globals()['_WAZUH_UID'] is None else globals()['_WAZUH_UID']
 
 
 def wazuh_gid():
-    """_summary_
+    """Retrieve the numerical group ID for the wazuh group.
 
     Returns
     -------
-    _type_
-        _description_
+    int
+        Numerical group ID.
     """
-    return getgrnam(GROUP_NAME).gr_gid if globals()['_wazuh_gid'] is None else globals()['_wazuh_gid']
+    return getgrnam(GROUP_NAME).gr_gid if globals()['_WAZUH_GID'] is None else globals()['_WAZUH_GID']
 
 
 def context_cached(key: str = '') -> Any:
@@ -128,9 +126,7 @@ def get_context_cache() -> dict:
     return _context_cache
 
 
-# ----------------------------------------------------------------------------------------------------------------------
 # ================================================= Context variables ==================================================
-# ----------------------------------------------------------------------------------------------------------------------
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
@@ -141,7 +137,7 @@ try:
         'process_pool': ProcessPoolExecutor(max_workers=1),
         'authentication_pool': ProcessPoolExecutor(max_workers=1)
     })
-# Handle exception when the user running Wazuh cannot access /dev/shm
+# Handle exception when the user running Wazuh cannot access /dev/shm.
 except (FileNotFoundError, PermissionError):
     mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
         'thread_pool': ThreadPoolExecutor(max_workers=1)
@@ -149,9 +145,34 @@ except (FileNotFoundError, PermissionError):
 _context_cache = dict()
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# ================================================= Metadata variables =================================================
-# ----------------------------------------------------------------------------------------------------------------------
+# =========================================== Wazuh constants and variables ============================================
+# Clear cache event.
+cache_event = Event()
+_WAZUH_UID = None
+_WAZUH_GID = None
+GROUP_NAME = 'wazuh'
+USER_NAME = 'wazuh'
+WAZUH_PATH = find_wazuh_path()
+
+
+# ============================================= Wazuh constants - Commands =============================================
+CHECK_CONFIG_COMMAND = 'check-manager-configuration'
+RESTART_WAZUH_COMMAND = 'restart-wazuh'
+
+
+# =========================================== Wazuh constants - Date format ============================================
+DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
+
+# ============================================ Wazuh constants - Extensions ============================================
+RULES_EXTENSION = '.xml'
+DECODERS_EXTENSION = '.xml'
+LISTS_EXTENSION = ''
+COMPILED_LISTS_EXTENSION = '.cdb'
+
+
+# ============================================ Wazuh constants - Metadata  =============================================
 try:
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, 'wazuh.json'), 'r') as f:
@@ -162,62 +183,23 @@ except (FileNotFoundError, PermissionError):
         'installation_date': '',
         'wazuh_version': ''
     }
-install_type = metadata['install_type']
-wazuh_version = metadata['wazuh_version']
-installation_date = metadata['installation_date']
+WAZUH_INSTALL_TYPE = metadata['install_type']
+WAZUH_VERSION = metadata['wazuh_version']
+WAZUH_INSTALLATION_DATE = metadata['installation_date']
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# ================================================== Wazuh constants ===================================================
-# ----------------------------------------------------------------------------------------------------------------------
-USER_NAME = 'wazuh'
-GROUP_NAME = 'wazuh'
-_wazuh_uid = None
-_wazuh_gid = None
-wazuh_path = find_wazuh_path()
-# Clear cache event.
-cache_event = Event()
+# ========================================= Wazuh constants - Size and limits ==========================================
+MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB.
+MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFER_SIZE - 4KB.
+AGENT_NAME_LEN_LIMIT = 128
+DATABASE_LIMIT = 500
+MAXIMUM_DATABASE_LIMIT = 100000
+MAX_GROUPS_PER_MULTIGROUP = 256
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# ============================================= Wazuh constants - Command ==============================================
-# ----------------------------------------------------------------------------------------------------------------------
-CHECK_CONFIG_COMMAND = 'check-manager-configuration'
-RESTART_WAZUH_COMMAND = 'restart-wazuh'
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# =============================================== Wazuh constants - Date ===============================================
-# ----------------------------------------------------------------------------------------------------------------------
-date_format = "%Y-%m-%dT%H:%M:%SZ"
-decimals_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# ============================================= Wazuh constants - Ruleset ==============================================
-# ----------------------------------------------------------------------------------------------------------------------
-RULES_EXTENSION = '.xml'
-DECODERS_EXTENSION = '.xml'
-LISTS_EXTENSION = ''
-COMPILED_LISTS_EXTENSION = '.cdb'
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# =============================================== Wazuh constants - Size ===============================================
-# ----------------------------------------------------------------------------------------------------------------------
-MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB
-MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFER_SIZE - 4KB
-agent_name_len_limit = 128
-database_limit = 500
-maximum_database_limit = 100000
-max_groups_per_multigroup = 256
-
-
-# ----------------------------------------------------------------------------------------------------------------------
 # ============================================= Wazuh constants - Version ==============================================
-# ----------------------------------------------------------------------------------------------------------------------
 # Agent upgrading variables.
-wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
+WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 # Agent component stats required version.
 AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
 # Version variables (legacy, required, etc).
@@ -225,56 +207,48 @@ AR_LEGACY_VERSION = 'Wazuh v4.2.0'
 ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 
 
-# ----------------------------------------------------------------------------------------------------------------------
 # ================================================ Wazuh path - Config =================================================
-# ----------------------------------------------------------------------------------------------------------------------
-ossec_conf = os.path.join(wazuh_path, 'etc', 'ossec.conf')
-internal_options = os.path.join(wazuh_path, 'etc', 'internal_options.conf')
-local_internal_options = os.path.join(wazuh_path, 'etc', 'local_internal_options.conf')
-ar_conf_path = os.path.join(wazuh_path, 'etc', 'shared', 'ar.conf')
-client_keys = os.path.join(wazuh_path, 'etc', 'client.keys')
-shared_path = os.path.join(wazuh_path, 'etc', 'shared')
-ossec_log = os.path.join(wazuh_path, 'logs', 'ossec.log')
+OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'ossec.conf')
+INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'internal_options.conf')
+LOCAL_INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
+AR_CONF = os.path.join(WAZUH_PATH, 'etc', 'shared', 'ar.conf')
+CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
+SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 
 
-# ----------------------------------------------------------------------------------------------------------------------
 # ================================================= Wazuh path - Misc ==================================================
-# ----------------------------------------------------------------------------------------------------------------------
-stats_path = os.path.join(wazuh_path, 'stats')
-backup_path = os.path.join(wazuh_path, 'backup')
-multi_groups_path = os.path.join(wazuh_path, 'var', 'multigroups')
-database_path = os.path.join(wazuh_path, 'var', 'db')
-database_path_global = os.path.join(database_path, 'global.db')
-database_path_agents = os.path.join(database_path, 'agents')
-os_pidfile = os.path.join('var', 'run')
-analysisd_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-analysisd.state')
-remoted_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-remoted.state')
-pidfiles_path = os.path.join(wazuh_path, 'var', 'run')
-tmp_path = os.path.join(wazuh_path, 'tmp')
+OSSEC_LOG = os.path.join(WAZUH_PATH, 'logs', 'ossec.log')
+DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
+DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
+DATABASE_PATH_AGENTS = os.path.join(DATABASE_PATH, 'agents')
+ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
+REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
+OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
+OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
+OS_PIDFILE_PATH = os.path.join('var', 'run')
+WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
+GROUPS_PATH = os.path.join(WAZUH_PATH, 'queue', 'agent-groups')
+STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
+BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
+MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 
 
-# ----------------------------------------------------------------------------------------------------------------------
-# =========================================== Wazuh path - Queue and socket ============================================
-# ----------------------------------------------------------------------------------------------------------------------
-ARQUEUE = os.path.join(wazuh_path, 'queue', 'alerts', 'ar')
-EXECQ = os.path.join(wazuh_path, 'queue', 'alerts', 'execq')
-wdb_path = os.path.join(wazuh_path, 'queue', 'db')
-wdb_socket_path = os.path.join(wazuh_path, 'queue', 'db', 'wdb')
-groups_path = os.path.join(wazuh_path, 'queue', 'agent-groups')
-AUTHD_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'auth')
-WCOM_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'com')
-LOGTEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'logtest')
-UPGRADE_SOCKET = os.path.join(wazuh_path, 'queue', 'tasks', 'upgrade')
-TASKS_SOCKET = os.path.join(wazuh_path, 'queue', 'tasks', 'task')
+# ================================================ Wazuh path - Sockets ================================================
+AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
+EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
+AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
+WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
+LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
+UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
+TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
+WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 
 
-# ----------------------------------------------------------------------------------------------------------------------
 # ================================================ Wazuh path - Ruleset ================================================
-# ----------------------------------------------------------------------------------------------------------------------
-ruleset_path = os.path.join(wazuh_path, 'ruleset')
-ruleset_rules_path = os.path.join(ruleset_path, 'rules')
-ruleset_decoders_path = os.path.join(ruleset_path, 'decoders')
-ruleset_lists_path = os.path.join(ruleset_path, 'lists')
-user_lists_path = os.path.join(wazuh_path, 'etc', 'lists')
-user_rules_path = os.path.join(wazuh_path, 'etc', 'rules')
-user_decoders_path = os.path.join(wazuh_path, 'etc', 'decoders')
+RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
+RULES_PATH = os.path.join(RULESET_PATH, 'rules')
+DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
+LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
+USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
+USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
+USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
