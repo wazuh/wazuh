@@ -519,8 +519,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
     processor_set_name_array_t psets;
     mach_msg_type_number_t  pcnt;
-    kern_return_t kr = 0;
-    kr = host_processor_sets(port, &psets, &pcnt);
+    kern_return_t kr { host_processor_sets(port, &psets, &pcnt) };
 
     if (KERN_SUCCESS != kr)
     {
@@ -529,7 +528,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
     defer(mach_vm_deallocate(mach_task_self(), (mach_vm_address_t)(uintptr_t)psets, pcnt * sizeof(*psets)));
 
-    for (mach_msg_type_number_t i = 0; i < pcnt; i++)
+    for (mach_msg_type_number_t i = 0; i < pcnt; ++i)
     {
         processor_set_t pset;
         kr = host_processor_set_priv(port, psets[i], &pset);
@@ -554,7 +553,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
         defer(mach_vm_deallocate(mach_task_self(), reinterpret_cast<mach_vm_address_t>(tasks), taskCount * sizeof(*tasks)));
 
-        for (mach_msg_type_number_t j = 0; j < taskCount; j++)
+        for (mach_msg_type_number_t j = 0; j < taskCount; ++j)
         {
             const auto& task { tasks[j] };
             defer(mach_port_deallocate(mach_task_self(), task));
@@ -595,7 +594,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
                 // Go through all threads, translating the thread state to a unified process state and take the minimum state value.
                 State state = State::Zombie;
 
-                for (mach_msg_type_number_t k = 0; k < threadCount; k++)
+                for (mach_msg_type_number_t k = 0; k < threadCount; ++k)
                 {
                     thread_basic_info_data_t info;
                     mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
