@@ -90,8 +90,8 @@ link_libraries(
 ####################################################################################################
 # Builder test
 add_executable(builderTest
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
@@ -265,6 +265,7 @@ gtest_discover_tests(opBuilderHelperIntCalc_test)
 add_executable(opBuilderConditionTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
@@ -292,13 +293,13 @@ add_executable(opBuilderMapTest
 gtest_discover_tests(opBuilderMapTest)
 
 add_executable(opBuilderHelperRegexMatchTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatchTest.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatch_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
 gtest_discover_tests(opBuilderHelperRegexMatchTest)
 
 add_executable(opBuilderHelperRegexNotMatchTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatchTest.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatch_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
 gtest_discover_tests(opBuilderHelperRegexNotMatchTest)
@@ -386,6 +387,7 @@ gtest_discover_tests(opBuilderFileOutputTest)
 
 add_executable(stageBuilderOutputsTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputsTest.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
