@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -1113,13 +1113,12 @@ end:
 DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl) {
     PSECURITY_DESCRIPTOR pSecurityDescriptor;
     DWORD dwRtnCode = 0;
-    DWORD dwErrorCode = 0;
     DWORD lpcbSecurityDescriptor = 0;
 
-    if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) !=
-        ERROR_INSUFFICIENT_BUFFER) {
-        dwErrorCode = GetLastError();
-        return dwErrorCode;
+    dwRtnCode = RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor);
+
+    if (dwRtnCode != ERROR_INSUFFICIENT_BUFFER) {
+        return dwRtnCode;
     }
 
     os_calloc(lpcbSecurityDescriptor, 1, pSecurityDescriptor);

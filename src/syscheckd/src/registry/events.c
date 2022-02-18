@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -9,7 +9,7 @@
 
 #ifdef WIN32
 
-#include "syscheck.h"
+#include "../../include/syscheck.h"
 
 static const char *FIM_EVENT_TYPE_ARRAY[] = { "added", "deleted", "modified" };
 
@@ -90,7 +90,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
         }
         if (configuration->opts & CHECK_SHA256SUM) {
             if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
-                cJSON_AddStringToObject(attributes, "value_type", sha256->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_sha256", sha256->valuestring);
             }
         }
 
@@ -255,7 +255,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
         if (configuration->opts & CHECK_PERM) {
             if (perm = cJSON_GetObjectItem(dbsync_event, "perm"), perm != NULL) {
-                cJSON_AddItemToObject(attributes, "perm", cJSON_Parse(perm->valuestring));
+                cJSON_AddItemToObject(attributes, "perm", perm);
             }
         }
 

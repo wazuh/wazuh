@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import fcntl
@@ -6,7 +6,9 @@ import json
 import logging
 import os
 import re
+import signal
 import socket
+import time
 import typing
 from contextvars import ContextVar
 from functools import lru_cache
@@ -14,7 +16,7 @@ from glob import glob
 from operator import setitem
 from os.path import join, exists
 
-from wazuh.core import common
+from wazuh.core import common, pyDaemonModule
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.results import WazuhResult
@@ -289,6 +291,19 @@ class ClusterLogger(WazuhLogger):
         self.logger.setLevel(debug_level)
 
 
-def process_spawn_sleep():
-    """Simple task to force the cluster pool spawn all its children."""
-    return
+def process_spawn_sleep(child):
+    """Task to force the cluster pool spawn all its children and create their PID files.
+
+    Parameters
+    ----------
+    child: int
+        Process child number.
+    """
+    pid = os.getpid()
+    pyDaemonModule.create_pid(f'wazuh-clusterd_child_{child}', pid)
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    # Add a delay to force each child process to create its own PID file, preventing multiple calls
+    # executed by the same child
+    time.sleep(0.1)

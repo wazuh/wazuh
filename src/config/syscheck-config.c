@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -1585,7 +1585,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit"; // Deprecated
-    const char *xml_file_limit_enabled = "enabled"; // Deprecated
     const char *xml_file_limit_entries = "entries"; // Deprecated
     const char *xml_db_entry = "db_entry_limit";
     const char *xml_db_entry_enabled = "enabled";
@@ -1730,7 +1729,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
             mwarn("file_limit block will be deprecated in future versions. Use db_entry_limit instead.");
             for(j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, xml_file_limit_enabled) == 0) {
+                if (strcmp(children[j]->element, xml_db_entry_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
                         syscheck->db_entry_limit_enabled = true;
                     }

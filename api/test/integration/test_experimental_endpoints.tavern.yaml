@@ -1,9 +1,6 @@
 ---
 test_name: DELETE /experimental/rootcheck
 
-marks:
-  - base_tests
-
 stages:
 
   # DELETE /experimental/rootcheck
@@ -212,7 +209,8 @@ stages:
 test_name: GET /experimental/syscollector/netaddr
 
 marks:
-  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -280,7 +278,8 @@ stages:
 test_name: GET /experimental/syscollector/netiface
 
 marks:
-  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -359,7 +358,8 @@ stages:
 test_name: GET /experimental/syscollector/netproto
 
 marks:
-  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -426,7 +426,8 @@ stages:
 test_name: GET /experimental/syscollector/os
 
 marks:
-  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -501,6 +502,10 @@ stages:
 ---
 test_name: GET /experimental/syscollector/packages
 
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
+
 stages:
 
   - name: Request
@@ -543,7 +548,8 @@ stages:
 test_name: GET /experimental/syscollector/ports
 
 marks:
-  - xfail # Investigate and fix error in experimental API integration tests - https://github.com/wazuh/wazuh/issues/10654
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -632,6 +638,10 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/processes
+
+marks:
+  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
+           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -34,7 +34,7 @@
 #include "wrappers/wazuh/shared/validate_op_wrappers.h"
 
 
-#include "syscheckd/syscheck.h"
+#include "syscheckd/include/syscheck.h"
 
 int set_winsacl(const char *dir, directory_t *configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);

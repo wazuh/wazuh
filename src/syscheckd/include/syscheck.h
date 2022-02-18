@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -961,23 +961,10 @@ int fim_generate_delete_event(const char *file_path,
 void fim_send_sync_state(const char *location, const char* msg);
 
 /**
- * @brief Send a control synchronization message
- * @param component Name of the component.
- * @param msg Type of the message.
- * @param id Sync session counter (timetamp).
- * @param start First key in the list.
- * @param top Last key in the list.
- * @param tail Key of the first key in the next sublist.
- * @param checksum Checksum of this list.
+ * @brief Get shutdown process flag.
+ *
+ * @return Process shutdown flag.
  */
-void fim_send_sync_control(const char *component,
-                           dbsync_msg msg,
-                           long id,
-                           const char *start,
-                           const char *top,
-                           const char *tail,
-                           const char *checksum);
-
 bool fim_shutdown_process_on();
 
 #endif /* SYSCHECK_H */

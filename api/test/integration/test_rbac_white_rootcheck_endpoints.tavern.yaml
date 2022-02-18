@@ -1,9 +1,6 @@
 ---
 test_name: GET /rootcheck
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get rootcheck scan results for agent 000 (Allow)

@@ -1,9 +1,6 @@
 ---
 test_name: GET USERS RBAC
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get all users in the system
@@ -496,7 +493,6 @@ stages:
           failed_items:
             - error:
                 code: 4008
-                remediation: !anything
               id:
                 - 1
           total_affected_items: 0
@@ -570,7 +566,6 @@ stages:
           failed_items:
             - error:
                 code: 4008
-                remediation: !anything
               id:
                 - 1
           total_affected_items: 0

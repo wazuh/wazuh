@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -13,9 +13,9 @@
 #include <cJSON.h>
 #include "registry.h"
 #include "shared.h"
-#include "syscheck.h"
+#include "../../include/syscheck.h"
 #include "../../config/syscheck-config.h"
-#include "db.h"
+#include "../db/include/db.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
@@ -568,7 +568,7 @@ cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
         cJSON_AddNumberToObject(data, "version", 2.0);
         cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
         cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64");
+        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
         cJSON_AddStringToObject(data, "value_name", value->name);
 
     } else
@@ -1096,7 +1096,7 @@ void fim_registry_scan() {
     event_data_t evt_data_registry_value = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
     fim_val_txn_context_t txn_ctx_regval = { .evt_data = &evt_data_registry_value };
     TXN_HANDLE regval_txn_handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE,
-                                                                 registry_value_transaction_callback, &txn_ctx_regval);
+                                                             registry_value_transaction_callback, &txn_ctx_regval);
 
     /* Debug entries */
     mdebug1(FIM_WINREGISTRY_START);

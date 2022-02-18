@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -68,6 +68,9 @@ class WazuhQueue:
                 self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, WazuhQueue.MAX_MSG_SIZE)
         except Exception:
             raise WazuhInternalError(1010, self.path)
+
+    def __enter__(self):
+        return self
 
     def _send(self, msg):
         try:
@@ -160,3 +163,6 @@ class WazuhQueue:
             raise WazuhError(1014, extra_message=f": WazuhQueue socket with path {self.path}")
 
         return ret_msg
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

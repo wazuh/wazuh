@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -22,15 +22,6 @@ void __wrap_send_syscheck_msg(char *msg);
 void __wrap_fim_sync_check_eps();
 
 // Send a state synchronization message
-void __wrap_fim_send_sync_state(const char *location, cJSON * msg);
-
-// Send a data synchronization control message
-void __wrap_fim_send_sync_control(const char *component,
-                                  dbsync_msg msg,
-                                  long id,
-                                  const char *start,
-                                  const char *top,
-                                  const char *tail,
-                                  const char *checksum);
+void __wrap_fim_send_sync_state(const char* location, const char* msg);
 
 #endif

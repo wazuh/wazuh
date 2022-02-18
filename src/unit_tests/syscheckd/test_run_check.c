@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -19,6 +19,7 @@
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
@@ -26,8 +27,9 @@
 #include "../wrappers/wazuh/syscheckd/run_realtime_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
-#include "../syscheckd/syscheck.h"
-#include "db/include/db.h"
+#include "syscheckd/include/syscheck.h"
+#include "syscheckd/src/db/include/db.h"
+#include "config/syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/windows/processthreadsapi_wrappers.h"
@@ -103,9 +105,7 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
 
-    syscheck.database = fim_db_init(FIM_DB_DISK);
 #endif // TEST_WINAGENT
-
 #if defined(TEST_AGENT) || defined(TEST_WINAGENT)
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
 #endif
@@ -230,7 +230,6 @@ static int teardown_group(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    fim_db_clean();
     Free_Syscheck(&syscheck);
 
     return 0;
@@ -356,7 +355,7 @@ void test_log_realtime_status(void **state)
     log_realtime_status(1);
 }
 
-void test_fim_send_msg(void **state) {
+/*void test_fim_send_msg(void **state) {
     (void) state;
 
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, 0);
@@ -388,7 +387,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
 
     expect_assert_failure(fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test"));
-}
+}DEPRECATED_CODE*/
 
 #ifndef TEST_WINAGENT
 
@@ -840,7 +839,7 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif
 
 
-void test_send_syscheck_msg_10_eps(void ** state) {
+/*void test_send_syscheck_msg_10_eps(void ** state) {
     syscheck.max_eps = 10;
     cJSON *event = cJSON_CreateObject();
 
@@ -886,7 +885,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
     expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
     send_syscheck_msg(event);
     cJSON_Delete(event);
-}
+}*/
 
 void test_fim_send_scan_info(void **state) {
     (void) state;
@@ -902,12 +901,16 @@ void test_fim_send_scan_info(void **state) {
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
+    char pattern[PATH_MAX] = {0};
+
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", affected_config->symbolic_links, PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     expect_fim_checker_call(new_path, affected_config);
     expect_realtime_adddir_call(new_path, 0);
@@ -943,6 +946,7 @@ void test_fim_link_update_already_added(void **state) {
 void test_fim_link_check_delete(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+    char pattern[PATH_MAX] = {0};
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -952,9 +956,10 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
-
     expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
+
+    snprintf(pattern, PATH_MAX, "%s%c%%", affected_config->symbolic_links, PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     expect_fim_configuration_directory_call("data", NULL);
     fim_link_check_delete(affected_config);
@@ -1029,27 +1034,13 @@ void test_fim_delete_realtime_watches(void **state) {
 
 void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
+    char pattern[PATH_MAX] = {0};
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
-    expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
-    fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
-}
-
-void test_fim_link_delete_range_error(void **state) {
-    char error_msg[OS_SIZE_128];
-    fim_tmp_file *tmp_file = *state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
-
-    expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    snprintf(pattern, PATH_MAX, "%s%c%%", "/folder", PATH_SEP);
+    expect_fim_db_file_pattern_search(pattern, 0);
 
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 }
@@ -1130,33 +1121,14 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
-void test_send_sync_control(void **state) {
-    char debug_msg[OS_SIZE_256] = {0};
-    char *ret_msg = dbsync_check_msg("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
-    *state = ret_msg;
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
-
-    fim_send_sync_control("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
-}
-
 void test_send_sync_state(void **state) {
     char debug_msg[OS_SIZE_256] = {0};
-    cJSON *event = cJSON_CreateObject(); // to be freed in dbsync_state_msg
+    char *event = "{\"data\":\"random_string\"}";
 
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-    cJSON_AddStringToObject(event, "data", "random_string");
-    char *ret_msg = "{\"component\":\"fim_file\",\"type\":\"state\",\"data\":{\"data\":\"random_string\"}}";
+    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
 
-    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+    expect_SendMSG_call(event, "fim_file", DBSYNC_MQ, 0);
 
     fim_send_sync_state("fim_file", event);
 }
@@ -1175,11 +1147,11 @@ int main(void) {
 #endif
 
         cmocka_unit_test(test_log_realtime_status),
-        cmocka_unit_test(test_fim_send_msg),
+         /*cmocka_unit_test(test_fim_send_msg),
         cmocka_unit_test(test_fim_send_msg_retry),
         cmocka_unit_test(test_fim_send_msg_retry_error),
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
-        cmocka_unit_test(test_send_syscheck_msg_0_eps),
+        cmocka_unit_test(test_send_syscheck_msg_0_eps),*/
         cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
@@ -1196,7 +1168,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_link_check_delete_noentry_error, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_delete_realtime_watches, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_delete_range, setup_tmp_file, teardown_tmp_file),
-        cmocka_unit_test_setup_teardown(test_fim_link_delete_range_error, setup_tmp_file, teardown_tmp_file),
         cmocka_unit_test_setup_teardown(test_fim_link_silent_scan, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_already_monitored, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_reload_broken, setup_symbolic_links, teardown_symbolic_links),
@@ -1205,7 +1176,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
-        cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
         cmocka_unit_test(test_send_sync_state),
     };
 
