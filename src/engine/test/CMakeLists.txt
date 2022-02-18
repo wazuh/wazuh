@@ -1,4 +1,12 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+#  Copyright (C) 2015-2021, Wazuh Inc.
+#  All rights reserved.
+#
+#  This program is free software; you can redistribute it
+#  and/or modify it under the terms of the GNU General Public
+#  License (version 2) as published by the FSF - Free Software
+#  Foundation.
+
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 project(wazuh-engine)
 
@@ -26,4 +34,4 @@ add_subdirectory(${TEST_SOURCE_DIR}/catalog)
 add_subdirectory(${TEST_SOURCE_DIR}/cliParser)
 
 # Other tets
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/rxcpp)
+add_subdirectory(${TEST_SOURCE_DIR}/rxcpp)
