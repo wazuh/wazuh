@@ -165,7 +165,7 @@ bool parseTimeStamp(const char **it, char endToken, TimeStampResult &tsr) {
 
     const std::unordered_map<TimeStampFormat,std::string> TimeStampFormatMapper {
         {TimeStampFormat::ANSICM     ,"%a %b _%d %H:%M:%S.123456 %Y"},  // microseconds pending
-        {TimeStampFormat::Layout     ,"%d/%m %H:%M:%S '%y %z"},
+        {TimeStampFormat::Layout     ,"%d/%m %I:%M:%S%P '%y %z"},
         {TimeStampFormat::UnixDate   ,"%a %b _%d %H:%M:%S %Z %Y"},
         {TimeStampFormat::ANSIC      ,"%a %b _%d %H:%M:%S %Y"},
         {TimeStampFormat::APACHE     ,"%a %b _%d %T %Y"},               // need to check one or the other
