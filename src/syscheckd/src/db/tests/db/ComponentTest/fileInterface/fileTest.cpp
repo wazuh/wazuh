@@ -44,19 +44,19 @@ const auto insertStatement3 = R"({
 )"_json;
 const auto updateStatement1 = R"({
         "table": "file_entry",
-        "data":[{"attributes":"10", "checksum":"e89f3b4c21c2005896c964462da4766057dd94e9", "dev":2151, "gid":0, "group_name":"root",
-        "hash_md5":"d6719d8eaa46012a9de38103d5f284e4", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
+        "data":[{"attributes":"11", "checksum":"e89f3b4c21c2005896c964462da4766057dd94e9", "dev":2151, "gid":1000, "group_name":"test",
+        "hash_md5":"d6719d8eaa46012a9de38103d5f284e4", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58a",
         "hash_sha256":"0211f049f5b1121fbd034adf7b81ea521d615b5bd8df0e77c8ec8a363459ead1", "inode":18457083, "last_event":1596489275,
-        "mode":0, "mtime":1578075431, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
-        "uid":0, "user_name":"fakeUser"}]
+        "mode":0, "mtime":1578075435, "options":131583, "path":"/etc/wgetrc", "perm":"-rw-rw-rw-", "scanned":1, "size":4925,
+        "uid":1000, "user_name":"testuser"}]
     }
 )"_json;
 const auto updateStatement2 = R"({
         "table": "file_entry",
         "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":2151, "gid":0, "group_name":"root",
         "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
-        "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18457083, "last_event":1596489275,
-        "mode":0, "mtime":1578075431, "options":131583, "path":"/tmp/test.txt", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
+        "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":18277083, "last_event":1596489275,
+        "mode":0, "mtime":1578075431, "options":131583, "path":"/tmp/test.txt", "perm":"-rw-rw-r--", "scanned":1, "size":4800,
         "uid":0, "user_name":"fakeUser"}]
     }
 )"_json;
@@ -107,10 +107,14 @@ TEST_F(DBTestFixture, TestFimDBFileUpdate)
     EXPECT_NO_THROW(
     {
         const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+        const auto fileFIMTestUpdated { std::make_unique<FileItem>(updateStatement1["data"].front()) };
+        const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
+        const auto fileFIMTestUpdated2 { std::make_unique<FileItem>(updateStatement2["data"].front()) };
 
         fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
-        const auto fileFIMTestUpdated { std::make_unique<FileItem>(updateStatement1["data"].front()) };
         fim_db_file_update(fileFIMTestUpdated->toFimEntry(), callback_data_modified);
+        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        fim_db_file_update(fileFIMTestUpdated2->toFimEntry(), callback_data_modified);
     });
 }
 TEST_F(DBTestFixture, TestFimDBRemovePath)

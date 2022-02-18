@@ -17,13 +17,15 @@
 #include "dbFileItem.hpp"
 #include <iostream>
 
-static const char *FIM_EVENT_TYPE_ARRAY[] = {
+static const char* FIM_EVENT_TYPE_ARRAY[] =
+{
     "added",
     "deleted",
     "modified"
 };
 
-static const char *FIM_EVENT_MODE[] = {
+static const char* FIM_EVENT_MODE[] =
+{
     "scheduled",
     "realtime",
     "whodata"
@@ -37,6 +39,7 @@ enum SEARCH_FIELDS
     SEARCH_FIELD_DEV
 };
 
+// LCOV_EXCL_START
 struct CJsonDeleter
 {
     void operator()(char* json)
@@ -48,6 +51,7 @@ struct CJsonDeleter
         cJSON_Delete(json);
     }
 };
+// LCOV_EXCL_STOP
 
 nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, create_json_event_ctx* ctx)
 {
@@ -60,166 +64,270 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
     jsonEvent["data"]["path"] = data.at("path");
     jsonEvent["data"]["version"] = "2.0";
     jsonEvent["data"]["mode"] = FIM_EVENT_MODE[ctx->event->mode];
-    jsonEvent["data"]["timestamp"] = data.at("last_event");
 
     if (ReturnTypeCallback::MODIFIED == type)
     {
         ctx->event->type = FIM_MODIFICATION;
-    } else {
+    }
+    else
+    {
         ctx->event->type = FIM_ADD;
     }
+
     jsonEvent["data"]["type"] = FIM_EVENT_TYPE_ARRAY[ctx->event->type];
 
     // Attributes
     jsonEvent["data"]["attributes"]["type"] = "file";
-    if (ctx->config->options & CHECK_SIZE) {
+
+    if (ctx->config->options & CHECK_SIZE)
+    {
         jsonEvent["data"]["attributes"]["size"] = data.at("size");
     }
-    if (ctx->config->options & CHECK_PERM) {
+
+    if (ctx->config->options & CHECK_PERM)
+    {
         jsonEvent["data"]["attributes"]["perm"] = data.at("perm");
     }
-    if (ctx->config->options & CHECK_OWNER) {
+
+    if (ctx->config->options & CHECK_OWNER)
+    {
         jsonEvent["data"]["attributes"]["uid"] = to_string(data.at("uid"));
     }
-    if (ctx->config->options & CHECK_GROUP) {
+
+    if (ctx->config->options & CHECK_GROUP)
+    {
         jsonEvent["data"]["attributes"]["gid"] = to_string(data.at("gid"));
     }
-    if (data.at("user_name") != "") {
+
+    if (data.at("user_name") != "")
+    {
         jsonEvent["data"]["attributes"]["user_name"] = data.at("user_name");
     }
-    if (data.at("group_name") != "") {
+
+    if (data.at("group_name") != "")
+    {
         jsonEvent["data"]["attributes"]["group_name"] = data.at("group_name");
     }
-    if (ctx->config->options & CHECK_INODE) {
+
+    if (ctx->config->options & CHECK_INODE)
+    {
         jsonEvent["data"]["attributes"]["inode"] = data.at("inode");
     }
-    if (ctx->config->options & CHECK_MTIME) {
+
+    if (ctx->config->options & CHECK_MTIME)
+    {
         jsonEvent["data"]["attributes"]["mtime"] = data.at("mtime");
     }
-    if (ctx->config->options & CHECK_SHA1SUM) {
+
+    if (ctx->config->options & CHECK_SHA1SUM)
+    {
         jsonEvent["data"]["attributes"]["hash_md5"] = data.at("hash_md5");
     }
-    if (ctx->config->options & CHECK_SHA1SUM) {
+
+    if (ctx->config->options & CHECK_SHA1SUM)
+    {
         jsonEvent["data"]["attributes"]["hash_sha1"] = data.at("hash_sha1");
     }
-    if (ctx->config->options & CHECK_SHA256SUM) {
+
+    if (ctx->config->options & CHECK_SHA256SUM)
+    {
         jsonEvent["data"]["attributes"]["hash_sha256"] = data.at("hash_sha256");
     }
-    if (data.at("checksum") != "") {
+
+    if (data.at("checksum") != "")
+    {
         jsonEvent["data"]["attributes"]["checksum"] = data.at("checksum");
     }
-    if (data.at("attributes") != "" && ctx->config->options & CHECK_ATTRS) {
+
+    if (data.at("attributes") != "" && ctx->config->options & CHECK_ATTRS)
+    {
         jsonEvent["data"]["attributes"]["attributes"] = data.at("attributes");
     }
 
+    // Last event
+    if (resultJson[0].contains("last_event"))
+    {
+        jsonEvent["data"]["timestamp"] = resultJson[0].at("last_event");
+    }
+    else
+    {
+        jsonEvent["data"]["timestamp"] = data.at("last_event");
+    }
+
     // Old data attributes
-    if (resultJson[0].contains("old")) {
+    if (resultJson[0].contains("old"))
+    {
 
         nlohmann::json old_data = resultJson[0].at("old");
         nlohmann::json changed_attributes = nlohmann::json::array();
 
         jsonEvent["data"]["old_attributes"]["type"] = "file";
-        if (ctx->config->options & CHECK_SIZE) {
-            if (old_data.contains("size")) {
+
+        if (ctx->config->options & CHECK_SIZE)
+        {
+            if (old_data.contains("size"))
+            {
                 jsonEvent["data"]["old_attributes"]["size"] = old_data["size"];
                 changed_attributes.push_back("size");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["size"] = data.at("size");
             }
         }
-        if (ctx->config->options & CHECK_PERM) {
-            if (old_data.contains("perm")) {
+
+        if (ctx->config->options & CHECK_PERM)
+        {
+            if (old_data.contains("perm"))
+            {
                 jsonEvent["data"]["old_attributes"]["perm"] = old_data["perm"];
                 changed_attributes.push_back("perm");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["perm"] = data.at("perm");
             }
         }
-        if (ctx->config->options & CHECK_OWNER) {
-            if (old_data.contains("uid")) {
+
+        if (ctx->config->options & CHECK_OWNER)
+        {
+            if (old_data.contains("uid"))
+            {
                 jsonEvent["data"]["old_attributes"]["uid"] = to_string(old_data["uid"]);
                 changed_attributes.push_back("uid");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["uid"] = to_string(data.at("uid"));
             }
         }
-        if (ctx->config->options & CHECK_GROUP) {
-            if (old_data.contains("gid")) {
+
+        if (ctx->config->options & CHECK_GROUP)
+        {
+            if (old_data.contains("gid"))
+            {
                 jsonEvent["data"]["old_attributes"]["gid"] = to_string(old_data["gid"]);
                 changed_attributes.push_back("gid");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["gid"] = to_string(data.at("gid"));
             }
         }
-        if (data.at("user_name") != "") {
-            if (old_data.contains("user_name")) {
+
+        if (data.at("user_name") != "")
+        {
+            if (old_data.contains("user_name"))
+            {
                 jsonEvent["data"]["old_attributes"]["user_name"] = old_data["user_name"];
                 changed_attributes.push_back("user_name");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["user_name"] = data.at("user_name");
             }
         }
-        if (data.at("group_name") != "") {
-            if (old_data.contains("group_name")) {
+
+        if (data.at("group_name") != "")
+        {
+            if (old_data.contains("group_name"))
+            {
                 jsonEvent["data"]["old_attributes"]["group_name"] = old_data["group_name"];
                 changed_attributes.push_back("group_name");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["group_name"] = data.at("group_name");
             }
         }
-        if (ctx->config->options & CHECK_INODE) {
-            if (old_data.contains("inode")) {
+
+        if (ctx->config->options & CHECK_INODE)
+        {
+            if (old_data.contains("inode"))
+            {
                 jsonEvent["data"]["old_attributes"]["inode"] = old_data["inode"];
                 changed_attributes.push_back("inode");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["inode"] = data.at("inode");
             }
         }
-        if (ctx->config->options & CHECK_MTIME) {
-            if (old_data.contains("mtime")) {
+
+        if (ctx->config->options & CHECK_MTIME)
+        {
+            if (old_data.contains("mtime"))
+            {
                 jsonEvent["data"]["old_attributes"]["mtime"] = old_data["mtime"];
                 changed_attributes.push_back("mtime");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["mtime"] = data.at("mtime");
             }
         }
-        if (ctx->config->options & CHECK_MD5SUM) {
-            if (old_data.contains("hash_md5")) {
+
+        if (ctx->config->options & CHECK_MD5SUM)
+        {
+            if (old_data.contains("hash_md5"))
+            {
                 jsonEvent["data"]["old_attributes"]["hash_md5"] = old_data["hash_md5"];
                 changed_attributes.push_back("hash_md5");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["hash_md5"] = data.at("hash_md5");
             }
         }
-        if (ctx->config->options & CHECK_SHA1SUM) {
-            if (old_data.contains("hash_sha1")) {
+
+        if (ctx->config->options & CHECK_SHA1SUM)
+        {
+            if (old_data.contains("hash_sha1"))
+            {
                 jsonEvent["data"]["old_attributes"]["hash_sha1"] = old_data["hash_sha1"];
                 changed_attributes.push_back("hash_sha1");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["hash_sha1"] = data.at("hash_sha1");
             }
         }
-        if (ctx->config->options & CHECK_SHA256SUM) {
-            if (old_data.contains("hash_sha256")) {
+
+        if (ctx->config->options & CHECK_SHA256SUM)
+        {
+            if (old_data.contains("hash_sha256"))
+            {
                 jsonEvent["data"]["old_attributes"]["hash_sha256"] = old_data["hash_sha256"];
                 changed_attributes.push_back("hash_sha256");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["hash_sha256"] = data.at("hash_sha256");
             }
         }
-        if (data.at("attributes") != "" && ctx->config->options & CHECK_ATTRS) {
-            if (old_data.contains("attributes")) {
+
+        if (data.at("attributes") != "" && ctx->config->options & CHECK_ATTRS)
+        {
+            if (old_data.contains("attributes"))
+            {
                 jsonEvent["data"]["old_attributes"]["attributes"] = old_data["attributes"];
                 changed_attributes.push_back("attributes");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["attributes"] = data.at("attributes");
             }
         }
-        if (data.at("checksum") != "") {
-            if (old_data.contains("checksum")) {
+
+        if (data.at("checksum") != "")
+        {
+            if (old_data.contains("checksum"))
+            {
                 jsonEvent["data"]["old_attributes"]["checksum"] = old_data["checksum"];
                 changed_attributes.push_back("checksum");
-            } else {
+            }
+            else
+            {
                 jsonEvent["data"]["old_attributes"]["checksum"] = data.at("checksum");
             }
         }
@@ -307,7 +415,8 @@ void DB::updateFile(const nlohmann::json& file, create_json_event_ctx* ctx, std:
     {
         [file, callbackPrimitive, ctx, this](ReturnTypeCallback type, const nlohmann::json resultJson)
         {
-            if (ctx->event->report_event) {
+            if (ctx->event->report_event)
+            {
                 callbackPrimitive(createJsonEvent(file, resultJson, type, ctx));
             }
         }
@@ -460,7 +569,7 @@ int fim_db_get_count_file_entry()
     return count;
 }
 
-void fim_db_file_update(fim_entry *data, callback_context_t callback)
+void fim_db_file_update(fim_entry* data, callback_context_t callback)
 {
 
     if (!data || !callback.callback)
@@ -472,7 +581,7 @@ void fim_db_file_update(fim_entry *data, callback_context_t callback)
         try
         {
             const auto file { std::make_unique<FileItem>(data, true) };
-            create_json_event_ctx * ctx { reinterpret_cast<create_json_event_ctx *>(callback.context)};
+            create_json_event_ctx* ctx { reinterpret_cast<create_json_event_ctx*>(callback.context)};
             DB::instance().updateFile(*file->toJSON(), ctx, [callback](const nlohmann::json jsonResult)
             {
                 const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
@@ -488,6 +597,7 @@ void fim_db_file_update(fim_entry *data, callback_context_t callback)
         {
             FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
+
         // LCOV_EXCL_STOP
     }
 }

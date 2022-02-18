@@ -606,45 +606,6 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
     }
 }
 
-/**
- * @brief This function will prepare the successfull execution of the double scan in Windows tests
- * @param test_file_path File path that will be scanned.
- * @param dir_file_path Directory of the file.
- * @param file Dirent structure for the file.
- */
-void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file, struct stat *directory_stat, struct stat *file_stat) {
-    expect_string(__wrap_stat, __file, dir_file_path);
-    will_return(__wrap_stat, directory_stat);
-    will_return(__wrap_stat, 0);
-    expect_string(__wrap_HasFilesystem, path, dir_file_path);
-    will_return(__wrap_HasFilesystem, 0);
-    will_return(__wrap_opendir, 1);
-    will_return(__wrap_readdir, file);
-
-    expect_string(__wrap_stat, __file, test_file_path);
-    will_return(__wrap_stat, file_stat);
-    will_return(__wrap_stat, 0);
-    expect_string(__wrap_HasFilesystem, path, test_file_path);
-    will_return(__wrap_HasFilesystem, 0);
-
-    // fim_file
-    {
-        // fim_get_data
-        expect_get_data(strdup("user"), strdup("group"), test_file_path, 0);
-
-        expect_string(__wrap_w_get_file_attrs, file_path, test_file_path);
-        will_return(__wrap_w_get_file_attrs, 123456);
-
-        expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_file_update, path, test_file_path);
-        will_return(__wrap_fim_db_file_update, NULL);
-        will_return(__wrap_fim_db_file_update, FIMDB_FULL);
-        // fim_json_event;
-    }
-
-    will_return(__wrap_readdir, NULL);
-}
-
 /* tests */
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
@@ -2355,7 +2316,7 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
     // Inside fim_file
     expect_get_data(strdup("user"), "group", expanded_path, 0);
-    will_return(__wrap_fim_db_file_update, 1);
+    expect_function_call(__wrap_fim_db_file_update);
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
@@ -2450,7 +2411,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
 
-    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
+    expect_function_call(__wrap_fim_db_file_update);
 
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
@@ -3904,7 +3865,7 @@ static void test_transaction_callback_full_db(void **state) {
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
-  #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -3926,7 +3887,7 @@ static void test_transaction_callback_full_db(void **state) {
 }
 
 static void test_fim_event_callback(void **state) {
-    whodata_evt w_event = {.audit_name = "audit_name" };
+    whodata_evt w_event = {.user_name = "audit_user_name" };
     event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     create_json_event_ctx callback_ctx = { .event = &evt_data, .config = &configuration };
@@ -3942,8 +3903,11 @@ static void test_fim_event_callback(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
 
     fim_event_callback(json_event, &callback_ctx);
-
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"process_id\":0,\"audit_name\":\"audit_name\",\"ppid\":0},\"tags\":\"tag_name\"}}";
+#ifndef TEST_WINAGENT
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
+#else
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
+#endif
     char* string_event = cJSON_PrintUnformatted(json_event);
     assert_string_equal(string_event, test_event);
 

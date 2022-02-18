@@ -132,20 +132,18 @@ struct UpdateFileAction final : public IAction
     {
         auto retVal { false };
         nlohmann::json jsonEvent;
-        directory_t configuration;
-        event_data_t evt_data;
-        create_json_event_ctx callback_ctx;
 
-        configuration = {
-            .options = -1
-        };
-        evt_data = {
-            .report_event = true
-        };
-        callback_ctx = {
-            .event = &evt_data,
-            .config = &configuration
-        };
+        directory_t configuration = {};
+        configuration.options = -1;
+
+        event_data_t evt_data = {};
+        evt_data.report_event = true;
+        evt_data.mode = FIM_REALTIME;
+        evt_data.w_evt = NULL;
+
+        create_json_event_ctx callback_ctx = {};
+        callback_ctx.event = &evt_data;
+        callback_ctx.config = &configuration;
 
         try
         {

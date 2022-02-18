@@ -53,22 +53,23 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         "uid":  0,
         "user_name":    "fakeUser"
     }])"_json;
-    const cJSON *dbsync_event = NULL;
-    cJSON *json_path = NULL;
-    ASSERT_EQ(INSERTED, resultType);
-    ASSERT_EQ(FIM_ADD, event_data->evt_data->type);
+const cJSON* dbsync_event = NULL;
+cJSON* json_path = NULL;
+ASSERT_EQ(INSERTED, resultType);
+ASSERT_EQ(FIM_ADD, event_data->evt_data->type);
 
-    if (cJSON_IsArray(result_json))
+if (cJSON_IsArray(result_json))
+{
+    if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
     {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
+        dbsync_event = result_json;
+
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
         {
-            dbsync_event = result_json;
-            if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
-            {
-                ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
-            }
+            ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
         }
     }
+}
 }
 
 TEST_F(DBTestFixture, TestFimDBInit)

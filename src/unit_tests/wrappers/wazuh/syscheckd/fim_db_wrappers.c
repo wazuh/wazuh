@@ -94,7 +94,7 @@ void expect_fim_db_remove_path(const char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-int __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
+void __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
                               __attribute__((unused)) callback_context_t callback)
 {
     function_called();

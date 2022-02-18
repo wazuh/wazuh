@@ -84,7 +84,7 @@ class DBTestFixture : public testing::Test {
                         300,
                         mockSyncMessage,
                         mockLoggingFunction,
-                        5000,
+                        MAX_FILE_LIMIT,
                         0,
                         false);
 

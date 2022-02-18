@@ -722,10 +722,10 @@ void fim_event_callback(void* data, void * ctx)
 }
 
 void fim_file(const char *path,
-                      const directory_t *configuration,
-                      event_data_t *evt_data,
-                      TXN_HANDLE txn_handle,
-                      fim_txn_context_t *txn_context) {
+              const directory_t *configuration,
+              event_data_t *evt_data,
+              TXN_HANDLE txn_handle,
+              fim_txn_context_t *txn_context) {
     assert(path != NULL);
     assert(configuration != NULL);
     assert(evt_data != NULL);
