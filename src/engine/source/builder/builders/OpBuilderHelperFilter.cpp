@@ -280,27 +280,24 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field
     std::string field = def.MemberBegin()->name.GetString();
     std::string rawValue = def.MemberBegin()->value.GetString();
 
-    int posDel = rawValue.find("/");
+    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
 
-    if (posDel == std::string::npos || posDel == rawValue.size() - 1) {
-
-        throw std::runtime_error("Value not found");
+    if(parameters.size() != 2)
+    {
+        throw std::runtime_error("Invalid parameters");
     }
-
-    std::string strValue = rawValue.substr(posDel + 1, std::string::npos);
 
     std::optional<std::string> refValue;
     std::optional<int> value;
 
-    if(strValue[0] == '$')
+    if(parameters[1][0] == '$')
     {
         // Check case `+int/$`
-        refValue = strValue.substr(1, std::string::npos);
+        refValue = parameters[1].substr(1, std::string::npos);
     }
     else
     {
-        // exception @TODO
-        value = std::stoi(strValue);
+        value = std::stoi(parameters[1]);
     }
 
     // Return Lifter
@@ -308,40 +305,24 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field
     {
         // Append rxcpp operation
         return o.filter([=](types::Event e) {
-
-            auto fieldToCheck = e.getObject().FindMember(field.c_str());
-
             if(e.exists("/" + field))
             {
+                auto fieldToCheck = e.getObject().FindMember(field.c_str());
                 if(fieldToCheck->value.IsInt())
                 {
                     if(value.has_value())
                     {
                         return fieldToCheck->value.GetInt() == value.value();
                     }
-                    else
+                    auto refValueToCheck = e.getObject().FindMember(refValue.value().c_str());
+                    if(refValueToCheck->value.IsInt())
                     {
-                        auto refValueToCheck = e.getObject().FindMember(refValue.value().c_str());
-                        if(refValueToCheck->value.IsInt())
-                        {
-                            return fieldToCheck->value.GetInt() == refValueToCheck->value.GetInt();
-                        }
-                        else
-                        {
-                            return false;
-                        }
+                        return fieldToCheck->value.GetInt() == refValueToCheck->value.GetInt();
                     }
                 }
-                else
-                {
-                    return false;
-                }
             }
-            else
-            {
-                return false;
-            }
-             });
+            return false;
+        });
     };
 }
 
