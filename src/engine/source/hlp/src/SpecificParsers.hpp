@@ -15,6 +15,37 @@ struct URLResult{
     std::string username; //"url.username": "keyword",
 };
 
+enum class TimeStampFormat {
+    ANSIC,
+    Layout,
+    UnixDate,
+    ANSICM,
+    APACHE,
+    RubyDate,
+    RFC822,
+    RFC822Z,
+    RFC850,
+    RFC1123Z,
+    RFC1123,
+    RFC3339Nano,
+    RFC3339,
+    StampNano,
+    StampMicro,
+    StampMilli,
+    Stamp,
+    Kitchen,
+    NONE,
+};
+
+struct TimeStampResult {
+    std::string year;
+    std::string month;
+    std::string day;
+    std::string hour;
+    std::string minutes;
+    std::string seconds;
+};
+
 bool parseFilePath(const char **it, char endToken);
 
 std::string parseAny(const char **it, char endToken);
@@ -27,7 +58,7 @@ std::string parseMap(const char **it, char endToken, std::vector<std::string> co
 
 std::string parseIPaddress(const char **it, char endToken);
 
-bool parseTimeStamp(char **it, char endToken);
+bool parseTimeStamp(const char **it, char endToken, TimeStampResult &tsr);
 
 bool parseURL(const char **it, char endToken, URLResult &result);
 
