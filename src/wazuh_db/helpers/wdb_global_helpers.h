@@ -21,7 +21,6 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
-    WDB_SET_AGENT_LABELS,
     WDB_GET_ALL_AGENTS,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
@@ -112,16 +111,6 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock);
-
-/**
- * @brief Update agent's labels.
- *
- * @param[in] id Id of the agent for whom the labels must be updated.
- * @param[in] labels String with the key-values separated by EOL.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_set_agent_labels(int id, const char *labels, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.

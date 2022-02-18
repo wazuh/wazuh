@@ -742,15 +742,6 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 result = wdb_parse_global_get_agent_labels(wdb, next, output);
             }
-        } else if (strcmp(query, "set-labels") == 0) {
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for set-labels.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                result = wdb_parse_global_set_agent_labels(wdb, next, output);
-            }
         } else if (strcmp(query, "update-keepalive") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for update-keepalive.");

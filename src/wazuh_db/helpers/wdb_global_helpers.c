@@ -24,7 +24,6 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
-    [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
@@ -386,44 +385,6 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     os_free(data_in_str);
     os_free(wdbquery);
     os_free(wdboutput);
-
-    return result;
-}
-
-int wdb_set_agent_labels(int id, const char *labels, int *sock) {
-    int result = 0;
-    // Making use of a big buffer for the query because it
-    // will contain all the keys and values.
-    // The output will be just a JSON OK.
-    char wdbquery[OS_MAXSTR] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_LABELS], id, labels);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result){
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
-    }
 
     return result;
 }
