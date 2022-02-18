@@ -21,12 +21,12 @@ CPMAddPackage(
 
 link_libraries(
   gtest_main
-  rxcpp
 )
 
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${ENGINE_SOURCE_DIR}/threadPool
+    ${RxCpp_SOURCE_DIR}/Rx/v2/src/
 )
 
 add_executable(threadPoolTest

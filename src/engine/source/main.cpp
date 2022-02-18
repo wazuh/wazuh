@@ -17,6 +17,8 @@
 #include "json.hpp"
 #include "register.hpp"
 #include "router.hpp"
+#include "threadPool.hpp"
+#include "protocolHandler.hpp"
 
 using namespace std;
 
@@ -75,10 +77,24 @@ int main(int argc, char * argv[])
         return 1;
     }
     builder::Builder<catalog::Catalog> _builder(_catalog);
+    engineserver::ProtocolHandler p;
+
+    //Handle ThreadPool
+    auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(3);
+    auto scheduledTask =
+        server.output().flat_map([&sc, p](engineserver::endpoints::BaseEndpoint::EventObs o)
+                                 { return o.observe_on(rxcpp::identity_same_worker(sc.create_worker())).map([=](string s){
+                                     return p.parse(s);
+                                 }); });
+
+    // auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(2);
+    // auto scheduledTask =
+    //     server.output().flat_map([&sc](engineserver::endpoints::BaseEndpoint::EventObs o)
+    //                              { return o; });
 
     // Build router
     // TODO: Integrate filter creation with builder and default route with catalog
-    router::Router<builder::Builder<catalog::Catalog>> router{server.output(), _builder};
+    router::Router<builder::Builder<catalog::Catalog>> router{scheduledTask, _builder};
 
     try
     {

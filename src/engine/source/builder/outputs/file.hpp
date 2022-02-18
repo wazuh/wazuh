@@ -10,15 +10,19 @@
 #ifndef _FILE_OUTPUT_H
 #define _FILE_OUTPUT_H
 
-#include "rxcpp/rx.hpp"
+#include <rxcpp/rx.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <mutex>
 #include "json.hpp"
+
 
 namespace builder::internals::outputs
 {
+
+std::mutex lock;
 
 /**
  * @brief implements a subscriber which will save all received events
@@ -64,7 +68,9 @@ public:
      */
     void write(const json::Document & e)
     {
+        lock.lock();
         this->m_os << e.str() << std::endl;
+        lock.unlock();
     }
 };
 

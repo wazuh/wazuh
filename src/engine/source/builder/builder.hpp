@@ -183,6 +183,7 @@ public:
                            std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("filter")));
         this->filterGraph(g, filters);
 
+        std::cerr << g.print().str();
         return g;
     }
 
