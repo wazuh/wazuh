@@ -12,24 +12,33 @@
 
 #include "builderTypes.hpp"
 
+/*
+ * The helper filter, builds a lifter that will chain rxcpp filter operation
+ * Rxcpp filter expects a function that returns bool.
+ */
+
 namespace builder::internals::builders
 {
 
 /**
- * @brief Builds helper exists operation.
- * Checks that a field is present in the event.
+ * @brief Create `exists` helper function that filters events that contains specified field.
  *
- * @param def Definition of the operation to be built
- * @return types::Lifter
+ * The filter checks if a field exists in the JSON event `e`.
+ * For example: if def = `{wazuh: +exists}` only events containing `wazuh` field
+ * will continue on the rxcpp pipeline.
+ * @param def The filter definition. i.e : `{wazuh: +exists}`
+ * @return types::Lifter The lifter with the `exists` filter.
  */
 types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
 
 /**
- * @brief Builds helper not_exists operation.
- * Checks that a field is not present in the event.
+ * @brief Create `not_exists` helper function that filters events that not contains specified field.
  *
- * @param def Definition of the operation to be built
- * @return types::Lifter
+ * The filter checks if a field not exists in the JSON event `e`.
+ * For example: if def = `{wazuh: +not_exists}` only events not containing `wazuh`
+ * field will continue on the rxcpp pipeline.
+ * @param def The filter definition. i.e : `{wazuh: +exists}`
+ * @return types::Lifter The lifter with the `exists` filter.
  */
 types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
 
@@ -42,6 +51,16 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
 
+/**
+ * @brief Create `s_eq` helper function that filters events with a string
+ * field equals to a value.
+ *
+ * The filter checks if a field in the JSON event `wazuh` is equal to a value.
+ * @param def The filter definition. i.e : `{wazuh: +s_eq/value}`
+ * @return types::Lifter The lifter with the `s_eq` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def);
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
