@@ -1324,28 +1324,27 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
 wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
     cJSON* j_group_name = NULL;
     wdbc_result ret = WDBC_OK;
-    int groups_number = 0;
+    int groups_counter = 0;
 
-    /* Returns the existent groups number for the agent_id */
-    int existent_groups_number = wdb_global_groups_number_get(wdb, agent_id);
+    int groups_number = wdb_global_groups_number_get(wdb, agent_id);
 
-    if (existent_groups_number != OS_INVALID) {
+    if (groups_number != OS_INVALID) {
         cJSON_ArrayForEach (j_group_name, j_groups) {
             if (cJSON_IsString(j_group_name)) {
-                ++groups_number;
-                if ((groups_number + existent_groups_number) > MAX_GROUPS_PER_MULTIGROUP) {
-                    mwarn("Invalid groups number. Groups exceed maximum number (%d) permitted", MAX_GROUPS_PER_MULTIGROUP);
+                ++groups_counter;
+                if ((groups_counter + groups_number) > MAX_GROUPS_PER_MULTIGROUP) {
+                    mwarn("The groups assigned to agent %03d exceed the maximum of %d permitted.", agent_id, MAX_GROUPS_PER_MULTIGROUP);
                     ret = WDBC_ERROR;
                     break;
                 }
                 char* group_name = j_group_name->valuestring;
                 if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
-                    mwarn("Invalid group name. Group contains comma in its name");
+                    mwarn("Invalid character in the group name. The group '%s' contains comma.", group_name);
                     ret = WDBC_ERROR;
                     break;
                 }
                 if (strlen(group_name) > MAX_GROUP_NAME) {
-                    mwarn("Invalid group name. Group name exceeds maximum length (%d characters) permitted", MAX_GROUP_NAME);
+                    mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
                     ret = WDBC_ERROR;
                     break;
                 }

@@ -7537,7 +7537,7 @@ void test_wdb_global_validate_groups_fail_group_with_comma(void **state) {
     will_return(__wrap_wdb_exec_stmt, j_groups_number);
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. Group contains comma in its name");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid character in the group name. The group 'GROUP,WITH_COMMA' contains comma.");
 
     wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
 
@@ -7569,7 +7569,11 @@ void test_wdb_global_validate_groups_fail_group_exceeds_max_length(void **state)
     will_return(__wrap_wdb_exec_stmt, j_groups_number);
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. Group name exceeds maximum length (255 characters) permitted");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. The group 'zrosiZrfyMMKt9Lw9qMTCO45OsaFG0NOiHn8noYsuuXHCqPCeDpFE3NxZt8mb44g"
+                                                                               "6G36xL4y59TA_7obQfkSwjczMp9vrNZI9Jltc_8k322ZApibRftAi_T6SD9-AD0Y"
+                                                                               "wY_eWbG-uSfYw7BFX2OAgkD2vp3Z9AgZsN3NQNiDG1ng5WNm5H_bbLh6_BtotzJf"
+                                                                               "NYr8awmZ62IuhTH6eNLN9yzn4ZhWt_XxaHUe6O-uf68PNh4HMv3NuvDGFFXBkysN'"
+                                                " exceeds the maximum length of 255 characters permitted");
 
     wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
 
@@ -7597,7 +7601,7 @@ void test_wdb_global_validate_groups_fail_groups_exceeds_max_number(void **state
     will_return(__wrap_wdb_exec_stmt, j_groups_number);
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid groups number. Groups exceed maximum number (128) permitted");
+    expect_string(__wrap__mwarn, formatted_msg, "The groups assigned to agent 001 exceed the maximum of 128 permitted.");
 
     wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
 
