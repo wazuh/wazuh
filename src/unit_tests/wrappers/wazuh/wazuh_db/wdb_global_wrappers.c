@@ -271,11 +271,13 @@ wdbc_result __wrap_wdb_global_sync_agent_groups_get(__attribute__((unused)) wdb_
                                                     int last_agent_id,
                                                     bool set_synced,
                                                     bool get_hash,
+                                                    int agent_registration_delta,
                                                     cJSON **output) {
     check_expected(condition);
     check_expected(last_agent_id);
     check_expected(set_synced);
     check_expected(get_hash);
+    check_expected(agent_registration_delta);
     *output = mock_ptr_type(cJSON*);
     return mock();
 }

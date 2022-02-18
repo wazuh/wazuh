@@ -5349,12 +5349,14 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
         cJSON *j_last_id = cJSON_GetObjectItem(args, "last_id");
         cJSON *j_set_synced = cJSON_GetObjectItem(args, "set_synced");
         cJSON *j_get_hash = cJSON_GetObjectItem(args, "get_global_hash");
+        cJSON *j_agent_registration_delta = cJSON_GetObjectItem(args, "agent_registration_delta");
         // Mandatory fields
         if (cJSON_IsString(j_sync_condition)) {
             wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
             int last_id = 0;
             bool set_synced = false;
             bool get_hash = false;
+            int agent_registration_delta = 0;
 
             if (0 == strcmp(j_sync_condition->valuestring, "sync_status")) {
                 condition = WDB_GROUP_SYNC_STATUS;
@@ -5370,9 +5372,12 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             if (cJSON_IsTrue(j_get_hash)) {
                 get_hash = true;
             }
+            if (cJSON_IsNumber(j_agent_registration_delta)){
+                agent_registration_delta = j_agent_registration_delta->valueint;
+            }
 
             cJSON* agent_group_sync = NULL;
-            wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, set_synced, get_hash, &agent_group_sync);
+            wdbc_result status = wdb_global_sync_agent_groups_get(wdb, condition, last_id, set_synced, get_hash, agent_registration_delta, &agent_group_sync);
             if (agent_group_sync) {
                 char* response = cJSON_PrintUnformatted(agent_group_sync);
                 cJSON_Delete(agent_group_sync);
