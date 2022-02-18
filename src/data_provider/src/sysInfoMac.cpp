@@ -194,6 +194,9 @@ struct DarwinProcessInfo
         result["nice"]       = nice;
         result["vm_size"]    = virtualMemorySizeKiB;
         result["start_time"] = startTime;
+        result["euser"]  = "";
+        result["ruser"]  = "";
+        result["rgroup"]  = "";
 
         getpwuid_r(euid, &userInfo, buff.data(), buff.size(), &userInfoPtr);
 
