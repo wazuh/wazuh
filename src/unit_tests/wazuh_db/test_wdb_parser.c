@@ -1592,49 +1592,6 @@ void test_vuln_cves_remove_by_status_success(void **state){
     os_free(query);
 }
 
-void test_vuln_cves_remove_entry_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"}", query);
-
-    // wdb_agents_remove_vuln_cves
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, cve, "cve-xxxx-yyyy");
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, reference, "ref-cve-xxxx-yyyy");
-    will_return(__wrap_wdb_agents_remove_vuln_cves, OS_INVALID);
-
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves remove command; SQL err: ERROR MESSAGE");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Cannot execute vuln_cves remove command; SQL err: ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_remove_entry_success(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"}", query);
-
-    // wdb_agents_remove_vuln_cves
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, cve, "cve-xxxx-yyyy");
-    expect_string(__wrap_wdb_agents_remove_vuln_cves, reference, "ref-cve-xxxx-yyyy");
-    will_return(__wrap_wdb_agents_remove_vuln_cves, OS_SUCCESS);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
 /* wdb_parse_packages */
 
 /* get */
@@ -3853,8 +3810,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_json_data_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_by_status_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_entry_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_entry_success, test_setup, test_teardown),
         // wdb_parse_packages
         cmocka_unit_test_setup_teardown(test_packages_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_get_not_triaged_success, test_setup, test_teardown),

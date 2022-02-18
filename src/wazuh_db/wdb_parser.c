@@ -6336,10 +6336,7 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     }
     else {
         cJSON* status = cJSON_GetObjectItem(data, "status");
-        cJSON* cve = cJSON_GetObjectItem(data, "cve");
-        cJSON* reference = cJSON_GetObjectItem(data, "reference");
 
-        // Checking whether we should remove by status
         if (cJSON_IsString(status)) {
             char* remove_out_str = NULL;
 
@@ -6347,19 +6344,7 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
             snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], remove_out_str);
             os_free(remove_out_str)
             ret = OS_SUCCESS;
-        }
-        // Checking whether we should remove a specific entry
-        else if (cJSON_IsString(cve) && cJSON_IsString(reference)) {
-            ret = wdb_agents_remove_vuln_cves(wdb, cve->valuestring, reference->valuestring);
-            if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cves remove command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves remove command; SQL err: %s", sqlite3_errmsg(wdb->db));
-            }
-            else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        }
-        else {
+        } else {
             mdebug1("Invalid vuln_cves JSON data to remove vulnerabilities.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data");
         }
