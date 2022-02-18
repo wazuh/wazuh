@@ -1402,8 +1402,8 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
     char *out_aux = cJSON_PrintUnformatted(*output);
     size_t response_size = strlen(out_aux);
     os_free(out_aux);
-    // Recent agents will be excluded
-    int agent_registration_time = time(NULL) - agent_registration_delta;
+    // Agents registered recently may be excluded depending on the 'agent_registration_delta' value.
+    time_t agent_registration_time = time(NULL) - agent_registration_delta;
 
     while (status == WDBC_UNKNOWN) {
         //Prepare SQL query
