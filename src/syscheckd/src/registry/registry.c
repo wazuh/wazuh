@@ -77,6 +77,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
     const cJSON *dbsync_event = NULL;
+    cJSON *timestamp = NULL;
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
     fim_registry_key* key = event_data->key;
     char *path = NULL;
@@ -160,6 +161,11 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
+        cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
+    }else{
+        cJSON_AddNumberToObject(data, "timestamp", key->last_event);
+    }
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
 
     if (old_data = cJSON_GetObjectItem(dbsync_event, "old"), old_data != NULL) {
@@ -204,6 +210,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON *old_attributes = NULL;
     cJSON *old_data = NULL;
     cJSON *changed_attributes = NULL;
+    cJSON *timestamp = NULL;
     char *path = NULL;
     char *name = NULL;
     int arch = -1;
@@ -293,6 +300,13 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddStringToObject(data, "value_name", name);
+
+    if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
+        cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
+    }else{
+        cJSON_AddNumberToObject(data, "timestamp", value->last_event);
+    }
+
     cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
 
     old_data = cJSON_GetObjectItem(dbsync_event, "old");
@@ -767,9 +781,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->mtime = get_registry_mtime(key_handle);
     }
 
-    // uncomment the line below for production code
-    //key->last_event = time(NULL);
-    key->last_event = 0; // this option is necessary to avoid noise from fim events for now (dsync issue)
+    key->last_event = time(NULL);
 
     fim_registry_get_checksum_key(key);
 
@@ -852,7 +864,7 @@ void fim_read_values(HKEY key_handle,
         new.registry_entry.value->name = value_buffer;
         new.registry_entry.value->type = data_type;
         new.registry_entry.value->size = data_size;
-        new.registry_entry.value->last_event = 0;
+        new.registry_entry.value->last_event = time(NULL);
         new.registry_entry.value->scanned = 0;
         new.type = FIM_TYPE_REGISTRY;
 
