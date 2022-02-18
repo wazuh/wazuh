@@ -178,35 +178,35 @@ TEST(hlpTests, timestamp_parsing_success)
 {
 
     static const char *logQl =
-        "[<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] -\"";
+        "[<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] -\"";
     static const char *event =
-        "[01/02 03:04:05 '06 -0700] - [Mon Jan _2 15:04:05 2006] - [Mon Jan _2 15:04:05.123456 2006] - [Mon Jan _2 15:04:05.123456 2006] - [Mon Jan _2 15:04:05 MST 2006] - [Mon Jan 02 15:04:05 -0700 2006] - [02 Jan 06 15:04 MST] - [02 Jan 06 15:04 -0700] - [Monday, 02-Jan-06 15:04:05 MST] - [Mon, 02 Jan 2006 15:04:05 MST] - [Mon, 02 Jan 2006 15:04:05 -0700] - [2006-01-02T15:04:05Z07:00] - [2006-01-02T15:04:05.999999999Z07:00] -\"";
+        "[Mon Jan _2 15:04:05 2006] - [Mon Jan _2 15:04:05.123456 2006] - [Mon Jan _2 15:04:05.123456 2006] - [Mon Jan _2 15:04:05 MST 2006] - [Mon Jan 02 15:04:05 -0700 2006] - [02 Jan 06 15:04 MST] - [02 Jan 06 15:04 -0700] - [Monday, 02-Jan-06 15:04:05 MST] - [Mon, 02 Jan 2006 15:04:05 MST] - [Mon, 02 Jan 2006 15:04:05 -0700] - [2006-01-02T15:04:05Z07:00] - [2006-01-02T15:04:05.999999999Z07:00] -\"";
 
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
-    ASSERT_EQ("2006", result["year"]);
-    ASSERT_EQ("1", result["month"]);
-    ASSERT_EQ("2", result["day"]);
-    ASSERT_EQ("8", result["hour"]);
-    ASSERT_EQ("4", result["minutes"]);
-    ASSERT_EQ("5.0", result["seconds"]);
+    ASSERT_EQ("2006", result["timestamp.year"]);
+    ASSERT_EQ("1", result["timestamp.month"]);
+    ASSERT_EQ("2", result["timestamp.day"]);
+    ASSERT_EQ("8", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("5.0", result["timestamp.seconds"]);
 }
 
 TEST(hlpTests, timestamp_parsing_pending)
 {
 
     static const char *logQl =
-        "[<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] -\"";
+        "[<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] - [<timestamp>] -\"";
     static const char *event =
-        "[3:04PM] - [Jan _2 15:04:05] - [Jan _2 15:04:05.000] - [Jan _2 15:04:05.000000] - [Jan _2 15:04:05.000000000] -\"";
+        "[01/02 03:04:05PM '06 -0700] - [3:04PM] - [Jan _2 15:04:05] - [Jan _2 15:04:05.000] - [Jan _2 15:04:05.000000] - [Jan _2 15:04:05.000000000] -\"";
 
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
-    ASSERT_EQ("1", result["month"]);
-    ASSERT_EQ("2", result["day"]);
-    ASSERT_EQ("3", result["hours"]);
-    ASSERT_EQ("4", result["minutes"]);
-    ASSERT_EQ("5.0", result["seconds"]);
+    ASSERT_EQ("1", result["timestamp.month"]);
+    ASSERT_EQ("2", result["timestamp.day"]);
+    ASSERT_EQ("3", result["timestamp.hours"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("5.0", result["timestamp.seconds"]);
 }
