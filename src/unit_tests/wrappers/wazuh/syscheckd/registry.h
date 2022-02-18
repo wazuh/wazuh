@@ -12,7 +12,6 @@
 #define WIN_REGISTRY_WRAPPERS_H
 
 void __wrap_fim_registry_scan();
-cJSON* __wrap_fim_dbsync_registry_key_json_event();
 
 cJSON* __wrap_fim_dbsync_registry_value_json_event();
 

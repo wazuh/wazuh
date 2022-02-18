@@ -38,10 +38,6 @@ static int teardown_cjson_object(void **state) {
     return 0;
 }
 
-cJSON* fim_dbsync_registry_key_json_event(const cJSON* dbsync_event,
-                                          const fim_registry_key* key,
-                                          const registry_t* configuration,
-                                          const event_data_t* evt_data);
 cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
                                             const fim_registry_value_data *value,
                                             const registry_t *configuration,
