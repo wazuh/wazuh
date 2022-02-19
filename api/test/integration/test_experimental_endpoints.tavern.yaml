@@ -208,10 +208,6 @@ stages:
 ---
 test_name: GET /experimental/syscollector/netaddr
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Request
@@ -276,10 +272,6 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/netiface
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -357,10 +349,6 @@ stages:
 ---
 test_name: GET /experimental/syscollector/netproto
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Request
@@ -424,10 +412,6 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/os
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -502,10 +486,6 @@ stages:
 ---
 test_name: GET /experimental/syscollector/packages
 
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
-
 stages:
 
   - name: Request
@@ -546,10 +526,6 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/ports
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
@@ -638,10 +614,6 @@ stages:
 
 ---
 test_name: GET /experimental/syscollector/processes
-
-marks:
-  - xfail  # Syscollector databases synchronization randomly fails - https://github.com/wazuh/wazuh/issues/11829.
-           # Remove xfail mark and change healthcheck when #11829 is solved.
 
 stages:
 
