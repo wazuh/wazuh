@@ -117,7 +117,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         ~SQLiteDBEngine();
 
         void bulkInsert(const std::string& table,
-                        const nlohmann::json& data) override;
+                        const nlohmann::json& data,
+                        const bool inTransaction = true) override;
 
         void refreshTableData(const nlohmann::json& data,
                               const DbSync::ResultCallback callback) override;

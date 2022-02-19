@@ -31,7 +31,8 @@ namespace DbSync
             // LCOV_EXCL_STOP
 
             virtual void bulkInsert(const std::string& table,
-                                    const nlohmann::json& data) = 0;
+                                    const nlohmann::json& data,
+                                    const bool inTransaction = true) = 0;
 
             virtual void refreshTableData(const nlohmann::json& data,
                                           const ResultCallback callback) = 0;
