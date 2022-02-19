@@ -6,7 +6,7 @@
     <hardware>no</hardware>
     <os>yes</os>
     <network>no</network>
-    <packages>no</packages>
+    <packages>yes</packages>
     <ports all="no">no</ports>
     <processes>no</processes>
 

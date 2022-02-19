@@ -221,7 +221,7 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     except WazuhError as e:
         result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o0660)
+        exists(backup_file) and safe_move(backup_file, full_path)
 
     return result
 

@@ -6,13 +6,13 @@ import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
+from shutil import copyfile
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
 from xml.etree.ElementTree import Element
 from defusedxml.ElementTree import parse
 
 import pytest
-
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -1642,8 +1642,8 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
             utils.validate_wazuh_xml(input_file)
 
 
-@patch('wazuh.core.utils.copyfile')
-def test_delete_file_with_backup(mock_copyfile):
+@patch('wazuh.core.utils.full_copy')
+def test_delete_file_with_backup(mock_full_copy):
     """Test delete_file_with_backup function."""
     backup_file = 'backup'
     abs_path = 'testing/dir/subdir/file'
@@ -1651,11 +1651,11 @@ def test_delete_file_with_backup(mock_copyfile):
 
     utils.delete_file_with_backup(backup_file, abs_path, delete_function)
 
-    mock_copyfile.assert_called_with(abs_path, backup_file)
+    mock_full_copy.assert_called_with(abs_path, backup_file)
     delete_function.assert_called_once_with(filename=os.path.basename(abs_path))
 
 
-@patch('wazuh.core.utils.copyfile', side_effect=IOError)
+@patch('wazuh.core.utils.full_copy', side_effect=IOError)
 def test_delete_file_with_backup_ko(mock_copyfile):
     """Test delete_file_with_backup function exceptions."""
     with pytest.raises(utils.WazuhError, match='.* 1019 .*'):
@@ -1692,3 +1692,38 @@ def test_expand_lists():
     lists = utils.expand_lists()
     assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
         test_files_path, f'*{utils.common.LISTS_EXTENSION}')))))
+
+
+def test_full_copy():
+    """Test `full_copy` function.
+
+    This function will copy a file with all its metadata.
+    """
+    test_file = os.path.join(test_data_path, 'test_file.txt')
+    copied_test_file = os.path.join(test_data_path, 'test_file_copy.txt')
+    non_copyable_attributes = {'st_atime', 'st_atime_ns', 'st_ctime', 'st_ctime_ns', 'st_ino'}
+    try:
+        with open(test_file, 'w') as f:
+            f.write('test')
+
+        os.chmod(test_file, 0o660)
+
+        original_stat = os.stat(test_file)
+        utils.full_copy(test_file, copied_test_file)
+        copy_stat = os.stat(copied_test_file)
+
+        for attribute in dir(original_stat):
+            if attribute.startswith('st_') and attribute not in non_copyable_attributes:
+                assert getattr(original_stat, attribute) == getattr(copy_stat, attribute), f'Attribute {attribute} ' \
+                                                                                           'is not equal between' \
+                                                                                           ' original and copy files'
+    finally:
+        os.path.exists(test_file) and os.remove(test_file)
+        os.path.exists(copied_test_file) and os.remove(copied_test_file)
+
+
+@patch('wazuh.core.utils.copy2', new=copyfile)
+def test_full_copy_ko():
+    """Test `full_copy` function using mutation testing."""
+    with pytest.raises(AssertionError):
+        test_full_copy()
