@@ -32,7 +32,7 @@ class EngineServer
 {
 private:
     std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
-    endpoints::BaseEndpoint::ConnectionObs m_output;
+    endpoints::BaseEndpoint::EventObs m_output;
 
 public:
     /**
@@ -60,7 +60,7 @@ public:
      *
      * @return rxcpp::observable<json::Document>
      */
-    endpoints::BaseEndpoint::ConnectionObs output() const;
+    endpoints::BaseEndpoint::EventObs output() const;
 
     /**
      * @brief Start server.
