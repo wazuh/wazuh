@@ -51,6 +51,11 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
 
+// TODO Doc
+inline bool opBuilderHelperAUXStringManipulation(const std::string  key, char op, types::Event& e,
+                                                 std::optional<std::string> refExpStr,
+                                                 std::optional<std::string> expectedStr);
+
 /**
  * @brief Create `s_eq` helper function that filters events with a string
  * field equals to a value.
