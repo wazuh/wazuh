@@ -164,6 +164,75 @@ TEST(opBuilderHelperString_eq, dynamicsStringOk) {
     ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "test_value");
 }
 
+// Test ok: multilevel dynamic values (string)
+TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk) {
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+s_eq/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // no
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": "test_value",
+                        "ref_key": "test_value"
+                    },
+                    "parentObjt_1": {
+                        "field2check": "not_test_value",
+                        "ref_key": "123_not_test_value"
+                    }
+                }
+            )"});
+            // yes
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": "not_test_value",
+                        "ref_key": "test_value"
+                    },
+                    "parentObjt_1": {
+                        "field2check": "test_value",
+                        "ref_key": "not_test_value"
+                    }
+                }
+            )"});
+            // no
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check":"test_value",
+                        "ref_key":"test_value"
+                    },
+                    "parentObjt_1": {
+                        "otherfield":"value",
+                        "ref_key":"not_test_value"
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) {
+        expected.push_back(e);
+    });
+    ASSERT_EQ(expected.size(), 1);
+
+    ASSERT_STREQ(expected[0].get("/parentObjt_1/field2check")->GetString(),
+                 expected[0].get("/parentObjt_2/ref_key")->GetString());
+
+    ASSERT_STRNE(expected[0].get("/parentObjt_2/field2check")->GetString(), "test_value");
+    ASSERT_STRNE(expected[0].get("/parentObjt_1/ref_key")->GetString(), "test_value");
+
+}
+
+
 // Test ok: dynamic values (number)
 TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
     Document doc{R"({
