@@ -4550,6 +4550,21 @@ void test_wdb_global_find_group_success(void **state)
 
 /* Tests wdb_global_insert_agent_group */
 
+void test_wdb_global_insert_agent_group_invalid_group_name(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *group_name = "group-name,with_comma";
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group-name,with_comma' "
+                                                "contains invalid characters");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot insert 'group-name,with_comma'");
+
+    result = wdb_global_insert_agent_group(data->wdb, group_name);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
 void test_wdb_global_insert_agent_group_transaction_fail(void **state)
 {
     int result = 0;
@@ -7518,56 +7533,35 @@ void test_wdb_global_groups_number_get_success(void **state)
     __real_cJSON_Delete(j_groups_number);
 }
 
-/* wdb_global_validate_groups */
+/* wdb_global_validate_group_name */
 
-void test_wdb_global_validate_groups_fail_group_with_comma(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
-    cJSON* j_groups = __real_cJSON_CreateArray();
+void test_wdb_global_validate_group_name_fail_group_name_contains_invalid_character_1(void **state)
+{
+    char *group_name = "group_name,with_comma";
 
-    cJSON_AddItemToArray(j_groups, cJSON_CreateString("GROUP,WITH_COMMA"));
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group_name,with_comma' "
+                                                "contains invalid characters");
 
-    /* wdb_global_groups_number_get */
-    cJSON *j_groups_number = cJSON_Parse("[{\"groups_number\":0}]");
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, j_groups_number);
-    expect_function_call(__wrap_cJSON_Delete);
+    w_err_t result = wdb_global_validate_group_name(group_name);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid character in the group name. The group 'GROUP,WITH_COMMA' contains comma.");
-
-    wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
-
-    assert_int_equal(result, WDBC_ERROR);
-    __real_cJSON_Delete(j_groups);
-    __real_cJSON_Delete(j_groups_number);
+    assert_int_equal(result, OS_INVALID);
 }
 
-void test_wdb_global_validate_groups_fail_group_exceeds_max_length(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    int agent_id = 1;
-    cJSON* j_groups = __real_cJSON_CreateArray();
+void test_wdb_global_validate_group_name_fail_group_name_contains_invalid_character_2(void **state)
+{
+    char *group_name = "group_name/with_slash";
 
-    cJSON_AddItemToArray(j_groups,
-                         /* Random 256 characters long group name */
-                         cJSON_CreateString("zrosiZrfyMMKt9Lw9qMTCO45OsaFG0NOiHn8noYsuuXHCqPCeDpFE3NxZt8mb44g"
-                                            "6G36xL4y59TA_7obQfkSwjczMp9vrNZI9Jltc_8k322ZApibRftAi_T6SD9-AD0Y"
-                                            "wY_eWbG-uSfYw7BFX2OAgkD2vp3Z9AgZsN3NQNiDG1ng5WNm5H_bbLh6_BtotzJf"
-                                            "NYr8awmZ62IuhTH6eNLN9yzn4ZhWt_XxaHUe6O-uf68PNh4HMv3NuvDGFFXBkysN")
-                        );
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group_name/with_slash' "
+                                                "contains invalid characters");
 
-    /* wdb_global_groups_number_get */
-    cJSON *j_groups_number = cJSON_Parse("[{\"groups_number\":0}]");
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET);
-    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, j_groups_number);
-    expect_function_call(__wrap_cJSON_Delete);
+    w_err_t result = wdb_global_validate_group_name(group_name);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_validate_group_name_fail_group_name_exceeds_max_length(void **state)
+{
+    char *group_name = "zrosiZrfyMMKt9Lw9qMTCO45OsaFG0NOiHn8noYsuuXHCqPCeDpFE3NxZt8mb44g6G36xL4y59TA_7obQfkSwjczMp9vrNZI9Jltc_8k322ZApibRftAi_T6SD9-AD0YwY_eWbG-uSfYw7BFX2OAgkD2vp3Z9AgZsN3NQNiDG1ng5WNm5H_bbLh6_BtotzJfNYr8awmZ62IuhTH6eNLN9yzn4ZhWt_XxaHUe6O-uf68PNh4HMv3NuvDGFFXBkysN";
 
     expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. The group 'zrosiZrfyMMKt9Lw9qMTCO45OsaFG0NOiHn8noYsuuXHCqPCeDpFE3NxZt8mb44g"
                                                                                "6G36xL4y59TA_7obQfkSwjczMp9vrNZI9Jltc_8k322ZApibRftAi_T6SD9-AD0Y"
@@ -7575,12 +7569,43 @@ void test_wdb_global_validate_groups_fail_group_exceeds_max_length(void **state)
                                                                                "NYr8awmZ62IuhTH6eNLN9yzn4ZhWt_XxaHUe6O-uf68PNh4HMv3NuvDGFFXBkysN'"
                                                 " exceeds the maximum length of 255 characters permitted");
 
-    wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
+    w_err_t result = wdb_global_validate_group_name(group_name);
 
-    assert_int_equal(result, WDBC_ERROR);
-    __real_cJSON_Delete(j_groups);
-    __real_cJSON_Delete(j_groups_number);
+    assert_int_equal(result, OS_INVALID);
 }
+
+void test_wdb_global_validate_group_name_fail_group_name_current_directory_reserved_name(void **state)
+{
+    char *group_name = ".";
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' represents the current directory in unix systems");
+
+    w_err_t result = wdb_global_validate_group_name(group_name);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_validate_group_name_fail_group_name_parent_directory_reserved_name(void **state)
+{
+    char *group_name = "..";
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
+
+    w_err_t result = wdb_global_validate_group_name(group_name);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_validate_group_name_success(void **state)
+{
+    char *group_name = "5eCJIZNU_U8vxPcxPXOrtCM22qKbwz95jvkQVYpHwbz6D9KUIgLyd-Tf1HnBJrAUqI9ytsLdMVA6UhOM6Ej_XAVU9POtKCUzJSHml0g7yOzBnuNxt-8VzL2t5tosAZ7zBImnl0Yq-1LgAVecU_p7yBTw5ZmXg3ZswuCgeVrD0NSk_bwOKMHeRx7XuvIOlJGRC8YO7QeE6Gpc_tK5ZkAty4HyVlMlUI72kQeDAoGK1mhq1LfiUu9VGNFXi6HBGnd";
+
+    w_err_t result = wdb_global_validate_group_name(group_name);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
+/* wdb_global_validate_groups */
 
 void test_wdb_global_validate_groups_fail_groups_exceeds_max_number(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -7603,9 +7628,9 @@ void test_wdb_global_validate_groups_fail_groups_exceeds_max_number(void **state
 
     expect_string(__wrap__mwarn, formatted_msg, "The groups assigned to agent 001 exceed the maximum of 128 permitted.");
 
-    wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
+    w_err_t result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
 
-    assert_int_equal(result, WDBC_ERROR);
+    assert_int_equal(result, OS_INVALID);
     __real_cJSON_Delete(j_groups);
     __real_cJSON_Delete(j_groups_number);
 }
@@ -7618,7 +7643,10 @@ void test_wdb_global_validate_groups_success(void **state) {
 
     snprintf(group_name, MAX_GROUP_NAME+1,
             /* Random 255 characters long group name */
-            "uw4I8IF9cNhrQ5k9r_JApsK8HbwmxbtS5yv2OqR4PH-GF4Da5lbQ5ofi3d9UbcahRXgGrSFhs0ePre64hYokp12rW7NTpeytrqo149Qohn6nhpqhTZTXfEa8ArPy8_u2Z-iooTM1DXsXRSxi2f_AG2nriukDL9ZMziTq07DeSoRqo-SyVNTt4_0RjBkyI6Xk8Bk-EgNzV5lioDQPl6VB7h-SYsOYN7ux-uNXRFZX_0GquwAqbzWd4sPojez_Rn6"
+            "5eCJIZNU_U8vxPcxPXOrtCM22qKbwz95jvkQVYpHwbz6D9KUIgLyd-Tf1HnBJrAU"
+            "qI9ytsLdMVA6UhOM6Ej_XAVU9POtKCUzJSHml0g7yOzBnuNxt-8VzL2t5tosAZ7z"
+            "BImnl0Yq-1LgAVecU_p7yBTw5ZmXg3ZswuCgeVrD0NSk_bwOKMHeRx7XuvIOlJGR"
+            "C8YO7QeE6Gpc_tK5ZkAty4HyVlMlUI72kQeDAoGK1mhq1LfiUu9VGNFXi6HBGnd"
             );
     cJSON_AddItemToArray(j_groups, cJSON_CreateString(group_name));
 
@@ -7632,9 +7660,9 @@ void test_wdb_global_validate_groups_success(void **state) {
     will_return(__wrap_wdb_exec_stmt, j_groups_number);
     expect_function_call(__wrap_cJSON_Delete);
 
-    wdbc_result result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
+    w_err_t result = wdb_global_validate_groups(data->wdb, j_groups, agent_id);
 
-    assert_int_equal(result, WDBC_OK);
+    assert_int_equal(result, OS_SUCCESS);
     __real_cJSON_Delete(j_groups);
     __real_cJSON_Delete(j_groups_number);
 }
@@ -8459,6 +8487,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_find_group_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_find_group_success, test_setup, test_teardown),
         /* Tests wdb_global_insert_agent_group */
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_invalid_group_name, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_cache_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_group_bind_fail, test_setup, test_teardown),
@@ -8651,9 +8680,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_success, test_setup, test_teardown),
+        /* wdb_global_validate_group_name */
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_contains_invalid_character_1, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_contains_invalid_character_2, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_exceeds_max_length, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_current_directory_reserved_name, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_fail_group_name_parent_directory_reserved_name, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_validate_group_name_success, test_setup, test_teardown),
         /* wdb_global_validate_groups */
-        cmocka_unit_test_setup_teardown(test_wdb_global_validate_groups_fail_group_with_comma, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_validate_groups_fail_group_exceeds_max_length, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_groups_fail_groups_exceeds_max_number, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_validate_groups_success, test_setup, test_teardown),
         /* wdb_global_set_agent_group */

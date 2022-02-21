@@ -696,6 +696,11 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
 int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name) {
     sqlite3_stmt *stmt = NULL;
 
+    if (OS_INVALID == wdb_global_validate_group_name(group_name)) {
+        mdebug1("Cannot insert '%s'", group_name);
+        return OS_INVALID;
+    }
+
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return OS_INVALID;
@@ -1321,9 +1326,34 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
     return groups_number;
 }
 
-wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
+w_err_t wdb_global_validate_group_name(const char *group_name) {
+    const char *current_directory = ".";
+    const char *parent_directory = "..";
+    w_err_t result = OS_SUCCESS;
+
+    if (strlen(group_name) > MAX_GROUP_NAME) {
+        mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
+        result = OS_INVALID;
+    } else if (!w_regexec("^[a-zA-Z0-9_\\.\\-]+$", group_name, 0, NULL)) {
+        mwarn("Invalid group name. '%s' contains invalid characters", group_name);
+        result = OS_INVALID;
+    } else {
+        if (!strcmp(group_name, parent_directory)) {
+            mwarn("Invalid group name. '%s' represents the parent directory in unix systems", group_name);
+            result = OS_INVALID;
+        }
+        if (!strcmp(group_name, current_directory)) {
+            mwarn("Invalid group name. '%s' represents the current directory in unix systems", group_name);
+            result = OS_INVALID;
+        }
+    }
+
+    return result;
+}
+
+w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
     cJSON* j_group_name = NULL;
-    wdbc_result ret = WDBC_OK;
+    wdbc_result ret = OS_SUCCESS;
     int groups_counter = 0;
 
     int groups_number = wdb_global_groups_number_get(wdb, agent_id);
@@ -1334,24 +1364,18 @@ wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id
                 ++groups_counter;
                 if ((groups_counter + groups_number) > MAX_GROUPS_PER_MULTIGROUP) {
                     mwarn("The groups assigned to agent %03d exceed the maximum of %d permitted.", agent_id, MAX_GROUPS_PER_MULTIGROUP);
-                    ret = WDBC_ERROR;
+                    ret = OS_INVALID;
                     break;
                 }
                 char* group_name = j_group_name->valuestring;
-                if (strchr(group_name, MULTIGROUP_SEPARATOR)) {
-                    mwarn("Invalid character in the group name. The group '%s' contains comma.", group_name);
-                    ret = WDBC_ERROR;
-                    break;
-                }
-                if (strlen(group_name) > MAX_GROUP_NAME) {
-                    mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
-                    ret = WDBC_ERROR;
+                if (OS_INVALID == wdb_global_validate_group_name(group_name)) {
+                    ret = OS_INVALID;
                     break;
                 }
             }
         }
     } else {
-        ret = WDBC_ERROR;
+        ret = OS_INVALID;
     }
 
     return ret;
@@ -1360,7 +1384,7 @@ wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id
 wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info) {
     wdbc_result ret = WDBC_OK;
     cJSON* j_group_info = NULL;
-    wdbc_result valid_groups = WDBC_OK;
+    w_err_t valid_groups = OS_SUCCESS;
     cJSON_ArrayForEach (j_group_info, j_agents_group_info) {
         cJSON* j_agent_id = cJSON_GetObjectItem(j_group_info, "id");
         cJSON* j_groups = cJSON_GetObjectItem(j_group_info, "groups");
@@ -1389,7 +1413,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                         group_priority = last_group_priority+1;
                     }
                 }
-                if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), WDBC_OK == valid_groups) {
+                if (valid_groups = wdb_global_validate_groups(wdb, j_groups, agent_id), OS_SUCCESS == valid_groups) {
                     if (WDBC_ERROR == wdb_global_assign_agent_group(wdb, agent_id, j_groups, group_priority)) {
                         ret = WDBC_ERROR;
                         merror("There was an error assigning the groups to agent '%03d'", agent_id);
