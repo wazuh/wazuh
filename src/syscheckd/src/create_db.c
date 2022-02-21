@@ -204,6 +204,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
     const cJSON *dbsync_event = NULL;
+    cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
@@ -286,7 +287,12 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
-    //cJSON_AddNumberToObject(data, "timestamp", time(NULL)); This should be the last_event field
+
+    if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
+        cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
+    } else {
+        cJSON_AddNumberToObject(data, "timestamp", txn_context->latest_entry->file_entry.data->last_event);
+    }
 
     if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
@@ -1180,7 +1186,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     data->inode = statbuf->st_ino;
     data->dev = statbuf->st_dev;
     data->options = configuration->options;
-    // data->last_event = time(NULL);
+    data->last_event = time(NULL);
     fim_get_checksum(data);
 
     return data;
