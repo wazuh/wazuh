@@ -74,12 +74,65 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def)
     };
 }
 
-// TODO field: +s_eq/str|$ref/
+// TODO DOC
+bool opBuilderHelperAUXStringManipulation(const std::string key, char op, types::Event & e,
+                                                 std::optional<std::string> refExpStr,
+                                                 std::optional<std::string> expectedStr) {
 
+    // Get value to compare
+    const rapidjson::Value * value{};
+    try {
+        value = e.get("/" + key);
+    } catch (std::exception & e) {
+        // TODO Check exception type
+        return false;
+    }
+
+    if (value == nullptr || !value->IsString()) {
+        return false;
+    }
+
+    // get str to compare
+    if (refExpStr.has_value()) {
+        // Get reference to json event
+        auto refValueToCheck = e.getObject().FindMember(refExpStr.value().c_str());
+        // if is a string value then compare
+        if (refValueToCheck->value.IsString()) {
+            expectedStr = std::string{refValueToCheck->value.GetString()};
+            //return std::string{value->GetString()} == std::string{refValueToCheck->value.GetString()};
+        } else {
+            return false;
+        }
+    }
+
+    // String operation
+    switch (op) {
+        case '=':
+            return std::string{value->GetString()} == expectedStr.value();
+        case '!':
+            return std::string{value->GetString()} != expectedStr.value();
+        case '>':
+            return std::string{value->GetString()} > expectedStr.value();
+        case '<':
+            return std::string{value->GetString()} < expectedStr.value();
+        //case '>=':
+        case 'm':
+            return std::string{value->GetString()} >= expectedStr.value();
+        //case '<=':
+        case 'n':
+            return std::string{value->GetString()} <= expectedStr.value();
+        default:
+            throw std::invalid_argument("Invalid operator");
+    }
+
+    return false;
+}
+
+// String equal
 types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def)
 {
     // Get field key to check
-    std::string key = def.MemberBegin()->name.GetString();
+    std::string key {def.MemberBegin()->name.GetString()};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString()) {
@@ -93,21 +146,25 @@ types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def)
         throw std::runtime_error("Invalid number of parameters for s_eq operator");
     }
 
-    std::string expectedStr = parametersArr[1];
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
+
+    // Check if is a reference to json event
+    if (parametersArr[1][0] == '$') {
+        refExpStr = parametersArr[1].substr(1);
+    } else {
+        expectedStr = parametersArr[1];
+    }
+
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([expectedStr, key](types::Event e) {
-            try {
-                    if(auto f2c = e.get("/" + key); f2c) {
-                        return f2c->IsString() && std::string{f2c->GetString()} == expectedStr;
-                    }
-                    return false;
-            } catch (std::exception & e) {
-                // TODO Check exception type
-                return false;
-            }
+        return o.filter([key, expectedStr, refExpStr](types::Event e) {
+
+            return opBuilderHelperAUXStringManipulation(key, '=', e, refExpStr, expectedStr);
+
+//            return false;
         });
     };
 }
