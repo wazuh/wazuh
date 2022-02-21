@@ -95,7 +95,8 @@ json::Document ProtocolHandler::parse(const std::string & event) const
     return doc;
 }
 
-bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subscriber<rxcpp::observable<std::string>> s)
+bool ProtocolHandler::process(char * data, std::size_t length,
+                              const rxcpp::subscriber<rxcpp::observable<std::string>> s)
 {
     for (std::size_t i = 0; i < length; i++)
     {
@@ -114,7 +115,7 @@ bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subs
                 }
                 catch (...)
                 {
-                    s.on_error(std::current_exception());
+                    // s.on_error(std::current_exception());
                     return false;
                 }
                 break;
