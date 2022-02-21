@@ -22,7 +22,6 @@
 
 #include "syscheck.h"
 
-
 /* setup/teardowns */
 static int setup_group(void **state) {
 

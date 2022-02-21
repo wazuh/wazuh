@@ -44,13 +44,14 @@ struct FimFileDataDeleter
 class FileItem final : public DBItem
 {
     public:
-        FileItem(const fim_entry* const fim)
+        FileItem(const fim_entry* const fim, bool oldData = false)
             : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path
                      , fim->file_entry.data->scanned
                      , fim->file_entry.data->last_event
                      , fim->file_entry.data->checksum[0] == '\0' ? "" : fim->file_entry.data->checksum
                      , fim->file_entry.data->mode)
         {
+            m_oldData = oldData;
             m_options = fim->file_entry.data->options;
             m_time = fim->file_entry.data->mtime;
             m_size = fim->file_entry.data->size;

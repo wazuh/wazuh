@@ -56,6 +56,272 @@ typedef struct fim_val_txn_context_s {
     char* diff;
 } fim_val_txn_context_t;
 
+// DBSync Callbacks
+
+/**
+ * @brief Registry key callback.
+ *
+ * @param resultType Action performed by DBSync (INSERTED|MODIFIED|DELETED|MAXROWS)
+ * @param result_json Data returned by dbsync in JSON format.
+ * @param user_data Registry key transaction context.
+ */
+static void registry_key_transaction_callback(ReturnTypeCallback resultType,
+                                              const cJSON* result_json,
+                                              void* user_data) {
+
+    registry_t *configuration = NULL;
+    cJSON *json_event = NULL;
+    cJSON *json_path = NULL;
+    cJSON *json_arch = NULL;
+    cJSON *old_data = NULL;
+    cJSON *old_attributes = NULL;
+    cJSON *changed_attributes = NULL;
+    const cJSON *dbsync_event = NULL;
+    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
+    fim_registry_key* key = event_data->key;
+    char *path = NULL;
+    int arch = -1;
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
+
+    if (cJSON_IsArray(result_json)) {
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+            return;
+        }
+    } else {
+        dbsync_event = result_json;
+    }
+
+    // In case of deletions, key is NULL, so we need to get the path and arch from the json event
+    if (key == NULL) {
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+            goto end;
+        }
+        if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
+            goto end;
+        }
+        path = cJSON_GetStringValue(json_path);
+        arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
+
+    } else {
+        path = key->path;
+        arch = key->arch;
+    }
+
+    configuration = fim_registry_configuration(path, arch);
+
+    if (configuration == NULL) {
+        goto end;
+    }
+
+    switch (resultType) {
+        case INSERTED:
+            event_data->evt_data->type = FIM_ADD;
+            break;
+
+        case MODIFIED:
+            event_data->evt_data->type = FIM_MODIFICATION;
+            break;
+
+        case DELETED:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                fim_diff_process_delete_registry(path, arch);
+            }
+            event_data->evt_data->type = FIM_DELETE;
+            break;
+
+        case MAX_ROWS:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                        key->path);
+                goto end;
+            }
+            break;
+        default:
+            goto end;
+            break;
+    }
+
+    json_event = cJSON_CreateObject();
+    if (json_event == NULL) {
+        return;
+    }
+
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
+    cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
+
+    if (old_data = cJSON_GetObjectItem(dbsync_event, "old"), old_data != NULL) {
+        old_attributes = cJSON_CreateObject();
+        changed_attributes = cJSON_CreateArray();
+        cJSON_AddItemToObject(data, "old_attributes", old_attributes);
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        fim_calculate_dbsync_difference_key(key,
+                                            configuration,
+                                            old_data,
+                                            changed_attributes,
+                                            old_attributes);
+    }
+
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    }
+
+    send_syscheck_msg(json_event);
+
+    end:
+        cJSON_Delete(json_event);
+}
+
+/**
+ * @brief Registry value callback.
+ *
+ * @param resultType Action performed by DBSync (INSERTED|MODIFIED|DELETED|MAXROWS)
+ * @param result_json Data returned by dbsync in JSON format.
+ * @param user_data Registry value transaction context.
+ */
+static void registry_value_transaction_callback(ReturnTypeCallback resultType,
+                                                const cJSON* result_json,
+                                                void* user_data) {
+
+    registry_t *configuration = NULL;
+    cJSON *json_event = NULL;
+    const cJSON *dbsync_event = NULL;
+    cJSON *json_path = NULL;
+    cJSON *json_arch = NULL;
+    cJSON *json_name = NULL;
+    cJSON *old_attributes = NULL;
+    cJSON *old_data = NULL;
+    cJSON *changed_attributes = NULL;
+    char *path = NULL;
+    char *name = NULL;
+    int arch = -1;
+    fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
+    char* diff = event_data->diff;
+    fim_registry_value_data *value = event_data->data;
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        return;
+    }
+
+    if (cJSON_IsArray(result_json)) {
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
+            return;
+        }
+    } else {
+        dbsync_event = result_json;
+    }
+
+    // In case of deletions, key is NULL, so we need to get the path and arch from the json event
+    if (value == NULL) {
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
+            goto end;
+        }
+        if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
+            goto end;
+        }
+        if (json_name = cJSON_GetObjectItem(dbsync_event, "arch"), json_name == NULL) {
+            goto end;
+        }
+        path = cJSON_GetStringValue(json_path);
+        arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
+        name = cJSON_GetStringValue(json_name);
+    } else {
+        path = value->path;
+        arch = value->arch;
+        name = value->name;
+    }
+
+    configuration = fim_registry_configuration(path, arch);
+    if (configuration == NULL) {
+         goto end;
+    }
+
+    switch (resultType) {
+        case INSERTED:
+            event_data->evt_data->type = FIM_ADD;
+            break;
+
+        case MODIFIED:
+            event_data->evt_data->type = FIM_MODIFICATION;
+            break;
+
+        case DELETED:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                fim_diff_process_delete_value(path, name, arch);
+            }
+            event_data->evt_data->type = FIM_DELETE;
+            break;
+
+        case MAX_ROWS:
+            if (configuration->opts & CHECK_SEECHANGES) {
+                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                        value->path);
+                goto end;
+            }
+            break;
+        default:
+            goto end;
+            break;
+    }
+
+    json_event = cJSON_CreateObject();
+    if (json_event == NULL) {
+        goto end;
+    }
+
+    cJSON_AddStringToObject(json_event, "type", "event");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
+    cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    cJSON_AddStringToObject(data, "value_name", name);
+    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
+
+    old_data = cJSON_GetObjectItem(dbsync_event, "old");
+    if (old_data != NULL) {
+        old_attributes = cJSON_CreateObject();
+        changed_attributes = cJSON_CreateArray();
+        cJSON_AddItemToObject(data, "old_attributes", old_attributes);
+        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+        fim_calculate_dbsync_difference_value(value,
+                                              configuration,
+                                              old_data,
+                                              changed_attributes,
+                                              old_attributes);
+    }
+
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    }
+
+    send_syscheck_msg(json_event);
+
+
+end:
+    cJSON_Delete(json_event);
+    if(diff != NULL){
+        os_free(diff);
+    }
+}
+
 /**
  * @brief Set the root key and subkey associated with a given key.
  *
@@ -530,179 +796,6 @@ void fim_registry_free_entry(fim_entry *entry) {
     }
 }
 
-cJSON* fim_dbsync_registry_value_json_event(const cJSON* dbsync_event,
-                                            const fim_registry_value_data *value,
-                                            const registry_t *configuration,
-                                            fim_event_mode mode,
-                                            const event_data_t *evt_data,
-                                            __attribute__((unused)) whodata_evt *w_evt,
-                                            const char* diff)
-{
-
-    //cJSON *changed_attributes = NULL;
-
-    /*if (old_data != NULL && old_data->registry_entry.value != NULL) {
-        changed_attributes = fim_registry_compare_value_attrs(new_data->registry_entry.value,
-                                                              old_data->registry_entry.value, configuration);
-
-        if (cJSON_GetArraySize(changed_attributes) == 0) {
-            cJSON_Delete(changed_attributes);
-            return NULL;
-        }
-        if (old_data != NULL && old_data->registry_entry.value != NULL) {
-            cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-            cJSON_AddItemToObject(data, "old_attributes",
-                                  fim_registry_value_attributes_json(old_data->registry_entry.value, configuration));
-    }
-    }*/
-
-    cJSON *json_event = cJSON_CreateObject();
-    cJSON_AddStringToObject(json_event, "type", "event");
-
-    cJSON *data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    if (value)
-    {
-        cJSON_AddStringToObject(data, "path", value->path);
-        cJSON_AddNumberToObject(data, "version", 2.0);
-        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
-        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-        cJSON_AddStringToObject(data, "arch", (value->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
-        cJSON_AddStringToObject(data, "value_name", value->name);
-
-    } else
-    {
-
-        cJSON *path, *arch, *value_name;
-
-        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
-        {
-            cJSON_AddStringToObject(data, "path", path->valuestring);
-        }
-
-        cJSON_AddNumberToObject(data, "version", 2.0);
-        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
-        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-
-        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
-        {
-            cJSON_AddStringToObject(data, "arch", arch->valuestring);
-        }
-
-        if (value_name = cJSON_GetObjectItem(dbsync_event, "name"), value_name != NULL)
-        {
-            cJSON_AddStringToObject(data, "value_name", value_name->valuestring);
-        }
-
-    }
-
-    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(dbsync_event, "last_event")->valuestring);
-
-    cJSON_AddItemToObject(data, "attributes", fim_registry_value_attributes_json(dbsync_event, value, configuration));
-
-    if (diff != NULL) {
-        cJSON_AddStringToObject(data, "content_changes", diff);
-    }
-
-    if (configuration->tag != NULL) {
-        cJSON_AddStringToObject(data, "tags", configuration->tag);
-    }
-
-    return json_event;
-}
-
-static void registry_value_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
-{
-
-    registry_t *configuration = NULL;
-    cJSON *json_event = NULL;
-    const cJSON *dbsync_event = NULL;
-    cJSON *json_path = NULL;
-    cJSON *json_arch = NULL;
-    cJSON *json_name = NULL;
-    char *path = NULL;
-    char *name = NULL;
-    int arch = -1;
-    fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
-    char* diff = event_data->diff;
-    fim_registry_value_data *data = event_data->data;
-
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return;
-    }
-
-    if (cJSON_IsArray(result_json)) {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
-            return;
-        }
-    } else {
-        dbsync_event = result_json;
-    }
-
-    if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
-        goto end;
-    }
-    if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
-        goto end;
-    }
-    if (json_name = cJSON_GetObjectItem(dbsync_event, "name"), json_name == NULL) {
-        goto end;
-    }
-
-    path = cJSON_GetStringValue(json_path);
-    arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
-    name = cJSON_GetStringValue(json_name);
-
-    configuration = fim_registry_configuration(path, arch);
-    if (configuration == NULL) {
-        return;
-    }
-
-    switch (resultType) {
-        case INSERTED:
-            event_data->evt_data->type = FIM_ADD;
-            break;
-
-        case MODIFIED:
-
-            event_data->evt_data->type = FIM_MODIFICATION;
-            break;
-
-        case DELETED:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                fim_diff_process_delete_value(path, name, arch);
-            }
-            event_data->evt_data->type = FIM_DELETE;
-            break;
-
-        case MAX_ROWS:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
-                        data->path);
-                goto end;
-            }
-            break;
-        default:
-            goto end;
-            break;
-    }
-
-    json_event = fim_dbsync_registry_value_json_event(dbsync_event, data, configuration, FIM_SCHEDULED, event_data->evt_data,
-                                                      NULL, diff);
-
-    if (json_event && _base_line) {
-        send_syscheck_msg(json_event);
-    }
-
-    end:
-        cJSON_Delete(json_event);
-        if(diff != NULL){
-            os_free(diff);
-        }
-
-}
 
 /**
  * @brief Query the values belonging to a key.
@@ -800,162 +893,6 @@ void fim_read_values(HKEY key_handle,
     fim_registry_free_value_data(new.registry_entry.value);
     os_free(value_buffer);
     os_free(data_buffer);
-}
-
-cJSON* fim_dbsync_registry_key_json_event(const cJSON* dbsync_event,
-                                          const fim_registry_key* key,
-                                          const registry_t* configuration,
-                                          const event_data_t* evt_data)
-{
-    /*
-
-    cJSON* changed_attributes = NULL;
-    if (old_data != NULL) {
-        changed_attributes = fim_registry_compare_key_attrs(new_data, old_data, configuration);
-
-        if (cJSON_GetArraySize(changed_attributes) == 0) {
-            cJSON_Delete(changed_attributes);
-            return NULL;
-        }
-    }
-
-    if (old_data) {
-        cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-        cJSON_AddItemToObject(data, "old_attributes", fim_registry_key_attributes_json(old_data, configuration));
-    }
-
-    */
-
-    cJSON* json_event = cJSON_CreateObject();
-    cJSON_AddStringToObject(json_event, "type", "event");
-
-    cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    if (key != NULL)
-    {
-        cJSON_AddStringToObject(data, "path", key->path);
-        cJSON_AddNumberToObject(data, "version", 2.0);
-        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-        cJSON_AddStringToObject(data, "arch", (key->arch == ARCH_32BIT) ? "[x32]" : "[x64]");
-
-    }
-    else
-    {
-        cJSON *path, *arch;
-
-        if (path = cJSON_GetObjectItem(dbsync_event, "path"), path != NULL)
-        {
-            cJSON_AddStringToObject(data, "path", path->valuestring);
-        }
-
-        cJSON_AddNumberToObject(data, "version", 2.0);
-        cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-        cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-
-        if (arch = cJSON_GetObjectItem(dbsync_event, "arch"), arch != NULL)
-        {
-            cJSON_AddStringToObject(data, "arch", arch->valuestring);
-        }
-    }
-
-
-
-    //cJSON_AddStringToObject(data, "timestamp",  cJSON_GetObjectItem(fim_entry, "last_event")->valuestring);
-
-    cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
-
-    char* tags = NULL;
-
-    tags = configuration->tag;
-
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
-    }
-
-    return json_event;
-}
-
-static void registry_key_transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
-{
-
-    registry_t *configuration = NULL;
-    cJSON *json_event = NULL;
-    const cJSON *dbsync_event = NULL;
-    cJSON *json_path, *json_arch;
-    fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
-    fim_registry_key* key = event_data->key;
-    char *path = NULL;
-    int arch = -1;
-
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return;
-    }
-
-    if (cJSON_IsArray(result_json)) {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
-            return;
-        }
-    } else {
-        dbsync_event = result_json;
-    }
-
-    // Look for the old_attributes changed
-
-    if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
-        goto end;
-    }
-    if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
-        goto end;
-    }
-
-    path = cJSON_GetStringValue(json_path);
-    arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
-
-    configuration = fim_registry_configuration(path, arch);
-
-    if (configuration == NULL) {
-        return;
-    }
-
-    switch (resultType) {
-        case INSERTED:
-            event_data->evt_data->type = FIM_ADD;
-            break;
-
-        case MODIFIED:
-            event_data->evt_data->type = FIM_MODIFICATION;
-            break;
-
-        case DELETED:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                fim_diff_process_delete_registry(path, arch);
-            }
-            event_data->evt_data->type = FIM_DELETE;
-            break;
-
-        case MAX_ROWS:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
-                key->path);
-                goto end;
-            }
-            break;
-        default:
-            goto end;
-            break;
-    }
-
-    json_event = fim_dbsync_registry_key_json_event(dbsync_event, key, configuration, event_data->evt_data);
-
-    if (json_event && _base_line) {
-        send_syscheck_msg(json_event);
-    }
-
-    end:
-        cJSON_Delete(json_event);
 }
 
 /**

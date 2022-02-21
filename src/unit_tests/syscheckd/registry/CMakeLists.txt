@@ -20,7 +20,6 @@ target_link_libraries(test_registry "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=
                                      -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start
                                      -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows
-                                     -Wl,--wrap=fim_dbsync_registry_key_json_event,--wrap=fim_dbsync_registry_value_json_event
                                      -Wl,--wrap=fim_diff_process_delete_registry,--wrap=fim_diff_process_delete_value
                                      -Wl,--wrap=registry_key_transaction_callback,--wrap=registry_value_transaction_callback")
 

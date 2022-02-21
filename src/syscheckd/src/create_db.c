@@ -44,116 +44,227 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-typedef struct fim_txn_context_s {
-    event_data_t *evt_data;
-    volatile bool db_full;
-} fim_txn_context_t;
+// LCOV_EXCL_START
+cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
+                                        const cJSON* changed_data,
+                                        cJSON* old_attributes,
+                                        cJSON* changed_attributes) {
 
-
-static cJSON* fim_dbsync_json_event(const char* path,
-                                    const char* diff,
-                                    const cJSON* fim_entry,
-                                    const directory_t* configuration,
-                                    const event_data_t* evt_data) {
-    cJSON* changed_attributes = NULL;
-
-    cJSON* json_event = cJSON_CreateObject();
-    cJSON_AddStringToObject(json_event, "type", "event");
-
-    cJSON* data = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_event, "data", data);
-
-    cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
-    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
-    // cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
-
-    // cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data));
-
-    cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
-    // if (old_data) {
-    //     cJSON_AddItemToObject(data, "old_attributes", fim_attributes_json(old_data));
-    // }
-
-    char* tags = NULL;
-    if (evt_data->w_evt) {
-        cJSON_AddItemToObject(data, "audit", fim_audit_json(evt_data->w_evt));
+    if (old_attributes == NULL || changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
+        return NULL;
     }
 
-    tags = configuration->tag;
+    cJSON *aux = NULL;
 
-    if (diff != NULL) {
-        cJSON_AddStringToObject(data, "content_changes", diff);
+    cJSON_AddStringToObject(old_attributes, "type", "file");
+
+    if (data->options & CHECK_SIZE) {
+        if (aux = cJSON_GetObjectItem(changed_data, "size"), aux != NULL) {
+            cJSON_AddNumberToObject(old_attributes, "size", aux->valueint);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
+        } else {
+            cJSON_AddNumberToObject(old_attributes, "size", data->size);
+        }
     }
 
-    if (tags != NULL) {
-        cJSON_AddStringToObject(data, "tags", tags);
+    if (data->options & CHECK_PERM) {
+        if (aux = cJSON_GetObjectItem(changed_data, "perm"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "perm", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+
+        } else {
+#ifndef WIN32
+            cJSON_AddStringToObject(old_attributes, "perm", data->perm);
+#else
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
+#endif
+        }
     }
 
-    return json_event;
+    if (data->options & CHECK_OWNER) {
+        if (aux = cJSON_GetObjectItem(changed_data, "uid"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "uid", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "uid", data->uid);
+        }
+    }
+
+    if (data->options & CHECK_GROUP) {
+        if (aux = cJSON_GetObjectItem(changed_data, "gid"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "gid", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "gid", data->gid);
+        }
+    }
+
+    if (data->user_name) {
+        if (aux = cJSON_GetObjectItem(changed_data, "user_name"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "user_name", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "user_name", data->user_name);
+        }
+    }
+
+    if (data->group_name) {
+        if (aux = cJSON_GetObjectItem(changed_data, "group_name"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "group_name", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "group_name", data->group_name);
+        }
+    }
+
+    if (data->options & CHECK_INODE) {
+        if (aux = cJSON_GetObjectItem(changed_data, "inode"), aux != NULL) {
+            cJSON_AddNumberToObject(old_attributes, "inode", aux->valueint);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("inode"));
+
+        } else {
+            cJSON_AddNumberToObject(old_attributes, "inode", data->inode);
+        }
+    }
+
+    if (data->options & CHECK_MTIME) {
+        if (aux = cJSON_GetObjectItem(changed_data, "mtime"), aux != NULL) {
+            cJSON_AddNumberToObject(old_attributes, "mtime", aux->valueint);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
+
+        } else {
+            cJSON_AddNumberToObject(old_attributes, "mtime", data->mtime);
+        }
+    }
+
+    if (data->options & CHECK_MD5SUM) {
+        if (aux = cJSON_GetObjectItem(changed_data, "hash_md5"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "hash_md5", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "hash_md5", data->hash_md5);
+        }
+    }
+
+    if (data->options & CHECK_SHA1SUM) {
+        if (aux = cJSON_GetObjectItem(changed_data, "hash_sha1"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "hash_sha1", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "hash_sha1", data->hash_sha1);
+        }
+    }
+
+    if (data->options & CHECK_SHA256SUM) {
+        if (aux = cJSON_GetObjectItem(changed_data, "hash_sha256"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "hash_sha256", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "hash_sha256", data->hash_sha256);
+        }
+    }
+
+#ifdef WIN32
+    if (data->options & CHECK_ATTRS) {
+        if (aux = cJSON_GetObjectItem(changed_data, "attributes"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "attributes", aux->valuestring);
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
+
+        } else {
+            cJSON_AddStringToObject(old_attributes, "attributes", data->attributes);
+        }
+    }
+#endif
+
+    if (*data->checksum) {
+        if (aux = cJSON_GetObjectItem(changed_data, "checksum"), aux != NULL) {
+            cJSON_AddStringToObject(old_attributes, "checksum", aux->valuestring);
+        } else {
+            cJSON_AddStringToObject(old_attributes, "checksum", data->checksum);
+        }
+    }
+
+    return old_attributes;
 }
+// LCOV_EXCL_STOP
 
-static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
-{
+static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data) {
     char *path = NULL;
     char *diff = NULL;
-    cJSON *json_event = NULL;
+    cJSON* json_event = NULL;
+    cJSON* data = NULL;
+    cJSON* old_attributes = NULL;
+    cJSON* changed_attributes = NULL;
+    cJSON* old_data = NULL;
     const cJSON *dbsync_event = NULL;
-    cJSON *json_path = NULL;
     directory_t *configuration = NULL;
-    fim_txn_context_t *event_data = (fim_txn_context_t *) user_data;
+    fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
-        return;
+        return; // LCOV_EXCL_LINE
     }
 
     // DBSync returns an array when there is a addition or modification. This callback is executed for each entry, so
     // this array only has one element.
     if (cJSON_IsArray(result_json)) {
         if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event == NULL) {
-            return;
+            return; // LCOV_EXCL_LINE
         }
     // In case of a deletion, DBSync is not going to return an array.
     } else {
         dbsync_event = result_json;
     }
 
-    if (json_path = cJSON_GetObjectItem(dbsync_event, FILE_PRIMARY_KEY), json_path == NULL) {
+    // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
+    if (resultType == DELETED) {
+        cJSON *path_cjson = cJSON_GetObjectItem(dbsync_event, "path");
+        if (path_cjson == NULL) {
+            goto end;
+        }
+        path = cJSON_GetStringValue(path_cjson);
+    } else if (txn_context->latest_entry != NULL) {
+        path = txn_context->latest_entry->file_entry.path;
+    } else {
         goto end;
     }
-
-    path = cJSON_GetStringValue(json_path);
 
     if (configuration = fim_configuration_directory(path), configuration == NULL) {
         goto end;
     }
 
-    if (configuration->options & CHECK_SEECHANGES) {
+    if (configuration->options & CHECK_SEECHANGES && resultType != DELETED) {
         diff = fim_file_diff(path, configuration);
     }
 
     switch (resultType) {
         case INSERTED:
-            event_data->evt_data->type = FIM_ADD;
+            txn_context->evt_data->type = FIM_ADD;
             break;
 
         case MODIFIED:
-            event_data->evt_data->type = FIM_MODIFICATION;
+            txn_context->evt_data->type = FIM_MODIFICATION;
             break;
 
         case DELETED:
             if (configuration->options & CHECK_SEECHANGES) {
                 fim_diff_process_delete_file(path);
             }
-            event_data->evt_data->type = FIM_DELETE;
-            event_data->db_full = false;
+
+            txn_context->evt_data->type = FIM_DELETE;
+            txn_context->db_full = false;
 
             break;
 
         case MAX_ROWS:
-            event_data->db_full = true;
+            txn_context->db_full = true;
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
@@ -161,11 +272,52 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             goto end;
     }
 
-    json_event = fim_dbsync_json_event(path, diff, dbsync_event, configuration, event_data->evt_data);
+    json_event = cJSON_CreateObject();
+    data = cJSON_CreateObject();
 
-    if (json_event != NULL) {
-        send_syscheck_msg(json_event);
+    if (json_event == NULL || data == NULL) {
+        goto end; // LCOV_EXCL_LINE
     }
+
+    cJSON_AddStringToObject(json_event, "type", "event");
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    cJSON_AddStringToObject(data, "path", path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[txn_context->evt_data->mode]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[txn_context->evt_data->type]);
+    //cJSON_AddNumberToObject(data, "timestamp", time(NULL)); This should be the last_event field
+
+    if (resultType == DELETED || txn_context->latest_entry == NULL) {
+        // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
+        cJSON *attributes = cJSON_Duplicate(dbsync_event, 1);
+        cJSON_AddStringToObject(attributes, "type", "file");
+        cJSON_AddItemToObject(data, "attributes", attributes);
+    } else {
+        cJSON_AddItemToObject(data, "attributes", fim_attributes_json(txn_context->latest_entry->file_entry.data));
+        old_data = cJSON_GetObjectItem(dbsync_event, "old");
+
+        if (old_data) {
+            old_attributes = cJSON_CreateObject();
+            changed_attributes = cJSON_CreateArray();
+            cJSON_AddItemToObject(data, "old_attributes", old_attributes);
+            cJSON_AddItemToObject(data, "changed_attributes", changed_attributes);
+            fim_calculate_dbsync_difference(txn_context->latest_entry->file_entry.data,
+                                            old_data,
+                                            old_attributes,
+                                            changed_attributes);
+        }
+    }
+
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
+
+    if (configuration->tag != NULL) {
+        cJSON_AddStringToObject(data, "tags", configuration->tag);
+    }
+
+    send_syscheck_msg(json_event);
 
 end:
     os_free(diff);
@@ -224,7 +376,7 @@ time_t fim_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_txn_context_t txn_ctx = { .evt_data = &evt_data, .db_full = false };
+    fim_txn_context_t txn_ctx = { .evt_data = &evt_data, .latest_entry = NULL, .db_full = false };
 
     static fim_state_db _files_db_state = FIM_STATE_DB_EMPTY;
 #ifdef WIN32
@@ -256,7 +408,7 @@ time_t fim_scan() {
         dir_it = node_it->data;
         char *path = fim_get_real_path(dir_it);
 
-        fim_checker(path, &evt_data, dir_it, db_transaction_handle);
+        fim_checker(path, &evt_data, dir_it, db_transaction_handle, &txn_ctx);
 
 #ifndef WIN32
         realtime_adddir(path, dir_it);
@@ -295,7 +447,7 @@ time_t fim_scan() {
 
             path = fim_get_real_path(dir_it);
 
-            fim_checker(path, &evt_data, dir_it, db_transaction_handle);
+            fim_checker(path, &evt_data, dir_it, db_transaction_handle, &txn_ctx);
 
             // Verify the directory is being monitored correctly
 #ifndef WIN32
@@ -356,7 +508,8 @@ time_t fim_scan() {
 void fim_checker(const char *path,
                  event_data_t *evt_data,
                  const directory_t *parent_configuration,
-                 TXN_HANDLE dbsync_txn) {
+                 TXN_HANDLE dbsync_txn,
+                 fim_txn_context_t *ctx) {
     directory_t *configuration;
     int depth;
 
@@ -455,7 +608,7 @@ void fim_checker(const char *path,
             return;
         }
 
-        fim_file(path, configuration, evt_data, dbsync_txn);
+        fim_file(path, configuration, evt_data, dbsync_txn, ctx);
         break;
 
     case FIM_DIRECTORY:
@@ -463,7 +616,7 @@ void fim_checker(const char *path,
             mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
             return;
         }
-        fim_directory(path, evt_data, configuration, dbsync_txn);
+        fim_directory(path, evt_data, configuration, dbsync_txn, ctx);
 
 #ifdef INOTIFY_ENABLED
         if (FIM_MODE(configuration->options) == FIM_REALTIME) {
@@ -475,7 +628,11 @@ void fim_checker(const char *path,
 }
 
 
-int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *configuration, TXN_HANDLE dbsync_txn) {
+int fim_directory(const char *dir,
+                  event_data_t *evt_data,
+                  const directory_t *configuration,
+                  TXN_HANDLE dbsync_txn,
+                  fim_txn_context_t *ctx) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
@@ -518,7 +675,7 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
         str_lowercase(f_name);
 #endif
         // Process the event related to f_name
-        fim_checker(f_name, evt_data, configuration, dbsync_txn);
+        fim_checker(f_name, evt_data, configuration, dbsync_txn, ctx);
     }
 
     os_free(f_name);
@@ -538,31 +695,37 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
 static void _fim_file(const char *path,
                       const directory_t *configuration,
                       event_data_t *evt_data,
-                      TXN_HANDLE txn_handle) {
+                      TXN_HANDLE txn_handle,
+                      fim_txn_context_t *txn_context) {
     assert(path != NULL);
     assert(configuration != NULL);
     assert(evt_data != NULL);
 
     bool saved;
     char *diff = NULL;
-    fim_entry new = {.type = FIM_FILE};
+    fim_entry new_entry;
 
-    new.file_entry.path = (char *)path;
-    new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
+    new_entry.type = FIM_TYPE_FILE;
+    new_entry.file_entry.path = (char *)path;
+    new_entry.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
 
-    if (new.file_entry.data == NULL) {
+    if (new_entry.file_entry.data == NULL) {
         mdebug1(FIM_GET_ATTRIBUTES, path);
         return;
     }
 
     if (txn_handle != NULL) {
-        fim_db_transaction_sync_row(txn_handle, &new);
-        free_file_data(new.file_entry.data);
+        txn_context->latest_entry = &new_entry;
+
+        fim_db_transaction_sync_row(txn_handle, &new_entry);
+        free_file_data(new_entry.file_entry.data);
+
+        txn_context->latest_entry = NULL;
         return;
     }
 
-    if (fim_db_file_update(&new, &saved) != FIMDB_OK) {
-        free_file_data(new.file_entry.data);
+    if (fim_db_file_update(&new_entry, &saved) != FIMDB_OK) {
+        free_file_data(new_entry.file_entry.data);
         return;
     }
 
@@ -577,15 +740,19 @@ static void _fim_file(const char *path,
     }
 
     os_free(diff);
-    free_file_data(new.file_entry.data);
+    free_file_data(new_entry.file_entry.data);
 }
 
-void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, TXN_HANDLE txn_handle) {
+void fim_file(const char *path,
+              const directory_t *configuration,
+              event_data_t *evt_data,
+              TXN_HANDLE txn_handle,
+              fim_txn_context_t *ctx) {
 
     check_max_fps();
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    _fim_file(path, configuration, evt_data, txn_handle);
+    _fim_file(path, configuration, evt_data, txn_handle, ctx);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 }
 
@@ -602,7 +769,7 @@ void fim_realtime_event(char *file) {
          */
         fim_rt_delay();
 
-        fim_checker(file, &evt_data, NULL, NULL);
+        fim_checker(file, &evt_data, NULL, NULL, NULL);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
         fim_process_missing_entry(file, FIM_REALTIME, NULL);
@@ -629,7 +796,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
         fim_rt_delay();
 
         w_rwlock_rdlock(&syscheck.directories_lock);
-        fim_checker(w_evt->path, &evt_data, NULL, NULL);
+        fim_checker(w_evt->path, &evt_data, NULL, NULL, NULL);
         w_rwlock_unlock(&syscheck.directories_lock);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
@@ -686,7 +853,7 @@ void fim_db_process_missing_entry(void * data, void * ctx)
     fim_entry *new_entry = (fim_entry *)data;
     struct get_data_ctx *ctx_data = (struct get_data_ctx *)ctx;
 
-    fim_checker(new_entry->file_entry.path, ctx_data->event, NULL, NULL);
+    fim_checker(new_entry->file_entry.path, ctx_data->event, NULL, NULL, NULL);
 }
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
@@ -1013,7 +1180,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     data->inode = statbuf->st_ino;
     data->dev = statbuf->st_dev;
     data->options = configuration->options;
-    data->last_event = time(NULL);
+    // data->last_event = time(NULL);
     fim_get_checksum(data);
 
     return data;

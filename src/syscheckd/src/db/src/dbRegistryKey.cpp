@@ -42,7 +42,7 @@ void RegistryKey::createJSON()
 {
     nlohmann::json conf;
     nlohmann::json data;
-
+    nlohmann::json options;
 
     conf["table"] = FIMDB_REGISTRY_KEY_TABLENAME;
     data["path"] = m_identifier;
@@ -57,6 +57,13 @@ void RegistryKey::createJSON()
     data["group_name"] = m_groupname;
     data["mtime"] = m_time;
     conf["data"] = nlohmann::json::array({data});
+
+    if (m_oldData)
+    {
+        options["return_old_data"] = true;
+        conf["options"] = options;
+    }
+
     m_statementConf = std::make_unique<nlohmann::json>(conf);
 
 }

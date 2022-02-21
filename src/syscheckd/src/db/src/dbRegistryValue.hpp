@@ -34,13 +34,14 @@ struct FimRegistryValueDeleter
 class RegistryValue final : public DBItem
 {
     public:
-        RegistryValue(const fim_entry* const fim)
+        RegistryValue(const fim_entry* const fim, bool oldData = false)
             : DBItem(fim->registry_entry.value->name ? fim->registry_entry.value->name : ""
                      , fim->registry_entry.value->scanned
                      , fim->registry_entry.value->last_event
                      , fim->registry_entry.value->checksum
                      , fim->registry_entry.value->mode)
         {
+            m_oldData = oldData;
             m_path = fim->registry_entry.value->path ? fim->registry_entry.value->path : "";
             m_arch = fim->registry_entry.value->arch;
             m_size = fim->registry_entry.value->size;
@@ -52,9 +53,10 @@ class RegistryValue final : public DBItem
             createFimEntry();
         }
 
-        RegistryValue(const nlohmann::json& fim)
+        RegistryValue(const nlohmann::json& fim, bool oldData = false)
             : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
         {
+            m_oldData = oldData;
             m_size = fim.at("size");
             m_type = fim.at("type");
             m_md5 = fim.at("hash_md5");

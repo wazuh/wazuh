@@ -76,6 +76,38 @@ cJSON *fim_registry_event(const fim_entry *new_entry,
                           whodata_evt *w_evt,
                           const char *diff);
 
+/**
+ * @brief Calculates the `changed_attributes` and `old_attributes` for registry keys using the
+ *        information collected by the scan and the old attributes returned by DBSync.
+ *
+ * @param registry_data Data collected by the FIM scan.
+ * @param configuration Configuration of the entry.
+ * @param old_data Old attributes returned by DBSync.
+ * @param changed_attributes JSON Array where the changed attributes will be stored.
+ * @param old_attributes JSON where the old attributes will be stored.
+ */
+void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
+                                         const registry_t *configuration,
+                                         const cJSON* old_data,
+                                         cJSON* changed_attributes,
+                                         cJSON* old_attributes);
+
+/**
+ * @brief Calculates the `changed_attributes` and `old_attributes` for registry values using the
+ *        information collected by the scan and the old attributes returned by DBSync.
+ *
+ * @param value_data Data collected by the FIM scan.
+ * @param configuration Configuration of the entry.
+ * @param old_data Old attributes returned by DBSync.
+ * @param changed_attributes JSON Array where the changed attributes will be stored.
+ * @param old_attributes JSON where the old attributes will be stored.
+ */
+void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_data,
+                                           const registry_t* configuration,
+                                           const cJSON* old_data,
+                                           cJSON* changed_attributes,
+                                           cJSON* old_attributes);
+
 #endif
 
 #endif
