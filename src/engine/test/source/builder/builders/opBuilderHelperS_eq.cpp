@@ -37,7 +37,7 @@ TEST(opBuilderHelperS_eq, BuildsIncorrectNumberOfArguments)
 }
 
 // Test ok: static values
-TEST(opBuilderHelperS_eq, BuildsOk)
+TEST(opBuilderHelperS_eq, staticStringOk)
 {
     Document doc{R"({
         "check":
@@ -75,7 +75,7 @@ TEST(opBuilderHelperS_eq, BuildsOk)
 }
 
 // Test ok: static values (numbers, compare as string)
-TEST(opBuilderHelperS_eq, BuildsOkNumbers)
+TEST(opBuilderHelperS_eq, staticNumberOk)
 {
     Document doc{R"({
         "check":
@@ -113,7 +113,106 @@ TEST(opBuilderHelperS_eq, BuildsOkNumbers)
 }
 
 // Test ok: dynamic values (string)
+TEST(opBuilderHelperS_eq, dynamicsStringOk) {
+    Document doc{R"({
+        "check":
+            {"field2check": "+s_eq/$ref_key"}
+    })"};
 
-// Test ok: dynamic values (numbers, compare as string)
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {
+                    "field2check":"not_test_value",
+                    "ref_key":"test_value"
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "field2check":"test_value",
+                    "ref_key":"test_value"
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "otherfield":"value",
+                    "ref_key":"test_value"
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "otherfield":"test_value",
+                    "ref_key":"test_value"
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "field2check":"test_value",
+                    "ref_key":"test_value"
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperS_eq(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "test_value");
+    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "test_value");
+}
+
+// Test ok: dynamic values (number)
+TEST(opBuilderHelperS_eq, dynamicsNumberOk) {
+    Document doc{R"({
+        "check":
+            {"field2check": "+s_eq/$ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {
+                    "field2check":11,
+                    "ref_key":11
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "field2check":"11",
+                    "ref_key":11
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "otherfield":11,
+                    "ref_key":11
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "otherfield":11,
+                    "ref_key":11
+                }
+            )"});
+            s.on_next(Event{R"(
+                {
+                    "field2check":"11",
+                    "ref_key":11
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperS_eq(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 0);
+}
+
 
 
