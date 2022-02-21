@@ -2318,6 +2318,40 @@ class AWSLBBucket(AWSCustomBucket):
         self.service = 'elasticloadbalancing'
         AWSCustomBucket.__init__(self, *args, **kwargs)
 
+    def db_count_custom(self, aws_account_id):
+        try:
+            query_count_custom = self.db_connector.execute(
+                    self.sql_count_custom.format(
+                        table_name=self.db_table_name,
+                        bucket_path=self.bucket_path,
+                        aws_account_id=aws_account_id,
+                        retain_db_records=self.retain_db_records
+                        ))
+            return query_count_custom.fetchone()[0]
+        except Exception as e:
+            print("ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
+                bucket_path=self.bucket_path,
+                error_msg=e))
+            sys.exit(10)
+
+    def db_maintenance(self, aws_account_id=None, aws_region=None):
+        debug("+++ DB Maintenance", 1)
+        try:
+            if self.db_count_custom(aws_account_id) > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    bucket_path=self.bucket_path,
+                    table_name=self.db_table_name,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    retain_db_records=self.retain_db_records
+                    ))
+        except Exception as e:
+            print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                aws_account_id=aws_account_id,
+                aws_region=aws_region,
+                error_msg=e))
+            sys.exit(10)
+
     def get_base_prefix(self):
         return f'{self.prefix}AWSLogs/{self.suffix}'
 
