@@ -78,6 +78,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
                                                  std::optional<std::string> refExpStr,
                                                  std::optional<std::string> expectedStr) {
 
+    // TODO Remove try catch or if nullptr after fix get method of document class
     // Get value to compare
     const rapidjson::Value * value{};
     try {
@@ -108,8 +109,10 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
     switch (op) {
         case '=':
             return std::string{value->GetString()} == expectedStr.value();
-        case '!':
-            return std::string{value->GetString()} != expectedStr.value();
+        // This is not a typo, The '=' operand must be negated, since it must return true
+        // if the reference is not found or they are of different type the event will be emitted again.
+        //case '!':
+        //    return std::string{value->GetString()} != expectedStr.value();
         case '>':
             return std::string{value->GetString()} > expectedStr.value();
         case '<':
@@ -127,7 +130,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
     return false;
 }
 
-// String equal
+// <field>: s_eq/<value>
 types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def)
 {
     // Get field key to check
@@ -160,13 +163,57 @@ types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter([key, expectedStr, refExpStr](types::Event e) {
+            // try and catche, return false
             return opBuilderHelperStringComparison(key, '=', e, refExpStr, expectedStr);
         });
     };
 }
 
-// TODO field: +s_gt/str|$ref/
-// TODO field: +s_lt/str|$ref/
-// TODO field: +s_gte/str|$ref/
-// TODO field: +s_gte/str|$ref/
+// <field>: s_ne/<value>
+types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def)
+{
+    // Get field key to check
+    std::string key {def.MemberBegin()->name.GetString()};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString()) {
+        throw std::runtime_error("Invalid parameter type for s_ne operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr = utils::string::split(parm, '/');
+    if (parametersArr.size() != 2) {
+        throw std::runtime_error("Invalid number of parameters for s_ne operator");
+    }
+
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
+
+    // Check if is a reference to json event
+    if (parametersArr[1][0] == '$') {
+        refExpStr = parametersArr[1].substr(1);
+    } else {
+        expectedStr = parametersArr[1];
+    }
+
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter([key, expectedStr, refExpStr](types::Event e) {
+            // Not use a `!` operator, since it must return false if the reference
+            // is not found or they are of different type
+            // try and catche, return false
+            return !opBuilderHelperStringComparison(key, '=', e, refExpStr, expectedStr);
+        });
+    };
+}
+
+
+// TODO <field>: s_gt/<value>|$<ref>
+// TODO <field>: s_lt/<value>|$<ref>
+// TODO <field>: s_gte/<value>|$<ref>
+// TODO <field>: s_lte/<value>|$<ref>
+
 } // namespace builder::internals::builders
