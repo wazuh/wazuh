@@ -326,4 +326,56 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field
     };
 }
 
+types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
+{
+    // Get field
+    std::string field = def.MemberBegin()->name.GetString();
+    std::string rawValue = def.MemberBegin()->value.GetString();
+
+    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+
+    if(parameters.size() != 2)
+    {
+        throw std::runtime_error("Invalid parameters");
+    }
+
+    std::optional<std::string> refValue;
+    std::optional<int> value;
+
+    if(parameters[1][0] == '$')
+    {
+        // Check case `+int/$`
+        refValue = parameters[1].substr(1, std::string::npos);
+    }
+    else
+    {
+        value = std::stoi(parameters[1]);
+    }
+
+    // Return Lifter
+    return [refValue, value, field](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter([=](types::Event e) {
+            if(e.exists("/" + field))
+            {
+                auto fieldToCheck = e.getObject().FindMember(field.c_str());
+                if(fieldToCheck->value.IsInt())
+                {
+                    if(value.has_value())
+                    {
+                        return fieldToCheck->value.GetInt() != value.value();
+                    }
+                    auto refValueToCheck = e.getObject().FindMember(refValue.value().c_str());
+                    if(refValueToCheck->value.IsInt())
+                    {
+                        return fieldToCheck->value.GetInt() != refValueToCheck->value.GetInt();
+                    }
+                }
+            }
+            return false;
+        });
+    };
+}
+
 } // namespace builder::internals::builders
