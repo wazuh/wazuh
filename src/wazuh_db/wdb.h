@@ -19,6 +19,7 @@
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
 #include "wazuhdb_op.h"
+#include "regex_op.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -2069,6 +2070,14 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
 int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
 
 /**
+ * @brief Verifies that the group name complies with a predefined pattern.
+ *
+ * @param group_name Group name to be validated.
+ * @return w_err_t OS_SUCCESS if valid. OS_INVALID otherwise.
+ */
+w_err_t wdb_global_validate_group_name(const char *group_name);
+
+/**
  * @brief Verifies that the number of groups to be assigned is less or equal to 128 and
  *        there's no group longer than 255 characters nor contains a comma as part of its name.
  *
@@ -2077,7 +2086,7 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
  * @param [in] agent_id ID of the agent to add new groups.
  * @return wdbc_result representing the status of the command.
  */
-wdbc_result wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id);
+w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id);
 
 /**
  * @brief Sets the belongship af a set of agents.
