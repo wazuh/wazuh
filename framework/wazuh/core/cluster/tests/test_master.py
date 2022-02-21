@@ -36,7 +36,7 @@ cluster_items = {'node': 'master-node',
                  'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "sync_agent_info": 5},
                                "communication": {"timeout_receiving_file": 1, "timeout_dapi_request": 1},
                                'master': {'max_locked_integrity_time': 0, 'timeout_agent_info': 0,
-                                          'timeout_extra_valid': 0, 'process_pool_size': 10,
+                                          'timeout_agent_groups': 0, 'timeout_extra_valid': 0, 'process_pool_size': 10,
                                           'recalculate_integrity': 0, 'sync_agent_groups': 1}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"},
                            'queue/agent-groups/': {'permissions': ''}}}
@@ -885,14 +885,14 @@ async def test_master_handler_setup_sync_wazuh_db_information(sync_wazuh_db_info
     sync_wazuh_db_information_mock.assert_called_once_with(
         task_id=b'17', info_type='agent-groups', error_command=b'syn_m_g_err',
         logger=master_handler.task_loggers['Agent-groups sync'], command=b'syn_m_g_e',
-        sync_dict=master_handler.sync_agent_groups_status)
+        sync_dict=master_handler.sync_agent_groups_status, timeout=0)
     sync_wazuh_db_information_mock.reset_mock()
 
     assert await master_handler.setup_sync_wazuh_db_information(task_id=b'17', info_type='agent-info') == 'check'
     sync_wazuh_db_information_mock.assert_called_once_with(
         task_id=b'17', info_type='agent-info', error_command=b'syn_m_a_err',
         logger=master_handler.task_loggers['Agent-info sync'], command=b'syn_m_a_e',
-        sync_dict=master_handler.sync_agent_info_status)
+        sync_dict=master_handler.sync_agent_info_status, timeout=0)
 
 
 @pytest.mark.asyncio

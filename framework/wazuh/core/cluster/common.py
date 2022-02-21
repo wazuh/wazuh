@@ -520,7 +520,8 @@ class Handler(asyncio.Protocol):
 
         return data
 
-    async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes) -> dict:
+    async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes,
+                                timeout: int) -> dict:
         """Send the received data to WDB and returns the result of the operation.
 
         Parameters
@@ -533,6 +534,8 @@ class Handler(asyncio.Protocol):
             Logger to use.
         error_command : bytes
             Command sent to the sender node in case of error.
+        timeout : int
+            Seconds to wait before stopping the task.
 
         Returns
         -------
@@ -541,8 +544,7 @@ class Handler(asyncio.Protocol):
         """
         try:
             result = await cluster.run_in_pool(self.loop, self.server.task_pool, send_data_to_wdb, data,
-                                               self.cluster_items['intervals']['worker']['timeout_agent_groups'],
-                                               info_type=info_type)
+                                               timeout, info_type=info_type)
         except Exception as e:
             print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
             await self.send_request(command=error_command,
@@ -584,7 +586,8 @@ class Handler(asyncio.Protocol):
         return response
 
     async def sync_wazuh_db_information(self, task_id: bytes, info_type: str, logger: logging.Logger,
-                                        command: bytes, error_command: bytes, sync_dict: dict = None) -> bytes:
+                                        command: bytes, error_command: bytes, timeout: int,
+                                        sync_dict: dict = None) -> bytes:
         """Create a process to send to the local wazuh-db the chunks of data received from a master/worker node.
 
         Parameters
@@ -599,6 +602,8 @@ class Handler(asyncio.Protocol):
             Command sent to the sender node.
         error_command : bytes
             Command sent to the sender node in case of error.
+        timeout : int
+            Seconds to wait before stopping the wdb update task.
         sync_dict : dict
             Dictionary with general cluster information.
 
@@ -612,7 +617,7 @@ class Handler(asyncio.Protocol):
 
         start_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
         data = await self.get_chunks_in_task_id(task_id, error_command)
-        result = await self.update_chunks_wdb(data, info_type, logger, error_command)
+        result = await self.update_chunks_wdb(data, info_type, logger, error_command, timeout)
         response = await self.send_result_to_manager(command, result)
         end_time = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
 
@@ -1236,73 +1241,6 @@ class SyncTask:
             self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
 
         return False
-
-
-class SyncFiles(SyncTask):
-    """
-    Define methods to synchronize files with master.
-    """
-
-    async def sync(self, files_to_sync: Dict, files_metadata: Dict):
-        """Send metadata and files to the master node.
-        Parameters
-        ----------
-        files_to_sync : dict
-            Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
-            will be iterated to add the files they refer to the zip file that the master will receive.
-        files_metadata : dict
-            Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
-            a JSON file named files_metadata.json.
-        Returns
-        -------
-        bool
-            True if files were correctly sent to the master node, None otherwise.
-        """
-        # Start the synchronization process with the master and get a taskID.
-        task_id = await self.server.send_request(command=self.cmd, data=b'')
-        if isinstance(task_id, Exception):
-            raise task_id
-        elif task_id.startswith(b'Error'):
-            self.logger.error(task_id.decode())
-            exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
-                                  cls=WazuhJSONEncoder).encode()
-            await self.server.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
-            return
-
-        self.logger.debug(
-            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
-        )
-        compressed_data_path = cluster.compress_files(name=self.server.name, list_path=files_to_sync,
-                                                      cluster_control_json=files_metadata)
-
-        try:
-            # Send zip file to the master into chunks.
-            self.logger.debug("Sending zip file to master.")
-            await self.server.send_file(filename=compressed_data_path)
-            self.logger.debug("Zip file sent to master.")
-
-            # Finish the synchronization process and notify where the file corresponding to the taskID is located.
-            result = await self.server.send_request(command=self.cmd + b'_e',
-                                                    data=task_id + b' ' + os.path.relpath(compressed_data_path,
-                                                                                          common.wazuh_path).encode())
-            if isinstance(result, Exception):
-                raise result
-            elif result.startswith(b'Error'):
-                raise exception.WazuhClusterError(3016, extra_message=result.decode())
-            return True
-        except exception.WazuhException as e:
-            # Notify error to master and delete its received file.
-            self.logger.error(f"Error sending zip file: {e}")
-            await self.server.send_request(command=self.cmd + b'_r',
-                                           data=task_id + b' ' + json.dumps(e, cls=WazuhJSONEncoder).encode())
-        except Exception as e:
-            # Notify error to master and delete its received file.
-            self.logger.error(f"Error sending zip file: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=WazuhJSONEncoder).encode()
-            await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
-        finally:
-            os.unlink(compressed_data_path)
 
 
 class SyncWazuhdb(SyncTask):

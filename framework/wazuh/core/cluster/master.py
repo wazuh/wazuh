@@ -600,20 +600,24 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = ''
         command = ''
         error_command = ''
+        timeout = 0
         sync_dict = {}
         if info_type == 'agent-info':
             logger = self.task_loggers['Agent-info sync']
             command = b'syn_m_a_e'
             error_command = b'syn_m_a_err'
             sync_dict = self.sync_agent_info_status
+            timeout = self.cluster_items['intervals']['master']['timeout_agent_info']
         elif info_type == 'agent-groups':
             logger = self.task_loggers['Agent-groups sync']
             command = b'syn_m_g_e'
             error_command = b'syn_m_g_err'
             sync_dict = self.sync_agent_groups_status
+            timeout = self.cluster_items['intervals']['master']['timeout_agent_groups']
 
-        return await super().sync_wazuh_db_information(task_id=task_id, info_type=info_type, error_command=error_command,
-                                                       logger=logger, command=command, sync_dict=sync_dict)
+        return await super().sync_wazuh_db_information(
+            task_id=task_id, info_type=info_type, error_command=error_command,
+            logger=logger, command=command, sync_dict=sync_dict, timeout=timeout)
 
     async def send_agent_groups_information(self):
         """Function in charge of sending the group information to the worker node.

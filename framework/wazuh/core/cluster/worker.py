@@ -77,6 +77,73 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
 
 
+class SyncFiles(c_common.SyncTask):
+    """
+    Define methods to synchronize files with master.
+    """
+
+    async def sync(self, files_to_sync: Dict, files_metadata: Dict):
+        """Send metadata and files to the master node.
+        Parameters
+        ----------
+        files_to_sync : dict
+            Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
+            will be iterated to add the files they refer to the zip file that the master will receive.
+        files_metadata : dict
+            Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
+            a JSON file named files_metadata.json.
+        Returns
+        -------
+        bool
+            True if files were correctly sent to the master node, None otherwise.
+        """
+        # Start the synchronization process with the master and get a taskID.
+        task_id = await self.server.send_request(command=self.cmd, data=b'')
+        if isinstance(task_id, Exception):
+            raise task_id
+        elif task_id.startswith(b'Error'):
+            self.logger.error(task_id.decode())
+            exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
+                                  cls=c_common.WazuhJSONEncoder).encode()
+            await self.server.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
+            return
+
+        self.logger.debug(
+            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
+        )
+        compressed_data_path = cluster.compress_files(name=self.server.name, list_path=files_to_sync,
+                                                      cluster_control_json=files_metadata)
+
+        try:
+            # Send zip file to the master into chunks.
+            self.logger.debug("Sending zip file to master.")
+            await self.server.send_file(filename=compressed_data_path)
+            self.logger.debug("Zip file sent to master.")
+
+            # Finish the synchronization process and notify where the file corresponding to the taskID is located.
+            result = await self.server.send_request(command=self.cmd + b'_e',
+                                                    data=task_id + b' ' + os.path.relpath(compressed_data_path,
+                                                                                          common.wazuh_path).encode())
+            if isinstance(result, Exception):
+                raise result
+            elif result.startswith(b'Error'):
+                raise exception.WazuhClusterError(3016, extra_message=result.decode())
+            return True
+        except exception.WazuhException as e:
+            # Notify error to master and delete its received file.
+            self.logger.error(f"Error sending zip file: {e}")
+            await self.server.send_request(command=self.cmd + b'_r',
+                                           data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+        except Exception as e:
+            # Notify error to master and delete its received file.
+            self.logger.error(f"Error sending zip file: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
+                                  cls=c_common.WazuhJSONEncoder).encode()
+            await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
+        finally:
+            os.unlink(compressed_data_path)
+
+
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     """
     Handle connection with the master node.
@@ -329,13 +396,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger = ''
         command = ''
         error_command = ''
+        timeout = 0
         if info_type == 'agent-groups':
             logger = self.task_loggers['Agent-groups recv']
             command = b'syn_w_g_e'
             error_command = b'syn_w_g_err'
+            timeout = self.cluster_items['intervals']['worker']['timeout_agent_groups']
 
-        return await super().sync_wazuh_db_information(task_id=task_id, info_type=info_type, error_command=error_command,
-                                                       logger=logger, command=command)
+        return await super().sync_wazuh_db_information(
+            task_id=task_id, info_type=info_type, error_command=error_command,
+            logger=logger, command=command, timeout=timeout)
 
     async def sync_integrity(self):
         """Obtain files status and send it to the master.
@@ -348,7 +418,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         compares it with its own information.
         """
         logger = self.task_loggers["Integrity check"]
-        integrity_check = c_common.SyncFiles(cmd=b'syn_i_w_m', logger=logger, manager=self)
+        integrity_check = SyncFiles(cmd=b'syn_i_w_m', logger=logger, manager=self)
 
         while True:
             try:
@@ -459,7 +529,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             before = datetime.utcnow().timestamp()
             logger.debug("Starting sending extra valid files to master.")
-            extra_valid_sync = c_common.SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
+            extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
 
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
             n_files, merged_file = cluster.merge_info(merge_type='agent-groups', node_name=self.name,
