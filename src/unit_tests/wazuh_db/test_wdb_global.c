@@ -4651,11 +4651,11 @@ void test_wdb_global_insert_agent_group_invalid_group_name(void **state)
 {
     int result = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char *group_name = "group-name,with_comma";
+    char *group_name = "group_name,with_comma";
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group-name,with_comma' "
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group_name,with_comma' "
                                                 "contains invalid characters");
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot insert 'group-name,with_comma'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot insert 'group_name,with_comma'");
 
     result = wdb_global_insert_agent_group(data->wdb, group_name);
 

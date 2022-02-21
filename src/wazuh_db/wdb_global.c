@@ -1329,26 +1329,25 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
 w_err_t wdb_global_validate_group_name(const char *group_name) {
     const char *current_directory = ".";
     const char *parent_directory = "..";
-    w_err_t result = OS_SUCCESS;
 
     if (strlen(group_name) > MAX_GROUP_NAME) {
         mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
-        result = OS_INVALID;
-    } else if (!w_regexec("^[a-zA-Z0-9_\\.\\-]+$", group_name, 0, NULL)) {
+        return OS_INVALID;
+    }
+    if (!w_regexec("^[a-zA-Z0-9_\\.\\-]+$", group_name, 0, NULL)) {
         mwarn("Invalid group name. '%s' contains invalid characters", group_name);
-        result = OS_INVALID;
-    } else {
-        if (!strcmp(group_name, parent_directory)) {
-            mwarn("Invalid group name. '%s' represents the parent directory in unix systems", group_name);
-            result = OS_INVALID;
-        }
-        if (!strcmp(group_name, current_directory)) {
-            mwarn("Invalid group name. '%s' represents the current directory in unix systems", group_name);
-            result = OS_INVALID;
-        }
+        return OS_INVALID;
+    }
+    if (!strcmp(group_name, parent_directory)) {
+        mwarn("Invalid group name. '%s' represents the parent directory in unix systems", group_name);
+        return OS_INVALID;
+    }
+    if (!strcmp(group_name, current_directory)) {
+        mwarn("Invalid group name. '%s' represents the current directory in unix systems", group_name);
+        return OS_INVALID;
     }
 
-    return result;
+    return OS_SUCCESS;
 }
 
 w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
@@ -1368,8 +1367,7 @@ w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
                     break;
                 }
                 char* group_name = j_group_name->valuestring;
-                if (OS_INVALID == wdb_global_validate_group_name(group_name)) {
-                    ret = OS_INVALID;
+                if (ret = wdb_global_validate_group_name(group_name), ret) {
                     break;
                 }
             }
@@ -1422,7 +1420,7 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
                     ret = WDBC_ERROR;
                 }
             }
-            if (WDBC_OK == valid_groups) {
+            if (OS_SUCCESS == valid_groups) {
                 char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
                 if (agent_groups_csv) {
                     char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
