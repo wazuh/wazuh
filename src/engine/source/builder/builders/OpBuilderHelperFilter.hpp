@@ -51,8 +51,19 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
 
-// TODO Doc
-inline bool opBuilderHelperAUXStringManipulation(const std::string  key, char op, types::Event& e,
+/**
+ * @brief Compares a string of the event against another string that may or may not belong to the event `e`
+ *
+ * @param key The key/path of the field to be compared
+ * @param op The operator to be used for the comparison
+ * @param e The event containing the field to be compared
+ * @param refExpStr The key/path of the field to be compared against (optional)
+ * @param expectedStr The string to be compared against (optional)
+ * @return true if the comparison is true
+ * @return false if the comparison is false
+ * @warning If `refExpStr` is not provided, the comparison will be against the value of `expectedStr`
+ */
+inline bool opBuilderHelperStringComparison(const std::string  key, char op, types::Event& e,
                                                  std::optional<std::string> refExpStr,
                                                  std::optional<std::string> expectedStr);
 
