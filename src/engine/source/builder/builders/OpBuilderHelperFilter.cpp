@@ -500,7 +500,8 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
     std::string field = def.MemberBegin()->name.GetString();
     std::string value = def.MemberBegin()->value.GetString();
     std::vector<std::string> parameters = utils::string::split(value, '/');
-    if (parameters.size() != 2){
+    if (parameters.size() != 2)
+    {
         throw std::invalid_argument("Wrong number of arguments passed");
     }
     std::string regexp = parameters[1];
