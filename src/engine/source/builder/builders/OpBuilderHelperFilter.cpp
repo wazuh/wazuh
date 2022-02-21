@@ -95,14 +95,23 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
     // get str to compare
     if (refExpStr.has_value()) {
         // Get reference to json event
-        auto refValueToCheck = e.getObject().FindMember(refExpStr.value().c_str());
-        // if is a string value then compare
-        if (refValueToCheck->value.IsString()) {
-            expectedStr = std::string{refValueToCheck->value.GetString()};
-            //return std::string{value->GetString()} == std::string{refValueToCheck->value.GetString()};
-        } else {
+        // TODO Remove try catch or if nullptr after fix get method of document class
+        const rapidjson::Value * refValueToCheck{};
+        try
+        {
+            refValueToCheck = e.get("/" + refExpStr.value());
+        }
+        catch (std::exception & e)
+        {
+            // TODO Check exception type
             return false;
         }
+
+        if (refValueToCheck == nullptr || !refValueToCheck->IsString())
+        {
+            return false;
+        }
+        expectedStr = std::string{refValueToCheck->GetString()};
     }
 
     // String operation
