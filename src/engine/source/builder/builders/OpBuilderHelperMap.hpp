@@ -66,6 +66,19 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def);
 
+//*************************************************
+//*           Regex tranform                      *
+//*************************************************
+
+/**
+ * @brief Builds helper exists operation.
+ * Checks that a field is present in the event.
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H
