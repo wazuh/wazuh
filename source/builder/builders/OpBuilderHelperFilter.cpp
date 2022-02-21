@@ -122,14 +122,14 @@ bool opBuilderHelperAUXStringManipulation(const std::string key, char op, types:
         case 'n':
             return std::string{value->GetString()} <= expectedStr.value();
         default:
-            throw std::invalid_argument("Invalid operator");
+            throw std::invalid_argument("Invalid operator: '" + std::string{op} + "' ");
     }
 
     return false;
 }
 
 // String equal
-types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def)
+types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def)
 {
     // Get field key to check
     std::string key {def.MemberBegin()->name.GetString()};
@@ -161,10 +161,7 @@ types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter([key, expectedStr, refExpStr](types::Event e) {
-
             return opBuilderHelperAUXStringManipulation(key, '=', e, refExpStr, expectedStr);
-
-//            return false;
         });
     };
 }
