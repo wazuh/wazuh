@@ -6,13 +6,13 @@
 
 import glob
 import os
-from contextvars import ContextVar
 from importlib import reload
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import clear_mappers
 from yaml import safe_load
 
 from wazuh.core.exception import WazuhError
@@ -72,6 +72,8 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
+                    # Clear mappers
+                    clear_mappers()
                     # Invalidate in-memory database
                     conn = orm._engine.connect()
                     orm._Session().close()
@@ -216,6 +218,7 @@ def test_add_new_default_policies(new_default_resources):
 def test_migrate_default_policies(new_default_resources):
     """Check that the migration process overwrites default policies in the user range including their relationships
     and positions."""
+
     def mock_open_default_resources(*args, **kwargs):
         args = list(args)
         file_path = args[0]
