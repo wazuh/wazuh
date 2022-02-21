@@ -150,11 +150,11 @@ add_executable(opBuilderHelperExistsTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperExistsTest)
 
-add_executable(opBuilderHelperS_eq
+add_executable(opBuilderHelperStringEq_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperS_eq.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringEq_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
-gtest_discover_tests(opBuilderHelperS_eq)
+gtest_discover_tests(opBuilderHelperStringEq_test)
 
 add_executable(opBuilderConditionTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp

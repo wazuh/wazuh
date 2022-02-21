@@ -65,7 +65,7 @@ inline bool opBuilderHelperAUXStringManipulation(const std::string  key, char op
  * @return types::Lifter The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperS_eq(const types::DocumentValue & def);
+types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def);
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
