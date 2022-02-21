@@ -325,7 +325,8 @@ class Agent:
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
-              'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time'}
+              'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
+              'group_config_status': 'group_config_status'}
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=None):
         """Initialize an agent.
@@ -367,6 +368,7 @@ class Agent:
         self.node_name = None
         self.registerIP = ip
         self.disconnection_time = None
+        self.group_config_status = None
 
         # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -381,7 +383,7 @@ class Agent:
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
                       'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
                       'group': self.group, 'manager': self.manager, 'node_name': self.node_name,
-                      'disconnection_time': self.disconnection_time}
+                      'disconnection_time': self.disconnection_time, 'group_config_status': self.group_config_status}
 
         return dictionary
 
